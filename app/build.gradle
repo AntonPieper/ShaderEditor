@@ -1,11 +1,21 @@
-apply plugin: 'com.android.application'
+plugins {
+	alias(libs.plugins.androidApplication)
+	alias(libs.plugins.rust)
+}
+
+cargo {
+	module  = "../rust"       // Or whatever directory contains your Cargo.toml
+	libname = "rust"          // Or whatever matches Cargo.toml's [package] name.
+	targets = ["arm64"]  // See bellow for a longer list of options
+	profile = "debug"
+}
 
 android {
 	namespace 'de.markusfisch.android.shadereditor'
 	compileSdk sdk_version
 
 	defaultConfig {
-		minSdkVersion 14
+		minSdkVersion 21
 		targetSdkVersion sdk_version
 
 		versionCode 73
@@ -33,11 +43,21 @@ android {
 			signingConfig signingConfigs.release
 		}
 	}
+	ndkVersion '25.2.9519653'
 }
-
+tasks.withType(JavaCompile).configureEach {
+	configure(options) {
+		options.compilerArgs += ["-h", file("src/main/java/de/markusfisch/android/shadereditor/highlighter/Highlighter")]
+	}
+}
 dependencies {
 	implementation libs.androidx.appcompat
 	implementation libs.material
 	implementation libs.androidx.preference
 	implementation libs.androidx.legacy.preference.v14
+}
+tasks.configureEach { task ->
+	if ((task.name == 'javaPreCompileDebug' || task.name == 'javaPreCompileRelease')) {
+		task.dependsOn 'cargoBuild'
+	}
 }

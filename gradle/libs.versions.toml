@@ -4,6 +4,7 @@ appcompat = "1.6.1"
 legacy-preference-v14 = "1.0.0"
 preference = "1.2.0"
 material = "1.9.0"
+rust =  "0.9.3"
 
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
@@ -13,5 +14,6 @@ material = { module = "com.google.android.material:material", version.ref = "mat
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
+rust = { id = "org.mozilla.rust-android-gradle.rust-android", version.ref = "rust"}
 [bundles]
 
