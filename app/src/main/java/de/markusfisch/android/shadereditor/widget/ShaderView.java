@@ -6,15 +6,20 @@ import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
+import java.util.List;
+
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.egl.EGLDisplay;
 
+import de.markusfisch.android.shadereditor.opengl.EngineRendererBridge;
 import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
+import de.markusfisch.android.shadereditor.runner.ShaderRunnerPlugin;
 
 public class ShaderView extends GLSurfaceView {
 	private ShaderRenderer renderer;
+	private EngineRendererBridge bridge;
 
 	public ShaderView(Context context, int renderMode) {
 		super(context);
@@ -31,10 +36,17 @@ public class ShaderView extends GLSurfaceView {
 		init(context, GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 	}
 
+	private static String removeNonAscii(String text) {
+		return text == null
+				? null
+				: text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", "");
+	}
+
 	@Override
 	public void onPause() {
 		super.onPause();
 		renderer.unregisterListeners();
+		bridge.destroy();
 	}
 
 	// Click handling is implemented in renderer.
@@ -67,15 +79,18 @@ public class ShaderView extends GLSurfaceView {
 		// even if the docs say it's not used when setEGLContextFactory()
 		// is called. Not doing so will crash the app (e.g. on the FP1).
 		setEGLContextClientVersion(2);
+		bridge = new EngineRendererBridge(getContext(), List.of(
+				ShaderRunnerPlugin::new));
 		setEGLContextFactory(new ContextFactory(renderer));
-		setRenderer(renderer);
+		setRenderer(bridge);
+
 		setRenderMode(renderMode);
 	}
 
-	private static String removeNonAscii(String text) {
-		return text == null
-				? null
-				: text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", "");
+	@Override
+	protected void onDetachedFromWindow() {
+		super.onDetachedFromWindow();
+		bridge.destroy();
 	}
 
 	private static class ContextFactory

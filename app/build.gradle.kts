@@ -48,6 +48,7 @@ android {
 	compileOptions {
 		sourceCompatibility = JavaVersion.VERSION_17
 		targetCompatibility = JavaVersion.VERSION_17
+		isCoreLibraryDesugaringEnabled = true
 	}
 }
 
@@ -56,7 +57,9 @@ dependencies {
 	implementation(libs.material)
 	implementation(libs.androidx.preference)
 
-	implementation (libs.androidx.camera.core)
+	implementation(libs.androidx.camera.core)
 	implementation(libs.androidx.camera.camera2)
 	implementation(libs.androidx.camera.lifecycle)
+
+	coreLibraryDesugaring(libs.desugar.jdk.libs)
 }

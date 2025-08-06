@@ -87,7 +87,7 @@ public class BackBufferParametersView extends LinearLayout {
 		if (id > 0) {
 			tp.setPreset(String.valueOf(id));
 		} else {
-			// If "(no preset)" is selected, clear the preset.
+			// If "(no preset)" is selected, reset the preset.
 			tp.setPreset(null);
 		}
 	}
