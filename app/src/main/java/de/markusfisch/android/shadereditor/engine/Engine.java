@@ -78,13 +78,9 @@ public class Engine {
 	}
 
 	public void setup() {
-		var plugins = new ArrayDeque<>(this.plugins);
-		plugins.addAll(addedPlugins);
-		shutdown();
 		if (renderer != null) {
 			renderer.onSurfaceCreated();
 		}
-		addedPlugins.addAll(plugins);
 		processAddedPlugins();
 		processAddedDataProviders();
 		dataProviderManager.onStart();

@@ -5,19 +5,34 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import de.markusfisch.android.shadereditor.engine.Renderer;
 import de.markusfisch.android.shadereditor.engine.model.Material;
 import de.markusfisch.android.shadereditor.engine.model.RenderPass;
+import de.markusfisch.android.shadereditor.engine.model.Shader;
 
 public class GlesRenderer implements Renderer {
+	private record GlesProgram(int programId, Map<String, Integer> uniformCache) {
+		public GlesProgram(int programId) {
+			this(programId, new HashMap<>());
+		}
+
+		public int locate(@NonNull String name) {
+			return uniformCache.computeIfAbsent(name, (n) ->
+					GLES32.glGetUniformLocation(programId, n));
+		}
+	}
+
 	private static final String TAG = "GlesRenderer";
 	private int viewportWidth;
 	private int viewportHeight;
+	private final Map<Shader, GlesProgram> shaderCache = new HashMap<>();
 
 	@Override
 	public void onSurfaceCreated() {
+		shaderCache.clear();
 		GLES32.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	}
 
@@ -30,66 +45,47 @@ public class GlesRenderer implements Renderer {
 
 	@Override
 	public void render(@NonNull RenderPass renderPass) {
-		prepareMaterial(renderPass.material());
+		var program = prepareMaterial(renderPass.material());
 
 		GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, renderPass.framebuffer().getFbo());
 		GLES32.glClear(GLES32.GL_COLOR_BUFFER_BIT);
-		try {
-			GLES32.glUseProgram(renderPass.material().getProgramId());
+		GLES32.glUseProgram(program.programId());
 
-			// This is a good place to set global uniforms like resolution
-			int resolutionLocation =
-					GLES32.glGetUniformLocation(renderPass.material().getProgramId(),
-							"u_resolution");
-			GLES32.glUniform2f(resolutionLocation, (float) viewportWidth, (float) viewportHeight);
+		// This is a good place to set global uniforms like resolution
+		int resolutionLocation =
+				GLES32.glGetUniformLocation(program.programId(),
+						"u_resolution");
+		GLES32.glUniform2f(resolutionLocation, (float) viewportWidth, (float) viewportHeight);
 
-			setUniforms(renderPass.material());
-			GLES32.glBindVertexArray(renderPass.geometry().getVao());
-			GLES32.glDrawArrays(GLES32.GL_TRIANGLE_STRIP, 0,
-					renderPass.geometry().getVertexCount());
-		} catch (Exception e) {
-			Log.e(TAG, "Render Error", e);
-		} finally {
-			// Unbind for safety
-			GLES32.glBindVertexArray(0);
-			GLES32.glUseProgram(0);
-			GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, 0);
-		}
+		setUniforms(program, renderPass.material());
+		GLES32.glBindVertexArray(renderPass.geometry().getVao());
+		GLES32.glDrawArrays(GLES32.GL_TRIANGLE_STRIP, 0,
+				renderPass.geometry().getVertexCount());
+		// Unbind for safety
+		GLES32.glBindVertexArray(0);
+		GLES32.glUseProgram(0);
+		GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, 0);
 	}
 
-	private void prepareMaterial(@NonNull Material material) {
-		if (material.getProgramId() != -1) {
-			// Already compiled
-			return;
-		}
-
-		int vertexShader = compileShader(GLES32.GL_VERTEX_SHADER,
-				material.getVertexShaderSource());
-		int fragmentShader = compileShader(GLES32.GL_FRAGMENT_SHADER,
-				material.getFragmentShaderSource());
-		int programId = linkProgram(vertexShader, fragmentShader);
-		material.setProgramId(programId);
+	@NonNull
+	private GlesProgram prepareMaterial(@NonNull Material material) {
+		return shaderCache.computeIfAbsent(material.shader(), (shader) -> {
+			int vertexShader = compileShader(GLES32.GL_VERTEX_SHADER,
+					shader.vertexShader());
+			int fragmentShader = compileShader(GLES32.GL_FRAGMENT_SHADER,
+					shader.fragmentShader());
+			int programId = linkProgram(vertexShader, fragmentShader);
+			return new GlesProgram(programId);
+		});
 	}
 
-	private void setUniforms(@NonNull Material material) {
-		int programId = material.getProgramId();
-		for (Map.Entry<String, Object> entry : material.getUniforms().entrySet()) {
-			int location = GLES32.glGetUniformLocation(programId, entry.getKey());
+	private void setUniforms(@NonNull GlesProgram program, @NonNull Material material) {
+		for (var entry : material.uniforms().entrySet()) {
+			int location = program.locate(entry.getKey());
 			if (location == -1) continue;
 
-			Object value = entry.getValue();
-			if (value instanceof Float) {
-				GLES32.glUniform1f(location, (Float) value);
-			} else if (value instanceof float[] floats) {
-				switch (floats.length) {
-					case 2 -> GLES32.glUniform2fv(location, 1, floats, 0);
-					case 3 -> GLES32.glUniform3fv(location, 1, floats, 0);
-					case 4 -> GLES32.glUniform4fv(location, 1, floats, 0);
-				}
-			} else if (value instanceof Integer) {
-				GLES32.glUniform1i(location, (Integer) value);
-			}
-			// Add other types (matrices, etc.) as needed
+			var value = entry.getValue();
+			GlesBinder.bind(location, value);
 		}
 	}
 

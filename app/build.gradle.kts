@@ -2,10 +2,16 @@ plugins {
 	alias(libs.plugins.android.application)
 }
 
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
 android {
 	namespace = "de.markusfisch.android.shadereditor"
 
-	compileSdk = 34
+	compileSdk = 36
 
 	defaultConfig {
 		minSdk = 21
@@ -46,8 +52,6 @@ android {
 	}
 
 	compileOptions {
-		sourceCompatibility = JavaVersion.VERSION_17
-		targetCompatibility = JavaVersion.VERSION_17
 		isCoreLibraryDesugaringEnabled = true
 	}
 }

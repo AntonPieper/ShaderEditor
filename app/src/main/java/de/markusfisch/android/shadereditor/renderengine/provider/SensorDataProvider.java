@@ -18,7 +18,7 @@ import de.markusfisch.android.shadereditor.renderengine.ProviderKey;
 import de.markusfisch.android.shadereditor.renderengine.UniformTypes;
 
 public class SensorDataProvider implements DataProvider, SensorEventListener {
-    // Keys are now defined with their Java class and their corresponding UniformType.
+    // Keys are now defined with their Java class and their corresponding Uniform.
     public static final ProviderKey<float[]> KEY_ROTATION_MATRIX =
             new ProviderKey<>("sensor.rotationMatrix", float[].class, UniformTypes.MAT3);
 
