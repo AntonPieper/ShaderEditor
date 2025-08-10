@@ -25,7 +25,7 @@ import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
-import de.markusfisch.android.shadereditor.activity.managers.ShaderViewManager;
+import de.markusfisch.android.shadereditor.runner.ui.AndroidEngineBridge;
 import de.markusfisch.android.shadereditor.activity.managers.UIManager;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
 	private UIManager uiManager;
 	private ShaderManager shaderManager;
 	private ShaderListManager shaderListManager;
-	private ShaderViewManager shaderViewManager;
+	private AndroidEngineBridge androidEngineBridge;
 	private NavigationManager navigationManager;
 	private DataSource dataSource;
 	private boolean isInitialLoad = false;
@@ -68,14 +68,14 @@ public class MainActivity extends AppCompatActivity {
 		}
 
 		navigationManager = new NavigationManager(this);
-		shaderViewManager = new ShaderViewManager(this, findViewById(R.id.preview),
+		androidEngineBridge = new AndroidEngineBridge(this, findViewById(R.id.preview),
 				findViewById(R.id.quality), createShaderViewListener());
 		ExtraKeysManager extraKeysManager = new ExtraKeysManager(this,
 				findViewById(android.R.id.content), editorFragment::insert);
-		uiManager = new UIManager(this, editorFragment, extraKeysManager, shaderViewManager);
+		uiManager = new UIManager(this, editorFragment, extraKeysManager, androidEngineBridge);
 		shaderListManager = new ShaderListManager(this, findViewById(R.id.shaders),
 				dataSource, createShaderListListener());
-		shaderManager = new ShaderManager(this, editorFragment, shaderViewManager,
+		shaderManager = new ShaderManager(this, editorFragment, androidEngineBridge,
 				shaderListManager, uiManager, dataSource, createShaderViewListener());
 
 		MainMenuManager mainMenuManager = new MainMenuManager(this, createEditorActions(),
@@ -101,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
 					editorFragment.clearError();
 					editorFragment.highlightErrors();
 				}
-				shaderViewManager.setFragmentShader(text);
+				androidEngineBridge.setFragmentShader(text);
 			}
 		});
 		editorFragment.setOnTextModifiedListener(() -> shaderManager.setModified(true));
@@ -129,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
 		super.onResume();
 		uiManager.updateUiToPreferences();
 		shaderListManager.loadShadersAsync();
-		shaderViewManager.onResume();
+		androidEngineBridge.onResume();
 	}
 
 	@Override
@@ -138,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
 			shaderManager.saveShader();
 		}
 		super.onPause();
-		shaderViewManager.onPause();
+		androidEngineBridge.onPause();
 	}
 
 	@Override
@@ -217,8 +217,8 @@ public class MainActivity extends AppCompatActivity {
 
 	@NonNull
 	@Contract(" -> new")
-	private ShaderViewManager.Listener createShaderViewListener() {
-		return new ShaderViewManager.Listener() {
+	private AndroidEngineBridge.ShaderExecutionListener createShaderViewListener() {
+		return new AndroidEngineBridge.ShaderExecutionListener() {
 			@Override
 			public void onFramesPerSecond(int fps) {
 				if (fps > 0) {
@@ -227,7 +227,7 @@ public class MainActivity extends AppCompatActivity {
 			}
 
 			@Override
-			public void onInfoLog(@NonNull List<ShaderError> infoLog) {
+			public void onShaderCompilationResult(@NonNull List<ShaderError> infoLog) {
 				runOnUiThread(() -> {
 					editorFragment.setErrors(infoLog);
 					findViewById(R.id.show_errors).setVisibility(editorFragment.hasErrors() ?
@@ -243,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
 			}
 
 			@Override
-			public void onQualityChanged(float quality) {
+			public void onRenderQualityChanged(float quality) {
 				shaderManager.setQuality(quality);
 			}
 		};
@@ -409,7 +409,7 @@ public class MainActivity extends AppCompatActivity {
 			shaderManager.saveShader();
 		}
 		if (ShaderEditorApp.preferences.doesRunInBackground()) {
-			shaderViewManager.setFragmentShader(src);
+			androidEngineBridge.setFragmentShader(src);
 		} else {
 			navigationManager.showPreview(src, shaderManager.getQuality(),
 					shaderManager.previewShaderLauncher);

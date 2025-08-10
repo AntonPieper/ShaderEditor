@@ -24,6 +24,7 @@ import de.markusfisch.android.shadereditor.activity.PreviewActivity;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.runner.ui.AndroidEngineBridge;
 
 public class ShaderManager {
 	private static final String SELECTED_SHADER_ID = "selected_shader_id";
@@ -35,7 +36,7 @@ public class ShaderManager {
 
 	private final AppCompatActivity activity;
 	private final EditorFragment editorFragment;
-	private final ShaderViewManager shaderViewManager;
+	private final AndroidEngineBridge androidEngineBridge;
 	private final ShaderListManager shaderListManager;
 	private final UIManager uiManager;
 	private final DataSource dataSource;
@@ -45,12 +46,12 @@ public class ShaderManager {
 	private boolean isModified = false;
 
 	public ShaderManager(@NonNull AppCompatActivity activity, EditorFragment editorFragment,
-			ShaderViewManager shaderViewManager, ShaderListManager shaderListManager,
+			AndroidEngineBridge androidEngineBridge, ShaderListManager shaderListManager,
 			UIManager uiManager, DataSource dataSource,
-			ShaderViewManager.Listener shaderViewManagerListener) {
+			AndroidEngineBridge.ShaderExecutionListener shaderExecutionListener) {
 		this.activity = activity;
 		this.editorFragment = editorFragment;
-		this.shaderViewManager = shaderViewManager;
+		this.androidEngineBridge = androidEngineBridge;
 		this.shaderListManager = shaderListManager;
 		this.uiManager = uiManager;
 		this.dataSource = dataSource;
@@ -84,10 +85,10 @@ public class ShaderManager {
 					if (result.getResultCode() == Activity.RESULT_OK) {
 						PreviewActivity.RenderStatus status = PreviewActivity.renderStatus;
 						if (status.getFps() > 0) {
-							shaderViewManagerListener.onFramesPerSecond(status.getFps());
+							shaderExecutionListener.onFramesPerSecond(status.getFps());
 						}
 						if (status.getInfoLog() != null) {
-							shaderViewManagerListener.onInfoLog(status.getInfoLog());
+							shaderExecutionListener.onShaderCompilationResult(status.getInfoLog());
 						}
 						if (getSelectedShaderId() > 0 && status.getThumbnail() != null && ShaderEditorApp.preferences.doesSaveOnRun()) {
 							saveShader();
@@ -151,8 +152,8 @@ public class ShaderManager {
 		}
 
 		shaderListManager.setSelectedShaderId(selectedShaderId);
-		shaderViewManager.setQuality(quality);
-		shaderViewManager.setFragmentShader(editorFragment.getText());
+		androidEngineBridge.setQuality(quality);
+		androidEngineBridge.setFragmentShader(editorFragment.getText());
 		setModified(false);
 	}
 
@@ -186,7 +187,7 @@ public class ShaderManager {
 
 	private byte[] getThumbnail() {
 		return ShaderEditorApp.preferences.doesRunInBackground()
-				? shaderViewManager.getThumbnail()
+				? androidEngineBridge.getThumbnail()
 				: PreviewActivity.renderStatus.getThumbnail();
 	}
 

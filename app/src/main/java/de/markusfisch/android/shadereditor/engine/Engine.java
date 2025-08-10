@@ -1,45 +1,23 @@
 package de.markusfisch.android.shadereditor.engine;
 
-import android.content.Context;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-
+import de.markusfisch.android.shadereditor.engine.asset.Asset;
+import de.markusfisch.android.shadereditor.engine.asset.AssetLoader;
 import de.markusfisch.android.shadereditor.engine.data.DataKey;
 import de.markusfisch.android.shadereditor.engine.data.DataProvider;
-import de.markusfisch.android.shadereditor.engine.data.DataProviderManager;
-import de.markusfisch.android.shadereditor.engine.model.RenderPass;
+import de.markusfisch.android.shadereditor.engine.scene.RenderPass;
 
-public class Engine {
-	private final Deque<Plugin> plugins = new ArrayDeque<>();
-	private final Deque<Plugin> addedPlugins = new ArrayDeque<>();
-	private final Deque<RenderPass> renderQueue = new ArrayDeque<>();
-	private final Deque<DataProvider<?>> addedDataProviders = new ArrayDeque<>();
-	@NonNull
-	private final DataProviderManager dataProviderManager;
-	@Nullable
-	private Renderer renderer;
-
-	public Engine(@NonNull Context context) {
-		this.dataProviderManager = new DataProviderManager(context);
-	}
-
-	public void setRenderer(@Nullable Renderer renderer) {
-		this.renderer = renderer;
-	}
-
-	public void registerPlugin(@NonNull Plugin plugin) {
-		addedPlugins.add(plugin);
-	}
+public interface Engine {
+	void registerPlugin(@NonNull Plugin plugin);
 
 	@NonNull
-	public Engine registerDataProvider(@NonNull DataProvider<?> provider) {
-		addedDataProviders.add(provider);
-		return this;
-	}
+	<T> Engine registerProviderFactory(
+			@NonNull DataKey<T> key, @NonNull DataProvider.Factory<T> factory);
+
+	<T extends Asset> void registerAssetLoader(
+			@NonNull Class<T> assetType, @NonNull AssetLoader<T> loader);
 
 	/**
 	 * Retrieves data from the provider system.
@@ -48,9 +26,7 @@ public class Engine {
 	 * @return The requested data, or null if not available.
 	 */
 	@Nullable
-	public <T> T getData(@NonNull DataKey<T> key) {
-		return dataProviderManager.getData(key);
-	}
+	<T> T getData(@NonNull DataKey<T> key);
 
 	/**
 	 * Submits a render pass to be drawn this frame.
@@ -58,78 +34,16 @@ public class Engine {
 	 *
 	 * @param renderPass The description of what to render.
 	 */
-	public void submit(@NonNull RenderPass renderPass) {
-		renderQueue.add(renderPass);
-	}
+	void submit(@NonNull RenderPass renderPass);
 
-	private void processAddedPlugins() {
-		Plugin plugin;
-		while ((plugin = addedPlugins.poll()) != null) {
-			plugins.add(plugin);
-			plugin.onSetup(this);
-		}
-	}
+	@NonNull
+	<T extends Asset> T loadAsset(@NonNull String s, @NonNull Class<T> assetType);
 
-	private void processAddedDataProviders() {
-		DataProvider<?> provider;
-		while ((provider = addedDataProviders.poll()) != null) {
-			dataProviderManager.registerProvider(provider);
-		}
-	}
-
-	public void setup() {
-		if (renderer != null) {
-			renderer.onSurfaceCreated();
-		}
-		processAddedPlugins();
-		processAddedDataProviders();
-		dataProviderManager.onStart();
-	}
-
-	public void setViewport(int width, int height) {
-		if (renderer != null) {
-			renderer.onSurfaceChanged(width, height);
-		}
-	}
-
-	public void renderFrame() {
-		processAddedPlugins();
-		processAddedDataProviders();
-
-		if (renderer == null) {
-			throw new IllegalStateException("Renderer has not been set.");
-		}
-
-		// 1. Pre-render hooks
-		for (Plugin plugin : plugins) {
-			plugin.onPreRender(this);
-		}
-
-		// 2. Clear last frame's work and ask plugins to queue this frame's work
-		renderQueue.clear();
-		for (Plugin plugin : plugins) {
-			plugin.onRender(this);
-		}
-
-		// 3. Execute the queued render passes
-		for (var pass : renderQueue) {
-			renderer.render(pass);
-		}
-
-		// 4. Post-render hooks
-		for (var plugin : plugins) {
-			plugin.onPostRender(this);
-		}
-	}
-
-	public void shutdown() {
-		for (var plugin : plugins) {
-			plugin.onTeardown(this);
-		}
-		plugins.clear();
-		addedPlugins.clear();
-		addedDataProviders.clear();
-		renderQueue.clear();
-		dataProviderManager.reset();
-	}
+	/**
+	 * Gets the service for introspecting shader metadata.
+	 *
+	 * @return The singleton ShaderIntrospector instance.
+	 */
+	@NonNull
+	ShaderIntrospector getShaderIntrospector();
 }

@@ -3,9 +3,10 @@ package de.markusfisch.android.shadereditor.engine;
 
 import androidx.annotation.NonNull;
 
-import de.markusfisch.android.shadereditor.engine.model.RenderPass;
+import de.markusfisch.android.shadereditor.engine.scene.RenderPass;
 
-public interface Renderer {
+public interface Renderer extends AutoCloseable {
+
 	/**
 	 * Executes a given render pass.
 	 *
@@ -22,4 +23,7 @@ public interface Renderer {
 	 * Called when the surface dimensions change.
 	 */
 	void onSurfaceChanged(int width, int height);
+
+	@Override
+	void close();
 }

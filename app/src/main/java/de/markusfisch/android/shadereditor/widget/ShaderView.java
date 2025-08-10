@@ -6,47 +6,30 @@ import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
-import java.util.List;
-
-import javax.microedition.khronos.egl.EGL10;
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.egl.EGLContext;
-import javax.microedition.khronos.egl.EGLDisplay;
-
-import de.markusfisch.android.shadereditor.opengl.EngineRendererBridge;
 import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
-import de.markusfisch.android.shadereditor.runner.ShaderRunnerPlugin;
 
 public class ShaderView extends GLSurfaceView {
 	private ShaderRenderer renderer;
-	private EngineRendererBridge bridge;
 
 	public ShaderView(Context context, int renderMode) {
 		super(context);
-		init(context, renderMode);
+		init(context);
 	}
 
 	public ShaderView(Context context) {
 		super(context);
-		init(context, GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+		init(context);
 	}
 
 	public ShaderView(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		init(context, GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-	}
-
-	private static String removeNonAscii(String text) {
-		return text == null
-				? null
-				: text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", "");
+		init(context);
 	}
 
 	@Override
 	public void onPause() {
 		super.onPause();
 		renderer.unregisterListeners();
-		bridge.destroy();
 	}
 
 	// Click handling is implemented in renderer.
@@ -72,62 +55,18 @@ public class ShaderView extends GLSurfaceView {
 		return renderer;
 	}
 
-	private void init(Context context, int renderMode) {
+	private void init(Context context) {
 		renderer = new ShaderRenderer(context);
 
 		// On some devices it's important to setEGLContextClientVersion()
 		// even if the docs say it's not used when setEGLContextFactory()
 		// is called. Not doing so will crash the app (e.g. on the FP1).
-		setEGLContextClientVersion(2);
-		bridge = new EngineRendererBridge(getContext(), List.of(
-				ShaderRunnerPlugin::new));
-		setEGLContextFactory(new ContextFactory(renderer));
-		setRenderer(bridge);
-
-		setRenderMode(renderMode);
 	}
 
-	@Override
-	protected void onDetachedFromWindow() {
-		super.onDetachedFromWindow();
-		bridge.destroy();
+	private static String removeNonAscii(String text) {
+		return text == null
+				? null
+				: text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", "");
 	}
 
-	private static class ContextFactory
-			implements GLSurfaceView.EGLContextFactory {
-		private final ShaderRenderer renderer;
-
-		private ContextFactory(ShaderRenderer renderer) {
-			this.renderer = renderer;
-		}
-
-		@Override
-		public EGLContext createContext(EGL10 egl, EGLDisplay display,
-				EGLConfig eglConfig) {
-			int EGL_CONTEXT_CLIENT_VERSION = 0x3098;
-			EGLContext context = egl.eglCreateContext(display, eglConfig,
-					EGL10.EGL_NO_CONTEXT, new int[]{
-							EGL_CONTEXT_CLIENT_VERSION,
-							3,
-							EGL10.EGL_NONE
-					});
-			if (context != null && context != EGL10.EGL_NO_CONTEXT &&
-					context.getGL() != null) {
-				renderer.setVersion(3);
-				return context;
-			}
-			return egl.eglCreateContext(display, eglConfig,
-					EGL10.EGL_NO_CONTEXT, new int[]{
-							EGL_CONTEXT_CLIENT_VERSION,
-							2,
-							EGL10.EGL_NONE
-					});
-		}
-
-		@Override
-		public void destroyContext(EGL10 egl, EGLDisplay display,
-				EGLContext context) {
-			egl.eglDestroyContext(display, context);
-		}
-	}
 }

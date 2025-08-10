@@ -1,7 +1,5 @@
 package de.markusfisch.android.shadereditor.engine.data;
 
-import android.content.Context;
-
 import androidx.annotation.NonNull;
 
 /**
@@ -12,27 +10,22 @@ import androidx.annotation.NonNull;
  * @param <T> The type of data this provider supplies.
  */
 public interface DataProvider<T> {
-	/**
-	 * @return The unique key this provider is responsible for.
-	 */
-	@NonNull
-	DataKey<T> getKey();
+
+	@FunctionalInterface
+	interface Factory<T> {
+		@NonNull
+		DataProvider<T> create();
+	}
 
 	/**
 	 * Called when the provider should start actively listening for data.
-	 * This is tied to the host's lifecycle (e.g., onStart).
-	 *
-	 * @param context An application context.
 	 */
-	void start(@NonNull Context context);
+	void start();
 
 	/**
 	 * Called when the provider should stop listening for data to save resources.
-	 * This is tied to the host's lifecycle (e.g., onStop).
-	 *
-	 * @param context An application context.
 	 */
-	void stop(@NonNull Context context);
+	void stop();
 
 	/**
 	 * @return The most recently acquired value.

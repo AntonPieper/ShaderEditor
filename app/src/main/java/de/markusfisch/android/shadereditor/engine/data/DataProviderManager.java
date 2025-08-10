@@ -1,6 +1,5 @@
 package de.markusfisch.android.shadereditor.engine.data;
 
-import android.content.Context;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -10,85 +9,65 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Manages all DataProvider instances. It is now fully type-safe.
+ * Manages the entire lifecycle of all data providers for the engine.
+ * <p>
+ * This class stores factories for providers and lazily instantiates them
+ * on their first use. It provides a single, unified, type-safe query interface.
  */
 public class DataProviderManager {
 	private static final String TAG = "DataProviderManager";
-	private final Map<DataKey<?>, DataProvider<?>> providers = new HashMap<>();
-	@NonNull
-	private final Context context;
+	private final Map<DataKey<?>, DataProvider.Factory<?>> factories =
+			new HashMap<>();
+	private final Map<DataKey<?>, DataProvider<?>> activeProviders =
+			new HashMap<>();
 
-	public DataProviderManager(@NonNull Context context) {
-		this.context = context.getApplicationContext();
+	/**
+	 * Registers a factory for a DataProvider. The provider's class is used as the key.
+	 * This is a cheap operation that does not create the provider instance.
+	 */
+	public <T> void register(
+			@NonNull DataKey<T> key, @NonNull DataProvider.Factory<T> factory) {
+		if (factories.putIfAbsent(key, factory) != null) {
+			Log.w(TAG, "Factory for provider " + key.name() + " is already registered.");
+		}
 	}
 
 	/**
-	 * Registers a new provider with the manager.
-	 * This method is atomic and thread-safe.
+	 * Retrieves data from a provider, activating it if necessary.
+	 * This is the primary, type-safe method for any part of the engine to query data.
 	 *
-	 * @param provider The DataProvider to register.
-	 * @throws IllegalArgumentException if a provider for the given key is already registered.
-	 */
-	public void registerProvider(@NonNull DataProvider<?> provider) {
-		if (providers.putIfAbsent(provider.getKey(), provider) != null) {
-			throw new IllegalArgumentException(
-					"DataProvider for key " + provider.getKey() + " is already registered.");
-		}
-	}
-
-	/**
-	 * Starts all registered providers. Typically called when the UI becomes visible.
-	 */
-	public void onStart() {
-		for (var provider : providers.values()) {
-			provider.start(context);
-		}
-	}
-
-	/**
-	 * Stops all registered providers. Typically called when the UI is no longer visible.
-	 */
-	public void onStop() {
-		for (var provider : providers.values()) {
-			provider.stop(context);
-		}
-	}
-
-	/**
-	 * Retrieves the current value for a given key in a fully type-safe manner.
-	 *
-	 * @param key The key for the desired data.
-	 * @param <T> The expected type of the data.
-	 * @return The data value, or null if the provider is not registered or a type mismatch occurs.
+	 * @param key The class of the provider to get data from.
+	 * @return The data value, or null if the provider is not registered.
 	 */
 	@Nullable
 	public <T> T getData(@NonNull DataKey<T> key) {
-		DataProvider<?> provider = providers.get(key);
+		DataProvider<?> provider = activeProviders.get(key);
 		if (provider == null) {
-			Log.w(TAG, "No DataProvider registered for key: " + key);
-			return null;
+			provider = activateProvider(key);
+			if (provider == null) return null;
 		}
-
-		Object value = provider.getValue();
-		try {
-			// We ask the key to perform a checked cast using its internal Class<T> token.
-			// This is guaranteed to be safe at runtime.
-			return key.cast(value);
-		} catch (ClassCastException e) {
-			// This block will now execute if a provider is misconfigured
-			// (i.e., it returns a type different from what its key declares).
-			// This protects the rest of the engine from the error.
-			Log.e(TAG,
-					"FATAL: Data provider for key '" + key + "' returned an unexpected type.", e);
-			return null;
-		}
+		// The cast is safe due to the generic constraints of this class.
+		return key.cast(provider.getValue());
 	}
 
-	/**
-	 * Stops all providers and removes them from the manager, resetting its state.
-	 */
-	public void reset() {
-		onStop();
-		providers.clear();
+	public void stopActiveProviders() {
+		for (DataProvider<?> provider : activeProviders.values()) {
+			provider.stop();
+		}
+		activeProviders.clear();
+	}
+
+	@Nullable
+	private DataProvider<?> activateProvider(@NonNull DataKey<?> key) {
+		var factory = factories.get(key);
+		if (factory == null) {
+			Log.w(TAG, "No factory registered for provider: " + key.name());
+			return null;
+		}
+		Log.d(TAG, "Lazily activating provider: " + key.name());
+		DataProvider<?> newProvider = factory.create();
+		newProvider.start();
+		activeProviders.put(key, newProvider);
+		return newProvider;
 	}
 }

@@ -10,6 +10,7 @@ import androidx.appcompat.widget.Toolbar;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.runner.ui.AndroidEngineBridge;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
 
 public class UIManager {
@@ -17,17 +18,17 @@ public class UIManager {
 	private final AppCompatActivity activity;
 	private final EditorFragment editorFragment;
 	private final ExtraKeysManager extraKeysManager;
-	private final ShaderViewManager shaderViewManager;
+	private final AndroidEngineBridge androidEngineBridge;
 	private final Toolbar toolbar;
 	private final TouchThruDrawerLayout drawerLayout;
 
 	public UIManager(@NonNull AppCompatActivity activity, @NonNull EditorFragment editorFragment,
 			@NonNull ExtraKeysManager extraKeysManager,
-			@NonNull ShaderViewManager shaderViewManager) {
+			@NonNull AndroidEngineBridge androidEngineBridge) {
 		this.activity = activity;
 		this.editorFragment = editorFragment;
 		this.extraKeysManager = extraKeysManager;
-		this.shaderViewManager = shaderViewManager;
+		this.androidEngineBridge = androidEngineBridge;
 
 		toolbar = activity.findViewById(R.id.toolbar);
 		activity.setSupportActionBar(toolbar);
@@ -50,7 +51,7 @@ public class UIManager {
 
 	public void updateUiToPreferences() {
 		boolean runInBackground = ShaderEditorApp.preferences.doesRunInBackground();
-		shaderViewManager.setVisibility(runInBackground);
+		androidEngineBridge.setVisibility(runInBackground);
 		toolbar.findViewById(R.id.toggle_code).setVisibility(runInBackground ? View.VISIBLE :
 				View.GONE);
 		if (!runInBackground && !editorFragment.isCodeVisible()) {
