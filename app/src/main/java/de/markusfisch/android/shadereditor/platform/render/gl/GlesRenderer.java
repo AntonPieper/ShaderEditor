@@ -35,6 +35,7 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 
 	@Override
 	public void render(@NonNull RenderPass renderPass) {
+		var binder = new GlesBinder(gpuObjectManager);
 		var program = prepareShader(renderPass.material().shader());
 		var fboHandle = gpuObjectManager.getFramebufferHandle(renderPass.framebuffer());
 		var vaoHandle = gpuObjectManager.getGeometryHandle(renderPass.geometry());
@@ -44,7 +45,7 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 		GLES32.glClear(GLES32.GL_COLOR_BUFFER_BIT);
 		GLES32.glUseProgram(program.programId());
 
-		setUniforms(program, renderPass.material());
+		setUniforms(program, renderPass.material(), binder);
 		GLES32.glBindVertexArray(vaoHandle);
 		GLES32.glDrawArrays(GLES32.GL_TRIANGLE_STRIP, 0,
 				renderPass.geometry().vertexCount());
@@ -111,13 +112,16 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 		return activeUniforms;
 	}
 
-	private void setUniforms(@NonNull GlesProgram program, @NonNull Material material) {
+	private void setUniforms(
+			@NonNull GlesProgram program,
+			@NonNull Material material,
+			@NonNull GlesBinder binder) {
 		for (var entry : material.uniforms().entrySet()) {
 			int location = program.locate(entry.getKey());
 			if (location == -1) continue;
 
 			var value = entry.getValue();
-			GlesBinder.bind(location, value);
+			binder.bind(location, value);
 		}
 	}
 

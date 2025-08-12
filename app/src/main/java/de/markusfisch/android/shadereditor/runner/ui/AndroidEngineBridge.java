@@ -11,8 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
+import java.net.URI;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
@@ -22,15 +21,18 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.engine.AssetStreamProvider;
 import de.markusfisch.android.shadereditor.engine.EngineController;
 import de.markusfisch.android.shadereditor.engine.Plugin;
-import de.markusfisch.android.shadereditor.engine.ResourceStreamProvider;
 import de.markusfisch.android.shadereditor.engine.asset.AssetProvider;
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
+import de.markusfisch.android.shadereditor.engine.asset.TextureAsset;
 import de.markusfisch.android.shadereditor.engine.data.DataProviderManager;
 import de.markusfisch.android.shadereditor.engine.util.observer.ObservableValue;
 import de.markusfisch.android.shadereditor.opengl.ShaderError;
 import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
+import de.markusfisch.android.shadereditor.platform.asset.AndroidAssetStreamProvider;
+import de.markusfisch.android.shadereditor.platform.asset.AndroidTextureLoader;
 import de.markusfisch.android.shadereditor.platform.asset.ShaderAssetLoader;
 import de.markusfisch.android.shadereditor.platform.plugin.AndroidDataPlugin;
 import de.markusfisch.android.shadereditor.platform.render.gl.GlesRenderer;
@@ -148,22 +150,22 @@ public class AndroidEngineBridge {
 			@NonNull ShaderExecutionListener shaderExecutionListener) {
 		this.context = context;
 		this.shaderView = shaderView;
-		ResourceStreamProvider resourceStreamProvider = identifier -> {
-			String requestedPath = new File(identifier).getCanonicalPath();
-			String mainGlslPath = new File("./main.frag").getCanonicalPath();
+		AssetStreamProvider androidAssetStreamProvider = new AndroidAssetStreamProvider(context);
+		AssetStreamProvider assetStreamProvider = identifier -> {
+			String requestedPath = identifier.getPath();
+			String mainGlslPath = URI.create("./main.frag").getPath();
 
 			if (mainGlslPath.equals(requestedPath)) {
 				return new ByteArrayInputStream(shaderAsset.get().fragmentSource().getBytes());
 			}
-			// TODO: Maybe a AssetNotFoundException would be better?
-			throw new IOException("Unknown identifier: " + identifier);
+			return androidAssetStreamProvider.openStream(identifier);
 		};
 		this.rendererBridge = new RendererBridge(
 				List.of(
 						() -> new AndroidDataPlugin(context),
 						ShaderRunnerPlugin::new
 				),
-				resourceStreamProvider);
+				assetStreamProvider);
 		shaderView.setEGLContextClientVersion(2);
 		// shaderView.setEGLContextFactory(new ContextFactory());
 		shaderView.setRenderer(rendererBridge);
@@ -303,7 +305,7 @@ public class AndroidEngineBridge {
 		private static final Pattern SHADER_VERSION_PATTERN = Pattern.compile(
 				"^\\s*#version\\s+(\\d+)(?:\\s+(\\w+))?");
 		private final Collection<Supplier<Plugin>> plugins;
-		private final ResourceStreamProvider resourceStreamProvider;
+		private final AssetStreamProvider assetStreamProvider;
 		@Nullable
 		private EngineController engineController;
 
@@ -313,9 +315,9 @@ public class AndroidEngineBridge {
 		 * @param plugins A list from plugins to be registered with the engineController.
 		 */
 		public RendererBridge(@NonNull Collection<Supplier<Plugin>> plugins,
-				@NonNull ResourceStreamProvider resourceStreamProvider) {
+				@NonNull AssetStreamProvider assetStreamProvider) {
 			this.plugins = plugins;
-			this.resourceStreamProvider = resourceStreamProvider;
+			this.assetStreamProvider = assetStreamProvider;
 		}
 
 		@Override
@@ -353,15 +355,22 @@ public class AndroidEngineBridge {
 		@NonNull
 		private EngineController createEngineController() {
 			var renderer = new GlesRenderer();
+			var assetProvider = new AssetProvider(assetStreamProvider);
+			assetProvider.setLocator((name, type) -> {
+				if (type == TextureAsset.class) return URI.create("db://" + name);
+				if (type == ShaderAsset.class) return URI.create("./" + name + ".frag");
+				return URI.create(name);
+			});
 			var engine = new EngineController(
 					new DataProviderManager(),
-					new AssetProvider(resourceStreamProvider),
+					assetProvider,
 					renderer,
 					renderer);
 			var facade = engine.getFacade();
 
 			facade.registerAssetLoader(ShaderAsset.class,
 					new ShaderAssetLoader(this::selectVertexShader));
+			facade.registerAssetLoader(TextureAsset.class, new AndroidTextureLoader());
 
 			for (var plugin : plugins) {
 				facade.registerPlugin(plugin.get());

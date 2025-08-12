@@ -9,6 +9,7 @@ import java.util.Deque;
 import de.markusfisch.android.shadereditor.engine.asset.Asset;
 import de.markusfisch.android.shadereditor.engine.asset.AssetLoader;
 import de.markusfisch.android.shadereditor.engine.asset.AssetProvider;
+import de.markusfisch.android.shadereditor.engine.asset.AssetRef;
 import de.markusfisch.android.shadereditor.engine.data.CachingDataProviderManager;
 import de.markusfisch.android.shadereditor.engine.data.DataKey;
 import de.markusfisch.android.shadereditor.engine.data.DataProvider;
@@ -147,7 +148,7 @@ public class EngineController {
 
 		@NonNull
 		@Override
-		public <T extends Asset> T loadAsset(@NonNull String s, @NonNull Class<T> assetType) {
+		public <T extends Asset> T loadAsset(@NonNull AssetRef s, @NonNull Class<T> assetType) {
 			return assetProvider.load(s, assetType);
 		}
 

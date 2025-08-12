@@ -18,6 +18,14 @@ import de.markusfisch.android.shadereditor.engine.scene.Uniform;
  * instantiation, as it only contains static utility methods.
  */
 public final class GlesBinder {
+	@NonNull
+	private final GlesGpuObjectManager gpuObjectManager;
+	private int nextTextureUnit = 0;
+
+	public GlesBinder(@NonNull GlesGpuObjectManager gpuObjectManager) {
+		this.gpuObjectManager = gpuObjectManager;
+	}
+
 	/**
 	 * Binds a uniform value to a specified location in a shader program.
 	 *
@@ -28,7 +36,7 @@ public final class GlesBinder {
 	 * @param uniform  The {@link Uniform} object containing the value to be bound.
 	 *                 This object also indicates the type of the uniform.
 	 */
-	public static void bind(int location, @NonNull Uniform uniform) {
+	public void bind(int location, @NonNull Uniform uniform) {
 		switch (uniform) {
 			case Uniform.FloatMat2(float[] value) ->
 					GLES20.glUniformMatrix2fv(location, value.length / (2 * 2), false, value, 0);
@@ -46,9 +54,13 @@ public final class GlesBinder {
 					GLES20.glUniform4fv(location, value.length / 4, value, 0);
 			case Uniform.IntScalar(int[] value) ->
 					GLES20.glUniform1iv(location, value.length, value, 0);
+			case Uniform.Sampler sampler -> {
+				int textureId = gpuObjectManager.getTextureHandle(sampler);
+				GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + nextTextureUnit);
+				GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+				GLES20.glUniform1i(location, nextTextureUnit);
+				nextTextureUnit++;
+			}
 		}
 	}
-
-	private GlesBinder() {
-	} // Private constructor to prevent instantiation.
 }

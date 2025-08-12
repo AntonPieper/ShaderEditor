@@ -2,62 +2,10 @@ package de.markusfisch.android.shadereditor.engine.scene;
 
 import androidx.annotation.NonNull;
 
-import org.jetbrains.annotations.Contract;
+import de.markusfisch.android.shadereditor.engine.asset.TextureAsset;
+import de.markusfisch.android.shadereditor.engine.asset.TextureParameters;
 
 public sealed interface Uniform {
-	@NonNull
-	@Contract("_ -> new")
-	static Uniform.FloatScalar floatScalar(float value) {
-		return new Uniform.FloatScalar(new float[]{value});
-	}
-
-	@NonNull
-	@Contract("_ -> new")
-	static Uniform.FloatVec2 floatVec2(@NonNull float[] value) {
-		return new Uniform.FloatVec2(value);
-	}
-
-	@NonNull
-	@Contract("_ -> new")
-	static Uniform.FloatVec3 floatVec3(@NonNull float[] value) {
-		return new Uniform.FloatVec3(value);
-	}
-
-	@NonNull
-	@Contract("_ -> new")
-	static Uniform.FloatVec4 floatVec4(@NonNull float[] value) {
-		return new Uniform.FloatVec4(value);
-	}
-
-	@NonNull
-	@Contract("_ -> new")
-	static Uniform.IntScalar intScalar(int value) {
-		return new Uniform.IntScalar(new int[]{value});
-	}
-
-	@NonNull
-	@Contract("_ -> new")
-	static Uniform.IntScalar intScalar(boolean value) {
-		return new Uniform.IntScalar(new int[]{value ? 1 : 0});
-	}
-
-	@NonNull
-	@Contract("_ -> new")
-	static Uniform.FloatMat2 floatMat2(float[] value) {
-		return new Uniform.FloatMat2(value);
-	}
-
-	@NonNull
-	@Contract("_ -> new")
-	static Uniform.FloatMat3 floatMat3(float[] value) {
-		return new Uniform.FloatMat3(value);
-	}
-
-	@NonNull
-	@Contract("_ -> new")
-	static Uniform.FloatMat4 floatMat4(float[] value) {
-		return new Uniform.FloatMat4(value);
-	}
 
 	record FloatScalar(@NonNull float[] value) implements Uniform {
 	}
@@ -81,5 +29,11 @@ public sealed interface Uniform {
 	}
 
 	record IntScalar(@NonNull int[] value) implements Uniform {
+	}
+
+	record Sampler(
+			@NonNull TextureAsset texture,
+			@NonNull TextureParameters params
+	) implements Uniform {
 	}
 }

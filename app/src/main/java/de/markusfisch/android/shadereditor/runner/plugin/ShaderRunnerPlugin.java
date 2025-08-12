@@ -8,10 +8,13 @@ import de.markusfisch.android.shadereditor.engine.Engine;
 import de.markusfisch.android.shadereditor.engine.Plugin;
 import de.markusfisch.android.shadereditor.engine.ShaderIntrospector;
 import de.markusfisch.android.shadereditor.engine.Viewport;
+import de.markusfisch.android.shadereditor.engine.asset.AssetRef;
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
+import de.markusfisch.android.shadereditor.engine.asset.TextureAsset;
 import de.markusfisch.android.shadereditor.engine.data.EngineDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.SensorDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.SystemDataKeys;
+import de.markusfisch.android.shadereditor.engine.graphics.SamplerCommentParser;
 import de.markusfisch.android.shadereditor.engine.scene.Framebuffer;
 import de.markusfisch.android.shadereditor.engine.scene.Geometry;
 import de.markusfisch.android.shadereditor.engine.scene.Material;
@@ -28,32 +31,41 @@ public class ShaderRunnerPlugin implements Plugin {
 
 	@Override
 	public void onSetup(@NonNull Engine engine) {
-		var shader = engine.loadAsset("./main.frag", ShaderAsset.class);
+		var shader = engine.loadAsset(AssetRef.uri("./main.frag"), ShaderAsset.class);
 		this.shaderMaterial = new Material(shader);
 		this.shaderMetadata = engine.getShaderIntrospector().introspect(shader);
 		binder = UniformBinder.builder()
 				.bind(
 						"resolution", EngineDataKeys.VIEWPORT_RESOLUTION,
-						v -> Uniform.floatVec2(Viewport.toVec2(v)))
+						v -> new Uniform.FloatVec2(Viewport.toVec2(v)))
 				.bind(
 						"time", SystemDataKeys.TIME,
-						Uniform::floatScalar)
+						v -> new Uniform.FloatScalar(new float[]{v}))
 				.bind(
 						"nightMode", SystemDataKeys.IS_NIGHT_MODE,
-						Uniform::intScalar)
+						v -> new Uniform.IntScalar(new int[]{v ? 1 : 0}))
 				.bind(
 						"rotationMatrix", SensorDataKeys.ROTATION_MATRIX,
-						Uniform::floatMat4)
+						Uniform.FloatMat4::new)
 				.bind(
 						"gravity", SensorDataKeys.GRAVITY,
-						Uniform::floatVec3)
+						Uniform.FloatVec3::new)
 				.bind(
 						"geomagnetic", SensorDataKeys.GEOMAGNETIC,
-						Uniform::floatVec3)
+						Uniform.FloatVec3::new)
 				.bind(
 						"inclinationMatrix", SensorDataKeys.INCLINATION_MATRIX,
-						Uniform::floatMat4)
+						Uniform.FloatMat4::new)
 				.build();
+		var samplers = SamplerCommentParser.parse(
+				shader.fragmentSource(),
+				shaderMetadata.getActiveUniformNames());
+		for (var entry : samplers.entrySet()) {
+			var binding = entry.getValue();
+			var tex = engine.loadAsset(binding.assetIdentifier(), TextureAsset.class);
+			shaderMaterial.setUniform(
+					entry.getKey(), new Uniform.Sampler(tex, binding.parameters()));
+		}
 
 		// Create all necessary resources once
 		this.screenQuad = Geometry.fullscreenQuad();

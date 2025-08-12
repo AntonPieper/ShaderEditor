@@ -4,9 +4,11 @@ import androidx.annotation.NonNull;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 
 @FunctionalInterface
-public interface ResourceStreamProvider {
+public interface AssetStreamProvider {
 	@NonNull
-	InputStream openStream(@NonNull String identifier) throws IOException;
+	InputStream openStream(@NonNull URI identifier) throws IOException;
+
 }

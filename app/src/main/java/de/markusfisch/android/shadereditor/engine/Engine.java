@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 
 import de.markusfisch.android.shadereditor.engine.asset.Asset;
 import de.markusfisch.android.shadereditor.engine.asset.AssetLoader;
+import de.markusfisch.android.shadereditor.engine.asset.AssetRef;
 import de.markusfisch.android.shadereditor.engine.data.DataKey;
 import de.markusfisch.android.shadereditor.engine.data.DataProvider;
 import de.markusfisch.android.shadereditor.engine.scene.RenderPass;
@@ -37,7 +38,7 @@ public interface Engine {
 	void submit(@NonNull RenderPass renderPass);
 
 	@NonNull
-	<T extends Asset> T loadAsset(@NonNull String s, @NonNull Class<T> assetType);
+	<T extends Asset> T loadAsset(@NonNull AssetRef s, @NonNull Class<T> assetType);
 
 	/**
 	 * Gets the service for introspecting shader metadata.
