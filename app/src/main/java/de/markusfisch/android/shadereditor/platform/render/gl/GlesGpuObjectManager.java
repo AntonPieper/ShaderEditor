@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.platform.render.gl;
 
+import android.opengl.GLES20;
 import android.opengl.GLES30;
 
 import androidx.annotation.NonNull;
@@ -12,25 +13,26 @@ import java.nio.FloatBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.engine.asset.TextureParameters;
 import de.markusfisch.android.shadereditor.engine.graphics.TextureMagFilter;
 import de.markusfisch.android.shadereditor.engine.graphics.TextureMinFilter;
 import de.markusfisch.android.shadereditor.engine.graphics.TextureWrap;
 import de.markusfisch.android.shadereditor.engine.scene.Framebuffer;
 import de.markusfisch.android.shadereditor.engine.scene.Geometry;
-import de.markusfisch.android.shadereditor.engine.scene.Uniform;
+import de.markusfisch.android.shadereditor.engine.scene.Image2D;
 
 public class GlesGpuObjectManager {
 	private final Map<Geometry, Integer> vaoCache = new HashMap<>();
 	private final Map<Framebuffer, Integer> fboCache = new HashMap<>();
-	private final Map<Uniform.Sampler, Integer> textureCache = new HashMap<>();
+	private final Map<Image2D, Integer> textureCache = new HashMap<>();
 
 	public int getGeometryHandle(@NonNull Geometry geometry) {
 		return vaoCache.computeIfAbsent(geometry, this::createVao);
 	}
 
-	public int getTextureHandle(@NonNull Uniform.Sampler sampler) {
-		return textureCache.computeIfAbsent(sampler,
-				this::createTexture);
+	public int getTextureHandle(@NonNull Image2D img) {
+		return textureCache.computeIfAbsent(img,
+				this::createTextureFor);
 	}
 
 	public int getFramebufferHandle(@NonNull Framebuffer framebuffer) {
@@ -94,49 +96,63 @@ public class GlesGpuObjectManager {
 
 	private int createFbo(@NonNull Framebuffer framebuffer) {
 		int[] fboHandle = new int[1];
-		GLES30.glGenFramebuffers(1, fboHandle, 0);
-		GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, fboHandle[0]);
+		GLES20.glGenFramebuffers(1, fboHandle, 0);
+		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboHandle[0]);
 
-		int colorAttachmentCount = framebuffer.colorAttachments().size();
-		int[] drawBuffers = new int[colorAttachmentCount];
-
-		for (int i = 0; i < colorAttachmentCount; i++) {
-			var attachment = framebuffer.colorAttachments().get(i);
-			int[] textureHandle = new int[1];
-			GLES30.glGenTextures(1, textureHandle, 0);
-			GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureHandle[0]);
-			GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, attachment.internalFormat(),
-					attachment.width(), attachment.height(), 0,
-					GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, null);
-			GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER,
-					GLES30.GL_LINEAR);
-			GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER,
-					GLES30.GL_LINEAR);
-
-			int attachmentPoint = GLES30.GL_COLOR_ATTACHMENT0 + i;
-			GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, attachmentPoint,
-					GLES30.GL_TEXTURE_2D, textureHandle[0], 0);
-			drawBuffers[i] = attachmentPoint;
+		int i = 0;
+		int[] drawBuffers = new int[framebuffer.colorAttachments().size()];
+		for (var ca : framebuffer.colorAttachments()) {
+			var rt = ca.image(); // compile-time: must be RenderTarget
+			int tex = getTextureHandle(rt); // same texture used later for sampling
+			int att = GLES20.GL_COLOR_ATTACHMENT0 + i;
+			GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, att, GLES20.GL_TEXTURE_2D, tex,
+					0);
+			drawBuffers[i++] = att;
 		}
-
 		GLES30.glDrawBuffers(drawBuffers.length, drawBuffers, 0);
 
-		if (GLES30.glCheckFramebufferStatus(GLES30.GL_FRAMEBUFFER) != GLES30.GL_FRAMEBUFFER_COMPLETE) {
+		if (GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER) != GLES20.GL_FRAMEBUFFER_COMPLETE) {
 			throw new RuntimeException("Framebuffer is not complete.");
 		}
 
-		GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0);
+		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
 		return fboHandle[0];
 	}
 
-	private int createTexture(@NonNull Uniform.Sampler sampler) {
-		var tex = sampler.texture();
-		var p = sampler.params();
-		int[] handle = new int[1];
-		GLES30.glGenTextures(1, handle, 0);
-		if (handle[0] == 0) throw new RuntimeException("Error creating texture.");
+	private int createTextureFor(@NonNull Image2D img) {
+		int[] id = new int[1];
+		GLES30.glGenTextures(1, id, 0);
+		if (id[0] == 0) throw new RuntimeException("Error creating texture.");
 
-		GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, handle[0]);
+		GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, id[0]);
+
+		final int internalFormat;
+		final int width;
+		final int height;
+		final TextureParameters p;
+
+		switch (img) {
+			case Image2D.FromAsset fa -> {
+				internalFormat = fa.internalFormat();
+				width = fa.asset().width();
+				height = fa.asset().height();
+				p = fa.sampling();
+				GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, internalFormat,
+						width, height, 0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE,
+						fa.asset().pixels());
+				if (requiresMips(p.minFilter()) || p.mipmaps()) {
+					GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
+				}
+			}
+			case Image2D.RenderTarget rt -> {
+				internalFormat = rt.internalFormat();
+				width = rt.width();
+				height = rt.height();
+				p = rt.sampling();
+				GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, internalFormat,
+						width, height, 0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, null);
+			}
+		}
 
 		// Wrap
 		GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, toGL(p.wrapS()));
@@ -148,29 +164,14 @@ public class GlesGpuObjectManager {
 		GLES30.glTexParameteri(
 				GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, toGL(p.magFilter()));
 
-		// Internal format (best effort sRGB if available; otherwise fallback)
-		int internalFormat = (p.sRGB() && hasSRGB()) ? GLES30.GL_SRGB8_ALPHA8 : tex.format();
-
-		GLES30.glTexImage2D(
-				GLES30.GL_TEXTURE_2D, 0,
-				internalFormat,
-				tex.width(), tex.height(), 0,
-				GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, tex.pixels());
-
-		// Mipmaps if requested OR if a mipmap min filter is selected
-		boolean needsMips = requiresMips(p.minFilter()) || p.mipmaps();
-		if (needsMips) {
-			GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
-		}
-
 		// Anisotropy (extension)
 		if (!Float.isNaN(p.anisotropy()) && p.anisotropy() > 1f) {
 			setAnisotropy(p.anisotropy());
 		}
 
 		GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0);
-		GlesUtil.checkErrors("createTexture(params)");
-		return handle[0];
+		GlesUtil.checkErrors("createTextureFor(params)");
+		return id[0];
 	}
 
 	@Contract(pure = true)
@@ -182,13 +183,6 @@ public class GlesGpuObjectManager {
 				 LINEAR_MIPMAP_LINEAR -> true;
 			default -> false;
 		};
-	}
-
-	private static boolean hasSRGB() {
-		String ext = GLES30.glGetString(GLES30.GL_EXTENSIONS);
-		// ES3 core has sRGB; extension allows on ES2 devices
-		return ext != null && (ext.contains("GL_EXT_sRGB") || ext.contains(
-				"GL_EXT_sRGB_write_control"));
 	}
 
 	private static void setAnisotropy(float level) {

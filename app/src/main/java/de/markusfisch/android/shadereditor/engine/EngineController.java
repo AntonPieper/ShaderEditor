@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 
 import de.markusfisch.android.shadereditor.engine.asset.Asset;
@@ -16,13 +17,12 @@ import de.markusfisch.android.shadereditor.engine.data.DataProvider;
 import de.markusfisch.android.shadereditor.engine.data.DataProviderManager;
 import de.markusfisch.android.shadereditor.engine.data.EngineDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.ObservableDataProvider;
-import de.markusfisch.android.shadereditor.engine.scene.RenderPass;
+import de.markusfisch.android.shadereditor.engine.pipeline.CommandBuffer;
 import de.markusfisch.android.shadereditor.engine.util.observer.ObservableValue;
 
 public class EngineController {
 	@NonNull
 	public final Engine facade = new EngineFacade();
-	private final Deque<RenderPass> renderQueue = new ArrayDeque<>();
 	private final Deque<ProviderRegistration<?>> addedDataSources = new ArrayDeque<>();
 	@NonNull
 	private final CachingDataProviderManager dataProviderManager;
@@ -36,6 +36,8 @@ public class EngineController {
 	private final PluginManager pluginManager;
 	@NonNull
 	private final ObservableValue<Viewport> viewport = ObservableValue.of(new Viewport(0, 0));
+	@NonNull
+	private final CommandBuffer currentFrame = new CommandBuffer(new ArrayList<>());
 
 	public EngineController(
 			@NonNull DataProviderManager dataProviderManager,
@@ -72,12 +74,12 @@ public class EngineController {
 		pluginManager.preRender(facade);
 
 		// 2. Clear last frame's work and ask plugins to queue this frame's work
-		renderQueue.clear();
+		currentFrame.cmds().clear();
 		pluginManager.render(facade);
 
 		// 3. Execute the queued render passes
-		for (var pass : renderQueue) {
-			renderer.render(pass);
+		if (!currentFrame.cmds().isEmpty()) {
+			renderer.execute(currentFrame);
 		}
 
 		// 4. Post-render hooks
@@ -87,7 +89,7 @@ public class EngineController {
 	public void shutdown() {
 		pluginManager.teardown(facade);
 		addedDataSources.clear();
-		renderQueue.clear();
+		currentFrame.cmds().clear();
 		dataProviderManager.stopActiveProviders();
 	}
 
@@ -142,8 +144,9 @@ public class EngineController {
 			return dataProviderManager.getData(key);
 		}
 
-		public void submit(@NonNull RenderPass renderPass) {
-			renderQueue.add(renderPass);
+		@Override
+		public void submitCommands(@NonNull CommandBuffer commands) {
+			currentFrame.cmds().addAll(commands.cmds());
 		}
 
 		@NonNull

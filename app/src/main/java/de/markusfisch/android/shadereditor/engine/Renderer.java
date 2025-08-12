@@ -3,16 +3,16 @@ package de.markusfisch.android.shadereditor.engine;
 
 import androidx.annotation.NonNull;
 
-import de.markusfisch.android.shadereditor.engine.scene.RenderPass;
+import de.markusfisch.android.shadereditor.engine.pipeline.CommandBuffer;
 
 public interface Renderer extends AutoCloseable {
 
 	/**
-	 * Executes a given render pass.
+	 * Executes a command buffer.
 	 *
-	 * @param renderPass The description of what to render.
+	 * @param commands The command buffer to execute.
 	 */
-	void render(@NonNull RenderPass renderPass);
+	void execute(@NonNull CommandBuffer commands);
 
 	/**
 	 * Called when the surface is created or recreated.

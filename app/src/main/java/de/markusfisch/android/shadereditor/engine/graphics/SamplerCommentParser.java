@@ -5,7 +5,6 @@ import androidx.annotation.NonNull;
 import org.jetbrains.annotations.Contract;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -41,7 +40,7 @@ public final class SamplerCommentParser {
 			}
 			var comment = m.group(2);
 			Map<String, String> kv = (comment == null || comment.isBlank())
-					? Collections.emptyMap()
+					? Map.of()
 					: Arrays.stream(comment.split(";"))
 					.map(String::trim).filter(s -> !s.isEmpty())
 					.map(p -> p.split(":", 2))

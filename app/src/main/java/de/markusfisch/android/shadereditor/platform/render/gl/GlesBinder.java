@@ -54,13 +54,17 @@ public final class GlesBinder {
 					GLES20.glUniform4fv(location, value.length / 4, value, 0);
 			case Uniform.IntScalar(int[] value) ->
 					GLES20.glUniform1iv(location, value.length, value, 0);
-			case Uniform.Sampler sampler -> {
-				int textureId = gpuObjectManager.getTextureHandle(sampler);
+			case Uniform.Sampler2D sampler2D -> {
+				int textureId = gpuObjectManager.getTextureHandle(sampler2D.image());
 				GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + nextTextureUnit);
 				GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
 				GLES20.glUniform1i(location, nextTextureUnit);
 				nextTextureUnit++;
 			}
 		}
+	}
+
+	public void resetTextureUnits() {
+		nextTextureUnit = 0;
 	}
 }

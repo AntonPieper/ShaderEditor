@@ -1,8 +1,12 @@
 package de.markusfisch.android.shadereditor.runner.plugin;
 
+import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+
+import java.util.List;
 
 import de.markusfisch.android.shadereditor.engine.Engine;
 import de.markusfisch.android.shadereditor.engine.Plugin;
@@ -15,10 +19,13 @@ import de.markusfisch.android.shadereditor.engine.data.EngineDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.SensorDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.SystemDataKeys;
 import de.markusfisch.android.shadereditor.engine.graphics.SamplerCommentParser;
+import de.markusfisch.android.shadereditor.engine.pipeline.DrawCall;
+import de.markusfisch.android.shadereditor.engine.pipeline.Pass;
+import de.markusfisch.android.shadereditor.engine.pipeline.PassCompiler;
 import de.markusfisch.android.shadereditor.engine.scene.Framebuffer;
 import de.markusfisch.android.shadereditor.engine.scene.Geometry;
+import de.markusfisch.android.shadereditor.engine.scene.Image2D;
 import de.markusfisch.android.shadereditor.engine.scene.Material;
-import de.markusfisch.android.shadereditor.engine.scene.RenderPass;
 import de.markusfisch.android.shadereditor.engine.scene.Uniform;
 import de.markusfisch.android.shadereditor.engine.scene.UniformBinder;
 
@@ -64,7 +71,9 @@ public class ShaderRunnerPlugin implements Plugin {
 			var binding = entry.getValue();
 			var tex = engine.loadAsset(binding.assetIdentifier(), TextureAsset.class);
 			shaderMaterial.setUniform(
-					entry.getKey(), new Uniform.Sampler(tex, binding.parameters()));
+					entry.getKey(), new Uniform.Sampler2D(new Image2D.FromAsset(tex,
+							GLES30.GL_RGBA8,
+							binding.parameters())));
 		}
 
 		// Create all necessary resources once
@@ -75,10 +84,13 @@ public class ShaderRunnerPlugin implements Plugin {
 	public void onRender(@NonNull Engine engine) {
 		// Each frame, update dynamic data and submit the work
 		binder.apply(engine, shaderMaterial, shaderMetadata.getActiveUniformNames());
-		engine.submit(new RenderPass(
-				screenQuad,
-				shaderMaterial,
-				Framebuffer.defaultFramebuffer()));
+		var commands = PassCompiler.compile(List.of(new Pass(
+				Framebuffer.defaultFramebuffer(),
+				null,
+				null,
+				List.of(new DrawCall(screenQuad, shaderMaterial, GLES20.GL_TRIANGLE_STRIP))
+		)));
+		engine.submitCommands(commands);
 	}
 
 	@Override

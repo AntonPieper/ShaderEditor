@@ -13,8 +13,8 @@ import java.util.Set;
 import de.markusfisch.android.shadereditor.engine.Renderer;
 import de.markusfisch.android.shadereditor.engine.ShaderIntrospector;
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
-import de.markusfisch.android.shadereditor.engine.scene.Material;
-import de.markusfisch.android.shadereditor.engine.scene.RenderPass;
+import de.markusfisch.android.shadereditor.engine.pipeline.CommandBuffer;
+import de.markusfisch.android.shadereditor.engine.pipeline.GpuCommand;
 
 public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable {
 	private static final String TAG = "GlesRenderer";
@@ -34,27 +34,51 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 	}
 
 	@Override
-	public void render(@NonNull RenderPass renderPass) {
+	public void execute(@NonNull CommandBuffer cb) {
 		var binder = new GlesBinder(gpuObjectManager);
-		var program = prepareShader(renderPass.material().shader());
-		var fboHandle = gpuObjectManager.getFramebufferHandle(renderPass.framebuffer());
-		var vaoHandle = gpuObjectManager.getGeometryHandle(renderPass.geometry());
+		GlesProgram current = null;
 
-
-		GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, fboHandle);
-		GLES32.glClear(GLES32.GL_COLOR_BUFFER_BIT);
-		GLES32.glUseProgram(program.programId());
-
-		setUniforms(program, renderPass.material(), binder);
-		GLES32.glBindVertexArray(vaoHandle);
-		GLES32.glDrawArrays(GLES32.GL_TRIANGLE_STRIP, 0,
-				renderPass.geometry().vertexCount());
-		GlesUtil.checkErrors("render");
-
-		// Unbind for safety
-		GLES32.glBindVertexArray(0);
-		GLES32.glUseProgram(0);
-		GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, 0);
+		for (var cmd : cb.cmds()) {
+			switch (cmd) {
+				case GpuCommand.BeginPass bp -> {
+					int fbo = gpuObjectManager.getFramebufferHandle(bp.target());
+					GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, fbo);
+					if (bp.viewportXYWHOrNull() != null) {
+						var v = bp.viewportXYWHOrNull();
+						GLES32.glViewport(v[0], v[1], v[2], v[3]);
+					}
+					if (bp.clearColorOrNull() != null) {
+						var c = bp.clearColorOrNull();
+						GLES32.glClearColor(c[0], c[1], c[2], c[3]);
+						GLES32.glClear(GLES32.GL_COLOR_BUFFER_BIT);
+					}
+					binder.resetTextureUnits();
+				}
+				case GpuCommand.EndPass ignored ->
+						GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, 0);
+				case GpuCommand.BindProgram bp -> {
+					current = prepareShader(bp.material().shader());
+					GLES32.glUseProgram(current.programId());
+				}
+				case GpuCommand.SetUniforms su -> {
+					// iterate material uniforms
+					for (var e : su.material().uniforms().entrySet()) {
+						int loc = current.locate(e.getKey());
+						if (loc >= 0) binder.bind(loc, e.getValue());
+					}
+				}
+				case GpuCommand.BindGeometry bg -> {
+					int vao = gpuObjectManager.getGeometryHandle(bg.geometry());
+					GLES32.glBindVertexArray(vao);
+				}
+				case GpuCommand.Draw d -> GLES32.glDrawArrays(d.mode(), d.first(),
+						d.vertexCount());
+				case GpuCommand.Blit ignored -> {
+					// Fallback: draw a fullscreen quad sampling bl.src into bl.dst
+					// (or implement GLES3 blit via FBO read/draw if you want)
+				}
+			}
+		}
 	}
 
 
@@ -93,7 +117,7 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 		GLES32.glGetProgramiv(programId, GLES32.GL_ACTIVE_UNIFORMS, count, 0);
 
 		if (count[0] == 0) {
-			return Collections.emptyMap();
+			return Map.of();
 		}
 
 		int[] length = new int[1];
@@ -110,19 +134,6 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 		}
 
 		return activeUniforms;
-	}
-
-	private void setUniforms(
-			@NonNull GlesProgram program,
-			@NonNull Material material,
-			@NonNull GlesBinder binder) {
-		for (var entry : material.uniforms().entrySet()) {
-			int location = program.locate(entry.getKey());
-			if (location == -1) continue;
-
-			var value = entry.getValue();
-			binder.bind(location, value);
-		}
 	}
 
 	private int compileShader(int type, String source) {
@@ -181,7 +192,7 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 			int programId,
 			@NonNull Map<String, UniformInfo> activeUniforms)
 			implements ShaderIntrospector.ShaderMetadata {
-		public static final GlesProgram INVALID = new GlesProgram(0, Collections.emptyMap());
+		public static final GlesProgram INVALID = new GlesProgram(0, Map.of());
 
 		/**
 		 * Returns the location of the uniform with the given name.

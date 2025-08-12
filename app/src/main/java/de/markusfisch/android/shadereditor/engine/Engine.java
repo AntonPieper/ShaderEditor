@@ -8,7 +8,7 @@ import de.markusfisch.android.shadereditor.engine.asset.AssetLoader;
 import de.markusfisch.android.shadereditor.engine.asset.AssetRef;
 import de.markusfisch.android.shadereditor.engine.data.DataKey;
 import de.markusfisch.android.shadereditor.engine.data.DataProvider;
-import de.markusfisch.android.shadereditor.engine.scene.RenderPass;
+import de.markusfisch.android.shadereditor.engine.pipeline.CommandBuffer;
 
 public interface Engine {
 	void registerPlugin(@NonNull Plugin plugin);
@@ -30,12 +30,12 @@ public interface Engine {
 	<T> T getData(@NonNull DataKey<T> key);
 
 	/**
-	 * Submits a render pass to be drawn this frame.
+	 * Submits a command buffer to be executed this frame.
 	 * This should be called by plugins during the onRender hook.
 	 *
-	 * @param renderPass The description of what to render.
+	 * @param commands The commands to execute.
 	 */
-	void submit(@NonNull RenderPass renderPass);
+	void submitCommands(@NonNull CommandBuffer commands);
 
 	@NonNull
 	<T extends Asset> T loadAsset(@NonNull AssetRef s, @NonNull Class<T> assetType);
