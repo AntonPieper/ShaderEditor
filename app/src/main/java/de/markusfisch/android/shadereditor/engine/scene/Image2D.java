@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import de.markusfisch.android.shadereditor.engine.GpuObject;
 import de.markusfisch.android.shadereditor.engine.asset.TextureAsset;
 import de.markusfisch.android.shadereditor.engine.asset.TextureParameters;
+import de.markusfisch.android.shadereditor.engine.graphics.TextureInternalFormat;
 
 /**
  * A 2D image you can bind to a sampler; some variants can also be attached for rendering.
@@ -17,8 +18,8 @@ public sealed interface Image2D extends GpuObject {
 	 */
 	record FromAsset(
 			@NonNull TextureAsset asset,
-			int internalFormat, // e.g. GLES30.GL_SRGB8_ALPHA8 or GL_RGBA8
-			@NonNull TextureParameters sampling // wrap/filters/mips/aniso
+			@NonNull TextureInternalFormat internalFormat,
+			@NonNull TextureParameters sampling
 	) implements Image2D {
 	}
 
@@ -28,7 +29,7 @@ public sealed interface Image2D extends GpuObject {
 	record RenderTarget(
 			int width,
 			int height,
-			int internalFormat,
+			@NonNull TextureInternalFormat internalFormat,
 			@NonNull TextureParameters sampling
 	) implements Image2D {
 	}

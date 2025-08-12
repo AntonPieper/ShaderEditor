@@ -1,12 +1,8 @@
 package de.markusfisch.android.shadereditor.runner.plugin;
 
-import android.opengl.GLES20;
-import android.opengl.GLES30;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-
-import java.util.List;
 
 import de.markusfisch.android.shadereditor.engine.Engine;
 import de.markusfisch.android.shadereditor.engine.Plugin;
@@ -18,7 +14,9 @@ import de.markusfisch.android.shadereditor.engine.asset.TextureAsset;
 import de.markusfisch.android.shadereditor.engine.data.EngineDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.SensorDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.SystemDataKeys;
+import de.markusfisch.android.shadereditor.engine.graphics.Primitive;
 import de.markusfisch.android.shadereditor.engine.graphics.SamplerCommentParser;
+import de.markusfisch.android.shadereditor.engine.graphics.TextureInternalFormat;
 import de.markusfisch.android.shadereditor.engine.pipeline.DrawCall;
 import de.markusfisch.android.shadereditor.engine.pipeline.Pass;
 import de.markusfisch.android.shadereditor.engine.pipeline.PassCompiler;
@@ -72,7 +70,7 @@ public class ShaderRunnerPlugin implements Plugin {
 			var tex = engine.loadAsset(binding.assetIdentifier(), TextureAsset.class);
 			shaderMaterial.setUniform(
 					entry.getKey(), new Uniform.Sampler2D(new Image2D.FromAsset(tex,
-							GLES30.GL_RGBA8,
+							TextureInternalFormat.RGBA8,
 							binding.parameters())));
 		}
 
@@ -84,12 +82,8 @@ public class ShaderRunnerPlugin implements Plugin {
 	public void onRender(@NonNull Engine engine) {
 		// Each frame, update dynamic data and submit the work
 		binder.apply(engine, shaderMaterial, shaderMetadata.getActiveUniformNames());
-		var commands = PassCompiler.compile(List.of(new Pass(
-				Framebuffer.defaultFramebuffer(),
-				null,
-				null,
-				List.of(new DrawCall(screenQuad, shaderMaterial, GLES20.GL_TRIANGLE_STRIP))
-		)));
+		var commands = PassCompiler.compile(Pass.single(Framebuffer.defaultFramebuffer(),
+				new DrawCall(screenQuad, shaderMaterial, Primitive.TRIANGLE_STRIP)));
 		engine.submitCommands(commands);
 	}
 

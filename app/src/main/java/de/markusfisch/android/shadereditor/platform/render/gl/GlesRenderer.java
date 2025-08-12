@@ -4,6 +4,9 @@ import android.opengl.GLES32;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import org.jetbrains.annotations.Contract;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -13,18 +16,39 @@ import java.util.Set;
 import de.markusfisch.android.shadereditor.engine.Renderer;
 import de.markusfisch.android.shadereditor.engine.ShaderIntrospector;
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
+import de.markusfisch.android.shadereditor.engine.graphics.Primitive;
 import de.markusfisch.android.shadereditor.engine.pipeline.CommandBuffer;
 import de.markusfisch.android.shadereditor.engine.pipeline.GpuCommand;
+import de.markusfisch.android.shadereditor.engine.scene.Geometry;
+import de.markusfisch.android.shadereditor.engine.scene.Uniform;
 
 public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable {
 	private static final String TAG = "GlesRenderer";
+	// Fallback blit shader (ES2 friendly)
+	private static final ShaderAsset BLIT_SHADER = new ShaderAsset(
+			/* VS */ """
+			attribute vec4 a_Position;
+			attribute vec2 a_TexCoord;
+			varying vec2 v_TexCoord;
+			void main(){ gl_Position=a_Position; v_TexCoord=a_TexCoord; }
+			""",
+			/* FS */ """
+			precision mediump float;
+			varying vec2 v_TexCoord;
+			uniform sampler2D uTex;
+			void main(){ gl_FragColor = texture2D(uTex, v_TexCoord); }
+			"""
+	);
 	private final Map<ShaderAsset, GlesProgram> shaderCache = new HashMap<>();
-	private final GlesGpuObjectManager gpuObjectManager = new GlesGpuObjectManager();
+	private final GlesGpuObjectManager gpu = new GlesGpuObjectManager();
+	private final Geometry fsq = Geometry.fullscreenQuad();
+	@Nullable
+	private GlesProgram blitProgram; // lazily compiled
 
 	@Override
 	public void onSurfaceCreated() {
 		shaderCache.clear();
-		gpuObjectManager.destroy();
+		gpu.destroy();
 		GLES32.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	}
 
@@ -35,52 +59,23 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 
 	@Override
 	public void execute(@NonNull CommandBuffer cb) {
-		var binder = new GlesBinder(gpuObjectManager);
+		var binder = new GlesBinder(gpu);
 		GlesProgram current = null;
 
 		for (var cmd : cb.cmds()) {
 			switch (cmd) {
-				case GpuCommand.BeginPass bp -> {
-					int fbo = gpuObjectManager.getFramebufferHandle(bp.target());
-					GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, fbo);
-					if (bp.viewportXYWHOrNull() != null) {
-						var v = bp.viewportXYWHOrNull();
-						GLES32.glViewport(v[0], v[1], v[2], v[3]);
-					}
-					if (bp.clearColorOrNull() != null) {
-						var c = bp.clearColorOrNull();
-						GLES32.glClearColor(c[0], c[1], c[2], c[3]);
-						GLES32.glClear(GLES32.GL_COLOR_BUFFER_BIT);
-					}
-					binder.resetTextureUnits();
-				}
-				case GpuCommand.EndPass ignored ->
-						GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, 0);
-				case GpuCommand.BindProgram bp -> {
-					current = prepareShader(bp.material().shader());
-					GLES32.glUseProgram(current.programId());
-				}
+				case GpuCommand.BeginPass bp -> handleBeginPass(bp, binder);
+				case GpuCommand.EndPass ignored -> handleEndPass();
+				case GpuCommand.BindProgram bp -> current = handleBindProgram(bp);
 				case GpuCommand.SetUniforms su -> {
-					// iterate material uniforms
-					for (var e : su.material().uniforms().entrySet()) {
-						int loc = current.locate(e.getKey());
-						if (loc >= 0) binder.bind(loc, e.getValue());
-					}
+					if (current != null) handleSetUniforms(current, su, binder);
 				}
-				case GpuCommand.BindGeometry bg -> {
-					int vao = gpuObjectManager.getGeometryHandle(bg.geometry());
-					GLES32.glBindVertexArray(vao);
-				}
-				case GpuCommand.Draw d -> GLES32.glDrawArrays(d.mode(), d.first(),
-						d.vertexCount());
-				case GpuCommand.Blit ignored -> {
-					// Fallback: draw a fullscreen quad sampling bl.src into bl.dst
-					// (or implement GLES3 blit via FBO read/draw if you want)
-				}
+				case GpuCommand.BindGeometry bg -> handleBindGeometry(bg);
+				case GpuCommand.Draw d -> handleDraw(d);
+				case GpuCommand.Blit bl -> handleBlit(bl, binder);
 			}
 		}
 	}
-
 
 	@Override
 	public void close() {
@@ -91,6 +86,79 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 	@Override
 	public ShaderMetadata introspect(@NonNull ShaderAsset asset) {
 		return prepareShader(asset);
+	}
+
+	private void handleBeginPass(@NonNull GpuCommand.BeginPass bp, @NonNull GlesBinder binder) {
+		int fbo = gpu.getFramebufferHandle(bp.target());
+		GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, fbo);
+		if (bp.viewport() != null) {
+			var v = bp.viewport();
+			GLES32.glViewport(v.x(), v.y(), v.width(), v.height());
+		}
+		if (bp.clearColor() != null) {
+			var c = bp.clearColor();
+			GLES32.glClearColor(c.r(), c.g(), c.b(), c.a());
+			GLES32.glClear(GLES32.GL_COLOR_BUFFER_BIT);
+		}
+		binder.resetTextureUnits();
+	}
+
+	private void handleEndPass() {
+		GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, 0);
+	}
+
+	@NonNull
+	private GlesProgram handleBindProgram(@NonNull GpuCommand.BindProgram bp) {
+		GlesProgram p = prepareShader(bp.material().shader());
+		GLES32.glUseProgram(p.programId());
+		return p;
+	}
+
+	private void handleSetUniforms(
+			@NonNull GlesProgram program,
+			@NonNull GpuCommand.SetUniforms su,
+			@NonNull GlesBinder binder
+	) {
+		for (var e : su.material().uniforms().entrySet()) {
+			int loc = program.locate(e.getKey());
+			if (loc >= 0) binder.bind(loc, e.getValue());
+		}
+	}
+
+	private void handleBindGeometry(@NonNull GpuCommand.BindGeometry bg) {
+		int vao = gpu.getGeometryHandle(bg.geometry());
+		GLES32.glBindVertexArray(vao);
+	}
+
+	private void handleDraw(@NonNull GpuCommand.Draw d) {
+		GLES32.glDrawArrays(toGL(d.primitive()), d.first(), d.vertexCount());
+	}
+
+	private void handleBlit(@NonNull GpuCommand.Blit bl, @NonNull GlesBinder binder) {
+		// Bind destination
+		GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER, gpu.getFramebufferHandle(bl.dst()));
+
+		// (Optional) set viewport to dst size for offscreen FBOs
+		if (!bl.dst().isDefault()) {
+			GLES32.glViewport(0, 0, bl.dst().width(), bl.dst().height());
+		}
+
+		// Lazy-compile simple blit shader
+		if (blitProgram == null) {
+			blitProgram = prepareShader(BLIT_SHADER);
+		}
+		GLES32.glUseProgram(blitProgram.programId());
+		binder.resetTextureUnits();
+
+		int loc = blitProgram.locate("uTex");
+		if (loc >= 0) {
+			binder.bind(loc, new Uniform.Sampler2D(bl.src()));
+		}
+
+		// Draw FSQ
+		int vao = gpu.getGeometryHandle(fsq);
+		GLES32.glBindVertexArray(vao);
+		GLES32.glDrawArrays(GLES32.GL_TRIANGLE_STRIP, 0, fsq.vertexCount());
 	}
 
 	@NonNull
@@ -165,6 +233,18 @@ public class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable
 			return 0;
 		}
 		return program;
+	}
+
+	@Contract(pure = true)
+	private static int toGL(@NonNull Primitive p) {
+		return switch (p) {
+			case TRIANGLES -> GLES32.GL_TRIANGLES;
+			case TRIANGLE_STRIP -> GLES32.GL_TRIANGLE_STRIP;
+			case TRIANGLE_FAN -> GLES32.GL_TRIANGLE_FAN;
+			case LINES -> GLES32.GL_LINES;
+			case LINE_STRIP -> GLES32.GL_LINE_STRIP;
+			case POINTS -> GLES32.GL_POINTS;
+		};
 	}
 
 	@NonNull

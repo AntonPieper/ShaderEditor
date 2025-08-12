@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import de.markusfisch.android.shadereditor.engine.asset.TextureParameters;
+import de.markusfisch.android.shadereditor.engine.graphics.TextureInternalFormat;
 import de.markusfisch.android.shadereditor.engine.graphics.TextureMagFilter;
 import de.markusfisch.android.shadereditor.engine.graphics.TextureMinFilter;
 import de.markusfisch.android.shadereditor.engine.graphics.TextureWrap;
@@ -126,31 +127,36 @@ public class GlesGpuObjectManager {
 
 		GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, id[0]);
 
-		final int internalFormat;
+		final int internal;
 		final int width;
 		final int height;
 		final TextureParameters p;
+		final int uploadFormat;
+		final int uploadType;
 
 		switch (img) {
 			case Image2D.FromAsset fa -> {
-				internalFormat = fa.internalFormat();
+				internal = toGL(fa.internalFormat());
 				width = fa.asset().width();
 				height = fa.asset().height();
 				p = fa.sampling();
-				GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, internalFormat,
-						width, height, 0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE,
-						fa.asset().pixels());
+				uploadFormat = fa.asset().format();
+				uploadType = GLES30.GL_UNSIGNED_BYTE;
+				GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, internal,
+						width, height, 0, uploadFormat, uploadType, fa.asset().pixels());
 				if (requiresMips(p.minFilter()) || p.mipmaps()) {
 					GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
 				}
 			}
 			case Image2D.RenderTarget rt -> {
-				internalFormat = rt.internalFormat();
+				internal = toGL(rt.internalFormat());
 				width = rt.width();
 				height = rt.height();
 				p = rt.sampling();
-				GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, internalFormat,
-						width, height, 0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, null);
+				uploadFormat = GLES30.GL_RGBA;
+				uploadType = GLES30.GL_UNSIGNED_BYTE;
+				GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, internal,
+						width, height, 0, uploadFormat, uploadType, null);
 			}
 		}
 
@@ -172,6 +178,14 @@ public class GlesGpuObjectManager {
 		GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0);
 		GlesUtil.checkErrors("createTextureFor(params)");
 		return id[0];
+	}
+
+	@Contract(pure = true)
+	private int toGL(@NonNull TextureInternalFormat f) {
+		return switch (f) {
+			case RGBA8 -> GLES30.GL_RGBA8;
+			case SRGB8_ALPHA8 -> GLES30.GL_SRGB8_ALPHA8;
+		};
 	}
 
 	@Contract(pure = true)

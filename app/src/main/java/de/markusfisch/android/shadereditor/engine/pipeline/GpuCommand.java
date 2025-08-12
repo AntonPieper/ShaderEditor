@@ -2,18 +2,15 @@ package de.markusfisch.android.shadereditor.engine.pipeline;
 
 import androidx.annotation.NonNull;
 
+import de.markusfisch.android.shadereditor.engine.graphics.Primitive;
 import de.markusfisch.android.shadereditor.engine.scene.Framebuffer;
 import de.markusfisch.android.shadereditor.engine.scene.Geometry;
 import de.markusfisch.android.shadereditor.engine.scene.Image2D;
 import de.markusfisch.android.shadereditor.engine.scene.Material;
 
 public sealed interface GpuCommand {
-	// Stateful envelope
-	record BeginPass(
-			@NonNull Framebuffer target,
-			float[] clearColorOrNull,
-			int[] viewportXYWHOrNull
-	) implements GpuCommand {
+	record BeginPass(@NonNull Framebuffer target, ClearColor clearColor, ViewportRect viewport)
+			implements GpuCommand {
 	}
 
 	record EndPass() implements GpuCommand {
@@ -29,11 +26,7 @@ public sealed interface GpuCommand {
 	record SetUniforms(@NonNull Material material) implements GpuCommand {
 	}
 
-	record Draw(
-			int vertexCount,
-			int first,
-			int mode /* GLES30.GL_TRIANGLES etc. */
-	) implements GpuCommand {
+	record Draw(int vertexCount, int first, @NonNull Primitive primitive) implements GpuCommand {
 	}
 
 	// Utilities
