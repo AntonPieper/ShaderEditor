@@ -5,6 +5,7 @@ import android.opengl.GLES20;
 import androidx.annotation.NonNull;
 
 import de.markusfisch.android.shadereditor.engine.scene.Uniform;
+import de.markusfisch.android.shadereditor.platform.render.gl.managers.GlesTextureManager;
 
 
 /**
@@ -19,11 +20,11 @@ import de.markusfisch.android.shadereditor.engine.scene.Uniform;
  */
 public final class GlesBinder {
 	@NonNull
-	private final GlesGpuObjectManager gpuObjectManager;
+	private final GlesTextureManager textureManager;
 	private int nextTextureUnit = 0;
 
-	public GlesBinder(@NonNull GlesGpuObjectManager gpuObjectManager) {
-		this.gpuObjectManager = gpuObjectManager;
+	public GlesBinder(@NonNull GlesTextureManager textureManager) {
+		this.textureManager = textureManager;
 	}
 
 	/**
@@ -55,7 +56,7 @@ public final class GlesBinder {
 			case Uniform.IntScalar(int[] value) ->
 					GLES20.glUniform1iv(location, value.length, value, 0);
 			case Uniform.Sampler2D sampler2D -> {
-				int textureId = gpuObjectManager.getTextureHandle(sampler2D.image());
+				int textureId = textureManager.getTextureHandle(sampler2D.image());
 				GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + nextTextureUnit);
 				GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
 				GLES20.glUniform1i(location, nextTextureUnit);

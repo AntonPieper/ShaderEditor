@@ -1,15 +1,11 @@
-package de.markusfisch.android.shadereditor.platform.render.gl;
+package de.markusfisch.android.shadereditor.platform.render.gl.managers;
 
-import android.opengl.GLES20;
 import android.opengl.GLES30;
 
 import androidx.annotation.NonNull;
 
 import org.jetbrains.annotations.Contract;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,106 +14,24 @@ import de.markusfisch.android.shadereditor.engine.graphics.TextureInternalFormat
 import de.markusfisch.android.shadereditor.engine.graphics.TextureMagFilter;
 import de.markusfisch.android.shadereditor.engine.graphics.TextureMinFilter;
 import de.markusfisch.android.shadereditor.engine.graphics.TextureWrap;
-import de.markusfisch.android.shadereditor.engine.scene.Framebuffer;
-import de.markusfisch.android.shadereditor.engine.scene.Geometry;
 import de.markusfisch.android.shadereditor.engine.scene.Image2D;
+import de.markusfisch.android.shadereditor.platform.render.gl.GlesUtil;
 
-public class GlesGpuObjectManager {
-	private final Map<Geometry, Integer> vaoCache = new HashMap<>();
-	private final Map<Framebuffer, Integer> fboCache = new HashMap<>();
+public class GlesTextureManager {
 	private final Map<Image2D, Integer> textureCache = new HashMap<>();
-
-	public int getGeometryHandle(@NonNull Geometry geometry) {
-		return vaoCache.computeIfAbsent(geometry, this::createVao);
-	}
 
 	public int getTextureHandle(@NonNull Image2D img) {
 		return textureCache.computeIfAbsent(img,
 				this::createTextureFor);
 	}
 
-	public int getFramebufferHandle(@NonNull Framebuffer framebuffer) {
-		if (framebuffer.isDefault()) {
-			return 0; // The default FBO in OpenGL is 0
-		}
-		return fboCache.computeIfAbsent(framebuffer, this::createFbo);
-	}
-
 	public void destroy() {
-		// Delete all VAOs
-		for (int vao : vaoCache.values()) {
-			GLES30.glDeleteVertexArrays(1, new int[]{vao}, 0);
-		}
-		vaoCache.clear();
-
-		// Delete all FBOs
-		for (int fbo : fboCache.values()) {
-			GLES30.glDeleteFramebuffers(1, new int[]{fbo}, 0);
-		}
-		fboCache.clear();
-
 		// Delete all textures
 		int[] textureHandles = textureCache.values().stream().mapToInt(i -> i).toArray();
 		if (textureHandles.length > 0) {
 			GLES30.glDeleteTextures(textureHandles.length, textureHandles, 0);
 		}
 		textureCache.clear();
-	}
-
-	private int createVao(@NonNull Geometry geometry) {
-		FloatBuffer vertexBuffer = ByteBuffer.allocateDirect(geometry.vertices().length * 4)
-				.order(ByteOrder.nativeOrder())
-				.asFloatBuffer();
-		vertexBuffer.put(geometry.vertices()).position(0);
-
-		final int[] vbo = new int[1];
-		GLES30.glGenBuffers(1, vbo, 0);
-
-		final int[] vaoHandle = new int[1];
-		GLES30.glGenVertexArrays(1, vaoHandle, 0);
-
-		GLES30.glBindVertexArray(vaoHandle[0]);
-		GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vbo[0]);
-		GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, geometry.vertices().length * 4, vertexBuffer,
-				GLES30.GL_STATIC_DRAW);
-
-		// Position attribute (x, y)
-		GLES30.glVertexAttribPointer(0, 2, GLES30.GL_FLOAT, false, 4 * 4, 0);
-		GLES30.glEnableVertexAttribArray(0);
-
-		// UV attribute (u, v)
-		GLES30.glVertexAttribPointer(1, 2, GLES30.GL_FLOAT, false, 4 * 4, 2 * 4);
-		GLES30.glEnableVertexAttribArray(1);
-
-		GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0);
-		GLES30.glBindVertexArray(0);
-
-		return vaoHandle[0];
-	}
-
-	private int createFbo(@NonNull Framebuffer framebuffer) {
-		int[] fboHandle = new int[1];
-		GLES20.glGenFramebuffers(1, fboHandle, 0);
-		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboHandle[0]);
-
-		int i = 0;
-		int[] drawBuffers = new int[framebuffer.colorAttachments().size()];
-		for (var ca : framebuffer.colorAttachments()) {
-			var rt = ca.image(); // compile-time: must be RenderTarget
-			int tex = getTextureHandle(rt); // same texture used later for sampling
-			int att = GLES20.GL_COLOR_ATTACHMENT0 + i;
-			GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, att, GLES20.GL_TEXTURE_2D, tex,
-					0);
-			drawBuffers[i++] = att;
-		}
-		GLES30.glDrawBuffers(drawBuffers.length, drawBuffers, 0);
-
-		if (GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER) != GLES20.GL_FRAMEBUFFER_COMPLETE) {
-			throw new RuntimeException("Framebuffer is not complete.");
-		}
-
-		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
-		return fboHandle[0];
 	}
 
 	private int createTextureFor(@NonNull Image2D img) {
@@ -238,5 +152,4 @@ public class GlesGpuObjectManager {
 			case LINEAR_MIPMAP_LINEAR -> GLES30.GL_LINEAR_MIPMAP_LINEAR;
 		};
 	}
-
 }
