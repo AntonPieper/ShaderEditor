@@ -1,3 +1,4 @@
+// activity/MainActivity.java
 package de.markusfisch.android.shadereditor.activity;
 
 import android.app.WallpaperManager;
@@ -75,6 +76,14 @@ public class MainActivity extends AppCompatActivity {
 		ExtraKeysManager extraKeysManager = new ExtraKeysManager(this,
 				findViewById(android.R.id.content), editorFragment::insert);
 		uiManager = new UIManager(this, editorFragment, extraKeysManager, androidEngineBridge);
+		androidEngineBridge.getFps().subscribe(fps -> {
+			if (isDestroyed() || isFinishing()) return;
+			if (fps > 0) {
+				uiManager.setToolbarSubtitle(fps + " fps");
+			} else {
+				uiManager.setToolbarSubtitle(null);
+			}
+		});
 		shaderListManager = new ShaderListManager(this, findViewById(R.id.shaders),
 				dataSource, createShaderListListener());
 		shaderManager = new ShaderManager(this, editorFragment, androidEngineBridge,
@@ -214,14 +223,6 @@ public class MainActivity extends AppCompatActivity {
 	@Contract(pure = true)
 	private AndroidEngineBridge.ShaderExecutionListener createShaderExecutionListener() {
 		return new AndroidEngineBridge.ShaderExecutionListener() {
-
-			@Override
-			public void onFramesPerSecond(int fps) {
-				if (fps > 0) {
-					uiManager.setToolbarSubtitle(fps + " fps");
-				}
-			}
-
 			@Override
 			public void onEngineError(@NonNull List<EngineError> errors) {
 				runOnUiThread(() -> {

@@ -55,11 +55,6 @@ public class PreviewActivity extends AppCompatActivity {
 		androidEngineBridge = new AndroidEngineBridge(this, glSurfaceView, null,
 				new AndroidEngineBridge.ShaderExecutionListener() {
 					@Override
-					public void onFramesPerSecond(int fps) {
-						// Not used in this activity, but could be.
-					}
-
-					@Override
 					public void onEngineError(@NonNull List<EngineError> errors) {
 						if (errors.isEmpty()) return;
 

@@ -1,3 +1,4 @@
+// platform/ui/AndroidEngineBridge.java
 package de.markusfisch.android.shadereditor.platform.ui;
 
 import android.content.Context;
@@ -14,6 +15,7 @@ import androidx.annotation.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -36,6 +38,7 @@ import de.markusfisch.android.shadereditor.engine.data.Vec2;
 import de.markusfisch.android.shadereditor.engine.error.EngineError;
 import de.markusfisch.android.shadereditor.engine.error.EngineException;
 import de.markusfisch.android.shadereditor.engine.util.observer.ObservableValue;
+import de.markusfisch.android.shadereditor.engine.util.observer.ReadOnlyObservable;
 import de.markusfisch.android.shadereditor.platform.asset.AndroidAssetStreamProvider;
 import de.markusfisch.android.shadereditor.platform.asset.AndroidTextureLoader;
 import de.markusfisch.android.shadereditor.platform.asset.ShaderAssetLoader;
@@ -48,20 +51,11 @@ import de.markusfisch.android.shadereditor.platform.render.gl.GlesRenderer;
 public class AndroidEngineBridge {
 
 	/**
-	 * Listener for events related to the execution and performance from a shader.
-	 * Implement this interface to receive updates about frame rates, shader compilation
-	 * status, and rendering quality adjustments, regardless from where the shader is being
-	 * displayed.
+	 * Listener for events related to the execution of a shader.
+	 * Implement this interface to receive updates about shader compilation
+	 * status and rendering quality adjustments.
 	 */
 	public interface ShaderExecutionListener {
-
-		/**
-		 * Called periodically to report the current rendering frame rate.
-		 *
-		 * @param fps The number from frames rendered in the last measurement interval.
-		 */
-		void onFramesPerSecond(int fps);
-
 		void onEngineError(@NonNull List<EngineError> errors);
 
 		/**
@@ -97,7 +91,7 @@ public class AndroidEngineBridge {
 
 	// A simple default fragment shader that uses time and resolution
 	private static final String DEFAULT_FRAGMENT_SHADER_ES3 = """
-			#version 320 es
+			#version 300 es
 			precision mediump float;
 			in vec2 v_TexCoord;
 			out vec4 fragColor;
@@ -139,6 +133,7 @@ public class AndroidEngineBridge {
 			DEFAULT_VERTEX_SHADER_ES2,
 			DEFAULT_FRAGMENT_SHADER_ES2
 	));
+	private final ObservableValue<Integer> fps = ObservableValue.of(0);
 	@NonNull
 	private float[] qualityValues;
 	private float quality = 1f;
@@ -175,7 +170,8 @@ public class AndroidEngineBridge {
 				,
 				assetStreamProvider,
 				this.glSurfaceView,
-				shaderExecutionListener);
+				shaderExecutionListener,
+				this.fps);
 
 		glSurfaceView.setEGLContextClientVersion(3);
 		glSurfaceView.setRenderer(rendererBridge);
@@ -208,6 +204,10 @@ public class AndroidEngineBridge {
 	@Nullable
 	public byte[] getThumbnail() {
 		return rendererBridge.getThumbnail();
+	}
+
+	public ReadOnlyObservable<Integer> getFps() {
+		return fps;
 	}
 
 	public void setQuality(float quality) {
@@ -333,6 +333,7 @@ public class AndroidEngineBridge {
 	 */
 	private static class RendererBridge implements GLSurfaceView.Renderer {
 
+		public static final long ONE_SECOND_NANOS = Duration.ofSeconds(1).toNanos();
 		// Define the pattern as a static final constant to avoid recompiling it on every call.
 		private static final Pattern SHADER_VERSION_PATTERN = Pattern.compile(
 				"^\\s*#version\\s+(\\d+)(?:\\s+(\\w+))?");
@@ -341,26 +342,34 @@ public class AndroidEngineBridge {
 		private final GLSurfaceView glSurfaceView;
 		private final ShaderExecutionListener listener;
 		private final List<EngineError> engineErrors = new ArrayList<>();
+		private final ObservableValue<Integer> fps;
 		@NonNull
 		private final GlesRenderer renderer;
 		@Nullable
 		private EngineController engineController;
+		private int frameCount = 0;
+		private long lastFpsTimestamp = 0;
 
 		public RendererBridge(@NonNull Collection<Supplier<Plugin>> plugins,
 				@NonNull AssetStreamProvider assetStreamProvider,
 				@NonNull GLSurfaceView glSurfaceView,
-				@NonNull ShaderExecutionListener listener) {
+				@NonNull ShaderExecutionListener listener,
+				@NonNull ObservableValue<Integer> fps) {
 			this.plugins = plugins;
 			this.assetStreamProvider = assetStreamProvider;
 			this.glSurfaceView = glSurfaceView;
 			this.listener = listener;
 			this.renderer = new GlesRenderer();
+			this.fps = fps;
 		}
 
 		@Override
 		public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 			destroy(); // Ensure previous engine is gone.
 			engineErrors.clear();
+
+			frameCount = 0;
+			lastFpsTimestamp = System.nanoTime();
 
 			try {
 				engineController = createEngineController();
@@ -388,6 +397,15 @@ public class AndroidEngineBridge {
 			}
 			try {
 				engineController.renderFrame();
+
+				frameCount++;
+				long now = System.nanoTime();
+				if (now - lastFpsTimestamp >= ONE_SECOND_NANOS) {
+					fps.set(frameCount);
+					frameCount = 0;
+					lastFpsTimestamp = now;
+				}
+
 				glSurfaceView.requestRender();
 			} catch (EngineException e) {
 				Log.e("AndroidEngineBridge", "Error during render frame", e);
@@ -402,6 +420,7 @@ public class AndroidEngineBridge {
 			if (engineController != null) {
 				engineController.shutdown();
 				engineController = null;
+				fps.set(-1);
 			}
 		}
 

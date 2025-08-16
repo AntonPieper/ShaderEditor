@@ -4,7 +4,6 @@ import android.content.SharedPreferences;
 import android.opengl.GLSurfaceView;
 import android.service.wallpaper.WallpaperService;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 
 import androidx.annotation.NonNull;
@@ -77,11 +76,6 @@ public class ShaderWallpaperService extends WallpaperService {
 					view,
 					null,
 					new AndroidEngineBridge.ShaderExecutionListener() {
-						@Override
-						public void onFramesPerSecond(int fps) {
-							// Not used in wallpaper.
-						}
-
 						@Override
 						public void onEngineError(@NonNull List<EngineError> errors) {
 							if (errors.isEmpty()) return;
