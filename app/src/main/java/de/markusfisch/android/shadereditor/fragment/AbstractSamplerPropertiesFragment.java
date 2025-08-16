@@ -22,7 +22,6 @@ import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.AddUniformActivity;
-import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
 import de.markusfisch.android.shadereditor.opengl.TextureParameters;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.TextureParametersView;
@@ -155,8 +154,9 @@ public abstract class AbstractSamplerPropertiesFragment extends Fragment {
 					Toast.LENGTH_SHORT).show();
 
 			return;
+			// TODO: fix this hardcoded bacbuffer check.
 		} else if (!name.matches(TEXTURE_NAME_PATTERN) ||
-				name.equals(ShaderRenderer.UNIFORM_BACKBUFFER)) {
+				name.equals("backbuffer")) {
 			Toast.makeText(
 					context,
 					R.string.invalid_texture_name,
@@ -173,6 +173,7 @@ public abstract class AbstractSamplerPropertiesFragment extends Fragment {
 		progressView.setVisibility(View.VISIBLE);
 
 		Handler handler = new Handler(Looper.getMainLooper());
+		// FIXME: ExecutorService should be closed (try-with-resources)
 		Executors.newSingleThreadExecutor().execute(() -> {
 			int messageId = saveSampler(context, name, size);
 			handler.post(() -> {

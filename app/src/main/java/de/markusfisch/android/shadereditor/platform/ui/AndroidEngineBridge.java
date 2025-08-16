@@ -1,7 +1,9 @@
-package de.markusfisch.android.shadereditor.runner.ui;
+package de.markusfisch.android.shadereditor.platform.ui;
 
 import android.content.Context;
 import android.opengl.GLSurfaceView;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -12,10 +14,12 @@ import androidx.annotation.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -28,16 +32,18 @@ import de.markusfisch.android.shadereditor.engine.asset.AssetProvider;
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
 import de.markusfisch.android.shadereditor.engine.asset.TextureAsset;
 import de.markusfisch.android.shadereditor.engine.data.DataProviderManager;
+import de.markusfisch.android.shadereditor.engine.data.Vec2;
+import de.markusfisch.android.shadereditor.engine.error.EngineError;
+import de.markusfisch.android.shadereditor.engine.error.EngineException;
 import de.markusfisch.android.shadereditor.engine.util.observer.ObservableValue;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
-import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
 import de.markusfisch.android.shadereditor.platform.asset.AndroidAssetStreamProvider;
 import de.markusfisch.android.shadereditor.platform.asset.AndroidTextureLoader;
 import de.markusfisch.android.shadereditor.platform.asset.ShaderAssetLoader;
+import de.markusfisch.android.shadereditor.platform.data.PlatformBindingCatalog;
 import de.markusfisch.android.shadereditor.platform.plugin.AndroidDataPlugin;
+import de.markusfisch.android.shadereditor.platform.plugin.DeviceStatePlugin;
+import de.markusfisch.android.shadereditor.platform.plugin.InteractionPlugin;
 import de.markusfisch.android.shadereditor.platform.render.gl.GlesRenderer;
-import de.markusfisch.android.shadereditor.runner.plugin.ShaderRunnerPlugin;
-import de.markusfisch.android.shadereditor.widget.ShaderView;
 
 public class AndroidEngineBridge {
 
@@ -56,15 +62,7 @@ public class AndroidEngineBridge {
 		 */
 		void onFramesPerSecond(int fps);
 
-		/**
-		 * Called after a shader compilation attempt.
-		 *
-		 * @param compilationIssues A list from {@link ShaderError} objects detailing any issues
-		 *                          found during compilation. The list is empty if compilation
-		 *                          was successful without any reportable issues.
-		 *                          Implementers should not modify this list.
-		 */
-		void onShaderCompilationResult(@NonNull List<ShaderError> compilationIssues);
+		void onEngineError(@NonNull List<EngineError> errors);
 
 		/**
 		 * Called when the rendering quality for the shader has been changed or is requested to
@@ -77,7 +75,6 @@ public class AndroidEngineBridge {
 		void onRenderQualityChanged(float quality);
 	}
 
-	// A simple default vertex shader
 	private static final String DEFAULT_VERTEX_SHADER_ES3 = """
 			precision mediump float;
 			layout (location = 0) in vec4 a_Position;
@@ -104,23 +101,22 @@ public class AndroidEngineBridge {
 			precision mediump float;
 			in vec2 v_TexCoord;
 			out vec4 fragColor;
-			uniform vec2 u_resolution;
-			uniform float u_time;
+			uniform vec2 resolution;
+			uniform float time;
 			
 			void main() {
-			    vec2 st = gl_FragCoord.xy/u_resolution.xy;
-			    fragColor = vec4(st.x, st.y, 0.5 + 0.5 * sin(u_time), 1.0);
+			    vec2 st = gl_FragCoord.xy/resolution.xy;
+			    fragColor = vec4(st.x, st.y, 0.5 + 0.5 * sin(time), 1.0);
 			}
 			""";
 	private static final String DEFAULT_FRAGMENT_SHADER_ES2 = """
 			precision mediump float;
-			varying vec2 v_TexCoord;
-			uniform vec2 u_resolution;
-			uniform float u_time;
+			uniform vec2 resolution;
+			uniform float time;
 			
 			void main() {
-			    vec2 st = gl_FragCoord.xy/u_resolution.xy;
-			    gl_FragColor = vec4(st.x, st.y, 0.5 + 0.5 * sin(u_time), 1.0);
+			    vec2 st = gl_FragCoord.xy/resolution.xy;
+			    gl_FragColor = vec4(st.x, st.y, 0.5 + 0.5 * sin(time), 1.0);
 			}
 			""";
 	// Pattern to match any character that is not a newline (\n), tab (\t),
@@ -128,8 +124,8 @@ public class AndroidEngineBridge {
 	private static final Pattern NON_PRINTABLE_ASCII_PATTERN =
 			Pattern.compile("[^\\t\\n\\x20-\\x7E]");
 	@NonNull
-	private final ShaderView shaderView;
-	@NonNull
+	private final GLSurfaceView glSurfaceView;
+	@Nullable
 	private final Spinner qualitySpinner;
 	@NonNull
 	private final ShaderExecutionListener shaderExecutionListener;
@@ -137,6 +133,8 @@ public class AndroidEngineBridge {
 	private final Context context;
 	@NonNull
 	private final RendererBridge rendererBridge;
+	private final ObservableValue<Vec2> touchPositionObservable = ObservableValue.of(new Vec2());
+	private final ObservableValue<Vec2> wallpaperOffsetObservable = ObservableValue.of(new Vec2());
 	private final ObservableValue<ShaderAsset> shaderAsset = ObservableValue.of(new ShaderAsset(
 			DEFAULT_VERTEX_SHADER_ES2,
 			DEFAULT_FRAGMENT_SHADER_ES2
@@ -145,11 +143,13 @@ public class AndroidEngineBridge {
 	private float[] qualityValues;
 	private float quality = 1f;
 
-	public AndroidEngineBridge(@NonNull Context context, @NonNull ShaderView shaderView,
-			@NonNull Spinner qualitySpinner,
-			@NonNull ShaderExecutionListener shaderExecutionListener) {
+	public AndroidEngineBridge(@NonNull Context context, @NonNull GLSurfaceView glSurfaceView,
+			@Nullable Spinner qualitySpinner,
+			@NonNull ShaderExecutionListener shaderExecutionListener,
+			@NonNull Collection<Supplier<Plugin>> plugins) {
 		this.context = context;
-		this.shaderView = shaderView;
+		this.glSurfaceView = glSurfaceView;
+
 		AssetStreamProvider androidAssetStreamProvider = new AndroidAssetStreamProvider(context);
 		AssetStreamProvider assetStreamProvider = identifier -> {
 			String requestedPath = identifier.getPath();
@@ -161,46 +161,61 @@ public class AndroidEngineBridge {
 			return androidAssetStreamProvider.openStream(identifier);
 		};
 		this.rendererBridge = new RendererBridge(
-				List.of(
-						() -> new AndroidDataPlugin(context),
-						ShaderRunnerPlugin::new
-				),
-				assetStreamProvider);
-		shaderView.setEGLContextClientVersion(2);
-		// shaderView.setEGLContextFactory(new ContextFactory());
-		shaderView.setRenderer(rendererBridge);
+				Stream.concat(
+						Stream.of(
+								() -> new AndroidDataPlugin(context),
+								() -> new DeviceStatePlugin(context),
+								() -> new InteractionPlugin(
+										touchPositionObservable,
+										wallpaperOffsetObservable
+								)
+						),
+						plugins.stream()
+				).toList()
+				,
+				assetStreamProvider,
+				this.glSurfaceView,
+				shaderExecutionListener);
+
+		glSurfaceView.setEGLContextClientVersion(3);
+		glSurfaceView.setRenderer(rendererBridge);
+		glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+		glSurfaceView.setOnTouchListener(this::onTouchEvent);
+
 		this.qualitySpinner = qualitySpinner;
 		this.shaderExecutionListener = shaderExecutionListener;
 		initQualitySpinner();
-		initShaderView();
 		initLifecycleListeners();
 	}
 
 	public void onPause() {
-		if (shaderView.getVisibility() == View.VISIBLE) {
-			shaderView.onPause();
+		if (glSurfaceView.getVisibility() == View.VISIBLE) {
+			glSurfaceView.onPause();
 			rendererBridge.destroy();
 		}
 	}
 
 	public void onResume() {
-		if (shaderView.getVisibility() == View.VISIBLE) {
-			shaderView.onResume();
+		if (glSurfaceView.getVisibility() == View.VISIBLE) {
+			glSurfaceView.onResume();
 		}
 	}
 
 	public void setVisibility(boolean visible) {
-		shaderView.setVisibility(visible ? View.VISIBLE : View.GONE);
+		glSurfaceView.setVisibility(visible ? View.VISIBLE : View.GONE);
 	}
 
+	@Nullable
 	public byte[] getThumbnail() {
-		return shaderView.getRenderer().getThumbnail();
+		return rendererBridge.getThumbnail();
 	}
 
 	public void setQuality(float quality) {
 		for (int i = 0; i < qualityValues.length; ++i) {
 			if (qualityValues[i] == quality) {
-				qualitySpinner.setSelection(i);
+				if (qualitySpinner != null) {
+					qualitySpinner.setSelection(i);
+				}
 				this.quality = quality;
 				return;
 			}
@@ -208,16 +223,46 @@ public class AndroidEngineBridge {
 	}
 
 	public void setFragmentShader(@Nullable String src) {
-		if (src == null) {
-			src = DEFAULT_FRAGMENT_SHADER_ES3;
+		if (src == null || src.isBlank()) {
+			src = DEFAULT_FRAGMENT_SHADER_ES2;
 		}
 		shaderAsset.set(
 				new ShaderAsset(shaderAsset.get().vertexSource(), removeNonAscii(src)));
-		shaderView.setFragmentShader(src, quality);
+
+		// Trigger a recreation of the GL context and the engine.
+		// This is the simplest way to ensure a clean state and is the
+		// core of the "destroy and try again" strategy.
+		if (glSurfaceView.getVisibility() == View.VISIBLE) {
+			glSurfaceView.onPause();
+			glSurfaceView.onResume();
+		}
+	}
+
+	/**
+	 * Forwards wallpaper offset changes to the interaction plugin.
+	 *
+	 * @param xOffset The horizontal offset.
+	 * @param yOffset The vertical offset.
+	 */
+	public void onOffsetsChanged(float xOffset, float yOffset) {
+		wallpaperOffsetObservable.set(new Vec2(xOffset, yOffset));
+	}
+
+	/**
+	 * Forwards touch events to the interaction plugin.
+	 *
+	 * @param event The motion event from the view.
+	 */
+	private boolean onTouchEvent(View v, @NonNull MotionEvent event) {
+		if (event.getAction() == MotionEvent.ACTION_DOWN ||
+				event.getAction() == MotionEvent.ACTION_MOVE) {
+			touchPositionObservable.set(new Vec2(event.getX(), event.getY()));
+		}
+		return true;
 	}
 
 	private void initLifecycleListeners() {
-		shaderView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+		glSurfaceView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
 			@Override
 			public void onViewAttachedToWindow(@NonNull View v) {
 				// No action needed on attach.
@@ -234,20 +279,6 @@ public class AndroidEngineBridge {
 		});
 	}
 
-	private void initShaderView() {
-		shaderView.getRenderer().setOnRendererListener(new ShaderRenderer.OnRendererListener() {
-			@Override
-			public void onFramesPerSecond(int fps) {
-				shaderExecutionListener.onFramesPerSecond(fps);
-			}
-
-			@Override
-			public void onInfoLog(@NonNull List<ShaderError> infoLog) {
-				shaderExecutionListener.onShaderCompilationResult(infoLog);
-			}
-		});
-	}
-
 	private void initQualitySpinner() {
 		String[] qualityStringValues =
 				context.getResources().getStringArray(R.array.quality_values);
@@ -259,24 +290,25 @@ public class AndroidEngineBridge {
 		ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(context,
 				R.array.quality_names, android.R.layout.simple_spinner_item);
 		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		qualitySpinner.setAdapter(adapter);
-		qualitySpinner.setOnItemSelectedListener(new Spinner.OnItemSelectedListener() {
-			@Override
-			public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-				float q = qualityValues[position];
-				if (q == quality) return;
-				quality = q;
-				shaderExecutionListener.onRenderQualityChanged(quality);
-				// Refresh renderer with new quality
-				shaderView.getRenderer().setQuality(quality);
-				shaderView.onPause();
-				shaderView.onResume();
-			}
+		if (qualitySpinner != null) {
+			qualitySpinner.setAdapter(adapter);
+			qualitySpinner.setOnItemSelectedListener(new Spinner.OnItemSelectedListener() {
+				@Override
+				public void onItemSelected(
+						AdapterView<?> parent, View view, int position, long id) {
+					float q = qualityValues[position];
+					if (q == quality) return;
+					quality = q;
+					shaderExecutionListener.onRenderQualityChanged(quality);
+					// Refresh renderer with new quality
+					setFragmentShader(shaderAsset.get().fragmentSource());
+				}
 
-			@Override
-			public void onNothingSelected(AdapterView<?> parent) {
-			}
-		});
+				@Override
+				public void onNothingSelected(AdapterView<?> parent) {
+				}
+			});
+		}
 	}
 
 
@@ -306,29 +338,40 @@ public class AndroidEngineBridge {
 				"^\\s*#version\\s+(\\d+)(?:\\s+(\\w+))?");
 		private final Collection<Supplier<Plugin>> plugins;
 		private final AssetStreamProvider assetStreamProvider;
+		private final GLSurfaceView glSurfaceView;
+		private final ShaderExecutionListener listener;
+		private final List<EngineError> engineErrors = new ArrayList<>();
+		@NonNull
+		private final GlesRenderer renderer;
 		@Nullable
 		private EngineController engineController;
 
-		/**
-		 * Constructs the bridge.
-		 *
-		 * @param plugins A list from plugins to be registered with the engineController.
-		 */
 		public RendererBridge(@NonNull Collection<Supplier<Plugin>> plugins,
-				@NonNull AssetStreamProvider assetStreamProvider) {
+				@NonNull AssetStreamProvider assetStreamProvider,
+				@NonNull GLSurfaceView glSurfaceView,
+				@NonNull ShaderExecutionListener listener) {
 			this.plugins = plugins;
 			this.assetStreamProvider = assetStreamProvider;
+			this.glSurfaceView = glSurfaceView;
+			this.listener = listener;
+			this.renderer = new GlesRenderer();
 		}
 
 		@Override
 		public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-			if (engineController != null) {
-				engineController.shutdown();
-			}
-			engineController = createEngineController();
+			destroy(); // Ensure previous engine is gone.
+			engineErrors.clear();
 
-			// 2. Forward the setup call to the engineController
-			engineController.setup();
+			try {
+				engineController = createEngineController();
+				engineController.setup();
+			} catch (EngineException e) {
+				Log.e("AndroidEngineBridge", "Error during engine setup", e);
+				engineErrors.add(e.getError());
+				destroy();
+			}
+			var errors = List.copyOf(engineErrors);
+			glSurfaceView.post(() -> listener.onEngineError(errors));
 		}
 
 		@Override
@@ -340,8 +383,18 @@ public class AndroidEngineBridge {
 
 		@Override
 		public void onDrawFrame(GL10 gl) {
-			if (engineController != null) {
+			if (engineController == null) {
+				return;
+			}
+			try {
 				engineController.renderFrame();
+				glSurfaceView.requestRender();
+			} catch (EngineException e) {
+				Log.e("AndroidEngineBridge", "Error during render frame", e);
+				engineErrors.add(e.getError());
+				var errors = List.copyOf(engineErrors);
+				glSurfaceView.post(() -> listener.onEngineError(errors));
+				destroy(); // Destroy broken engine.
 			}
 		}
 
@@ -352,20 +405,28 @@ public class AndroidEngineBridge {
 			}
 		}
 
+		@Nullable
+		public byte[] getThumbnail() {
+			return renderer.getThumbnail();
+		}
+
 		@NonNull
 		private EngineController createEngineController() {
-			var renderer = new GlesRenderer();
 			var assetProvider = new AssetProvider(assetStreamProvider);
 			assetProvider.setLocator((name, type) -> {
 				if (type == TextureAsset.class) return URI.create("db://" + name);
 				if (type == ShaderAsset.class) return URI.create("./" + name + ".frag");
 				return URI.create(name);
 			});
+			// The bridge gets the bindings from the platform catalog and injects
+			// them into the engine controller.
+			var defaultBindings = PlatformBindingCatalog.getUniformBindings();
 			var engine = new EngineController(
 					new DataProviderManager(),
 					assetProvider,
 					renderer,
-					renderer);
+					renderer,
+					defaultBindings);
 			var facade = engine.getFacade();
 
 			facade.registerAssetLoader(ShaderAsset.class,

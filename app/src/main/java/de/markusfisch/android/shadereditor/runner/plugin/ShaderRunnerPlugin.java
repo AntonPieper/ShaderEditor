@@ -7,13 +7,9 @@ import androidx.annotation.NonNull;
 import de.markusfisch.android.shadereditor.engine.Engine;
 import de.markusfisch.android.shadereditor.engine.Plugin;
 import de.markusfisch.android.shadereditor.engine.ShaderIntrospector;
-import de.markusfisch.android.shadereditor.engine.Viewport;
 import de.markusfisch.android.shadereditor.engine.asset.AssetRef;
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
 import de.markusfisch.android.shadereditor.engine.asset.TextureAsset;
-import de.markusfisch.android.shadereditor.engine.data.EngineDataKeys;
-import de.markusfisch.android.shadereditor.engine.data.SensorDataKeys;
-import de.markusfisch.android.shadereditor.engine.data.SystemDataKeys;
 import de.markusfisch.android.shadereditor.engine.graphics.Primitive;
 import de.markusfisch.android.shadereditor.engine.graphics.SamplerCommentParser;
 import de.markusfisch.android.shadereditor.engine.graphics.TextureInternalFormat;
@@ -39,29 +35,7 @@ public class ShaderRunnerPlugin implements Plugin {
 		var shader = engine.loadAsset(AssetRef.uri("./main.frag"), ShaderAsset.class);
 		this.shaderMaterial = new Material(shader);
 		this.shaderMetadata = engine.getShaderIntrospector().introspect(shader);
-		binder = UniformBinder.builder()
-				.bind(
-						"resolution", EngineDataKeys.VIEWPORT_RESOLUTION,
-						v -> new Uniform.FloatVec2(Viewport.toVec2(v)))
-				.bind(
-						"time", SystemDataKeys.TIME,
-						v -> new Uniform.FloatScalar(new float[]{v}))
-				.bind(
-						"nightMode", SystemDataKeys.IS_NIGHT_MODE,
-						v -> new Uniform.IntScalar(new int[]{v ? 1 : 0}))
-				.bind(
-						"rotationMatrix", SensorDataKeys.ROTATION_MATRIX,
-						Uniform.FloatMat4::new)
-				.bind(
-						"gravity", SensorDataKeys.GRAVITY,
-						Uniform.FloatVec3::new)
-				.bind(
-						"geomagnetic", SensorDataKeys.GEOMAGNETIC,
-						Uniform.FloatVec3::new)
-				.bind(
-						"inclinationMatrix", SensorDataKeys.INCLINATION_MATRIX,
-						Uniform.FloatMat4::new)
-				.build();
+		binder = new UniformBinder(engine.getDefaultBindings());
 		var samplers = SamplerCommentParser.parse(
 				shader.fragmentSource(),
 				shaderMetadata.getActiveUniformNames());

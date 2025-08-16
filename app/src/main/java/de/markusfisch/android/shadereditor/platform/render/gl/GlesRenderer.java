@@ -3,9 +3,14 @@ package de.markusfisch.android.shadereditor.platform.render.gl;
 import android.opengl.GLES32;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import de.markusfisch.android.shadereditor.engine.Renderer;
 import de.markusfisch.android.shadereditor.engine.ShaderIntrospector;
+import de.markusfisch.android.shadereditor.engine.Viewport;
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
 import de.markusfisch.android.shadereditor.engine.pipeline.CommandBuffer;
 import de.markusfisch.android.shadereditor.engine.pipeline.GpuCommand;
@@ -30,6 +35,11 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 	private final ShaderCache shaders = new ShaderCache();
 	private final GlesCommandDispatcher dispatcher;
 
+	@Nullable
+	private Viewport lastViewport;
+	@Nullable
+	private byte[] thumbnail;
+
 	public GlesRenderer() {
 		var binder = new GlesBinder(textures);
 		dispatcher = new GlesCommandDispatcher()
@@ -48,18 +58,24 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 		framebuffers.destroy();
 		textures.destroy();
 		geometries.destroy();
+		lastViewport = null;
+		thumbnail = null;
 		GLES32.glClearColor(0.1f, 0.1f, 0.1f, 1f);
 	}
 
 	@Override
 	public void onSurfaceChanged(int w, int h) {
+		lastViewport = new Viewport(w, h);
 		GLES32.glViewport(0, 0, w, h);
 	}
 
 	@Override
 	public void execute(@NonNull CommandBuffer commands) {
 		var ctx = new GlesRenderContext();
-		for (GpuCommand c : commands.cmds()) dispatcher.dispatch(c, ctx);
+		for (GpuCommand c : commands.cmds()) {
+			dispatcher.dispatch(c, ctx);
+		}
+		captureThumbnail();
 	}
 
 	@Override
@@ -71,5 +87,46 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 	@Override
 	public ShaderMetadata introspect(@NonNull ShaderAsset asset) {
 		return shaders.introspect(asset);
+	}
+
+	@Nullable
+	public byte[] getThumbnail() {
+		return thumbnail;
+	}
+
+	private void captureThumbnail() {
+		if (lastViewport == null || lastViewport.width() <= 0 || lastViewport.height() <= 0) {
+			return;
+		}
+		// Scale down to a thumbnail size.
+		final int thumbWidth = 128;
+		final int thumbHeight =
+				(int) ((float) lastViewport.height() / lastViewport.width() * thumbWidth);
+		if (thumbHeight <= 0) return;
+
+
+		final int size = thumbWidth * thumbHeight * 4;
+		final ByteBuffer buffer = ByteBuffer.allocateDirect(size).order(ByteOrder.nativeOrder());
+		GLES32.glReadPixels(
+				(lastViewport.width() - thumbWidth) / 2,
+				(lastViewport.height() - thumbHeight) / 2,
+				thumbWidth,
+				thumbHeight,
+				GLES32.GL_RGBA,
+				GLES32.GL_UNSIGNED_BYTE,
+				buffer);
+
+		// Invert vertically because of OpenGL's coordinate system.
+		byte[] pixels = new byte[size];
+		byte[] invertedPixels = new byte[size];
+		buffer.get(pixels);
+		for (int y = 0; y < thumbHeight; y++) {
+			System.arraycopy(
+					pixels, y * thumbWidth * 4,
+					invertedPixels, (thumbHeight - 1 - y) * thumbWidth * 4,
+					thumbWidth * 4
+			);
+		}
+		this.thumbnail = invertedPixels;
 	}
 }

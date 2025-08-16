@@ -14,22 +14,22 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.ErrorAdapter;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
+import de.markusfisch.android.shadereditor.engine.error.EngineError;
 
 public class ErrorListModal extends BottomSheetDialogFragment {
 	public static final String TAG = "ErrorListModal";
 	@NonNull
+	final List<EngineError> errors;
+	@NonNull
 	private final ErrorAdapter.OnItemClickListener onItemClickListener;
 
-	@NonNull
-	final List<ShaderError> errors;
-
-	public ErrorListModal(@NonNull List<ShaderError> errors,
+	public ErrorListModal(@NonNull List<EngineError> errors,
 			@NonNull ErrorAdapter.OnItemClickListener onItemClickListener) {
 		this.errors = errors;
 		this.onItemClickListener = (lineNumber) -> {
@@ -51,9 +51,38 @@ public class ErrorListModal extends BottomSheetDialogFragment {
 		divider.setDrawable(Objects.requireNonNull(ContextCompat.getDrawable(requireContext(),
 				R.drawable.divider_with_padding_horizontal)));
 		errorList.addItemDecoration(divider);
+
 		ErrorAdapter adapter = new ErrorAdapter(onItemClickListener);
-		adapter.submitList(errors);
+		adapter.submitList(flattenErrors(errors));
 		errorList.setAdapter(adapter);
+
 		return view;
+	}
+
+	@NonNull
+	private List<EngineError.SourceLocation> flattenErrors(
+			@NonNull List<EngineError> engineErrors) {
+		List<EngineError.SourceLocation> displayableErrors = new ArrayList<>();
+		for (EngineError error : engineErrors) {
+			switch (error) {
+				case EngineError.ShaderCompilationError sce -> {
+					if (sce.sourceLocations().isEmpty()) {
+						// If the compilation error has no specific locations, show its main
+						// message.
+						displayableErrors.add(
+								new EngineError.SourceLocation(-1, sce.message()));
+					} else {
+						// Add each source location as a separate item.
+						displayableErrors.addAll(sce.sourceLocations());
+					}
+				}
+				case EngineError.AssetLoadError ale ->
+						displayableErrors.add(new EngineError.SourceLocation(-1,
+								"Asset load error: " + ale.identifier()));
+				case EngineError.GenericError ge ->
+						displayableErrors.add(new EngineError.SourceLocation(-1, ge.message()));
+			}
+		}
+		return displayableErrors;
 	}
 }

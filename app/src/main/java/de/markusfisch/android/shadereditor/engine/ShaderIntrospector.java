@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import java.util.Set;
 
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
+import de.markusfisch.android.shadereditor.engine.error.EngineException;
 
 /**
  * A service that provides metadata about compiled shaders.
@@ -28,8 +29,8 @@ public interface ShaderIntrospector {
 	 *
 	 * @param asset The shader asset to introspect.
 	 * @return The metadata for the compiled shader.
-	 * @throws RuntimeException if shader compilation or linking fails.
+	 * @throws EngineException if shader compilation or linking fails.
 	 */
 	@NonNull
-	ShaderMetadata introspect(@NonNull ShaderAsset asset);
+	ShaderMetadata introspect(@NonNull ShaderAsset asset) throws EngineException;
 }

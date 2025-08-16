@@ -1,7 +1,5 @@
 package de.markusfisch.android.shadereditor.engine.asset;
 
-// --- In your core engine module ---
-
 import androidx.annotation.NonNull;
 
 import java.io.IOException;
@@ -12,6 +10,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.engine.AssetStreamProvider;
+import de.markusfisch.android.shadereditor.engine.error.EngineError;
+import de.markusfisch.android.shadereditor.engine.error.EngineException;
 
 public class AssetProvider {
 	// The provider that gives us raw byte streams (from files, editor, etc.)
@@ -52,7 +52,9 @@ public class AssetProvider {
 		// 2. Find the correct loader for the requested type
 		AssetLoader<?> loader = loaders.get(type);
 		if (loader == null) {
-			throw new IllegalStateException("No loader registered for type: " + type.getName());
+			throw new EngineException(new EngineError.GenericError(
+					"No loader registered for type: " + type.getName(), null
+			));
 		}
 
 		// 3. Get the raw data stream and load the asset
@@ -64,7 +66,11 @@ public class AssetProvider {
 			return Objects.requireNonNull(type.cast(loadedAsset));
 
 		} catch (IOException e) {
-			throw new RuntimeException("Failed to load asset: " + identifier, e);
+			throw new EngineException(new EngineError.AssetLoadError(
+					identifier.toString(),
+					"Failed to open or read asset stream.",
+					e
+			));
 		}
 	}
 }

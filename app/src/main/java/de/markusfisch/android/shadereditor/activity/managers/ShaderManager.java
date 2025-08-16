@@ -15,16 +15,18 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.AddUniformActivity;
 import de.markusfisch.android.shadereditor.activity.LoadSampleActivity;
+import de.markusfisch.android.shadereditor.activity.ParcelableEngineError;
 import de.markusfisch.android.shadereditor.activity.PreviewActivity;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
-import de.markusfisch.android.shadereditor.runner.ui.AndroidEngineBridge;
+import de.markusfisch.android.shadereditor.platform.ui.AndroidEngineBridge;
 
 public class ShaderManager {
 	private static final String SELECTED_SHADER_ID = "selected_shader_id";
@@ -40,6 +42,7 @@ public class ShaderManager {
 	private final ShaderListManager shaderListManager;
 	private final UIManager uiManager;
 	private final DataSource dataSource;
+	private byte[] lastThumbnail;
 
 	private long selectedShaderId = NO_SHADER;
 	private float quality = 1f;
@@ -47,8 +50,7 @@ public class ShaderManager {
 
 	public ShaderManager(@NonNull AppCompatActivity activity, EditorFragment editorFragment,
 			AndroidEngineBridge androidEngineBridge, ShaderListManager shaderListManager,
-			UIManager uiManager, DataSource dataSource,
-			AndroidEngineBridge.ShaderExecutionListener shaderExecutionListener) {
+			UIManager uiManager, DataSource dataSource) {
 		this.activity = activity;
 		this.editorFragment = editorFragment;
 		this.androidEngineBridge = androidEngineBridge;
@@ -82,16 +84,19 @@ public class ShaderManager {
 
 		previewShaderLauncher =
 				activity.registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-					if (result.getResultCode() == Activity.RESULT_OK) {
-						PreviewActivity.RenderStatus status = PreviewActivity.renderStatus;
-						if (status.getFps() > 0) {
-							shaderExecutionListener.onFramesPerSecond(status.getFps());
+					if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+						lastThumbnail =
+								result.getData().getByteArrayExtra(PreviewActivity.EXTRA_THUMBNAIL);
+						if (getSelectedShaderId() > 0 && lastThumbnail != null &&
+								ShaderEditorApp.preferences.doesSaveOnRun()) {
+							saveShader(); // Will use the new thumbnail
 						}
-						if (status.getInfoLog() != null) {
-							shaderExecutionListener.onShaderCompilationResult(status.getInfoLog());
-						}
-						if (getSelectedShaderId() > 0 && status.getThumbnail() != null && ShaderEditorApp.preferences.doesSaveOnRun()) {
-							saveShader();
+					} else if (result.getResultCode() == Activity.RESULT_CANCELED && result.getData() != null) {
+						ParcelableEngineError error =
+								result.getData().getParcelableExtra(PreviewActivity.EXTRA_ERROR);
+						if (error != null) {
+							// Forward the error to the main activity's UI
+							editorFragment.setErrors(List.of(error.toEngineError()));
 						}
 					}
 				});
@@ -116,10 +121,6 @@ public class ShaderManager {
 
 	public void setModified(boolean modified) {
 		this.isModified = modified;
-		// The EditorFragment's modified state is managed internally by its UndoRedo
-		// helper. It cannot and should not be set from the outside. When a shader is
-		// loaded via `selectShader`, `editorFragment.setText()` is called, which
-		// clears the history and resets the modified state.
 	}
 
 	public void saveState(@NonNull Bundle outState) {
@@ -135,7 +136,7 @@ public class ShaderManager {
 			saveShader();
 		}
 
-		PreviewActivity.renderStatus.reset();
+		lastThumbnail = null; // Reset thumbnail on shader change
 		var shader = dataSource.shader.getShader(id);
 
 		if (shader == null) {
@@ -185,12 +186,6 @@ public class ShaderManager {
 		Toast.makeText(activity, R.string.shader_saved, Toast.LENGTH_SHORT).show();
 	}
 
-	private byte[] getThumbnail() {
-		return ShaderEditorApp.preferences.doesRunInBackground()
-				? androidEngineBridge.getThumbnail()
-				: PreviewActivity.renderStatus.getThumbnail();
-	}
-
 	public void handleSendText(@Nullable Intent intent) {
 		if (intent == null || intent.getAction() == null) return;
 		if (!Intent.ACTION_SEND.equals(intent.getAction()) && !Intent.ACTION_VIEW.equals(intent.getAction()))
@@ -207,7 +202,7 @@ public class ShaderManager {
 			while ((len = in.read(buffer)) != -1) {
 				sb.append(new String(buffer, 0, len));
 			}
-			PreviewActivity.renderStatus.reset();
+			lastThumbnail = null;
 			intent.setAction(null);
 			selectShader(NO_SHADER);
 			editorFragment.setText(sb.toString());
@@ -234,5 +229,16 @@ public class ShaderManager {
 		if (shaderId == selectedShaderId) {
 			selectedShaderId = NO_SHADER;
 		}
+	}
+
+	@Nullable
+	private byte[] getThumbnail() {
+		if (lastThumbnail != null) {
+			return lastThumbnail;
+		}
+		if (androidEngineBridge != null && ShaderEditorApp.preferences.doesRunInBackground()) {
+			return androidEngineBridge.getThumbnail();
+		}
+		return null;
 	}
 }

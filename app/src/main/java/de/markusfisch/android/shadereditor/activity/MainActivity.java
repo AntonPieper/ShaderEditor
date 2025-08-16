@@ -25,14 +25,15 @@ import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
-import de.markusfisch.android.shadereditor.runner.ui.AndroidEngineBridge;
 import de.markusfisch.android.shadereditor.activity.managers.UIManager;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
+import de.markusfisch.android.shadereditor.engine.error.EngineError;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
+import de.markusfisch.android.shadereditor.platform.ui.AndroidEngineBridge;
+import de.markusfisch.android.shadereditor.runner.plugin.ShaderRunnerPlugin;
 import de.markusfisch.android.shadereditor.service.ShaderWallpaperService;
 import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
 
@@ -69,19 +70,20 @@ public class MainActivity extends AppCompatActivity {
 
 		navigationManager = new NavigationManager(this);
 		androidEngineBridge = new AndroidEngineBridge(this, findViewById(R.id.preview),
-				findViewById(R.id.quality), createShaderViewListener());
+				findViewById(R.id.quality), createShaderExecutionListener(),
+				List.of(ShaderRunnerPlugin::new));
 		ExtraKeysManager extraKeysManager = new ExtraKeysManager(this,
 				findViewById(android.R.id.content), editorFragment::insert);
 		uiManager = new UIManager(this, editorFragment, extraKeysManager, androidEngineBridge);
 		shaderListManager = new ShaderListManager(this, findViewById(R.id.shaders),
 				dataSource, createShaderListListener());
 		shaderManager = new ShaderManager(this, editorFragment, androidEngineBridge,
-				shaderListManager, uiManager, dataSource, createShaderViewListener());
+				shaderListManager, uiManager, dataSource);
 
 		MainMenuManager mainMenuManager = new MainMenuManager(this, createEditorActions(),
 				createShaderActions(extraKeysManager), createNavigationActions());
 
-		uiManager.setupToolbar(mainMenuManager::show, v -> this.runShader(),
+		uiManager.setupToolbar(mainMenuManager::show, v -> this.runShader(true),
 				v -> uiManager.toggleCodeVisibility(), v -> editorFragment.showErrors());
 
 
@@ -97,11 +99,7 @@ public class MainActivity extends AppCompatActivity {
 
 		editorFragment.setOnEditPausedListener(text -> {
 			if (ShaderEditorApp.preferences.doesRunOnChange()) {
-				if (editorFragment.hasErrors()) {
-					editorFragment.clearError();
-					editorFragment.highlightErrors();
-				}
-				androidEngineBridge.setFragmentShader(text);
+				runShader(false);
 			}
 		});
 		editorFragment.setOnTextModifiedListener(() -> shaderManager.setModified(true));
@@ -137,8 +135,8 @@ public class MainActivity extends AppCompatActivity {
 		if (ShaderEditorApp.preferences.autoSave()) {
 			shaderManager.saveShader();
 		}
-		super.onPause();
 		androidEngineBridge.onPause();
+		super.onPause();
 	}
 
 	@Override
@@ -186,9 +184,6 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onShadersLoaded(@NonNull List<DataRecords.ShaderInfo> shaders) {
 				if (isInitialLoad && !shaders.isEmpty()) {
-					// Try to load the last opened shader.
-					// NOTE: This assumes a method like `getLastOpenedShader()` exists
-					// in your SharedPreferences helper class.
 					long lastOpenedId = ShaderEditorApp.preferences.getLastOpenedShader();
 					long idToLoad = 0;
 
@@ -216,9 +211,10 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 	@NonNull
-	@Contract(" -> new")
-	private AndroidEngineBridge.ShaderExecutionListener createShaderViewListener() {
+	@Contract(pure = true)
+	private AndroidEngineBridge.ShaderExecutionListener createShaderExecutionListener() {
 		return new AndroidEngineBridge.ShaderExecutionListener() {
+
 			@Override
 			public void onFramesPerSecond(int fps) {
 				if (fps > 0) {
@@ -227,17 +223,20 @@ public class MainActivity extends AppCompatActivity {
 			}
 
 			@Override
-			public void onShaderCompilationResult(@NonNull List<ShaderError> infoLog) {
+			public void onEngineError(@NonNull List<EngineError> errors) {
 				runOnUiThread(() -> {
-					editorFragment.setErrors(infoLog);
+					editorFragment.setErrors(errors);
 					findViewById(R.id.show_errors).setVisibility(editorFragment.hasErrors() ?
 							View.VISIBLE : View.GONE);
 					if (editorFragment.hasErrors()) {
 						Snackbar.make(findViewById(R.id.main_coordinator),
-										infoLog.get(0).toString(), Snackbar.LENGTH_LONG)
+										errors.get(0).message(), Snackbar.LENGTH_LONG)
 								.setAction(R.string.details, v -> editorFragment.showErrors())
 								.setAnchorView(R.id.extra_keys)
 								.show();
+					} else {
+						// Optionally hide subtitle when there are no errors.
+						uiManager.setToolbarSubtitle(null);
 					}
 				});
 			}
@@ -367,8 +366,6 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 	private void duplicateShader(long id) {
-		// The ShaderManager is now responsible for getting the shader details.
-		// We just need to pass the ID.
 		long newId = shaderManager.duplicateShader(id);
 		if (newId > 0) {
 			shaderManager.selectShader(newId);
@@ -401,11 +398,9 @@ public class MainActivity extends AppCompatActivity {
 		Toast.makeText(this, messageId, Toast.LENGTH_SHORT).show();
 	}
 
-	private void runShader() {
+	private void runShader(boolean save) {
 		String src = editorFragment.getText();
-		editorFragment.clearError();
-		if (ShaderEditorApp.preferences.doesSaveOnRun()) {
-			PreviewActivity.renderStatus.reset();
+		if (save && ShaderEditorApp.preferences.doesSaveOnRun()) {
 			shaderManager.saveShader();
 		}
 		if (ShaderEditorApp.preferences.doesRunInBackground()) {

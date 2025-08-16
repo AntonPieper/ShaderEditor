@@ -33,7 +33,6 @@ import de.markusfisch.android.shadereditor.io.DatabaseImporter;
 import de.markusfisch.android.shadereditor.io.ImportExportAsFiles;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.preference.ShaderListPreference;
-import de.markusfisch.android.shadereditor.receiver.BatteryLevelReceiver;
 
 public class PreferencesFragment
 		extends PreferenceFragmentCompat
@@ -125,12 +124,6 @@ public class PreferencesFragment
 
 		ShaderEditorApp.preferences.update(getContext());
 		setSummary(preference);
-
-		if (Preferences.SAVE_BATTERY.equals(key) &&
-				ShaderEditorApp.preferences.isBatteryLow()) {
-			BatteryLevelReceiver.setLowPowerMode(
-					ShaderEditorApp.preferences.saveBattery());
-		}
 	}
 
 	@Override

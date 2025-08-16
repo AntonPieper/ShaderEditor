@@ -16,7 +16,7 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
+import de.markusfisch.android.shadereditor.engine.error.EngineError;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.view.UndoRedo;
@@ -123,13 +123,13 @@ public class EditorFragment extends Fragment {
 		shaderEditor.updateErrorHighlighting();
 	}
 
-	public void setErrors(@NonNull List<ShaderError> errors) {
+	public void setErrors(@NonNull List<EngineError> errors) {
 		shaderEditor.setErrors(errors);
 		highlightErrors();
 	}
 
 	public void showErrors() {
-		List<ShaderError> errors = shaderEditor.getErrors();
+		List<EngineError> errors = shaderEditor.getErrors();
 		new ErrorListModal(errors, this::navigateToLine).show(getParentFragmentManager(),
 				ErrorListModal.TAG);
 	}

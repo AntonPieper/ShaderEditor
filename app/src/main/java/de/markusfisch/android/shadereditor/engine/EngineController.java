@@ -6,6 +6,7 @@ import androidx.annotation.Nullable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 
 import de.markusfisch.android.shadereditor.engine.asset.Asset;
 import de.markusfisch.android.shadereditor.engine.asset.AssetLoader;
@@ -18,6 +19,7 @@ import de.markusfisch.android.shadereditor.engine.data.DataProviderManager;
 import de.markusfisch.android.shadereditor.engine.data.EngineDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.ObservableDataProvider;
 import de.markusfisch.android.shadereditor.engine.pipeline.CommandBuffer;
+import de.markusfisch.android.shadereditor.engine.scene.UniformBinding;
 import de.markusfisch.android.shadereditor.engine.util.observer.ObservableValue;
 
 public class EngineController {
@@ -39,15 +41,21 @@ public class EngineController {
 	@NonNull
 	private final CommandBuffer currentFrame = new CommandBuffer(new ArrayList<>());
 
+	@NonNull
+	private final List<UniformBinding<?>> defaultBindings;
+
 	public EngineController(
 			@NonNull DataProviderManager dataProviderManager,
 			@NonNull AssetProvider assetProvider,
 			@NonNull Renderer renderer,
-			@NonNull ShaderIntrospector shaderIntrospector) {
+			@NonNull ShaderIntrospector shaderIntrospector,
+			@NonNull List<UniformBinding<?>> defaultBindings
+	) {
 		this.dataProviderManager = new CachingDataProviderManager(dataProviderManager);
 		this.assetProvider = assetProvider;
 		this.renderer = renderer;
 		this.shaderIntrospector = shaderIntrospector;
+		this.defaultBindings = List.copyOf(defaultBindings);
 		this.pluginManager = new PluginManager();
 		facade.registerProviderFactory(
 				EngineDataKeys.VIEWPORT_RESOLUTION,
@@ -153,6 +161,12 @@ public class EngineController {
 		@Override
 		public <T extends Asset> T loadAsset(@NonNull AssetRef s, @NonNull Class<T> assetType) {
 			return assetProvider.load(s, assetType);
+		}
+
+		@NonNull
+		@Override
+		public List<UniformBinding<?>> getDefaultBindings() {
+			return defaultBindings;
 		}
 
 		@NonNull

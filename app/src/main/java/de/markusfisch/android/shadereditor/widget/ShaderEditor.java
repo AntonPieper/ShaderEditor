@@ -30,6 +30,8 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 
+import org.jetbrains.annotations.Contract;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,12 +45,24 @@ import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.engine.error.EngineError;
 import de.markusfisch.android.shadereditor.highlighter.Highlight;
 import de.markusfisch.android.shadereditor.highlighter.Lexer;
 import de.markusfisch.android.shadereditor.highlighter.Token;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
 
 public class ShaderEditor extends LineNumberEditText {
+	@FunctionalInterface
+	public interface OnEditPausedListener {
+		void onEditPaused(@NonNull String text);
+	}
+	@FunctionalInterface
+	public interface OnTextModifiedListener {
+		void onTextModified();
+	}
+	@FunctionalInterface
+	public interface CodeCompletionListener {
+		void onCodeCompletions(@NonNull List<String> completions, int position);
+	}
 	private static final Pattern PATTERN_TRAILING_WHITE_SPACE = Pattern.compile(
 			"[\\t ]+$",
 			Pattern.MULTILINE);
@@ -86,7 +100,7 @@ public class ShaderEditor extends LineNumberEditText {
 			new TokenListUpdater(this::provideCompletions);
 	private int updateDelay = 1000;
 	@NonNull
-	private List<ShaderError> shaderErrors = Collections.emptyList();
+	private List<EngineError> engineErrors = Collections.emptyList();
 	private boolean isUserInteraction = true;
 	private int colorError;
 	private int textColor;
@@ -121,43 +135,6 @@ public class ShaderEditor extends LineNumberEditText {
 		init(context);
 	}
 
-	private static <T> void clearSpans(Spannable e, int start, int end, Class<T> clazz) {
-		// Remove foreground color spans.
-		T[] spans = e.getSpans(
-				start,
-				end,
-				clazz);
-		for (T span : spans) {
-			e.removeSpan(span);
-		}
-	}
-
-	private static String convertShaderToySource(String src) {
-		if (!PATTERN_SHADER_TOY.matcher(src).find() ||
-				PATTERN_MAIN.matcher(src).find()) {
-			return null;
-		}
-		// Only include and translate uniforms that have an equivalent.
-		return "#ifdef GL_FRAGMENT_PRECISION_HIGH\n" +
-				"precision highp float;\n" +
-				"#else\n" +
-				"precision mediump float;\n" +
-				"#endif\n\n" +
-				"uniform vec2 resolution;\n" +
-				"uniform float time;\n" +
-				"uniform vec4 mouse;\n" +
-				"uniform vec4 date;\n\n" +
-				src.replaceAll("iResolution", "resolution")
-						.replaceAll("iGlobalTime", "time")
-						.replaceAll("iMouse", "mouse")
-						.replaceAll("iDate", "date") +
-				"\n\nvoid main() {\n" +
-				"\tvec4 fragment_color;\n" +
-				"\tmainImage(fragment_color, gl_FragCoord.xy);\n" +
-				"\tgl_FragColor = fragment_color;\n" +
-				"}\n";
-	}
-
 	public void setOnEditPausedListener(@Nullable OnEditPausedListener listener) {
 		onEditPausedListener = listener;
 	}
@@ -184,15 +161,15 @@ public class ShaderEditor extends LineNumberEditText {
 	}
 
 	public boolean hasErrors() {
-		return !shaderErrors.isEmpty();
+		return !engineErrors.isEmpty();
 	}
 
-	public List<ShaderError> getErrors() {
-		return shaderErrors;
+	public List<EngineError> getErrors() {
+		return engineErrors;
 	}
 
-	public void setErrors(@NonNull List<ShaderError> errorLines) {
-		this.shaderErrors = errorLines;
+	public void setErrors(@NonNull List<EngineError> errors) {
+		this.engineErrors = errors;
 	}
 
 	public void updateHighlighting() {
@@ -202,38 +179,33 @@ public class ShaderEditor extends LineNumberEditText {
 		}
 	}
 
-	private void clearError(@Nullable Spannable e) {
-		if (e == null) return;
-		clearSpans(e, 0, e.length(), BackgroundColorSpan.class);
-	}
-
-	private void highlightErrors(List<ShaderError> shaderErrors) {
+	public void updateErrorHighlighting() {
 		Spannable e = getText();
-		clearError(e);
+		clearErrorSpans(e);
+
 		if (e == null || e.length() == 0) {
 			return;
 		}
-		for (ShaderError shaderError : shaderErrors) {
-			int line = shaderError.getLine() - 1;
-			Layout layout = getLayout();
-			if (line < 0 || line >= layout.getLineCount()) {
-				continue;
+
+		for (EngineError error : engineErrors) {
+			if (error instanceof EngineError.ShaderCompilationError sce) {
+				for (var location : sce.sourceLocations()) {
+					if (location.line() <= 0) continue;
+
+					int line = location.line() - 1;
+					Layout layout = getLayout();
+					if (line >= layout.getLineCount()) continue;
+
+					e.setSpan(
+							new BackgroundColorSpan(colorError),
+							layout.getLineStart(line),
+							layout.getLineEnd(line),
+							Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+				}
 			}
-			e.setSpan(
-					new BackgroundColorSpan(colorError),
-					layout.getLineStart(line),
-					layout.getLineEnd(line),
-					Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 		}
 	}
 
-	public void updateErrorHighlighting() {
-		Spannable e = getText();
-		clearError(e);
-		if (!shaderErrors.isEmpty()) {
-			highlightErrors(shaderErrors);
-		}
-	}
 
 	public void setTextHighlighted(CharSequence text) {
 		if (text == null) {
@@ -242,7 +214,7 @@ public class ShaderEditor extends LineNumberEditText {
 
 		cancelUpdate();
 
-		shaderErrors = Collections.emptyList();
+		engineErrors = List.of();
 
 		isUserInteraction = false;
 
@@ -371,6 +343,11 @@ public class ShaderEditor extends LineNumberEditText {
 		if (!isApplyingEdit && tokenListUpdater.isDone()) {
 			provideCompletions(tokens, text);
 		}
+	}
+
+	private void clearErrorSpans(@Nullable Spannable e) {
+		if (e == null) return;
+		clearSpans(e, 0, e.length(), BackgroundColorSpan.class);
 	}
 
 	private void removeUniform(Editable e, String statement) {
@@ -506,10 +483,12 @@ public class ShaderEditor extends LineNumberEditText {
 		isUserInteraction = true;
 	}
 
+	@NonNull
+	@Contract("_, _ -> param1")
 	private Editable highlight(@NonNull Editable e, boolean complete) {
 		int length = e.length();
 
-		clearError(e);
+		clearErrorSpans(e);
 
 		if (length == 0) {
 			tokens = new ArrayList<>();
@@ -688,19 +667,42 @@ public class ShaderEditor extends LineNumberEditText {
 		}
 	}
 
-	@FunctionalInterface
-	public interface OnEditPausedListener {
-		void onEditPaused(@NonNull String text);
+	private static <T> void clearSpans(@NonNull Spannable e, int start, int end, Class<T> clazz) {
+		// Remove foreground color spans.
+		T[] spans = e.getSpans(
+				start,
+				end,
+				clazz);
+		for (T span : spans) {
+			e.removeSpan(span);
+		}
 	}
 
-	@FunctionalInterface
-	public interface OnTextModifiedListener {
-		void onTextModified();
-	}
-
-	@FunctionalInterface
-	public interface CodeCompletionListener {
-		void onCodeCompletions(@NonNull List<String> completions, int position);
+	@Nullable
+	private static String convertShaderToySource(String src) {
+		if (!PATTERN_SHADER_TOY.matcher(src).find() ||
+				PATTERN_MAIN.matcher(src).find()) {
+			return null;
+		}
+		// Only include and translate uniforms that have an equivalent.
+		return "#ifdef GL_FRAGMENT_PRECISION_HIGH\n" +
+				"precision highp float;\n" +
+				"#else\n" +
+				"precision mediump float;\n" +
+				"#endif\n\n" +
+				"uniform vec2 resolution;\n" +
+				"uniform float time;\n" +
+				"uniform vec4 mouse;\n" +
+				"uniform vec4 date;\n\n" +
+				src.replaceAll("iResolution", "resolution")
+						.replaceAll("iGlobalTime", "time")
+						.replaceAll("iMouse", "mouse")
+						.replaceAll("iDate", "date") +
+				"\n\nvoid main() {\n" +
+				"\tvec4 fragment_color;\n" +
+				"\tmainImage(fragment_color, gl_FragCoord.xy);\n" +
+				"\tgl_FragColor = fragment_color;\n" +
+				"}\n";
 	}
 
 	@FunctionalInterface

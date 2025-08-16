@@ -24,6 +24,24 @@ public class ObservableValue<T> implements ReadOnlyObservable<T>, AutoCloseable 
 		return new ObservableValue<>(initialValue);
 	}
 
+	@NonNull
+	@Contract("_ -> new")
+	public static ObservableValue<Float> of(float initialValue) {
+		return new ObservableValue<>(initialValue);
+	}
+
+	@NonNull
+	@Contract("_ -> new")
+	public static ObservableValue<Integer> of(int initialValue) {
+		return new ObservableValue<>(initialValue);
+	}
+
+	@NonNull
+	@Contract("_ -> new")
+	public static ObservableValue<Boolean> of(boolean initialValue) {
+		return new ObservableValue<>(initialValue);
+	}
+
 	public T get() {
 		return currentValue.get();
 	}

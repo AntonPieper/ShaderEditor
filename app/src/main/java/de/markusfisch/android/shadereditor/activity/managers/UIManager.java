@@ -10,7 +10,7 @@ import androidx.appcompat.widget.Toolbar;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
-import de.markusfisch.android.shadereditor.runner.ui.AndroidEngineBridge;
+import de.markusfisch.android.shadereditor.platform.ui.AndroidEngineBridge;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
 
 public class UIManager {
