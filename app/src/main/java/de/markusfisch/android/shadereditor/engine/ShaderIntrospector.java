@@ -16,6 +16,7 @@ public interface ShaderIntrospector {
 	 * Represents the metadata for a single compiled shader program.
 	 */
 	interface ShaderMetadata {
+
 		/**
 		 * @return The set of active uniform names found in the shader program.
 		 */

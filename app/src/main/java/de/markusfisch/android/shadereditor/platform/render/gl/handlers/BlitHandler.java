@@ -4,6 +4,9 @@ import android.opengl.GLES32;
 
 import androidx.annotation.NonNull;
 
+import java.util.function.Supplier;
+
+import de.markusfisch.android.shadereditor.engine.Viewport;
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
 import de.markusfisch.android.shadereditor.engine.pipeline.GpuCommand;
 import de.markusfisch.android.shadereditor.engine.scene.Geometry;
@@ -33,17 +36,20 @@ public final class BlitHandler implements GlesCommandHandler<GpuCommand.Blit> {
 	@NonNull
 	private final GlesBinder binder;
 	private final Geometry fsq = Geometry.fullscreenQuad();
-	private ShaderCache.Program blit;
+	@NonNull
+	private final Supplier<Viewport> physicalViewportSupplier;
 
 	public BlitHandler(
 			@NonNull ShaderCache shaders,
 			@NonNull GlesGeometryManager geometries,
 			@NonNull GlesFramebufferManager framebuffers,
-			@NonNull GlesBinder binder) {
+			@NonNull GlesBinder binder,
+			@NonNull Supplier<Viewport> physicalViewportSupplier) {
 		this.shaders = shaders;
 		this.geometries = geometries;
 		this.framebuffers = framebuffers;
 		this.binder = binder;
+		this.physicalViewportSupplier = physicalViewportSupplier;
 	}
 
 	@NonNull
@@ -56,9 +62,17 @@ public final class BlitHandler implements GlesCommandHandler<GpuCommand.Blit> {
 	public void handle(@NonNull GpuCommand.Blit cmd, @NonNull GlesRenderContext ctx) {
 		GLES32.glBindFramebuffer(GLES32.GL_FRAMEBUFFER,
 				framebuffers.getFramebufferHandle(cmd.dst()));
-		if (!cmd.dst().isDefault()) GLES32.glViewport(0, 0, cmd.dst().width(), cmd.dst().height());
 
-		if (blit == null) blit = shaders.get(BLIT_SHADER);
+		if (cmd.dst().isDefault()) {
+			Viewport vp = physicalViewportSupplier.get();
+			if (vp != null) {
+				GLES32.glViewport(0, 0, vp.width(), vp.height());
+			}
+		} else {
+			GLES32.glViewport(0, 0, cmd.dst().width(), cmd.dst().height());
+		}
+
+		var blit = shaders.get(BLIT_SHADER);
 		GLES32.glUseProgram(blit.programId());
 		ctx.setCurrentProgram(blit);
 		binder.bind(blit.locate("uTex"), new Uniform.Sampler2D(cmd.src()));

@@ -7,11 +7,16 @@ import androidx.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
 
 import de.markusfisch.android.shadereditor.engine.Renderer;
 import de.markusfisch.android.shadereditor.engine.ShaderIntrospector;
 import de.markusfisch.android.shadereditor.engine.Viewport;
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
+import de.markusfisch.android.shadereditor.engine.error.EngineError;
+import de.markusfisch.android.shadereditor.engine.error.EngineException;
 import de.markusfisch.android.shadereditor.engine.pipeline.CommandBuffer;
 import de.markusfisch.android.shadereditor.engine.pipeline.GpuCommand;
 import de.markusfisch.android.shadereditor.platform.render.gl.core.GlesCommandDispatcher;
@@ -29,11 +34,12 @@ import de.markusfisch.android.shadereditor.platform.render.gl.managers.GlesGeome
 import de.markusfisch.android.shadereditor.platform.render.gl.managers.GlesTextureManager;
 
 public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable {
-	private final GlesGeometryManager geometries = new GlesGeometryManager();
-	private final GlesTextureManager textures = new GlesTextureManager();
-	private final GlesFramebufferManager framebuffers = new GlesFramebufferManager(textures);
-	private final ShaderCache shaders = new ShaderCache();
-	private final GlesCommandDispatcher dispatcher;
+	@NonNull
+	Deque<AutoCloseable> closeables = new ArrayDeque<>();
+	@Nullable
+	ShaderIntrospector introspector;
+	@Nullable
+	private GlesCommandDispatcher dispatcher;
 
 	@Nullable
 	private Viewport lastViewport;
@@ -41,6 +47,21 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 	private byte[] thumbnail;
 
 	public GlesRenderer() {
+	}
+
+	@Override
+	public void onSurfaceCreated() {
+		var geometries = new GlesGeometryManager();
+		var textures = new GlesTextureManager();
+		var framebuffers = new GlesFramebufferManager(textures);
+		var shaders = new ShaderCache();
+		this.introspector = shaders;
+		closeables.addAll(List.of(
+				geometries,
+				textures,
+				framebuffers,
+				shaders
+		));
 		var binder = new GlesBinder(textures);
 		dispatcher = new GlesCommandDispatcher()
 				.register(new BeginPassHandler(framebuffers, binder))
@@ -49,15 +70,12 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 				.register(new SetUniformsHandler(binder))
 				.register(new BindGeometryHandler(geometries))
 				.register(new DrawHandler())
-				.register(new BlitHandler(shaders, geometries, framebuffers, binder));
-	}
-
-	@Override
-	public void onSurfaceCreated() {
-		shaders.clear();
-		framebuffers.destroy();
-		textures.destroy();
-		geometries.destroy();
+				.register(new BlitHandler(
+						shaders,
+						geometries,
+						framebuffers,
+						binder,
+						() -> lastViewport));
 		lastViewport = null;
 		thumbnail = null;
 		GLES32.glClearColor(0.1f, 0.1f, 0.1f, 1f);
@@ -71,6 +89,11 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 
 	@Override
 	public void execute(@NonNull CommandBuffer commands) {
+		if (dispatcher == null) {
+			throw new EngineException(new EngineError.GenericError(
+					"Renderer not initialized: execute called before onSurfaceCreated",
+					null));
+		}
 		var ctx = new GlesRenderContext();
 		for (GpuCommand c : commands.cmds()) {
 			dispatcher.dispatch(c, ctx);
@@ -80,13 +103,25 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 
 	@Override
 	public void close() {
-		shaders.clear();
+		for (var closeable : closeables) {
+			try {
+				closeable.close();
+			} catch (Exception e) {
+				throw new EngineException(
+						new EngineError.GenericError("Could not close GlesRenderer", e));
+			}
+		}
 	}
 
 	@NonNull
 	@Override
 	public ShaderMetadata introspect(@NonNull ShaderAsset asset) {
-		return shaders.introspect(asset);
+		if (introspector == null) {
+			throw new EngineException(new EngineError.GenericError(
+					"Renderer not initialized: introspect called before onSurfaceCreated",
+					null));
+		}
+		return introspector.introspect(asset);
 	}
 
 	@Nullable

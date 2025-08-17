@@ -12,18 +12,17 @@ import java.util.Map;
 
 import de.markusfisch.android.shadereditor.engine.scene.Geometry;
 
-public class GlesGeometryManager {
+public class GlesGeometryManager implements AutoCloseable {
 	private final Map<Geometry, Integer> vaoCache = new HashMap<>();
 
 	public int getGeometryHandle(@NonNull Geometry geometry) {
 		return vaoCache.computeIfAbsent(geometry, this::createVao);
 	}
 
-	public void destroy() {
+	public void close() {
 		// Delete all VAOs
-		for (int vao : vaoCache.values()) {
-			GLES30.glDeleteVertexArrays(1, new int[]{vao}, 0);
-		}
+		var vaos = vaoCache.values().stream().mapToInt(Integer::intValue).toArray();
+		GLES30.glDeleteVertexArrays(vaos.length, vaos, 0);
 		vaoCache.clear();
 	}
 

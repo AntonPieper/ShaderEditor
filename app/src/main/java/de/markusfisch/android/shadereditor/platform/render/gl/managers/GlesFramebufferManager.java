@@ -10,7 +10,7 @@ import java.util.Map;
 
 import de.markusfisch.android.shadereditor.engine.scene.Framebuffer;
 
-public class GlesFramebufferManager {
+public class GlesFramebufferManager implements AutoCloseable {
 	private final Map<Framebuffer, Integer> fboCache = new HashMap<>();
 	private final GlesTextureManager textureManager;
 
@@ -25,11 +25,11 @@ public class GlesFramebufferManager {
 		return fboCache.computeIfAbsent(framebuffer, this::createFbo);
 	}
 
-	public void destroy() {
+	@Override
+	public void close() {
 		// Delete all FBOs
-		for (int fbo : fboCache.values()) {
-			GLES30.glDeleteFramebuffers(1, new int[]{fbo}, 0);
-		}
+		var fbos = fboCache.values().stream().mapToInt(Integer::intValue).toArray();
+		GLES30.glDeleteFramebuffers(fbos.length, fbos, 0);
 		fboCache.clear();
 	}
 

@@ -18,7 +18,7 @@ import de.markusfisch.android.shadereditor.engine.error.EngineError;
 import de.markusfisch.android.shadereditor.engine.error.EngineException;
 import de.markusfisch.android.shadereditor.engine.error.ShaderErrorParser;
 
-public final class ShaderCache implements ShaderIntrospector {
+public final class ShaderCache implements ShaderIntrospector, AutoCloseable {
 	private static final String TAG = "ShaderCache";
 	private final Map<ShaderAsset, Program> cache = new HashMap<>();
 
@@ -27,7 +27,11 @@ public final class ShaderCache implements ShaderIntrospector {
 		return cache.computeIfAbsent(s, this::build);
 	}
 
-	public void clear() {
+	@Override
+	public void close() {
+		for (var program : cache.values()) {
+			GLES32.glDeleteProgram(program.programId());
+		}
 		cache.clear();
 	}
 

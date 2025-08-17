@@ -171,7 +171,8 @@ public class AndroidEngineBridge {
 				assetStreamProvider,
 				this.glSurfaceView,
 				shaderExecutionListener,
-				this.fps);
+				this.fps,
+				() -> this.quality);
 
 		glSurfaceView.setEGLContextClientVersion(3);
 		glSurfaceView.setRenderer(rendererBridge);
@@ -343,6 +344,7 @@ public class AndroidEngineBridge {
 		private final ShaderExecutionListener listener;
 		private final List<EngineError> engineErrors = new ArrayList<>();
 		private final ObservableValue<Integer> fps;
+		private final Supplier<Float> qualityProvider;
 		@NonNull
 		private final GlesRenderer renderer;
 		@Nullable
@@ -354,13 +356,14 @@ public class AndroidEngineBridge {
 				@NonNull AssetStreamProvider assetStreamProvider,
 				@NonNull GLSurfaceView glSurfaceView,
 				@NonNull ShaderExecutionListener listener,
-				@NonNull ObservableValue<Integer> fps) {
+				@NonNull ObservableValue<Integer> fps, Supplier<Float> qualityProvider) {
 			this.plugins = plugins;
 			this.assetStreamProvider = assetStreamProvider;
 			this.glSurfaceView = glSurfaceView;
 			this.listener = listener;
 			this.renderer = new GlesRenderer();
 			this.fps = fps;
+			this.qualityProvider = qualityProvider;
 		}
 
 		@Override
@@ -445,7 +448,8 @@ public class AndroidEngineBridge {
 					assetProvider,
 					renderer,
 					renderer,
-					defaultBindings);
+					defaultBindings,
+					qualityProvider.get());
 			var facade = engine.getFacade();
 
 			facade.registerAssetLoader(ShaderAsset.class,

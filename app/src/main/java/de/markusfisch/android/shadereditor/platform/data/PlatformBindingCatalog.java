@@ -21,7 +21,7 @@ public final class PlatformBindingCatalog {
 	private static final List<UniformDefinition<?>> BINDINGS = List.of(
 			UniformDefinition.from(
 					"resolution",
-					EngineDataKeys.VIEWPORT_RESOLUTION,
+					EngineDataKeys.RENDER_TARGET_RESOLUTION,
 					v -> new Uniform.FloatVec2(Viewport.toVec2(v)),
 					"vec2",
 					R.string.resolution_in_pixels

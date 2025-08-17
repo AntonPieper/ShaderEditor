@@ -1,3 +1,4 @@
+// engine/EngineController.java
 package de.markusfisch.android.shadereditor.engine;
 
 import androidx.annotation.NonNull;
@@ -21,6 +22,7 @@ import de.markusfisch.android.shadereditor.engine.data.ObservableDataProvider;
 import de.markusfisch.android.shadereditor.engine.pipeline.CommandBuffer;
 import de.markusfisch.android.shadereditor.engine.scene.UniformBinding;
 import de.markusfisch.android.shadereditor.engine.util.observer.ObservableValue;
+import de.markusfisch.android.shadereditor.engine.util.observer.ReadOnlyObservable;
 
 public class EngineController {
 	@NonNull
@@ -37,7 +39,10 @@ public class EngineController {
 	@NonNull
 	private final PluginManager pluginManager;
 	@NonNull
-	private final ObservableValue<Viewport> viewport = ObservableValue.of(new Viewport(0, 0));
+	private final ObservableValue<Viewport> physicalViewport = ObservableValue.of(
+			new Viewport(0, 0));
+	@NonNull
+	private final ReadOnlyObservable<Viewport> renderTargetViewport;
 	@NonNull
 	private final CommandBuffer currentFrame = new CommandBuffer(new ArrayList<>());
 
@@ -49,7 +54,8 @@ public class EngineController {
 			@NonNull AssetProvider assetProvider,
 			@NonNull Renderer renderer,
 			@NonNull ShaderIntrospector shaderIntrospector,
-			@NonNull List<UniformBinding<?>> defaultBindings
+			@NonNull List<UniformBinding<?>> defaultBindings,
+			float quality
 	) {
 		this.dataProviderManager = new CachingDataProviderManager(dataProviderManager);
 		this.assetProvider = assetProvider;
@@ -57,9 +63,20 @@ public class EngineController {
 		this.shaderIntrospector = shaderIntrospector;
 		this.defaultBindings = List.copyOf(defaultBindings);
 		this.pluginManager = new PluginManager();
+
+		// Create a derived viewport for the render target, scaled by the quality factor.
+		// Ensure that the dimensions are at least 1.
+		this.renderTargetViewport = physicalViewport.map(
+				physicalSize -> physicalSize.map(
+						dimension -> Math.max(1, (int) (dimension * quality))));
+
+		// Register providers for both physical and render target resolutions.
 		facade.registerProviderFactory(
-				EngineDataKeys.VIEWPORT_RESOLUTION,
-				() -> new ObservableDataProvider<>(viewport));
+				EngineDataKeys.PHYSICAL_VIEWPORT_RESOLUTION,
+				() -> new ObservableDataProvider<>(physicalViewport));
+		facade.registerProviderFactory(
+				EngineDataKeys.RENDER_TARGET_RESOLUTION,
+				() -> new ObservableDataProvider<>(renderTargetViewport));
 	}
 
 	public void setup() {
@@ -69,7 +86,7 @@ public class EngineController {
 	}
 
 	public void setViewport(int width, int height) {
-		viewport.set(new Viewport(width, height));
+		physicalViewport.set(new Viewport(width, height));
 		renderer.onSurfaceChanged(width, height);
 	}
 

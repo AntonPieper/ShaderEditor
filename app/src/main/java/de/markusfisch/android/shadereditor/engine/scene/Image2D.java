@@ -32,5 +32,14 @@ public sealed interface Image2D extends GpuObject {
 			@NonNull TextureInternalFormat internalFormat,
 			@NonNull TextureParameters sampling
 	) implements Image2D {
+		/**
+		 * Validates that the dimensions for a render target are positive.
+		 */
+		public RenderTarget {
+			if (width <= 0 || height <= 0) {
+				throw new IllegalArgumentException(
+						"RenderTarget dimensions must be positive. Got " + width + "x" + height);
+			}
+		}
 	}
 }

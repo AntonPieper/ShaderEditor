@@ -24,7 +24,7 @@ public final class BindProgramHandler implements GlesCommandHandler<GpuCommand.B
 
 	@Override
 	public void handle(@NonNull GpuCommand.BindProgram cmd, @NonNull GlesRenderContext ctx) {
-		var program = shaders.get(cmd.material().shader());
+		var program = shaders.get(cmd.shader());
 		GLES32.glUseProgram(program.programId());
 		ctx.setCurrentProgram(program);
 	}

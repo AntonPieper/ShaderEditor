@@ -31,7 +31,7 @@ public final class SetUniformsHandler implements GlesCommandHandler<GpuCommand.S
 			Log.w(TAG, "SetUniforms skipped: no program bound yet.");
 			return;
 		}
-		for (var e : cmd.material().uniforms().entrySet()) {
+		for (var e : cmd.uniforms().entrySet()) {
 			int loc = program.locate(e.getKey());
 			if (loc >= 0) binder.bind(loc, e.getValue());
 		}

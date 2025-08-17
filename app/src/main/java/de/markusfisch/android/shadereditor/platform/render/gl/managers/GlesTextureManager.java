@@ -17,7 +17,7 @@ import de.markusfisch.android.shadereditor.engine.graphics.TextureWrap;
 import de.markusfisch.android.shadereditor.engine.scene.Image2D;
 import de.markusfisch.android.shadereditor.platform.render.gl.GlesUtil;
 
-public class GlesTextureManager {
+public class GlesTextureManager implements AutoCloseable {
 	private final Map<Image2D, Integer> textureCache = new HashMap<>();
 
 	public int getTextureHandle(@NonNull Image2D img) {
@@ -25,9 +25,10 @@ public class GlesTextureManager {
 				this::createTextureFor);
 	}
 
-	public void destroy() {
+	public void close() {
 		// Delete all textures
-		int[] textureHandles = textureCache.values().stream().mapToInt(i -> i).toArray();
+		int[] textureHandles =
+				textureCache.values().stream().mapToInt(Integer::intValue).toArray();
 		if (textureHandles.length > 0) {
 			GLES30.glDeleteTextures(textureHandles.length, textureHandles, 0);
 		}
