@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import de.markusfisch.android.shadereditor.engine.Engine;
 import de.markusfisch.android.shadereditor.engine.Plugin;
@@ -40,15 +41,33 @@ public class ShaderRunnerPlugin implements Plugin {
 	private ShaderIntrospector.ShaderMetadata shaderMetadata;
 	private Geometry screenQuad;
 
+	// === State for Ping-Pong Buffering ===
+	private boolean backbufferIsActive = false;
+	private Framebuffer fboA, fboB;
+	private Image2D.RenderTarget textureA, textureB;
+
+	// Pointers to the current source (for reading) and destination (for writing)
+	private Framebuffer sourceFbo, destFbo;
+	private Image2D sourceTexture;
+
 	@Override
 	public void onSetup(@NonNull Engine engine) {
 		var shader = engine.loadAsset(AssetRef.uri("./main.frag"), ShaderAsset.class);
 		this.shaderMaterial = new Material(shader);
 		this.shaderMetadata = engine.getShaderIntrospector().introspect(shader);
-		binder = new UniformBinder(engine.getDefaultBindings());
+		this.binder = new UniformBinder(engine.getDefaultBindings());
+
+		var activeUniforms = shaderMetadata.getActiveUniformNames();
+
+		// Check if the shader actually uses a backbuffer uniform.
+		this.backbufferIsActive = activeUniforms.contains("backbuffer");
+
+		// Load all other texture uniforms defined in shader comments.
 		var samplers = SamplerCommentParser.parse(
 				shader.fragmentSource(),
-				shaderMetadata.getActiveUniformNames());
+				activeUniforms.stream()
+						.filter(v -> !v.equals("backbuffer"))
+						.collect(Collectors.toSet()));
 		for (var entry : samplers.entrySet()) {
 			var binding = entry.getValue();
 			var tex = engine.loadAsset(binding.assetIdentifier(), TextureAsset.class);
@@ -60,7 +79,7 @@ public class ShaderRunnerPlugin implements Plugin {
 							binding.parameters())));
 		}
 
-		// Create all necessary resources once
+		// Create the fullscreen quad geometry once.
 		this.screenQuad = Geometry.fullscreenQuad();
 	}
 
@@ -70,22 +89,80 @@ public class ShaderRunnerPlugin implements Plugin {
 		Viewport physicalViewport = engine.getData(EngineDataKeys.PHYSICAL_VIEWPORT_RESOLUTION);
 		Viewport renderTargetViewport = engine.getData(EngineDataKeys.RENDER_TARGET_RESOLUTION);
 
-		// Ensure we have all data needed to proceed
 		if (physicalViewport == null || renderTargetViewport == null ||
-				physicalViewport.width() <= 0 || physicalViewport.height() <= 0) {
+				renderTargetViewport.width() <= 0 || renderTargetViewport.height() <= 0) {
 			return; // Not ready yet, skip this frame.
 		}
 
-		// Update uniforms for the main shader pass
+		// Update standard uniforms (time, resolution, etc.) for the main shader pass
 		binder.apply(engine, shaderMaterial, shaderMetadata.getActiveUniformNames());
 
-		// If render target is smaller than physical, use an offscreen buffer.
-		if (renderTargetViewport.width() != physicalViewport.width() ||
-				renderTargetViewport.height() != physicalViewport.height()) {
-			// --- Quality scaling path ---
-			// Recreate FBO if resolution has changed
+		if (backbufferIsActive) {
+			renderWithBackbuffer(engine, renderTargetViewport);
+		} else {
+			renderSimple(engine, physicalViewport, renderTargetViewport);
+		}
+	}
 
+	@Override
+	public void onTeardown(@NonNull Engine engine) {
+		Log.d("ShaderRunnerPlugin", "Teardown");
+		// Nullify resources to allow garbage collection
+		fboA = fboB = sourceFbo = destFbo = null;
+		textureA = textureB = null;
+		sourceTexture = null;
+	}
+
+	private void renderWithBackbuffer(
+			@NonNull Engine engine,
+			@NonNull Viewport renderTargetViewport) {
+		// Lazily create or recreate FBOs if the viewport size has changed
+		if (textureA == null || textureA.width() != renderTargetViewport.width() ||
+				textureA.height() != renderTargetViewport.height()) {
+			Log.d("ShaderRunnerPlugin", "Creating ping-pong buffers for size: " +
+					renderTargetViewport.width() + "x" + renderTargetViewport.height());
+			recreatePingPongBuffers(renderTargetViewport);
+		}
+
+		// 1. Set the backbuffer uniform to the texture from the *previous* frame
+		shaderMaterial.setUniform("backbuffer", new Uniform.Sampler2D(sourceTexture));
+
+		// 2. Define the main pass to render from the source to the destination
+		var mainPass = new Pass(
+				destFbo,
+				null, // No clear
+				new ViewportRect(0, 0, renderTargetViewport.width(),
+						renderTargetViewport.height()),
+				List.of(new DrawCall(screenQuad, shaderMaterial, Primitive.TRIANGLE_STRIP))
+		);
+
+		// 3. Compile the main pass and add a final command to blit the result to the screen
+		var commands = new ArrayList<>(PassCompiler.compile(mainPass).cmds());
+		commands.add(new GpuCommand.Blit(
+				destFbo.colorAttachments().get(0).image(),
+				Framebuffer.defaultFramebuffer()
+		));
+		engine.submitCommands(new CommandBuffer(commands));
+
+		// 4. SWAP the buffers for the next frame
+		Framebuffer tempFbo = destFbo;
+		destFbo = sourceFbo;
+		sourceFbo = tempFbo;
+		sourceTexture = sourceFbo.colorAttachments().get(0).image();
+	}
+
+	private void renderSimple(
+			@NonNull Engine engine,
+			@NonNull Viewport physicalViewport,
+			@NonNull Viewport renderTargetViewport) {
+		// This is the original logic for when no backbuffer is needed.
+		boolean useQualityScaling = renderTargetViewport.width() != physicalViewport.width() ||
+				renderTargetViewport.height() != physicalViewport.height();
+
+		if (useQualityScaling) {
+			// --- Quality scaling path ---
 			var offscreenTexture = new Image2D.RenderTarget(
+					"offscreen", // A consistent name for caching
 					renderTargetViewport.width(),
 					renderTargetViewport.height(),
 					TextureInternalFormat.RGBA8,
@@ -96,22 +173,18 @@ public class ShaderRunnerPlugin implements Plugin {
 					renderTargetViewport.height(),
 					List.of(new ColorAttachment(offscreenTexture))
 			);
-
-			// Define the render-to-texture pass
 			var mainPass = new Pass(
 					offscreenFbo,
-					null, // No clear, just draw over
+					null, // No clear
 					new ViewportRect(0, 0, renderTargetViewport.width(),
 							renderTargetViewport.height()),
 					List.of(new DrawCall(screenQuad, shaderMaterial, Primitive.TRIANGLE_STRIP))
 			);
 
-			// Compile the main pass and add the blit command
 			var mainCommands = PassCompiler.compile(mainPass);
 			var allCommands = new ArrayList<>(mainCommands.cmds());
 			allCommands.add(new GpuCommand.Blit(offscreenTexture,
 					Framebuffer.defaultFramebuffer()));
-
 			engine.submitCommands(new CommandBuffer(allCommands));
 		} else {
 			// --- Full quality fast path ---
@@ -121,8 +194,30 @@ public class ShaderRunnerPlugin implements Plugin {
 		}
 	}
 
-	@Override
-	public void onTeardown(@NonNull Engine engine) {
-		Log.d("ShaderRunnerPlugin", "Teardown");
+	private void recreatePingPongBuffers(@NonNull Viewport viewport) {
+		textureA = new Image2D.RenderTarget(
+				"ping", // Unique name
+				viewport.width(),
+				viewport.height(),
+				TextureInternalFormat.RGBA8,
+				TextureParameters.DEFAULT
+		);
+		textureB = new Image2D.RenderTarget(
+				"pong", // Unique name
+				viewport.width(),
+				viewport.height(),
+				TextureInternalFormat.RGBA8,
+				TextureParameters.DEFAULT
+		);
+
+		fboA = new Framebuffer(viewport.width(), viewport.height(),
+				List.of(new ColorAttachment(textureA)));
+		fboB = new Framebuffer(viewport.width(), viewport.height(),
+				List.of(new ColorAttachment(textureB)));
+
+		// Set initial state
+		destFbo = fboA;
+		sourceFbo = fboB;
+		sourceTexture = textureB;
 	}
 }

@@ -27,6 +27,7 @@ public sealed interface Image2D extends GpuObject {
 	 * Immutable renderable + sample-able image (attach to FBO, then sample later).
 	 */
 	record RenderTarget(
+			@NonNull String name,
 			int width,
 			int height,
 			@NonNull TextureInternalFormat internalFormat,

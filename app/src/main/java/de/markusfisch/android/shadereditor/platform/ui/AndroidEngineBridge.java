@@ -1,4 +1,3 @@
-// platform/ui/AndroidEngineBridge.java
 package de.markusfisch.android.shadereditor.platform.ui;
 
 import android.content.Context;
@@ -19,6 +18,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -429,7 +432,27 @@ public class AndroidEngineBridge {
 
 		@Nullable
 		public byte[] getThumbnail() {
-			return renderer.getThumbnail();
+			if (engineController == null) {
+				return null;
+			}
+
+			// Create a Callable that will be executed on the GL thread.
+			// Wrap the Callable in a FutureTask. FutureTask implements Runnable.
+			var futureTask = new FutureTask<>(renderer::readThumbnailPixels);
+
+			// Queue the FutureTask to be run on the GL thread.
+			glSurfaceView.queueEvent(futureTask);
+
+			try {
+				// Block the calling thread (UI thread) and wait for the result.
+				// Add a timeout to prevent ANRs.
+				return futureTask.get(1000, TimeUnit.MILLISECONDS);
+			} catch (InterruptedException | ExecutionException | TimeoutException e) {
+				Log.e("AndroidEngineBridge", "Failed to get thumbnail", e);
+				// Cancel the task if it's still running on timeout to be safe.
+				futureTask.cancel(true);
+				return null;
+			}
 		}
 
 		@NonNull

@@ -43,8 +43,6 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 
 	@Nullable
 	private Viewport lastViewport;
-	@Nullable
-	private byte[] thumbnail;
 
 	public GlesRenderer() {
 	}
@@ -77,7 +75,6 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 						binder,
 						() -> lastViewport));
 		lastViewport = null;
-		thumbnail = null;
 		GLES32.glClearColor(0.1f, 0.1f, 0.1f, 1f);
 	}
 
@@ -98,7 +95,6 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 		for (GpuCommand c : commands.cmds()) {
 			dispatcher.dispatch(c, ctx);
 		}
-		captureThumbnail();
 	}
 
 	@Override
@@ -125,19 +121,15 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 	}
 
 	@Nullable
-	public byte[] getThumbnail() {
-		return thumbnail;
-	}
-
-	private void captureThumbnail() {
+	public byte[] readThumbnailPixels() {
 		if (lastViewport == null || lastViewport.width() <= 0 || lastViewport.height() <= 0) {
-			return;
+			return null;
 		}
 		// Scale down to a thumbnail size.
 		final int thumbWidth = 128;
 		final int thumbHeight =
 				(int) ((float) lastViewport.height() / lastViewport.width() * thumbWidth);
-		if (thumbHeight <= 0) return;
+		if (thumbHeight <= 0) return null;
 
 
 		final int size = thumbWidth * thumbHeight * 4;
@@ -150,6 +142,7 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 				GLES32.GL_RGBA,
 				GLES32.GL_UNSIGNED_BYTE,
 				buffer);
+		GlesUtil.checkErrors("glReadPixels");
 
 		// Invert vertically because of OpenGL's coordinate system.
 		byte[] pixels = new byte[size];
@@ -162,6 +155,6 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 					thumbWidth * 4
 			);
 		}
-		this.thumbnail = invertedPixels;
+		return invertedPixels;
 	}
 }
