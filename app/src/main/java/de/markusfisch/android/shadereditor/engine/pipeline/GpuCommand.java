@@ -6,13 +6,13 @@ import java.util.Map;
 
 import de.markusfisch.android.shadereditor.engine.asset.ShaderAsset;
 import de.markusfisch.android.shadereditor.engine.graphics.Primitive;
-import de.markusfisch.android.shadereditor.engine.scene.Framebuffer;
 import de.markusfisch.android.shadereditor.engine.scene.Geometry;
-import de.markusfisch.android.shadereditor.engine.scene.Image2D;
+import de.markusfisch.android.shadereditor.engine.scene.RenderTarget;
+import de.markusfisch.android.shadereditor.engine.scene.TextureSource;
 import de.markusfisch.android.shadereditor.engine.scene.Uniform;
 
 public sealed interface GpuCommand {
-	record BeginPass(@NonNull Framebuffer target, ClearColor clearColor, ViewportRect viewport)
+	record BeginPass(@NonNull RenderTarget target, ClearColor clearColor, ViewportRect viewport)
 			implements GpuCommand {
 	}
 
@@ -33,6 +33,6 @@ public sealed interface GpuCommand {
 	}
 
 	// Utilities
-	record Blit(@NonNull Image2D src, @NonNull Framebuffer dst) implements GpuCommand {
+	record Blit(@NonNull TextureSource src, @NonNull RenderTarget dst) implements GpuCommand {
 	}
 }

@@ -11,6 +11,9 @@ import android.widget.Spinner;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.ViewTreeLifecycleOwner;
 
 import java.io.ByteArrayInputStream;
 import java.net.URI;
@@ -18,6 +21,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +51,7 @@ import de.markusfisch.android.shadereditor.platform.asset.AndroidTextureLoader;
 import de.markusfisch.android.shadereditor.platform.asset.ShaderAssetLoader;
 import de.markusfisch.android.shadereditor.platform.data.PlatformBindingCatalog;
 import de.markusfisch.android.shadereditor.platform.plugin.AndroidDataPlugin;
+import de.markusfisch.android.shadereditor.platform.plugin.BackbufferPlugin;
 import de.markusfisch.android.shadereditor.platform.plugin.DeviceStatePlugin;
 import de.markusfisch.android.shadereditor.platform.plugin.InteractionPlugin;
 import de.markusfisch.android.shadereditor.platform.render.gl.GlesRenderer;
@@ -166,7 +171,8 @@ public class AndroidEngineBridge {
 								() -> new InteractionPlugin(
 										touchPositionObservable,
 										wallpaperOffsetObservable
-								)
+								),
+								BackbufferPlugin::new
 						),
 						plugins.stream()
 				).toList()
@@ -180,6 +186,12 @@ public class AndroidEngineBridge {
 		glSurfaceView.setEGLContextClientVersion(3);
 		glSurfaceView.setRenderer(rendererBridge);
 		glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+		Objects.requireNonNull(ViewTreeLifecycleOwner.get(glSurfaceView)).getLifecycle().addObserver(new DefaultLifecycleObserver() {
+			@Override
+			public void onPause(@NonNull LifecycleOwner owner) {
+				rendererBridge.destroy();
+			}
+		});
 		glSurfaceView.setOnTouchListener(this::onTouchEvent);
 
 		this.qualitySpinner = qualitySpinner;
@@ -191,7 +203,6 @@ public class AndroidEngineBridge {
 	public void onPause() {
 		if (glSurfaceView.getVisibility() == View.VISIBLE) {
 			glSurfaceView.onPause();
-			rendererBridge.destroy();
 		}
 	}
 
@@ -233,10 +244,11 @@ public class AndroidEngineBridge {
 		shaderAsset.set(
 				new ShaderAsset(shaderAsset.get().vertexSource(), removeNonAscii(src)));
 
-		// Trigger a recreation of the GL context and the engine.
-		// This is the simplest way to ensure a clean state and is the
-		// core of the "destroy and try again" strategy.
+		// By pausing and resuming, we force GLSurfaceView to destroy and
+		// recreate the EGL context and surface, which in turn calls our
+		// RendererBridge.onSurfaceCreated with a clean slate.
 		if (glSurfaceView.getVisibility() == View.VISIBLE) {
+			rendererBridge.destroy();
 			glSurfaceView.onPause();
 			glSurfaceView.onResume();
 		}
@@ -371,13 +383,13 @@ public class AndroidEngineBridge {
 
 		@Override
 		public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-			destroy(); // Ensure previous engine is gone.
 			engineErrors.clear();
 
 			frameCount = 0;
 			lastFpsTimestamp = System.nanoTime();
 
 			try {
+				// The renderer itself handles cleaning up its old resources.
 				engineController = createEngineController();
 				engineController.setup();
 			} catch (EngineException e) {
@@ -423,11 +435,18 @@ public class AndroidEngineBridge {
 		}
 
 		public void destroy() {
-			if (engineController != null) {
-				engineController.shutdown();
-				engineController = null;
+			// This can be called from the UI thread, so we must queue
+			// the actual resource cleanup on the GL thread.
+			glSurfaceView.queueEvent(() -> {
+				if (engineController != null) {
+					engineController.shutdown();
+					engineController = null;
+				}
+				// The renderer holds the actual GPU resources.
+				// Closing it will delete shaders, textures, FBOs etc.
+				renderer.close();
 				fps.set(-1);
-			}
+			});
 		}
 
 		@Nullable

@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.engine.Viewport;
+import de.markusfisch.android.shadereditor.engine.data.BackbufferDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.EngineDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.InteractionDataKeys;
 import de.markusfisch.android.shadereditor.engine.data.SensorDataKeys;
@@ -32,6 +33,13 @@ public final class PlatformBindingCatalog {
 					Uniform.FloatScalar::new,
 					"float",
 					R.string.time_in_seconds_since_load
+			),
+			UniformDefinition.from(
+					"backbuffer",
+					BackbufferDataKeys.BACKBUFFER_TEXTURE,
+					Uniform.Sampler2D::new,
+					"sampler2D",
+					R.string.previous_frame
 			),
 			UniformDefinition.from(
 					"nightMode",

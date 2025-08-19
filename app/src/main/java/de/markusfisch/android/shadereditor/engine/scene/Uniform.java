@@ -37,6 +37,6 @@ public sealed interface Uniform {
 		}
 	}
 
-	record Sampler2D(@NonNull Image2D image) implements Uniform {
+	record Sampler2D(@NonNull TextureSource source) implements Uniform {
 	}
 }

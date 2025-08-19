@@ -1,4 +1,3 @@
-// engine/scene/Image2D.java
 package de.markusfisch.android.shadereditor.engine.scene;
 
 import androidx.annotation.NonNull;

@@ -1,15 +1,13 @@
 package de.markusfisch.android.shadereditor.platform.render.gl;
 
 import android.opengl.GLES32;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
 
 import de.markusfisch.android.shadereditor.engine.Renderer;
 import de.markusfisch.android.shadereditor.engine.ShaderIntrospector;
@@ -31,51 +29,56 @@ import de.markusfisch.android.shadereditor.platform.render.gl.handlers.EndPassHa
 import de.markusfisch.android.shadereditor.platform.render.gl.handlers.SetUniformsHandler;
 import de.markusfisch.android.shadereditor.platform.render.gl.managers.GlesFramebufferManager;
 import de.markusfisch.android.shadereditor.platform.render.gl.managers.GlesGeometryManager;
+import de.markusfisch.android.shadereditor.platform.render.gl.managers.GlesSwapchainManager;
 import de.markusfisch.android.shadereditor.platform.render.gl.managers.GlesTextureManager;
 
 public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoCloseable {
-	@NonNull
-	Deque<AutoCloseable> closeables = new ArrayDeque<>();
+	private final static String TAG = "GlesRenderer";
 	@Nullable
 	ShaderIntrospector introspector;
 	@Nullable
 	private GlesCommandDispatcher dispatcher;
-
+	@Nullable
+	private GlesSwapchainManager swapchainManager;
+	@Nullable
+	private GlesGeometryManager geometryManager;
+	@Nullable
+	private GlesTextureManager textureManager;
+	@Nullable
+	private GlesFramebufferManager framebufferManager;
+	@Nullable
+	private ShaderCache shaderCache;
 	@Nullable
 	private Viewport lastViewport;
 
-	public GlesRenderer() {
-	}
-
 	@Override
 	public void onSurfaceCreated() {
-		var geometries = new GlesGeometryManager();
-		var textures = new GlesTextureManager();
-		var framebuffers = new GlesFramebufferManager(textures);
-		var shaders = new ShaderCache();
-		this.introspector = shaders;
-		closeables.addAll(List.of(
-				geometries,
-				textures,
-				framebuffers,
-				shaders
-		));
-		var binder = new GlesBinder(textures);
+		// Ensure any previous resources are released before creating new ones.
+		close();
+
+		geometryManager = new GlesGeometryManager();
+		textureManager = new GlesTextureManager();
+		framebufferManager = new GlesFramebufferManager(textureManager);
+		swapchainManager = new GlesSwapchainManager(textureManager, framebufferManager);
+		shaderCache = new ShaderCache();
+		this.introspector = shaderCache;
+
+		var binder = new GlesBinder(textureManager, swapchainManager);
 		dispatcher = new GlesCommandDispatcher()
-				.register(new BeginPassHandler(framebuffers, binder))
+				.register(new BeginPassHandler(framebufferManager, swapchainManager, binder))
 				.register(new EndPassHandler())
-				.register(new BindProgramHandler(shaders))
+				.register(new BindProgramHandler(shaderCache))
 				.register(new SetUniformsHandler(binder))
-				.register(new BindGeometryHandler(geometries))
+				.register(new BindGeometryHandler(geometryManager))
 				.register(new DrawHandler())
 				.register(new BlitHandler(
-						shaders,
-						geometries,
-						framebuffers,
-						binder,
-						() -> lastViewport));
-		lastViewport = null;
-		GLES32.glClearColor(0.1f, 0.1f, 0.1f, 1f);
+						shaderCache,
+						geometryManager,
+						framebufferManager,
+						swapchainManager,
+						binder));
+
+		GLES32.glClearColor(0.0f, 0.0f, 0.0f, 1f);
 	}
 
 	@Override
@@ -86,27 +89,39 @@ public final class GlesRenderer implements Renderer, ShaderIntrospector, AutoClo
 
 	@Override
 	public void execute(@NonNull CommandBuffer commands) {
-		if (dispatcher == null) {
-			throw new EngineException(new EngineError.GenericError(
-					"Renderer not initialized: execute called before onSurfaceCreated",
-					null));
+		if (dispatcher == null || lastViewport == null) {
+			// Don't try to render if the surface isn't fully initialized.
+			return;
 		}
-		var ctx = new GlesRenderContext();
+		var ctx = new GlesRenderContext(lastViewport);
 		for (GpuCommand c : commands.cmds()) {
 			dispatcher.dispatch(c, ctx);
 		}
 	}
 
 	@Override
-	public void close() {
-		for (var closeable : closeables) {
-			try {
-				closeable.close();
-			} catch (Exception e) {
-				throw new EngineException(
-						new EngineError.GenericError("Could not close GlesRenderer", e));
-			}
+	public void endFrame() {
+		if (swapchainManager != null) {
+			swapchainManager.swapAll();
 		}
+	}
+
+	@Override
+	public void close() {
+		if (swapchainManager != null) swapchainManager.close();
+		if (framebufferManager != null) framebufferManager.close();
+		if (textureManager != null) textureManager.close();
+		if (geometryManager != null) geometryManager.close();
+		if (shaderCache != null) shaderCache.close();
+
+		swapchainManager = null;
+		framebufferManager = null;
+		textureManager = null;
+		geometryManager = null;
+		shaderCache = null;
+		introspector = null;
+		dispatcher = null;
+		Log.d(TAG, "GLES resources closed.");
 	}
 
 	@NonNull

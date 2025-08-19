@@ -33,7 +33,10 @@ public final class SetUniformsHandler implements GlesCommandHandler<GpuCommand.S
 		}
 		for (var e : cmd.uniforms().entrySet()) {
 			int loc = program.locate(e.getKey());
-			if (loc >= 0) binder.bind(loc, e.getValue());
+			if (loc >= 0) {
+				// Pass the viewport from the context to the binder.
+				binder.bind(loc, e.getValue(), ctx.getViewport());
+			}
 		}
 	}
 }

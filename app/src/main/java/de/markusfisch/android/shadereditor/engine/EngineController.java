@@ -107,7 +107,10 @@ public class EngineController {
 			renderer.execute(currentFrame);
 		}
 
-		// 4. Post-render hooks
+		// 4. End of frame hooks (e.g., swap feedback buffers)
+		renderer.endFrame();
+
+		// 5. Post-render hooks
 		pluginManager.postRender(facade);
 	}
 

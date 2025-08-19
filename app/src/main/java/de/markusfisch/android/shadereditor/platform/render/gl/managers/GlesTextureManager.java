@@ -18,16 +18,17 @@ import de.markusfisch.android.shadereditor.engine.scene.Image2D;
 import de.markusfisch.android.shadereditor.platform.render.gl.GlesUtil;
 
 public class GlesTextureManager implements AutoCloseable {
+	private static final String TAG = "GlesTextureManager";
 	private final Map<Image2D, Integer> textureCache = new HashMap<>();
 
 	public int getTextureHandle(@NonNull Image2D img) {
-		return textureCache.computeIfAbsent(img,
-				this::createTextureFor);
+		return textureCache.computeIfAbsent(img, this::createTextureFor);
 	}
 
+	@Override
 	public void close() {
 		// Delete all textures
-		int[] textureHandles =
+		var textureHandles =
 				textureCache.values().stream().mapToInt(Integer::intValue).toArray();
 		if (textureHandles.length > 0) {
 			GLES30.glDeleteTextures(textureHandles.length, textureHandles, 0);
@@ -42,52 +43,51 @@ public class GlesTextureManager implements AutoCloseable {
 
 		GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, id[0]);
 
-		final int internal;
-		final int width;
-		final int height;
-		final TextureParameters p;
-		final int uploadFormat;
-		final int uploadType;
-
 		switch (img) {
 			case Image2D.FromAsset fa -> {
-				internal = toGL(fa.internalFormat());
-				width = fa.asset().width();
-				height = fa.asset().height();
-				p = fa.sampling();
-				uploadFormat = fa.asset().format();
-				uploadType = GLES30.GL_UNSIGNED_BYTE;
+				int internal = toGL(fa.internalFormat());
+				int width = fa.asset().width();
+				int height = fa.asset().height();
+				TextureParameters p = fa.sampling();
+				int uploadFormat = fa.asset().format();
+				int uploadType = GLES30.GL_UNSIGNED_BYTE;
+
 				GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, internal,
 						width, height, 0, uploadFormat, uploadType, fa.asset().pixels());
 				if (requiresMips(p.minFilter()) || p.mipmaps()) {
 					GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
 				}
+
+				// Set parameters from asset
+				GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S,
+						toGL(p.wrapS()));
+				GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T,
+						toGL(p.wrapT()));
+				GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER,
+						toGL(p.minFilter()));
+				GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER,
+						toGL(p.magFilter()));
+
+				if (!Float.isNaN(p.anisotropy()) && p.anisotropy() > 1f) {
+					setAnisotropy(p.anisotropy());
+				}
 			}
 			case Image2D.RenderTarget rt -> {
-				internal = toGL(rt.internalFormat());
-				width = rt.width();
-				height = rt.height();
-				p = rt.sampling();
-				uploadFormat = GLES30.GL_RGBA;
-				uploadType = GLES30.GL_UNSIGNED_BYTE;
-				GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, internal,
-						width, height, 0, uploadFormat, uploadType, null);
+				int internal = toGL(rt.internalFormat());
+				int width = rt.width();
+				int height = rt.height();
+
+				// For RenderTargets, always use simple, safe parameters to avoid driver bugs.
+				GLES30.glTexStorage2D(GLES30.GL_TEXTURE_2D, 1, internal, width, height);
+				GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER,
+						GLES30.GL_LINEAR);
+				GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER,
+						GLES30.GL_LINEAR);
+				GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S,
+						GLES30.GL_CLAMP_TO_EDGE);
+				GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T,
+						GLES30.GL_CLAMP_TO_EDGE);
 			}
-		}
-
-		// Wrap
-		GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, toGL(p.wrapS()));
-		GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, toGL(p.wrapT()));
-
-		// Filters
-		GLES30.glTexParameteri(
-				GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, toGL(p.minFilter()));
-		GLES30.glTexParameteri(
-				GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, toGL(p.magFilter()));
-
-		// Anisotropy (extension)
-		if (!Float.isNaN(p.anisotropy()) && p.anisotropy() > 1f) {
-			setAnisotropy(p.anisotropy());
 		}
 
 		GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0);
