@@ -260,7 +260,7 @@ public class AndroidEngineBridge {
 	private boolean onTouchEvent(View v, @NonNull MotionEvent event) {
 		if (event.getAction() == MotionEvent.ACTION_DOWN ||
 				event.getAction() == MotionEvent.ACTION_MOVE) {
-			touchPositionObservable.set(new Vec2(event.getX(), event.getY()));
+			touchPositionObservable.set(new Vec2(event.getX(), v.getHeight() - event.getY()));
 		}
 		return true;
 	}
