@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
@@ -74,8 +73,8 @@ public class ShaderEditor extends LineNumberEditText {
 
 	private final int[] colors = new int[Highlight.values().length];
 	private final TokenListUpdater tokenListUpdater = new TokenListUpdater(
-			(tokens, text) -> post(
-					() -> provideCompletions(tokens, text)));
+			(tokenRevision, tokens, text) -> post(
+					() -> applyTokenizedResult(tokenRevision, tokens, text)));
 	private final Runnable updateRunnable = new Runnable() {
 		@Override
 		public void run() {
@@ -378,7 +377,7 @@ public class ShaderEditor extends LineNumberEditText {
 				codeCompletionListener != null &&
 				getSelectionStart() == getSelectionEnd() &&
 				!isApplyingEdit &&
-				tokenListUpdater.isDone()) {
+				tokenListUpdater.isDone(revision)) {
 			provideCompletions(tokens, text);
 		}
 	}
@@ -526,6 +525,28 @@ public class ShaderEditor extends LineNumberEditText {
 		isUserInteraction = true;
 	}
 
+	private void applyTokenizedResult(
+			int tokenRevision,
+			@NonNull List<Token> newTokens,
+			@NonNull CharSequence text) {
+		if (tokenRevision != revision) {
+			return;
+		}
+
+		Editable editable = getText();
+		if (editable == null || !text.toString().contentEquals(editable)) {
+			return;
+		}
+
+		highlightWithoutChange(editable);
+
+		if (codeCompletionListener != null &&
+				getSelectionStart() == getSelectionEnd() &&
+				!isApplyingEdit) {
+			provideCompletions(newTokens, editable);
+		}
+	}
+
 	private Editable highlight(@NonNull Editable e, boolean complete) {
 		int length = e.length();
 
@@ -548,40 +569,91 @@ public class ShaderEditor extends LineNumberEditText {
 			clearSpans(e, 0, length, ForegroundColorSpan.class);
 			return e;
 		}
-		List<Token> newTokens = tokenListUpdater.ensureUpdated(e, revision);
+		List<Token> newTokens = tokenListUpdater.getCompletedTokens(revision);
+		if (newTokens == null) {
+			if (!complete) {
+				return e;
+			}
+			newTokens = TokenizeCalculation.tokenize(e.toString());
+			tokenListUpdater.setCompleted(revision, newTokens);
+		}
 
-		if (complete) {
-			clearSpans(e, 0, length, ForegroundColorSpan.class);
+		applyHighlightTokens(e, newTokens, complete);
+
+		return e;
+	}
+
+	private void applyHighlightTokens(
+			@NonNull Editable e,
+			@NonNull List<Token> newTokens,
+			boolean complete) {
+		if (complete || tokens.isEmpty() || newTokens.isEmpty()) {
+			clearSpans(e, 0, e.length(), ForegroundColorSpan.class);
 			for (Token token : newTokens) {
-				@ColorInt int color = colors[Highlight.from(token.type()).ordinal()];
-				if (color != textColor) {
-					e.setSpan(
-							new ForegroundColorSpan(color),
-							token.startOffset(), token.endOffset(),
-							Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-				}
+				applyTokenSpan(e, token);
 			}
-		} else {
-			Lexer.Diff diff = Lexer.diff(tokens, newTokens);
-			if (diff.start <= diff.deleteEnd) {
-				int startOffset = newTokens.get(diff.start).startOffset();
-				int endOffset = newTokens.get(diff.insertEnd).endOffset();
-				clearSpans(e, startOffset, endOffset, ForegroundColorSpan.class);
-			}
-			for (int i = diff.start; i <= diff.insertEnd; ++i) {
-				Token token = newTokens.get(i);
-				e.setSpan(
-						new ForegroundColorSpan(
-								colors[Highlight.from(token.type()).ordinal()]),
-						token.startOffset(),
-						token.endOffset(),
-						Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-			}
+			tokens = newTokens;
+			return;
+		}
+
+		Lexer.Diff diff = Lexer.diff(tokens, newTokens);
+		int clearStart = getHighlightClearStart(diff, e.length());
+		int clearEnd = getHighlightClearEnd(diff, clearStart, e.length());
+		if (clearStart < clearEnd) {
+			clearSpans(e, clearStart, clearEnd, ForegroundColorSpan.class);
+		}
+
+		int insertEnd = Math.min(diff.insertEnd, newTokens.size() - 1);
+		for (int i = diff.start; i <= insertEnd; ++i) {
+			applyTokenSpan(e, newTokens.get(i));
 		}
 
 		tokens = newTokens;
+	}
 
-		return e;
+	private void applyTokenSpan(@NonNull Editable e, @NonNull Token token) {
+		@ColorInt int color = colors[Highlight.from(token.type()).ordinal()];
+		if (color == textColor) {
+			return;
+		}
+		e.setSpan(
+				new ForegroundColorSpan(color),
+				token.startOffset(),
+				token.endOffset(),
+				Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+	}
+
+	private int getHighlightClearStart(@NonNull Lexer.Diff diff, int textLength) {
+		int startOffset = textLength;
+		if (diff.start < diff.edited.size()) {
+			startOffset = Math.min(
+					startOffset,
+					diff.edited.get(diff.start).startOffset());
+		}
+		if (diff.start < diff.original.size()) {
+			startOffset = Math.min(
+					startOffset,
+					Math.min(diff.original.get(diff.start).startOffset(), textLength));
+		}
+		return Math.max(0, startOffset);
+	}
+
+	private int getHighlightClearEnd(
+			@NonNull Lexer.Diff diff,
+			int clearStart,
+			int textLength) {
+		int endOffset = clearStart;
+		if (diff.insertEnd >= diff.start && diff.insertEnd < diff.edited.size()) {
+			endOffset = Math.max(
+					endOffset,
+					diff.edited.get(diff.insertEnd).endOffset());
+		}
+		if (diff.deleteEnd >= diff.start && diff.deleteEnd < diff.original.size()) {
+			endOffset = Math.max(
+					endOffset,
+					Math.min(diff.original.get(diff.deleteEnd).endOffset(), textLength));
+		}
+		return Math.min(endOffset, textLength);
 	}
 
 	private void provideCompletions(
@@ -593,11 +665,16 @@ public class ShaderEditor extends LineNumberEditText {
 		}
 		int start = getSelectionStart();
 		Token tok = Lexer.findToken(tokens, start);
-		if (tok == null || tok.endOffset() >= text.length()) {
+		if (tok == null && start > 0) {
+			tok = Lexer.findToken(tokens, start - 1);
+		}
+		if (tok == null) {
 			listener.onCodeCompletions(DEFAULT_COMPLETIONS, 0);
 			return;
 		}
-		int positionInToken = start - tok.startOffset();
+		int positionInToken = Math.max(
+				0,
+				Math.min(start, tok.endOffset()) - tok.startOffset());
 		List<String> completions = Lexer.completeKeyword(
 				Lexer.tokenSource(tok, text).subSequence(0, positionInToken).toString(),
 				tok.category());
@@ -731,7 +808,7 @@ public class ShaderEditor extends LineNumberEditText {
 
 	@FunctionalInterface
 	interface OnTokenized {
-		void onTokens(@NonNull List<Token> tokens, @NonNull CharSequence text);
+		void onTokens(int revision, @NonNull List<Token> tokens, @NonNull CharSequence text);
 	}
 
 	private static class TabWidthSpan
@@ -781,18 +858,21 @@ public class ShaderEditor extends LineNumberEditText {
 
 	static class TokenizeCalculation implements Callable<List<Token>> {
 		private final String text;
+		private final int revision;
 		@NonNull
 		private final OnTokenized onTokenized;
 
 		public TokenizeCalculation(
+				int revision,
 				@NonNull String text,
 				@NonNull OnTokenized onTokenized) {
+			this.revision = revision;
 			this.text = text;
 			this.onTokenized = onTokenized;
 		}
 
-		@Override
-		public List<Token> call() {
+		@NonNull
+		private static List<Token> tokenize(@NonNull String text) {
 			Lexer lexer = new Lexer(text);
 			List<Token> tokens = new ArrayList<>();
 			for (Token token : lexer) {
@@ -801,7 +881,13 @@ public class ShaderEditor extends LineNumberEditText {
 					break;
 				}
 			}
-			onTokenized.onTokens(tokens, text);
+			return tokens;
+		}
+
+		@Override
+		public List<Token> call() {
+			List<Token> tokens = tokenize(text);
+			onTokenized.onTokens(revision, tokens, text);
 			return tokens;
 		}
 	}
@@ -813,54 +899,67 @@ public class ShaderEditor extends LineNumberEditText {
 		private final ExecutorService executor = Executors.newSingleThreadExecutor();
 		@Nullable
 		private FutureTask<List<Token>> task;
-		private int revision = -1;
+		@NonNull
+		private List<Token> completedTokens = Collections.emptyList();
+		private int currentRevision = -1;
+		private int completedRevision = -1;
 
 		public TokenListUpdater(@NonNull OnTokenized onTokenized) {
 			this.onTokenized = onTokenized;
 		}
 
-		@NonNull
-		public List<Token> ensureUpdated(@NonNull CharSequence text, int revision) {
-			if (task != null && revision == this.revision) {
-				try {
-					return task.get();
-				} catch (ExecutionException | InterruptedException e) {
-					throw new RuntimeException(e);
-				}
+		@Nullable
+		public synchronized List<Token> getCompletedTokens(int revision) {
+			return revision == completedRevision ? completedTokens : null;
+		}
+
+		public synchronized void setCompleted(int revision, @NonNull List<Token> tokens) {
+			if (revision != currentRevision) {
+				return;
 			}
-			update(text, revision);
-			FutureTask<List<Token>> futureTask = task;
-			if (futureTask == null) {
-				return Collections.emptyList();
-			}
-			try {
-				return futureTask.get();
-			} catch (ExecutionException | InterruptedException e) {
-				throw new RuntimeException(e);
-			}
+			completedRevision = revision;
+			completedTokens = tokens;
 		}
 
 		public void update(@NonNull CharSequence text, int revision) {
-			if (revision == this.revision && task != null) {
-				return;
-			} else if (task != null) {
-				task.cancel(false);
+			FutureTask<List<Token>> currentTask;
+			FutureTask<List<Token>> nextTask;
+			synchronized (this) {
+				if (revision == currentRevision && task != null) {
+					return;
+				}
+				currentTask = task;
+				currentRevision = revision;
+				nextTask = new FutureTask<>(new TokenizeCalculation(
+						revision,
+						text.toString(),
+						(tokenRevision, tokens, tokenText) -> {
+							setCompleted(tokenRevision, tokens);
+							synchronized (TokenListUpdater.this) {
+								if (tokenRevision == currentRevision) {
+									task = null;
+								}
+							}
+							onTokenized.onTokens(tokenRevision, tokens, tokenText);
+						}));
+				task = nextTask;
 			}
-
-			this.revision = revision;
-			task = new FutureTask<>(new TokenizeCalculation(
-					text.toString(), onTokenized));
-			executor.submit(task);
+			if (currentTask != null) {
+				currentTask.cancel(true);
+			}
+			executor.submit(nextTask);
 		}
 
-		public boolean isDone() {
-			return task != null && task.isDone();
+		public synchronized boolean isDone(int revision) {
+			return revision == completedRevision;
 		}
 
 		public void shutdown() {
-			if (task != null) {
-				task.cancel(true);
-				task = null;
+			synchronized (this) {
+				if (task != null) {
+					task.cancel(true);
+					task = null;
+				}
 			}
 			executor.shutdownNow();
 		}
