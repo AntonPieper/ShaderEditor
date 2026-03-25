@@ -87,6 +87,8 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	private volatile float sum;
 	private volatile float samples;
 	private volatile int lastFps;
+	private int surfaceWidth;
+	private int surfaceHeight;
 
 	public ShaderRenderer(Context context) {
 		this.context = context;
@@ -103,8 +105,20 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		resetFps();
 	}
 
+	public void reloadFragmentShader(@Nullable String source, float quality) {
+		releaseRenderResources();
+		setFragmentShader(source, quality);
+		reloadPreparedShader();
+	}
+
 	public void setQuality(float quality) {
 		builtinUniforms.setQuality(quality);
+	}
+
+	public void reloadQuality(float quality) {
+		releaseRenderResources();
+		setQuality(quality);
+		reloadPreparedShader();
 	}
 
 	public void setOnRendererListener(OnRendererListener listener) {
@@ -125,25 +139,13 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 			submitErrors(thumbnailErrors);
 		}
 
-		if (programManager.hasPreparedShader()) {
-			resetFps();
-			var reloadResult = programManager.reload(context, device);
-			submitErrors(reloadResult.textureErrors());
-			if (reloadResult.succeeded()) {
-				submitErrors(Collections.emptyList());
-				builtinUniforms.configure(
-						device,
-						programManager.getMainProgram(),
-						programManager.getFTimeMax(),
-						programManager.getTextureResources());
-			} else if (!reloadResult.programErrors().isEmpty()) {
-				submitErrors(reloadResult.programErrors());
-			}
-		}
+		reloadPreparedShader();
 	}
 
 	@Override
 	public void onSurfaceChanged(GL10 gl, int width, int height) {
+		surfaceWidth = width;
+		surfaceHeight = height;
 		long now = System.nanoTime();
 		lastRender = now;
 		surfaceState = builtinUniforms.updateSurface(width, height, now);
@@ -244,6 +246,40 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		if (onRendererListener != null) {
 			onRendererListener.onInfoLog(errors);
 		}
+	}
+
+	private void reloadPreparedShader() {
+		long now = System.nanoTime();
+		lastRender = now;
+		surfaceState = builtinUniforms.updateSurface(surfaceWidth, surfaceHeight, now);
+		if (surfaceState.renderTargetsChanged()) {
+			renderPipeline.releaseTargets();
+		}
+
+		resetFps();
+		if (!programManager.hasPreparedShader()) {
+			submitErrors(Collections.emptyList());
+			return;
+		}
+
+		var reloadResult = programManager.reload(context, device);
+		submitErrors(reloadResult.textureErrors());
+		if (reloadResult.succeeded()) {
+			submitErrors(Collections.emptyList());
+			builtinUniforms.configure(
+					device,
+					programManager.getMainProgram(),
+					programManager.getFTimeMax(),
+					programManager.getTextureResources());
+		} else if (!reloadResult.programErrors().isEmpty()) {
+			submitErrors(reloadResult.programErrors());
+		}
+	}
+
+	private void releaseRenderResources() {
+		builtinUniforms.clearConfiguration();
+		renderPipeline.releaseTargets();
+		programManager.release(device);
 	}
 
 	private void discardContextResources() {

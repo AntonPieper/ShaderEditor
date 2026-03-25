@@ -127,6 +127,13 @@ final class RendererProgramManager {
 		return ReloadResult.success(textureErrors);
 	}
 
+	void release(@NonNull GlDevice device) {
+		device.deleteProgram(surfaceProgram);
+		device.deleteProgram(mainProgram);
+		textureResources.release(device);
+		clearPrograms();
+	}
+
 	void discardContextResources() {
 		clearPrograms();
 		textureResources.discard();

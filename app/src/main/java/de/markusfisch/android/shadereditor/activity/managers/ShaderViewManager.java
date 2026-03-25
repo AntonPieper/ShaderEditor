@@ -120,10 +120,7 @@ public class ShaderViewManager {
 				}
 				quality = q;
 				listener.onQualityChanged(quality);
-				// Refresh renderer with new quality
-				shaderView.getRenderer().setQuality(quality);
-				shaderView.onPause();
-				shaderView.onResume();
+				shaderView.setQuality(quality);
 			}
 
 			@Override
