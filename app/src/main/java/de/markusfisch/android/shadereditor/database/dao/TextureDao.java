@@ -10,6 +10,7 @@ import android.database.sqlite.SQLiteStatement;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.ParcelFileDescriptor;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,6 +30,8 @@ import de.markusfisch.android.shadereditor.database.DatabaseTable;
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
 
 public class TextureDao {
+	private static final String TAG = "TextureDao";
+
 	@NonNull
 	private final SQLiteOpenHelper dbHelper;
 	private final int textureThumbnailSize;
@@ -85,6 +88,7 @@ public class TextureDao {
 			statement.bindLong(1, id);
 			return decodeTextureBitmap(statement);
 		} catch (OutOfMemoryError | SQLException e) {
+			Log.e(TAG, "Failed to load texture bitmap for ID " + id, e);
 			return null;
 		}
 	}
@@ -100,6 +104,7 @@ public class TextureDao {
 			statement.bindString(1, name);
 			return decodeTextureBitmap(statement);
 		} catch (OutOfMemoryError | SQLException e) {
+			Log.e(TAG, "Failed to load texture bitmap for name " + name, e);
 			return null;
 		}
 	}
@@ -195,6 +200,7 @@ public class TextureDao {
 					null,
 					options);
 		} catch (IOException e) {
+			Log.e(TAG, "Failed to decode texture bitmap", e);
 			return null;
 		}
 	}
