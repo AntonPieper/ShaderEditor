@@ -104,7 +104,7 @@ public class Sampler2dPropertiesFragment extends AbstractSamplerPropertiesFragme
 			String name,
 			int size) {
 		if (bitmap == null) {
-			return R.string.illegal_rectangle;
+			return R.string.cannot_pick_image;
 		}
 
 		// Get the DataSource using the modern singleton pattern.

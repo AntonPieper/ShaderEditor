@@ -55,6 +55,20 @@ public class BitmapEditor {
 			@NonNull Context context,
 			Uri uri,
 			int maxSize) {
+		for (int targetSize = maxSize; targetSize >= maxSize / 4; targetSize /= 2) {
+			Bitmap bitmap = tryDecodeBitmapFromUri(context, uri, targetSize);
+			if (bitmap != null) {
+				return bitmap;
+			}
+		}
+		return null;
+	}
+
+	@Nullable
+	private static Bitmap tryDecodeBitmapFromUri(
+			@NonNull Context context,
+			Uri uri,
+			int maxSize) {
 		InputStream in = null;
 		try {
 			in = context.getContentResolver().openInputStream(uri);
@@ -69,7 +83,13 @@ public class BitmapEditor {
 			in = context.getContentResolver().openInputStream(uri);
 
 			return BitmapFactory.decodeStream(in, null, options);
-		} catch (OutOfMemoryError | SecurityException | IOException e) {
+		} catch (OutOfMemoryError e) {
+			Log.e("BitmapEditor", "OOM decoding bitmap from uri " + uri +
+					" with maxSize=" + maxSize, e);
+			return null;
+		} catch (SecurityException | IOException e) {
+			Log.e("BitmapEditor", "Failed to decode bitmap from uri " + uri +
+					" with maxSize=" + maxSize, e);
 			return null;
 		} finally {
 			if (in != null) {
@@ -539,7 +559,7 @@ public class BitmapEditor {
 			final int hw = width / 2;
 			final int hh = height / 2;
 
-			while (hw / size > maxWidth && hh / size > maxHeight) {
+			while (hw / size > maxWidth || hh / size > maxHeight) {
 				size *= 2;
 			}
 		}
