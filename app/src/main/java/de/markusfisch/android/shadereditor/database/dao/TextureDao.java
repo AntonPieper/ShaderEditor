@@ -81,14 +81,11 @@ public class TextureDao {
 						" FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
 						" WHERE " + DatabaseContract.TextureColumns._ID + " = ?";
 		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		SQLiteStatement statement = db.compileStatement(query);
-		try {
+		try (SQLiteStatement statement = db.compileStatement(query)) {
 			statement.bindLong(1, id);
 			return decodeTextureBitmap(statement);
 		} catch (OutOfMemoryError | SQLException e) {
 			return null;
-		} finally {
-			statement.close();
 		}
 	}
 
@@ -99,14 +96,11 @@ public class TextureDao {
 						" FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
 						" WHERE " + DatabaseContract.TextureColumns.NAME + " = ?";
 		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		SQLiteStatement statement = db.compileStatement(query);
-		try {
+		try (SQLiteStatement statement = db.compileStatement(query)) {
 			statement.bindString(1, name);
 			return decodeTextureBitmap(statement);
 		} catch (OutOfMemoryError | SQLException e) {
 			return null;
-		} finally {
-			statement.close();
 		}
 	}
 
