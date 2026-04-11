@@ -102,7 +102,7 @@ public class ShaderListPreferenceDialogFragment
 
 	private void clearAdapter() {
 		if (adapter != null) {
-			adapter.setData(null);
+			adapter.destroy();
 			adapter = null;
 		}
 	}

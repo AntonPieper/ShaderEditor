@@ -107,6 +107,7 @@ public class ShaderListManager {
 	public void destroy() {
 		executor.shutdownNow();
 		handler.removeCallbacksAndMessages(null);
+		shaderAdapter.destroy();
 	}
 
 	private void updateAdapter(List<ShaderInfo> shaders) {
