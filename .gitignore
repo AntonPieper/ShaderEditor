@@ -6,3 +6,8 @@
 build
 infer-out
 local.properties
+
+docs-site/node_modules/
+docs-site/dist/
+docs-site/.astro/
+docs-site/public/media/raw/
