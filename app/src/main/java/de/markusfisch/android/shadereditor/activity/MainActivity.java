@@ -169,6 +169,9 @@ public class MainActivity extends AppCompatActivity {
 
 	@Override
 	protected void onDestroy() {
+		if (shaderManager != null) {
+			shaderManager.destroy();
+		}
 		if (shaderListManager != null) {
 			shaderListManager.destroy();
 		}

@@ -6,6 +6,9 @@ import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.egl.EGLContext;
@@ -14,6 +17,10 @@ import javax.microedition.khronos.egl.EGLDisplay;
 import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
 
 public class ShaderView extends GLSurfaceView {
+	public interface ThumbnailListener {
+		void onThumbnailCaptured(@Nullable byte[] thumbnail);
+	}
+
 	private ShaderRenderer renderer;
 
 	public ShaderView(Context context, int renderMode) {
@@ -54,6 +61,14 @@ public class ShaderView extends GLSurfaceView {
 		// the source is cleaned up here.
 		renderer.setFragmentShader(removeNonAscii(src), quality);
 		onResume();
+	}
+
+	public void captureThumbnail(@NonNull ThumbnailListener listener) {
+		queueEvent(() -> {
+			byte[] thumbnail = renderer.captureThumbnail();
+			post(() -> listener.onThumbnailCaptured(thumbnail));
+		});
+		requestRender();
 	}
 
 	public ShaderRenderer getRenderer() {

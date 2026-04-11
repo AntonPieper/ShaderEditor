@@ -73,7 +73,6 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 			new ShaderRenderPipeline(device, Mesh.fullScreenQuad());
 	private final BuiltinUniforms builtinUniforms;
 	private final Context context;
-	private final Object thumbnailLock = new Object();
 
 	@Nullable
 	private OnRendererListener onRendererListener;
@@ -81,8 +80,6 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	private BuiltinUniforms.SurfaceState surfaceState =
 			BuiltinUniforms.SurfaceState.empty();
 	private long lastRender;
-	private byte[] thumbnail = new byte[1];
-	private boolean captureThumbnail;
 	private volatile long nextFpsUpdate;
 	private volatile float sum;
 	private volatile float samples;
@@ -164,7 +161,6 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 				surfaceBindings == null) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
-			cancelCaptureThumbnail();
 			return;
 		}
 
@@ -178,7 +174,6 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 				submitErrors(targetErrors);
 			}
 			if (!renderPipeline.hasTargets()) {
-				cancelCaptureThumbnail();
 				return;
 			}
 		}
@@ -187,7 +182,6 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		if (frame == null) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
-			cancelCaptureThumbnail();
 			return;
 		}
 
@@ -198,7 +192,6 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 				frame.surfaceWidth(),
 				frame.surfaceHeight());
 		renderPipeline.swapTargets();
-		captureThumbnail();
 
 		if (onRendererListener != null) {
 			updateFps(frame.now());
@@ -219,18 +212,16 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		builtinUniforms.updateOffset(x, y);
 	}
 
-	public byte[] getThumbnail() {
-		synchronized (thumbnailLock) {
-			captureThumbnail = true;
-			try {
-				thumbnailLock.wait(1000);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				captureThumbnail = false;
-				return null;
-			}
-			return thumbnail;
+	@Nullable
+	public byte[] captureThumbnail() {
+		var surfaceBindings = programManager.getSurfaceBindings();
+		var surfaceProgram = programManager.getSurfaceProgram();
+		if (surfaceBindings == null || surfaceProgram == null) {
+			return null;
 		}
+		return renderPipeline.captureThumbnail(
+				surfaceBindings,
+				surfaceProgram);
 	}
 
 	private void resetFps() {
@@ -250,31 +241,6 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		builtinUniforms.clearConfiguration();
 		renderPipeline.discardContextResources();
 		programManager.discardContextResources();
-	}
-
-	private void captureThumbnail() {
-		synchronized (thumbnailLock) {
-			var surfaceBindings = programManager.getSurfaceBindings();
-			var surfaceProgram = programManager.getSurfaceProgram();
-			if (captureThumbnail &&
-					surfaceBindings != null &&
-					surfaceProgram != null) {
-				thumbnail = renderPipeline.captureThumbnail(
-						surfaceBindings,
-						surfaceProgram);
-				captureThumbnail = false;
-				thumbnailLock.notifyAll();
-			}
-		}
-	}
-
-	private void cancelCaptureThumbnail() {
-		synchronized (thumbnailLock) {
-			if (captureThumbnail) {
-				captureThumbnail = false;
-				thumbnailLock.notifyAll();
-			}
-		}
 	}
 
 	private void updateFps(long now) {

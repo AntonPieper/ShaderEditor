@@ -67,8 +67,8 @@ public class ShaderViewManager {
 		shaderView.setVisibility(visible ? View.VISIBLE : View.GONE);
 	}
 
-	public byte[] getThumbnail() {
-		return shaderView.getRenderer().getThumbnail();
+	public void captureThumbnail(@NonNull ShaderView.ThumbnailListener listener) {
+		shaderView.captureThumbnail(listener);
 	}
 
 	public void setQuality(float quality) {

@@ -16,6 +16,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.AddUniformActivity;
@@ -39,6 +42,7 @@ public class ShaderManager {
 	private final ShaderListManager shaderListManager;
 	private final UIManager uiManager;
 	private final DataSource dataSource;
+	private final ExecutorService saveExecutor = Executors.newSingleThreadExecutor();
 
 	private long selectedShaderId = NO_SHADER;
 	private float quality = 1f;
@@ -104,7 +108,9 @@ public class ShaderManager {
 					if (getSelectedShaderId() > 0 &&
 							status.getThumbnail() != null &&
 							ShaderEditorApp.preferences.doesSaveOnRun()) {
-						saveShader();
+						persistThumbnailAsync(
+								getSelectedShaderId(),
+								status.getThumbnail());
 					}
 				});
 	}
@@ -142,6 +148,10 @@ public class ShaderManager {
 	public void restoreState(@NonNull Bundle savedInstanceState) {
 		selectedShaderId = savedInstanceState.getLong(
 				SELECTED_SHADER_ID, NO_SHADER);
+	}
+
+	public void destroy() {
+		saveExecutor.shutdownNow();
 	}
 
 	public void selectShader(long id) {
@@ -192,27 +202,50 @@ public class ShaderManager {
 			return;
 		}
 
-		byte[] thumbnail = getThumbnail();
-
 		if (selectedShaderId > 0) {
 			dataSource.shader.updateShader(
-					selectedShaderId, src, thumbnail, quality);
+					selectedShaderId, src, null, quality);
 		} else {
 			selectedShaderId = dataSource.shader.insertShader(
-					src, null, thumbnail, quality);
+					src, null, null, quality);
 			shaderListManager.setSelectedShaderId(selectedShaderId);
 		}
 
+		long savedShaderId = selectedShaderId;
 		setModified(false);
 		shaderListManager.loadShadersAsync();
 		Toast.makeText(activity, R.string.shader_saved,
 				Toast.LENGTH_SHORT).show();
+		saveThumbnailAsync(savedShaderId);
 	}
 
-	private byte[] getThumbnail() {
-		return ShaderEditorApp.preferences.doesRunInBackground()
-				? shaderViewManager.getThumbnail()
-				: PreviewActivity.renderStatus.getThumbnail();
+	private void saveThumbnailAsync(long shaderId) {
+		if (shaderId <= 0) {
+			return;
+		}
+		if (ShaderEditorApp.preferences.doesRunInBackground()) {
+			shaderViewManager.captureThumbnail(
+					thumbnail -> persistThumbnailAsync(shaderId, thumbnail));
+			return;
+		}
+		persistThumbnailAsync(
+				shaderId,
+				PreviewActivity.renderStatus.getThumbnail());
+	}
+
+	private void persistThumbnailAsync(long shaderId, @Nullable byte[] thumbnail) {
+		if (shaderId <= 0 ||
+				thumbnail == null ||
+				thumbnail.length == 0) {
+			return;
+		}
+		try {
+			saveExecutor.execute(() -> {
+				dataSource.shader.updateShaderThumbnail(shaderId, thumbnail);
+				shaderListManager.loadShadersAsync();
+			});
+		} catch (RejectedExecutionException ignored) {
+		}
 	}
 
 	public void handleSendText(@Nullable Intent intent) {

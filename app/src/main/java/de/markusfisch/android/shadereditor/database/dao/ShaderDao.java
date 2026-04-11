@@ -178,6 +178,15 @@ public class ShaderDao {
 				new String[]{String.valueOf(id)});
 	}
 
+	public void updateShaderThumbnail(long id, @NonNull byte[] thumbnail) {
+		SQLiteDatabase db = dbHelper.getWritableDatabase();
+		var cv = new ContentValues();
+		cv.put(DatabaseContract.ShaderColumns.THUMB, thumbnail);
+		db.update(DatabaseContract.ShaderColumns.TABLE_NAME, cv,
+				DatabaseContract.ShaderColumns._ID + " = ?",
+				new String[]{String.valueOf(id)});
+	}
+
 	public void updateShaderName(long id, @NonNull String name) {
 		SQLiteDatabase db = dbHelper.getWritableDatabase();
 		var cv = new ContentValues();
