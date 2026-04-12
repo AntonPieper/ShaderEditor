@@ -141,6 +141,7 @@
 	<string name="device_rotation_vector">Вектор обертання представляє орієнтацію пристрою як комбінацію кута та осі, у якій пристрій повернувся на кут θ навколо осі x, y, z</string>
 	<string name="device_inclination_matrix">Матриця обертання перетворює геомагнітний вектор у той самий координатний простір, що й сила тяжіння</string>
 	<string name="magnetic_field">Сила геомагнітного поля вздовж осей x, y та z у μT</string>
+	<string name="mouse_position_normalized">Положення першого дотику, нормалізоване від 0.0 до 1.0</string>
 	<string name="night_mode">Нічний режим, 1, якщо встановлено, 0, якщо ні</string>
 	<string name="notification_count">Кількість активних сповіщень</string>
 	<string name="light">Рівень навколишнього освітлення в одиницях люкс SI</string>
@@ -244,6 +245,16 @@
 	<string name="sample_texture_rationale">Як малювати текстури</string>
 	<string name="sample_touch_name">Дотик</string>
 	<string name="sample_touch_rationale">Як обробляти сенсорне введення</string>
+	<string name="sample_feedback_fluid_name">Рідина зі зворотним зв\'язком</string>
+	<string name="sample_feedback_fluid_rationale">Псевдорідина в backbuffer, якою керують дотики та датчики руху.</string>
+	<string name="sample_signal_skyline_name">Сигнальний обрій</string>
+	<string name="sample_signal_skyline_rationale">Аудіореактивні шпалери, що залежать від гучності, мікрофона, батареї й сповіщень.</string>
+	<string name="sample_back_camera_portal_name">Портал задньої камери</string>
+	<string name="sample_back_camera_portal_rationale">Потік із задньої камери, заломлений крізь портал, керований дотиком.</string>
+	<string name="sample_front_camera_ghost_name">Привид фронтальної камери</string>
+	<string name="sample_front_camera_ghost_rationale">Дзеркало фронтальної камери з експозицією від освітлення та спектральним сяйвом.</string>
+	<string name="sample_sensorium_name">Сенсоріум</string>
+	<string name="sample_sensorium_rationale">Raymarch-святилище, кероване орієнтацією пристрою, датчиками, батареєю та часом.</string>
 
 	<!-- Database -->
 	<string name="default_shader">За замовчуванням</string>

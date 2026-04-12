@@ -133,6 +133,7 @@
 	<string name="device_rotation_vector">旋轉向量，表示設備圍繞某軸旋轉的角度組合</string>
 	<string name="device_inclination_matrix">將地磁向量轉換到與重力相同的座標空間的旋轉矩陣</string>
 	<string name="magnetic_field">沿 x, y, z 軸的地磁強度 (μT)</string>
+	<string name="mouse_position_normalized">第一個觸點的位置，已正規化到 0.0 到 1.0</string>
 	<string name="night_mode">夜間模式（開啟為 1，否則為 0）</string>
 	<string name="notification_count">作用中的通知計數</string>
 	<string name="light">環境光亮度 (SI lux 單位)</string>
@@ -227,6 +228,16 @@
 	<string name="sample_texture_rationale">如何渲染紋理圖像</string>
 	<string name="sample_touch_name">觸碰回饋</string>
 	<string name="sample_touch_rationale">如何處理觸碰輸入</string>
+	<string name="sample_feedback_fluid_name">回饋流體</string>
+	<string name="sample_feedback_fluid_rationale">由觸控與動作感測器驅動的 backbuffer 流體回饋效果。</string>
+	<string name="sample_signal_skyline_name">訊號天際線</string>
+	<string name="sample_signal_skyline_rationale">由音量、麥克風、電量與通知驅動的音訊反應動態桌布。</string>
+	<string name="sample_back_camera_portal_name">後置相機傳送門</string>
+	<string name="sample_back_camera_portal_rationale">把後置相機畫面折射進一個由觸控控制的傳送門。</string>
+	<string name="sample_front_camera_ghost_name">前置相機幽影</string>
+	<string name="sample_front_camera_ghost_rationale">前置相機鏡像，帶有環境光曝光與光譜泛光。</string>
+	<string name="sample_sensorium_name">感知聖殿</string>
+	<string name="sample_sensorium_rationale">由裝置朝向、感測器、電量與時間驅動的光線步進神殿。</string>
 
 	<string name="default_shader">預設</string>
 

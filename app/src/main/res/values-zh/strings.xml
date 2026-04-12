@@ -133,6 +133,7 @@
 	<string name="device_rotation_vector">旋转矢量，表示设备围绕某轴旋转的角度组合</string>
 	<string name="device_inclination_matrix">将地磁矢量转换到重力坐标空间的旋转矩阵</string>
 	<string name="magnetic_field">沿 x, y, z 轴的地磁强度 (μT)</string>
+	<string name="mouse_position_normalized">第一个触点的位置，已归一化到 0.0 到 1.0</string>
 	<string name="night_mode">夜间模式（开启为 1，关闭为 0）</string>
 	<string name="notification_count">当前活动通知计数</string>
 	<string name="light">环境光亮度 (SI lux 单位)</string>
@@ -227,6 +228,16 @@
 	<string name="sample_texture_rationale">演示如何渲染纹理图像</string>
 	<string name="sample_touch_name">触碰反馈</string>
 	<string name="sample_touch_rationale">演示如何处理触摸屏输入</string>
+	<string name="sample_feedback_fluid_name">反馈流体</string>
+	<string name="sample_feedback_fluid_rationale">由触摸和运动传感器驱动的 backbuffer 流体反馈效果。</string>
+	<string name="sample_signal_skyline_name">信号天际线</string>
+	<string name="sample_signal_skyline_rationale">由音量、麦克风、电量和通知驱动的音频响应式动态壁纸。</string>
+	<string name="sample_back_camera_portal_name">后置相机传送门</string>
+	<string name="sample_back_camera_portal_rationale">把后置相机画面折射进一个由触摸控制的传送门。</string>
+	<string name="sample_front_camera_ghost_name">前置相机幽影</string>
+	<string name="sample_front_camera_ghost_rationale">前置相机镜像，带环境光曝光和光谱泛光。</string>
+	<string name="sample_sensorium_name">感知圣殿</string>
+	<string name="sample_sensorium_rationale">由设备朝向、传感器、电量和时间驱动的光线步进神殿。</string>
 
 	<string name="default_shader">默认模板</string>
 

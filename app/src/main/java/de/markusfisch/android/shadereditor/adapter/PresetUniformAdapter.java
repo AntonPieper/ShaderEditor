@@ -139,6 +139,10 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						ShaderRenderer.UNIFORM_MAGNETIC,
 						context.getString(R.string.magnetic_field)),
 				new Uniform(
+						"vec2",
+						ShaderRenderer.UNIFORM_MOUSE,
+						context.getString(R.string.mouse_position_normalized)),
+				new Uniform(
 						"int",
 						ShaderRenderer.UNIFORM_NIGHT_MODE,
 						context.getString(R.string.night_mode)),
