@@ -11,15 +11,9 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE">
-    <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-111111?style=flat-square&logo=opensourceinitiative&logoColor=white">
-  </a>
-  <a href="https://www.buymeacoffee.com/markusfisch">
-    <img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=000000">
-  </a>
-  <a href="https://liberapay.com/markusfisch/">
-    <img alt="Liberapay" src="https://img.shields.io/badge/Liberapay-F6C915?style=flat-square&logo=liberapay&logoColor=000000">
-  </a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-111111?style=flat-square&logo=opensourceinitiative&logoColor=white"></a>
+  <a href="https://www.buymeacoffee.com/markusfisch"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=000000"></a>
+  <a href="https://liberapay.com/markusfisch/"><img alt="Liberapay" src="https://img.shields.io/badge/Liberapay-F6C915?style=flat-square&logo=liberapay&logoColor=000000"></a>
 </p>
 
 <p align="center">
