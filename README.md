@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="svg/ic_launcher.svg" alt="ShaderEditor app icon" width="120">
-</p>
-
-<h1 align="center">ShaderEditor</h1>
+<h1 align="center"><img src="svg/ic_launcher.svg" alt="ShaderEditor app icon" width="40"> ShaderEditor</h1>
 
 <p align="center">
   Free, open-source Android app for writing GLSL fragment shaders,
@@ -15,27 +11,30 @@
 </p>
 
 <p align="center">
-  <img alt="Android 6.0+" src="https://img.shields.io/badge/Android-6.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white&labelColor=1f2328">
-  <img alt="OpenGL ES 2.0 to 3.2" src="https://img.shields.io/badge/OpenGL%20ES-2.0%E2%80%933.2-5586A4?style=for-the-badge&logo=opengl&logoColor=white&labelColor=1f2328">
-  <a href="https://markusfisch.github.io/ShaderEditor/">
-    <img alt="Docs, examples, and guides" src="https://img.shields.io/badge/Docs-Examples%20%26%20Guides-6E56CF?style=for-the-badge&logo=githubpages&logoColor=white&labelColor=1f2328">
-  </a>
   <a href="LICENSE">
-    <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-111111?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=1f2328">
+    <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-111111?style=flat-square&logo=opensourceinitiative&logoColor=white">
+  </a>
+  <a href="https://www.buymeacoffee.com/markusfisch">
+    <img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=000000">
+  </a>
+  <a href="https://liberapay.com/markusfisch/">
+    <img alt="Liberapay" src="https://img.shields.io/badge/Liberapay-F6C915?style=flat-square&logo=liberapay&logoColor=000000">
   </a>
 </p>
 
 <p align="center">
   <a href="https://f-droid.org/en/packages/de.markusfisch.android.shadereditor/">
-    <img src="docs-site/public/media/badge-fdroid.svg" alt="Get it on F-Droid" height="54">
+    <img src="docs-site/public/media/badge-fdroid.svg" alt="Get it on F-Droid" height="48">
   </a>
   <a href="https://play.google.com/store/apps/details?id=de.markusfisch.android.shadereditor">
-    <img src="docs-site/public/media/badge-google-play.svg" alt="Get it on Google Play" height="54">
+    <img src="docs-site/public/media/badge-google-play.svg" alt="Get it on Google Play" height="48">
   </a>
 </p>
 
+<p align="center"><em>Main editor on Android — shader preview runs live behind code.</em></p>
+
 <p align="center">
-  <img src="docs-site/public/media/screen-editor.webp" alt="ShaderEditor editor preview on Android" width="320">
+  <img src="docs-site/public/media/screen-editor.webp" alt="ShaderEditor main editor on Android with live shader preview behind code" width="290">
 </p>
 
 ## Why use it?
