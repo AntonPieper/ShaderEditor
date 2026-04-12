@@ -1,14 +1,31 @@
 <p align="center">
-  <img src="docs-site/public/media/app-icon.png" alt="ShaderEditor app icon" width="120">
+  <img src="svg/ic_launcher.svg" alt="ShaderEditor app icon" width="120">
 </p>
 
-# ShaderEditor
+<h1 align="center">ShaderEditor</h1>
 
-ShaderEditor is a free, open-source Android app for writing GLSL fragment shaders, previewing them live, and using them as live wallpaper.
+<p align="center">
+  Free, open-source Android app for writing GLSL fragment shaders,
+  previewing them live, and using them as live wallpaper.
+</p>
 
-It is built for people who want to sketch visual ideas quickly on a phone or tablet without giving up useful editor features. Camera, audio, touch, sensors, and textures can all drive a shader.
+<p align="center">
+  Built for sketching visual ideas quickly on a phone or tablet.
+  Touch, sensors, camera, audio, and textures can all drive a shader.
+</p>
 
-<p>
+<p align="center">
+  <img alt="Android 6.0+" src="https://img.shields.io/badge/Android-6.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white&labelColor=1f2328">
+  <img alt="OpenGL ES 2.0 to 3.2" src="https://img.shields.io/badge/OpenGL%20ES-2.0%E2%80%933.2-5586A4?style=for-the-badge&logo=opengl&logoColor=white&labelColor=1f2328">
+  <a href="https://markusfisch.github.io/ShaderEditor/">
+    <img alt="Docs, examples, and guides" src="https://img.shields.io/badge/Docs-Examples%20%26%20Guides-6E56CF?style=for-the-badge&logo=githubpages&logoColor=white&labelColor=1f2328">
+  </a>
+  <a href="LICENSE">
+    <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-111111?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=1f2328">
+  </a>
+</p>
+
+<p align="center">
   <a href="https://f-droid.org/en/packages/de.markusfisch.android.shadereditor/">
     <img src="docs-site/public/media/badge-fdroid.svg" alt="Get it on F-Droid" height="54">
   </a>
@@ -18,7 +35,7 @@ It is built for people who want to sketch visual ideas quickly on a phone or tab
 </p>
 
 <p align="center">
-  <img src="docs-site/public/media/hero-editor.webp" alt="ShaderEditor live GLSL editing on Android" width="320">
+  <img src="docs-site/public/media/screen-editor.webp" alt="ShaderEditor editor preview on Android" width="320">
 </p>
 
 ## Why use it?
