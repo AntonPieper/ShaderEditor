@@ -17,12 +17,8 @@
 </p>
 
 <p align="center">
-  <a href="https://f-droid.org/en/packages/de.markusfisch.android.shadereditor/">
-    <img src="docs-site/public/media/badge-fdroid.svg" alt="Get it on F-Droid" height="48">
-  </a>
-  <a href="https://play.google.com/store/apps/details?id=de.markusfisch.android.shadereditor">
-    <img src="docs-site/public/media/badge-google-play.svg" alt="Get it on Google Play" height="48">
-  </a>
+  <a href="https://f-droid.org/en/packages/de.markusfisch.android.shadereditor/"><img src="docs-site/public/media/badge-fdroid.svg" alt="Get it on F-Droid" height="48"></a>
+  <a href="https://play.google.com/store/apps/details?id=de.markusfisch.android.shadereditor"><img src="docs-site/public/media/badge-google-play.svg" alt="Get it on Google Play" height="48"></a>
 </p>
 
 <p align="center"><em>Main editor on Android — shader preview runs live behind code.</em></p>
