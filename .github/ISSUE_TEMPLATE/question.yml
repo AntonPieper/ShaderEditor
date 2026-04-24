@@ -1,0 +1,48 @@
+name: Question or shader help
+description: Ask about GLSL, Shadertoy conversion, uniforms, textures, or app behavior.
+title: "Question: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues and check the [FAQ](https://github.com/markusfisch/ShaderEditor/blob/master/FAQ.md) first.
+
+        Keep questions specific to Shader Editor. For general GLSL learning, see the learning links in the FAQ.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Pick the closest topic. If unsure, choose Other.
+      options:
+        - GLSL
+        - Shadertoy
+        - Uniforms
+        - Textures
+        - Wallpaper
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Ask one focused question and include your goal.
+      placeholder: "I am trying to... How do I...? Is it possible to...?"
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you tried
+      description: Include docs read, settings changed, snippets tried, and errors seen.
+      placeholder: "I tried..., but..."
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Shader, error, link, or device
+      description: Paste minimal code, exact compiler error, ShaderToy/source link, or device/app details. Write N/A if not relevant.
+      placeholder: "GLSL snippet, exact compiler error, ShaderToy link, app 2.36.2 on Android 15, ..."
+    validations:
+      required: true

@@ -1,0 +1,106 @@
+name: Bug report
+description: Something is broken, slow, crashing, or different from expected.
+title: "Bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues and check the [FAQ](https://github.com/markusfisch/ShaderEditor/blob/master/FAQ.md) first.
+
+        Good reports include device/app details, exact steps, and the smallest shader/file/log that shows the problem.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Include the actual result and any exact error text.
+      placeholder: "The wallpaper freezes when..., the editor crashes after..., the shader renders black instead of..."
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Pick the closest primary area. If unsure, choose Other.
+      options:
+        - Editor
+        - Rendering
+        - Wallpaper
+        - Uniforms
+        - Textures
+        - Files
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: Pick the strongest symptom.
+      options:
+        - Wrong result
+        - Slow or frozen
+        - Crash
+        - Cannot open app
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: Exact taps, settings, shader edits, imported files, or wallpaper actions.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      placeholder: "What should have happened?"
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      placeholder: "2.36.2"
+    validations:
+      required: true
+  - type: input
+    id: android-device
+    attributes:
+      label: Android version and device
+      placeholder: "Android 15 / One UI 7; Samsung Galaxy A15"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-source
+    attributes:
+      label: Install source
+      options:
+        - Google Play
+        - F-Droid
+        - GitHub APK
+        - Built from source
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: repro-data
+    attributes:
+      label: Shader, file, or log
+      description: Paste a minimal shader/log, or attach the smallest image/file that reproduces the issue. Write N/A if not relevant.
+      placeholder: |
+        Minimal shader, sample image, screenshot, video, crash dialog, or logcat.
+
+        If a shader made the app unusable, say whether Shader Editor still opens.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Extra context
+      description: Optional. Include quality setting, battery/charger state, launcher, permissions, workaround, or recent update if relevant.

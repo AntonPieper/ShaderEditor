@@ -1,0 +1,61 @@
+name: Feature request
+description: Suggest a new feature, uniform, setting, workflow, sample, or doc.
+title: "Feature: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues and check the [FAQ](https://github.com/markusfisch/ShaderEditor/blob/master/FAQ.md) first.
+
+        Good feature requests explain the use case and why current workarounds are not enough.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Pick the closest primary area. If unsure, choose Other.
+      options:
+        - Editor
+        - Rendering
+        - Wallpaper
+        - Uniforms
+        - Textures
+        - Files
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What are you trying to make or do?
+      placeholder: "I want to..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the UI, setting, uniform, import/export behavior, or rendering behavior you want.
+      placeholder: "Add a uniform named..., add a setting that..., allow importing..."
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround
+      description: What do you do today, and why is it not enough? Write N/A if none.
+      placeholder: "I tried..., but..."
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example
+      description: Optional shader snippet, mockup, source link, or workflow.
+      placeholder: "ShaderToy link, GLSL snippet, screenshot, related issue, or short workflow."
+  - type: textarea
+    id: impact
+    attributes:
+      label: Compatibility or impact
+      description: Optional. Note permissions, privacy, battery/performance cost, GLES/Android version limits, or migration concerns.
