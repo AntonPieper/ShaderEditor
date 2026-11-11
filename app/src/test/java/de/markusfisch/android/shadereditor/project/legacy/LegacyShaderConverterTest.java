@@ -495,6 +495,44 @@ public class LegacyShaderConverterTest {
 	}
 
 	@Test
+	public void cameraFoundTwiceByTheOldPatternIsBoundWithAWarning() {
+		String text = lines("// uniform samplerExternalOES cameraBack;",
+				"uniform samplerExternalOES cameraBack;");
+		Result result = convert(text);
+		assertEquals(text, result.shader());
+		assertEquals(List.of(2), lines(result.diagnostics()));
+		assertTrue(messages(result).toString(),
+				messages(result).get(0).contains("no camera image"));
+		assertTrue(convert(lines("uniform samplerExternalOES cameraBack;"))
+				.diagnostics().isEmpty());
+	}
+
+	@Test
+	public void declarationAfterABackslashIsLeftAsWritten() {
+		for (String text : new String[]{
+				lines("float a = 1.0; \\", "uniform sampler2D noise;"),
+				lines("float a = 1.0; \\",
+						"uniform samplerExternalOES cameraBack; ///min:l;"),
+				lines("float a = 1.0; \\", "#ifdef A",
+						"uniform sampler2D noise;", "#endif")}) {
+			Result result = convert(text);
+			assertEquals(text, result.shader());
+			assertTrue(result.textures().isEmpty());
+			assertEquals(1, result.diagnostics().size());
+			assertTrue(messages(result).toString(),
+					messages(result).get(0).contains("backslash"));
+		}
+	}
+
+	@Test
+	public void declarationAfterCodeOnItsLineIsBoundAfterABackslash() {
+		assertEquals(lines("float a = 1.0; \\", "float b = 1.0;",
+						NOISE_DEFAULT, "uniform sampler2D noise;"),
+				convert(lines("float a = 1.0; \\",
+						"float b = 1.0; uniform sampler2D noise;")).shader());
+	}
+
+	@Test
 	public void bindsNoMoreSamplersThanTheOldRenderer() {
 		StringBuilder text = new StringBuilder();
 		for (int i = 0; i < 32; ++i) {
