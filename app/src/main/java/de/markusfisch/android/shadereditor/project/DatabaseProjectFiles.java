@@ -20,6 +20,7 @@ import de.markusfisch.android.shadereditor.project.legacy.CubemapAtlas;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.LibraryTexture;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.TextureFile;
+import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 
 /**
  * One database shader presented as project files: the shader converted
@@ -35,16 +36,12 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 	private final LegacyShaderConverter.Result conversion;
 	@NonNull
 	private final Map<ProjectPath, TextureFile> textureFiles = new HashMap<>();
-	@NonNull
-	private final Map<String, DataRecords.TextureInfo> library;
 
 	private DatabaseProjectFiles(
 			@NonNull TextureDao textures,
-			@NonNull LegacyShaderConverter.Result conversion,
-			@NonNull Map<String, DataRecords.TextureInfo> library) {
+			@NonNull LegacyShaderConverter.Result conversion) {
 		this.textures = textures;
 		this.conversion = conversion;
-		this.library = library;
 		for (TextureFile file : conversion.textures()) {
 			textureFiles.put(file.path(), file);
 		}
@@ -78,7 +75,7 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 		LegacyShaderConverter.Result conversion = LegacyShaderConverter.convert(
 				text != null ? text : "",
 				name -> find(textures, library, atlases, name));
-		return new DatabaseProjectFiles(textures, conversion, library);
+		return new DatabaseProjectFiles(textures, conversion);
 	}
 
 	/** The conversion, with its line map and diagnostics. */
@@ -88,11 +85,10 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 	}
 
 	@Override
-	public Content read(ProjectPath path) {
+	public Read read(ProjectPath path) {
 		String text = conversion.files().get(path);
 		if (text != null) {
-			return new Content(text.getBytes(StandardCharsets.UTF_8),
-					"text:" + text.hashCode());
+			return content(text.getBytes(StandardCharsets.UTF_8));
 		}
 		TextureFile file = textureFiles.get(path);
 		if (file == null) {
@@ -106,15 +102,18 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 			byte[] png = file.cubemap()
 					? strip(bitmap)
 					: BitmapEditor.encodeAsPng(bitmap);
-			DataRecords.TextureInfo info = library.get(file.name());
-			return png != null && png.length > 0
-					? new Content(png, "texture:" + (info != null
-					? String.valueOf(info.id())
-					: file.name()) + (file.cubemap() ? ":strip" : ""))
-					: null;
+			return png != null && png.length > 0 ? content(png) : null;
 		} finally {
 			bitmap.recycle();
 		}
+	}
+
+	@NonNull
+	private static Read content(@NonNull byte[] bytes) {
+		String revision = StoredFiles.revision(bytes);
+		return revision != null
+				? new Content(bytes, revision)
+				: new Failed("SHA-256 is not available on this device");
 	}
 
 	// The old renderer read the first row with a name, which is the
