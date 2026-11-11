@@ -1,6 +1,8 @@
 package de.markusfisch.android.shadereditor.hardware;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.SurfaceTexture;
 import android.os.Handler;
 import android.os.Looper;
@@ -24,6 +26,7 @@ import java.util.concurrent.ExecutionException;
 
 public class CameraListener {
 	private static final CameraArbiter ARBITER = new CameraArbiter();
+	private static final long PERMISSION_POLL_MS = 500;
 
 	public final int facing;
 	public final float[] addent = new float[]{0, 0};
@@ -49,6 +52,19 @@ public class CameraListener {
 			CameraListener.this.release();
 		}
 	};
+	// No callback reaches the engine when the permission is granted, in the
+	// dialog, in the settings or with adb, so a listener without it checks
+	// again until it is granted or the listener stops.
+	private final Runnable waitForPermission = new Runnable() {
+		@Override
+		public void run() {
+			if (hasPermission()) {
+				ARBITER.request(client);
+			} else {
+				mainHandler.postDelayed(this, PERMISSION_POLL_MS);
+			}
+		}
+	};
 
 	// Main thread only.
 	@Nullable
@@ -58,6 +74,7 @@ public class CameraListener {
 	@Nullable
 	private Preview preview;
 	private boolean held;
+	private volatile boolean bound;
 
 	// Every use of a SurfaceTexture holds surfaceLock. The main thread
 	// creates one for each surface request and releases it when CameraX is
@@ -87,15 +104,23 @@ public class CameraListener {
 		return orientationMatrix;
 	}
 
-	public void register(@NonNull LifecycleOwner lifecycleOwner) {
+	public void register(
+			@NonNull LifecycleOwner lifecycleOwner,
+			@NonNull Runnable requestPermission) {
 		mainHandler.post(() -> {
 			this.lifecycleOwner = lifecycleOwner;
-			ARBITER.request(client);
+			if (hasPermission()) {
+				ARBITER.request(client);
+				return;
+			}
+			requestPermission.run();
+			mainHandler.postDelayed(waitForPermission, PERMISSION_POLL_MS);
 		});
 	}
 
 	public void unregister() {
 		mainHandler.post(() -> {
+			mainHandler.removeCallbacks(waitForPermission);
 			ARBITER.withdraw(client);
 			synchronized (surfaceLock) {
 				stopped = true;
@@ -145,10 +170,12 @@ public class CameraListener {
 			return;
 		}
 		this.preview = preview;
+		bound = true;
 	}
 
 	private void release() {
 		held = false;
+		bound = false;
 		if (preview != null && cameraProvider != null) {
 			cameraProvider.unbind(preview);
 			// CameraX keeps the last use case of a camera until its next
@@ -183,6 +210,19 @@ public class CameraListener {
 						texture.release();
 					}
 				});
+	}
+
+	private boolean hasPermission() {
+		return ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+				PackageManager.PERMISSION_GRANTED;
+	}
+
+	/**
+	 * Whether this listener holds a bound camera. False while it waits for
+	 * the permission or for another renderer to give the camera back.
+	 */
+	public boolean isBound() {
+		return bound;
 	}
 
 	public void update() {
