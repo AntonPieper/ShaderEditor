@@ -11,6 +11,7 @@ import android.view.Surface;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.Preview;
 import androidx.camera.core.SurfaceRequest;
@@ -21,7 +22,6 @@ import androidx.lifecycle.LifecycleOwner;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.nio.FloatBuffer;
 import java.util.concurrent.ExecutionException;
 
 public class CameraListener {
@@ -29,13 +29,9 @@ public class CameraListener {
 	private static final long PERMISSION_POLL_MS = 500;
 
 	public final int facing;
-	public final float[] addent = new float[]{0, 0};
 
 	private final int cameraTextureId;
-
-	@NonNull
-	private final FloatBuffer orientationMatrix = FloatBuffer.allocate(4);
-
+	private final int deviceRotation;
 	@NonNull
 	private final Context context;
 	@NonNull
@@ -74,7 +70,12 @@ public class CameraListener {
 	@Nullable
 	private Preview preview;
 	private boolean held;
-	private volatile boolean bound;
+
+	// Guarded by this: set on the main thread when the camera is bound,
+	// read on the GL thread.
+	private final float[] orientation = new float[4];
+	private final float[] addent = new float[2];
+	private boolean bound;
 
 	// Every use of a SurfaceTexture holds surfaceLock. The main thread
 	// creates one for each surface request and releases it when CameraX is
@@ -96,12 +97,7 @@ public class CameraListener {
 		this.facing = facing;
 		this.context = context;
 		this.frameSize = new Size(width, height);
-		setOrientationAndFlip(deviceRotation);
-	}
-
-	@NonNull
-	public FloatBuffer getOrientationMatrix() {
-		return orientationMatrix;
+		this.deviceRotation = deviceRotation;
 	}
 
 	public void register(
@@ -163,19 +159,30 @@ public class CameraListener {
 		CameraSelector cameraSelector = new CameraSelector.Builder()
 				.requireLensFacing(facing)
 				.build();
+		Camera camera;
 		try {
-			cameraProvider.bindToLifecycle(owner, cameraSelector, preview);
+			camera = cameraProvider.bindToLifecycle(owner, cameraSelector, preview);
 		} catch (IllegalArgumentException | IllegalStateException e) {
 			// No such lens, or the owner cannot take the use case.
 			return;
 		}
 		this.preview = preview;
-		bound = true;
+		synchronized (this) {
+			CameraOrientation.compute(
+					camera.getCameraInfo().getSensorRotationDegrees(),
+					facing == CameraSelector.LENS_FACING_FRONT,
+					deviceRotation,
+					orientation,
+					addent);
+			bound = true;
+		}
 	}
 
 	private void release() {
 		held = false;
-		bound = false;
+		synchronized (this) {
+			bound = false;
+		}
 		if (preview != null && cameraProvider != null) {
 			cameraProvider.unbind(preview);
 			// CameraX keeps the last use case of a camera until its next
@@ -218,11 +225,19 @@ public class CameraListener {
 	}
 
 	/**
-	 * Whether this listener holds a bound camera. False while it waits for
-	 * the permission or for another renderer to give the camera back.
+	 * Copies cameraOrientation and cameraAddent for the bound camera and
+	 * returns true, or returns false while this listener waits for the
+	 * permission or for another renderer to give the camera back.
 	 */
-	public boolean isBound() {
-		return bound;
+	public synchronized boolean getOrientation(
+			@NonNull float[] matrix,
+			@NonNull float[] addent) {
+		if (!bound) {
+			return false;
+		}
+		System.arraycopy(orientation, 0, matrix, 0, orientation.length);
+		System.arraycopy(this.addent, 0, addent, 0, this.addent.length);
+		return true;
 	}
 
 	public void update() {
@@ -231,44 +246,5 @@ public class CameraListener {
 				surfaceTexture.updateTexImage();
 			}
 		}
-	}
-
-	private void setOrientationAndFlip(int deviceRotation) {
-		switch (deviceRotation) {
-			default:
-			case Surface.ROTATION_0:
-				orientationMatrix.put(new float[]{
-						0f, -1f,
-						-1f, 0f,
-				});
-				addent[0] = 1f;
-				addent[1] = 1f;
-				break;
-			case Surface.ROTATION_90:
-				orientationMatrix.put(new float[]{
-						1f, 0f,
-						0f, -1f,
-				});
-				addent[0] = 0f;
-				addent[1] = 1f;
-				break;
-			case Surface.ROTATION_180:
-				orientationMatrix.put(new float[]{
-						0f, 1f,
-						1f, 0f,
-				});
-				addent[0] = 0f;
-				addent[1] = 0f;
-				break;
-			case Surface.ROTATION_270:
-				orientationMatrix.put(new float[]{
-						-1f, 0f,
-						0f, 1f,
-				});
-				addent[0] = 1f;
-				addent[1] = 0f;
-				break;
-		}
-		orientationMatrix.rewind();
 	}
 }

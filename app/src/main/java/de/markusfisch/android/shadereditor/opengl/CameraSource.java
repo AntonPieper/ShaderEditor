@@ -36,7 +36,7 @@ final class CameraSource implements UniformSource {
 	public void update(long now) {
 		if (listener != null) {
 			listener.update();
-			open = listener.isBound();
+			open = listener.getOrientation(orientation, addent);
 		}
 	}
 
@@ -74,12 +74,6 @@ final class CameraSource implements UniformSource {
 				host.context());
 		listener.register(owner,
 				() -> host.onPermissionNeeded(Manifest.permission.CAMERA));
-
-		var orientationMatrix = listener.getOrientationMatrix();
-		orientationMatrix.rewind();
-		orientationMatrix.get(orientation);
-		orientationMatrix.rewind();
-		System.arraycopy(listener.addent, 0, addent, 0, addent.length);
 	}
 
 	private void close() {
