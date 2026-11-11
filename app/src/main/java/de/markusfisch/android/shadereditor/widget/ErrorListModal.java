@@ -19,7 +19,7 @@ import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.ErrorAdapter;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 public class ErrorListModal extends BottomSheetDialogFragment {
 	public static final String TAG = "ErrorListModal";
@@ -27,13 +27,13 @@ public class ErrorListModal extends BottomSheetDialogFragment {
 	private final ErrorAdapter.OnItemClickListener onItemClickListener;
 
 	@NonNull
-	final List<ShaderError> errors;
+	final List<ProjectDiagnostic> errors;
 
-	public ErrorListModal(@NonNull List<ShaderError> errors,
+	public ErrorListModal(@NonNull List<ProjectDiagnostic> errors,
 			@NonNull ErrorAdapter.OnItemClickListener onItemClickListener) {
 		this.errors = errors;
-		this.onItemClickListener = (lineNumber) -> {
-			onItemClickListener.onItemClick(lineNumber);
+		this.onItemClickListener = (file, lineNumber) -> {
+			onItemClickListener.onItemClick(file, lineNumber);
 			dismiss();
 		};
 	}

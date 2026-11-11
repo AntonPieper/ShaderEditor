@@ -12,16 +12,16 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.io.Serializable;
 import java.util.List;
 
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
 import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
 import de.markusfisch.android.shadereditor.project.LooseShaderFileProjectSource;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
 public class PreviewActivity extends AppCompatActivity {
 	public static class RenderStatus {
 		private volatile int fps;
-		private volatile List<ShaderError> infoLog;
+		private volatile List<ProjectDiagnostic> infoLog;
 		private volatile byte[] thumbnail;
 
 		RenderStatus() {
@@ -38,7 +38,7 @@ public class PreviewActivity extends AppCompatActivity {
 			return fps;
 		}
 
-		public List<ShaderError> getInfoLog() {
+		public List<ProjectDiagnostic> getInfoLog() {
 			return infoLog;
 		}
 
@@ -91,7 +91,7 @@ public class PreviewActivity extends AppCompatActivity {
 					}
 
 					@Override
-					public void onInfoLog(@NonNull List<ShaderError> infoLog) {
+					public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
 						// Invoked from the GL thread.
 						renderStatus.infoLog = infoLog;
 						if (!infoLog.isEmpty()) {

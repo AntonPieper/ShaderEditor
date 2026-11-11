@@ -16,8 +16,8 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
 import de.markusfisch.android.shadereditor.preference.Preferences;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.view.UndoRedo;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
@@ -123,15 +123,16 @@ public class EditorFragment extends Fragment {
 		shaderEditor.updateErrorHighlighting();
 	}
 
-	public void setErrors(@NonNull List<ShaderError> errors) {
+	public void setErrors(@NonNull List<ProjectDiagnostic> errors) {
 		shaderEditor.setErrors(errors);
 		highlightErrors();
 	}
 
 	public void showErrors() {
-		List<ShaderError> errors = shaderEditor.getErrors();
-		new ErrorListModal(errors, this::navigateToLine).show(getParentFragmentManager(),
-				ErrorListModal.TAG);
+		List<ProjectDiagnostic> errors = shaderEditor.getErrors();
+		// The editor shows a single file, so the file is ignored.
+		new ErrorListModal(errors, (file, lineNumber) -> navigateToLine(lineNumber))
+				.show(getParentFragmentManager(), ErrorListModal.TAG);
 	}
 
 	public void navigateToLine(int lineNumber) {

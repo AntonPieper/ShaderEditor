@@ -45,7 +45,7 @@ import de.markusfisch.android.shadereditor.highlighter.EditedRange;
 import de.markusfisch.android.shadereditor.highlighter.Highlight;
 import de.markusfisch.android.shadereditor.highlighter.Lexer;
 import de.markusfisch.android.shadereditor.highlighter.Token;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 public class ShaderEditor extends LineNumberEditText {
 	private static final Pattern PATTERN_TRAILING_WHITE_SPACE = Pattern.compile(
@@ -101,7 +101,7 @@ public class ShaderEditor extends LineNumberEditText {
 	private CodeCompletionListener codeCompletionListener;
 	private int updateDelay = 1000;
 	@NonNull
-	private List<ShaderError> shaderErrors = Collections.emptyList();
+	private List<ProjectDiagnostic> shaderErrors = Collections.emptyList();
 	private boolean isUserInteraction = true;
 	private int colorError;
 	private int textColor;
@@ -192,11 +192,11 @@ public class ShaderEditor extends LineNumberEditText {
 		return !shaderErrors.isEmpty();
 	}
 
-	public List<ShaderError> getErrors() {
+	public List<ProjectDiagnostic> getErrors() {
 		return shaderErrors;
 	}
 
-	public void setErrors(@NonNull List<ShaderError> errorLines) {
+	public void setErrors(@NonNull List<ProjectDiagnostic> errorLines) {
 		this.shaderErrors = errorLines;
 	}
 
@@ -214,14 +214,14 @@ public class ShaderEditor extends LineNumberEditText {
 		clearSpans(e, 0, e.length(), BackgroundColorSpan.class);
 	}
 
-	private void highlightErrors(List<ShaderError> shaderErrors) {
+	private void highlightErrors(List<ProjectDiagnostic> shaderErrors) {
 		Spannable e = getText();
 		clearError(e);
 		if (e == null || e.length() == 0) {
 			return;
 		}
-		for (ShaderError shaderError : shaderErrors) {
-			int line = shaderError.getLine() - 1;
+		for (ProjectDiagnostic shaderError : shaderErrors) {
+			int line = shaderError.line() - 1;
 			Layout layout = getLayout();
 			if (line < 0 || line >= layout.getLineCount()) {
 				continue;

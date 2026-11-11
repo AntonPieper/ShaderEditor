@@ -36,7 +36,7 @@ import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.service.ShaderWallpaperService;
 import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
 
@@ -267,7 +267,7 @@ public class MainActivity extends AppCompatActivity {
 			}
 
 			@Override
-			public void onInfoLog(@NonNull List<ShaderError> infoLog) {
+			public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
 				runOnUiThread(() -> {
 					editorFragment.setErrors(infoLog);
 					showErrors.setVisibility(editorFragment.hasErrors()

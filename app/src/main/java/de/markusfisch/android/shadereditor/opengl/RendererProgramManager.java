@@ -7,20 +7,22 @@ import androidx.annotation.Nullable;
 
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+
 final class RendererProgramManager {
 	record ReloadResult(
-			@NonNull List<ShaderError> textureErrors,
-			@NonNull List<ShaderError> programErrors,
+			@NonNull List<ProjectDiagnostic> textureErrors,
+			@NonNull List<ProjectDiagnostic> programErrors,
 			boolean succeeded) {
 		@NonNull
-		static ReloadResult success(@NonNull List<ShaderError> textureErrors) {
+		static ReloadResult success(@NonNull List<ProjectDiagnostic> textureErrors) {
 			return new ReloadResult(List.copyOf(textureErrors), List.of(), true);
 		}
 
 		@NonNull
 		static ReloadResult failure(
-				@NonNull List<ShaderError> textureErrors,
-				@NonNull List<ShaderError> programErrors) {
+				@NonNull List<ProjectDiagnostic> textureErrors,
+				@NonNull List<ProjectDiagnostic> programErrors) {
 			return new ReloadResult(
 					List.copyOf(textureErrors),
 					List.copyOf(programErrors),

@@ -20,9 +20,11 @@ import java.util.List;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+
 public class ShaderRenderer implements GLSurfaceView.Renderer {
 	public interface OnRendererListener {
-		void onInfoLog(@NonNull List<ShaderError> error);
+		void onInfoLog(@NonNull List<ProjectDiagnostic> error);
 
 		void onFramesPerSecond(int fps);
 	}
@@ -203,7 +205,7 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		nextFpsUpdate = 0;
 	}
 
-	private void submitErrors(@NonNull List<ShaderError> errors) {
+	private void submitErrors(@NonNull List<ProjectDiagnostic> errors) {
 		if (onRendererListener != null) {
 			onRendererListener.onInfoLog(errors);
 		}

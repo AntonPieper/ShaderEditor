@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+
 final class GlProgram {
 	private int id;
 	private Map<String, GlUniform> uniforms;
@@ -71,11 +73,11 @@ final class GlProgram {
 	}
 
 	@Nullable
-	ShaderError checkTextureUnits(int maxTextureUnits) {
+	ProjectDiagnostic checkTextureUnits(int maxTextureUnits) {
 		if (textureUnitCount <= maxTextureUnits) {
 			return null;
 		}
-		return ShaderError.createGeneral("The shader needs " + textureUnitCount +
+		return ProjectDiagnostic.error("The shader needs " + textureUnitCount +
 				" texture units, but this device has only " + maxTextureUnits);
 	}
 

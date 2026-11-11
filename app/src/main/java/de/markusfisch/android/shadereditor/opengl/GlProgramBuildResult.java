@@ -6,15 +6,17 @@ import androidx.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+
 final class GlProgramBuildResult {
 	@Nullable
 	private final GlProgram program;
 	@NonNull
-	private final List<ShaderError> infoLog;
+	private final List<ProjectDiagnostic> infoLog;
 
 	private GlProgramBuildResult(
 			@Nullable GlProgram program,
-			@NonNull List<ShaderError> infoLog) {
+			@NonNull List<ProjectDiagnostic> infoLog) {
 		this.program = program;
 		this.infoLog = infoLog;
 	}
@@ -23,7 +25,7 @@ final class GlProgramBuildResult {
 		return new GlProgramBuildResult(program, Collections.emptyList());
 	}
 
-	static GlProgramBuildResult failure(@NonNull List<ShaderError> infoLog) {
+	static GlProgramBuildResult failure(@NonNull List<ProjectDiagnostic> infoLog) {
 		return new GlProgramBuildResult(null, infoLog);
 	}
 
@@ -37,7 +39,7 @@ final class GlProgramBuildResult {
 	}
 
 	@NonNull
-	List<ShaderError> getInfoLog() {
+	List<ProjectDiagnostic> getInfoLog() {
 		return infoLog;
 	}
 }
