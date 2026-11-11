@@ -19,27 +19,27 @@ Opening a folder edits its files in place. There is no `import versus link` ques
 Global **New** uses one small creation sheet:
 
 - Name, prefilled with an unused `Untitled` name.
-- Location, defaulting to the ShaderEditor provider's user-files root.
+- Location, defaulting to the open folder.
 - A **Change** location action that opens Android's native directory picker.
 - **Create**.
 
-Show the resulting location succinctly, for example `ShaderEditor / Untitled / main.glsl`. Create that named folder and a valid template `main.glsl`, then focus the editor. No project-type, renderer, manifest, or storage-mode choices. Location selection can choose a different subfolder of ShaderEditor or any other writable provider folder with the identical flow. Remember the last explicitly selected creation parent as a convenience; first use defaults to ShaderEditor, and an unavailable remembered parent returns to that default with a visible location row.
+Location defaults to the folder that is currently open, and on first use to the library folder `ShaderEditor / Shaders` (section 8). Show the result succinctly, for example `ShaderEditor / Shaders / Untitled.glsl`. Create that file from a valid template, make it the running shader, and focus the editor. A new shader is a file, not a folder, so shaders in one folder can share textures and included code. No project-type, renderer, manifest, or storage-mode choices. A separate folder is one step away: Change opens the picker, which can create one, and any writable provider folder works with the identical flow. Remember the last explicitly selected creation parent as a convenience; first use defaults to ShaderEditor, and an unavailable remembered parent returns to that default with a visible location row.
 
-Inside an open folder, **New file** creates a named source/include file there without adding a nested project folder. Keep optional templates in that action rather than a required wizard. Existing content is never overwritten silently. Suggest an unused name automatically.
+**New file** in the file list does the same without changing the running shader, for include files and passes. Keep optional templates in that action rather than a required wizard. Existing content is never overwritten silently. Suggest an unused name automatically.
 
 The provider location details should state that ShaderEditor's own app files are removed when the app is uninstalled. Do not add a repeated warning/confirmation to every create or save action. Files selected in other providers retain those providers' lifecycle behavior.
 
 ## 3. Open and decide what runs
 
-Open folder uses `ACTION_OPEN_DOCUMENT_TREE`. It loads the file list lazily and uses a valid manifest entry when one exists. Without a manifest, restore the last explicitly run file for that folder if still present; otherwise use `main.glsl` if present. Otherwise open the folder without a render target and show **Open a shader, then Run**. Do not recursively scan/compile every GLSL file to guess an entry.
+Open folder uses `ACTION_OPEN_DOCUMENT_TREE`. It loads the file list lazily and picks the running shader by the one rule in SPEC 1: the file last chosen with Run this file for that folder, else a valid manifest entry, else `main.glsl`. If none applies, open the folder with nothing running and show **Open a shader, then Run**. Do not recursively scan/compile every GLSL file to guess an entry.
 
-**Open file** remains available through the system picker and incoming Android open/share intents. It opens the document directly. Reuse a known containing folder grant when available. A lone document grant is enough for a standalone shader; ask for its folder only if a sibling dependency is actually needed. The message is **Choose this shader's folder to load its other files**, with one **Choose folder** action. There is no conversion/import wizard for this permission boundary.
+**Open file** remains available through the system picker and incoming Android open/share intents. It opens the document directly as a one-file project, which is enough for a standalone shader. When the shader references another file, the diagnostic says **Open this shader's folder to load its other files**, with one **Open folder** action. That folder then opens like any other; the same document is selected in it when the provider can identify it, and otherwise the user picks it from the file list. Unsaved edits to the document carry over. There is no conversion/import wizard for this permission boundary, and no attempt to prove which granted folder a lone document belongs to.
 
 Keep the running shader visible in the preview title, for example `Preview: main.glsl`. Editing an include or another pass does not switch it. The usual Run button rebuilds the selected running shader. **Run this file** is a file/editor action that selects a different GLSL file as the running entry, remembered locally for that folder. It does not silently rewrite `shader-project.json`.
 
-If a manifest has an unsupported format or invalid content, opening/browsing still succeeds; rendering gives a located config error rather than ignoring that file. A changed explicit manifest entry is honored on reopening/refresh unless the user explicitly selects a different file for the current session. **Set default shader** is an optional advanced action that writes the minimal manifest when the user wants a portable default. Most users never need it.
+If a manifest has an unsupported format or invalid content, opening/browsing still succeeds; rendering gives a located config error rather than ignoring that file. The remembered Run this file choice wins over the manifest entry, on every open and refresh, until the user picks another file or uses Set default shader. **Set default shader** is an optional advanced action that writes the minimal manifest when the user wants a portable default, and clears the remembered choice. Most users never need it.
 
-A single-file open has its selected file as the running entry. For a folder with no target, opening a GLSL file can focus the file; Run then selects it. Failed compilation of an include-only file explains that it has no entry function. No hidden heuristics that classify arbitrary source text as a complete shader.
+A single-file open has its selected file as the running shader. For a folder with nothing running, opening a GLSL file can focus the file; Run then selects it. Failed compilation of an include-only file explains that it has no entry function. No hidden heuristics that classify arbitrary source text as a complete shader.
 
 ## 4. Keep common authoring actions short
 
@@ -51,14 +51,14 @@ A single-file open has its selected file as the running entry. For a folder with
 | Change sampling | Edit optional settings beside the input or in its contextual properties |
 | View pass output | Choose a reachable output in the preview selector; keep the same running graph |
 
-Texture insertion uses an existing project-local file in place when it is within the selected folder. An outside/library resource is copied once into `assets/`; imported unsupported image formats are converted to PNG. Suggest a collision-free name and valid unused variable, then insert:
+Texture insertion uses an existing project-local file in place when it is within the selected folder. An outside/library resource is copied once into `textures/` at the project root; imported unsupported image formats are converted to PNG. Suggest a collision-free name and valid unused variable, then insert:
 
 ```glsl
-#pragma se input "assets/paper.png"
+#pragma se input "textures/paper.png"
 uniform sampler2D paper;
 ```
 
-Calculate the path relative to the edited file. Do not ask users to type the same name into several fields. Default filter/wrap values are omitted; advanced controls edit the same annotation, never hidden settings. Explicit replacement is the only operation that overwrites a colliding resource. A local same-file selection must not produce unnecessary copies.
+Calculate the path relative to the edited file. Do not ask users to type the same name into several fields. Default option values are omitted; advanced controls edit the same directive, never hidden settings. The cubemap picker assembles six faces into the strip of SPEC 4. Explicit replacement is the only operation that overwrites a colliding resource. A local same-file selection must not produce unnecessary copies.
 
 Shader inputs default to current frame. Previous frame is a contextual option, not a compulsory decision dialog. A newly created file executes only after it is referenced. Shared include files hold code, not input/target metadata; explain the restriction at the relevant annotation error rather than on every include action.
 
@@ -80,7 +80,9 @@ Handle failed writes honestly: retain unsaved files and report them, with Retry.
 
 A syntax error leaves the last working image visible. Show **Preview needs fixing** or **Showing last successful build** and an error count; selecting an error opens its actual source file. Save remains available for invalid source. No successful build means a clear error/empty preview, not an unexplained black rectangle. Ignore stale diagnostic completions.
 
-Rename a file in the open-folder list using one name field. Update recognized literal references where the bounded scan succeeds, including unused source files; preserve unresolved edits as drafts if saving fails. Normal safe renames do not need a second review wizard. Explain incomplete/unsupported updates rather than silently breaking known references. Do not build a generic cross-provider move/refactoring tool in v1; users can use the native file explorer for general file management and refresh afterward.
+Rename a file in the open-folder list using one name field. Rename does not rewrite references in v1. When the running shader depends on the file, say so before renaming; afterwards the ordinary missing-file diagnostics point at each reference that needs the new name. Finding every reference would mean reading every file in a folder that may be a whole repository, which the lazy-open rule forbids. Users can use the native file explorer for moves and refresh afterward.
+
+A uniform that nothing provides is a warning, and the shader still runs (SPEC 3.2). The warning carries its fix: **Add texture** for a sampler, the nearest builtin name for a likely typo. Shader text written for the old conventions offers **Convert**, which rewrites that file's sampler comments and library texture names into directives (SPEC 12.3).
 
 Delete uses the provider capability and warns about known dependent files. Removing an item from Recents only removes the shortcut. Do not equate it with deleting a folder. Native Files operations are ordinary outside edits; they go through the same refresh/conflict handling.
 
@@ -94,18 +96,35 @@ Never default to exporting the whole opened folder: it may be Documents, a repos
 
 Sharing does not require successful GLSL compilation. Static dependency collection usually works despite shader errors. If malformed/missing references prevent complete collection, show which files are unresolved and allow explicit extras or sharing the incomplete sources as-is. Do not claim such a package is self-contained. Exclude app internals and VCS administration directories.
 
-Opening a ZIP offers a destination using the same location picker, extracts into a new folder without overwriting unrelated files, then opens that folder normally. A portable-default override exists only in the extracted manifest; there is no imported-project mode.
+A ZIP reaches the app through Open file or as a share target. Do not register ShaderEditor as a default viewer for every ZIP on the device. Opening a ZIP offers a destination using the same location picker, extracts into a new folder without overwriting unrelated files, then opens that folder normally. A portable-default override exists only in the extracted manifest; there is no imported-project mode.
 
 ## 8. Wallpaper and existing shaders
 
 **Set wallpaper** applies the current valid shader. Internally store a durable dependency snapshot, so an unavailable source provider cannot break the wallpaper after the editor closes. Keep this mechanism invisible. Current invalid edits cannot silently apply an older preview. Later edits use **Update wallpaper**; no live-sync preference or provider-dependent behavior in v1. Keep separately persisted legacy/runtime behavior where supported.
 
-Existing DB shaders remain available through the current library and fixed adapter. A normal open/run must not force a migration dialog. When a user requests files or a project-only feature, use **Save as files** with the same Name/Location flow. Preserve the original. Report unsupported conversion settings only when they occur. Do not display internal terms such as compatibility mode or virtual one-file project in normal navigation.
+Existing shaders go through three steps (SPEC 12.2), and users notice only the second.
+
+1. At first nothing changes. DB shaders are listed, edited, and saved as today. Underneath they are converted on the fly, so they already run on the same engine as files.
+2. Later, one update moves them. All shaders become files in the library folder, and all library textures go into its `textures/` folder once:
+
+```text
+ShaderEditor/
+  Shaders/
+    Plasma.glsl
+    Clouds.glsl
+    textures/
+      noise.png
+```
+
+The shader list looks the same afterwards, with the same thumbnails, and the wallpaper keeps showing the same shader. Say once, plainly, what happened and where the files are. Titles that are empty or repeated get a number. If anything fails, the affected shader stays usable from the database and the move resumes on the next start. Do not ask the user to choose anything.
+3. A release later the database copy is removed. This step is invisible.
+
+Before step 2, **Save as files** converts one shader on request with the usual Name/Location flow and keeps the original. Do not display internal terms such as compatibility mode or converter in normal navigation.
 
 ## 9. Acceptance and implementation restraint
 
 Use the existing Android components and localization/accessibility conventions. Long filenames retain a way to see the full path, focus returns to the editor after insertion, and save/error state is not color-only. Do not add an onboarding tour for concepts that the actions already explain.
 
-Native authoring may remain behind one temporary development gate until S9 validation. No public v1 claim before rendering, provider access, file recovery, and wallpaper cases work. Provider failures and conflicts still need correct handling; simplify their frequency and presentation instead of hiding data loss.
+Native authoring stays behind one temporary development gate. The gate lifts for single-pass projects once M14 is validated (Gate A); shader inputs then report that they need a newer version until Gate B. No public claim before rendering, provider access, file recovery, and wallpaper cases work. Provider failures and conflicts still need correct handling; simplify their frequency and presentation instead of hiding data loss.
 
 Primary references: [Android document-provider guide](https://developer.android.com/guide/topics/providers/create-document-provider), [Android document access](https://developer.android.com/training/data-storage/shared/documents-files), and [Termux's DocumentsProvider](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/filepicker/TermuxDocumentsProvider.java). Use Termux as a UX/API reference, not code to copy verbatim.

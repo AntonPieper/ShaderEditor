@@ -6,15 +6,15 @@ Read SPEC.md for semantics. This file suggests boundaries and identifies existin
 
 ```mermaid
 flowchart LR
-    A[Storage + editor drafts] --> B[Immutable project snapshot]
-    B --> C[Native preparation]
-    L[Legacy adapter] --> D[Resolved plan descriptions]
-    C --> D
+    A[Files + editor drafts] --> B[Immutable project snapshot]
+    DB[DB shader] --> K[Converter] --> B
+    B --> C[prepare]
+    C --> D[RenderPlan]
     D --> E[GL candidate build]
-    E --> F[Active execution plan]
+    E --> F[Active plan]
 ```
 
-The legacy adapter converts old source metadata and resource lookups into the same execution descriptions. It may reuse source-map and compilation utilities. It must not make native parsing permissive or add `if legacy` branches throughout drawing code.
+There is one dialect and one producer of plans. A database shader is converted to project files in memory (SPEC 12) and then takes the same path as a folder. The converter is a pure text transformation; nothing after it knows where a snapshot came from, and there are no `if legacy` branches anywhere.
 
 ## 2. Minimal concepts
 
@@ -28,7 +28,33 @@ The legacy adapter converts old source metadata and resource lookups into the sa
 | Pass description | Instance identity, program reference, input bindings, output target | Storage origin |
 | Executable plan | Linked programs, ordered passes, per-program bindings, target/history allocations | UI drafts or SAF access |
 
-Do not turn every row into an interface plus factory plus registry. Plain records/value objects and a few concrete coordinators are sufficient. Keep the CPU-side planning types free of Android where useful for meaningful JVM tests. Text and binary assets are separate values; do not base64-encode images into `ShaderProjectFile.source`.
+### Seams
+
+Three seams carry the design. `prepare` takes shape in M1–M4, `ProjectFiles` in M7, and `PlanRuntime` in E15–E17; ENGINE.md is its design. Keep everything else private to its module. Names are conceptual; the shapes are not.
+
+```text
+ProjectFiles                       // storage, one instance per opened root
+  read(path)  -> bytes + revision | absent
+  list(dir)   -> entries
+  write(path, bytes, expectedRevision) -> outcome
+  create / rename / delete            // where the store supports them
+
+prepare(files, entryPath, limits) -> Preparation    // pure JVM: no Android, no GL
+  Preparation.plan          RenderPlan, or none
+  Preparation.diagnostics   path, line, severity, message
+  Preparation.dependencies  every path read, with the revision used
+
+PlanRuntime                        // one per GL context
+  build(plan, capabilities) -> candidate | diagnostics
+  activate(candidate)                 // at a frame boundary
+  drawFrame(frameInputs)
+```
+
+`prepare` is the only code that understands manifests, host directives, includes, and the graph. Every consumer uses its result: rendering takes the plan, the editor takes the diagnostics, Share, Save a copy, and Set wallpaper take `dependencies`, and refresh compares the revisions in `dependencies` to decide whether to rebuild. For sharing, it still returns the dependencies it could collect when there is no plan. There is no second producer of `RenderPlan`.
+
+`ProjectFiles` is an interface because the variation is real. Implementations: a directory (own storage, installed wallpaper snapshots, archive staging, JVM tests), a SAF tree, a draft overlay that wraps another store and serves unsaved editor text, and, until migration, a view over the database that serves converted shaders and library textures (SPEC 12.2). A wallpaper therefore renders a directory store through the same `prepare` and `PlanRuntime` as the preview.
+
+Do not turn the other rows into interfaces with factories and registries. Plain records/value objects and a few concrete coordinators are sufficient. Keep `prepare` and the plan types free of Android so they have meaningful JVM tests. Text and binary assets are separate values; do not base64-encode images into `ShaderProjectFile.source`.
 
 File authoring uses normalized shader paths as default pass identities. The runtime receives an explicit instance ID distinct from a program identity. Do not require identical source text to compile twice, but defer content-hash program caches until profiling justifies them. Shared includes and small wrapper files are the initial user-facing reuse mechanism.
 
@@ -42,10 +68,10 @@ All paths below are under `app/src/main/java/de/markusfisch/android/shadereditor
 | Editor/session loading | `activity/managers/ShaderManager`, `ShaderViewManager` | Stop reducing every session to the entry source; route save to its actual store |
 | Navigation | `activity/managers/NavigationManager`, `activity/PreviewActivity` | Small recoverable session/snapshot identifiers instead of serialized project payloads |
 | Editor UI | `fragment/EditorFragment`, `widget/ShaderEditor`, `view/UndoRedo` | File-aware editing, source diagnostics, separate per-file history |
-| Source preparation | `opengl/ShaderSourcePreparer`, `PreparedShaderSource`, `ShaderLineMapping`, `ShaderError` | Add native lexer/assembly/maps; preserve legacy preparation inside adapter |
+| Source preparation | `opengl/ShaderSourcePreparer`, `PreparedShaderSource`, `ShaderLineMapping`, `ShaderError` | Replaced by `prepare`; the sampler pattern and `///` parsing move into the converter |
 | Program lifecycle | `opengl/RendererProgramManager` | Candidate build/activation; old plan survives failed build |
 | Rendering | `opengl/ShaderRenderer`, `ShaderRenderPipeline` | Consume ordered plan; targets per instance; project-wide frame transaction |
-| GL/resources | `opengl/GlDevice`, `ProgramBindings`, `ShaderTextureResources`, GL wrappers | Correct sampling variants, typed targets, queried limits, lifecycle ownership |
+| GL/resources | `opengl/GlDevice`, `ProgramBindings`, `ShaderTextureResources`, GL wrappers | Per-input sampling, typed targets, queried limits, lifecycle ownership |
 | Builtins | `opengl/BuiltinUniforms`, sensor/system/camera helpers | Graph-wide provider demand and frame capture; per-pass bindings/coordinate transform |
 | Persistence/library | DAOs, `io/ExternalFile`, import/export helpers, library manager | Preserve DB-backed records; new native project registry and stores |
 | Wallpaper | `service/ShaderWallpaperService`, preferences | Durable installed snapshot and preserved legacy selection/runtime behavior |
@@ -76,23 +102,21 @@ Cancellation/freshness rules apply to parse, decode, and GL completion. A cancel
 - Keep pending candidate and active plan separate. Building a new program must not clear active programs first.
 - Distinguish deleting valid GL objects from discarding handles after context loss.
 - Query capabilities once per context, then validate candidate requirements against that snapshot.
-- Resource budgeting includes old+candidate coexistence, historical outputs, retained presentation output, decoded images, and GLES2 sampling variants. Allocation failure keeps the old plan when the context remains usable and reports actionable diagnostics.
+- A candidate holds linked programs and uploaded images. Render targets are allocated at activation, after the old plan's targets are released; histories reset on activation, so the two sets never coexist. Validate formats, sizes, and unit counts against the capability snapshot before activation, so allocation failure is rare; when it happens, report it and show the error state.
 
 Keep a project-wide frame snapshot for time/sensors/camera. Per-pass `ProgramBindings` set the program's own target dimensions, coordinate-transformed pointers, explicit inputs, and fixed historical references. Avoid repeatedly configuring/releasing builtin listeners for each pass.
 
-## 6. Sampling correctness on GLES2
+## 6. Per-input sampling
 
-Sampling parameters are properties of an input in the authoring model. GLES2 texture-object state does not implement independent simultaneous sampler states for one object. This is a required correctness case, not an optional optimization.
-
-Use a small backend mechanism that materializes distinct texture variants as needed on GLES2, or another demonstrably correct strategy. Refresh dynamic pass variants once after the producer writes. Sharing source storage must never make one consumer's wrap/filter silently affect another. Preserve immutable previous outputs until frame commit. GLES3 sampler objects can avoid copies. Do not rerun a shader to obtain differently sampled copies.
+Sampling parameters are properties of an input. The app requests a GLES3 context first and falls back to GLES2 (`widget/ShaderView`). On GLES3, give each input a sampler object; this works for `#version 100` shaders too, because sampler objects belong to the context and not to the shader language. On GLES2, set the texture's parameters before each draw that uses it. That is correct across passes. It cannot serve two inputs of one program that read the same source with different settings, and that single case is a capability error (SPEC 4). Do not copy textures to work around it.
 
 ## 7. Storage without a sync platform
 
-Use one small document-access implementation for native files: logical paths map to opaque document URIs, accessed through ContentResolver/DocumentsContract. ShaderEditor's own DocumentsProvider exposes an app-owned user-files directory through those same operations. A single-document grant is a restricted locator, not a different format/store framework. Preserve DB operations through the existing legacy boundary. Do not add separate managed/linked/imported project implementations or a mount/plugin registry.
+Native files are reached through `ProjectFiles` (section 2). The SAF implementation maps logical paths to opaque document URIs by listing children and matching names exactly, through ContentResolver/DocumentsContract. The directory implementation uses ordinary file I/O on the app-owned user-files directory. ShaderEditor's DocumentsProvider exports that same directory to other apps; a tree URI under the app's own authority resolves to the directory store instead of looping through the provider. A single-document grant is a one-file project (SPEC 1). Do not add managed/linked/imported project kinds or a mount/plugin registry on top of these implementations.
 
 Implement only the provider contract needed by Android Files and authoring: roots, document/child queries, open/read/write, create, supported rename/delete, child containment, correct MIME types/capability flags, and change notifications. Advertise only implemented operations. Register the exported provider with grantUriPermissions and the system MANAGE_DOCUMENTS permission plus DOCUMENTS_PROVIDER intent filter. Stable opaque IDs must not be casually invalidated by supported rename; use stable backing identity or the platform's documented replacement-ID behavior and update local locators/grants accordingly. A path-prefix string check is not sufficient containment validation. Reject traversal and links escaping the exposed user-files root. Test direct/malformed IDs as well as picker navigation. App-private DB/drafts/cache/wallpaper directories are outside that root.
 
-Use ACTION_OPEN_DOCUMENT_TREE for folders and creation destinations, ACTION_OPEN_DOCUMENT for individual files/resources, and the initial-URI hint where supported. Respect system-disallowed folders and granted read/write flags; persist only actually offered persistable grants. In-app default creation can address its own provider directly without asking for a permission it already owns. External apps still use Android's normal grants. A known tree grant may be reused for a file only after verifying containment; do not infer a parent from URI string structure.
+Use ACTION_OPEN_DOCUMENT_TREE for folders and creation destinations, ACTION_OPEN_DOCUMENT for individual files/resources, and the initial-URI hint where supported. Respect system-disallowed folders and granted read/write flags; persist only actually offered persistable grants. In-app default creation can address its own provider directly without asking for a permission it already owns. External apps still use Android's normal grants. Do not build on proving that a lone document lies inside a granted tree: `isChildDocument` and `findDocumentPath` are optional per provider and not available on every supported API level, and documents that arrive through view/share intents often have no tree at all. Never infer a parent from URI string structure.
 
 Open lazily. Snapshot collection traverses required dependencies and overlays drafts; it does not first enumerate/copy the whole tree. Rendering, sharing, Save a copy, and wallpaper reuse dependency/path collection with explicit completeness requirements. Rendering/wallpaper require a valid candidate; sharing can preserve incomplete sources with a clear warning. No compilation is needed just to package sources.
 
@@ -100,7 +124,7 @@ Keep durable drafts independent of saving and compilation. Refresh on return/exp
 
 A bounded snapshot loader plus save API with per-file outcomes is enough. Handle partial writes and preserve retryable drafts. Use app-private staging/publication for installed wallpaper revisions and archive validation, not a hidden clone for ordinary folder editing.
 
-Maintain stable local session/recent IDs as app metadata. Folder/document locators identify storage; display names are not identity. Normalize own-provider and external-open routes to the same document/session where possible without guessing arbitrary provider identities. Removing a recent shortcut never deletes source files. Directory moves by other apps may invalidate locators; offer Choose folder again and retain drafts.
+Maintain stable local session/recent IDs as app metadata. Folder/document locators identify storage; display names are not identity. Removing a recent shortcut never deletes source files. Directory moves by other apps may invalidate locators; offer Choose folder again and retain drafts.
 
 ## 8. Avoid these implementation detours
 
@@ -108,6 +132,6 @@ Maintain stable local session/recent IDs as app metadata. Folder/document locato
 - No full custom GLSL preprocessor. V1 explicitly uses static include assembly and restricted host annotations.
 - No metadata synthesized by guessing variable names or interpreting arbitrary comments.
 - No sidecars, graph manifest, pass override precedence, script API, or plugin/provider registry without an actual current requirement.
-- No new legacy features. Existing comment metadata stays behind the adapter.
+- No knowledge of the old conventions outside the converter.
 - No huge fixtures encoded into Java strings merely to avoid resource loading.
 - No benchmark or test that just repeats the implementation's internal algorithm; verify observable semantics with independent expected outcomes.

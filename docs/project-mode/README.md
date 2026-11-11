@@ -4,23 +4,19 @@ This package specifies the revised project mode discussed in issue #191. It is a
 
 ## Start here
 
-Use **GPT-6.1 Sol**, with **High reasoning** if the client offers that setting. Select the model in the Codex client; mentioning a model inside a prompt does not change the running model.
-
-Run sessions **S1 through S9 in order**, in the same checkout or on branches that include the preceding session's work. These are successive implementation sessions, not parallel agents. Start a fresh conversation for each session. Reuse the implementation prompt in [PROMPTS.md](PROMPTS.md), changing only the session ID.
-
-Each session reads the repository's applicable `AGENTS.md`, this file, and [HANDOFF.md](HANDOFF.md), then only the contract sections and files relevant to that session. Do not resend the entire design conversation.
+This folder is the design. The implementation plan, its ledger, and the prompts for coding agents are local agent configuration in `docs/agents/project-mode/` and are not part of upstream pull requests.
 
 | File | Purpose |
 | --- | --- |
-| [SPEC.md](SPEC.md) | Normative syntax, resolution, rendering, and compatibility rules |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Responsibilities, integration points, and constraints |
-| [DECISIONS.md](DECISIONS.md) | Syntax alternatives, architecture tradeoffs, and deliberate simplifications |
-| [UX.md](UX.md) | Concrete authoring, file, error, and wallpaper workflows |
-| [IMPLEMENTATION.md](IMPLEMENTATION.md) | Ordered sessions with deliverables and exit criteria |
+| [SPEC.md](SPEC.md) | Normative syntax, resolution, rendering, and conversion rules |
+| [UX.md](UX.md) | Concrete authoring, file, error, wallpaper, and migration workflows |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Responsibilities, seams, integration points, and constraints |
+| [ENGINE.md](ENGINE.md) | Diagnosis of the rendering engine and its target design |
+| [DECISIONS.md](DECISIONS.md) | Why the contract has its shape, including the decisions of 2026-11-11 |
 | [ACCEPTANCE.md](ACCEPTANCE.md) | Named, observable acceptance cases |
-| [HANDOFF.md](HANDOFF.md) | Current implementation state and evidence; update after every session |
-| [PROMPTS.md](PROMPTS.md) | Copy-and-paste implementation, continuation, and review prompts |
 | [examples/README.md](examples/README.md) | Small executable source fixtures and expected results |
+
+The work is a list of small pull requests in two tracks: **E** cleans up the rendering engine, **M** adds project mode. References to "IMPLEMENTATION" and to PR IDs such as E15 or M4 in this folder mean `docs/agents/project-mode/IMPLEMENTATION.md`.
 
 ## Decisions already made
 
@@ -31,17 +27,24 @@ The user model is: **a project is a folder; an entry shader produces the picture
 uniform sampler2D noise;
 ```
 
-- Ordinary GLSL declarations remain explicit. An input annotation attaches to the immediately following direct declaration.
-- There is one annotation spelling: `se input`. No named-target variant, `se bind`, `se sampler`, generated uniforms, or `$`/`@`/`_` placeholder expressions.
+- Ordinary GLSL declarations remain explicit. An input directive attaches to the immediately following direct declaration.
+- There is one directive spelling for inputs: `se input`. No named-target form, `se bind`, `se sampler`, generated uniforms, or `$`/`@`/`_` placeholder expressions.
 - Files have exact logical paths. No pass IDs, asset IDs, basename inference, global-resource fallback, or mandatory directory roles.
-- Open any folder granted by Android. ShaderEditor exposes its own user files through a DocumentsProvider; creation defaults there and Change uses the same native folder picker.
+- Open any folder granted by Android. ShaderEditor exposes its own user files through a DocumentsProvider; creation defaults there and Change uses the same native folder picker. Code shared by several shaders lives in a folder that contains them all; that folder is the project.
 - Save edits in place. No managed/linked/imported modes, mandatory manifest, or automatic whole-folder copy.
 - Share and Save a copy collect the selected shader and its dependencies; unrelated folder contents require explicit inclusion.
 - Resources selected from the library are copied into the project; already-local files are reused.
-- `se target` configures the default pass associated with a shader entry file.
+- `se target` configures a pass file's output: size, format, initial content, and how the running shader is scaled to the screen (nearest by default).
 - Programs, input bindings, and pass instances are separate internal concepts. File authoring creates one default instance per shader path; this is not a restriction on the runtime data model.
-- Native v1 includes basic multipass and previous-frame reads. Earlier sessions deliver development slices, not complete v1 support.
-- Existing shaders keep their behavior through one fixed legacy adapter. New project features do not extend legacy syntax.
+- Native v1 includes basic multipass and previous-frame reads, and the format specifies them from the start. Implementation reaches a complete single-pass workflow first (Gate A after M14) and adds multipass in M15.
+- One rule selects the running shader: the remembered Run this file choice, else the manifest entry, else `main.glsl`.
+- Three seams carry the implementation: `ProjectFiles`, `prepare`, and `PlanRuntime` (ARCHITECTURE 2).
+- The engine has one dialect. Existing DB shaders are converted to project files in memory from the start, migrated to one library folder later, and the database code is then removed. A small pure converter is the only code that knows the old conventions; nothing carries a legacy flag.
+- Every old setting has an exact project form: separate min/mag filters, mipmaps, per-axis wrap, cubemaps (a six-face strip), and initial backbuffer content (`se target initial`, from an image or any shader).
+- A new shader is a file in the open folder, by default the library folder, so shaders share textures and included code.
+- A uniform that nothing provides is a warning and the shader still runs. This is not configurable.
+- The rendering engine is cleaned up first, in its own track: one table declares every builtin uniform, a program reflects its uniforms once at link, and the driver swaps plans without recreating the GL context (ENGINE.md).
+- Host directives are never allowed in include files; a library takes samplers as function parameters.
 - No scripting runtime, graph editor, asset sidecars, general override system, or new app framework in this work.
 
 ## Contract and change control
