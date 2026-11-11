@@ -91,7 +91,11 @@ public class UIManager {
 				ShaderEditorApp.preferences.showExtraKeys());
 	}
 
-	public void setToolbarTitle(String name) {
+	public CharSequence getToolbarTitle() {
+		return toolbar.getTitle();
+	}
+
+	public void setToolbarTitle(CharSequence name) {
 		toolbar.setTitle(name);
 		toolbar.setSubtitle(null);
 	}
