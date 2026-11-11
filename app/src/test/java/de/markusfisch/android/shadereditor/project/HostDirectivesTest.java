@@ -379,7 +379,7 @@ public class HostDirectivesTest {
 								"float a;",
 								"#pragma se input \"a.png\"",
 								TEX)),
-				path("shaders/main.glsl"), ProjectLimits.DEFAULT));
+				path("shaders/main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 		ProjectDiagnostic error = singleError(result);
 		assertEquals(path("shaders/lib.glsl"), error.file());
 		assertEquals(2, error.line());
@@ -396,7 +396,7 @@ public class HostDirectivesTest {
 								"#pragma se input \"a.png\"",
 								"#include \"decl.glsl\""))
 						.put("decl.glsl", TEX + "\n"),
-				path("main.glsl"), ProjectLimits.DEFAULT));
+				path("main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 		assertTrue(singleError(result).message().contains("same file"));
 	}
 
@@ -409,7 +409,7 @@ public class HostDirectivesTest {
 								"#include \"empty.glsl\"",
 								TEX))
 						.put("empty.glsl", ""),
-				path("main.glsl"), ProjectLimits.DEFAULT));
+				path("main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 		ProjectDiagnostic error = singleError(result);
 		assertEquals(1, error.line());
 		assertTrue(error.message().contains("#include"));
@@ -422,7 +422,7 @@ public class HostDirectivesTest {
 				new MemoryProjectFiles().put("main.glsl", lines(
 						"#include \"missing.glsl\"",
 						"#pragma se target size=0x0")),
-				path("main.glsl"), ProjectLimits.DEFAULT));
+				path("main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 		assertEquals(2, result.diagnostics().size());
 		assertTrue(result.diagnostics().get(0).message()
 				.contains("missing.glsl"));
@@ -483,6 +483,8 @@ public class HostDirectivesTest {
 				"uniform sampler2D backbuffer;");
 		assertError("reserved", "#pragma se input \"a.glsl\"",
 				"uniform sampler2D cameraFront;");
+		assertError("reserved", "#pragma se input \"a.png\"",
+				"uniform sampler2D time;");
 	}
 
 	private static Input input(String arguments) {
@@ -521,7 +523,7 @@ public class HostDirectivesTest {
 		return HostDirectives.parse(SourceAssembly.assemble(
 				new MemoryProjectFiles().put("shaders/main.glsl",
 						lines(source)),
-				path("shaders/main.glsl"), ProjectLimits.DEFAULT));
+				path("shaders/main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 	}
 
 	private static String lines(String... lines) {

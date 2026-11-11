@@ -28,9 +28,6 @@ public record HostDirectives(
 		List<Input> inputs,
 		Target target,
 		List<ProjectDiagnostic> diagnostics) {
-	public static final Set<String> ENGINE_SAMPLERS = Set.of(
-			"backbuffer", "cameraBack", "cameraFront");
-
 	private static final Set<String> SAMPLER_TYPES = Set.of(
 			"sampler2D", "samplerCube", "samplerExternalOES");
 	private static final Set<String> PRECISIONS = Set.of(
@@ -46,8 +43,15 @@ public record HostDirectives(
 		diagnostics = List.copyOf(diagnostics);
 	}
 
-	public static HostDirectives parse(SourceAssembly assembly) {
-		Parser parser = new Parser(assembly);
+	/**
+	 * Parse the host directives of an assembled pass file. reserved are
+	 * the names of the engine's builtin uniforms: an input with a path
+	 * cannot use one, an input without a path must.
+	 */
+	public static HostDirectives parse(
+			SourceAssembly assembly,
+			Set<String> reserved) {
+		Parser parser = new Parser(assembly, reserved);
 		parser.run();
 		List<ProjectDiagnostic> diagnostics =
 				new ArrayList<>(assembly.diagnostics());
@@ -65,14 +69,16 @@ public record HostDirectives(
 
 	private static final class Parser {
 		private final List<SourceAssembly.Line> source;
+		private final Set<String> reserved;
 		private final List<String> lines;
 		private final List<Input> inputs = new ArrayList<>();
 		private final List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		private Target target;
 		private int targetLine;
 
-		private Parser(SourceAssembly assembly) {
+		private Parser(SourceAssembly assembly, Set<String> reserved) {
 			source = assembly.source();
+			this.reserved = reserved;
 			lines = new ArrayList<>(assembly.lines());
 		}
 
@@ -174,12 +180,12 @@ public record HostDirectives(
 				error(at, "An image source is read as sampler2D or " +
 						"samplerCube, not " + type);
 			}
-			if (source == null && !ENGINE_SAMPLERS.contains(name)) {
+			if (source == null && !reserved.contains(name)) {
 				error(at, name + " is not an engine sampler, add a path " +
 						"such as #pragma se input \"assets/" + name +
-						".png\", or use backbuffer, cameraBack or cameraFront");
-			} else if (source != null && ENGINE_SAMPLERS.contains(name)) {
-				error(at, name + " is reserved for the engine sampler, " +
+						".png\"");
+			} else if (source != null && reserved.contains(name)) {
+				error(at, name + " is reserved for a builtin uniform, " +
 						"rename the uniform to bind " + source);
 			}
 			if (diagnostics.size() == errors) {

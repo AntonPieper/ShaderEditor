@@ -69,6 +69,23 @@ public class ProjectPathTest {
 	}
 
 	@Test
+	public void rejectsVersionControlFolders() {
+		assertError(MAIN, ".git/config",
+				"Path is inside a version-control folder: .git/config");
+		assertError(MAIN, "a/../.git/config",
+				"Path is inside a version-control folder: a/../.git/config");
+		assertError(NESTED, "../../.hg/x.glsl",
+				"Path is inside a version-control folder: ../../.hg/x.glsl");
+		assertError(MAIN, "a/.svn/x.png",
+				"Path is inside a version-control folder: a/.svn/x.png");
+		assertError(MAIN, ".GIT/config",
+				"Path is inside a version-control folder: .GIT/config");
+		assertFalse(ProjectPath.parse(".git").isSuccess());
+		assertEquals(".github/a.glsl", resolve(MAIN, ".github/a.glsl"));
+		assertEquals("a.glsl", resolve(MAIN, ".git/../a.glsl"));
+	}
+
+	@Test
 	public void rejectsEmptyPath() {
 		assertError(MAIN, "", "Path is empty");
 	}

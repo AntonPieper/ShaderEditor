@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
@@ -40,18 +41,21 @@ public record Preparation(
 
 	/**
 	 * Prepare the running shader entry of a project. Every file is read
-	 * once, and only the manifest and files the entry depends on are
-	 * read. Images are not decoded.
+	 * once, and only the manifest, its entry and files the running
+	 * shader depends on are read. Images are not decoded. reserved are
+	 * the names of the engine's builtin uniforms: an input with a path
+	 * cannot use one, an input without a path must.
 	 */
 	public static Preparation prepare(
 			ProjectFiles files,
 			ProjectPath entry,
-			ProjectLimits limits) {
+			ProjectLimits limits,
+			Set<String> reserved) {
 		CapturedFiles captured = new CapturedFiles(files, limits);
 		List<ProjectDiagnostic> diagnostics = new ArrayList<>();
-		ProjectDiagnostic manifest = readManifest(captured);
-		if (manifest != null) {
-			diagnostics.add(manifest);
+		ProjectParseResult<ProjectManifest> manifest = readManifest(captured);
+		if (manifest != null && !manifest.isSuccess()) {
+			diagnostics.add(manifest.diagnostic());
 		}
 		if (entry.getKind() != ProjectPath.Kind.SHADER) {
 			diagnostics.add(error("The running shader must be a .glsl " +
@@ -59,8 +63,17 @@ public record Preparation(
 			return new Preparation(null, diagnostics,
 					captured.dependencies(), captured.contents());
 		}
-		PassGraph graph = PassGraph.discover(captured, entry, limits);
+		PassGraph graph = PassGraph.discover(captured, entry, limits,
+				reserved);
 		diagnostics.addAll(graph.diagnostics);
+		if (manifest != null && manifest.isSuccess() &&
+				!manifest.value().entry().equals(entry)) {
+			ProjectDiagnostic missing = checkEntry(captured,
+					manifest.value().entry());
+			if (missing != null) {
+				diagnostics.add(missing);
+			}
+		}
 		RenderPlan plan = hasErrors(diagnostics)
 				? null
 				: plan(graph, diagnostics);
@@ -68,21 +81,38 @@ public record Preparation(
 				captured.contents());
 	}
 
-	private static ProjectDiagnostic readManifest(ProjectFiles files) {
+	// Return null when there is no manifest.
+	private static ProjectParseResult<ProjectManifest> readManifest(
+			ProjectFiles files) {
 		ProjectFiles.Read read = files.read(ProjectManifest.FILE);
 		if (read == null) {
 			return null;
 		}
 		if (!(read instanceof ProjectFiles.Content content)) {
-			return error(CapturedFiles.problem(ProjectManifest.FILE, read),
-					ProjectManifest.FILE);
+			return ProjectParseResult.error(CapturedFiles.problem(
+					ProjectManifest.FILE, read), ProjectManifest.FILE, 0);
 		}
 		String text = SourceText.decode(content.bytes());
 		if (text == null) {
-			return error(ProjectManifest.FILE + " is not UTF-8 text",
+			return ProjectParseResult.error(ProjectManifest.FILE +
+					" is not UTF-8 text", ProjectManifest.FILE, 0);
+		}
+		return ProjectManifest.parse(text);
+	}
+
+	// A configured entry that is not the running shader must exist too.
+	private static ProjectDiagnostic checkEntry(ProjectFiles files,
+			ProjectPath configured) {
+		ProjectFiles.Read read = files.read(configured);
+		if (read == null) {
+			return error("Entry " + configured + " in " +
+					ProjectManifest.FILE + " does not exist",
+					ProjectManifest.FILE);
+		} else if (!(read instanceof ProjectFiles.Content)) {
+			return error(CapturedFiles.problem(configured, read),
 					ProjectManifest.FILE);
 		}
-		return ProjectManifest.parse(text).diagnostic();
+		return null;
 	}
 
 	// Return null after adding the errors when an input is invalid.
