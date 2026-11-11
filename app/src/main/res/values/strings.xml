@@ -129,6 +129,7 @@
 	<string name="time_in_cycle">Time within a cycle of #define FTIME_PERIOD seconds from -1.0 to +1.0</string>
 	<string name="touch_position_in_pixels">Position of the first touching finger in pixels</string>
 	<string name="touch_start_position_in_pixels">Position of the initial touch in pixels</string>
+	<string name="normalized_touch_position">Normalized position of the first touching finger</string>
 	<string name="number_of_touches">Number of touches</string>
 	<string name="positions_of_touches">Positions of touches in pixels</string>
 	<string name="linear_acceleration_vector">Linear acceleration in m/s^2</string>
