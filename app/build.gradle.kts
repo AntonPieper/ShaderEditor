@@ -61,4 +61,6 @@ dependencies {
 	implementation(libs.androidx.camera.lifecycle)
 
 	debugImplementation(libs.leakcanary.android)
+
+	testImplementation(libs.junit)
 }
