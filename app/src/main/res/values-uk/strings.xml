@@ -231,26 +231,28 @@
 	<string name="sample_camera_back_rationale">Як користуватися задньою камерою (тільки на Ice Cream Sandwich або краще)</string>
 	<string name="sample_cloudy_conway_name">Cloudy Conway</string>
 	<string name="sample_cloudy_conway_rationale">Варіація «Гри життя» Конвея.</string>
+	<string name="sample_compass_name">Compass</string>
+	<string name="sample_compass_rationale">Hold it flat and turn; the needle points north</string>
 	<string name="sample_electric_fade_name">Електричне згасання</string>
 	<string name="sample_electric_fade_rationale">Як Cloudy Conway, але із попередньо встановленим зворотним буфером.</string>
 	<string name="sample_game_of_life_name">Гра життя</string>
 	<string name="sample_game_of_life_rationale">Гра життя Конвея. Торкніться, щоб запалити нове життя.</string>
 	<string name="sample_gles_300_name">GLES 300</string>
 	<string name="sample_gles_300_rationale">Використовувати GLES версії 3.00</string>
-	<string name="sample_gravity_name">Датчик сили тяжіння</string>
-	<string name="sample_gravity_rationale">Як використовувати форму гравітації</string>
 	<string name="sample_loop_name">Loop</string>
 	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
-	<string name="sample_orientation_name">Орієнтація</string>
-	<string name="sample_orientation_rationale">Як користуватися уніформою орієнтації</string>
 	<string name="sample_shapes_name">Shapes</string>
 	<string name="sample_shapes_rationale">Touch the screen; the orbit moves to your finger</string>
 	<string name="sample_swirl_name">Вир</string>
 	<string name="sample_swirl_rationale">Як спотворити текстури за допомогою вихрового візерунка</string>
 	<string name="sample_texture_name">Текстура</string>
 	<string name="sample_texture_rationale">Як малювати текстури</string>
+	<string name="sample_tilt_name">Tilt</string>
+	<string name="sample_tilt_rationale">Tilt the phone; the ball rolls to the low side</string>
 	<string name="sample_touch_name">Дотик</string>
 	<string name="sample_touch_rationale">Як обробляти сенсорне введення</string>
+	<string name="sample_window_name">Window</string>
+	<string name="sample_window_rationale">Turn around; the sky stays put behind the glass</string>
 
 	<!-- Database -->
 	<string name="default_shader">За замовчуванням</string>
