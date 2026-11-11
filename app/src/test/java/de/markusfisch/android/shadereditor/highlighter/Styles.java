@@ -8,6 +8,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.Style;
+import de.markusfisch.android.shadereditor.syntax.Tokens;
+
 /**
  * Turns a text into one letter per character for the colour the editor
  * gives it, so expectations read like the source they describe.
@@ -20,14 +24,28 @@ import java.util.List;
  * t  type name       b  builtin func    f  field selection
  * n  number          l  bool literal    r  precision
  * c  comment         o  control flow    q  type qualifier
+ * g  string (only from {@link GlslLexer})
  * </pre>
  */
 final class Styles {
 	private Styles() {
 	}
 
+	/**
+	 * Both lexers colour source as expected.
+	 */
 	static void assertStyles(@NonNull String source, @NonNull String expected) {
-		assertEquals(source, expected, of(source));
+		assertStyles(source, expected, expected);
+	}
+
+	/**
+	 * The old lexer colours source as expected, {@link GlslLexer} as
+	 * expectedNew: an intended difference between the two.
+	 */
+	static void assertStyles(@NonNull String source, @NonNull String expected,
+			@NonNull String expectedNew) {
+		assertEquals("Lexer: " + source, expected, of(source));
+		assertEquals("GlslLexer: " + source, expectedNew, ofNew(source));
 	}
 
 	/**
@@ -54,6 +72,35 @@ final class Styles {
 			}
 		}
 		return new String(styles);
+	}
+
+	@NonNull
+	static String ofNew(@NonNull String source) {
+		char[] styles = new char[source.length()];
+		Arrays.fill(styles, '.');
+		Tokens tokens = GlslLexer.lex(source);
+		for (int t = 0; t < tokens.size(); ++t) {
+			char letter = letter(tokens.style(t));
+			for (int i = tokens.start(t); i < tokens.end(t); ++i) {
+				styles[i] = letter;
+			}
+		}
+		return new String(styles);
+	}
+
+	private static char letter(@NonNull Style style) {
+		switch (style) {
+			case ATOMIC_COUNTER:
+				return 'a';
+			case NUMBER:
+				return 'n';
+			case BOOL:
+				return 'l';
+			case STRING:
+				return 'g';
+			default:
+				return letter(Highlight.valueOf("HIGHLIGHT_" + style.name()));
+		}
 	}
 
 	private static char letter(@NonNull Highlight highlight) {
