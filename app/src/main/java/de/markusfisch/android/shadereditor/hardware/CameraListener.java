@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.Preview;
+import androidx.camera.core.SurfaceRequest;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Lifecycle;
@@ -29,8 +30,6 @@ public class CameraListener {
 
 	private final int cameraTextureId;
 
-	@Nullable
-	private SurfaceTexture surfaceTexture;
 	@NonNull
 	private final FloatBuffer orientationMatrix = FloatBuffer.allocate(4);
 
@@ -59,6 +58,15 @@ public class CameraListener {
 	@Nullable
 	private Preview preview;
 	private boolean held;
+
+	// Every use of a SurfaceTexture holds surfaceLock. The main thread
+	// creates one for each surface request and releases it when CameraX is
+	// done with its surface, so the camera never draws into a released one.
+	// The GL thread only updates the newest, and stops when the listener does.
+	private final Object surfaceLock = new Object();
+	@Nullable
+	private SurfaceTexture surfaceTexture;
+	private boolean stopped;
 
 	public CameraListener(
 			int cameraTextureId,
@@ -89,8 +97,8 @@ public class CameraListener {
 	public void unregister() {
 		mainHandler.post(() -> {
 			ARBITER.withdraw(client);
-			if (surfaceTexture != null) {
-				surfaceTexture.release();
+			synchronized (surfaceLock) {
+				stopped = true;
 				surfaceTexture = null;
 			}
 		});
@@ -126,15 +134,7 @@ public class CameraListener {
 		Preview preview = new Preview.Builder()
 				.setTargetResolution(frameSize)
 				.build();
-		preview.setSurfaceProvider(surfaceRequest -> {
-			surfaceTexture = new SurfaceTexture(cameraTextureId);
-			Size size = surfaceRequest.getResolution();
-			surfaceTexture.setDefaultBufferSize(size.getWidth(), size.getHeight());
-			Surface surface = new Surface(surfaceTexture);
-			surfaceRequest.provideSurface(surface,
-					ContextCompat.getMainExecutor(context),
-					result -> surface.release());
-		});
+		preview.setSurfaceProvider(this::provideSurface);
 		CameraSelector cameraSelector = new CameraSelector.Builder()
 				.requireLensFacing(facing)
 				.build();
@@ -158,9 +158,38 @@ public class CameraListener {
 		preview = null;
 	}
 
-	public synchronized void update() {
-		if (surfaceTexture != null) {
-			surfaceTexture.updateTexImage();
+	private void provideSurface(@NonNull SurfaceRequest surfaceRequest) {
+		SurfaceTexture texture;
+		Surface surface;
+		synchronized (surfaceLock) {
+			if (stopped) {
+				surfaceRequest.willNotProvideSurface();
+				return;
+			}
+			texture = new SurfaceTexture(cameraTextureId);
+			Size size = surfaceRequest.getResolution();
+			texture.setDefaultBufferSize(size.getWidth(), size.getHeight());
+			surface = new Surface(texture);
+			surfaceTexture = texture;
+		}
+		surfaceRequest.provideSurface(surface,
+				ContextCompat.getMainExecutor(context),
+				result -> {
+					surface.release();
+					synchronized (surfaceLock) {
+						if (surfaceTexture == texture) {
+							surfaceTexture = null;
+						}
+						texture.release();
+					}
+				});
+	}
+
+	public void update() {
+		synchronized (surfaceLock) {
+			if (surfaceTexture != null) {
+				surfaceTexture.updateTexImage();
+			}
 		}
 	}
 
