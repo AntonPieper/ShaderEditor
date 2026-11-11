@@ -293,4 +293,5 @@
 	<string name="storage_not_writeable">Не удалось записать в базу данных</string>
 	<string name="successfully_exported">Экспортированно в загрузки</string>
 	<string name="successfully_imported">База данных импортирована</string>
+	<string name="user_files_summary">Deleted when Shader Editor is uninstalled</string>
 </resources>

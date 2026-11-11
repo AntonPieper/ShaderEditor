@@ -289,4 +289,5 @@
 	<string name="storage_not_writeable">Cannot write database</string>
 	<string name="successfully_exported">Exported to Downloads</string>
 	<string name="successfully_imported">Database imported</string>
+	<string name="user_files_summary">Deleted when Shader Editor is uninstalled</string>
 </resources>

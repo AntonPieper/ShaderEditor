@@ -72,6 +72,18 @@
 			</intent-filter>
 		</service>
 
+		<provider
+			android:name=".provider.UserFilesProvider"
+			android:authorities="${applicationId}.documents"
+			android:enabled="@bool/project_mode"
+			android:exported="true"
+			android:grantUriPermissions="true"
+			android:permission="android.permission.MANAGE_DOCUMENTS">
+			<intent-filter>
+				<action android:name="android.content.action.DOCUMENTS_PROVIDER"/>
+			</intent-filter>
+		</provider>
+
 		<activity
 			android:name=".activity.SplashActivity"
 			android:theme="@style/SplashTheme"
