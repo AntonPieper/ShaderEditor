@@ -16,8 +16,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ExampleCoverageTest {
-	private static final String NO_EXAMPLE = "no example yet";
-
 	private static final Map<String, String> EXEMPT = new TreeMap<>();
 
 	static {
@@ -26,7 +24,6 @@ public class ExampleCoverageTest {
 		EXEMPT.put("inclinationMatrix", "only the rotation by inclination about "
 				+ "the east axis; Compass shows the dip from inclination, and no "
 				+ "picture drawn from the matrix can be checked by looking");
-		EXEMPT.put("offset", NO_EXAMPLE);
 		EXEMPT.put("rotationVector", "the orientation as an axis times sin(angle / 2), "
 				+ "not turned with the screen and from the game rotation vector, "
 				+ "whose north is arbitrary; rotationMatrix already falls back to it");

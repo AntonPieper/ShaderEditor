@@ -58,7 +58,8 @@ public class SamplesTest {
 				R.raw.sample_game_of_life,
 				R.raw.sample_electric_fade,
 				R.raw.sample_swirl,
-				R.raw.sample_gles_300), resIds());
+				R.raw.sample_gles_300,
+				R.raw.sample_horizon), resIds());
 	}
 
 	@Test
@@ -86,7 +87,8 @@ public class SamplesTest {
 				Samples.Section.TECHNIQUES,
 				Samples.Section.TECHNIQUES,
 				Samples.Section.TECHNIQUES,
-				Samples.Section.TECHNIQUES), sections);
+				Samples.Section.TECHNIQUES,
+				Samples.Section.WALLPAPERS), sections);
 	}
 
 	private static List<Integer> resIds() {

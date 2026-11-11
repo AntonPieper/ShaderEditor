@@ -148,6 +148,12 @@ public final class Samples {
 					R.drawable.thumbnail_gles_300,
 					R.string.sample_gles_300_name,
 					R.string.sample_gles_300_rationale,
+					1f),
+			new Sample(Section.WALLPAPERS,
+					R.raw.sample_horizon,
+					R.drawable.thumbnail_horizon,
+					R.string.sample_horizon_name,
+					R.string.sample_horizon_rationale,
 					1f));
 
 	private Samples() {
