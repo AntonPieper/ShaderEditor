@@ -2,15 +2,34 @@ package de.markusfisch.android.shadereditor.project.legacy;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import de.markusfisch.android.shadereditor.database.DataRecords.TextureInfo;
+import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.LibraryTexture;
 
 /**
  * What the view over database shaders and library textures decides
  * without Android.
  */
 public final class StoredFiles {
+	/**
+	 * A library texture as the conversion saw it: its row, or null when
+	 * it is known by name only, its stored size, and whether it is a
+	 * cubemap atlas. The image served for it must have this size.
+	 */
+	public record Stored(Long id, String name, int width, int height,
+			boolean atlas) {
+		public LibraryTexture texture() {
+			return new LibraryTexture(atlas, width, height);
+		}
+	}
+
 	/** Why a library texture could not be served. */
 	public enum Problem {
 		UNREADABLE,
+		REMOVED,
 		NOT_A_CUBEMAP,
 		NOT_ENCODED,
 		NO_MEMORY,
@@ -38,6 +57,36 @@ public final class StoredFiles {
 			sb.append(HEX[(b >> 4) & 15]).append(HEX[b & 15]);
 		}
 		return sb.toString();
+	}
+
+	/**
+	 * Return the library texture of every name: the row with the lowest
+	 * id, which the old renderer read, an atlas when that row is one.
+	 */
+	public static Map<String, Stored> library(List<TextureInfo> squares,
+			List<TextureInfo> atlases) {
+		Map<String, TextureInfo> rows = new HashMap<>();
+		add(rows, squares);
+		add(rows, atlases);
+		Map<String, Stored> library = new HashMap<>();
+		for (TextureInfo info : rows.values()) {
+			library.put(info.name(), new Stored(info.id(), info.name(),
+					info.width(), info.height(), atlases.contains(info)));
+		}
+		return library;
+	}
+
+	/**
+	 * Return why an image of this size is not the one the conversion
+	 * used, or null when it is.
+	 */
+	public static String changed(Stored stored, int width, int height) {
+		return width != stored.width() || height != stored.height()
+				? "The library texture \"" + stored.name() + "\" changed " +
+						"from " + stored.width() + "x" + stored.height() +
+						" to " + width + "x" + height + " pixels after the " +
+						"shader was opened; open the shader again"
+				: null;
 	}
 
 	/**
@@ -72,6 +121,8 @@ public final class StoredFiles {
 		return texture + switch (problem) {
 			case UNREADABLE -> "is gone from the library or could not " +
 					"be decoded; import it again";
+			case REMOVED -> "was removed from the library after the " +
+					"shader was opened; open the shader again";
 			case NOT_A_CUBEMAP -> "cannot be cut into the six faces of a " +
 					"cubemap; import it again as a cubemap";
 			case NOT_ENCODED -> "could not be encoded as PNG";
@@ -80,5 +131,15 @@ public final class StoredFiles {
 			case DATABASE -> "could not be read from the database; " +
 					"try again";
 		};
+	}
+
+	private static void add(Map<String, TextureInfo> rows,
+			List<TextureInfo> textures) {
+		for (TextureInfo info : textures) {
+			TextureInfo known = rows.get(info.name());
+			if (known == null || info.id() < known.id()) {
+				rows.put(info.name(), info);
+			}
+		}
 	}
 }

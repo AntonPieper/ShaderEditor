@@ -7,10 +7,7 @@ import androidx.annotation.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
@@ -22,6 +19,7 @@ import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.TextureFile;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles.Problem;
+import de.markusfisch.android.shadereditor.project.legacy.StoredFiles.Stored;
 
 /**
  * One database shader presented as project files: the shader converted
@@ -37,19 +35,20 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 	private final LegacyShaderConverter.Result conversion;
 	@NonNull
 	private final Map<ProjectPath, TextureFile> textureFiles = new HashMap<>();
+	// The library textures the conversion used, by name.
 	@NonNull
-	private final Map<String, DataRecords.TextureInfo> library;
+	private final Map<String, Stored> used;
 	@NonNull
 	private final ProjectLimits limits;
 
 	private DatabaseProjectFiles(
 			@NonNull TextureDao textures,
 			@NonNull LegacyShaderConverter.Result conversion,
-			@NonNull Map<String, DataRecords.TextureInfo> library,
+			@NonNull Map<String, Stored> used,
 			@NonNull ProjectLimits limits) {
 		this.textures = textures;
 		this.conversion = conversion;
-		this.library = library;
+		this.used = used;
 		this.limits = limits;
 		for (TextureFile file : conversion.textures()) {
 			textureFiles.put(file.path(), file);
@@ -70,23 +69,15 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 			return null;
 		}
 		TextureDao textures = dataSource.texture;
-		Map<String, DataRecords.TextureInfo> library = new HashMap<>();
-		Set<String> atlases = new HashSet<>();
-		List<DataRecords.TextureInfo> cubemaps =
-				textures.getSamplerCubeTextures(null);
-		add(library, textures.getTextures(null));
-		add(library, cubemaps);
-		for (DataRecords.TextureInfo info : cubemaps) {
-			if (library.get(info.name()) == info) {
-				atlases.add(info.name());
-			}
-		}
+		Map<String, Stored> library = StoredFiles.library(
+				textures.getTextures(null),
+				textures.getSamplerCubeTextures(null));
+		Map<String, Stored> used = new HashMap<>();
 		String text = shader.fragmentShader();
 		LegacyShaderConverter.Result conversion = LegacyShaderConverter.convert(
 				text != null ? text : "",
-				name -> find(textures, library, atlases, name));
-		return new DatabaseProjectFiles(textures, conversion, library,
-				limits);
+				name -> find(textures, library, used, name));
+		return new DatabaseProjectFiles(textures, conversion, used, limits);
 	}
 
 	/** The conversion, with its line map and diagnostics. */
@@ -115,23 +106,31 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 		}
 	}
 
+	// Serves the row the conversion used, decoded at the size it used,
+	// so a texture replaced since then fails instead of mixing the two.
 	@NonNull
 	private Read readTexture(@NonNull TextureFile file) {
-		// The stored size is checked before decoding; a texture that is
-		// in neither list has no known size until it is decoded.
-		DataRecords.TextureInfo info = library.get(file.name());
-		String problem = info != null
-				? check(file, info.width(), info.height())
-				: null;
+		Stored stored = used.get(file.name());
+		if (stored == null) {
+			return failed(Problem.UNREADABLE, file);
+		}
+		String problem = StoredFiles.check(file.name(), stored.width(),
+				stored.height(), file.cubemap(), limits.imagePixels());
 		if (problem != null) {
 			return new Failed(problem);
 		}
-		Bitmap bitmap = textures.getTextureBitmap(file.name());
+		Long id = stored.id();
+		Bitmap bitmap = id != null
+				? textures.getTextureBitmap(id)
+				: textures.getTextureBitmap(stored.name());
 		if (bitmap == null) {
-			return failed(Problem.UNREADABLE, file);
+			return failed(id != null && textures.getTextureInfo(id) == null
+					? Problem.REMOVED
+					: Problem.UNREADABLE, file);
 		}
 		try {
-			problem = check(file, bitmap.getWidth(), bitmap.getHeight());
+			problem = StoredFiles.changed(stored, bitmap.getWidth(),
+					bitmap.getHeight());
 			if (problem != null) {
 				return new Failed(problem);
 			}
@@ -149,12 +148,6 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 		}
 	}
 
-	@Nullable
-	private String check(@NonNull TextureFile file, int width, int height) {
-		return StoredFiles.check(file.name(), width, height, file.cubemap(),
-				limits.imagePixels());
-	}
-
 	@NonNull
 	private static Read failed(@NonNull Problem problem,
 			@NonNull TextureFile file) {
@@ -169,41 +162,29 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 				: new Failed("SHA-256 is not available on this device");
 	}
 
-	// The old renderer read the first row with a name, which is the
-	// lowest id.
-	private static void add(
-			@NonNull Map<String, DataRecords.TextureInfo> library,
-			@NonNull List<DataRecords.TextureInfo> textures) {
-		for (DataRecords.TextureInfo info : textures) {
-			DataRecords.TextureInfo known = library.get(info.name());
-			if (known == null || info.id() < known.id()) {
-				library.put(info.name(), info);
-			}
-		}
-	}
-
-	// A texture that is neither square nor an atlas is in neither list.
+	// A texture that is neither square nor an atlas is in neither list,
+	// so its size is only known once it is decoded.
 	@Nullable
 	private static LibraryTexture find(
 			@NonNull TextureDao textures,
-			@NonNull Map<String, DataRecords.TextureInfo> library,
-			@NonNull Set<String> atlases,
+			@NonNull Map<String, Stored> library,
+			@NonNull Map<String, Stored> used,
 			@NonNull String name) {
-		DataRecords.TextureInfo info = library.get(name);
-		if (info != null) {
-			return new LibraryTexture(atlases.contains(name), info.width(),
-					info.height());
+		Stored stored = used.get(name);
+		if (stored == null) {
+			stored = library.get(name);
 		}
-		Bitmap bitmap = textures.getTextureBitmap(name);
-		if (bitmap == null) {
-			return null;
-		}
-		try {
-			return new LibraryTexture(false, bitmap.getWidth(),
-					bitmap.getHeight());
-		} finally {
+		if (stored == null) {
+			Bitmap bitmap = textures.getTextureBitmap(name);
+			if (bitmap == null) {
+				return null;
+			}
+			stored = new Stored(null, name, bitmap.getWidth(),
+					bitmap.getHeight(), false);
 			bitmap.recycle();
 		}
+		used.put(name, stored);
+		return stored.texture();
 	}
 
 	// Allocates no more pixels than StoredFiles.check admitted.
