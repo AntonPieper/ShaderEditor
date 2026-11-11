@@ -10,6 +10,8 @@ The main actions are **New**, **Open folder**, **Save**, and **Run**. The existi
 
 ShaderEditor publishes a `DocumentsProvider` root named **ShaderEditor** containing user-created folders, GLSL, assets, and other user documents. Other editors and Android's Files UI can open and edit those same files. Provider access does not expose the DB, preferences, draft journals, caches, or installed wallpaper snapshots.
 
+**Examples** opens the bundled examples, one read-only project inside the app. Tapping an example opens and runs it in place; edits stay local until the user chooses Save a copy, exactly as for any read-only folder (section 5). An app update replaces the bundled examples and never touches a copy. EXAMPLES.md describes the set and its sections.
+
 Use the native picker to choose folders, standalone documents, new locations, and external resources. The in-app file list only navigates the currently open folder. Do not build a second device-wide storage browser. Android/provider restrictions still apply: accept any directory the picker grants, including empty folders and folders with unrelated files. A manifest or `main.glsl` is never required just to open/browse a folder. Handle read-only folders without rejecting the open action.
 
 Opening a folder edits its files in place. There is no `import versus link` question and no automatic copy into private storage. Expose copying as the familiar explicit **Save a copy** action. Archive opening extracts to a user-chosen folder; it is an operation, not a persistent project type.
@@ -47,7 +49,7 @@ A single-file open has its selected file as the running shader. For a folder wit
 | --- | --- |
 | Add texture | Pick image/library item; insert generated annotation and uniform; return to code |
 | Add shader input | Select a shader from the open folder or create one; insert input; return to code |
-| Add include | Select/create a source file; insert its relative include |
+| Add include | Select/create a source file, or pick a bundled library file, which is copied to `lib/` at the project root (an existing file is reused, never overwritten); insert its relative include |
 | Change sampling | Edit optional settings beside the input or in its contextual properties |
 | View pass output | Choose a reachable output in the preview selector; keep the same running graph |
 

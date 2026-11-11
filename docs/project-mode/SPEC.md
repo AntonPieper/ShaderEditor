@@ -144,7 +144,7 @@ Decode to RGBA8 numeric channel values with straight alpha; do not implicitly li
 
 Sampling belongs to the input, not to the image or pass it reads. One source may have several consumers with different settings. On a GLES3 context use sampler objects; they are a context feature and work for every shader language version. On a GLES2 context apply each input's settings to the texture before the draw that uses it. Two inputs of one program that name the same source with different settings cannot be honored on GLES2: report a capability error that names both inputs. Do not copy textures to emulate sampler objects.
 
-Library resources, including bundled noise, are inserted as project-local copies. There are no global references, implicit aliases, or background library updates. Export contains independent logical files.
+Library resources, including bundled noise, are inserted as project-local copies. There are no global references, implicit aliases, or background library updates. Export contains independent logical files. Bundled include files and bundled examples follow the same rule: what a user keeps is a copy, and an app update never changes a copy (EXAMPLES.md).
 
 ## 5. Targets
 

@@ -81,6 +81,7 @@ Use tiny deterministic pixel fixtures for R05/R06 (for example increment red by 
 | U08 | Long paths, keyboard navigation/accessibility, localized status labels, auto/manual preview | Existing UX remains usable; state not conveyed solely by color |
 | U09 | Open empty/mixed/read-only folder with no main/manifest; create/open a shader and Run | Folder always browsable; no automatic import/scan/wizard; selected shader can run; writes respect capabilities |
 | U10 | Run this file, edit another file, reopen with/without manifest, refresh changed manifest, Set default shader | One rule in every case: remembered choice, else manifest, else `main.glsl`; Set default shader clears the remembered choice; preview title accurate; no implicit manifest write or switch on editing |
+| U12 | Open a bundled example, edit it, Save a copy; open one that includes a library file; update the app | Runs in place without writing anything; the copy holds the example and its dependencies and is editable; the original example is unchanged; no existing copy changes on update |
 | U11 | Open standalone document; then add sibling include; open its folder | Standalone works immediately; Open folder offered only when needed; the folder opens as an ordinary project; drafts preserved |
 
 ## Portability and wallpaper — M13–M14 (multipass projects re-verified in M15)

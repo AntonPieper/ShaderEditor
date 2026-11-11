@@ -136,18 +136,20 @@ Not done on purpose: no package renames, no Kotlin or Compose migration, no depe
 
 ## Libraries and textures
 
-Host directives are forbidden in include files, permanently. A library that needs a texture should not choose the image; it takes the sampler as a parameter, which GLSL ES allows:
+Host directives are forbidden in include files, permanently. A library that needs a texture should not choose the image; the shader that includes it does:
 
 ```glsl
-// lib/noise.glsl
-float blueNoise(sampler2D tex, vec2 uv) { return texture2D(tex, uv).r; }
+// lib/dither.glsl: takes the sampled value, not the sampler
+vec3 dither(vec3 color, float noise) { return color + (noise - 0.5) / 255.0; }
 
 // main.glsl
-#pragma se input "lib/blue-noise.png" filter=nearest wrap=repeat
+#pragma se input "textures/blue-noise.png" filter=nearest wrap=repeat
 uniform sampler2D blue;
-#include "lib/noise.glsl"
-... blueNoise(blue, uv) ...
+#include "lib/dither.glsl"
+... dither(color, texture2D(blue, gl_FragCoord.xy / 64.0).r) ...
 ```
+
+A library function should take the sampled value where it can. GLSL also allows a sampler as a function parameter, but the lookup call is `texture2D` in GLSL ES 1.00 and `texture` in 3.00, so a library that samples works for one language version only. The bundled library therefore contains pure functions with no texture lookups (EXAMPLES.md).
 
 The library stays pure code, each shader picks its image and sampling, and the library can still ship a suggested image next to itself. This also keeps the rule that every input of a pass is visible in the pass file.
 
