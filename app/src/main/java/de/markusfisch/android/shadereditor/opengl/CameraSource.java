@@ -36,6 +36,7 @@ final class CameraSource implements UniformSource {
 	public void update(long now) {
 		if (listener != null) {
 			listener.update();
+			open = listener.isBound();
 		}
 	}
 
@@ -64,7 +65,6 @@ final class CameraSource implements UniformSource {
 				binding.sampler().name())
 				? CameraSelector.LENS_FACING_BACK
 				: CameraSelector.LENS_FACING_FRONT;
-		host.onPermissionNeeded(Manifest.permission.CAMERA);
 		listener = new CameraListener(
 				texture.getId(),
 				lensFacing,
@@ -72,14 +72,14 @@ final class CameraSource implements UniformSource {
 				renderHeight,
 				sources.getDeviceRotation(),
 				host.context());
-		listener.register(owner);
+		listener.register(owner,
+				() -> host.onPermissionNeeded(Manifest.permission.CAMERA));
 
 		var orientationMatrix = listener.getOrientationMatrix();
 		orientationMatrix.rewind();
 		orientationMatrix.get(orientation);
 		orientationMatrix.rewind();
 		System.arraycopy(listener.addent, 0, addent, 0, addent.length);
-		open = true;
 	}
 
 	private void close() {
