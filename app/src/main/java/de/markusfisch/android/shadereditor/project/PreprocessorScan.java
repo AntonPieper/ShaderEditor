@@ -9,12 +9,14 @@ import java.util.List;
  * The preprocessor structure of GLSL text, one physical line at a time.
  * Text inside comments is ignored: {@code code} holds the lines with
  * every comment replaced by spaces. Conditions are not evaluated and
- * macros are not expanded.
+ * macros are not expanded. {@code openComments} tells for every line
+ * whether a block comment is still open at its end.
  */
 public record PreprocessorScan(
 		List<String> code,
 		List<Directive> directives,
 		List<Integer> depths,
+		List<Boolean> openComments,
 		List<ProjectDiagnostic> diagnostics) {
 	public enum Kind {
 		INCLUDE,
@@ -51,6 +53,7 @@ public record PreprocessorScan(
 		List<String> code = new ArrayList<>(lines.size());
 		List<Directive> directives = new ArrayList<>();
 		List<Integer> depths = new ArrayList<>(lines.size());
+		List<Boolean> openComments = new ArrayList<>(lines.size());
 		List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		Deque<Integer> open = new ArrayDeque<>();
 		boolean[] inComment = {false};
@@ -64,6 +67,7 @@ public record PreprocessorScan(
 				commentStart = i + 1;
 			}
 			code.add(stripped);
+			openComments.add(inComment[0]);
 			Directive directive = parse(stripped, i + 1, open.size());
 			depths.add(directive != null ? directive.depth : open.size());
 			if (directive == null) {
@@ -93,7 +97,8 @@ public record PreprocessorScan(
 					file, commentStart));
 		}
 		return new PreprocessorScan(List.copyOf(code), List.copyOf(directives),
-				List.copyOf(depths), List.copyOf(diagnostics));
+				List.copyOf(depths), List.copyOf(openComments),
+				List.copyOf(diagnostics));
 	}
 
 	/** Number of conditional blocks around a 1-based line. */

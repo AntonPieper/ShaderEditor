@@ -178,6 +178,27 @@ public class SourceAssemblyTest {
 	}
 
 	@Test
+	public void insertsGeneratedLinesAfterCommentContinuingFromVersion() {
+		SourceAssembly assembly = assemble(new MemoryProjectFiles()
+				.put("main.glsl", lines(
+						"#version 300 es /* note",
+						"still the note",
+						"*/",
+						"void main() {}")));
+		assertEquals(3, assembly.versionLine());
+		assertEquals(lines(
+				"#version 300 es /* note",
+				"still the note",
+				"*/",
+				"#define SHADER_EDITOR 1",
+				"void main() {}"), assembly.withGeneratedLines(
+				List.of("#define SHADER_EDITOR 1")).text());
+		assertEquals(1, assemble(new MemoryProjectFiles()
+				.put("main.glsl", "#version 300 es /* a */\n/* b\n*/\n"))
+				.versionLine());
+	}
+
+	@Test
 	public void insertsGeneratedLinesAtTopWithoutVersion() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
 				.put("main.glsl", "void main() {}\n"))

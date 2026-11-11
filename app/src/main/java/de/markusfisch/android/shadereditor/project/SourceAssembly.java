@@ -93,7 +93,11 @@ public final class SourceAssembly {
 		return dependencies;
 	}
 
-	/** 1-based assembled line of {@code #version}, or 0. */
+	/**
+	 * 1-based assembled line after which generated lines go: the line
+	 * of {@code #version}, or the line that closes a block comment
+	 * opened on it; 0 when there is no {@code #version}.
+	 */
 	public int versionLine() {
 		return versionLine;
 	}
@@ -116,8 +120,8 @@ public final class SourceAssembly {
 	}
 
 	/**
-	 * Return this assembly with generated lines after {@code #version},
-	 * or at the top when there is none.
+	 * Return this assembly with generated lines after
+	 * {@link #versionLine()}, or at the top when there is none.
 	 */
 	public SourceAssembly withGeneratedLines(List<String> generated) {
 		List<Line> updated = new ArrayList<>(source);
@@ -167,6 +171,7 @@ public final class SourceAssembly {
 			List<PreprocessorScan.Directive> directives =
 					source.scan.directives();
 			int next = 0;
+			boolean versionComment = false;
 			for (int i = 0; i < source.lines.size() && !stopped; ++i) {
 				SourceLocation here = new SourceLocation(file, i + 1, from);
 				PreprocessorScan.Directive directive = null;
@@ -189,7 +194,11 @@ public final class SourceAssembly {
 				}
 				if (directive != null && from == null && versionLine == 0 &&
 						directive.kind() == PreprocessorScan.Kind.VERSION) {
+					versionComment = true;
+				}
+				if (versionComment) {
 					versionLine = assembled.size() + 1;
+					versionComment = source.scan.openComments().get(i);
 				}
 				emit(line);
 			}
