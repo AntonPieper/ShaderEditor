@@ -17,7 +17,7 @@ public class LexerDiffTest {
 	@Test
 	public void unchangedText() {
 		assertDiff("float x = 1.0;", "float x = 1.0;",
-				6, 0, 0, "");
+				6, 5, 5, "");
 	}
 
 	@Test
@@ -70,18 +70,20 @@ public class LexerDiffTest {
 
 	@Test
 	public void insertedArgumentLikeItsNeighbours() {
-		// Wrong: the range ends before it starts, so the inserted ", 1.0" is
-		// not coloured again.
 		assertDiff("vec3(1.0, 1.0)", "vec3(1.0, 1.0, 1.0)",
-				5, 1, 3, "");
+				5, 4, 6, ", 1.0");
+	}
+
+	@Test
+	public void deletedArgumentLikeItsNeighbours() {
+		assertDiff("vec3(1.0, 1.0, 1.0)", "vec3(1.0, 1.0)",
+				5, 6, 4, "");
 	}
 
 	@Test
 	public void insertedLineLikeTheLineAbove() {
-		// Wrong: the whole inserted "y = 2.0;" must be coloured again, not
-		// only y.
 		assertDiff("x = 1.0;", "x = 1.0;\ny = 2.0;",
-				4, 0, 4, "y");
+				4, 3, 7, "y = 2.0;");
 	}
 
 	private static void assertDiff(
