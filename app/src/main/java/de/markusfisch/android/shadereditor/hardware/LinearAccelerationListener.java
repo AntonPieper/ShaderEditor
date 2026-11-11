@@ -1,14 +1,13 @@
 package de.markusfisch.android.shadereditor.hardware;
 
-import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class LinearAccelerationListener extends AbstractListener {
 	public final float[] values = new float[]{0, 0, 0};
 
-	public LinearAccelerationListener(Context context) {
-		super(context);
+	public LinearAccelerationListener(SensorRegistry sensors) {
+		super(sensors);
 	}
 
 	public boolean register() {

@@ -1,14 +1,13 @@
 package de.markusfisch.android.shadereditor.hardware;
 
-import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class RotationVectorListener extends AbstractListener {
 	public final float[] values = new float[]{0, 0, 0};
 
-	public RotationVectorListener(Context context) {
-		super(context);
+	public RotationVectorListener(SensorRegistry sensors) {
+		super(sensors);
 	}
 
 	public boolean register() {

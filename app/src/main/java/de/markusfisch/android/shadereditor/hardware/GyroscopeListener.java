@@ -1,6 +1,5 @@
 package de.markusfisch.android.shadereditor.hardware;
 
-import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorManager;
@@ -16,8 +15,8 @@ public class GyroscopeListener extends AbstractListener {
 	private final float[] deltaRotationVector = new float[4];
 	private final float[] deltaRotationMatrix = new float[9];
 
-	public GyroscopeListener(Context context) {
-		super(context);
+	public GyroscopeListener(SensorRegistry sensors) {
+		super(sensors);
 	}
 
 	public boolean register() {
