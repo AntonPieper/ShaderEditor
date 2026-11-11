@@ -252,7 +252,20 @@ The converter is a pure function with no Android or GL dependency: given a DB sh
 | Backbuffer preset `p:name` | `se target initial="..."` naming a generated shader that reproduces the old fit (scale to width, mirror-repeat vertically) with the image's dimensions written in |
 | Camera samplers, builtin uniforms, `FTIME_PERIOD` | Unchanged |
 
-Every row is exact. One old setting has no exact form: a mipmap minification filter on `backbuffer`. The old renderer generated those levels once and never refreshed them, so the setting sampled stale data; it converts to its base filter and the conversion says so. A sampler whose name matches no library texture stays without a provider and gets the ordinary warning of section 3.2.
+Every row is exact. A sampler whose name matches no library texture stays without a provider and gets the ordinary warning of section 3.2.
+
+A few old behaviors have no exact form. Each was an accident of the old renderer, not a feature; the converter still produces a shader that compiles, and reports a warning that names what changed:
+
+| Old behavior | After conversion |
+| --- | --- |
+| A mipmap minification filter on `backbuffer`. The levels were generated once and never refreshed, so it sampled stale data. | The base filter |
+| `discard`. The old renderer never cleared, so a discarded pixel showed what that buffer held two frames earlier. | Opaque black, as section 5 defines for every pass |
+| Different minification and magnification filters on `backbuffer`, at a quality above 1, where the output is scaled down. | `present` uses one filter in both directions |
+| `backbuffer` with a repeating wrap and linear magnification: edge pixels of the output blended with the opposite edge. | Edges are clamped |
+| A sampler declared inside a conditional block. | The declaration moves in front of the outermost block; if the name is declared more than once it stays as written, without its texture |
+| A library texture named like a camera sampler, on a sampler that is not a camera. | Not bound |
+
+Two differences carry no warning, because one would appear on nearly every shader of that kind: a cubemap's wrap setting is dropped (it only ever affected face seams on GLES2), and a backbuffer preset is resampled once per pixel instead of being pre-scaled, which can differ by a fraction of a pixel.
 
 ### 12.2 Three phases
 
