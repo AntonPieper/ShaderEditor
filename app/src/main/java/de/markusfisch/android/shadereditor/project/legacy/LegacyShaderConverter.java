@@ -88,6 +88,11 @@ public final class LegacyShaderConverter {
 			"uniform[ \t]+sampler(2D|Cube|ExternalOES)+[ \t]+" +
 					"([a-zA-Z0-9_]+);");
 	private static final int MAX_TEXTURES = 32;
+	// What the compiler sees as a declaration, in text without comments.
+	private static final Pattern DECLARATION = Pattern.compile(
+			"\\buniform\\s+(?:(?:lowp|mediump|highp)\\s+)?" +
+					"(sampler2D|samplerCube|samplerExternalOES)\\s+" +
+					"([a-zA-Z0-9_]+)\\s*;");
 	private static final Pattern DISCARD = Pattern.compile("\\bdiscard\\b");
 	private static final String BACKBUFFER = "backbuffer";
 
@@ -95,8 +100,9 @@ public final class LegacyShaderConverter {
 	private final PreprocessorScan scan;
 	private final Library library;
 	private final List<Declaration> declarations = new ArrayList<>();
+	private final Map<String, List<Declaration>> declared = new HashMap<>();
 	private final Map<Integer, List<Line>> before = new TreeMap<>();
-	private final Map<Integer, List<Line>> replaced = new HashMap<>();
+	private final Map<Integer, List<Edit>> edits = new HashMap<>();
 	private final Map<ProjectPath, String> files = new LinkedHashMap<>();
 	private final Map<ProjectPath, TextureFile> textures =
 			new LinkedHashMap<>();
@@ -104,8 +110,15 @@ public final class LegacyShaderConverter {
 	private LegacySamplerSettings backbuffer = LegacySamplerSettings.BACKBUFFER;
 	private boolean presetMissing;
 
+	// matched: found by the old renderer's pattern, so params were read.
 	private record Declaration(int line, int start, int end, String type,
-			String name, String params, boolean code) {
+			String name, String params, boolean code, boolean matched) {
+	}
+
+	// A declaration on its line that gets a directive before it, or
+	// moves away, or only loses its settings comment.
+	private record Edit(Declaration declaration, Line directive,
+			boolean remove) {
 	}
 
 	private record Line(String text, int original) {
@@ -136,24 +149,26 @@ public final class LegacyShaderConverter {
 
 	private String run(List<Integer> map) {
 		find();
-		List<Declaration> backbuffers = new ArrayList<>();
+		findDeclared();
+		// The old renderer applied the matches of a name in order, so the
+		// last one chose the texture and its settings.
+		Map<String, Declaration> last = new LinkedHashMap<>();
 		for (Declaration declaration : declarations) {
-			if (!declaration.code) {
-				continue;
-			} else if (BACKBUFFER.equals(declaration.name)) {
-				backbuffers.add(declaration);
-			} else {
-				convert(declaration);
+			if (!BACKBUFFER.equals(declaration.name)) {
+				last.put(declaration.name, declaration);
 			}
 		}
-		convertBackbuffer(backbuffers);
+		for (Declaration declaration : last.values()) {
+			convert(declaration);
+		}
+		convertBackbuffer();
 		warnDiscard();
 		List<String> out = new ArrayList<>();
 		for (int line = 1; line <= raw.size() + 1; ++line) {
 			List<Line> lines = new ArrayList<>(or(before.get(line)));
 			if (line <= raw.size()) {
-				lines.addAll(replaced.containsKey(line)
-						? replaced.get(line)
+				lines.addAll(edits.containsKey(line)
+						? rewrite(line)
 						: List.of(new Line(raw.get(line - 1), line)));
 			}
 			for (Line l : lines) {
@@ -180,7 +195,7 @@ public final class LegacyShaderConverter {
 					line.substring(m.end()),
 					code.length() >= m.end() &&
 							code.regionMatches(m.start(), line, m.start(),
-									m.end() - m.start()));
+									m.end() - m.start()), true);
 			declarations.add(declaration);
 			if (BACKBUFFER.equals(declaration.name)) {
 				// Settings in a comment still scaled the output.
@@ -191,41 +206,85 @@ public final class LegacyShaderConverter {
 		}
 	}
 
-	private void convert(Declaration declaration) {
-		String name = declaration.name;
+	// Every declaration in code, by name, wherever the old pattern did or
+	// did not match it.
+	private void findDeclared() {
+		Map<Integer, Declaration> matches = new HashMap<>();
+		for (Declaration declaration : declarations) {
+			if (declaration.code) {
+				matches.put(declaration.line, declaration);
+			}
+		}
+		for (int i = 0; i < raw.size(); ++i) {
+			Matcher m = DECLARATION.matcher(scan.code().get(i));
+			while (m.find()) {
+				Declaration match = matches.get(i + 1);
+				Declaration declaration = match != null &&
+						match.start == m.start()
+						? match
+						: new Declaration(i + 1, m.start(), m.end(),
+								m.group(1), m.group(2),
+								raw.get(i).substring(m.end()), true, false);
+				List<Declaration> list = declared.get(declaration.name);
+				if (list == null) {
+					list = new ArrayList<>();
+					declared.put(declaration.name, list);
+				}
+				list.add(declaration);
+			}
+		}
+	}
+
+	// The match chose the texture and settings of its name; write them on
+	// the declarations of that name.
+	private void convert(Declaration match) {
+		String name = match.name;
 		boolean camera = name.equals("cameraBack") ||
 				name.equals("cameraFront");
-		if (declaration.type.equals("samplerExternalOES")) {
+		if (match.type.equals("samplerExternalOES")) {
 			if (camera) {
-				annotate(declaration, "", settings(declaration)
-						.forCamera().options(Sampling.CAMERA, true));
+				bind(targets(match), settings(match).forCamera()
+						.options(Sampling.CAMERA, true));
 			}
 			return;
 		}
 		LibraryTexture texture = library.find(name);
 		if (texture == null) {
 			return;
-		} else if (camera) {
-			warn(declaration.line, name + " is the camera's name, so it " +
-					"cannot read the library texture " + name + "; rename " +
-					"the uniform and the texture to bind it");
+		}
+		List<Declaration> declarations = or(declared.get(name));
+		if (camera) {
+			if (!declarations.isEmpty()) {
+				warn(declarations.get(0).line, name + " is the camera's " +
+						"name, so it cannot read the library texture " +
+						name + "; rename the uniform and the texture to " +
+						"bind it");
+			}
 			return;
 		}
-		boolean cube = declaration.type.equals("samplerCube");
-		ProjectPath path = texture(name, texture, cube);
-		annotate(declaration, "\"" + path + "\"", settings(declaration)
-				.options(Sampling.IMAGE, !cube));
+		boolean cube = match.type.equals("samplerCube");
+		List<Declaration> targets = targets(match);
+		warnUndeclared(match, "read the library texture " + name +
+				", but it has no declaration like uniform " + match.type +
+				" " + name + "; on one line to attach #pragma se input " +
+				"to, so it is not bound");
+		if (!targets.isEmpty()) {
+			ProjectPath path = texture(name, texture, cube);
+			bind(targets, ("\"" + path + "\" " + settings(match)
+					.options(Sampling.IMAGE, !cube)).trim());
+		}
 	}
 
-	private void convertBackbuffer(List<Declaration> declarations) {
+	private void convertBackbuffer() {
 		LegacySamplerSettings settings = backbuffer;
-		int at = 0;
+		Declaration first = null;
 		for (Declaration declaration : this.declarations) {
 			if (BACKBUFFER.equals(declaration.name)) {
-				at = declaration.line;
+				first = declaration;
 				break;
 			}
 		}
+		int at = first != null ? first.line : 0;
 		if (settings.mipmap() != Mipmap.NONE) {
 			settings = settings.withoutMipmap();
 			warn(at,
@@ -251,9 +310,20 @@ public final class LegacyShaderConverter {
 				? library.find(settings.preset())
 				: null;
 		presetMissing = settings.preset() != null && preset == null;
+		List<Declaration> declarations = or(declared.get(BACKBUFFER));
 		String options = settings.options(Sampling.PASS, true);
-		for (Declaration declaration : declarations) {
-			annotate(declaration, "", options);
+		if (first != null && (!options.isEmpty() || preset != null)) {
+			warnUndeclared(first, "has settings, but " +
+					"it has no declaration like uniform sampler2D " +
+					"backbuffer; on one line to attach #pragma se input " +
+					"to, so they are not applied");
+		}
+		if (options.isEmpty()) {
+			for (Declaration declaration : declarations) {
+				edit(new Edit(declaration, null, false));
+			}
+		} else {
+			place(declarations, new Line("#pragma se input " + options, 0));
 		}
 		List<String> target = new ArrayList<>();
 		if (preset != null && !declarations.isEmpty()) {
@@ -290,48 +360,82 @@ public final class LegacyShaderConverter {
 		return path;
 	}
 
-	// Write a directive for a declaration in code.
-	private void annotate(Declaration declaration, String source,
-			String options) {
-		String arguments = (source + " " + options).trim();
-		if (arguments.isEmpty()) {
-			dropSettingsComment(declaration);
-			return;
+	// The declarations of a match's name that can take what it chose: the
+	// old renderer bound a texture of the match's type to the name, and a
+	// sampler of another type read none.
+	private List<Declaration> targets(Declaration match) {
+		List<Declaration> targets = new ArrayList<>();
+		for (Declaration declaration : or(declared.get(match.name))) {
+			if (declaration.type.equals(match.type)) {
+				targets.add(declaration);
+			} else {
+				warn(declaration.line, "The old renderer bound " +
+						match.name + " as a " + match.type + " from line " +
+						match.line + ", so uniform " + declaration.type +
+						" " + match.name + " read no texture; it stays " +
+						"without one");
+			}
 		}
-		Line directive = new Line("#pragma se input " + arguments, 0);
-		int line = declaration.line;
-		if (scan.depthAt(line) > 0) {
-			hoist(declaration, directive);
-			return;
-		}
-		String text = raw.get(line - 1);
-		String prefix = text.substring(0, declaration.start);
-		List<Line> lines = new ArrayList<>();
-		if (!prefix.isBlank()) {
-			lines.add(new Line(prefix.stripTrailing(), line));
-		}
-		lines.add(directive);
-		lines.add(new Line((prefix.isBlank() ? prefix : "") +
-				declaration(declaration), line));
-		replaced.put(line, lines);
+		return targets;
 	}
 
-	// Host directives cannot be inside conditional blocks, so the
-	// declaration moves before the outermost one around it.
-	private void hoist(Declaration declaration, Line directive) {
-		int line = declaration.line;
-		for (Declaration other : declarations) {
-			if (other != declaration && other.code &&
-					other.name.equals(declaration.name)) {
-				warn(line, declaration.name + " is declared more than " +
-						"once, so this declaration inside #if, #ifdef or " +
-						"#ifndef, where #pragma se input cannot be, is " +
-						"left as written without its texture or " +
-						"settings; declare it once outside the " +
-						"conditional block");
+	// A name that is used but declared in a shape the old pattern found
+	// only in a comment, like over two lines, keeps what it had nowhere.
+	private void warnUndeclared(Declaration match, String message) {
+		if (declared.containsKey(match.name)) {
+			return;
+		}
+		Pattern use = Pattern.compile("(?<![a-zA-Z0-9_])" + match.name +
+				"(?![a-zA-Z0-9_])");
+		for (String code : scan.code()) {
+			if (use.matcher(code).find()) {
+				warn(match.line, match.name + " " + message);
 				return;
 			}
 		}
+	}
+
+	// Write a directive for the declarations of a match's name.
+	private void bind(List<Declaration> targets, String arguments) {
+		if (arguments.isEmpty()) {
+			for (Declaration declaration : targets) {
+				edit(new Edit(declaration, null, false));
+			}
+			return;
+		}
+		place(targets, new Line("#pragma se input " + arguments, 0));
+	}
+
+	// Host directives cannot be inside conditional blocks, so a
+	// declaration in one moves before the outermost block around it,
+	// unless the name is declared elsewhere too.
+	private void place(List<Declaration> declarations, Line directive) {
+		List<Declaration> top = new ArrayList<>();
+		for (Declaration declaration : declarations) {
+			if (scan.depthAt(declaration.line) == 0) {
+				top.add(declaration);
+			}
+		}
+		if (top.isEmpty() && declarations.size() == 1) {
+			hoist(declarations.get(0), directive);
+			return;
+		}
+		for (Declaration declaration : declarations) {
+			if (top.contains(declaration)) {
+				edit(new Edit(declaration, directive, false));
+			} else {
+				warn(declaration.line, declaration.name + " is declared " +
+						"more than once, so this declaration inside #if, " +
+						"#ifdef or #ifndef, where #pragma se input cannot " +
+						"be, is left as written without its texture or " +
+						"settings; declare it once outside the " +
+						"conditional block");
+			}
+		}
+	}
+
+	private void hoist(Declaration declaration, Line directive) {
+		int line = declaration.line;
 		int open = 0;
 		for (PreprocessorScan.Directive d : scan.directives()) {
 			if (d.line() > line) {
@@ -344,41 +448,65 @@ public final class LegacyShaderConverter {
 			}
 		}
 		insert(open, directive);
-		insert(open, new Line("uniform " + declaration.type + " " +
-				declaration.name + ";", line));
-		String rest = raw.get(line - 1).substring(0, declaration.start) +
-				remainder(declaration);
-		replaced.put(line, List.of(new Line(rest.isBlank()
-				? ""
-				: rest.stripTrailing(), line)));
+		insert(open, new Line(raw.get(line - 1).substring(declaration.start,
+				declaration.end), line));
+		edit(new Edit(declaration, null, true));
 		warn(line, "Moved uniform " + declaration.type + " " +
 				declaration.name + " out of the conditional block on line " +
 				open + ", because #pragma se input cannot be inside one");
 	}
 
-	private void dropSettingsComment(Declaration declaration) {
-		if (isSettingsOnly(declaration)) {
-			String text = raw.get(declaration.line - 1);
-			replaced.put(declaration.line, List.of(new Line(
-					text.substring(0, declaration.end), declaration.line)));
+	private void edit(Edit edit) {
+		List<Edit> list = edits.get(edit.declaration.line);
+		if (list == null) {
+			list = new ArrayList<>();
+			edits.put(edit.declaration.line, list);
 		}
+		list.add(edit);
 	}
 
-	private String declaration(Declaration declaration) {
-		return raw.get(declaration.line - 1)
-				.substring(declaration.start, declaration.end) +
-				remainder(declaration);
-	}
-
-	// What follows the semicolon, without a comment that only held
-	// settings the directive now states.
-	private String remainder(Declaration declaration) {
-		return isSettingsOnly(declaration) ? "" : declaration.params;
+	// A line with its edits: a directive goes on a line of its own before
+	// the declaration, and code before that keeps its own line.
+	private List<Line> rewrite(int line) {
+		String text = raw.get(line - 1);
+		List<Edit> list = edits.get(line);
+		Collections.sort(list, (a, b) -> Integer.compare(
+				a.declaration.start, b.declaration.start));
+		List<Line> lines = new ArrayList<>();
+		StringBuilder current = new StringBuilder();
+		int from = 0;
+		Edit last = null;
+		for (Edit edit : list) {
+			Declaration declaration = edit.declaration;
+			current.append(text, from, declaration.start);
+			if (edit.directive != null) {
+				if (!current.toString().isBlank()) {
+					lines.add(new Line(current.toString().stripTrailing(),
+							line));
+					current.setLength(0);
+				}
+				lines.add(edit.directive);
+			}
+			if (!edit.remove) {
+				current.append(text, declaration.start, declaration.end);
+			}
+			from = declaration.end;
+			last = edit;
+		}
+		if (!isSettingsOnly(last.declaration)) {
+			current.append(text.substring(from));
+		}
+		String rest = current.toString();
+		lines.add(new Line(last.remove
+				? rest.isBlank() ? "" : rest.stripTrailing()
+				: rest, line));
+		return lines;
 	}
 
 	// A preset naming a missing texture stays where it is written.
 	private boolean isSettingsOnly(Declaration declaration) {
-		return LegacySamplerSettings.isSettingsOnly(declaration.params,
+		return declaration.matched &&
+				LegacySamplerSettings.isSettingsOnly(declaration.params,
 				BACKBUFFER.equals(declaration.name) && !presetMissing);
 	}
 
@@ -413,8 +541,8 @@ public final class LegacyShaderConverter {
 		return LegacySamplerSettings.TEXTURE.parse(declaration.params, false);
 	}
 
-	private static List<Line> or(List<Line> lines) {
-		return lines != null ? lines : List.of();
+	private static <T> List<T> or(List<T> list) {
+		return list != null ? list : List.of();
 	}
 
 	private static String name(Enum<?> value) {
