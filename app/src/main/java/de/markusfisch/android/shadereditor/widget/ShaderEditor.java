@@ -44,6 +44,8 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.highlighter.EditedRange;
 import de.markusfisch.android.shadereditor.highlighter.Highlight;
 import de.markusfisch.android.shadereditor.highlighter.TokenDiff;
+import de.markusfisch.android.shadereditor.opengl.UniformDef;
+import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
@@ -66,6 +68,7 @@ public class ShaderEditor extends LineNumberEditText {
 	private static final Tokens NO_TOKENS = GlslLexer.lex("");
 	private static final Analysis NO_ANALYSIS = new Analysis(NO_TOKENS,
 			Outline.of(NO_TOKENS, ""));
+	private static final List<String> BUILTIN_UNIFORMS = new ArrayList<>();
 
 	static {
 		DEFAULT_COMPLETIONS.add("{");
@@ -74,6 +77,10 @@ public class ShaderEditor extends LineNumberEditText {
 		DEFAULT_COMPLETIONS.add(")");
 		DEFAULT_COMPLETIONS.add("[");
 		DEFAULT_COMPLETIONS.add("]");
+		for (UniformDef uniform : UniformTable.BUILTINS) {
+			BUILTIN_UNIFORMS.add(uniform.getName());
+		}
+		Collections.sort(BUILTIN_UNIFORMS);
 	}
 
 	private int revision = 0;
@@ -621,7 +628,8 @@ public class ShaderEditor extends LineNumberEditText {
 				text.subSequence(tokens.start(index), start).toString(),
 				tokens.inDirective(index),
 				analysis.outline(),
-				tokens.start(index));
+				tokens.start(index),
+				BUILTIN_UNIFORMS);
 
 		if (completions.isEmpty()) {
 			completions = DEFAULT_COMPLETIONS;

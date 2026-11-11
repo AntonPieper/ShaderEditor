@@ -43,12 +43,12 @@ public final class GlslCompletion {
 
 	/**
 	 * Words that start with prefix, each once: in a directive the directive
-	 * names, then the names the outline declares, then the language words.
-	 * A declaration whose name starts at wordStart is the word being typed
-	 * and is left out.
+	 * names, then the names the outline declares, then the language words,
+	 * then the extra words in their order. A declaration whose name starts
+	 * at wordStart is the word being typed and is left out.
 	 */
 	public static List<String> words(String prefix, boolean inDirective,
-			Outline outline, int wordStart) {
+			Outline outline, int wordStart, List<String> extraWords) {
 		if (prefix.isEmpty()) {
 			return new ArrayList<>();
 		}
@@ -66,6 +66,11 @@ public final class GlslCompletion {
 		Collections.sort(names);
 		words.addAll(names);
 		words.addAll(GlslWords.matching(prefix));
+		for (String word : extraWords) {
+			if (word.startsWith(prefix)) {
+				words.add(word);
+			}
+		}
 		return new ArrayList<>(words);
 	}
 }
