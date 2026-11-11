@@ -5,10 +5,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.project.HostDirective.Filter;
+import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
+import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.PreprocessorScan;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -19,8 +24,8 @@ import de.markusfisch.android.shadereditor.project.SourceText;
  * Turns the text of a database shader, written for the old conventions,
  * into project files that say the same with host directives. This is
  * the only code that knows those conventions: a sampler named like a
- * library texture reads it, and a trailing {@code ///} comment
- * configures sampling.
+ * library texture reads it, a trailing {@code ///} comment configures
+ * sampling, and {@code backbuffer} settings also scale the output.
  */
 public final class LegacyShaderConverter {
 	/** Where the converted shader is. */
@@ -89,11 +94,14 @@ public final class LegacyShaderConverter {
 	private final PreprocessorScan scan;
 	private final Library library;
 	private final List<Declaration> declarations = new ArrayList<>();
+	private final Map<Integer, List<Line>> before = new TreeMap<>();
 	private final Map<Integer, List<Line>> replaced = new HashMap<>();
 	private final Map<ProjectPath, String> files = new LinkedHashMap<>();
 	private final Map<ProjectPath, TextureFile> textures =
 			new LinkedHashMap<>();
 	private final List<ProjectDiagnostic> diagnostics = new ArrayList<>();
+	private LegacySamplerSettings backbuffer = LegacySamplerSettings.BACKBUFFER;
+	private boolean presetMissing;
 
 	private record Declaration(int line, int start, int end, String type,
 			String name, String params, boolean code) {
@@ -127,16 +135,26 @@ public final class LegacyShaderConverter {
 
 	private String run(List<Integer> map) {
 		find();
+		List<Declaration> backbuffers = new ArrayList<>();
 		for (Declaration declaration : declarations) {
-			if (declaration.code && !BACKBUFFER.equals(declaration.name)) {
+			if (!declaration.code) {
+				continue;
+			} else if (BACKBUFFER.equals(declaration.name)) {
+				backbuffers.add(declaration);
+			} else {
 				convert(declaration);
 			}
 		}
+		convertBackbuffer(backbuffers);
 		List<String> out = new ArrayList<>();
-		for (int line = 1; line <= raw.size(); ++line) {
-			for (Line l : replaced.containsKey(line)
-					? replaced.get(line)
-					: List.of(new Line(raw.get(line - 1), line))) {
+		for (int line = 1; line <= raw.size() + 1; ++line) {
+			List<Line> lines = new ArrayList<>(or(before.get(line)));
+			if (line <= raw.size()) {
+				lines.addAll(replaced.containsKey(line)
+						? replaced.get(line)
+						: List.of(new Line(raw.get(line - 1), line)));
+			}
+			for (Line l : lines) {
 				out.add(l.text);
 				map.add(l.original);
 			}
@@ -162,7 +180,10 @@ public final class LegacyShaderConverter {
 							code.regionMatches(m.start(), line, m.start(),
 									m.end() - m.start()));
 			declarations.add(declaration);
-			if (!BACKBUFFER.equals(declaration.name)) {
+			if (BACKBUFFER.equals(declaration.name)) {
+				// Settings in a comment still scaled the output.
+				backbuffer = backbuffer.parse(declaration.params, true);
+			} else {
 				++samplers;
 			}
 		}
@@ -192,6 +213,69 @@ public final class LegacyShaderConverter {
 		ProjectPath path = texture(name, texture, cube);
 		annotate(declaration, "\"" + path + "\"", settings(declaration)
 				.options(Sampling.IMAGE, !cube));
+	}
+
+	private void convertBackbuffer(List<Declaration> declarations) {
+		LegacySamplerSettings settings = backbuffer;
+		int at = 0;
+		for (Declaration declaration : this.declarations) {
+			if (BACKBUFFER.equals(declaration.name)) {
+				at = declaration.line;
+				break;
+			}
+		}
+		if (settings.mipmap() != Mipmap.NONE) {
+			settings = settings.withoutMipmap();
+			warn(at,
+					"backbuffer reads with min=" + name(settings.min()) +
+							" instead of a mipmap filter, because pass " +
+							"outputs have no mipmaps; the old mipmaps " +
+							"were made once and never updated");
+		}
+		if (settings.min() != settings.mag()) {
+			warn(at, "The output is scaled to the screen with " +
+					name(settings.mag()) + " filtering also when the " +
+					"quality is above 1, where the old renderer used the " +
+					"backbuffer's min=" + name(settings.min()));
+		}
+		if (settings.mag() == Filter.LINEAR &&
+				(settings.wrapS() == Wrap.REPEAT ||
+						settings.wrapT() == Wrap.REPEAT)) {
+			warn(at, "The edge pixels of the output are no longer " +
+					"blended with the opposite edge when it is scaled to " +
+					"the screen, which the backbuffer's wrap=repeat did");
+		}
+		LibraryTexture preset = settings.preset() != null
+				? library.find(settings.preset())
+				: null;
+		presetMissing = settings.preset() != null && preset == null;
+		String options = settings.options(Sampling.PASS, true);
+		for (Declaration declaration : declarations) {
+			annotate(declaration, "", options);
+		}
+		List<String> target = new ArrayList<>();
+		if (preset != null && !declarations.isEmpty()) {
+			ProjectPath image = texture(settings.preset(), preset, false);
+			ProjectPath shader = path("presets/" + settings.preset() +
+					".glsl");
+			files.put(shader, PresetShader.text("../" + image,
+					preset.width(), preset.height()));
+			target.add("initial=\"" + shader + "\"");
+		}
+		if (settings.mag() == Filter.LINEAR) {
+			target.add("present=linear");
+		}
+		if (!target.isEmpty()) {
+			int version = 0;
+			for (PreprocessorScan.Directive d : scan.directives()) {
+				if (d.kind() == PreprocessorScan.Kind.VERSION) {
+					version = d.line();
+					break;
+				}
+			}
+			insert(version + 1, new Line("#pragma se target " +
+					String.join(" ", target), 0));
+		}
 	}
 
 	private ProjectPath texture(String name, LibraryTexture texture,
@@ -250,8 +334,19 @@ public final class LegacyShaderConverter {
 		return isSettingsOnly(declaration) ? "" : declaration.params;
 	}
 
+	// A preset naming a missing texture stays where it is written.
 	private boolean isSettingsOnly(Declaration declaration) {
-		return LegacySamplerSettings.isSettingsOnly(declaration.params, false);
+		return LegacySamplerSettings.isSettingsOnly(declaration.params,
+				BACKBUFFER.equals(declaration.name) && !presetMissing);
+	}
+
+	private void insert(int line, Line text) {
+		List<Line> lines = before.get(line);
+		if (lines == null) {
+			lines = new ArrayList<>();
+			before.put(line, lines);
+		}
+		lines.add(text);
 	}
 
 	private void warn(int line, String message) {
@@ -261,6 +356,14 @@ public final class LegacyShaderConverter {
 
 	private static LegacySamplerSettings settings(Declaration declaration) {
 		return LegacySamplerSettings.TEXTURE.parse(declaration.params, false);
+	}
+
+	private static List<Line> or(List<Line> lines) {
+		return lines != null ? lines : List.of();
+	}
+
+	private static String name(Enum<?> value) {
+		return value.name().toLowerCase(Locale.ROOT);
 	}
 
 	private static ProjectPath path(String path) {
