@@ -10,7 +10,10 @@ permissions:
 
 concurrency:
   group: android-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer commit on a pull request makes the older run pointless. A push to a
+  # branch must finish, or frequent merges would never publish an APK; runs
+  # for the same branch then go one after another.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
