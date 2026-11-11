@@ -256,6 +256,7 @@ public final class ShaderEngine {
 		inputs.restart(next.quality, now);
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
 		configure(next);
+		errors.addAll(sources.getWarnings());
 		renderPipeline.releaseTargets();
 		errors.addAll(renderPipeline.ensureTargets(
 				inputs.getRenderWidth(),

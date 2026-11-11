@@ -46,7 +46,11 @@ final class SystemSources {
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			NotificationService.requirePermissions(host.context());
+			if (NotificationService.isPermissionRequired(host.context()) &&
+					!host.onNotificationAccessNeeded()) {
+				sources.warn("Notification access is off; run this shader " +
+						"in the app once to turn it on");
+			}
 		}
 
 		@Override
@@ -209,7 +213,11 @@ final class SystemSources {
 			listener = new MicInputListener(host.context());
 			if (!listener.register()) {
 				listener = null;
-				host.onPermissionNeeded(android.Manifest.permission.RECORD_AUDIO);
+				if (!host.onPermissionNeeded(
+						android.Manifest.permission.RECORD_AUDIO)) {
+					sources.warn("The microphone may not record; run this " +
+							"shader in the app once to allow it");
+				}
 			}
 			recording = listener != null;
 		}

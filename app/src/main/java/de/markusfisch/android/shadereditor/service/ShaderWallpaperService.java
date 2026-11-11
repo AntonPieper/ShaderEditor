@@ -4,17 +4,25 @@ import android.content.ComponentName;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.opengl.GLSurfaceView;
+import android.os.Handler;
+import android.os.Looper;
 import android.service.wallpaper.WallpaperService;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import java.util.List;
 
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
+import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.preference.Preferences;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.LegacyShaderProjectSource;
 import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 import de.markusfisch.android.shadereditor.receiver.BatteryLevelReceiver;
@@ -59,9 +67,12 @@ public class ShaderWallpaperService extends WallpaperService {
 	private class ShaderWallpaperEngine
 			extends Engine
 			implements SharedPreferences.OnSharedPreferenceChangeListener {
+		private final Handler mainHandler = new Handler(Looper.getMainLooper());
 		private ShaderWallpaperView view;
 		private long runtimeShaderId;
 		private boolean hasRuntimeShader;
+		// GL thread only.
+		private String shownWarnings = "";
 
 		@Override
 		public void onSharedPreferenceChanged(
@@ -76,6 +87,17 @@ public class ShaderWallpaperService extends WallpaperService {
 		public void onCreate(SurfaceHolder holder) {
 			super.onCreate(holder);
 			view = new ShaderWallpaperView();
+			view.getEngine().setListener(new ShaderEngine.Listener() {
+				@Override
+				public void onDiagnostics(
+						@NonNull List<ProjectDiagnostic> diagnostics) {
+					showWarnings(diagnostics);
+				}
+
+				@Override
+				public void onFramesPerSecond(int fps) {
+				}
+			});
 			// Draws once onVisibilityChanged() resumes it.
 			view.onPause();
 			setShader();
@@ -161,6 +183,29 @@ public class ShaderWallpaperService extends WallpaperService {
 					view.getEngine().setRuntimeNanos(
 							ShaderEditorApp.preferences.getWallpaperRuntimeNanos(runtimeShaderId));
 				}
+			}
+		}
+
+		// A wallpaper has no place to list diagnostics, so it shows what
+		// it cannot provide in a toast, once until that changes.
+		private void showWarnings(@NonNull List<ProjectDiagnostic> diagnostics) {
+			var warnings = new StringBuilder();
+			for (var diagnostic : diagnostics) {
+				if (diagnostic.severity() == ProjectDiagnostic.Severity.WARNING) {
+					if (warnings.length() > 0) {
+						warnings.append('\n');
+					}
+					warnings.append(diagnostic.message());
+				}
+			}
+			String text = warnings.toString();
+			if (text.equals(shownWarnings)) {
+				return;
+			}
+			shownWarnings = text;
+			if (!text.isEmpty()) {
+				mainHandler.post(() -> Toast.makeText(ShaderWallpaperService.this,
+						text, Toast.LENGTH_LONG).show());
 			}
 		}
 
