@@ -1,7 +1,10 @@
 package de.markusfisch.android.shadereditor.syntax;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * What the editor completes: the word that ends at the cursor, nothing
@@ -39,16 +42,30 @@ public final class GlslCompletion {
 	}
 
 	/**
-	 * Words that start with prefix; in a directive, the directive names
-	 * come first.
+	 * Words that start with prefix, each once: in a directive the directive
+	 * names, then the names the outline declares, then the language words.
+	 * A declaration whose name starts at wordStart is the word being typed
+	 * and is left out.
 	 */
-	public static List<String> words(String prefix, boolean inDirective) {
-		if (!inDirective) {
-			return GlslWords.matching(prefix);
+	public static List<String> words(String prefix, boolean inDirective,
+			Outline outline, int wordStart) {
+		if (prefix.isEmpty()) {
+			return new ArrayList<>();
 		}
-		List<String> words = new ArrayList<>(
-				GlslWords.matchingDirectives(prefix));
+		Set<String> words = new LinkedHashSet<>();
+		if (inDirective) {
+			words.addAll(GlslWords.matchingDirectives(prefix));
+		}
+		List<String> names = new ArrayList<>();
+		for (Outline.Declaration declaration : outline.declarations()) {
+			if (declaration.start() != wordStart &&
+					declaration.name().startsWith(prefix)) {
+				names.add(declaration.name());
+			}
+		}
+		Collections.sort(names);
+		words.addAll(names);
 		words.addAll(GlslWords.matching(prefix));
-		return words;
+		return new ArrayList<>(words);
 	}
 }

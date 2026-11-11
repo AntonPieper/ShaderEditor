@@ -58,23 +58,67 @@ public class GlslCompletionTest {
 		assertEquals(Collections.emptyList(), complete(""));
 		assertEquals(Collections.emptyList(), complete("xyz"));
 		assertEquals(Collections.emptyList(), complete("Vec"));
-		assertEquals(Collections.emptyList(), GlslCompletion.words("", true));
+		assertEquals(Collections.emptyList(), words("", true));
 	}
 
 	@Test
 	public void completeDirectivesAndKeywordsInDirectives() {
 		assertEquals(Arrays.asList("pragma"),
-				GlslCompletion.words("prag", true));
+				words("prag", true));
 		assertEquals(Arrays.asList("define", "default", "degrees", "determinant"),
-				GlslCompletion.words("de", true));
+				words("de", true));
 	}
 
 	@Test
 	public void completeWordThatIsDirectiveAndKeyword() {
-		// Wrong: else is offered twice.
-		assertEquals(Arrays.asList("elif", "else", "endif", "error", "extension", "else",
+		assertEquals(Arrays.asList("elif", "else", "endif", "error", "extension",
 						"equal", "exp", "exp2"),
-				GlslCompletion.words("e", true));
+				words("e", true));
+	}
+
+	@Test
+	public void completeOwnNamesBeforeLanguageWords() {
+		String text = "#define NORMAL_SCALE 2.0\n" +
+				"struct Noisy { float n; };\n" +
+				"uniform int nightMode;\n" +
+				"float nothing;\n" +
+				"float noise(vec2 p) { float nolocal = 1.0; return nolocal; }\n" +
+				"void main() { float x = no";
+		assertEquals(Arrays.asList("noise", "nothing", "normalize", "not",
+						"notEqual"),
+				completeAt(text, text.length()));
+		assertEquals(Arrays.asList("NORMAL_SCALE", "Noisy"),
+				completeAt(text + "\nN", text.length() + 2));
+	}
+
+	@Test
+	public void completeOwnNamesOnce() {
+		String text = "vec3 shade(vec3 p);\n" +
+				"#define texture texture2D\n" +
+				"vec3 shade(vec3 p) { return texture(s, p.xy).rgb; }\n" +
+				"void main() { sha";
+		assertEquals(Arrays.asList("shade"), completeAt(text, text.length()));
+		text += "\ntexture";
+		List<String> textures = completeAt(text, text.length());
+		assertEquals(Arrays.asList("texture", "texture2D", "texture2DProj",
+						"textureCube"),
+				textures.subList(0, 4));
+		assertEquals(1, Collections.frequency(textures, "texture"));
+	}
+
+	@Test
+	public void completeOwnMacrosInDirectives() {
+		String text = "#define FTIME_PERIOD 4.0\n#ifdef FT";
+		assertEquals(Arrays.asList("FTIME_PERIOD"),
+				completeAt(text, text.length()));
+	}
+
+	@Test
+	public void completeNotTheNameBeingDeclared() {
+		String text = "float noi() {}";
+		assertEquals(Collections.emptyList(), completeAt(text, 9));
+		text = "float noise;\nfloat noi;";
+		assertEquals(Arrays.asList("noise"), completeAt(text, 22));
 	}
 
 	@Test
@@ -156,7 +200,28 @@ public class GlslCompletionTest {
 
 	@NonNull
 	private static List<String> complete(@NonNull String prefix) {
-		return GlslCompletion.words(prefix, false);
+		return words(prefix, false);
+	}
+
+	@NonNull
+	private static List<String> words(@NonNull String prefix,
+			boolean inDirective) {
+		return GlslCompletion.words(prefix, inDirective,
+				Outline.of(GlslLexer.lex(""), ""), -1);
+	}
+
+	/**
+	 * What the editor offers with the cursor at cursor in text.
+	 */
+	@NonNull
+	private static List<String> completeAt(@NonNull String text, int cursor) {
+		Tokens tokens = GlslLexer.lex(text);
+		int index = GlslCompletion.tokenBefore(tokens, cursor);
+		return GlslCompletion.words(
+				text.substring(tokens.start(index), cursor),
+				tokens.inDirective(index),
+				Outline.of(tokens, text),
+				tokens.start(index));
 	}
 
 	/**
