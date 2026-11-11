@@ -42,6 +42,7 @@ import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
 
 public class MainActivity extends AppCompatActivity {
 	private static final String CODE_VISIBLE = "code_visible";
+	private static final String TOOLBAR_TITLE = "toolbar_title";
 	private static final String CRASH_RECOVERY_COMMENT = """
 			// Shader Editor disabled this shader because it caused a crash while loading.
 			// Fix the shader and remove the #if 0 wrapper to re-enable it.
@@ -147,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
 	protected void onSaveInstanceState(@NonNull Bundle state) {
 		shaderManager.saveState(state);
 		state.putBoolean(CODE_VISIBLE, editorFragment.isCodeVisible());
+		state.putCharSequence(TOOLBAR_TITLE, uiManager.getToolbarTitle());
 		super.onSaveInstanceState(state);
 	}
 
@@ -185,6 +187,9 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onPostCreate(Bundle state) {
 		super.onPostCreate(state);
+		if (state != null) {
+			uiManager.setToolbarTitle(state.getCharSequence(TOOLBAR_TITLE));
+		}
 		if (uiManager.drawerToggle != null) {
 			uiManager.drawerToggle.syncState();
 		}
