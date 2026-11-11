@@ -102,7 +102,7 @@ public final class UniformTable {
 			uniform("rotationMatrix", MAT3, R.string.device_rotation_matrix, Rotation.KEY,
 					(rotation, out) -> {
 						if (rotation.available) {
-							out.setMat3(true, rotation.matrix);
+							out.setMat3(rotation.columns(rotation.matrix));
 						}
 					}),
 			uniform("orientation", VEC3, R.string.device_orientation, Rotation.KEY,
@@ -115,7 +115,7 @@ public final class UniformTable {
 					Rotation.KEY,
 					(rotation, out) -> {
 						if (rotation.inclined) {
-							out.setMat3(true, rotation.inclinationMatrix);
+							out.setMat3(rotation.columns(rotation.inclinationMatrix));
 						}
 					}),
 			uniform("inclination", FLOAT, R.string.device_inclination, Rotation.KEY,
@@ -151,7 +151,7 @@ public final class UniformTable {
 			uniform("cameraOrientation", MAT2, R.string.camera_orientation, CameraSource.KEY,
 					(camera, out) -> {
 						if (camera.open) {
-							out.setMat2(false, camera.orientation);
+							out.setMat2(camera.orientation);
 						}
 					}),
 			uniform("cameraAddent", VEC2, R.string.camera_addent, CameraSource.KEY,

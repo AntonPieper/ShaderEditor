@@ -246,6 +246,7 @@ final class SensorSources {
 		final float[] matrix = new float[9];
 		final float[] inclinationMatrix = new float[9];
 		final float[] orientation = new float[]{0, 0, 0};
+		private final float[] columns = new float[9];
 		boolean available;
 		boolean inclined;
 		Gravity gravity;
@@ -308,6 +309,17 @@ final class SensorSources {
 						rotation.y(),
 						matrix);
 			}
+		}
+
+		// SensorManager fills matrices row by row.
+		@NonNull
+		float[] columns(@NonNull float[] rows) {
+			for (int row = 0; row < 3; ++row) {
+				for (int column = 0; column < 3; ++column) {
+					columns[column * 3 + row] = rows[row * 3 + column];
+				}
+			}
+			return columns;
 		}
 
 		@NonNull

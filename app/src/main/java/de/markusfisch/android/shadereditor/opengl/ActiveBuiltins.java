@@ -79,13 +79,13 @@ final class ActiveBuiltins {
 		}
 
 		@Override
-		public void setMat2(boolean transpose, @NonNull float[] values) {
-			device.uniformMatrix2fv(location, transpose, values);
+		public void setMat2(@NonNull float[] values) {
+			device.uniformMatrix2fv(location, values);
 		}
 
 		@Override
-		public void setMat3(boolean transpose, @NonNull float[] values) {
-			device.uniformMatrix3fv(location, transpose, values);
+		public void setMat3(@NonNull float[] values) {
+			device.uniformMatrix3fv(location, values);
 		}
 	}
 
