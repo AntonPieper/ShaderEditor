@@ -24,15 +24,15 @@ final class BuiltinUniforms {
 
 	private static final float NS_PER_SECOND = 1000000000f;
 	private static final float DEFAULT_FTIME_MAX = 3f;
-	private static final int MAX_POINTERS = 10;
 
 	private final float[] surfaceResolution = new float[]{0, 0};
 	private final float[] resolution = new float[]{0, 0};
 	private final float[] touch = new float[]{0, 0};
 	private final float[] touchStart = new float[]{0, 0};
 	private final float[] mouse = new float[]{0, 0};
-	private final float[] pointers = new float[MAX_POINTERS * 3];
+	private final float[] pointers = new float[FrameInputs.MAX_POINTERS * 3];
 	private final float[] offset = new float[]{0, 0};
+	private final FrameInputs frameInputs = new FrameInputs();
 	@NonNull
 	private final Context context;
 	@NonNull
@@ -44,6 +44,8 @@ final class BuiltinUniforms {
 
 	@Nullable
 	private ProgramBindings programBindings;
+	@Nullable
+	private ActiveBuiltins activeBuiltins;
 	@NonNull
 	private ShaderTextureResources textureResources =
 			ShaderTextureResources.empty();
@@ -74,6 +76,7 @@ final class BuiltinUniforms {
 		this.fTimeMax = fTimeMax;
 		this.textureResources = textureResources;
 		programBindings = new ProgramBindings(program);
+		activeBuiltins = new ActiveBuiltins(device, program);
 
 		sensorUniforms.configure(device, program);
 		systemUniforms.configure(device, program);
@@ -146,15 +149,17 @@ final class BuiltinUniforms {
 	@Nullable
 	PreparedFrame beginFrame(@Nullable GlTexture2D backBufferTexture) {
 		var bindings = programBindings;
-		if (bindings == null) {
+		var builtins = activeBuiltins;
+		if (bindings == null || builtins == null) {
 			return null;
 		}
 
 		long now = System.nanoTime();
 		float delta = (now - startTime) / NS_PER_SECOND;
 
+		captureFrameInputs(delta);
+		builtins.write(frameInputs);
 		bindings.clear();
-		bindFrameUniforms(bindings, delta);
 		systemUniforms.apply(bindings, now);
 		sensorUniforms.apply(bindings);
 		if (backBufferTexture != null) {
@@ -178,6 +183,7 @@ final class BuiltinUniforms {
 		fTimeMax = DEFAULT_FTIME_MAX;
 		textureResources = ShaderTextureResources.empty();
 		programBindings = null;
+		activeBuiltins = null;
 	}
 
 	void release() {
@@ -185,31 +191,25 @@ final class BuiltinUniforms {
 		clearConfiguration();
 	}
 
-	private void bindFrameUniforms(
-			@NonNull ProgramBindings bindings,
-			float delta) {
-		bindings.setFloat(ShaderRenderer.UNIFORM_TIME, delta);
-		bindings.setInt(ShaderRenderer.UNIFORM_SECOND, (int) delta);
-		bindings.setFloat(
-				ShaderRenderer.UNIFORM_SUB_SECOND,
-				delta - (int) delta);
-		bindings.setInt(ShaderRenderer.UNIFORM_FRAME_NUMBER, frameNum);
-		bindings.setFloat(
-				ShaderRenderer.UNIFORM_FTIME,
-				((delta % fTimeMax) / fTimeMax * 2f - 1f));
-		bindings.setFloat2(ShaderRenderer.UNIFORM_RESOLUTION, resolution);
-		bindings.setFloat2(ShaderRenderer.UNIFORM_TOUCH, touch);
-		bindings.setFloat2(ShaderRenderer.UNIFORM_TOUCH_START, touchStart);
-		bindings.setFloat2(ShaderRenderer.UNIFORM_MOUSE, mouse);
-		bindings.setInt(ShaderRenderer.UNIFORM_POINTER_COUNT, pointerCount);
-		if (pointerCount > 0) {
-			bindings.setFloat3(
-					ShaderRenderer.UNIFORM_POINTERS,
-					pointerCount,
-					pointers);
-		}
-		bindings.setFloat2(ShaderRenderer.UNIFORM_OFFSET, offset);
-		bindings.setFloat(ShaderRenderer.UNIFORM_START_RANDOM, startRandom);
+	private void captureFrameInputs(float delta) {
+		var in = frameInputs;
+		in.time = delta;
+		in.frame = frameNum;
+		in.fTimeMax = fTimeMax;
+		in.width = resolution[0];
+		in.height = resolution[1];
+		in.touchX = touch[0];
+		in.touchY = touch[1];
+		in.touchStartX = touchStart[0];
+		in.touchStartY = touchStart[1];
+		in.mouseX = mouse[0];
+		in.mouseY = mouse[1];
+		int count = pointerCount;
+		in.pointerCount = count;
+		System.arraycopy(pointers, 0, in.pointers, 0, count * 3);
+		in.offsetX = offset[0];
+		in.offsetY = offset[1];
+		in.startRandom = startRandom;
 	}
 
 	private void releaseModules() {

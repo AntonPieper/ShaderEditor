@@ -19,6 +19,8 @@ import java.util.Locale;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
+import de.markusfisch.android.shadereditor.opengl.UniformDef;
+import de.markusfisch.android.shadereditor.opengl.UniformTable;
 
 public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 	public static final class Uniform {
@@ -97,14 +99,8 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						"vec3",
 						ShaderRenderer.UNIFORM_DAYTIME,
 						context.getString(R.string.daytime)),
-				new Uniform(
-						"int",
-						ShaderRenderer.UNIFORM_FRAME_NUMBER,
-						context.getString(R.string.frame_number)),
-				new Uniform(
-						"float",
-						ShaderRenderer.UNIFORM_FTIME,
-						context.getString(R.string.time_in_cycle)),
+				builtin(context, "frame"),
+				builtin(context, "ftime"),
 				new Uniform(
 						"vec3",
 						ShaderRenderer.UNIFORM_GRAVITY,
@@ -147,22 +143,13 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						ShaderRenderer.UNIFORM_NOTIFICATION_COUNT,
 						context.getString(R.string.notification_count)
 				),
-				new Uniform(
-						"vec2",
-						ShaderRenderer.UNIFORM_OFFSET,
-						context.getString(R.string.wallpaper_offset)),
+				builtin(context, "offset"),
 				new Uniform(
 						"vec3",
 						ShaderRenderer.UNIFORM_ORIENTATION,
 						context.getString(R.string.device_orientation)),
-				new Uniform(
-						"vec3",
-						ShaderRenderer.UNIFORM_POINTERS + "[10]",
-						context.getString(R.string.positions_of_touches)),
-				new Uniform(
-						"int",
-						ShaderRenderer.UNIFORM_POINTER_COUNT,
-						context.getString(R.string.number_of_touches)),
+				builtin(context, "pointers"),
+				builtin(context, "pointerCount"),
 				new Uniform(
 						"int",
 						ShaderRenderer.UNIFORM_POWER_CONNECTED,
@@ -175,10 +162,7 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						"float",
 						ShaderRenderer.UNIFORM_PROXIMITY,
 						context.getString(R.string.proximity)),
-				new Uniform(
-						"vec2",
-						ShaderRenderer.UNIFORM_RESOLUTION,
-						context.getString(R.string.resolution_in_pixels)),
+				builtin(context, "resolution"),
 				new Uniform(
 						"mat3",
 						ShaderRenderer.UNIFORM_ROTATION_MATRIX,
@@ -187,22 +171,10 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						"vec3",
 						ShaderRenderer.UNIFORM_ROTATION_VECTOR,
 						context.getString(R.string.device_rotation_vector)),
-				new Uniform(
-						"int",
-						ShaderRenderer.UNIFORM_SECOND,
-						context.getString(R.string.int_seconds_since_load)),
-				new Uniform(
-						"float",
-						ShaderRenderer.UNIFORM_START_RANDOM,
-						context.getString(R.string.start_random)),
-				new Uniform(
-						"float",
-						ShaderRenderer.UNIFORM_SUB_SECOND,
-						context.getString(R.string.fractional_part_of_seconds_since_load)),
-				new Uniform(
-						"float",
-						ShaderRenderer.UNIFORM_TIME,
-						context.getString(R.string.time_in_seconds_since_load)),
+				builtin(context, "second"),
+				builtin(context, "startRandom"),
+				builtin(context, "subsecond"),
+				builtin(context, "time"),
 				new Uniform(
 						"float",
 						ShaderRenderer.UNIFORM_MEDIA_VOLUME,
@@ -211,14 +183,8 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						"float",
 						ShaderRenderer.UNIFORM_MIC_AMPLITUDE,
 						context.getString(R.string.microphone_amplitude)),
-				new Uniform(
-						"vec2",
-						ShaderRenderer.UNIFORM_TOUCH,
-						context.getString(R.string.touch_position_in_pixels)),
-				new Uniform(
-						"vec2",
-						ShaderRenderer.UNIFORM_TOUCH_START,
-						context.getString(R.string.touch_start_position_in_pixels)));
+				builtin(context, "touch"),
+				builtin(context, "touchStart"));
 		filteredUniforms = uniforms;
 	}
 
@@ -269,6 +235,14 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 		holder.rationale.setText(uniform.rationale);
 
 		return convertView;
+	}
+
+	private static Uniform builtin(Context context, String name) {
+		UniformDef uniform = UniformTable.get(name);
+		return new Uniform(
+				uniform.getType().getKeyword(),
+				uniform.getDeclarator(),
+				context.getString(uniform.getDescription()));
 	}
 
 	private ViewHolder getViewHolder(View view) {

@@ -129,6 +129,7 @@
 	<string name="time_in_cycle">Час у межах циклу #define FTIME_PERIOD секунд від -1,0 до +1,0</string>
 	<string name="touch_position_in_pixels">Позиція першого дотику пальця в пікселях</string>
 	<string name="touch_start_position_in_pixels">Позиція початкового дотику в пікселях</string>
+	<string name="normalized_touch_position">Нормалізована позиція першого дотику пальця</string>
 	<string name="number_of_touches">Кількість дотиків</string>
 	<string name="positions_of_touches">Позиції дотиків у пікселях</string>
 	<string name="linear_acceleration_vector">Лінійне прискорення в м/с^2</string>

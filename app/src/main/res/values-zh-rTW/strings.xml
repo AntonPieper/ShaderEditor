@@ -121,6 +121,7 @@
 	<string name="time_in_cycle">在 FTIME_PERIOD 定義的週期內的時間循環（-1.0 到 +1.0）</string>
 	<string name="touch_position_in_pixels">第一個手指觸碰位置的像素座標</string>
 	<string name="touch_start_position_in_pixels">初始觸碰位置的像素座標</string>
+	<string name="normalized_touch_position">第一個手指觸碰位置的正規化座標</string>
 	<string name="number_of_touches">目前觸碰點數量</string>
 	<string name="positions_of_touches">所有觸碰點的像素座標</string>
 	<string name="linear_acceleration_vector">線性加速度 (m/s^2)</string>
