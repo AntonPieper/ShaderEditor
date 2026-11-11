@@ -36,11 +36,18 @@ jobs:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         if: env.DEBUG_KEYSTORE_BASE64 != ''
         run: |
-          mkdir -p ~/.android
-          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/debug.keystore"
+          {
+            echo "SIGNING_ARGS<<EOF"
+            echo "-Pandroid.injected.signing.store.file=$RUNNER_TEMP/debug.keystore"
+            echo "-Pandroid.injected.signing.store.password=android"
+            echo "-Pandroid.injected.signing.key.alias=androiddebugkey"
+            echo "-Pandroid.injected.signing.key.password=android"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
 
       - name: Build, lint and test
-        run: ./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest
+        run: ./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest $SIGNING_ARGS
 
       - name: Name the APK
         run: cp app/build/outputs/apk/debug/app-debug.apk "ShaderEditor-debug-${GITHUB_SHA::7}.apk"
