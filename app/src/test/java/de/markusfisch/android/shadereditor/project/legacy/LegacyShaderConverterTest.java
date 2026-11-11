@@ -96,6 +96,61 @@ public class LegacyShaderConverterTest {
 	}
 
 	@Test
+	public void backbufferSettingsBecomeInputAndPresent() {
+		Result result = convert(lines("#version 300 es",
+				"uniform sampler2D backbuffer; ///min:l;mag:l;s:c;t:c;"));
+		assertEquals(lines("#version 300 es",
+				"#pragma se target present=linear",
+				"#pragma se input filter=linear",
+				"uniform sampler2D backbuffer;"), result.shader());
+		assertEquals(List.of(1, 0, 0, 2), result.lines());
+		assertTrue(result.diagnostics().isEmpty());
+		assertEquals(lines("uniform sampler2D backbuffer;"),
+				convert(lines("uniform sampler2D backbuffer;")).shader());
+	}
+
+	@Test
+	public void backbufferPresetStartsFromAGeneratedShader() {
+		Result result = convert(lines("uniform sampler2D backbuffer;///p:noise",
+				"void main() {}"));
+		assertEquals(lines("#pragma se target initial=\"presets/noise.glsl\"",
+				"uniform sampler2D backbuffer;",
+				"void main() {}"), result.shader());
+		assertEquals(List.of(new TextureFile("noise", path(
+				"textures/noise.png"), false)), result.textures());
+		assertEquals(lines("#ifdef GL_FRAGMENT_PRECISION_HIGH",
+				"precision highp float;",
+				"#else",
+				"precision mediump float;",
+				"#endif",
+				"",
+				"#pragma se input \"../textures/noise.png\"",
+				"uniform sampler2D image;",
+				"uniform vec2 resolution;",
+				"",
+				"// The image is 256x128 pixels.",
+				"void main() {",
+				"\tfloat h = floor(resolution.x / 256.0 * 128.0 + 0.5);",
+				"\tif (h < 1.0) {",
+				"\t\tgl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);",
+				"\t\treturn;",
+				"\t}",
+				"\tfloat y = mod(resolution.y - 1.0 - floor(gl_FragCoord.y), " +
+						"h * 2.0);",
+				"\tif (y >= h) {",
+				"\t\ty = h * 2.0 - y - 1.0;",
+				"\t}",
+				"\tgl_FragColor = texture2D(image, vec2(",
+				"\t\tgl_FragCoord.x / resolution.x,",
+				"\t\t1.0 - (y + 0.5) / h));",
+				"}"), result.files().get(path("presets/noise.glsl")));
+		assertTrue(result.diagnostics().isEmpty());
+		assertEquals(lines("uniform sampler2D backbuffer;///p:none"),
+				convert(lines("uniform sampler2D backbuffer;///p:none"))
+						.shader());
+	}
+
+	@Test
 	public void cameraBuiltinsAndFtimeStayUnchanged() {
 		String text = lines("#define FTIME_PERIOD 2.0",
 				"uniform samplerExternalOES cameraBack;",
@@ -140,6 +195,48 @@ public class LegacyShaderConverterTest {
 		assertEquals(lines("/* a", "*/", NOISE_DEFAULT,
 				"uniform sampler2D noise;"), result.shader());
 		assertEquals(List.of(1, 2, 0, 2), result.lines());
+	}
+
+	@Test
+	public void backbufferSettingsInACommentStillScaleTheOutput() {
+		assertEquals(lines("#pragma se target present=linear",
+						"// uniform sampler2D backbuffer; ///mag:l;",
+						"#pragma se input min=nearest mag=linear",
+						"uniform sampler2D backbuffer;"),
+				convert(lines("// uniform sampler2D backbuffer; ///mag:l;",
+						"uniform sampler2D backbuffer;")).shader());
+	}
+
+	@Test
+	public void backbufferMipmapConvertsToItsBaseFilter() {
+		Result result = convert(lines("uniform sampler2D backbuffer; " +
+				"///min:ll;mag:l;s:c;t:c;"));
+		assertEquals(lines("#pragma se target present=linear",
+				"#pragma se input filter=linear",
+				"uniform sampler2D backbuffer;"), result.shader());
+		assertEquals(List.of(new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.WARNING,
+				"backbuffer reads with min=linear instead of a mipmap " +
+						"filter, because pass outputs have no mipmaps; the " +
+						"old mipmaps were made once and never updated",
+				null, 1)), result.diagnostics());
+	}
+
+	@Test
+	public void backbufferPresentationThatHasNoExactForm() {
+		Result result = convert(lines("uniform sampler2D backbuffer; " +
+				"///min:n;mag:l;s:r;t:c;"));
+		assertEquals(lines("#pragma se target present=linear",
+				"#pragma se input min=nearest mag=linear wrap=repeat,clamp",
+				"uniform sampler2D backbuffer;"), result.shader());
+		assertEquals(List.of(
+				"The output is scaled to the screen with linear filtering " +
+						"also when the quality is above 1, where the old " +
+						"renderer used the backbuffer's min=nearest",
+				"The edge pixels of the output are no longer blended with " +
+						"the opposite edge when it is scaled to the screen, " +
+						"which the backbuffer's wrap=repeat did"),
+				messages(result));
 	}
 
 	@Test
@@ -248,6 +345,14 @@ public class LegacyShaderConverterTest {
 			lines.add(diagnostic.line());
 		}
 		return lines;
+	}
+
+	private static List<String> messages(Result result) {
+		List<String> messages = new ArrayList<>();
+		for (ProjectDiagnostic diagnostic : result.diagnostics()) {
+			messages.add(diagnostic.message());
+		}
+		return messages;
 	}
 
 	private static Result convert(String text) {
