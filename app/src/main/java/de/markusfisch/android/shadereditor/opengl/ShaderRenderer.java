@@ -38,7 +38,7 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	private final RendererProgramManager programManager =
 			new RendererProgramManager();
 	private final ShaderRenderPipeline renderPipeline =
-			new ShaderRenderPipeline(device, Mesh.fullScreenQuad());
+			new ShaderRenderPipeline(device);
 	private final EngineInputs inputs = new EngineInputs();
 	private final UniformSources sources;
 	private final Context context;

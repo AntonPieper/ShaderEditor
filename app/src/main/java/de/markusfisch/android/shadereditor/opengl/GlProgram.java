@@ -16,7 +16,6 @@ final class GlProgram {
 	private Map<String, GlUniform> uniforms;
 	private List<GlUniform> samplers;
 	private int textureUnitCount;
-	private final Map<String, Integer> attribLocations = new HashMap<>();
 
 	// Gives each element of each active sampler its own texture unit,
 	// in name order.
@@ -86,15 +85,10 @@ final class GlProgram {
 		return uniform != null ? uniform.unit() : GlUniform.NO_UNIT;
 	}
 
-	Map<String, Integer> getAttribLocations() {
-		return attribLocations;
-	}
-
 	void invalidate() {
 		id = 0;
 		uniforms = Collections.emptyMap();
 		samplers = List.of();
 		textureUnitCount = 0;
-		attribLocations.clear();
 	}
 }

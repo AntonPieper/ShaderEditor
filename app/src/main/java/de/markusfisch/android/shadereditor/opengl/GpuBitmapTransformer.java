@@ -147,7 +147,6 @@ public final class GpuBitmapTransformer {
 		private final FloatBuffer vertexBuffer = ByteBuffer.allocateDirect(16 * 4)
 				.order(ByteOrder.nativeOrder())
 				.asFloatBuffer();
-		private final Mesh texturedQuad = Mesh.texturedQuad(vertexBuffer);
 		private final GlDevice device = new GlDevice();
 		private final TextureParameters textureParameters =
 				new TextureParameters(
@@ -387,7 +386,7 @@ public final class GpuBitmapTransformer {
 
 			device.useProgram(program);
 			device.bindTexture(frameUnit, sourceTexture);
-			device.draw(texturedQuad, program);
+			drawQuad();
 
 			ByteBuffer pixelBuffer = getPixelBuffer(dstWidth * dstHeight * 4);
 			pixelBuffer.position(0);
@@ -419,6 +418,19 @@ public final class GpuBitmapTransformer {
 			putVertex(POSITIONS[4], POSITIONS[5], topLeft, vertexBuffer);
 			putVertex(POSITIONS[6], POSITIONS[7], topRight, vertexBuffer);
 			vertexBuffer.position(0);
+		}
+
+		private void drawQuad() {
+			int position = GLES20.glGetAttribLocation(program.getId(), "position");
+			int texCoord = GLES20.glGetAttribLocation(program.getId(), "texCoord");
+			GLES20.glEnableVertexAttribArray(position);
+			GLES20.glVertexAttribPointer(position, 2, GLES20.GL_FLOAT, false, 16,
+					vertexBuffer.position(0));
+			GLES20.glEnableVertexAttribArray(texCoord);
+			GLES20.glVertexAttribPointer(texCoord, 2, GLES20.GL_FLOAT, false, 16,
+					vertexBuffer.position(2));
+			vertexBuffer.position(0);
+			GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 		}
 
 		@NonNull
