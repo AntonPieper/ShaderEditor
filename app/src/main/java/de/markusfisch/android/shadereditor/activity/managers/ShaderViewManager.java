@@ -12,7 +12,7 @@ import androidx.annotation.Nullable;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
+import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
@@ -90,7 +90,7 @@ public class ShaderViewManager {
 	}
 
 	private void initShaderView() {
-		shaderView.getRenderer().setOnRendererListener(new ShaderRenderer.OnRendererListener() {
+		shaderView.getRenderer().setOnRendererListener(new ShaderEngine.OnRendererListener() {
 			@Override
 			public void onFramesPerSecond(int fps) {
 				listener.onFramesPerSecond(fps);

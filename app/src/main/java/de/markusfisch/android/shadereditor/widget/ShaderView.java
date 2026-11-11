@@ -11,10 +11,10 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.egl.EGLDisplay;
 
-import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
+import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 
 public class ShaderView extends GLSurfaceView {
-	private ShaderRenderer renderer;
+	private ShaderEngine renderer;
 
 	public ShaderView(Context context, int renderMode) {
 		super(context);
@@ -56,12 +56,12 @@ public class ShaderView extends GLSurfaceView {
 		onResume();
 	}
 
-	public ShaderRenderer getRenderer() {
+	public ShaderEngine getRenderer() {
 		return renderer;
 	}
 
 	private void init(Context context, int renderMode) {
-		renderer = new ShaderRenderer(new ContextEngineHost(context));
+		renderer = new ShaderEngine(new ContextEngineHost(context));
 		renderer.setRenderRequester(this::requestRender);
 
 		// On some devices it's important to setEGLContextClientVersion()
@@ -81,9 +81,9 @@ public class ShaderView extends GLSurfaceView {
 
 	private static class ContextFactory
 			implements GLSurfaceView.EGLContextFactory {
-		private final ShaderRenderer renderer;
+		private final ShaderEngine renderer;
 
-		private ContextFactory(ShaderRenderer renderer) {
+		private ContextFactory(ShaderEngine renderer) {
 			this.renderer = renderer;
 		}
 

@@ -25,7 +25,7 @@ import javax.microedition.khronos.opengles.GL10;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
-public class ShaderRenderer implements GLSurfaceView.Renderer {
+public class ShaderEngine implements GLSurfaceView.Renderer {
 	public interface OnRendererListener {
 		void onInfoLog(@NonNull List<ProjectDiagnostic> error);
 
@@ -73,7 +73,7 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	private volatile int lastFps;
 	private volatile float refreshRate = DEFAULT_REFRESH_RATE;
 
-	public ShaderRenderer(@NonNull EngineHost host) {
+	public ShaderEngine(@NonNull EngineHost host) {
 		context = host.context();
 		sources = new UniformSources(host);
 	}

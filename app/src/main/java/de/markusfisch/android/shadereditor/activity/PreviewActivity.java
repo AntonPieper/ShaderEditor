@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.io.Serializable;
 import java.util.List;
 
-import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
+import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.project.LooseShaderFileProjectSource;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
@@ -83,7 +83,7 @@ public class PreviewActivity extends AppCompatActivity {
 		}
 
 		shaderView.getRenderer().setOnRendererListener(
-				new ShaderRenderer.OnRendererListener() {
+				new ShaderEngine.OnRendererListener() {
 					@Override
 					public void onFramesPerSecond(int fps) {
 						// Invoked from the GL thread.
