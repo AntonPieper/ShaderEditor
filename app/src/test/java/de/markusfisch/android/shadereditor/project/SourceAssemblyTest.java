@@ -189,7 +189,7 @@ public class SourceAssemblyTest {
 				.put("2.glsl", "#include \"3.glsl\"\n")
 				.put("3.glsl", "float x;\n");
 		SourceAssembly assembly = SourceAssembly.assemble(files, MAIN,
-				new ProjectLimits(2, 1000, 10));
+				new ProjectLimits(2, 1000, 10, 16));
 		assertError(single(assembly), "2.glsl", 1, "limit of 2");
 	}
 
@@ -202,7 +202,7 @@ public class SourceAssemblyTest {
 								"#include \"a.glsl\"",
 								"#include \"a.glsl\""))
 						.put("a.glsl", "float aaaa;\n"),
-				MAIN, new ProjectLimits(4, 30, 10));
+				MAIN, new ProjectLimits(4, 30, 10, 16));
 		assertError(single(assembly), "a.glsl", 1, "limit of 30 bytes");
 		assertTrue(assembly.hasErrors());
 		assertEquals(2, assembly.lines().size());
@@ -216,7 +216,7 @@ public class SourceAssemblyTest {
 								"#include \"b.glsl\"\n")
 						.put("a.glsl", "float a;\n")
 						.put("b.glsl", "float b;\n"),
-				MAIN, new ProjectLimits(4, 1000, 2));
+				MAIN, new ProjectLimits(4, 1000, 2, 16));
 		assertError(single(assembly), "main.glsl", 2, "limit of 2 files");
 	}
 
