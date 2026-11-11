@@ -238,6 +238,31 @@ public class PreparationTest {
 	}
 
 	@Test
+	public void invalidDirectivesKeepTheirPathsAsDependencies() {
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.glsl", lines(
+						"#pragma se input \"a.png\" filter=garbage",
+						"uniform sampler2D a;",
+						"#pragma se input \"b.png\" wrap=clamp wrap=clamp",
+						"uniform sampler2D b;",
+						"#pragma se input \"c.glsl\"",
+						"float notADeclaration;",
+						"#pragma se target bogus=1 initial=\"seed.png\"",
+						MAIN))
+				.put("a.png", new byte[]{1})
+				.put("b.png", new byte[]{1})
+				.put("c.glsl", lines("#include \"lib.glsl\"", MAIN))
+				.put("lib.glsl", "#pragma se input \"d.png\"\n")
+				.put("d.png", new byte[]{1})
+				.put("seed.png", new byte[]{1}));
+		assertNull(preparation.plan());
+		assertEquals(5, preparation.diagnostics().size());
+		assertEquals(List.of("shader-project.json", "main.glsl", "a.png",
+				"b.png", "c.glsl", "lib.glsl", "d.png", "seed.png"),
+				dependencyPaths(preparation));
+	}
+
+	@Test
 	public void manifestThatIsNotTextIsAnError() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
 				.put("main.glsl", MAIN)
