@@ -42,6 +42,8 @@ public final class UniformTable {
 	public static final List<UniformDef> BUILTINS = List.of(
 			uniform("time", FLOAT, R.string.time_in_seconds_since_load,
 					(in, out) -> out.setFloat(in.time)),
+			uniform("runtime", FLOAT, R.string.rendered_runtime,
+					(in, out) -> out.setFloat(in.runtime)),
 			uniform("second", INT, R.string.int_seconds_since_load,
 					(in, out) -> out.setInt((int) in.time)),
 			uniform("subsecond", FLOAT, R.string.fractional_part_of_seconds_since_load,

@@ -168,7 +168,7 @@ final class BuiltinUniforms {
 		long now = System.nanoTime();
 		float delta = (now - startTime) / NS_PER_SECOND;
 
-		captureFrameInputs(delta);
+		captureFrameInputs(delta, runtimeClock.advance(now));
 		builtins.write(frameInputs, now);
 		device.bindEmptyTextures(program);
 		device.bindTexture(backBufferUnit, backBufferTexture);
@@ -199,9 +199,10 @@ final class BuiltinUniforms {
 		clearConfiguration();
 	}
 
-	private void captureFrameInputs(float delta) {
+	private void captureFrameInputs(float delta, long runtimeNanos) {
 		var in = frameInputs;
 		in.time = delta;
+		in.runtime = (float) (runtimeNanos / 1000000000.0);
 		in.frame = frameNum;
 		in.fTimeMax = fTimeMax;
 		in.width = resolution[0];

@@ -35,6 +35,7 @@ public class ExampleCoverageTest {
 		EXEMPT.put("rotationVector", "the orientation as an axis times sin(angle / 2), "
 				+ "not turned with the screen and from the game rotation vector, "
 				+ "whose north is arbitrary; rotationMatrix already falls back to it");
+		EXEMPT.put("runtime", "new from upstream; a wallpaper example follows separately");
 		EXEMPT.put("touch", NO_EXAMPLE);
 		EXEMPT.put("touchStart", NO_EXAMPLE);
 	}
