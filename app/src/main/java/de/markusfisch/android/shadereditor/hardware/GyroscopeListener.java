@@ -9,7 +9,9 @@ public class GyroscopeListener extends AbstractListener {
 	public final float[] rotation = new float[]{1f, 1f, 1f};
 
 	private static final float NS2S = 1f / 1000000000f;
-	private static final float EPSILON = 1f;
+	// Only guards the division below: any larger speed normalizes to a
+	// unit axis in float, and below it the rotation is negligible.
+	private static final float EPSILON = 1e-6f;
 
 	private final float[] deltaRotationVector = new float[4];
 	private final float[] deltaRotationMatrix = new float[9];
@@ -28,34 +30,12 @@ public class GyroscopeListener extends AbstractListener {
 		if (last > 0) {
 			final float dT = (event.timestamp - last) * NS2S;
 
-			// Axis of the rotation sample, not normalized yet.
-			float axisX = event.values[0];
-			float axisY = event.values[1];
-			float axisZ = event.values[2];
-
-			// Calculate the angular speed of the sample.
-			float omegaMagnitude = (float) Math.sqrt(
-					axisX * axisX + axisY * axisY + axisZ * axisZ);
-
-			// Normalize the rotation vector.
-			if (omegaMagnitude > EPSILON) {
-				axisX /= omegaMagnitude;
-				axisY /= omegaMagnitude;
-				axisZ /= omegaMagnitude;
-			}
-
-			// Integrate around this axis with the angular speed by the
-			// time step in order to get a delta rotation from this sample
-			// over the time step. Then convert this axis-angle representation
-			// of the delta rotation into a quaternion before turning it
-			// into the rotation matrix.
-			float thetaOverTwo = omegaMagnitude * dT / 2.0f;
-			float sinThetaOverTwo = (float) Math.sin(thetaOverTwo);
-			float cosThetaOverTwo = (float) Math.cos(thetaOverTwo);
-			deltaRotationVector[0] = sinThetaOverTwo * axisX;
-			deltaRotationVector[1] = sinThetaOverTwo * axisY;
-			deltaRotationVector[2] = sinThetaOverTwo * axisZ;
-			deltaRotationVector[3] = cosThetaOverTwo;
+			deltaRotation(
+					deltaRotationVector,
+					event.values[0],
+					event.values[1],
+					event.values[2],
+					dT);
 
 			SensorManager.getRotationMatrixFromVector(
 					deltaRotationMatrix,
@@ -76,5 +56,38 @@ public class GyroscopeListener extends AbstractListener {
 		}
 
 		last = event.timestamp;
+	}
+
+	// The rotation by the rate (axisX, axisY, axisZ) in rad/s over dT
+	// seconds, as a quaternion (x, y, z, w).
+	static void deltaRotation(
+			float[] quaternion,
+			float axisX,
+			float axisY,
+			float axisZ,
+			float dT) {
+		// Calculate the angular speed of the sample.
+		float omegaMagnitude = (float) Math.sqrt(
+				axisX * axisX + axisY * axisY + axisZ * axisZ);
+
+		// Normalize the rotation vector.
+		if (omegaMagnitude > EPSILON) {
+			axisX /= omegaMagnitude;
+			axisY /= omegaMagnitude;
+			axisZ /= omegaMagnitude;
+		}
+
+		// Integrate around this axis with the angular speed by the
+		// time step in order to get a delta rotation from this sample
+		// over the time step. Then convert this axis-angle representation
+		// of the delta rotation into a quaternion before turning it
+		// into the rotation matrix.
+		float thetaOverTwo = omegaMagnitude * dT / 2.0f;
+		float sinThetaOverTwo = (float) Math.sin(thetaOverTwo);
+		float cosThetaOverTwo = (float) Math.cos(thetaOverTwo);
+		quaternion[0] = sinThetaOverTwo * axisX;
+		quaternion[1] = sinThetaOverTwo * axisY;
+		quaternion[2] = sinThetaOverTwo * axisZ;
+		quaternion[3] = cosThetaOverTwo;
 	}
 }
