@@ -1,0 +1,143 @@
+package de.markusfisch.android.shadereditor.project;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.Set;
+
+import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
+import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
+
+public class ProjectSessionsTest {
+	@Rule
+	public final TemporaryFolder temp = new TemporaryFolder();
+
+	private File root;
+	private File project;
+	private ProjectSessions sessions;
+
+	@Before
+	public void setUp() throws IOException {
+		root = new File(temp.getRoot(), "sessions");
+		project = temp.newFolder("project");
+		sessions = new ProjectSessions(root);
+	}
+
+	@Test
+	public void keepsLocatorsUnderShortIds() {
+		List<Locator> locators = List.of(
+				new Locator(Kind.DIRECTORY, project.getPath()),
+				new Locator(Kind.TREE, "content://provider/tree/" +
+						"primary%3AShaders%2Fcafé"),
+				new Locator(Kind.DOCUMENT,
+						"content://provider/document/42"),
+				new Locator(Kind.DATABASE, "17"));
+		for (Locator locator : locators) {
+			String id = sessions.open(locator);
+			assertNotNull(id);
+			assertTrue(id, id.matches("[0-9a-z]{8}"));
+			assertEquals(id, sessions.open(locator));
+
+			ProjectSessions restarted = new ProjectSessions(root);
+			assertEquals(id, restarted.find(locator));
+			assertEquals(locator, restarted.locator(id));
+		}
+		assertEquals(4, Set.of(root.list()).size());
+		assertNotEquals(sessions.open(new Locator(Kind.DATABASE, "17")),
+				sessions.open(new Locator(Kind.DOCUMENT, "17")));
+	}
+
+	@Test
+	public void knowsNothingOfUnknownIds() throws IOException {
+		assertNull(sessions.find(new Locator(Kind.DATABASE, "1")));
+		assertNull(sessions.locator("00000000"));
+		assertNull(sessions.locator("../project"));
+		assertNull(sessions.locator(null));
+		assertNull(sessions.drafts("00000000"));
+		assertNull(sessions.drafts("../sessions"));
+		assertTrue(sessions.remove("../project"));
+		assertTrue(project.isDirectory());
+		assertTrue(sessions.remove("00000000"));
+
+		assertTrue(new File(root, "abcdefgh").mkdirs());
+		Files.write(new File(root, "abcdefgh/locator").toPath(),
+				new byte[]{1, 2, 3});
+		assertNull(sessions.locator("abcdefgh"));
+		assertNull(sessions.find(new Locator(Kind.DATABASE, "1")));
+	}
+
+	@Test
+	public void removingSessionKeepsProjectFiles() throws IOException {
+		write(new File(project, "main.glsl"), "stored");
+		write(new File(project, "lib.glsl"), "library");
+		Locator locator = new Locator(Kind.DIRECTORY, project.getPath());
+		String id = sessions.open(locator);
+		DirectoryProjectFiles store = new DirectoryProjectFiles(
+				new File(sessions.locator(id).value()));
+		EditingSession session = EditingSession.restore(store,
+				sessions.drafts(id));
+		session.setDraft(path("main.glsl"), "saved", revision(store,
+				"main.glsl"));
+		session.save();
+		session.setDraft(path("lib.glsl"), "unsaved", revision(store,
+				"lib.glsl"));
+		assertFalse(sessions.drafts(id).drafts().isEmpty());
+
+		assertTrue(sessions.remove(id));
+
+		assertNull(sessions.locator(id));
+		assertNull(sessions.find(locator));
+		assertFalse(new File(root, id).exists());
+		assertEquals("saved", read(new File(project, "main.glsl")));
+		assertEquals("library", read(new File(project, "lib.glsl")));
+		String again = sessions.open(locator);
+		assertTrue(sessions.drafts(again).drafts().isEmpty());
+	}
+
+	@Test
+	public void removingSessionDoesNotFollowLinks() throws IOException {
+		write(new File(project, "main.glsl"), "stored");
+		String id = sessions.open(new Locator(Kind.DIRECTORY,
+				project.getPath()));
+		File drafts = new File(root, id + "/drafts");
+		assertTrue(drafts.mkdirs());
+		Files.createSymbolicLink(new File(drafts, "link").toPath(),
+				project.toPath());
+
+		assertTrue(sessions.remove(id));
+
+		assertFalse(new File(root, id).exists());
+		assertEquals("stored", read(new File(project, "main.glsl")));
+	}
+
+	private static String revision(ProjectFiles store, String path) {
+		return ((ProjectFiles.Content) store.read(path(path))).revision();
+	}
+
+	private static void write(File file, String text) throws IOException {
+		Files.write(file.toPath(), text.getBytes(StandardCharsets.UTF_8));
+	}
+
+	private static String read(File file) throws IOException {
+		return new String(Files.readAllBytes(file.toPath()),
+				StandardCharsets.UTF_8);
+	}
+
+	private static ProjectPath path(String path) {
+		return ProjectPath.parse(path).value();
+	}
+}
