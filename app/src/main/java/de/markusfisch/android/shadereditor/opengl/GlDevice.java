@@ -27,15 +27,55 @@ final class GlDevice {
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_X};
 
-	private final int maxTextureUnits;
+	private int maxTextureUnits;
+	@Nullable
+	private GlTexture2D emptyTexture2D;
+	@Nullable
+	private GlCubemap emptyCubemap;
+	@Nullable
+	private GlExternalTexture emptyExternalTexture;
 
 	private record ShaderCompileResult(
 			@Nullable GlShader shader,
 			@NonNull List<ShaderError> infoLog) {
 	}
 
-	GlDevice(int maxTextureUnits) {
-		this.maxTextureUnits = maxTextureUnits;
+	// Call once for every new context, before anything else.
+	void createContextResources() {
+		int[] units = new int[1];
+		GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_IMAGE_UNITS, units, 0);
+		maxTextureUnits = units[0];
+
+		ByteBuffer black = ByteBuffer.allocateDirect(4);
+		black.put(3, (byte) 0xff);
+		emptyTexture2D = createTexture2D();
+		bindTexture(0, emptyTexture2D);
+		fillEmpty(GLES20.GL_TEXTURE_2D, black);
+		setNearest(GLES20.GL_TEXTURE_2D);
+		emptyCubemap = createCubemap();
+		bindTexture(0, emptyCubemap);
+		for (int target : CUBE_MAP_TARGETS) {
+			fillEmpty(target, black);
+		}
+		setNearest(GLES20.GL_TEXTURE_CUBE_MAP);
+		// Without an image, an external texture samples as opaque black.
+		emptyExternalTexture = createExternalTexture();
+	}
+
+	// Gives every element of every active sampler an opaque black texture,
+	// so a unit nothing else binds never samples a leftover texture.
+	void bindEmptyTextures(@NonNull GlProgram program) {
+		for (var sampler : program.getSamplers()) {
+			GlTexture texture = switch (sampler.textureTarget()) {
+				case GLES20.GL_TEXTURE_2D -> emptyTexture2D;
+				case GLES20.GL_TEXTURE_CUBE_MAP -> emptyCubemap;
+				case GLES11Ext.GL_TEXTURE_EXTERNAL_OES -> emptyExternalTexture;
+				default -> null;
+			};
+			for (int i = 0; i < sampler.size(); ++i) {
+				bindTexture(sampler.unit() + i, texture);
+			}
+		}
 	}
 
 	void disable(int cap) {
@@ -290,13 +330,16 @@ final class GlDevice {
 			return GlProgramBuildResult.failure(infoLog);
 		}
 
-		var program = new GlProgram(
-				programId,
-				queryActiveUniforms(programId),
-				maxTextureUnits);
+		var program = new GlProgram(programId, queryActiveUniforms(programId));
+		ShaderError unitError = program.checkTextureUnits(maxTextureUnits);
+		if (unitError != null) {
+			GLES20.glDeleteProgram(programId);
+			return GlProgramBuildResult.failure(List.of(unitError));
+		}
 		useProgram(program);
 		for (GlUniform sampler : program.getSamplers()) {
-			uniform1i(sampler.location(), sampler.unit());
+			int[] units = sampler.units();
+			GLES20.glUniform1iv(sampler.location(), units.length, units, 0);
 		}
 		return GlProgramBuildResult.success(program);
 	}
@@ -463,6 +506,23 @@ final class GlDevice {
 		}
 		GLES20.glDeleteShader(shader.getId());
 		shader.invalidate();
+	}
+
+	private static void fillEmpty(int target, @NonNull ByteBuffer pixel) {
+		GLES20.glTexImage2D(
+				target,
+				0,
+				GLES20.GL_RGBA,
+				1,
+				1,
+				0,
+				GLES20.GL_RGBA,
+				GLES20.GL_UNSIGNED_BYTE,
+				pixel);
+	}
+
+	private static void setNearest(int target) {
+		GLES20.glTexParameteri(target, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
 	}
 
 	@Nullable

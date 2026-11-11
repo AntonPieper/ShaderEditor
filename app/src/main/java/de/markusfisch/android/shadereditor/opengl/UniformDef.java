@@ -102,6 +102,11 @@ public final class UniformDef {
 		return source;
 	}
 
+	// A builtin of one value takes only a declaration of one value.
+	boolean fits(@NonNull GlUniform uniform) {
+		return type.accepts(uniform.type()) && (arrayLength > 0 || uniform.size() == 1);
+	}
+
 	boolean isDeclarationOnly() {
 		return body == null;
 	}

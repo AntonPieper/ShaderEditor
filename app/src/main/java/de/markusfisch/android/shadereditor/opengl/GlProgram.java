@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,11 +13,12 @@ final class GlProgram {
 	private int id;
 	private Map<String, GlUniform> uniforms;
 	private List<GlUniform> samplers;
+	private int textureUnitCount;
 	private final Map<String, Integer> attribLocations = new HashMap<>();
 
-	// Gives each active sampler its own texture unit, in name order,
-	// until the units run out.
-	GlProgram(int id, @NonNull List<GlUniform> activeUniforms, int maxTextureUnits) {
+	// Gives each element of each active sampler its own texture unit,
+	// in name order.
+	GlProgram(int id, @NonNull List<GlUniform> activeUniforms) {
 		this.id = id;
 		var samplers = new ArrayList<GlUniform>();
 		for (var uniform : activeUniforms) {
@@ -25,11 +27,13 @@ final class GlProgram {
 			}
 		}
 		Collections.sort(samplers, (a, b) -> a.name().compareTo(b.name()));
-		int units = Math.min(samplers.size(), maxTextureUnits);
-		for (int unit = 0; unit < units; ++unit) {
-			samplers.set(unit, samplers.get(unit).withUnit(unit));
+		int unit = 0;
+		for (int i = 0; i < samplers.size(); ++i) {
+			var sampler = samplers.get(i);
+			samplers.set(i, sampler.withUnit(unit));
+			unit += sampler.size();
 		}
-		samplers.subList(units, samplers.size()).clear();
+		textureUnitCount = unit;
 		var uniforms = new HashMap<String, GlUniform>();
 		for (var uniform : activeUniforms) {
 			uniforms.put(uniform.name(), uniform);
@@ -60,10 +64,19 @@ final class GlProgram {
 		return uniforms;
 	}
 
-	// Samplers that got a texture unit, in unit order.
+	// Active samplers, in unit order.
 	@NonNull
 	List<GlUniform> getSamplers() {
 		return samplers;
+	}
+
+	@Nullable
+	ShaderError checkTextureUnits(int maxTextureUnits) {
+		if (textureUnitCount <= maxTextureUnits) {
+			return null;
+		}
+		return ShaderError.createGeneral("The shader needs " + textureUnitCount +
+				" texture units, but this device has only " + maxTextureUnits);
 	}
 
 	int getTextureUnit(@NonNull String name) {
@@ -79,6 +92,7 @@ final class GlProgram {
 		id = 0;
 		uniforms = Collections.emptyMap();
 		samplers = List.of();
+		textureUnitCount = 0;
 		attribLocations.clear();
 	}
 }

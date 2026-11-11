@@ -54,8 +54,6 @@ final class RendererProgramManager {
 			}
 			""";
 
-	private final int maxTextures;
-
 	@Nullable
 	private String sourceText;
 	@NonNull
@@ -68,10 +66,6 @@ final class RendererProgramManager {
 	private ShaderRenderPipeline.SurfaceProgram surfaceProgram;
 	@Nullable
 	private GlProgram mainProgram;
-
-	RendererProgramManager(int maxTextures) {
-		this.maxTextures = maxTextures;
-	}
 
 	void setVersion(int version) {
 		this.version = version;
@@ -156,10 +150,7 @@ final class RendererProgramManager {
 	}
 
 	private void prepareShaderSource(@Nullable String source) {
-		preparedShaderSource = ShaderSourcePreparer.prepare(
-				source,
-				version,
-				maxTextures);
+		preparedShaderSource = ShaderSourcePreparer.prepare(source, version);
 		textureResources = ShaderTextureResources.create(
 				preparedShaderSource.getSamplers());
 	}

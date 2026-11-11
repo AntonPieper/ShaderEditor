@@ -295,7 +295,7 @@ public class SensorSourcesTest {
 	private static void link(@NonNull UniformSources sources, String... names) {
 		Map<String, GlUniform> uniforms = new HashMap<>();
 		for (int i = 0; i < names.length; ++i) {
-			uniforms.put(names[i], new GlUniform(names[i], 0, 1, i));
+			uniforms.put(names[i], UniformSourcesTest.declared(TABLE, names[i], i));
 		}
 		new ActiveBuiltins(TABLE, uniforms, sources,
 				new LinkOutput());

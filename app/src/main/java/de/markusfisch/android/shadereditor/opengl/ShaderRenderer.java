@@ -27,14 +27,13 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		void onFramesPerSecond(int fps);
 	}
 
-	private static final int MAX_TEXTURES = 32;
 	private static final long FPS_UPDATE_FREQUENCY_NS = 200000000L;
 	private static final float NS_PER_SECOND = 1000000000f;
 	private static final float DEFAULT_REFRESH_RATE = 60f;
 
-	private final GlDevice device = new GlDevice(MAX_TEXTURES);
+	private final GlDevice device = new GlDevice();
 	private final RendererProgramManager programManager =
-			new RendererProgramManager(MAX_TEXTURES);
+			new RendererProgramManager();
 	private final ShaderRenderPipeline renderPipeline =
 			new ShaderRenderPipeline(device, Mesh.fullScreenQuad());
 	private final BuiltinUniforms builtinUniforms;
@@ -86,6 +85,7 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		device.setClearColor(0f, 0f, 0f, 1f);
 
 		discardContextResources();
+		device.createContextResources();
 		var thumbnailErrors = renderPipeline.createContextResources();
 		if (!thumbnailErrors.isEmpty()) {
 			submitErrors(thumbnailErrors);

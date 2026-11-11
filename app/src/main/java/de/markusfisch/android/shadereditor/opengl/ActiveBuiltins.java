@@ -120,7 +120,9 @@ final class ActiveBuiltins {
 		var active = new ArrayList<Slot>();
 		for (var uniform : table) {
 			GlUniform uniformSlot = reflected.get(uniform.getName());
-			if (uniformSlot == null || uniformSlot.location() < 0) {
+			if (uniformSlot == null ||
+					uniformSlot.location() < 0 ||
+					!uniform.fits(uniformSlot)) {
 				continue;
 			}
 			var key = uniform.getSource();
