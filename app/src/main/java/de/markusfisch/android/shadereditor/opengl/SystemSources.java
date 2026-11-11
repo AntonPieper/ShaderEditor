@@ -200,6 +200,7 @@ final class SystemSources {
 
 		boolean recording;
 		float amplitude;
+		private final float[] sample = new float[1];
 		@Nullable
 		private MicInputListener listener;
 
@@ -225,7 +226,8 @@ final class SystemSources {
 		@Override
 		public void update(long now) {
 			if (listener != null) {
-				amplitude = listener.getAmplitude();
+				listener.sample.read(sample);
+				amplitude = sample[0];
 			}
 		}
 	}

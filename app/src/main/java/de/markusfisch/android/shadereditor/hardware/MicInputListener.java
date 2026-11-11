@@ -21,12 +21,12 @@ public class MicInputListener extends AbstractListener {
 	private AudioRecord audioRecord;
 	private Thread recordingThread;
 	private volatile boolean isRecording = false;
-	private float currentAmplitude = 0f;
+	private final float[] amplitude = new float[1];
 
 	private final Context context;
 
 	public MicInputListener(Context context) {
-		super(SensorRegistry.of(context));
+		super(SensorRegistry.of(context), 1);
 		this.context = context;
 	}
 
@@ -51,7 +51,8 @@ public class MicInputListener extends AbstractListener {
 			audioRecord.release();
 			audioRecord = null;
 		}
-		currentAmplitude = 0f;
+		amplitude[0] = 0f;
+		sample.publish(amplitude);
 	}
 
 	public boolean register() {
@@ -106,12 +107,9 @@ public class MicInputListener extends AbstractListener {
 				for (int i = 0; i < read; i++) {
 					sum += Math.abs(buffer[i]);
 				}
-				currentAmplitude = ((float) sum / read) / (float) Short.MAX_VALUE;
+				amplitude[0] = ((float) sum / read) / (float) Short.MAX_VALUE;
+				sample.publish(amplitude);
 			}
 		}
-	}
-
-	public float getAmplitude() {
-		return currentAmplitude;
 	}
 }

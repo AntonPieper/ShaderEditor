@@ -4,10 +4,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class LinearAccelerationListener extends AbstractListener {
-	public final float[] values = new float[]{0, 0, 0};
-
 	public LinearAccelerationListener(SensorRegistry sensors) {
-		super(sensors);
+		super(sensors, 3);
 	}
 
 	public boolean register() {
@@ -16,8 +14,6 @@ public class LinearAccelerationListener extends AbstractListener {
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		values[0] = event.values[0];
-		values[1] = event.values[1];
-		values[2] = event.values[2];
+		sample.publish(event.values);
 	}
 }

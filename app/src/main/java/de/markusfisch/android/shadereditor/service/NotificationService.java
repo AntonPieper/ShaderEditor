@@ -17,8 +17,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import de.markusfisch.android.shadereditor.R;
 
 public class NotificationService extends NotificationListenerService {
-	private static int counter = 0;
-	private static Long lastNotificationTime = null;
+	// Read by the GL thread.
+	private static volatile int counter = 0;
+	private static volatile Long lastNotificationTime = null;
 
 	@Override
 	public synchronized void onNotificationPosted(StatusBarNotification sbn) {

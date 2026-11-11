@@ -5,14 +5,17 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 
 public abstract class AbstractListener implements SensorEventListener {
+	public final Sample sample;
+
 	long last = 0;
 
 	private final SensorRegistry sensors;
 
 	private boolean listening = false;
 
-	AbstractListener(SensorRegistry sensors) {
+	AbstractListener(SensorRegistry sensors, int sampleSize) {
 		this.sensors = sensors;
+		sample = new Sample(sampleSize);
 	}
 
 	public void unregister() {

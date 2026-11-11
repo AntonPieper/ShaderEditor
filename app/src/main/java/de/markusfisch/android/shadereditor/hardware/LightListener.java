@@ -4,10 +4,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class LightListener extends AbstractListener {
-	private float ambient = 0f;
-
 	public LightListener(SensorRegistry sensors) {
-		super(sensors);
+		super(sensors, 1);
 	}
 
 	public boolean register() {
@@ -16,11 +14,7 @@ public class LightListener extends AbstractListener {
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		ambient = event.values[0];
-	}
-
-	public float getAmbient() {
-		return ambient;
+		sample.publish(event.values);
 	}
 }
 

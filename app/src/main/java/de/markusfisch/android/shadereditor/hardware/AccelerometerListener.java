@@ -4,12 +4,11 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class AccelerometerListener extends AbstractListener {
-	public final float[] gravity = new float[]{0, 0, 0};
-	public final float[] linear = new float[]{0, 0, 0};
-	public final float[] values = new float[]{0, 0, 0};
+	// Gravity, then linear acceleration, both from the same event.
+	private final float[] values = new float[6];
 
 	public AccelerometerListener(SensorRegistry sensors) {
-		super(sensors);
+		super(sensors, 6);
 	}
 
 	public boolean register() {
@@ -22,17 +21,14 @@ public class AccelerometerListener extends AbstractListener {
 			final float a = .8f;
 			final float b = 1f - a;
 
-			gravity[0] = a * gravity[0] + b * event.values[0];
-			gravity[1] = a * gravity[1] + b * event.values[1];
-			gravity[2] = a * gravity[2] + b * event.values[2];
+			values[0] = a * values[0] + b * event.values[0];
+			values[1] = a * values[1] + b * event.values[1];
+			values[2] = a * values[2] + b * event.values[2];
 
-			linear[0] = event.values[0] - gravity[0];
-			linear[1] = event.values[1] - gravity[1];
-			linear[2] = event.values[2] - gravity[2];
-
-			values[0] = event.values[0];
-			values[1] = event.values[1];
-			values[2] = event.values[2];
+			values[3] = event.values[0] - values[0];
+			values[4] = event.values[1] - values[1];
+			values[5] = event.values[2] - values[2];
+			sample.publish(values);
 		}
 
 		last = event.timestamp;
