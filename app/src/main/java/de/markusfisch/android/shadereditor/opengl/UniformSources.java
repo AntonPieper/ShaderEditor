@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,21 +12,36 @@ final class UniformSources {
 	private final ArrayList<UniformSource> running = new ArrayList<>();
 	@NonNull
 	private final EngineHost host;
+	private int deviceRotation;
 
 	UniformSources(@NonNull EngineHost host) {
 		this.host = host;
 	}
 
 	@NonNull
-	UniformSource start(@NonNull UniformSource.Key<?> key) {
+	<S extends UniformSource> S start(@NonNull UniformSource.Key<S> key) {
 		UniformSource source = byKey.get(key);
 		if (source == null) {
 			source = key.create();
 			byKey.put(key, source);
+			source.start(host, this);
 			running.add(source);
-			source.start(host);
 		}
-		return source;
+		return key.cast(source);
+	}
+
+	@Nullable
+	<S extends UniformSource> S get(@NonNull UniformSource.Key<S> key) {
+		UniformSource source = byKey.get(key);
+		return source != null ? key.cast(source) : null;
+	}
+
+	int getDeviceRotation() {
+		return deviceRotation;
+	}
+
+	void setDeviceRotation(int deviceRotation) {
+		this.deviceRotation = deviceRotation;
 	}
 
 	void update(long now) {

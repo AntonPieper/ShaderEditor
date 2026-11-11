@@ -50,6 +50,11 @@ public class UniformTableTest {
 			record("vec3[" + count + "]", copy);
 		}
 
+		@Override
+		public void setMat3(boolean transpose, @NonNull float[] values) {
+			record(transpose ? "mat3T" : "mat3", values.clone());
+		}
+
 		void record(String call, float[] value) {
 			calls.add(call);
 			values.add(value);
@@ -162,7 +167,7 @@ public class UniformTableTest {
 
 	@Test
 	public void describesDeclarations() {
-		assertEquals(22, UniformTable.BUILTINS.size());
+		assertEquals(34, UniformTable.BUILTINS.size());
 		assertEquals("vec4", UniformTable.get("date").getType().getKeyword());
 		assertEquals(UniformTable.get("date").getSource(),
 				UniformTable.get("daytime").getSource());

@@ -26,7 +26,7 @@ public class UniformSourcesTest {
 		long updatedAt;
 
 		@Override
-		public void start(@NonNull EngineHost host) {
+		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			++starts;
 			this.host = host;
 			events.add("start");
