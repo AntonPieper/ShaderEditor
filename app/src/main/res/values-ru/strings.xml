@@ -229,8 +229,6 @@
 	<string name="sample_battery_rationale">Горизонтальный показатель заряда аккамулятора</string>
 	<string name="sample_camera_back_name">Задняя камера</string>
 	<string name="sample_camera_back_rationale">How to use the back camera (only on Ice Cream Sandwich or better)</string>
-	<string name="sample_circles_name">Кружки</string>
-	<string name="sample_circles_rationale">Данный шейдер отрисовывает пару-тройку кружков</string>
 	<string name="sample_cloudy_conway_name">Cloudy Conway</string>
 	<string name="sample_cloudy_conway_rationale">A variation on Conway\'s Game of Life.</string>
 	<string name="sample_electric_fade_name">Electric Fade</string>
@@ -241,8 +239,12 @@
 	<string name="sample_gles_300_rationale">Данный шейдер использует GLES версии 3.00</string>
 	<string name="sample_gravity_name">Гравитационный сенсор</string>
 	<string name="sample_gravity_rationale">Демонстрация использования переменной для гравитации</string>
+	<string name="sample_loop_name">Loop</string>
+	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
 	<string name="sample_orientation_name">Ориентация</string>
 	<string name="sample_orientation_rationale">Демонстрация использования uniform-переменной для ориентации</string>
+	<string name="sample_shapes_name">Shapes</string>
+	<string name="sample_shapes_rationale">Touch the screen; the orbit moves to your finger</string>
 	<string name="sample_swirl_name">Водоворот</string>
 	<string name="sample_swirl_rationale">Демонстрация искажения текстур путём закручивания</string>
 	<string name="sample_texture_name">Текстуры</string>

@@ -40,7 +40,8 @@ public class SamplesTest {
 	@Test
 	public void samplesAreInLearningOrder() {
 		assertEquals(List.of(
-				R.raw.sample_circles,
+				R.raw.sample_shapes,
+				R.raw.sample_loop,
 				R.raw.sample_touch,
 				R.raw.sample_texture,
 				R.raw.sample_gravity,
@@ -61,6 +62,7 @@ public class SamplesTest {
 			sections.add(sample.section());
 		}
 		assertEquals(List.of(
+				Samples.Section.START_HERE,
 				Samples.Section.START_HERE,
 				Samples.Section.START_HERE,
 				Samples.Section.START_HERE,

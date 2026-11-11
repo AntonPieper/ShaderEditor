@@ -229,8 +229,6 @@
 	<string name="sample_battery_rationale">Горизонтальний датчик батареї</string>
 	<string name="sample_camera_back_name">Задня камера</string>
 	<string name="sample_camera_back_rationale">Як користуватися задньою камерою (тільки на Ice Cream Sandwich або краще)</string>
-	<string name="sample_circles_name">Круги</string>
-	<string name="sample_circles_rationale">Намалюйте кілька кіл</string>
 	<string name="sample_cloudy_conway_name">Cloudy Conway</string>
 	<string name="sample_cloudy_conway_rationale">Варіація «Гри життя» Конвея.</string>
 	<string name="sample_electric_fade_name">Електричне згасання</string>
@@ -241,8 +239,12 @@
 	<string name="sample_gles_300_rationale">Використовувати GLES версії 3.00</string>
 	<string name="sample_gravity_name">Датчик сили тяжіння</string>
 	<string name="sample_gravity_rationale">Як використовувати форму гравітації</string>
+	<string name="sample_loop_name">Loop</string>
+	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
 	<string name="sample_orientation_name">Орієнтація</string>
 	<string name="sample_orientation_rationale">Як користуватися уніформою орієнтації</string>
+	<string name="sample_shapes_name">Shapes</string>
+	<string name="sample_shapes_rationale">Touch the screen; the orbit moves to your finger</string>
 	<string name="sample_swirl_name">Вир</string>
 	<string name="sample_swirl_rationale">Як спотворити текстури за допомогою вихрового візерунка</string>
 	<string name="sample_texture_name">Текстура</string>
