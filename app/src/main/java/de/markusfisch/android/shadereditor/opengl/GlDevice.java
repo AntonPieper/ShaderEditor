@@ -11,9 +11,8 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import javax.microedition.khronos.opengles.GL11ExtensionPack;
 
@@ -331,15 +330,22 @@ final class GlDevice {
 			return GlProgramBuildResult.failure(infoLog);
 		}
 
-		return GlProgramBuildResult.success(
-				new GlProgram(programId, queryActiveUniforms(programId)));
+		var program = new GlProgram(
+				programId,
+				queryActiveUniforms(programId),
+				maxTextureUnits);
+		useProgram(program);
+		for (GlUniform sampler : program.getSamplers()) {
+			uniform1i(sampler.location(), sampler.unit());
+		}
+		return GlProgramBuildResult.success(program);
 	}
 
 	@NonNull
-	private static Map<String, GlUniform> queryActiveUniforms(int programId) {
+	private static List<GlUniform> queryActiveUniforms(int programId) {
 		int[] count = new int[1];
 		GLES20.glGetProgramiv(programId, GLES20.GL_ACTIVE_UNIFORMS, count, 0);
-		Map<String, GlUniform> uniforms = new HashMap<>();
+		List<GlUniform> uniforms = new ArrayList<>();
 		int[] size = new int[1];
 		int[] type = new int[1];
 		for (int i = 0; i < count[0]; ++i) {
@@ -347,12 +353,8 @@ final class GlDevice {
 			if (name == null || name.isEmpty()) {
 				continue;
 			}
-			GlUniform uniform = new GlUniform(name, type[0], size[0],
-					GLES20.glGetUniformLocation(programId, name));
-			uniforms.put(name, uniform);
-			if (name.endsWith("[0]")) {
-				uniforms.put(name.substring(0, name.length() - 3), uniform);
-			}
+			uniforms.add(new GlUniform(name, type[0], size[0],
+					GLES20.glGetUniformLocation(programId, name)));
 		}
 		return uniforms;
 	}
@@ -442,62 +444,6 @@ final class GlDevice {
 			@NonNull float[] values) {
 		if (location > -1) {
 			GLES20.glUniformMatrix3fv(location, 1, transpose, values, 0);
-		}
-	}
-
-	void applyBindings(@NonNull ProgramBindings bindings) {
-		GlProgram program = bindings.getProgram();
-		useProgram(program);
-
-		for (ProgramBindings.UniformValue uniform : bindings.getUniforms()) {
-			if (!uniform.active) {
-				continue;
-			}
-			int location = getUniformLocation(program, uniform.name);
-			switch (uniform.type) {
-				case ProgramBindings.TYPE_INT:
-					uniform1i(location, uniform.intValue);
-					break;
-				case ProgramBindings.TYPE_FLOAT:
-					uniform1f(location, uniform.floatValue);
-					break;
-				case ProgramBindings.TYPE_FLOAT2:
-					if (uniform.values != null) {
-						uniform2fv(location, uniform.count, uniform.values);
-					}
-					break;
-				case ProgramBindings.TYPE_FLOAT3:
-					if (uniform.values != null) {
-						uniform3fv(location, uniform.count, uniform.values);
-					}
-					break;
-				case ProgramBindings.TYPE_MATRIX2:
-					if (uniform.values != null) {
-						uniformMatrix2fv(location, uniform.transpose, uniform.values);
-					}
-					break;
-				case ProgramBindings.TYPE_MATRIX3:
-					if (uniform.values != null) {
-						uniformMatrix3fv(location, uniform.transpose, uniform.values);
-					}
-					break;
-				default:
-					break;
-			}
-		}
-
-		int textureUnit = 0;
-		for (ProgramBindings.TextureValue texture : bindings.getTextures()) {
-			if (!texture.active || texture.texture == null) {
-				continue;
-			}
-			if (textureUnit >= maxTextureUnits) {
-				break;
-			}
-			int location = getUniformLocation(program, texture.name);
-			uniform1i(location, textureUnit);
-			bindTexture(textureUnit, texture.texture);
-			++textureUnit;
 		}
 	}
 

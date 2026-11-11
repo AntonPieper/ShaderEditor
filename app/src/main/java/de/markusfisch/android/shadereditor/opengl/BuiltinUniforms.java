@@ -16,7 +16,6 @@ final class BuiltinUniforms {
 	}
 
 	record PreparedFrame(
-			@NonNull ProgramBindings bindings,
 			int surfaceWidth,
 			int surfaceHeight,
 			long now) {
@@ -39,12 +38,13 @@ final class BuiltinUniforms {
 	private final UniformSources sources;
 
 	@Nullable
-	private ProgramBindings programBindings;
+	private GlDevice device;
 	@Nullable
 	private ActiveBuiltins activeBuiltins;
 	@NonNull
 	private ShaderTextureResources textureResources =
 			ShaderTextureResources.empty();
+	private int backBufferUnit = GlUniform.NO_UNIT;
 	private int pointerCount;
 	private int frameNum;
 	private long startTime;
@@ -69,7 +69,9 @@ final class BuiltinUniforms {
 		releaseModules();
 		this.fTimeMax = fTimeMax;
 		this.textureResources = textureResources;
-		programBindings = new ProgramBindings(program);
+		this.device = device;
+		backBufferUnit = program.getTextureUnit(ShaderRenderer.UNIFORM_BACKBUFFER);
+		textureResources.resolveUnits(program);
 
 		sources.setCameraBinding(textureResources.getFirstBinding(
 				ShaderRenderer.UNIFORM_CAMERA_BACK,
@@ -143,9 +145,9 @@ final class BuiltinUniforms {
 
 	@Nullable
 	PreparedFrame beginFrame(@Nullable GlTexture2D backBufferTexture) {
-		var bindings = programBindings;
+		var device = this.device;
 		var builtins = activeBuiltins;
-		if (bindings == null || builtins == null) {
+		if (device == null || builtins == null) {
 			return null;
 		}
 
@@ -154,14 +156,10 @@ final class BuiltinUniforms {
 
 		captureFrameInputs(delta);
 		builtins.write(frameInputs, now);
-		bindings.clear();
-		if (backBufferTexture != null) {
-			bindings.setTexture(ShaderRenderer.UNIFORM_BACKBUFFER, backBufferTexture);
-		}
-		textureResources.applyTo(bindings);
+		device.bindTexture(backBufferUnit, backBufferTexture);
+		textureResources.bind(device);
 
 		return new PreparedFrame(
-				bindings,
 				(int) surfaceResolution[0],
 				(int) surfaceResolution[1],
 				now);
@@ -174,7 +172,8 @@ final class BuiltinUniforms {
 	void clearConfiguration() {
 		fTimeMax = DEFAULT_FTIME_MAX;
 		textureResources = ShaderTextureResources.empty();
-		programBindings = null;
+		device = null;
+		backBufferUnit = GlUniform.NO_UNIT;
 		activeBuiltins = null;
 	}
 

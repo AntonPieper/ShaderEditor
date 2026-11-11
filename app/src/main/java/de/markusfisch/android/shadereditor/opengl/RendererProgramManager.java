@@ -65,11 +65,9 @@ final class RendererProgramManager {
 			ShaderTextureResources.empty();
 	private int version = 2;
 	@Nullable
-	private GlProgram surfaceProgram;
+	private ShaderRenderPipeline.SurfaceProgram surfaceProgram;
 	@Nullable
 	private GlProgram mainProgram;
-	@Nullable
-	private ProgramBindings surfaceBindings;
 
 	RendererProgramManager(int maxTextures) {
 		this.maxTextures = maxTextures;
@@ -121,9 +119,10 @@ final class RendererProgramManager {
 			return ReloadResult.failure(textureErrors, mainResult.getInfoLog());
 		}
 
-		surfaceProgram = surfaceResult.getProgram();
+		surfaceProgram = ShaderRenderPipeline.SurfaceProgram.of(
+				device,
+				surfaceResult.getProgram());
 		mainProgram = mainResult.getProgram();
-		surfaceBindings = new ProgramBindings(surfaceProgram);
 		return ReloadResult.success(textureErrors);
 	}
 
@@ -133,18 +132,13 @@ final class RendererProgramManager {
 	}
 
 	@Nullable
-	GlProgram getSurfaceProgram() {
+	ShaderRenderPipeline.SurfaceProgram getSurfaceProgram() {
 		return surfaceProgram;
 	}
 
 	@Nullable
 	GlProgram getMainProgram() {
 		return mainProgram;
-	}
-
-	@Nullable
-	ProgramBindings getSurfaceBindings() {
-		return surfaceBindings;
 	}
 
 	@NonNull
@@ -173,6 +167,5 @@ final class RendererProgramManager {
 	private void clearPrograms() {
 		surfaceProgram = null;
 		mainProgram = null;
-		surfaceBindings = null;
 	}
 }

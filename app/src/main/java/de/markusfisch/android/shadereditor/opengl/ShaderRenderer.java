@@ -132,10 +132,7 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	public void onDrawFrame(GL10 gl) {
 		var surfaceProgram = programManager.getSurfaceProgram();
 		var mainProgram = programManager.getMainProgram();
-		var surfaceBindings = programManager.getSurfaceBindings();
-		if (surfaceProgram == null ||
-				mainProgram == null ||
-				surfaceBindings == null) {
+		if (surfaceProgram == null || mainProgram == null) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
 			cancelCaptureThumbnail();
@@ -165,9 +162,8 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 			return;
 		}
 
-		renderPipeline.renderMainPass(frame.bindings(), mainProgram);
+		renderPipeline.renderMainPass(mainProgram);
 		renderPipeline.renderSurfacePass(
-				surfaceBindings,
 				surfaceProgram,
 				frame.surfaceWidth(),
 				frame.surfaceHeight());
@@ -228,14 +224,9 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 
 	private void captureThumbnail() {
 		synchronized (thumbnailLock) {
-			var surfaceBindings = programManager.getSurfaceBindings();
 			var surfaceProgram = programManager.getSurfaceProgram();
-			if (captureThumbnail &&
-					surfaceBindings != null &&
-					surfaceProgram != null) {
-				thumbnail = renderPipeline.captureThumbnail(
-						surfaceBindings,
-						surfaceProgram);
+			if (captureThumbnail && surfaceProgram != null) {
+				thumbnail = renderPipeline.captureThumbnail(surfaceProgram);
 				captureThumbnail = false;
 				thumbnailLock.notifyAll();
 			}
