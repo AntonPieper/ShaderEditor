@@ -79,6 +79,11 @@ final class ActiveBuiltins {
 		}
 
 		@Override
+		public void setMat2(boolean transpose, @NonNull float[] values) {
+			device.uniformMatrix2fv(location, transpose, values);
+		}
+
+		@Override
 		public void setMat3(boolean transpose, @NonNull float[] values) {
 			device.uniformMatrix3fv(location, transpose, values);
 		}
@@ -119,10 +124,10 @@ final class ActiveBuiltins {
 				continue;
 			}
 			var key = uniform.getSource();
-			active.add(new Slot(
-					uniform,
-					uniformSlot.location(),
-					key != null ? sources.start(key) : null));
+			var source = key != null ? sources.start(key) : null;
+			if (!uniform.isDeclarationOnly()) {
+				active.add(new Slot(uniform, uniformSlot.location(), source));
+			}
 		}
 		slots = active.toArray(new Slot[0]);
 	}

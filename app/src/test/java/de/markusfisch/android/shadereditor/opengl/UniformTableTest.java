@@ -2,6 +2,8 @@ package de.markusfisch.android.shadereditor.opengl;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import androidx.annotation.NonNull;
@@ -48,6 +50,11 @@ public class UniformTableTest {
 			float[] copy = new float[count * 3];
 			System.arraycopy(values, 0, copy, 0, copy.length);
 			record("vec3[" + count + "]", copy);
+		}
+
+		@Override
+		public void setMat2(boolean transpose, @NonNull float[] values) {
+			record(transpose ? "mat2T" : "mat2", values.clone());
 		}
 
 		@Override
@@ -167,7 +174,7 @@ public class UniformTableTest {
 
 	@Test
 	public void describesDeclarations() {
-		assertEquals(34, UniformTable.BUILTINS.size());
+		assertEquals(39, UniformTable.BUILTINS.size());
 		assertEquals("vec4", UniformTable.get("date").getType().getKeyword());
 		assertEquals(UniformTable.get("date").getSource(),
 				UniformTable.get("daytime").getSource());
@@ -176,6 +183,44 @@ public class UniformTableTest {
 		assertEquals("pointers[10]", pointers.getDeclarator());
 		assertEquals("time", UniformTable.get("time").getDeclarator());
 		assertEquals("int", UniformTable.get("frame").getType().getKeyword());
+	}
+
+	@Test
+	public void writesCameraValuesWhileOpen() {
+		var camera = new CameraSource();
+		camera.open = true;
+		System.arraycopy(new float[]{0f, -1f, -1f, 0f}, 0, camera.orientation, 0, 4);
+		camera.addent[0] = 1f;
+		camera.addent[1] = 0.5f;
+		assertWritten("cameraOrientation", camera, "mat2", 0f, -1f, -1f, 0f);
+		assertWritten("cameraAddent", camera, "vec2", 1f, 0.5f);
+	}
+
+	@Test
+	public void cameraValuesAreNotWrittenWhileClosed() {
+		var camera = new CameraSource();
+		camera.addent[0] = 1f;
+		for (String name : List.of("cameraOrientation", "cameraAddent")) {
+			RecordingOutput out = new RecordingOutput();
+			UniformTable.get(name).write(frame(), camera, out);
+			assertTrue(out.calls.isEmpty());
+		}
+	}
+
+	@Test
+	public void samplersAreDeclarationsOnly() {
+		assertEquals(GlslType.SAMPLER_2D, UniformTable.get("backbuffer").getType());
+		assertEquals("samplerExternalOES",
+				UniformTable.get("cameraBack").getType().getKeyword());
+		assertEquals(UniformTable.get("cameraBack").getSource(),
+				UniformTable.get("cameraOrientation").getSource());
+		for (String name : List.of("backbuffer", "cameraBack", "cameraFront")) {
+			UniformDef sampler = UniformTable.get(name);
+			assertTrue(sampler.isDeclarationOnly());
+			assertThrows(IllegalStateException.class,
+					() -> sampler.write(frame(), new CameraSource(), new RecordingOutput()));
+		}
+		assertFalse(UniformTable.get("cameraAddent").isDeclarationOnly());
 	}
 
 	@NonNull

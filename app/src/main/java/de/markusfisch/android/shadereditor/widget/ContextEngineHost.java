@@ -7,8 +7,10 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.LifecycleOwner;
 
 import de.markusfisch.android.shadereditor.opengl.EngineHost;
 
@@ -43,5 +45,11 @@ final class ContextEngineHost implements EngineHost {
 						PERMISSION_REQUEST_CODE);
 			}
 		});
+	}
+
+	@Nullable
+	@Override
+	public LifecycleOwner cameraOwner() {
+		return context instanceof LifecycleOwner owner ? owner : null;
 	}
 }

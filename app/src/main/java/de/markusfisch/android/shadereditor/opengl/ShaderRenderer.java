@@ -28,10 +28,8 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public static final String UNIFORM_BACKBUFFER = "backbuffer";
-	public static final String UNIFORM_CAMERA_ADDENT = "cameraAddent";
 	public static final String UNIFORM_CAMERA_BACK = "cameraBack";
 	public static final String UNIFORM_CAMERA_FRONT = "cameraFront";
-	public static final String UNIFORM_CAMERA_ORIENTATION = "cameraOrientation";
 	public static final String UNIFORM_POSITION = "position";
 	public static final String UNIFORM_RESOLUTION = "resolution";
 

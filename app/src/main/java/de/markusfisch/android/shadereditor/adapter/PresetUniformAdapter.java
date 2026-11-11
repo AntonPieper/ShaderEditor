@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Locale;
 
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 
@@ -36,10 +35,6 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 
 		public boolean isSampler() {
 			return type.startsWith("sampler");
-		}
-
-		private Uniform(String type, String name, String rationale) {
-			this(type, name, rationale, 0);
 		}
 
 		private Uniform(
@@ -63,30 +58,15 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 	public PresetUniformAdapter(Context context) {
 		uniformFormat = context.getString(R.string.uniform_format);
 		uniforms = Arrays.asList(
-				new Uniform(
-						"sampler2D",
-						ShaderRenderer.UNIFORM_BACKBUFFER,
-						context.getString(R.string.previous_frame)),
+				builtin(context, "backbuffer"),
 				builtin(context, "battery"),
-				new Uniform(
-						"vec2",
-						ShaderRenderer.UNIFORM_CAMERA_ADDENT,
-						context.getString(R.string.camera_addent),
+				builtin(context, "cameraAddent",
 						Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1),
-				new Uniform(
-						"samplerExternalOES",
-						ShaderRenderer.UNIFORM_CAMERA_BACK,
-						context.getString(R.string.camera_back),
+				builtin(context, "cameraBack",
 						Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1),
-				new Uniform(
-						"samplerExternalOES",
-						ShaderRenderer.UNIFORM_CAMERA_FRONT,
-						context.getString(R.string.camera_front),
+				builtin(context, "cameraFront",
 						Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1),
-				new Uniform(
-						"mat2",
-						ShaderRenderer.UNIFORM_CAMERA_ORIENTATION,
-						context.getString(R.string.camera_orientation),
+				builtin(context, "cameraOrientation",
 						Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1),
 				builtin(context, "date"),
 				builtin(context, "daytime"),
@@ -173,11 +153,16 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 	}
 
 	private static Uniform builtin(Context context, String name) {
+		return builtin(context, name, 0);
+	}
+
+	private static Uniform builtin(Context context, String name, int minSdk) {
 		UniformDef uniform = UniformTable.get(name);
 		return new Uniform(
 				uniform.getType().getKeyword(),
 				uniform.getDeclarator(),
-				context.getString(uniform.getDescription()));
+				context.getString(uniform.getDescription()),
+				minSdk);
 	}
 
 	private ViewHolder getViewHolder(View view) {

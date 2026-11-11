@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.LifecycleOwner;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -86,6 +87,11 @@ public class SensorSourcesTest {
 
 		@Override
 		public void onPermissionNeeded(@NonNull String permission) {
+		}
+
+		@Override
+		public LifecycleOwner cameraOwner() {
+			return null;
 		}
 	};
 
