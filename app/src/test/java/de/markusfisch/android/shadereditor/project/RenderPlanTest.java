@@ -125,6 +125,23 @@ public class RenderPlanTest {
 	}
 
 	@Test
+	public void scaledTargetAppliesTheSixDigitDecimal() {
+		assertEquals(new Size(29, 29), size(scaled(Math.nextDown(0.29)),
+				new Size(100, 100)));
+		assertEquals(new Size(999, 1), size(scaled(0.999999),
+				new Size(1000, 1)));
+	}
+
+	@Test
+	public void rejectsScaledTargetAboveTextureLimit() {
+		ProjectParseResult<Size> result = Target.of(null, MAIN)
+				.size(new Size(8192, 8192), MAX);
+		assertFalse(result.isSuccess());
+		assertEquals(MAIN, result.diagnostic().file());
+		assertTrue(result.diagnostic().message().contains("8192x8192"));
+	}
+
+	@Test
 	public void scaledTargetIsAtLeastOne() {
 		assertEquals(new Size(1, 1), size(scaled(0.01), new Size(10, 99)));
 	}

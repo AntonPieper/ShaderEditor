@@ -373,6 +373,13 @@ public class HostDirectivesTest {
 				"#pragma se target scale=0.5 size=2x2");
 		assertError("greater than 0", "#pragma se target scale=0");
 		assertError("at most 1", "#pragma se target scale=1.5");
+		assertError("six digits",
+				"#pragma se target scale=0.99999999999999999");
+		assertError("six digits",
+				"#pragma se target scale=1.00000000000000001");
+		assertError("at most 1", "#pragma se target scale=1.000001");
+		assertEquals(0.000001, target("scale=0.000001").scale(), 0);
+		assertEquals(0.999999, target("scale=0.999999").scale(), 0);
 		assertError("positive", "#pragma se target size=0x10");
 		assertError("too large", "#pragma se target size=99999999999x1");
 		assertError("at least one property", "#pragma se target // empty");

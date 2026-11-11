@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -295,13 +296,18 @@ public record HostDirective(
 						"number such as scale=0.5");
 				return null;
 			}
-			double scale = Double.parseDouble(value);
-			if (scale <= 0 || scale > 1) {
+			BigDecimal scale = new BigDecimal(value);
+			if (scale.scale() > 6) {
+				error("scale=" + value + " has more than six digits " +
+						"after the decimal point");
+				return null;
+			} else if (scale.signum() <= 0 ||
+					scale.compareTo(BigDecimal.ONE) > 0) {
 				error("scale=" + value + " must be greater than 0 and " +
 						"at most 1, use size=WIDTHxHEIGHT for other sizes");
 				return null;
 			}
-			return scale;
+			return scale.doubleValue();
 		}
 
 		private int[] size(String value) {
