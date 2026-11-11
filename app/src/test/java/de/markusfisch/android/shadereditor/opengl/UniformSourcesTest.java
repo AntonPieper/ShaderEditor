@@ -6,6 +6,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 
 import android.content.Context;
+import android.opengl.GLES11Ext;
+import android.opengl.GLES20;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LifecycleOwner;
@@ -69,7 +71,7 @@ public class UniformSourcesTest {
 		}
 	}
 
-	private static final EngineHost HOST = new EngineHost() {
+	static final EngineHost HOST = new EngineHost() {
 		@NonNull
 		@Override
 		public Context context() {
@@ -185,8 +187,38 @@ public class UniformSourcesTest {
 		for (int i = 0; i < nameLocationPairs.length; i += 2) {
 			String name = (String) nameLocationPairs[i];
 			int location = (Integer) nameLocationPairs[i + 1];
-			uniforms.put(name, new GlUniform(name, 0, 1, location));
+			uniforms.put(name, declared(TABLE, name, location));
 		}
 		return uniforms;
+	}
+
+	// The uniform a program declares as the table entry of that name declares it.
+	@NonNull
+	static GlUniform declared(List<UniformDef> table, String name, int location) {
+		for (var def : table) {
+			if (def.getName().equals(name)) {
+				return new GlUniform(name, glType(def.getType()), 1, location);
+			}
+		}
+		for (var def : UniformTable.BUILTINS) {
+			if (def.getName().equals(name)) {
+				return new GlUniform(name, glType(def.getType()), 1, location);
+			}
+		}
+		return new GlUniform(name, GLES20.GL_FLOAT, 1, location);
+	}
+
+	static int glType(@NonNull GlslType type) {
+		return switch (type) {
+			case INT -> GLES20.GL_INT;
+			case FLOAT -> GLES20.GL_FLOAT;
+			case VEC2 -> GLES20.GL_FLOAT_VEC2;
+			case VEC3 -> GLES20.GL_FLOAT_VEC3;
+			case VEC4 -> GLES20.GL_FLOAT_VEC4;
+			case MAT2 -> GLES20.GL_FLOAT_MAT2;
+			case MAT3 -> GLES20.GL_FLOAT_MAT3;
+			case SAMPLER_2D -> GLES20.GL_SAMPLER_2D;
+			case SAMPLER_EXTERNAL_OES -> GLES11Ext.GL_SAMPLER_EXTERNAL_OES;
+		};
 	}
 }

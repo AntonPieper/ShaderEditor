@@ -44,8 +44,7 @@ final class ShaderSourcePreparer {
 	@NonNull
 	static PreparedShaderSource prepare(
 			@Nullable String source,
-			int version,
-			int maxTextures) {
+			int version) {
 		float fTimeMax = parseFTime(source);
 		if (source == null) {
 			return new PreparedShaderSource(
@@ -63,8 +62,7 @@ final class ShaderSourcePreparer {
 		BackBufferParameters backBufferParameters = new BackBufferParameters();
 		ArrayList<DiscoveredSampler> samplers = new ArrayList<>();
 
-		for (Matcher matcher = PATTERN_SAMPLER.matcher(source);
-				matcher.find() && samplers.size() < maxTextures; ) {
+		for (Matcher matcher = PATTERN_SAMPLER.matcher(source); matcher.find(); ) {
 			String type = matcher.group(1);
 			String name = matcher.group(2);
 			String params = matcher.group(3);

@@ -40,6 +40,8 @@ final class BuiltinUniforms {
 	@Nullable
 	private GlDevice device;
 	@Nullable
+	private GlProgram program;
+	@Nullable
 	private ActiveBuiltins activeBuiltins;
 	@NonNull
 	private ShaderTextureResources textureResources =
@@ -70,6 +72,7 @@ final class BuiltinUniforms {
 		this.fTimeMax = fTimeMax;
 		this.textureResources = textureResources;
 		this.device = device;
+		this.program = program;
 		backBufferUnit = program.getTextureUnit(UniformTable.BACKBUFFER);
 		textureResources.resolveUnits(program);
 
@@ -146,8 +149,9 @@ final class BuiltinUniforms {
 	@Nullable
 	PreparedFrame beginFrame(@Nullable GlTexture2D backBufferTexture) {
 		var device = this.device;
+		var program = this.program;
 		var builtins = activeBuiltins;
-		if (device == null || builtins == null) {
+		if (device == null || program == null || builtins == null) {
 			return null;
 		}
 
@@ -156,6 +160,7 @@ final class BuiltinUniforms {
 
 		captureFrameInputs(delta);
 		builtins.write(frameInputs, now);
+		device.bindEmptyTextures(program);
 		device.bindTexture(backBufferUnit, backBufferTexture);
 		textureResources.bind(device);
 
@@ -173,6 +178,7 @@ final class BuiltinUniforms {
 		fTimeMax = DEFAULT_FTIME_MAX;
 		textureResources = ShaderTextureResources.empty();
 		device = null;
+		program = null;
 		backBufferUnit = GlUniform.NO_UNIT;
 		activeBuiltins = null;
 	}

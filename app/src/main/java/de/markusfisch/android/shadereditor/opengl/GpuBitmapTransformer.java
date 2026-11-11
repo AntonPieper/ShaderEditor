@@ -147,7 +147,7 @@ public final class GpuBitmapTransformer {
 				.order(ByteOrder.nativeOrder())
 				.asFloatBuffer();
 		private final Mesh texturedQuad = Mesh.texturedQuad(vertexBuffer);
-		private final GlDevice device = new GlDevice(1);
+		private final GlDevice device = new GlDevice();
 		private final TextureParameters textureParameters =
 				new TextureParameters(
 						GLES20.GL_LINEAR,
@@ -295,6 +295,7 @@ public final class GpuBitmapTransformer {
 			}
 
 			makeCurrent();
+			device.createContextResources();
 			device.disable(GLES20.GL_BLEND);
 			device.disable(GLES20.GL_CULL_FACE);
 			device.disable(GLES20.GL_DEPTH_TEST);
