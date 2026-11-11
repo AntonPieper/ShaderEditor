@@ -27,7 +27,6 @@ final class GlDevice {
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_X};
 
-	private final GlStateCache stateCache;
 	private final int maxTextureUnits;
 
 	private record ShaderCompileResult(
@@ -37,11 +36,6 @@ final class GlDevice {
 
 	GlDevice(int maxTextureUnits) {
 		this.maxTextureUnits = maxTextureUnits;
-		stateCache = new GlStateCache(maxTextureUnits);
-	}
-
-	void resetState() {
-		stateCache.reset();
 	}
 
 	int getMaxTextureUnits() {
@@ -61,17 +55,7 @@ final class GlDevice {
 	}
 
 	void setViewport(int x, int y, int width, int height) {
-		if (stateCache.viewportX == x &&
-				stateCache.viewportY == y &&
-				stateCache.viewportWidth == width &&
-				stateCache.viewportHeight == height) {
-			return;
-		}
 		GLES20.glViewport(x, y, width, height);
-		stateCache.viewportX = x;
-		stateCache.viewportY = y;
-		stateCache.viewportWidth = width;
-		stateCache.viewportHeight = height;
 	}
 
 	@NonNull
@@ -99,9 +83,7 @@ final class GlDevice {
 		if (texture == null || !texture.isValid()) {
 			return;
 		}
-		int id = texture.getId();
-		GLES20.glDeleteTextures(1, new int[]{id}, 0);
-		stateCache.clearTextureId(id);
+		GLES20.glDeleteTextures(1, new int[]{texture.getId()}, 0);
 		texture.invalidate();
 	}
 
@@ -109,18 +91,8 @@ final class GlDevice {
 		if (texture == null || !texture.isValid() || unit < 0 || unit >= maxTextureUnits) {
 			return;
 		}
-		if (stateCache.activeTextureUnit != unit) {
-			GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + unit);
-			stateCache.activeTextureUnit = unit;
-		}
-		int target = texture.getTarget();
-		int[] bindings = stateCache.getTextureBindingsForTarget(target);
-		int textureId = texture.getId();
-		boolean forceBind = texture.consumeBindingDirty();
-		if (forceBind || bindings[unit] != textureId) {
-			GLES20.glBindTexture(target, textureId);
-			bindings[unit] = textureId;
-		}
+		GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + unit);
+		GLES20.glBindTexture(texture.getTarget(), texture.getId());
 	}
 
 	void applyTextureParameters(@NonNull GlTexture texture,
@@ -247,11 +219,7 @@ final class GlDevice {
 		if (framebuffer == null || !framebuffer.isValid()) {
 			return;
 		}
-		int id = framebuffer.getId();
-		GLES20.glDeleteFramebuffers(1, new int[]{id}, 0);
-		if (stateCache.currentFramebufferId == id) {
-			stateCache.currentFramebufferId = 0;
-		}
+		GLES20.glDeleteFramebuffers(1, new int[]{framebuffer.getId()}, 0);
 		framebuffer.invalidate();
 	}
 
@@ -259,11 +227,7 @@ final class GlDevice {
 		int framebufferId = framebuffer != null && framebuffer.isValid()
 				? framebuffer.getId()
 				: 0;
-		if (stateCache.currentFramebufferId == framebufferId) {
-			return;
-		}
 		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebufferId);
-		stateCache.currentFramebufferId = framebufferId;
 	}
 
 	void attachColor(@NonNull GlFramebuffer framebuffer,
@@ -363,11 +327,7 @@ final class GlDevice {
 		if (program == null || !program.isValid()) {
 			return;
 		}
-		int programId = program.getId();
-		GLES20.glDeleteProgram(programId);
-		if (stateCache.currentProgramId == programId) {
-			stateCache.currentProgramId = 0;
-		}
+		GLES20.glDeleteProgram(program.getId());
 		program.invalidate();
 	}
 
@@ -375,11 +335,7 @@ final class GlDevice {
 		int programId = program != null && program.isValid()
 				? program.getId()
 				: 0;
-		if (stateCache.currentProgramId == programId) {
-			return;
-		}
 		GLES20.glUseProgram(programId);
-		stateCache.currentProgramId = programId;
 	}
 
 	int getUniformLocation(@NonNull GlProgram program, @NonNull String name) {

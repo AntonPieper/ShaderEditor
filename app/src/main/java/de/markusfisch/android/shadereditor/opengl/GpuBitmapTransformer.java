@@ -295,7 +295,6 @@ public final class GpuBitmapTransformer {
 			}
 
 			makeCurrent();
-			device.resetState();
 			device.disable(GLES20.GL_BLEND);
 			device.disable(GLES20.GL_CULL_FACE);
 			device.disable(GLES20.GL_DEPTH_TEST);
@@ -481,7 +480,6 @@ public final class GpuBitmapTransformer {
 			display = EGL14.EGL_NO_DISPLAY;
 			context = EGL14.EGL_NO_CONTEXT;
 			surface = EGL14.EGL_NO_SURFACE;
-			device.resetState();
 			program = null;
 			frameUnit = GlUniform.NO_UNIT;
 			sourceTexture = null;
