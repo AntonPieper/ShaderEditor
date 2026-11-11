@@ -240,6 +240,8 @@
 	<string name="sample_game_of_life_rationale">Conway\'s Game of Life. Touch to spark new life.</string>
 	<string name="sample_gles_300_name">GLES 3</string>
 	<string name="sample_gles_300_rationale">Wait a moment; hashed tiles turn their paths</string>
+	<string name="sample_horizon_name">Horizon</string>
+	<string name="sample_horizon_rationale">Swipe home screen pages; near hills move most</string>
 	<string name="sample_loop_name">Loop</string>
 	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
 	<string name="sample_meters_name">Meters</string>
