@@ -169,15 +169,18 @@ public class LegacyShaderConverterTest {
 
 	@Test
 	public void unknownNamesAndUnmatchedShapesStayAsWritten() {
-		String text = lines("uniform sampler2D missing; ///min:l;",
-				"uniform highp sampler2D noise;",
-				"uniform sampler2D noise ;",
-				"// uniform sampler2D noise;",
-				"/* uniform sampler2D noise; */");
-		Result result = convert(text);
-		assertEquals(text, result.shader());
-		assertTrue(result.textures().isEmpty());
-		assertTrue(result.diagnostics().isEmpty());
+		for (String text : new String[]{
+				lines("uniform sampler2D missing; ///min:l;",
+						"uniform highp sampler2D noise;",
+						"uniform sampler2D sky ;"),
+				lines("// uniform sampler2D noise;",
+						"/* uniform sampler2D noise; */",
+						"void main() {}")}) {
+			Result result = convert(text);
+			assertEquals(text, result.shader());
+			assertTrue(result.textures().isEmpty());
+			assertTrue(result.diagnostics().isEmpty());
+		}
 	}
 
 	@Test
@@ -186,6 +189,109 @@ public class LegacyShaderConverterTest {
 						"uniform sampler2D noise; uniform sampler2D sky;"),
 				convert(lines("uniform sampler2D noise; " +
 						"uniform sampler2D sky;")).shader());
+		assertEquals(lines(NOISE_DEFAULT,
+						"uniform sampler2D noise; // uniform sampler2D noise; " +
+								"///mag:n;"),
+				convert(lines("uniform sampler2D noise; " +
+						"// uniform sampler2D noise; ///mag:n;")).shader());
+	}
+
+	@Test
+	public void commentedDeclarationBindsTheDeclarationTheCompilerSees() {
+		Result result = convert(lines("// uniform sampler2D noise;",
+				"uniform highp sampler2D noise;",
+				"void main(){gl_FragColor=texture2D(noise,vec2(0.5));}"));
+		assertEquals(lines("// uniform sampler2D noise;",
+				NOISE_DEFAULT,
+				"uniform highp sampler2D noise;",
+				"void main(){gl_FragColor=texture2D(noise,vec2(0.5));}"),
+				result.shader());
+		assertEquals(List.of(1, 0, 2, 3), result.lines());
+		assertEquals(List.of(new TextureFile("noise", path(
+				"textures/noise.png"), false)), result.textures());
+		assertTrue(result.diagnostics().isEmpty());
+	}
+
+	@Test
+	public void theLastMatchOfANameChoosesItsSettings() {
+		Result result = convert(lines("uniform sampler2D noise; ///mag:l;",
+				"// uniform sampler2D noise; ///mag:n;"));
+		assertEquals(lines("#pragma se input \"textures/noise.png\" " +
+						"filter=nearest wrap=repeat",
+				"uniform sampler2D noise;",
+				"// uniform sampler2D noise; ///mag:n;"), result.shader());
+		assertTrue(result.diagnostics().isEmpty());
+	}
+
+	@Test
+	public void matchesPastTheSamplerLimitChooseNothing() {
+		StringBuilder text = new StringBuilder("uniform sampler2D noise;\n");
+		for (int i = 0; i < 31; ++i) {
+			text.append("uniform sampler2D t").append(i).append(";\n");
+		}
+		text.append("// uniform sampler2D noise; ///mag:n;\n");
+		assertEquals(NOISE_DEFAULT + "\n" + text,
+				convert(text.toString()).shader());
+	}
+
+	@Test
+	public void secondDeclarationOnALineIsBoundByAMatchElsewhere() {
+		Result result = convert(lines("/* uniform sampler2D noise; ///s:c; */",
+				"uniform sampler2D a; uniform sampler2D noise; // x"));
+		assertEquals(lines("/* uniform sampler2D noise; ///s:c; */",
+				"uniform sampler2D a;",
+				"#pragma se input \"textures/noise.png\" " +
+						"min=nearest mag=linear wrap=clamp,repeat",
+				"uniform sampler2D noise; // x"), result.shader());
+		assertEquals(List.of(1, 2, 0, 2), result.lines());
+	}
+
+	@Test
+	public void matchOfAnotherSamplerTypeLeavesTheDeclarationUnbound() {
+		String text = lines("uniform sampler2D noise;",
+				"// uniform samplerCube noise;");
+		Result result = convert(text);
+		assertEquals(text, result.shader());
+		assertTrue(result.textures().isEmpty());
+		assertEquals(List.of("The old renderer bound noise as a " +
+						"samplerCube from line 2, so uniform sampler2D noise " +
+						"read no texture; it stays without one"),
+				messages(result));
+	}
+
+	@Test
+	public void matchWithoutADeclarationToAnnotateWarnsWhereItIsUsed() {
+		String text = lines("// uniform sampler2D noise;",
+				"uniform sampler2D",
+				"\tnoise;",
+				"void main(){gl_FragColor=texture2D(noise,vec2(0.5));}");
+		Result result = convert(text);
+		assertEquals(text, result.shader());
+		assertTrue(result.textures().isEmpty());
+		assertEquals(List.of(new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.WARNING,
+				"noise read the library texture noise, but it has no " +
+						"declaration like uniform sampler2D noise; on one " +
+						"line to attach #pragma se input to, so it is not " +
+						"bound", null, 1)), result.diagnostics());
+	}
+
+	@Test
+	public void backbufferSettingsReachTheQualifiedDeclaration() {
+		assertEquals(lines("#pragma se target present=linear",
+						"// uniform sampler2D backbuffer; ///mag:l;",
+						"#pragma se input min=nearest mag=linear",
+						"uniform highp sampler2D backbuffer;"),
+				convert(lines("// uniform sampler2D backbuffer; ///mag:l;",
+						"uniform highp sampler2D backbuffer;")).shader());
+		assertEquals(List.of("backbuffer has settings, but it has no " +
+						"declaration like uniform sampler2D backbuffer; on " +
+						"one line to attach #pragma se input to, so they " +
+						"are not applied"),
+				messages(convert(lines(
+						"// uniform sampler2D backbuffer; ///s:m;",
+						"uniform sampler2D",
+						"backbuffer;"))));
 	}
 
 	@Test
