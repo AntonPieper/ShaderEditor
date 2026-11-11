@@ -25,6 +25,13 @@ public final class Tokens {
 		this.lineStarts = Arrays.copyOf(lineStarts, lines);
 	}
 
+	private Tokens(Tokens tokens, int[] kinds) {
+		starts = tokens.starts;
+		ends = tokens.ends;
+		this.kinds = kinds;
+		lineStarts = tokens.lineStarts;
+	}
+
 	public int size() {
 		return starts.length;
 	}
@@ -39,6 +46,16 @@ public final class Tokens {
 
 	public Style style(int index) {
 		return STYLES[kinds[index] & 0xff];
+	}
+
+	/** A copy in which the first count of the tokens at indices have style. */
+	Tokens withStyle(int[] indices, int count, Style style) {
+		int[] restyled = kinds.clone();
+		for (int i = 0; i < count; ++i) {
+			int index = indices[i];
+			restyled[index] = (restyled[index] & ~0xff) | style.ordinal();
+		}
+		return new Tokens(this, restyled);
 	}
 
 	/** True if the token belongs to a preprocessor directive. */

@@ -47,6 +47,7 @@ import de.markusfisch.android.shadereditor.highlighter.TokenDiff;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
 
@@ -812,6 +813,7 @@ public class ShaderEditor extends LineNumberEditText {
 		@Override
 		public Tokens call() {
 			Tokens tokens = GlslLexer.lex(text);
+			tokens = Outline.of(tokens, text).colourTypes(tokens, text);
 			onTokenized.onTokens(revision, tokens, text);
 			return tokens;
 		}

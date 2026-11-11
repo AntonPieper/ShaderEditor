@@ -91,6 +91,16 @@ public final class GlslWords {
 				compare(DIRECTIVES[i], text, start, end) == 0;
 	}
 
+	/**
+	 * True if the first size of the sorted words contain the word from start
+	 * to end in text.
+	 */
+	static boolean contains(String[] words, int size, CharSequence text,
+			int start, int end) {
+		int i = lowerBound(words, size, text, start, end);
+		return i < size && compare(words[i], text, start, end) == 0;
+	}
+
 	/** Words that start with prefix, in sorted order. */
 	public static List<String> matching(String prefix) {
 		return matching(WORDS, count, prefix);

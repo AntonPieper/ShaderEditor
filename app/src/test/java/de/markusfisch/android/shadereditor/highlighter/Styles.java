@@ -7,12 +7,14 @@ import androidx.annotation.NonNull;
 import java.util.Arrays;
 
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
 
 /**
  * Turns a text into one letter per character for the colour the editor
- * gives it, so expectations read like the source they describe.
+ * gives it, declared types included, so expectations read like the source
+ * they describe.
  *
  * <pre>
  * .  no colour: whitespace, identifiers and operators (text colour)
@@ -38,6 +40,7 @@ final class Styles {
 		char[] styles = new char[source.length()];
 		Arrays.fill(styles, '.');
 		Tokens tokens = GlslLexer.lex(source);
+		tokens = Outline.of(tokens, source).colourTypes(tokens, source);
 		for (int t = 0; t < tokens.size(); ++t) {
 			char letter = letter(tokens.style(t));
 			for (int i = tokens.start(t); i < tokens.end(t); ++i) {

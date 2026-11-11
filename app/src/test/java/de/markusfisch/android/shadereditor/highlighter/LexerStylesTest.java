@@ -336,8 +336,30 @@ public class LexerStylesTest {
 	}
 
 	@Test
+	public void declaredStructIsATypeEverywhere() {
+		assertStyles(
+				"struct Ray { vec3 o; }; Ray r = Ray(o); Ray[2] rs; // Ray",
+				"kkkkkk.ttt...vvvv.......ttt.....ttt.....ttt.n......cccccc");
+	}
+
+	@Test
+	public void structDeclaredAfterItsUse() {
+		assertStyles(
+				"Ray[2] rs;\n#define R Ray\nstruct Ray { float t; };",
+				"ttt.n......ddddddd...ttt.kkkkkk.ttt...ppppp......");
+	}
+
+	@Test
+	public void structInDisabledCodeIsNoType() {
+		assertStyles(
+				"#if 0\nstruct Ray {};\n#endif\nRay[2] rs;",
+				"ddd.n.kkkkkk.ttt.....dddddd.....n.....");
+	}
+
+	@Test
 	public void typeGuessForStructs() {
-		// Wrong: all three Ray are the same type name.
+		// Wrong while Ray is not declared: all three Ray are the same type
+		// name.
 		assertStyles(
 				"Ray r = Ray(o, d); Ray[2] rs;",
 				"ttt....................n.....");
