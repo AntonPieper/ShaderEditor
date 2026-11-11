@@ -341,6 +341,24 @@ public class HostDirectivesTest {
 	}
 
 	@Test
+	public void keepsPathsOfInvalidDirectivesAsReferences() {
+		HostDirectives result = parse(
+				"#pragma se input \"a.png\"",
+				TEX,
+				"#pragma se input \"b.png\" mag=cubic",
+				"uniform sampler2D b;",
+				"#pragma se target initial=\"seed.png\" format=rgb8");
+		assertEquals(2, result.diagnostics().size());
+		assertEquals(path("shaders/a.png"), single(result.inputs()).source());
+		assertEquals(List.of(
+				new HostDirectives.Reference(path("shaders/b.png"),
+						path("shaders/main.glsl"), 3),
+				new HostDirectives.Reference(path("shaders/seed.png"),
+						path("shaders/main.glsl"), 5)),
+				result.references());
+	}
+
+	@Test
 	public void rejectsMoreThanOneTarget() {
 		ProjectDiagnostic error = singleError(parse(
 				"#pragma se target scale=0.5",

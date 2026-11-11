@@ -20,6 +20,9 @@ import de.markusfisch.android.shadereditor.project.HostDirective.Target;
  * @param sourceMap   the origin of every line
  * @param inputs      inputs attached to their declarations, in order
  * @param target      the target directive, or null when there is none
+ * @param references  paths named by directives that are neither in
+ *                    inputs nor the target because they are invalid;
+ *                    they are still dependencies
  * @param diagnostics assembly diagnostics followed by directive ones
  */
 public record HostDirectives(
@@ -27,7 +30,12 @@ public record HostDirectives(
 		SourceMap sourceMap,
 		List<Input> inputs,
 		Target target,
+		List<Reference> references,
 		List<ProjectDiagnostic> diagnostics) {
+	/** A path named on a 1-based line of file. */
+	public record Reference(ProjectPath path, ProjectPath file, int line) {
+	}
+
 	private static final Set<String> SAMPLER_TYPES = Set.of(
 			"sampler2D", "samplerCube", "samplerExternalOES");
 	private static final Set<String> PRECISIONS = Set.of(
@@ -40,6 +48,7 @@ public record HostDirectives(
 	public HostDirectives {
 		lines = List.copyOf(lines);
 		inputs = List.copyOf(inputs);
+		references = List.copyOf(references);
 		diagnostics = List.copyOf(diagnostics);
 	}
 
@@ -57,7 +66,7 @@ public record HostDirectives(
 				new ArrayList<>(assembly.diagnostics());
 		diagnostics.addAll(parser.diagnostics);
 		return new HostDirectives(parser.lines, assembly.sourceMap(),
-				parser.inputs, parser.target, diagnostics);
+				parser.inputs, parser.target, parser.references, diagnostics);
 	}
 
 	public String text() {
@@ -72,6 +81,7 @@ public record HostDirectives(
 		private final Set<String> reserved;
 		private final List<String> lines;
 		private final List<Input> inputs = new ArrayList<>();
+		private final List<Reference> references = new ArrayList<>();
 		private final List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		private Target target;
 		private int targetLine;
@@ -106,6 +116,7 @@ public record HostDirectives(
 					continue;
 				}
 				lines.set(line - 1, "");
+				HostDirective parsed = HostDirective.parse(argument, at);
 				if (here.blockComment()) {
 					error(at, "Block comments are not allowed on a line " +
 							"with a host directive, use a trailing // comment");
@@ -118,8 +129,12 @@ public record HostDirectives(
 					error(at, "Host directives are not allowed inside " +
 							"#if, #ifdef or #ifndef, move it outside the " +
 							"conditional block");
-				} else {
-					parse(line, argument, at);
+				} else if (apply(parsed, line, at)) {
+					continue;
+				}
+				if (parsed.path() != null) {
+					references.add(new Reference(parsed.path(), at.file(),
+							at.line()));
 				}
 			}
 		}
@@ -138,13 +153,14 @@ public record HostDirectives(
 			return text.append(part).toString().strip();
 		}
 
-		private void parse(int line, String argument, SourceLocation at) {
-			HostDirective directive = HostDirective.parse(argument, at);
+		// Return whether the directive became an input or the target.
+		private boolean apply(HostDirective directive, int line,
+				SourceLocation at) {
 			if (directive.command() == HostDirective.Command.TARGET) {
 				if (targetLine > 0) {
 					error(at, "Only one #pragma se target per file, merge " +
 							"it into the one on line " + targetLine);
-					return;
+					return false;
 				}
 				targetLine = at.line();
 				target = directive.target();
@@ -152,16 +168,17 @@ public record HostDirectives(
 			diagnostics.addAll(directive.diagnostics());
 			if (directive.command() == HostDirective.Command.INPUT &&
 					directive.input() != null) {
-				input(directive.input(), directive.diagnostics().isEmpty(),
-						line, at);
+				return input(directive.input(),
+						directive.diagnostics().isEmpty(), line, at);
 			}
+			return directive.target() != null;
 		}
 
-		private void input(Input parsed, boolean valid, int line,
+		private boolean input(Input parsed, boolean valid, int line,
 				SourceLocation at) {
 			Declaration declaration = attach(line, at);
 			if (declaration == null || !valid) {
-				return;
+				return false;
 			}
 			int errors = diagnostics.size();
 			String type = declaration.type;
@@ -188,11 +205,13 @@ public record HostDirectives(
 				error(at, name + " is reserved for a builtin uniform, " +
 						"rename the uniform to bind " + source);
 			}
-			if (diagnostics.size() == errors) {
-				inputs.add(new Input(parsed.file(), parsed.line(), name, type,
-						source, parsed.frame(), parsed.min(), parsed.mag(),
-						parsed.mipmap(), parsed.wrapS(), parsed.wrapT()));
+			if (diagnostics.size() > errors) {
+				return false;
 			}
+			inputs.add(new Input(parsed.file(), parsed.line(), name, type,
+					source, parsed.frame(), parsed.min(), parsed.mag(),
+					parsed.mipmap(), parsed.wrapS(), parsed.wrapT()));
+			return true;
 		}
 
 		private Declaration attach(int line, SourceLocation at) {

@@ -137,6 +137,10 @@ final class PassGraph {
 					? initial
 					: null;
 		}
+		for (HostDirectives.Reference reference :
+				node.directives.references()) {
+			source(reference.path(), reference.file(), reference.line());
+		}
 		return node;
 	}
 

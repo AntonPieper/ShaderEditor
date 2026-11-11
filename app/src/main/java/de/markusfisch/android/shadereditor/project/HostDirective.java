@@ -17,12 +17,16 @@ import java.util.regex.Pattern;
  * @param input       the input options when the line could be read,
  *                    also when diagnostics report a problem with them
  * @param target      the target when it is valid, else null
+ * @param path        the file the line names as a source or initial,
+ *                    also when other parts of it are invalid; null when
+ *                    it names none or the path itself is invalid
  * @param diagnostics problems with this line
  */
 public record HostDirective(
 		Command command,
 		Input input,
 		Target target,
+		ProjectPath path,
 		List<ProjectDiagnostic> diagnostics) {
 	public enum Command {INPUT, TARGET}
 	public enum Frame {CURRENT, PREVIOUS}
@@ -111,7 +115,7 @@ public record HostDirective(
 		Reader reader = new Reader(at);
 		Command command = reader.parse(text);
 		return new HostDirective(command, reader.input, reader.target,
-				reader.diagnostics);
+				reader.named, reader.diagnostics);
 	}
 
 	private static ProjectDiagnostic error(SourceLocation at, String message) {
@@ -124,6 +128,7 @@ public record HostDirective(
 		private final List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		private Input input;
 		private Target target;
+		private ProjectPath named;
 
 		private Reader(SourceLocation at) {
 			this.at = at;
@@ -197,6 +202,7 @@ public record HostDirective(
 			ProjectPath source = null;
 			if (tokens.size() > 2 && tokens.get(2).startsWith("\"")) {
 				source = path(tokens.get(2));
+				named = source;
 				++first;
 			}
 			Map<String, String> options = options(tokens, first, INPUT_KEYS,
@@ -236,6 +242,7 @@ public record HostDirective(
 		}
 
 		private void target(List<String> tokens) {
+			named = initial(tokens);
 			int errors = diagnostics.size();
 			Map<String, String> options = options(tokens, 2, TARGET_KEYS,
 					"target");
@@ -265,6 +272,19 @@ public record HostDirective(
 						size != null ? size[1] : null,
 						format, initialPath, present);
 			}
+		}
+
+		// The initial path, also when other options are invalid.
+		private ProjectPath initial(List<String> tokens) {
+			for (int i = 2; i < tokens.size(); ++i) {
+				if (tokens.get(i).startsWith("initial=")) {
+					int errors = diagnostics.size();
+					ProjectPath path = path(tokens.get(i).substring(8));
+					diagnostics.subList(errors, diagnostics.size()).clear();
+					return path;
+				}
+			}
+			return null;
 		}
 
 		private Double scale(String value) {
