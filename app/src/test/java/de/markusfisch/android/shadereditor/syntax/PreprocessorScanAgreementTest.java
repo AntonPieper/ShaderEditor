@@ -1,7 +1,6 @@
 package de.markusfisch.android.shadereditor.syntax;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -17,12 +16,8 @@ import de.markusfisch.android.shadereditor.project.SourceText;
 /**
  * PreprocessorScan and GlslLexer agree on where comments are and on
  * which lines start a directive. Both are rendered as one row per line:
- * "#name" if a directive starts on the line, "+" if the line continues
- * a directive (only the lexer knows that), then "|" and the line with
+ * "#name" if a directive starts on the line, then "|" and the line with
  * block comments blanked and line comments cut off.
- *
- * Where they disagree, the test names the difference and says which
- * side follows the GLSL ES specification.
  */
 public class PreprocessorScanAgreementTest {
 	@Test
@@ -71,44 +66,38 @@ public class PreprocessorScanAgreementTest {
 		assertAgree("/*/ x */ y // z\n#define A /* c\n */ B");
 	}
 
+	// Both follow GLSL ES 3.00 in every file: a backslash at the end of
+	// a line continues a // comment or a directive onto the next line,
+	// and a "#" there starts no directive. GLSL ES 1.00 has no line
+	// continuation, but a file says which version it is only on its
+	// #version line, and the editor and the build must read comments
+	// the same way before that.
 	@Test
 	public void continuedMacro() {
-		// Difference: the scanner does not follow line continuations, the
-		// lexer does. GLSL ES 3.00 joins lines ending in a backslash before
-		// preprocessing, so the lexer is right. GLSL ES 1.00 has no line
-		// continuation at all.
-		assertDisagree("#define A(x) x \\\n\t+ 1\nfloat y;",
+		assertScanned("#define A(x) x \\\n\t+ 1\nfloat y;",
 				"#define|#define A(x) x \\\n" +
 						"|\t+ 1\n" +
-						"|float y;\n",
-				"#define|#define A(x) x \\\n" +
-						"+|\t+ 1\n" +
 						"|float y;\n");
+		assertScanned("#define A \\\n#include \"a.glsl\"",
+				"#define|#define A \\\n" +
+						"|#include \"a.glsl\"\n");
 	}
 
 	@Test
 	public void continuedLineCommentHidesADirective() {
-		// Difference: the scanner sees a directive on the second line, the
-		// lexer a comment. GLSL ES 3.00 joins the lines before removing
-		// comments, so the lexer is right.
-		assertDisagree("// c \\\n#pragma se input \"a.png\"",
-				"|\n" +
-						"#pragma|#pragma se input \"a.png\"\n",
+		assertScanned("// c \\\n#pragma se input \"a.png\"",
 				"|\n" +
 						"|\n");
 	}
 
 	@Test
 	public void quoteOnAContinuedDirectiveLine() {
-		// Difference: the lexer keeps "a//b" as a string because the line
-		// continues a directive; the scanner starts a comment at //. The
-		// lexer follows the GLSL ES 3.00 line joining; quoted paths are the
-		// app's extension, GLSL itself has no strings.
-		assertDisagree("#define S \\\n\"a//b\"",
+		// Quoted paths are the app's extension; GLSL has no strings. A
+		// continued line belongs to the directive, so its quote starts a
+		// path as on the directive's first line.
+		assertScanned("#define S \\\n\"a//b\"",
 				"#define|#define S \\\n" +
-						"|\"a\n",
-				"#define|#define S \\\n" +
-						"+|\"a//b\"\n");
+						"|\"a//b\"\n");
 	}
 
 	private static void assertAgree(String text) {
@@ -119,11 +108,9 @@ public class PreprocessorScanAgreementTest {
 		assertEquals(where, scanned(text), lexed(text));
 	}
 
-	private static void assertDisagree(String text, String scanned,
-			String lexed) {
-		assertNotEquals(scanned, lexed);
-		assertEquals(scanned, scanned(text));
-		assertEquals(lexed, lexed(text));
+	private static void assertScanned(String text, String expected) {
+		assertAgree(text);
+		assertEquals(expected, scanned(text));
 	}
 
 	private static List<String> lines(String text) {
@@ -157,7 +144,6 @@ public class PreprocessorScanAgreementTest {
 		for (int i = 0; i < lineCount; ++i) {
 			cut[i] = lineEnd(text, tokens, i);
 		}
-		int directiveLine = -1;
 		for (int t = 0; t < tokens.size(); ++t) {
 			int start = tokens.start(t);
 			int line = tokens.lineOf(start);
@@ -173,11 +159,7 @@ public class PreprocessorScanAgreementTest {
 				}
 			} else if (tokens.style(t) == Style.DIRECTIVE &&
 					text.charAt(start) == '#') {
-				directiveLine = line;
 				marks[line] = "#" + directiveName(text, tokens, t);
-			} else if (tokens.inDirective(t) && line > directiveLine &&
-					marks[line] == null) {
-				marks[line] = "+";
 			}
 		}
 		StringBuilder sb = new StringBuilder();

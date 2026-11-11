@@ -134,7 +134,7 @@ public final class LegacyShaderConverter {
 		this.raw = raw;
 		this.scan = PreprocessorScan.scan(raw, null);
 		this.library = library;
-		this.inComment = comments(raw);
+		this.inComment = comments(scan);
 		files.put(SHADER, "");
 	}
 
@@ -588,38 +588,14 @@ public final class LegacyShaderConverter {
 				: 0;
 	}
 
-	// Comments as PreprocessorScan reads them.
-	private static boolean[] comments(List<String> lines) {
-		boolean[] open = new boolean[lines.size()];
-		boolean comment = false;
-		for (int l = 0; l < lines.size(); ++l) {
-			open[l] = comment;
-			String line = lines.get(l);
-			boolean directive = false;
-			boolean code = false;
-			for (int i = 0, n = line.length(); i < n; ++i) {
-				char c = line.charAt(i);
-				char next = i + 1 < n ? line.charAt(i + 1) : 0;
-				if (comment) {
-					if (c == '*' && next == '/') {
-						++i;
-						comment = false;
-					}
-				} else if (c == '/' && next == '/') {
-					break;
-				} else if (c == '/' && next == '*') {
-					++i;
-					comment = true;
-				} else if (c == '"' && directive) {
-					int close = line.indexOf('"', i + 1);
-					i = close < 0 ? n : close;
-				} else if (!code && !Character.isWhitespace(c)) {
-					code = true;
-					directive = c == '#';
-				}
-			}
+	// Whether a block comment is open at the start of each line.
+	private static boolean[] comments(PreprocessorScan scan) {
+		List<Boolean> open = scan.openComments();
+		boolean[] comments = new boolean[open.size()];
+		for (int l = 1; l < comments.length; ++l) {
+			comments[l] = open.get(l - 1);
 		}
-		return open;
+		return comments;
 	}
 
 	private void edit(Edit edit) {

@@ -199,6 +199,45 @@ public class PreparationTest {
 	}
 
 	@Test
+	public void continuedMacroLineIncludesNothing() {
+		String main = lines("#define A \\", "#include \"lib.glsl\"", MAIN);
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.glsl", main)
+				.put("lib.glsl", "float f;\n"));
+		assertTrue(preparation.diagnostics().isEmpty());
+		assertEquals(List.of("shader-project.json", "main.glsl"),
+				dependencyPaths(preparation));
+		assertEquals(main, preparation.plan().programs().get(0).text());
+	}
+
+	@Test
+	public void continuedLineCommentHidesHostDirective() {
+		String main = lines("// c \\", "#pragma se input \"a.png\"",
+				"uniform sampler2D a;", MAIN);
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.glsl", main)
+				.put("a.png", new byte[]{1}));
+		assertTrue(preparation.diagnostics().isEmpty());
+		assertTrue(preparation.plan().passes().get(0).inputs().isEmpty());
+		assertEquals(main, preparation.plan().programs().get(0).text());
+	}
+
+	@Test
+	public void quoteOnContinuedDirectiveLineOpensNoComment() {
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.glsl", lines("#define S \\", "\"a/*b\"",
+						"#pragma se input \"a.png\"", "uniform sampler2D a;",
+						MAIN))
+				.put("a.png", new byte[]{1}));
+		assertTrue(preparation.diagnostics().isEmpty());
+		assertEquals(List.of(new RenderPlan.Input("a", "sampler2D",
+						Source.image(path("a.png")), Frame.CURRENT,
+						new Sampling(Filter.LINEAR, Filter.LINEAR, Mipmap.NONE,
+								Wrap.CLAMP, Wrap.CLAMP), path("main.glsl"), 3)),
+				preparation.plan().passes().get(0).inputs());
+	}
+
+	@Test
 	public void invalidManifestIsAnErrorButDependenciesAreComplete() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
 				.put("main.glsl", lines(
