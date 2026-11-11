@@ -66,6 +66,7 @@ final class PassGraph {
 	/** Passes with an initial source, in the order of reset. */
 	final List<Node> reset = new ArrayList<>();
 	final List<ProjectDiagnostic> diagnostics = new ArrayList<>();
+	/** The running shader's pass, or null when the pass limit is 0. */
 	final Node entry;
 
 	private final Map<ProjectPath, Node> byPath = new HashMap<>();
@@ -85,7 +86,9 @@ final class PassGraph {
 			ProjectPath entry,
 			ProjectLimits limits) {
 		PassGraph graph = new PassGraph(files, entry, limits);
-		if (graph.entry.directives == null) {
+		if (graph.entry == null) {
+			return graph;
+		} else if (graph.entry.directives == null) {
 			graph.error(entry, 0, graph.entry.problem);
 		}
 		graph.validate();

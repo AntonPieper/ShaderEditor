@@ -229,7 +229,7 @@ public class SourceAssemblyTest {
 				.put("2.glsl", "#include \"3.glsl\"\n")
 				.put("3.glsl", "float x;\n");
 		SourceAssembly assembly = SourceAssembly.assemble(files, MAIN,
-				new ProjectLimits(2, 1000, 10, 16));
+				new ProjectLimits(2, 1000, 100, 10, 16, 100));
 		assertError(single(assembly), "2.glsl", 1, "limit of 2");
 	}
 
@@ -242,7 +242,7 @@ public class SourceAssemblyTest {
 								"#include \"a.glsl\"",
 								"#include \"a.glsl\""))
 						.put("a.glsl", "float aaaa;\n"),
-				MAIN, new ProjectLimits(4, 30, 10, 16));
+				MAIN, new ProjectLimits(4, 30, 100, 10, 16, 100));
 		assertError(single(assembly), "a.glsl", 1, "limit of 30 bytes");
 		assertTrue(assembly.hasErrors());
 		assertEquals(2, assembly.lines().size());
@@ -250,14 +250,47 @@ public class SourceAssemblyTest {
 
 	@Test
 	public void boundsFilesRead() {
+		ProjectLimits limits = new ProjectLimits(4, 1000, 100, 2, 16, 100);
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("main.glsl", "#include \"a.glsl\"\n" +
+						"#include \"b.glsl\"\n")
+				.put("a.glsl", "float a;\n")
+				.put("b.glsl", "float b;\n");
 		SourceAssembly assembly = SourceAssembly.assemble(
-				new MemoryProjectFiles()
-						.put("main.glsl", "#include \"a.glsl\"\n" +
-								"#include \"b.glsl\"\n")
-						.put("a.glsl", "float a;\n")
-						.put("b.glsl", "float b;\n"),
-				MAIN, new ProjectLimits(4, 1000, 2, 16));
-		assertError(single(assembly), "main.glsl", 2, "limit of 2 files");
+				new CapturedFiles(files, limits), MAIN, limits);
+		assertError(single(assembly), "main.glsl", 2,
+				"Could not read b.glsl: the build reads more than the " +
+						"limit of 2 files");
+		assertEquals(List.of(MAIN, path("a.glsl")), files.readPaths);
+	}
+
+	@Test
+	public void boundsIncludeExpansionsAlsoWithoutOutput() {
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("main.glsl", "#include \"a.glsl\"\n".repeat(3))
+				.put("a.glsl", "#include \"b.glsl\"\n".repeat(3))
+				.put("b.glsl", "");
+		SourceAssembly assembly = SourceAssembly.assemble(files, MAIN,
+				new ProjectLimits(4, 1000, 12, 10, 16, 100));
+		assertTrue(assembly.diagnostics().isEmpty());
+		assembly = SourceAssembly.assemble(files, MAIN,
+				new ProjectLimits(4, 1000, 11, 10, 16, 100));
+		assertError(single(assembly), "a.glsl", 3,
+				"Includes are expanded more often than the limit of 11");
+	}
+
+	@Test(timeout = 10000)
+	public void boundsExponentialIncludesWithDefaultLimits() {
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("main.glsl", "#include \"i1.glsl\"\n".repeat(5))
+				.put("i16.glsl", "");
+		for (int i = 1; i < 16; ++i) {
+			files.put("i" + i + ".glsl",
+					("#include \"i" + (i + 1) + ".glsl\"\n").repeat(5));
+		}
+		SourceAssembly assembly = assemble(files);
+		assertTrue(single(assembly).message().contains("limit of 20000"));
+		assertEquals(17, files.reads);
 	}
 
 	@Test

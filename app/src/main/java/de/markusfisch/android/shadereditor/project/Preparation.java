@@ -47,7 +47,7 @@ public record Preparation(
 			ProjectFiles files,
 			ProjectPath entry,
 			ProjectLimits limits) {
-		CapturedFiles captured = new CapturedFiles(files);
+		CapturedFiles captured = new CapturedFiles(files, limits);
 		List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		ProjectDiagnostic manifest = readManifest(captured);
 		if (manifest != null) {
@@ -61,12 +61,6 @@ public record Preparation(
 		}
 		PassGraph graph = PassGraph.discover(captured, entry, limits);
 		diagnostics.addAll(graph.diagnostics);
-		ProjectDiagnostic tooMany = error("Build reads more than the " +
-				"limit of " + limits.filesRead() + " files", null);
-		if (captured.dependencies().size() > limits.filesRead() &&
-				!reported(diagnostics, tooMany.message())) {
-			diagnostics.add(tooMany);
-		}
 		RenderPlan plan = hasErrors(diagnostics)
 				? null
 				: plan(graph, diagnostics);
@@ -147,17 +141,6 @@ public record Preparation(
 				? null
 				: new RenderPlan(programs, passes, index.get(graph.entry),
 						reset);
-	}
-
-	// One assembly may already have reported the file limit.
-	private static boolean reported(List<ProjectDiagnostic> diagnostics,
-			String message) {
-		for (ProjectDiagnostic diagnostic : diagnostics) {
-			if (diagnostic.message().equals(message)) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	private static boolean hasErrors(List<ProjectDiagnostic> diagnostics) {
