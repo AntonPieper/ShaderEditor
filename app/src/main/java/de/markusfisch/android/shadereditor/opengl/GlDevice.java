@@ -9,8 +9,6 @@ import androidx.annotation.Nullable;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -316,6 +314,10 @@ final class GlDevice {
 
 		GLES20.glAttachShader(programId, vertexCompile.shader.getId());
 		GLES20.glAttachShader(programId, fragmentCompile.shader.getId());
+		GLES20.glBindAttribLocation(
+				programId,
+				FullScreenQuad.POSITION_LOCATION,
+				FullScreenQuad.POSITION);
 		GLES20.glLinkProgram(programId);
 
 		deleteShader(vertexCompile.shader);
@@ -383,16 +385,6 @@ final class GlDevice {
 		return uniform != null ? uniform.location() : -1;
 	}
 
-	int getAttribLocation(@NonNull GlProgram program, @NonNull String name) {
-		Integer location = program.getAttribLocations().get(name);
-		if (location != null) {
-			return location;
-		}
-		int attribLocation = GLES20.glGetAttribLocation(program.getId(), name);
-		program.getAttribLocations().put(name, attribLocation);
-		return attribLocation;
-	}
-
 	void uniform1i(int location, int value) {
 		if (location > -1) {
 			GLES20.glUniform1i(location, value);
@@ -434,28 +426,6 @@ final class GlDevice {
 		if (location > -1) {
 			GLES20.glUniformMatrix3fv(location, 1, false, values, 0);
 		}
-	}
-
-	void draw(@NonNull Mesh mesh, @NonNull GlProgram program) {
-		Geometry geometry = mesh.getGeometry();
-		for (VertexAttribute attribute : geometry.getAttributes()) {
-			int location = getAttribLocation(program, attribute.getName());
-			if (location < 0) {
-				continue;
-			}
-			GLES20.glEnableVertexAttribArray(location);
-			GLES20.glVertexAttribPointer(
-					location,
-					attribute.getComponentCount(),
-					attribute.getType(),
-					attribute.isNormalized(),
-					attribute.getStride(),
-					positionedBuffer(geometry.getVertexBuffer(), attribute.getByteOffset()));
-		}
-		GLES20.glDrawArrays(
-				geometry.getDrawMode(),
-				0,
-				geometry.getVertexCount());
 	}
 
 	void readPixels(int x, int y, int width, int height, @NonNull Buffer buffer) {
@@ -558,26 +528,5 @@ final class GlDevice {
 			lastError = error;
 		}
 		return lastError;
-	}
-
-	@NonNull
-	private static Buffer positionedBuffer(@NonNull Buffer buffer, int byteOffset) {
-		if (buffer instanceof ByteBuffer byteBuffer) {
-			ByteBuffer duplicate = byteBuffer.duplicate();
-			duplicate.position(byteOffset);
-			return duplicate;
-		}
-		if (buffer instanceof FloatBuffer floatBuffer) {
-			FloatBuffer duplicate = floatBuffer.duplicate();
-			duplicate.position(byteOffset / 4);
-			return duplicate;
-		}
-		if (buffer instanceof IntBuffer intBuffer) {
-			IntBuffer duplicate = intBuffer.duplicate();
-			duplicate.position(byteOffset / 4);
-			return duplicate;
-		}
-		throw new IllegalArgumentException("Unsupported vertex buffer type: " +
-				buffer.getClass().getSimpleName());
 	}
 }

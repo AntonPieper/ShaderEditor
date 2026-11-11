@@ -45,8 +45,7 @@ final class ShaderRenderPipeline {
 					GLES20.GL_CLAMP_TO_EDGE);
 	@NonNull
 	private final GlDevice device;
-	@NonNull
-	private final Mesh fullScreenQuadMesh;
+	private final FullScreenQuad quad = new FullScreenQuad();
 	private final GlFramebuffer[] framebuffers = new GlFramebuffer[2];
 	private final GlTexture2D[] targetTextures = new GlTexture2D[2];
 	private int frontTarget;
@@ -56,9 +55,8 @@ final class ShaderRenderPipeline {
 	@Nullable
 	private GlTexture2D thumbnailTexture;
 
-	ShaderRenderPipeline(@NonNull GlDevice device, @NonNull Mesh fullScreenQuadMesh) {
+	ShaderRenderPipeline(@NonNull GlDevice device) {
 		this.device = device;
-		this.fullScreenQuadMesh = fullScreenQuadMesh;
 	}
 
 	@NonNull
@@ -131,7 +129,7 @@ final class ShaderRenderPipeline {
 		device.bindFramebuffer(framebuffer);
 		device.setViewport(0, 0, targetTexture.getWidth(), targetTexture.getHeight());
 		device.useProgram(program);
-		device.draw(fullScreenQuadMesh, program);
+		quad.draw();
 	}
 
 	void renderSurfacePass(
@@ -228,7 +226,7 @@ final class ShaderRenderPipeline {
 		device.uniform2fv(surfaceProgram.resolutionLocation(), 1, drawResolution);
 		device.bindTexture(surfaceProgram.frameUnit(), sourceTexture);
 		device.clear(GLES20.GL_COLOR_BUFFER_BIT);
-		device.draw(fullScreenQuadMesh, program);
+		quad.draw();
 	}
 
 	private void discardTargets() {
