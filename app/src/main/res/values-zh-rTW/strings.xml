@@ -214,26 +214,28 @@
 	<string name="sample_camera_back_rationale">如何使用後置鏡頭紋理（僅支援 Android 4.0+）</string>
 	<string name="sample_cloudy_conway_name">多雲康威</string>
 	<string name="sample_cloudy_conway_rationale">康威生命遊戲的一個變體。</string>
+	<string name="sample_compass_name">Compass</string>
+	<string name="sample_compass_rationale">Hold it flat and turn; the needle points north</string>
 	<string name="sample_electric_fade_name">電力淡化</string>
 	<string name="sample_electric_fade_rationale">類似於多雲康威，但使用了預設的回掃緩衝區 (Backbuffer)。</string>
 	<string name="sample_game_of_life_name">生命遊戲</string>
 	<string name="sample_game_of_life_rationale">康威生命遊戲。點擊螢幕來創造新的生命點。</string>
 	<string name="sample_gles_300_name">GLES 300</string>
 	<string name="sample_gles_300_rationale">使用 GLES 3.00 版本語法</string>
-	<string name="sample_gravity_name">重力感應</string>
-	<string name="sample_gravity_rationale">如何使用重力感應變數</string>
 	<string name="sample_loop_name">Loop</string>
 	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
-	<string name="sample_orientation_name">方向感應</string>
-	<string name="sample_orientation_rationale">如何使用方向變數</string>
 	<string name="sample_shapes_name">Shapes</string>
 	<string name="sample_shapes_rationale">Touch the screen; the orbit moves to your finger</string>
 	<string name="sample_swirl_name">旋渦</string>
 	<string name="sample_swirl_rationale">如何使用旋渦圖案扭曲紋理</string>
 	<string name="sample_texture_name">紋理貼圖</string>
 	<string name="sample_texture_rationale">如何渲染紋理圖像</string>
+	<string name="sample_tilt_name">Tilt</string>
+	<string name="sample_tilt_rationale">Tilt the phone; the ball rolls to the low side</string>
 	<string name="sample_touch_name">觸碰回饋</string>
 	<string name="sample_touch_rationale">如何處理觸碰輸入</string>
+	<string name="sample_window_name">Window</string>
+	<string name="sample_window_rationale">Turn around; the sky stays put behind the glass</string>
 
 	<string name="default_shader">預設</string>
 
