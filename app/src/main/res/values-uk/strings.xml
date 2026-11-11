@@ -228,7 +228,7 @@
 	<string name="sample_battery_name">Батарея</string>
 	<string name="sample_battery_rationale">Plug in the charger; the level rises in pulses</string>
 	<string name="sample_camera_back_name">Задня камера</string>
-	<string name="sample_camera_back_rationale">Як користуватися задньою камерою (тільки на Ice Cream Sandwich або краще)</string>
+	<string name="sample_camera_back_rationale">Turn the phone; the view stays upright (camera)</string>
 	<string name="sample_clock_name">Clock</string>
 	<string name="sample_clock_rationale">Compare with the status bar; the hands agree</string>
 	<string name="sample_cloudy_conway_name">Cloudy Conway</string>
@@ -245,8 +245,14 @@
 	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
 	<string name="sample_meters_name">Meters</string>
 	<string name="sample_meters_rationale">Cover the phone\'s top; the left and right bars drop</string>
+	<string name="sample_mirror_name">Mirror</string>
+	<string name="sample_mirror_rationale">Raise your right hand; it is on the right (camera)</string>
+	<string name="sample_notifications_name">Notifications</string>
+	<string name="sample_notifications_rationale">Get a notification; a dot appears (notifications)</string>
 	<string name="sample_shapes_name">Shapes</string>
 	<string name="sample_shapes_rationale">Touch the screen; the orbit moves to your finger</string>
+	<string name="sample_sound_name">Sound</string>
+	<string name="sample_sound_rationale">Make a sound; the ring swells (microphone)</string>
 	<string name="sample_swirl_name">Вир</string>
 	<string name="sample_swirl_rationale">Як спотворити текстури за допомогою вихрового візерунка</string>
 	<string name="sample_texture_name">Текстура</string>
