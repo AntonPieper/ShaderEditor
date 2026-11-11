@@ -17,6 +17,7 @@ import java.util.List;
 import javax.microedition.khronos.opengles.GL11ExtensionPack;
 
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 final class GlDevice {
 	private static final int[] CUBE_MAP_TARGETS = {
@@ -37,7 +38,7 @@ final class GlDevice {
 
 	private record ShaderCompileResult(
 			@Nullable GlShader shader,
-			@NonNull List<ShaderError> infoLog) {
+			@NonNull List<ProjectDiagnostic> infoLog) {
 	}
 
 	// Call once for every new context, before anything else.
@@ -310,7 +311,7 @@ final class GlDevice {
 			deleteShader(vertexCompile.shader);
 			deleteShader(fragmentCompile.shader);
 			return GlProgramBuildResult.failure(
-					List.of(ShaderError.createGeneral("Cannot create program")));
+					List.of(ProjectDiagnostic.error("Cannot create program")));
 		}
 
 		GLES20.glAttachShader(programId, vertexCompile.shader.getId());
@@ -323,7 +324,7 @@ final class GlDevice {
 		int[] linkStatus = new int[1];
 		GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0);
 		if (linkStatus[0] != GLES20.GL_TRUE) {
-			List<ShaderError> infoLog = ShaderError.parseAll(
+			List<ProjectDiagnostic> infoLog = DriverLog.parse(
 					GLES20.glGetProgramInfoLog(programId),
 					fragmentLineMapping);
 			GLES20.glDeleteProgram(programId);
@@ -331,7 +332,7 @@ final class GlDevice {
 		}
 
 		var program = new GlProgram(programId, queryActiveUniforms(programId));
-		ShaderError unitError = program.checkTextureUnits(maxTextureUnits);
+		ProjectDiagnostic unitError = program.checkTextureUnits(maxTextureUnits);
 		if (unitError != null) {
 			GLES20.glDeleteProgram(programId);
 			return GlProgramBuildResult.failure(List.of(unitError));
@@ -476,7 +477,7 @@ final class GlDevice {
 		if (shaderId == 0) {
 			return new ShaderCompileResult(
 					null,
-					List.of(ShaderError.createGeneral("Cannot create shader")));
+					List.of(ProjectDiagnostic.error("Cannot create shader")));
 		}
 
 		GLES20.glShaderSource(shaderId, source);
@@ -485,7 +486,7 @@ final class GlDevice {
 		int[] compiled = new int[1];
 		GLES20.glGetShaderiv(shaderId, GLES20.GL_COMPILE_STATUS, compiled, 0);
 		if (compiled[0] == 0) {
-			List<ShaderError> infoLog = ShaderError.parseAll(
+			List<ProjectDiagnostic> infoLog = DriverLog.parse(
 					GLES20.glGetShaderInfoLog(shaderId),
 					lineMapping);
 			GLES20.glDeleteShader(shaderId);

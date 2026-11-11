@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.database.Database;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 final class ShaderTextureResources {
 	static final class SamplerTextureBinding {
@@ -75,10 +76,10 @@ final class ShaderTextureResources {
 	}
 
 	@NonNull
-	List<ShaderError> load(@NonNull Context context, @NonNull GlDevice device) {
+	List<ProjectDiagnostic> load(@NonNull Context context, @NonNull GlDevice device) {
 		release(device);
 
-		var errors = new ArrayList<ShaderError>();
+		var errors = new ArrayList<ProjectDiagnostic>();
 		var textureDao = Database.getInstance(context).getDataSource().texture;
 		for (var binding : bindings) {
 			var sampler = binding.sampler();
@@ -151,14 +152,14 @@ final class ShaderTextureResources {
 	private static void loadTexture2D(
 			@NonNull GlDevice device,
 			@NonNull SamplerTextureBinding binding,
-			@NonNull List<ShaderError> errors,
+			@NonNull List<ProjectDiagnostic> errors,
 			@NonNull Bitmap bitmap) {
 		var sampler = binding.sampler();
 		var texture = device.createTexture2D();
 		device.applyTextureParameters(texture, sampler.parameters());
 		var message = device.uploadTexture2D(texture, bitmap, true);
 		if (message != null) {
-			errors.add(ShaderError.createGeneral(message));
+			errors.add(ProjectDiagnostic.error(message));
 			device.deleteTexture(texture);
 			return;
 		}
@@ -170,13 +171,13 @@ final class ShaderTextureResources {
 			@NonNull GlDevice device,
 			@NonNull SamplerTextureBinding binding,
 			@NonNull Bitmap bitmap,
-			@NonNull List<ShaderError> errors) {
+			@NonNull List<ProjectDiagnostic> errors) {
 		var sampler = binding.sampler();
 		var texture = device.createCubemap();
 		device.applyTextureParameters(texture, sampler.parameters());
 		var message = device.uploadCubemapFromAtlas(texture, bitmap);
 		if (message != null) {
-			errors.add(ShaderError.createGeneral(message));
+			errors.add(ProjectDiagnostic.error(message));
 			device.deleteTexture(texture);
 			return;
 		}

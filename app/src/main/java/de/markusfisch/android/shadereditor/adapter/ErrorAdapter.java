@@ -6,6 +6,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
@@ -13,12 +14,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.Locale;
 
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 
-public class ErrorAdapter extends ListAdapter<ShaderError, ErrorAdapter.ViewHolder> {
+public class ErrorAdapter extends ListAdapter<ProjectDiagnostic, ErrorAdapter.ViewHolder> {
 	@FunctionalInterface
 	public interface OnItemClickListener {
-		void onItemClick(int lineNumber);
+		void onItemClick(@Nullable ProjectPath file, int lineNumber);
 	}
 
 	@NonNull
@@ -38,7 +40,7 @@ public class ErrorAdapter extends ListAdapter<ShaderError, ErrorAdapter.ViewHold
 
 	@Override
 	public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-		ShaderError error = getItem(position);
+		ProjectDiagnostic error = getItem(position);
 		if (error != null) {
 			holder.update(error, listener);
 		}
@@ -54,31 +56,33 @@ public class ErrorAdapter extends ListAdapter<ShaderError, ErrorAdapter.ViewHold
 			errorMessage = itemView.findViewById(R.id.error_message);
 		}
 
-		public void update(@NonNull ShaderError error, ErrorAdapter.OnItemClickListener listener) {
-			if (error.hasLine()) {
-				errorLine.setText(String.format(Locale.getDefault(), "%d: ", error.getLine()));
+		public void update(@NonNull ProjectDiagnostic error, ErrorAdapter.OnItemClickListener listener) {
+			String location = error.location();
+			if (!location.isEmpty()) {
+				errorLine.setText(String.format(Locale.getDefault(), "%s: ", location));
 			} else {
 				errorLine.setVisibility(View.GONE);
 			}
 
-			errorMessage.setText(error.getMessage());
+			errorMessage.setText(error.message());
 
-			itemView.setOnClickListener(v -> listener.onItemClick(error.getLine()));
+			itemView.setOnClickListener(v -> listener.onItemClick(
+					error.file(), error.line()));
 		}
 	}
 
-	private static final DiffUtil.ItemCallback<ShaderError> DIFF_CALLBACK =
-			new DiffUtil.ItemCallback<ShaderError>() {
+	private static final DiffUtil.ItemCallback<ProjectDiagnostic> DIFF_CALLBACK =
+			new DiffUtil.ItemCallback<ProjectDiagnostic>() {
 				@Override
-				public boolean areItemsTheSame(@NonNull ShaderError oldItem,
-						@NonNull ShaderError newItem) {
+				public boolean areItemsTheSame(@NonNull ProjectDiagnostic oldItem,
+						@NonNull ProjectDiagnostic newItem) {
 					// Implement logic to check if items are the same
 					return oldItem.equals(newItem);
 				}
 
 				@Override
-				public boolean areContentsTheSame(@NonNull ShaderError oldItem,
-						@NonNull ShaderError newItem) {
+				public boolean areContentsTheSame(@NonNull ProjectDiagnostic oldItem,
+						@NonNull ProjectDiagnostic newItem) {
 					// Implement logic to check if item contents are the same
 					return oldItem.equals(newItem);
 				}

@@ -1,19 +1,27 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.project.SourceMap;
+
 final class ShaderLineMapping {
 	private static final ShaderLineMapping IDENTITY =
-			new ShaderLineMapping(List.of());
+			new ShaderLineMapping(List.of(), null);
 
 	@NonNull
 	private final List<InsertedLines> insertions;
+	@Nullable
+	private final SourceMap sourceMap;
 
-	private ShaderLineMapping(@NonNull List<InsertedLines> insertions) {
+	private ShaderLineMapping(
+			@NonNull List<InsertedLines> insertions,
+			@Nullable SourceMap sourceMap) {
 		this.insertions = List.copyOf(insertions);
+		this.sourceMap = sourceMap;
 	}
 
 	@NonNull
@@ -24,6 +32,19 @@ final class ShaderLineMapping {
 	@NonNull
 	static ShaderLineMapping withLeadingInsertedLines(int lineCount) {
 		return identity().addInsertedLinesAfterSourceLine(0, lineCount);
+	}
+
+	/**
+	 * Map source lines further to project files through sourceMap.
+	 */
+	@NonNull
+	static ShaderLineMapping withSourceMap(@NonNull SourceMap sourceMap) {
+		return new ShaderLineMapping(List.of(), sourceMap);
+	}
+
+	@Nullable
+	SourceMap getSourceMap() {
+		return sourceMap;
 	}
 
 	int toSourceLine(int preparedLine) {
@@ -61,11 +82,11 @@ final class ShaderLineMapping {
 				updatedInsertions.set(last, new InsertedLines(
 						sourceLine,
 						previous.lineCount + lineCount));
-				return new ShaderLineMapping(updatedInsertions);
+				return new ShaderLineMapping(updatedInsertions, sourceMap);
 			}
 		}
 		updatedInsertions.add(new InsertedLines(sourceLine, lineCount));
-		return new ShaderLineMapping(updatedInsertions);
+		return new ShaderLineMapping(updatedInsertions, sourceMap);
 	}
 
 	private static final class InsertedLines {

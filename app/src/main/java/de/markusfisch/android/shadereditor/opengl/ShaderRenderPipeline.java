@@ -13,6 +13,8 @@ import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+
 final class ShaderRenderPipeline {
 	record SurfaceProgram(
 			@NonNull GlProgram program,
@@ -60,8 +62,8 @@ final class ShaderRenderPipeline {
 	}
 
 	@NonNull
-	List<ShaderError> createContextResources() {
-		ArrayList<ShaderError> errors = new ArrayList<>();
+	List<ProjectDiagnostic> createContextResources() {
+		ArrayList<ProjectDiagnostic> errors = new ArrayList<>();
 		thumbnailTexture = device.createTexture2D();
 		device.applyTextureParameters(thumbnailTexture, thumbnailTextureParameters);
 		device.allocateTexture2D(
@@ -72,7 +74,7 @@ final class ShaderRenderPipeline {
 		device.attachColor(thumbnailFramebuffer, thumbnailTexture);
 		int status = device.checkFramebufferStatus(thumbnailFramebuffer);
 		if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
-			errors.add(ShaderError.createGeneral(
+			errors.add(ProjectDiagnostic.error(
 					"Thumbnail framebuffer incomplete: 0x" +
 							Integer.toHexString(status)));
 		}
@@ -102,12 +104,12 @@ final class ShaderRenderPipeline {
 	}
 
 	@NonNull
-	List<ShaderError> ensureTargets(
+	List<ProjectDiagnostic> ensureTargets(
 			@NonNull Context context,
 			int width,
 			int height,
 			@NonNull BackBufferParameters parameters) {
-		ArrayList<ShaderError> errors = new ArrayList<>();
+		ArrayList<ProjectDiagnostic> errors = new ArrayList<>();
 		if (hasTargets()) {
 			return errors;
 		}
@@ -244,7 +246,7 @@ final class ShaderRenderPipeline {
 			int width,
 			int height,
 			@NonNull BackBufferParameters parameters,
-			@NonNull List<ShaderError> errors) {
+			@NonNull List<ProjectDiagnostic> errors) {
 		GlTexture2D texture = device.createTexture2D();
 		targetTextures[index] = texture;
 
@@ -252,7 +254,7 @@ final class ShaderRenderPipeline {
 		if (bitmap != null) {
 			String message = device.uploadTexture2D(texture, bitmap, true);
 			if (message != null) {
-				errors.add(ShaderError.createGeneral(message));
+				errors.add(ProjectDiagnostic.error(message));
 			}
 			bitmap.recycle();
 		} else {
@@ -267,7 +269,7 @@ final class ShaderRenderPipeline {
 		device.attachColor(framebuffer, texture);
 		int status = device.checkFramebufferStatus(framebuffer);
 		if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
-			errors.add(ShaderError.createGeneral(
+			errors.add(ProjectDiagnostic.error(
 					"Framebuffer incomplete: 0x" + Integer.toHexString(status)));
 		}
 

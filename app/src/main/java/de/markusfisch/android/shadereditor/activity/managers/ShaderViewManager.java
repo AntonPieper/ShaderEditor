@@ -12,8 +12,8 @@ import androidx.annotation.Nullable;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.opengl.ShaderError;
 import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
@@ -21,7 +21,7 @@ public class ShaderViewManager {
 	public interface Listener {
 		void onFramesPerSecond(int fps);
 
-		void onInfoLog(@NonNull List<ShaderError> infoLog);
+		void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog);
 
 		void onQualityChanged(float quality);
 	}
@@ -97,7 +97,7 @@ public class ShaderViewManager {
 			}
 
 			@Override
-			public void onInfoLog(@NonNull List<ShaderError> infoLog) {
+			public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
 				listener.onInfoLog(infoLog);
 			}
 		});

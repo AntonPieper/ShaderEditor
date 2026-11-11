@@ -45,7 +45,7 @@ public class GlProgramTest {
 		var error = program.checkTextureUnits(3);
 		assertNotNull(error);
 		assertEquals("The shader needs 4 texture units, but this device has only 3",
-				error.getMessage());
+				error.message());
 	}
 
 	@Test

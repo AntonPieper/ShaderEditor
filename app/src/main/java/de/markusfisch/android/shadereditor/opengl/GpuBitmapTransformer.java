@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 public final class GpuBitmapTransformer {
 	private static final String TAG = "GpuBitmapTransformer";
@@ -308,7 +309,7 @@ public final class GpuBitmapTransformer {
 					FRAGMENT_SHADER,
 					ShaderLineMapping.identity());
 			if (!result.succeeded() || result.getProgram() == null) {
-				List<ShaderError> log = result.getInfoLog();
+				List<ProjectDiagnostic> log = result.getInfoLog();
 				throw new IllegalStateException(
 						"Cannot create transform program: " + log);
 			}
