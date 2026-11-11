@@ -1,0 +1,113 @@
+package de.markusfisch.android.shadereditor.adapter;
+
+import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.RawRes;
+import androidx.annotation.StringRes;
+
+import java.util.List;
+
+import de.markusfisch.android.shadereditor.R;
+
+public final class Samples {
+	public enum Section {
+		START_HERE(R.string.samples_section_start_here),
+		DEVICE_INPUTS(R.string.samples_section_device_inputs),
+		TECHNIQUES(R.string.samples_section_techniques),
+		WALLPAPERS(R.string.samples_section_wallpapers);
+
+		@StringRes
+		public final int titleId;
+
+		Section(@StringRes int titleId) {
+			this.titleId = titleId;
+		}
+	}
+
+	public record Sample(
+			@NonNull Section section,
+			@RawRes int resId,
+			@DrawableRes int thumbId,
+			@StringRes int nameId,
+			@StringRes int rationaleId,
+			float quality) {
+	}
+
+	// Within a section, samples are listed in this order.
+	public static final List<Sample> ALL = List.of(
+			new Sample(Section.START_HERE,
+					R.raw.sample_circles,
+					R.drawable.thumbnail_circles,
+					R.string.sample_circles_name,
+					R.string.sample_circles_rationale,
+					1f),
+			new Sample(Section.START_HERE,
+					R.raw.sample_touch,
+					R.drawable.thumbnail_touch,
+					R.string.sample_touch_name,
+					R.string.sample_touch_rationale,
+					1f),
+			new Sample(Section.START_HERE,
+					R.raw.sample_texture,
+					R.drawable.thumbnail_texture,
+					R.string.sample_texture_name,
+					R.string.sample_texture_rationale,
+					1f),
+			new Sample(Section.DEVICE_INPUTS,
+					R.raw.sample_gravity,
+					R.drawable.thumbnail_gravity,
+					R.string.sample_gravity_name,
+					R.string.sample_gravity_rationale,
+					1f),
+			new Sample(Section.DEVICE_INPUTS,
+					R.raw.sample_orientation,
+					R.drawable.thumbnail_orientation,
+					R.string.sample_orientation_name,
+					R.string.sample_orientation_rationale,
+					1f),
+			new Sample(Section.DEVICE_INPUTS,
+					R.raw.sample_battery,
+					R.drawable.thumbnail_battery,
+					R.string.sample_battery_name,
+					R.string.sample_battery_rationale,
+					1f),
+			new Sample(Section.DEVICE_INPUTS,
+					R.raw.sample_camera_back,
+					R.drawable.thumbnail_camera_back,
+					R.string.sample_camera_back_name,
+					R.string.sample_camera_back_rationale,
+					1f),
+			new Sample(Section.TECHNIQUES,
+					R.raw.sample_game_of_life,
+					R.drawable.thumbnail_game_of_life,
+					R.string.sample_game_of_life_name,
+					R.string.sample_game_of_life_rationale,
+					.125f),
+			new Sample(Section.TECHNIQUES,
+					R.raw.sample_electric_fade,
+					R.drawable.thumbnail_electric_fade,
+					R.string.sample_electric_fade_name,
+					R.string.sample_electric_fade_rationale,
+					.125f),
+			new Sample(Section.TECHNIQUES,
+					R.raw.sample_swirl,
+					R.drawable.thumbnail_swirl,
+					R.string.sample_swirl_name,
+					R.string.sample_swirl_rationale,
+					1f),
+			new Sample(Section.TECHNIQUES,
+					R.raw.sample_gles_300,
+					R.drawable.thumbnail_default,
+					R.string.sample_gles_300_name,
+					R.string.sample_gles_300_rationale,
+					1f),
+			new Sample(Section.TECHNIQUES,
+					R.raw.sample_cloudy_conway,
+					R.drawable.thumbnail_cloudy_conway,
+					R.string.sample_cloudy_conway_name,
+					R.string.sample_cloudy_conway_rationale,
+					.125f));
+
+	private Samples() {
+	}
+}
