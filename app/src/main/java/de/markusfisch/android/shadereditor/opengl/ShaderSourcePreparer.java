@@ -73,7 +73,7 @@ final class ShaderSourcePreparer {
 				continue;
 			}
 
-			if (ShaderRenderer.UNIFORM_BACKBUFFER.equals(name)) {
+			if (UniformTable.BACKBUFFER.equals(name)) {
 				backBufferParameters.parse(params);
 				continue;
 			}

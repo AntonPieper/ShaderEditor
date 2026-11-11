@@ -27,12 +27,6 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		void onFramesPerSecond(int fps);
 	}
 
-	public static final String UNIFORM_BACKBUFFER = "backbuffer";
-	public static final String UNIFORM_CAMERA_BACK = "cameraBack";
-	public static final String UNIFORM_CAMERA_FRONT = "cameraFront";
-	public static final String UNIFORM_POSITION = "position";
-	public static final String UNIFORM_RESOLUTION = "resolution";
-
 	private static final int MAX_TEXTURES = 32;
 	private static final long FPS_UPDATE_FREQUENCY_NS = 200000000L;
 	private static final float NS_PER_SECOND = 1000000000f;

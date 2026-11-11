@@ -23,8 +23,8 @@ import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.AddUniformActivity;
-import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
 import de.markusfisch.android.shadereditor.opengl.TextureParameters;
+import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.TextureParametersView;
 
@@ -157,7 +157,7 @@ public abstract class AbstractSamplerPropertiesFragment extends Fragment {
 
 			return;
 		} else if (!name.matches(TEXTURE_NAME_PATTERN) ||
-				name.equals(ShaderRenderer.UNIFORM_BACKBUFFER)) {
+				name.equals(UniformTable.BACKBUFFER)) {
 			Toast.makeText(
 					context,
 					R.string.invalid_texture_name,

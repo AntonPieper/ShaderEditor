@@ -12,8 +12,8 @@ import androidx.fragment.app.Fragment;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.AddUniformActivity;
 import de.markusfisch.android.shadereditor.opengl.BackBufferParameters;
-import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
 import de.markusfisch.android.shadereditor.opengl.TextureParameters;
+import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.widget.BackBufferParametersView;
 import de.markusfisch.android.shadereditor.widget.TextureParametersView;
 
@@ -59,7 +59,7 @@ public class TextureParametersFragment extends Fragment {
 					"Missing type and name arguments");
 		}
 
-		isBackBuffer = ShaderRenderer.UNIFORM_BACKBUFFER.equals(textureName);
+		isBackBuffer = UniformTable.BACKBUFFER.equals(textureName);
 
 		int layout;
 		if (isBackBuffer) {

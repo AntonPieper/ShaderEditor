@@ -70,12 +70,12 @@ final class BuiltinUniforms {
 		this.fTimeMax = fTimeMax;
 		this.textureResources = textureResources;
 		this.device = device;
-		backBufferUnit = program.getTextureUnit(ShaderRenderer.UNIFORM_BACKBUFFER);
+		backBufferUnit = program.getTextureUnit(UniformTable.BACKBUFFER);
 		textureResources.resolveUnits(program);
 
 		sources.setCameraBinding(textureResources.getFirstBinding(
-				ShaderRenderer.UNIFORM_CAMERA_BACK,
-				ShaderRenderer.UNIFORM_CAMERA_FRONT));
+				UniformTable.CAMERA_BACK,
+				UniformTable.CAMERA_FRONT));
 		activeBuiltins = new ActiveBuiltins(device, program, sources);
 	}
 

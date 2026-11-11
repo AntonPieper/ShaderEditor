@@ -60,7 +60,7 @@ final class CameraSource implements UniformSource {
 			return;
 		}
 
-		int lensFacing = ShaderRenderer.UNIFORM_CAMERA_BACK.equals(
+		int lensFacing = UniformTable.CAMERA_BACK.equals(
 				binding.sampler().name())
 				? CameraSelector.LENS_FACING_BACK
 				: CameraSelector.LENS_FACING_FRONT;

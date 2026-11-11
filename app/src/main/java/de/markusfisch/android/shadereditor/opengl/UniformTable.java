@@ -35,6 +35,10 @@ import de.markusfisch.android.shadereditor.opengl.SystemSources.Notifications;
 import de.markusfisch.android.shadereditor.opengl.SystemSources.PowerConnected;
 
 public final class UniformTable {
+	public static final String BACKBUFFER = "backbuffer";
+	static final String CAMERA_BACK = "cameraBack";
+	static final String CAMERA_FRONT = "cameraFront";
+
 	public static final List<UniformDef> BUILTINS = List.of(
 			uniform("time", FLOAT, R.string.time_in_seconds_since_load,
 					(in, out) -> out.setFloat(in.time)),
@@ -156,18 +160,18 @@ public final class UniformTable {
 							out.setVec2(camera.addent[0], camera.addent[1]);
 						}
 					}),
-			declaration(ShaderRenderer.UNIFORM_BACKBUFFER, SAMPLER_2D,
+			declaration(BACKBUFFER, SAMPLER_2D,
 					R.string.previous_frame, null),
-			declaration(ShaderRenderer.UNIFORM_CAMERA_BACK, SAMPLER_EXTERNAL_OES,
+			declaration(CAMERA_BACK, SAMPLER_EXTERNAL_OES,
 					R.string.camera_back, CameraSource.KEY),
-			declaration(ShaderRenderer.UNIFORM_CAMERA_FRONT, SAMPLER_EXTERNAL_OES,
+			declaration(CAMERA_FRONT, SAMPLER_EXTERNAL_OES,
 					R.string.camera_front, CameraSource.KEY));
 
 	private UniformTable() {
 	}
 
 	@NonNull
-	public static UniformDef get(@NonNull String name) {
+	static UniformDef get(@NonNull String name) {
 		for (var uniform : BUILTINS) {
 			if (uniform.getName().equals(name)) {
 				return uniform;
