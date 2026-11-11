@@ -350,10 +350,58 @@ public class PreparationTest {
 						.put("main.glsl", lines(input("a.glsl", "a"), MAIN))
 						.put("a.glsl", lines(input("b.glsl", "b"), MAIN))
 						.put("b.glsl", MAIN),
-				path("main.glsl"), new ProjectLimits(16, 1000, 3, 16));
+				path("main.glsl"), new ProjectLimits(16, 1000, 100, 3, 16, 100));
 		assertNull(preparation.plan());
-		assertEquals(List.of("ERROR null:0 Build reads more than the limit " +
-				"of 3 files"), messages(preparation));
+		assertEquals(List.of("ERROR a.glsl:1 Could not read b.glsl: the " +
+				"build reads more than the limit of 3 files"),
+				messages(preparation));
+	}
+
+	@Test
+	public void fileLimitIsCheckedBeforeReading() {
+		StringBuilder main = new StringBuilder();
+		for (int i = 0; i < 6; ++i) {
+			main.append(input("a" + i + ".png", "a" + i)).append('\n');
+		}
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("main.glsl", main + MAIN);
+		for (int i = 0; i < 6; ++i) {
+			files.put("a" + i + ".png", new byte[]{1});
+		}
+		Preparation preparation = Preparation.prepare(files,
+				path("main.glsl"), new ProjectLimits(16, 10000, 100, 2, 16,
+						100));
+		assertNull(preparation.plan());
+		assertEquals(List.of(ProjectManifest.FILE, path("main.glsl")),
+				files.readPaths);
+		assertEquals(6, preparation.diagnostics().size());
+		assertEquals("ERROR main.glsl:1 Could not read a0.png: the build " +
+				"reads more than the limit of 2 files",
+				messages(preparation).get(0));
+	}
+
+	@Test
+	public void zeroLimitsAreErrorsNotCrashes() {
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("main.glsl", lines("#include \"lib.glsl\"",
+						input("a.png", "a"), MAIN))
+				.put("lib.glsl", "float x;\n")
+				.put("a.png", new byte[]{1});
+		List<ProjectLimits> zeros = List.of(
+				new ProjectLimits(0, 1000, 100, 64, 16, 100),
+				new ProjectLimits(16, 0, 100, 64, 16, 100),
+				new ProjectLimits(16, 1000, 0, 64, 16, 100),
+				new ProjectLimits(16, 1000, 100, 0, 16, 100),
+				new ProjectLimits(16, 1000, 100, 64, 0, 100));
+		for (ProjectLimits limits : zeros) {
+			Preparation preparation = Preparation.prepare(files,
+					path("main.glsl"), limits);
+			assertNull(limits.toString(), preparation.plan());
+			assertTrue(messages(preparation).toString(),
+					messages(preparation).get(0).contains("limit of 0"));
+		}
+		assertNotNull(Preparation.prepare(files, path("main.glsl"),
+				new ProjectLimits(16, 1000, 100, 64, 16, 0)).plan());
 	}
 
 	private static Preparation prepare(MemoryProjectFiles files) {

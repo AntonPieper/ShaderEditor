@@ -10,6 +10,8 @@ import java.util.Map;
  * Reads every file of one build once and keeps a copy of its bytes, so
  * all consumers of a file see the same bytes, also when the provider
  * changes its array later, and records each file read with its revision.
+ * It is where the build's file limit is checked: a file beyond it is
+ * not read and fails with that reason.
  */
 final class CapturedFiles implements ProjectFiles {
 	private final Map<ProjectPath, Read> captured = new HashMap<>();
@@ -17,9 +19,12 @@ final class CapturedFiles implements ProjectFiles {
 	private final List<SourceAssembly.Dependency> dependencies =
 			new ArrayList<>();
 	private final ProjectFiles files;
+	private final int limit;
+	private int reads;
 
-	CapturedFiles(ProjectFiles files) {
+	CapturedFiles(ProjectFiles files, ProjectLimits limits) {
 		this.files = files;
+		this.limit = limits.filesRead();
 	}
 
 	/**
@@ -42,7 +47,14 @@ final class CapturedFiles implements ProjectFiles {
 		if (captured.containsKey(path)) {
 			return captured.get(path);
 		}
-		Read read = files.read(path);
+		Read read;
+		if (reads < limit) {
+			++reads;
+			read = files.read(path);
+		} else {
+			read = new Failed("the build reads more than the limit of " +
+					limit + " files");
+		}
 		String revision = null;
 		if (read instanceof Content content) {
 			Content copy = new Content(content.bytes().clone(),

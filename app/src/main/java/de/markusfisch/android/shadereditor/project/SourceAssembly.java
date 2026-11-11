@@ -149,6 +149,7 @@ public final class SourceAssembly {
 		private final ProjectPath entry;
 		private final ProjectLimits limits;
 		private int versionLine;
+		private int expansions;
 		private long bytes;
 		private boolean stopped;
 		private boolean boundary;
@@ -240,7 +241,12 @@ public final class SourceAssembly {
 			} else if (stack.size() > limits.includeDepth()) {
 				error(here, "Includes are nested deeper than the limit of " +
 						limits.includeDepth());
+			} else if (expansions >= limits.includeExpansions()) {
+				error(here, "Includes are expanded more often than the " +
+						"limit of " + limits.includeExpansions());
+				stopped = true;
 			} else {
+				++expansions;
 				expand(target.value(), here);
 			}
 		}
@@ -255,12 +261,6 @@ public final class SourceAssembly {
 					error(site, unreadable.get(file));
 				}
 				return source;
-			}
-			if (loaded.size() >= limits.filesRead()) {
-				error(site, "Build reads more than the limit of " +
-						limits.filesRead() + " files");
-				stopped = true;
-				return null;
 			}
 			ProjectFiles.Read read = files.read(file);
 			loaded.put(file, null);
