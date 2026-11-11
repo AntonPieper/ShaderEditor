@@ -1,14 +1,13 @@
 package de.markusfisch.android.shadereditor.hardware;
 
-import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class LightListener extends AbstractListener {
 	private float ambient = 0f;
 
-	public LightListener(Context context) {
-		super(context);
+	public LightListener(SensorRegistry sensors) {
+		super(sensors);
 	}
 
 	public boolean register() {

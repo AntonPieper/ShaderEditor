@@ -3,24 +3,31 @@ package de.markusfisch.android.shadereditor.opengl;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEventListener;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LifecycleOwner;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.hardware.SensorRegistry;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.Accelerometer;
 import de.markusfisch.android.shadereditor.opengl.SensorSources.Gravity;
 import de.markusfisch.android.shadereditor.opengl.SensorSources.Gyroscope;
 import de.markusfisch.android.shadereditor.opengl.SensorSources.Light;
@@ -33,51 +40,11 @@ import de.markusfisch.android.shadereditor.opengl.SensorSources.RotationVector;
 
 public class SensorSourcesTest {
 	private static final float EPSILON = 1e-6f;
-	private static final List<String> events = new ArrayList<>();
-	private static boolean magneticAvailable;
-
-	private static class Fake implements UniformSource {
-		final String name;
-
-		Fake(String name) {
-			this.name = name;
-		}
-
-		@Override
-		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			events.add("start " + name);
-		}
-
-		@Override
-		public void stop() {
-			events.add("stop " + name);
-		}
-	}
-
-	private static final UniformSource.Key<Fake> GRAVITY = () -> new Fake("gravity");
-	private static final UniformSource.Key<Fake> MAGNETIC = () -> new Fake("magnetic");
-	private static final UniformSource.Key<Fake> VECTOR = () -> new Fake("vector");
-
-	private static final class FakeRotation extends Fake {
-		static final Key<FakeRotation> KEY = FakeRotation::new;
-
-		Fake gravity;
-		Fake magnetic;
-		Fake vector;
-
-		FakeRotation() {
-			super("rotation");
-		}
-
-		@Override
-		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			super.start(host, sources);
-			gravity = sources.start(GRAVITY);
-			magnetic = sources.start(MAGNETIC);
-			vector = magneticAvailable ? sources.get(VECTOR) : sources.start(VECTOR);
-		}
-	}
-
+	private static final int ACCELEROMETER = Sensor.TYPE_ACCELEROMETER;
+	private static final int GRAVITY = Sensor.TYPE_GRAVITY;
+	private static final int LINEAR = Sensor.TYPE_LINEAR_ACCELERATION;
+	private static final int MAGNETIC = Sensor.TYPE_MAGNETIC_FIELD;
+	private static final int ROTATION_VECTOR = Sensor.TYPE_ROTATION_VECTOR;
 	private static final EngineHost HOST = new EngineHost() {
 		@NonNull
 		@Override
@@ -95,103 +62,191 @@ public class SensorSourcesTest {
 		}
 	};
 
-	private static final List<UniformDef> TABLE = List.of(
-			new UniformDef("gravity", GlslType.VEC3, 0, 0, GRAVITY, (s, out) -> {
-			}),
-			new UniformDef("magnetic", GlslType.VEC3, 0, 0, MAGNETIC, (s, out) -> {
-			}),
-			new UniformDef("rotationVector", GlslType.VEC3, 0, 0, VECTOR, (s, out) -> {
-			}),
-			new UniformDef("rotationMatrix", GlslType.MAT3, 0, 0, FakeRotation.KEY,
-					(s, out) -> {
-					}),
-			new UniformDef("orientation", GlslType.VEC3, 0, 0, FakeRotation.KEY,
-					(s, out) -> {
-					}),
-			new UniformDef("inclination", GlslType.FLOAT, 0, 0, FakeRotation.KEY,
-					(s, out) -> {
-					}));
+	// Real sources on a device that has only the given sensor types.
+	private static final class Device implements SensorRegistry {
+		final List<Integer> registrations = new ArrayList<>();
+		final Set<Integer> present = new HashSet<>();
+		final UniformSources sources = new UniformSources(HOST, this);
 
-	@Before
-	public void reset() {
-		events.clear();
-		magneticAvailable = true;
-	}
-
-	@Test
-	public void rotationAloneStartsItsDependenciesOnce() {
-		var sources = new UniformSources(HOST);
-		link(sources, "rotationMatrix", "orientation", "inclination");
-		assertEquals(List.of("start rotation", "start gravity", "start magnetic"), events);
-
-		sources.stop();
-		assertStoppedOnce("rotation", "gravity", "magnetic");
-		assertEquals(6, events.size());
-	}
-
-	@Test
-	public void rotationAndGravityShareOneGravity() {
-		var sources = new UniformSources(HOST);
-		link(sources, "gravity", "rotationMatrix");
-		var rotation = sources.get(FakeRotation.KEY);
-		assertSame(sources.get(GRAVITY), rotation.gravity);
-		assertEquals(1, count("start gravity"));
-
-		sources.stop();
-		assertStoppedOnce("rotation", "gravity", "magnetic");
-	}
-
-	@Test
-	public void missingMagneticStartsOneRotationVector() {
-		magneticAvailable = false;
-		var sources = new UniformSources(HOST);
-		link(sources, "rotationVector", "rotationMatrix");
-		var rotation = sources.get(FakeRotation.KEY);
-		assertSame(sources.get(VECTOR), rotation.vector);
-		assertEquals(1, count("start vector"));
-
-		sources.stop();
-		assertStoppedOnce("rotation", "gravity", "magnetic", "vector");
-	}
-
-	@Test
-	public void rotationVectorStartsOnlyWhenNeeded() {
-		var sources = new UniformSources(HOST);
-		link(sources, "rotationMatrix");
-		assertNull(sources.get(FakeRotation.KEY).vector);
-		assertEquals(0, count("start vector"));
-		sources.stop();
-
-		link(sources, "rotationVector", "rotationMatrix");
-		assertSame(sources.get(VECTOR), sources.get(FakeRotation.KEY).vector);
-	}
-
-	@Test
-	public void rotationVectorPrecedesRotationEntries() {
-		var builtins = UniformTable.BUILTINS;
-		int vector = builtins.indexOf(UniformTable.get("rotationVector"));
-		for (var name : List.of("rotationMatrix", "orientation",
-				"inclinationMatrix", "inclination")) {
-			assertTrue(vector < builtins.indexOf(UniformTable.get(name)));
-			assertSame(Rotation.KEY, UniformTable.get(name).getSource());
+		Device(int... sensorTypes) {
+			for (int type : sensorTypes) {
+				present.add(type);
+			}
 		}
-		assertSame(RotationVector.KEY, UniformTable.get("rotationVector").getSource());
+
+		@Override
+		public boolean register(@NonNull SensorEventListener listener, int sensorType) {
+			registrations.add(sensorType);
+			return present.contains(sensorType);
+		}
+
+		@Override
+		public void unregister(@NonNull SensorEventListener listener) {
+		}
+
+		void link(String... names) {
+			Map<String, GlUniform> uniforms = new HashMap<>();
+			for (int i = 0; i < names.length; ++i) {
+				uniforms.put(names[i], UniformSourcesTest.declared(
+						UniformTable.BUILTINS, names[i], i));
+			}
+			new ActiveBuiltins(UniformTable.BUILTINS, uniforms, sources,
+					new LinkOutput());
+		}
+
+		int registrationsOf(int sensorType) {
+			int count = 0;
+			for (int registration : registrations) {
+				if (registration == sensorType) {
+					++count;
+				}
+			}
+			return count;
+		}
 	}
 
 	@Test
-	public void rotationIsUnavailableWithoutListeners() {
-		var rotation = rotation();
-		rotation.update(1L);
-		assertFalse(rotation.available);
-		assertFalse(rotation.inclined);
+	public void gravityAndLinearShareOneAccelerometer() {
+		for (var order : List.of(
+				List.of(Gravity.KEY, Linear.KEY),
+				List.of(Linear.KEY, Gravity.KEY))) {
+			var device = new Device(ACCELEROMETER);
+			for (var key : order) {
+				device.sources.start(key);
+			}
+			var accelerometer = device.sources.get(Accelerometer.KEY);
+			assertNotNull(accelerometer);
+			assertNotNull(accelerometer.gravity);
+			assertSame(accelerometer.gravity, device.sources.get(Gravity.KEY).values);
+			assertSame(accelerometer.linear, device.sources.get(Linear.KEY).values);
+			assertEquals(1, device.registrationsOf(ACCELEROMETER));
+			device.sources.stop();
+		}
+		var device = new Device(ACCELEROMETER);
+		device.link("gravity", "linear");
+		assertNotNull(device.sources.get(Gravity.KEY).values);
+		assertNotNull(device.sources.get(Linear.KEY).values);
 	}
 
 	@Test
-	public void accelerometerGravityDoesNotFeedRotation() {
-		var rotation = rotation();
-		rotation.gravity.values = new float[]{0f, 0f, 9.81f};
-		rotation.magnetic.values = new float[]{0f, 20f, -40f};
-		rotation.magnetic.filtered = new float[]{0f, 20f, -40f};
+	public void eachFallbackAloneUsesTheAccelerometer() {
+		var gravity = new Device(ACCELEROMETER);
+		gravity.link("gravity");
+		assertSame(gravity.sources.get(Accelerometer.KEY).gravity,
+				gravity.sources.get(Gravity.KEY).values);
+
+		var linear = new Device(ACCELEROMETER);
+		linear.link("linear");
+		assertSame(linear.sources.get(Accelerometer.KEY).linear,
+				linear.sources.get(Linear.KEY).values);
+	}
+
+	@Test
+	public void sensorsNeedNoAccelerometer() {
+		var device = new Device(GRAVITY,
+				LINEAR,
+				ACCELEROMETER);
+		device.link("gravity", "linear");
+		assertNotNull(device.sources.get(Gravity.KEY).values);
+		assertNotNull(device.sources.get(Linear.KEY).values);
+		assertNull(device.sources.get(Accelerometer.KEY));
+		assertEquals(0, device.registrationsOf(ACCELEROMETER));
+	}
+
+	@Test
+	public void gravitySensorAndLinearFallback() {
+		var device = new Device(GRAVITY, ACCELEROMETER);
+		device.link("gravity", "linear");
+		var accelerometer = device.sources.get(Accelerometer.KEY);
+		assertNotSame(accelerometer.gravity, device.sources.get(Gravity.KEY).values);
+		assertNotNull(device.sources.get(Gravity.KEY).values);
+		assertSame(accelerometer.linear, device.sources.get(Linear.KEY).values);
+	}
+
+	@Test
+	public void noAccelerometerLeavesBothEmpty() {
+		var device = new Device();
+		device.link("gravity", "linear");
+		assertNull(device.sources.get(Gravity.KEY).values);
+		assertNull(device.sources.get(Linear.KEY).values);
+		assertEquals(1, device.registrationsOf(ACCELEROMETER));
+	}
+
+	@Test
+	public void linearWithRotationAndNoGravityUniform() {
+		for (var order : List.of(
+				List.of(Linear.KEY, Rotation.KEY),
+				List.of(Rotation.KEY, Linear.KEY))) {
+			var device = new Device(ACCELEROMETER,
+					MAGNETIC);
+			for (var key : order) {
+				device.sources.start(key);
+			}
+			var accelerometer = device.sources.get(Accelerometer.KEY);
+			var rotation = device.sources.get(Rotation.KEY);
+			assertSame(accelerometer.linear, device.sources.get(Linear.KEY).values);
+			assertSame(accelerometer.gravity, rotation.gravity.values);
+			assertNull(rotation.vector);
+			assertEquals(1, device.registrationsOf(ACCELEROMETER));
+			device.sources.stop();
+		}
+		var device = new Device(ACCELEROMETER, MAGNETIC);
+		device.link("linear", "orientation");
+		assertNotNull(device.sources.get(Linear.KEY).values);
+		assertNotNull(device.sources.get(Rotation.KEY).gravity.values);
+	}
+
+	@Test
+	public void rotationWithAllSensorsStartsNoRotationVector() {
+		var device = new Device(GRAVITY, MAGNETIC,
+				ACCELEROMETER, ROTATION_VECTOR);
+		device.link("rotationMatrix", "orientation", "inclination");
+		var rotation = device.sources.get(Rotation.KEY);
+		assertSame(device.sources.get(Gravity.KEY), rotation.gravity);
+		assertNull(rotation.vector);
+		assertNull(device.sources.get(RotationVector.KEY));
+		assertNull(device.sources.get(Accelerometer.KEY));
+	}
+
+	@Test
+	public void missingMagneticFallsBackToRotationVector() {
+		var device = new Device(GRAVITY, ROTATION_VECTOR);
+		device.link("rotationMatrix");
+		var rotation = device.sources.get(Rotation.KEY);
+		assertSame(device.sources.get(RotationVector.KEY), rotation.vector);
+		assertNotNull(rotation.vector.values);
+	}
+
+	@Test
+	public void missingGravityFallsBackToRotationVector() {
+		var device = new Device(MAGNETIC, ROTATION_VECTOR);
+		device.link("orientation");
+		var rotation = device.sources.get(Rotation.KEY);
+		assertNull(rotation.gravity.values);
+		assertNotNull(rotation.vector);
+		assertNotNull(rotation.vector.values);
+	}
+
+	@Test
+	public void rotationAndRotationVectorShareOneSourceInAnyOrder() {
+		for (var order : List.of(
+				List.of(RotationVector.KEY, Rotation.KEY),
+				List.of(Rotation.KEY, RotationVector.KEY))) {
+			var device = new Device(ROTATION_VECTOR);
+			for (var key : order) {
+				device.sources.start(key);
+			}
+			assertSame(device.sources.get(RotationVector.KEY),
+					device.sources.get(Rotation.KEY).vector);
+			assertEquals(1, device.registrationsOf(ROTATION_VECTOR));
+		}
+	}
+
+	@Test
+	public void rotationIsUnavailableWithoutSensors() {
+		var device = new Device();
+		device.link("rotationMatrix");
+		var rotation = device.sources.get(Rotation.KEY);
 		rotation.update(1L);
 		assertFalse(rotation.available);
 		assertFalse(rotation.inclined);
@@ -249,7 +304,8 @@ public class SensorSourcesTest {
 
 	@Test
 	public void shaderSeesRotationMatricesRowByRow() {
-		var rotation = rotation();
+		var device = new Device();
+		var rotation = device.sources.start(Rotation.KEY);
 		for (var name : List.of("rotationMatrix", "orientation",
 				"inclinationMatrix", "inclination")) {
 			assertNotWritten(name, rotation);
@@ -300,40 +356,6 @@ public class SensorSourcesTest {
 			for (int column = 0; column < 3; ++column) {
 				assertEquals(rows[row * 3 + column], uploaded[column * 3 + row], EPSILON);
 			}
-		}
-	}
-
-	@NonNull
-	private static Rotation rotation() {
-		var rotation = new Rotation();
-		rotation.gravity = new Gravity();
-		rotation.magnetic = new Magnetic();
-		return rotation;
-	}
-
-	private static void link(@NonNull UniformSources sources, String... names) {
-		Map<String, GlUniform> uniforms = new HashMap<>();
-		for (int i = 0; i < names.length; ++i) {
-			uniforms.put(names[i], UniformSourcesTest.declared(TABLE, names[i], i));
-		}
-		new ActiveBuiltins(TABLE, uniforms, sources,
-				new LinkOutput());
-	}
-
-	private static int count(String event) {
-		int count = 0;
-		for (var e : events) {
-			if (e.equals(event)) {
-				++count;
-			}
-		}
-		return count;
-	}
-
-	private static void assertStoppedOnce(String... names) {
-		for (var name : names) {
-			assertEquals(1, count("start " + name));
-			assertEquals(1, count("stop " + name));
 		}
 	}
 

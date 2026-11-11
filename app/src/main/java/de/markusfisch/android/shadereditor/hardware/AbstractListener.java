@@ -1,32 +1,26 @@
 package de.markusfisch.android.shadereditor.hardware;
 
-import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-
-import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 
 public abstract class AbstractListener implements SensorEventListener {
 	long last = 0;
 
-	private final SensorManager sensorManager;
+	private final SensorRegistry sensors;
 
 	private boolean listening = false;
-	private Sensor sensor;
 
-	AbstractListener(Context context) {
-		sensorManager = (SensorManager) context.getSystemService(
-				Context.SENSOR_SERVICE);
+	AbstractListener(SensorRegistry sensors) {
+		this.sensors = sensors;
 	}
 
 	public void unregister() {
-		if (sensor == null || !listening) {
+		if (!listening) {
 			return;
 		}
 
-		sensorManager.unregisterListener(this);
+		sensors.unregister(this);
 		listening = false;
 	}
 
@@ -40,14 +34,12 @@ public abstract class AbstractListener implements SensorEventListener {
 	}
 
 	boolean register(int type) {
-		if (listening || sensorManager == null || (sensor == null &&
-				(sensor = sensorManager.getDefaultSensor(type)) == null)) {
+		if (listening) {
 			return false;
 		}
 
 		last = 0;
-		listening = sensorManager.registerListener(this, sensor,
-				ShaderEditorApp.preferences.getSensorDelay());
+		listening = sensors.register(this, type);
 
 		return listening;
 	}

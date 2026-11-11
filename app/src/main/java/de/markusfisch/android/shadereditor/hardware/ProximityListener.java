@@ -1,14 +1,13 @@
 package de.markusfisch.android.shadereditor.hardware;
 
-import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class ProximityListener extends AbstractListener {
 	private float centimeters = 0f;
 
-	public ProximityListener(Context context) {
-		super(context);
+	public ProximityListener(SensorRegistry sensors) {
+		super(sensors);
 	}
 
 	public boolean register() {

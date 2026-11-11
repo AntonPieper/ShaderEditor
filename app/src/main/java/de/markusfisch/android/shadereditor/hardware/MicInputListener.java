@@ -26,7 +26,7 @@ public class MicInputListener extends AbstractListener {
 	private final Context context;
 
 	public MicInputListener(Context context) {
-		super(context);
+		super(SensorRegistry.of(context));
 		this.context = context;
 	}
 

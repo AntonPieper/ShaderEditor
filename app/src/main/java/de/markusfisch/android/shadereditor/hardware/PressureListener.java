@@ -1,14 +1,13 @@
 package de.markusfisch.android.shadereditor.hardware;
 
-import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class PressureListener extends AbstractListener {
 	private float pressure = 0f;
 
-	public PressureListener(Context context) {
-		super(context);
+	public PressureListener(SensorRegistry sensors) {
+		super(sensors);
 	}
 
 	public boolean register() {

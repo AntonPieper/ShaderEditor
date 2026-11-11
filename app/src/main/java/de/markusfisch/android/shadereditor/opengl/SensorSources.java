@@ -17,26 +17,30 @@ import de.markusfisch.android.shadereditor.hardware.ProximityListener;
 import de.markusfisch.android.shadereditor.hardware.RotationVectorListener;
 
 final class SensorSources {
+	// Serves both the gravity and the linear acceleration fallback.
 	static final class Accelerometer implements UniformSource {
 		static final Key<Accelerometer> KEY = Accelerometer::new;
 
+		@Nullable
+		float[] gravity;
+		@Nullable
+		float[] linear;
 		private AccelerometerListener listener;
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new AccelerometerListener(host.context());
+			listener = new AccelerometerListener(sources.sensors());
+			if (listener.register()) {
+				gravity = listener.gravity;
+				linear = listener.linear;
+			}
 		}
 
 		@Override
 		public void stop() {
 			listener.unregister();
-		}
-
-		// Registers on every call, so a second fallback finds the
-		// listener already listening and gets nothing.
-		@Nullable
-		AccelerometerListener register() {
-			return listener.register() ? listener : null;
+			gravity = null;
+			linear = null;
 		}
 	}
 
@@ -45,26 +49,20 @@ final class SensorSources {
 
 		@Nullable
 		float[] values;
-		boolean fromSensor;
 		private GravityListener listener;
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new GravityListener(host.context());
-			fromSensor = listener.register();
-			if (fromSensor) {
-				values = listener.values;
-			} else {
-				var accelerometer = sources.start(Accelerometer.KEY).register();
-				values = accelerometer != null ? accelerometer.gravity : null;
-			}
+			listener = new GravityListener(sources.sensors());
+			values = listener.register()
+					? listener.values
+					: sources.start(Accelerometer.KEY).gravity;
 		}
 
 		@Override
 		public void stop() {
 			listener.unregister();
 			values = null;
-			fromSensor = false;
 		}
 	}
 
@@ -77,13 +75,10 @@ final class SensorSources {
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new LinearAccelerationListener(host.context());
-			if (listener.register()) {
-				values = listener.values;
-			} else {
-				var accelerometer = sources.start(Accelerometer.KEY).register();
-				values = accelerometer != null ? accelerometer.linear : null;
-			}
+			listener = new LinearAccelerationListener(sources.sensors());
+			values = listener.register()
+					? listener.values
+					: sources.start(Accelerometer.KEY).linear;
 		}
 
 		@Override
@@ -102,7 +97,7 @@ final class SensorSources {
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new GyroscopeListener(host.context());
+			listener = new GyroscopeListener(sources.sensors());
 			values = listener.register() ? listener.rotation : null;
 		}
 
@@ -124,7 +119,7 @@ final class SensorSources {
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new MagneticFieldListener(host.context());
+			listener = new MagneticFieldListener(sources.sensors());
 			if (listener.register()) {
 				values = listener.values;
 				filtered = listener.filtered;
@@ -148,7 +143,7 @@ final class SensorSources {
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new LightListener(host.context());
+			listener = new LightListener(sources.sensors());
 			registered = listener.register();
 		}
 
@@ -175,7 +170,7 @@ final class SensorSources {
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new PressureListener(host.context());
+			listener = new PressureListener(sources.sensors());
 			registered = listener.register();
 		}
 
@@ -202,7 +197,7 @@ final class SensorSources {
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new ProximityListener(host.context());
+			listener = new ProximityListener(sources.sensors());
 			registered = listener.register();
 		}
 
@@ -229,7 +224,7 @@ final class SensorSources {
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new RotationVectorListener(host.context());
+			listener = new RotationVectorListener(sources.sensors());
 			values = listener.register() ? listener.values : null;
 		}
 
@@ -247,6 +242,7 @@ final class SensorSources {
 		final float[] inclinationMatrix = new float[9];
 		final float[] orientation = new float[]{0, 0, 0};
 		private final float[] columns = new float[9];
+		private final float[] remapped = new float[9];
 		boolean available;
 		boolean inclined;
 		Gravity gravity;
@@ -260,11 +256,9 @@ final class SensorSources {
 			this.sources = sources;
 			gravity = sources.start(Gravity.KEY);
 			magnetic = sources.start(Magnetic.KEY);
-			// rotationVector precedes this source in the table, so it is
-			// already running when the shader declares it.
-			vector = magnetic.values == null
-					? sources.start(RotationVector.KEY)
-					: sources.get(RotationVector.KEY);
+			if (gravity.values == null || magnetic.filtered == null) {
+				vector = sources.start(RotationVector.KEY);
+			}
 		}
 
 		@Override
@@ -273,7 +267,7 @@ final class SensorSources {
 
 		@Override
 		public void update(long now) {
-			inclined = gravity.fromSensor &&
+			inclined = gravity.values != null &&
 					magnetic.filtered != null &&
 					SensorManager.getRotationMatrix(
 							matrix,
@@ -303,11 +297,13 @@ final class SensorSources {
 							new AxisPair(SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X);
 					default -> new AxisPair(SensorManager.AXIS_X, SensorManager.AXIS_Y);
 				};
+				// In place, remapCoordinateSystem overwrites values it still reads.
 				SensorManager.remapCoordinateSystem(
 						matrix,
 						rotation.x(),
 						rotation.y(),
-						matrix);
+						remapped);
+				System.arraycopy(remapped, 0, matrix, 0, 9);
 			}
 		}
 

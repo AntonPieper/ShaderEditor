@@ -1,6 +1,5 @@
 package de.markusfisch.android.shadereditor.hardware;
 
-import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
@@ -8,8 +7,8 @@ public class MagneticFieldListener extends AbstractListener {
 	public final float[] values = new float[]{0, 0, 0};
 	public final float[] filtered = new float[]{0, 0, 0};
 
-	public MagneticFieldListener(Context context) {
-		super(context);
+	public MagneticFieldListener(SensorRegistry sensors) {
+		super(sensors);
 	}
 
 	public boolean register() {

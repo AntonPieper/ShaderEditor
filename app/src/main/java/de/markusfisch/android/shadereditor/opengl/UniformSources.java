@@ -7,11 +7,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.hardware.SensorRegistry;
+
 final class UniformSources {
 	private final Map<UniformSource.Key<?>, UniformSource> byKey = new HashMap<>();
 	private final ArrayList<UniformSource> running = new ArrayList<>();
 	@NonNull
 	private final EngineHost host;
+	@Nullable
+	private SensorRegistry sensors;
 	@Nullable
 	private ShaderTextureResources.SamplerTextureBinding cameraBinding;
 	private int deviceRotation;
@@ -20,6 +24,11 @@ final class UniformSources {
 
 	UniformSources(@NonNull EngineHost host) {
 		this.host = host;
+	}
+
+	UniformSources(@NonNull EngineHost host, @NonNull SensorRegistry sensors) {
+		this.host = host;
+		this.sensors = sensors;
 	}
 
 	@NonNull
@@ -32,6 +41,14 @@ final class UniformSources {
 			running.add(source);
 		}
 		return key.cast(source);
+	}
+
+	@NonNull
+	SensorRegistry sensors() {
+		if (sensors == null) {
+			sensors = SensorRegistry.of(host.context());
+		}
+		return sensors;
 	}
 
 	@Nullable
