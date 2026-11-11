@@ -7,10 +7,18 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import de.markusfisch.android.shadereditor.project.HostDirective.Filter;
 import de.markusfisch.android.shadereditor.project.HostDirective.Format;
@@ -26,6 +34,9 @@ public class PreparationTest {
 	private static final String MAIN = "void main() {}";
 	private static final Sampling NEAREST = new Sampling(Filter.NEAREST,
 			Filter.NEAREST, Mipmap.NONE, Wrap.CLAMP, Wrap.CLAMP);
+
+	@Rule
+	public final TemporaryFolder temp = new TemporaryFolder();
 
 	@Test
 	public void plansDiamondWithResolvedInputs() {
@@ -463,9 +474,63 @@ public class PreparationTest {
 				BuiltinNames.ALL).plan());
 	}
 
-	private static Preparation prepare(MemoryProjectFiles files) {
+	@Test
+	public void plansTheSameFromADirectory() throws IOException {
+		Map<String, byte[]> project = new LinkedHashMap<>();
+		project.put("shader-project.json", bytes(
+				"{\"projectVersion\": 1, \"entry\": \"main.glsl\"}"));
+		project.put("main.glsl", bytes(lines(
+				"#include \"lib/common.glsl\"",
+				"#pragma se input \"passes/blur.glsl\" filter=linear",
+				"uniform sampler2D blur;",
+				"#pragma se input \"textures/caf\u00e9.png\" wrap=repeat",
+				"uniform sampler2D noise;",
+				MAIN)));
+		project.put("lib/common.glsl", bytes("float shared;\n"));
+		project.put("passes/blur.glsl", bytes(lines(
+				"#include \"../lib/common.glsl\"",
+				input("../textures/caf\u00e9.png", "noise"),
+				MAIN)));
+		project.put("textures/caf\u00e9.png", new byte[]{(byte) 0x89, 'P',
+				'N', 'G', 0, 1, 2});
+		project.put("unrelated.txt", bytes("not read"));
+		MemoryProjectFiles memory = new MemoryProjectFiles();
+		for (Map.Entry<String, byte[]> file : project.entrySet()) {
+			memory.put(file.getKey(), file.getValue());
+			// Stored decomposed, as archives made on macOS do.
+			File disk = new File(temp.getRoot(), file.getKey()
+					.replace("\u00e9", "e\u0301"));
+			File parent = disk.getParentFile();
+			assertTrue(parent.isDirectory() || parent.mkdirs());
+			Files.write(disk.toPath(), file.getValue());
+		}
+
+		Preparation expected = prepare(memory);
+		Preparation actual = prepare(
+				new DirectoryProjectFiles(temp.getRoot()));
+		assertTrue(messages(expected).toString(),
+				expected.diagnostics().isEmpty());
+		assertNotNull(expected.plan());
+		assertEquals(messages(expected), messages(actual));
+		assertEquals(expected.plan(), actual.plan());
+		assertEquals(dependencyPaths(expected), dependencyPaths(actual));
+		assertEquals(List.of("shader-project.json", "main.glsl",
+				"lib/common.glsl", "passes/blur.glsl",
+				"textures/caf\u00e9.png"), dependencyPaths(actual));
+		assertEquals(expected.files().keySet(), actual.files().keySet());
+		for (ProjectPath path : expected.files().keySet()) {
+			assertArrayEquals(expected.files().get(path).bytes(),
+					actual.files().get(path).bytes());
+		}
+	}
+
+	private static Preparation prepare(ProjectFiles files) {
 		return Preparation.prepare(files, path("main.glsl"),
 				ProjectLimits.DEFAULT, BuiltinNames.ALL);
+	}
+
+	private static byte[] bytes(String text) {
+		return text.getBytes(StandardCharsets.UTF_8);
 	}
 
 	private static String input(String source, String name) {
