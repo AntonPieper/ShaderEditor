@@ -28,8 +28,13 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Pushes to a branch save the Gradle cache (distribution, dependencies,
+      # task outputs); pull requests only read it. The action's default writes
+      # the cache from the default branch alone, which never runs here.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       # Without the secret (forks, upstream) the build uses a throwaway debug
       # key. With it, every build has the same signature, so a newer APK
