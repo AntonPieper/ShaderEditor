@@ -319,6 +319,37 @@ public class LegacyShaderConverterTest {
 	}
 
 	@Test
+	public void discardWarnsOnceAtItsFirstUseInCode() {
+		String text = lines("uniform sampler2D noise;",
+				"// discard in a comment",
+				"/* discard",
+				"   discard */",
+				"void main() {",
+				"\tif (gl_FragCoord.x < 1.0) discard;",
+				"\tif (gl_FragCoord.y < 1.0) { discard; }",
+				"}");
+		Result result = convert(text);
+		assertEquals(List.of(new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.WARNING,
+				"Discarded pixels are now opaque black, where they used " +
+						"to keep older content of the output", null, 6)),
+				result.diagnostics());
+		assertEquals(NOISE_DEFAULT + "\n" + text, result.shader());
+	}
+
+	@Test
+	public void discardInCommentsOrLongerNamesDoesNotWarn() {
+		String text = lines("// discard",
+				"/* discard; */",
+				"float discarded = 1.0;",
+				"float no_discard = 1.0;",
+				"void discard2() {}");
+		Result result = convert(text);
+		assertTrue(result.diagnostics().isEmpty());
+		assertEquals(text, result.shader());
+	}
+
+	@Test
 	public void normalizesLineEndings() {
 		assertEquals(lines(NOISE_DEFAULT, "uniform sampler2D noise;",
 						"void main() {}"),
