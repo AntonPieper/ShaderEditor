@@ -27,7 +27,7 @@ final class SystemSources {
 		boolean night;
 
 		@Override
-		public void start(@NonNull EngineHost host) {
+		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			night = (host.context().getResources().getConfiguration().uiMode &
 					Configuration.UI_MODE_NIGHT_MASK) ==
 					Configuration.UI_MODE_NIGHT_YES;
@@ -45,7 +45,7 @@ final class SystemSources {
 		float secondsSinceLast = Float.NaN;
 
 		@Override
-		public void start(@NonNull EngineHost host) {
+		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			NotificationService.requirePermissions(host.context());
 		}
 
@@ -71,7 +71,7 @@ final class SystemSources {
 		private long lastUpdate;
 
 		@Override
-		public void start(@NonNull EngineHost host) {
+		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			context = host.context();
 		}
 
@@ -106,7 +106,7 @@ final class SystemSources {
 		boolean connected;
 
 		@Override
-		public void start(@NonNull EngineHost host) {
+		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 		}
 
 		@Override
@@ -132,7 +132,7 @@ final class SystemSources {
 		private long lastUpdate;
 
 		@Override
-		public void start(@NonNull EngineHost host) {
+		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 		}
 
 		@Override
@@ -164,7 +164,7 @@ final class SystemSources {
 		private long lastUpdate;
 
 		@Override
-		public void start(@NonNull EngineHost host) {
+		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			context = host.context();
 		}
 
@@ -204,7 +204,7 @@ final class SystemSources {
 		private MicInputListener listener;
 
 		@Override
-		public void start(@NonNull EngineHost host) {
+		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			listener = new MicInputListener(host.context());
 			if (!listener.register()) {
 				listener = null;

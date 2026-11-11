@@ -2,16 +2,27 @@ package de.markusfisch.android.shadereditor.opengl;
 
 import static de.markusfisch.android.shadereditor.opengl.GlslType.FLOAT;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.INT;
+import static de.markusfisch.android.shadereditor.opengl.GlslType.MAT3;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.VEC2;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.VEC3;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.VEC4;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.Gravity;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.Gyroscope;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.Light;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.Linear;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.Magnetic;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.Pressure;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.Proximity;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.Rotation;
+import de.markusfisch.android.shadereditor.opengl.SensorSources.RotationVector;
 import de.markusfisch.android.shadereditor.opengl.SystemSources.Battery;
 import de.markusfisch.android.shadereditor.opengl.SystemSources.Clock;
 import de.markusfisch.android.shadereditor.opengl.SystemSources.MediaVolume;
@@ -52,6 +63,60 @@ public final class UniformTable {
 					(in, out) -> out.setVec2(in.offsetX, in.offsetY)),
 			uniform("startRandom", FLOAT, R.string.start_random,
 					(in, out) -> out.setFloat(in.startRandom)),
+			uniform("gravity", VEC3, R.string.gravity_vector, Gravity.KEY,
+					(gravity, out) -> setVec3(out, gravity.values)),
+			uniform("linear", VEC3, R.string.linear_acceleration_vector, Linear.KEY,
+					(linear, out) -> setVec3(out, linear.values)),
+			uniform("gyroscope", VEC3, R.string.gyroscope, Gyroscope.KEY,
+					(gyroscope, out) -> setVec3(out, gyroscope.values)),
+			uniform("magnetic", VEC3, R.string.magnetic_field, Magnetic.KEY,
+					(magnetic, out) -> setVec3(out, magnetic.values)),
+			uniform("light", FLOAT, R.string.light, Light.KEY,
+					(light, out) -> {
+						if (light.registered) {
+							out.setFloat(light.ambient);
+						}
+					}),
+			uniform("pressure", FLOAT, R.string.pressure, Pressure.KEY,
+					(pressure, out) -> {
+						if (pressure.registered) {
+							out.setFloat(pressure.pressure);
+						}
+					}),
+			uniform("proximity", FLOAT, R.string.proximity, Proximity.KEY,
+					(proximity, out) -> {
+						if (proximity.registered) {
+							out.setFloat(proximity.centimeters);
+						}
+					}),
+			uniform("rotationVector", VEC3, R.string.device_rotation_vector,
+					RotationVector.KEY,
+					(vector, out) -> setVec3(out, vector.values)),
+			uniform("rotationMatrix", MAT3, R.string.device_rotation_matrix, Rotation.KEY,
+					(rotation, out) -> {
+						if (rotation.available) {
+							out.setMat3(true, rotation.matrix);
+						}
+					}),
+			uniform("orientation", VEC3, R.string.device_orientation, Rotation.KEY,
+					(rotation, out) -> {
+						if (rotation.available) {
+							setVec3(out, rotation.getOrientation());
+						}
+					}),
+			uniform("inclinationMatrix", MAT3, R.string.device_inclination_matrix,
+					Rotation.KEY,
+					(rotation, out) -> {
+						if (rotation.inclined) {
+							out.setMat3(true, rotation.inclinationMatrix);
+						}
+					}),
+			uniform("inclination", FLOAT, R.string.device_inclination, Rotation.KEY,
+					(rotation, out) -> {
+						if (rotation.inclined) {
+							out.setFloat(rotation.getInclination());
+						}
+					}),
 			uniform("nightMode", INT, R.string.night_mode, NightMode.KEY,
 					(nightMode, out) -> out.setInt(nightMode.night ? 1 : 0)),
 			uniform("notificationCount", INT, R.string.notification_count, Notifications.KEY,
@@ -88,6 +153,12 @@ public final class UniformTable {
 			}
 		}
 		throw new IllegalArgumentException("No builtin uniform " + name);
+	}
+
+	private static void setVec3(@NonNull UniformOutput out, @Nullable float[] values) {
+		if (values != null) {
+			out.setVec3(values[0], values[1], values[2]);
+		}
 	}
 
 	@NonNull

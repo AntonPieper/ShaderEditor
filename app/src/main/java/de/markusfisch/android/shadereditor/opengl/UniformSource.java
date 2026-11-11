@@ -14,7 +14,7 @@ interface UniformSource {
 		}
 	}
 
-	void start(@NonNull EngineHost host);
+	void start(@NonNull EngineHost host, @NonNull UniformSources sources);
 
 	void stop();
 

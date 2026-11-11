@@ -32,20 +32,8 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	public static final String UNIFORM_CAMERA_BACK = "cameraBack";
 	public static final String UNIFORM_CAMERA_FRONT = "cameraFront";
 	public static final String UNIFORM_CAMERA_ORIENTATION = "cameraOrientation";
-	public static final String UNIFORM_GRAVITY = "gravity";
-	public static final String UNIFORM_GYROSCOPE = "gyroscope";
-	public static final String UNIFORM_LIGHT = "light";
-	public static final String UNIFORM_LINEAR = "linear";
-	public static final String UNIFORM_MAGNETIC = "magnetic";
-	public static final String UNIFORM_ORIENTATION = "orientation";
-	public static final String UNIFORM_INCLINATION = "inclination";
-	public static final String UNIFORM_INCLINATION_MATRIX = "inclinationMatrix";
 	public static final String UNIFORM_POSITION = "position";
-	public static final String UNIFORM_PRESSURE = "pressure";
-	public static final String UNIFORM_PROXIMITY = "proximity";
 	public static final String UNIFORM_RESOLUTION = "resolution";
-	public static final String UNIFORM_ROTATION_MATRIX = "rotationMatrix";
-	public static final String UNIFORM_ROTATION_VECTOR = "rotationVector";
 
 	private static final int MAX_TEXTURES = 32;
 	private static final long FPS_UPDATE_FREQUENCY_NS = 200000000L;

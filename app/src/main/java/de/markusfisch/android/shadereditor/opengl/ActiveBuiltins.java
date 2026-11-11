@@ -77,6 +77,11 @@ final class ActiveBuiltins {
 		public void setVec3Array(@NonNull float[] values, int count) {
 			device.uniform3fv(location, count, values);
 		}
+
+		@Override
+		public void setMat3(boolean transpose, @NonNull float[] values) {
+			device.uniformMatrix3fv(location, transpose, values);
+		}
 	}
 
 	private record Slot(

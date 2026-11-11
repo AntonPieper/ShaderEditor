@@ -36,8 +36,6 @@ final class BuiltinUniforms {
 	@NonNull
 	private final Context context;
 	@NonNull
-	private final BuiltinSensorUniforms sensorUniforms;
-	@NonNull
 	private final UniformSources sources;
 	@NonNull
 	private final BuiltinCameraUniforms cameraUniforms;
@@ -58,7 +56,6 @@ final class BuiltinUniforms {
 
 	BuiltinUniforms(@NonNull EngineHost host) {
 		context = host.context();
-		sensorUniforms = new BuiltinSensorUniforms(context);
 		sources = new UniformSources(host);
 		cameraUniforms = new BuiltinCameraUniforms(host);
 	}
@@ -77,7 +74,6 @@ final class BuiltinUniforms {
 		this.textureResources = textureResources;
 		programBindings = new ProgramBindings(program);
 
-		sensorUniforms.configure(device, program);
 		activeBuiltins = new ActiveBuiltins(device, program, sources);
 		cameraUniforms.configure(device, program, textureResources);
 	}
@@ -91,7 +87,7 @@ final class BuiltinUniforms {
 		surfaceResolution[0] = width;
 		surfaceResolution[1] = height;
 		int deviceRotation = getDeviceRotation(context);
-		sensorUniforms.setDeviceRotation(deviceRotation);
+		sources.setDeviceRotation(deviceRotation);
 
 		float w = Math.round(width * quality);
 		float h = Math.round(height * quality);
@@ -159,7 +155,6 @@ final class BuiltinUniforms {
 		captureFrameInputs(delta);
 		builtins.write(frameInputs, now);
 		bindings.clear();
-		sensorUniforms.apply(bindings);
 		if (backBufferTexture != null) {
 			bindings.setTexture(ShaderRenderer.UNIFORM_BACKBUFFER, backBufferTexture);
 		}
@@ -211,7 +206,6 @@ final class BuiltinUniforms {
 	}
 
 	private void releaseModules() {
-		sensorUniforms.release();
 		sources.stop();
 		cameraUniforms.release();
 	}
