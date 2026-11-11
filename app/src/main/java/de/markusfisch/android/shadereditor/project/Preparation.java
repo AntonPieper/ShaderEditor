@@ -1,7 +1,9 @@
 package de.markusfisch.android.shadereditor.project;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,16 +20,22 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
  *                     an error
  * @param diagnostics  problems with file and line
  * @param dependencies every file read, in order, with the revision
- *                     used; a null revision means the file was absent.
- *                     Complete also when there is no plan.
+ *                     used; a null revision means the file was absent
+ *                     or could not be read. Complete also when there is
+ *                     no plan.
+ * @param files        the content of every file read, by path in the
+ *                     order of reading: later stages use these bytes
+ *                     and never read a file again
  */
 public record Preparation(
 		RenderPlan plan,
 		List<ProjectDiagnostic> diagnostics,
-		List<SourceAssembly.Dependency> dependencies) {
+		List<SourceAssembly.Dependency> dependencies,
+		Map<ProjectPath, ProjectFiles.Content> files) {
 	public Preparation {
 		diagnostics = List.copyOf(diagnostics);
 		dependencies = List.copyOf(dependencies);
+		files = Collections.unmodifiableMap(new LinkedHashMap<>(files));
 	}
 
 	/**
@@ -49,7 +57,7 @@ public record Preparation(
 			diagnostics.add(error("The running shader must be a .glsl " +
 					"file: " + entry, entry));
 			return new Preparation(null, diagnostics,
-					captured.dependencies());
+					captured.dependencies(), captured.contents());
 		}
 		PassGraph graph = PassGraph.discover(captured, entry, limits);
 		diagnostics.addAll(graph.diagnostics);
@@ -62,13 +70,18 @@ public record Preparation(
 		RenderPlan plan = hasErrors(diagnostics)
 				? null
 				: plan(graph, diagnostics);
-		return new Preparation(plan, diagnostics, captured.dependencies());
+		return new Preparation(plan, diagnostics, captured.dependencies(),
+				captured.contents());
 	}
 
 	private static ProjectDiagnostic readManifest(ProjectFiles files) {
-		ProjectFiles.Content content = files.read(ProjectManifest.FILE);
-		if (content == null) {
+		ProjectFiles.Read read = files.read(ProjectManifest.FILE);
+		if (read == null) {
 			return null;
+		}
+		if (!(read instanceof ProjectFiles.Content content)) {
+			return error(CapturedFiles.problem(ProjectManifest.FILE, read),
+					ProjectManifest.FILE);
 		}
 		String text = SourceText.decode(content.bytes());
 		if (text == null) {

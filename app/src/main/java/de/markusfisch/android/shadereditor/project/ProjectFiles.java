@@ -5,14 +5,28 @@ package de.markusfisch.android.shadereditor.project;
  */
 public interface ProjectFiles {
 	/**
-	 * The bytes of a file and an opaque revision that changes whenever
-	 * the bytes change.
+	 * What reading a file found: {@link Content} or {@link Failed}.
 	 */
-	record Content(byte[] bytes, String revision) {
+	interface Read {
 	}
 
 	/**
-	 * Read a file, or return null when there is no file at path.
+	 * The bytes of a file and an opaque revision that changes whenever
+	 * the bytes change.
 	 */
-	Content read(ProjectPath path);
+	record Content(byte[] bytes, String revision) implements Read {
+	}
+
+	/**
+	 * A file that could not be read, for example because permission was
+	 * lost; reason tells the user why.
+	 */
+	record Failed(String reason) implements Read {
+	}
+
+	/**
+	 * Read a file: its content, why it could not be read, or null when
+	 * there is no file at path.
+	 */
+	Read read(ProjectPath path);
 }

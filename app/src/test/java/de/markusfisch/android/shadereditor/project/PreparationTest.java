@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.project;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -288,6 +289,59 @@ public class PreparationTest {
 		assertEquals(List.of("ERROR main.glsl:2 Block comments are not " +
 				"allowed on a line with a host directive, use a trailing " +
 				"// comment"), messages(preparation));
+	}
+
+	@Test
+	public void failedReadIsAnErrorWithItsReason() {
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("main.glsl", lines(
+						"#include \"lib.glsl\"",
+						"#pragma se input \"pass.glsl\"",
+						"uniform sampler2D pass;",
+						"#pragma se input \"noise.png\"",
+						"uniform sampler2D noise;",
+						MAIN))
+				.put("lib.glsl", "float x;\n")
+				.put("pass.glsl", MAIN)
+				.put("noise.png", new byte[]{1});
+		ProjectFiles failing = path -> path.equals(ProjectManifest.FILE) ||
+				path.getFileName().equals("main.glsl")
+				? files.read(path)
+				: new ProjectFiles.Failed("permission lost");
+		Preparation preparation = Preparation.prepare(failing,
+				path("main.glsl"), ProjectLimits.DEFAULT);
+		assertNull(preparation.plan());
+		assertEquals(List.of(
+				"ERROR main.glsl:1 Could not read lib.glsl: permission lost",
+				"ERROR main.glsl:2 Could not read pass.glsl: permission lost",
+				"ERROR main.glsl:4 Could not read noise.png: permission lost"),
+				messages(preparation));
+		assertEquals(List.of("shader-project.json", "main.glsl", "lib.glsl",
+				"pass.glsl", "noise.png"), dependencyPaths(preparation));
+		assertEquals(List.of("ERROR shader-project.json:0 Could not read " +
+						"shader-project.json: permission lost",
+				"ERROR main.glsl:0 Could not read main.glsl: permission lost"),
+				messages(Preparation.prepare(path -> new ProjectFiles.Failed(
+						"permission lost"), path("main.glsl"),
+						ProjectLimits.DEFAULT)));
+	}
+
+	@Test
+	public void keepsCopiesOfTheBytesItRead() {
+		byte[] image = {1, 2, 3};
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("main.glsl", lines(input("a.png", "a"), MAIN))
+				.put("a.png", image);
+		Preparation preparation = prepare(files);
+		assertNotNull(preparation.plan());
+		image[0] = 9;
+		assertEquals(List.of(path("main.glsl"), path("a.png")),
+				new ArrayList<>(preparation.files().keySet()));
+		ProjectFiles.Content kept = preparation.files().get(path("a.png"));
+		assertArrayEquals(new byte[]{1, 2, 3}, kept.bytes());
+		assertEquals("r1", kept.revision());
+		assertEquals(1, files.readPaths.stream()
+				.filter(path("a.png")::equals).count());
 	}
 
 	@Test
