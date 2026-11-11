@@ -67,10 +67,7 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						"sampler2D",
 						ShaderRenderer.UNIFORM_BACKBUFFER,
 						context.getString(R.string.previous_frame)),
-				new Uniform(
-						"float",
-						ShaderRenderer.UNIFORM_BATTERY,
-						context.getString(R.string.battery_level)),
+				builtin(context, "battery"),
 				new Uniform(
 						"vec2",
 						ShaderRenderer.UNIFORM_CAMERA_ADDENT,
@@ -91,14 +88,8 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						ShaderRenderer.UNIFORM_CAMERA_ORIENTATION,
 						context.getString(R.string.camera_orientation),
 						Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1),
-				new Uniform(
-						"vec4",
-						ShaderRenderer.UNIFORM_DATE,
-						context.getString(R.string.date_time)),
-				new Uniform(
-						"vec3",
-						ShaderRenderer.UNIFORM_DAYTIME,
-						context.getString(R.string.daytime)),
+				builtin(context, "date"),
+				builtin(context, "daytime"),
 				builtin(context, "frame"),
 				builtin(context, "ftime"),
 				new Uniform(
@@ -109,11 +100,7 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						"vec3",
 						ShaderRenderer.UNIFORM_GYROSCOPE,
 						context.getString(R.string.gyroscope)),
-				new Uniform(
-						"float",
-						ShaderRenderer.UNIFORM_LAST_NOTIFICATION_TIME,
-						context.getString(R.string.last_notification_time)
-				),
+				builtin(context, "lastNotificationTime"),
 				new Uniform(
 						"float",
 						ShaderRenderer.UNIFORM_INCLINATION,
@@ -134,15 +121,8 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						"vec3",
 						ShaderRenderer.UNIFORM_MAGNETIC,
 						context.getString(R.string.magnetic_field)),
-				new Uniform(
-						"int",
-						ShaderRenderer.UNIFORM_NIGHT_MODE,
-						context.getString(R.string.night_mode)),
-				new Uniform(
-						"int",
-						ShaderRenderer.UNIFORM_NOTIFICATION_COUNT,
-						context.getString(R.string.notification_count)
-				),
+				builtin(context, "nightMode"),
+				builtin(context, "notificationCount"),
 				builtin(context, "offset"),
 				new Uniform(
 						"vec3",
@@ -150,10 +130,7 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 						context.getString(R.string.device_orientation)),
 				builtin(context, "pointers"),
 				builtin(context, "pointerCount"),
-				new Uniform(
-						"int",
-						ShaderRenderer.UNIFORM_POWER_CONNECTED,
-						context.getString(R.string.power_connected)),
+				builtin(context, "powerConnected"),
 				new Uniform(
 						"float",
 						ShaderRenderer.UNIFORM_PRESSURE,
@@ -175,14 +152,8 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 				builtin(context, "startRandom"),
 				builtin(context, "subsecond"),
 				builtin(context, "time"),
-				new Uniform(
-						"float",
-						ShaderRenderer.UNIFORM_MEDIA_VOLUME,
-						context.getString(R.string.media_volume_level)),
-				new Uniform(
-						"float",
-						ShaderRenderer.UNIFORM_MIC_AMPLITUDE,
-						context.getString(R.string.microphone_amplitude)),
+				builtin(context, "mediaVolume"),
+				builtin(context, "micAmplitude"),
 				builtin(context, "touch"),
 				builtin(context, "touchStart"));
 		filteredUniforms = uniforms;

@@ -4,6 +4,7 @@ import static de.markusfisch.android.shadereditor.opengl.GlslType.FLOAT;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.INT;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.VEC2;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.VEC3;
+import static de.markusfisch.android.shadereditor.opengl.GlslType.VEC4;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
@@ -11,6 +12,13 @@ import androidx.annotation.StringRes;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.opengl.SystemSources.Battery;
+import de.markusfisch.android.shadereditor.opengl.SystemSources.Clock;
+import de.markusfisch.android.shadereditor.opengl.SystemSources.MediaVolume;
+import de.markusfisch.android.shadereditor.opengl.SystemSources.Microphone;
+import de.markusfisch.android.shadereditor.opengl.SystemSources.NightMode;
+import de.markusfisch.android.shadereditor.opengl.SystemSources.Notifications;
+import de.markusfisch.android.shadereditor.opengl.SystemSources.PowerConnected;
 
 public final class UniformTable {
 	public static final List<UniformDef> BUILTINS = List.of(
@@ -43,7 +51,31 @@ public final class UniformTable {
 			uniform("offset", VEC2, R.string.wallpaper_offset,
 					(in, out) -> out.setVec2(in.offsetX, in.offsetY)),
 			uniform("startRandom", FLOAT, R.string.start_random,
-					(in, out) -> out.setFloat(in.startRandom)));
+					(in, out) -> out.setFloat(in.startRandom)),
+			uniform("nightMode", INT, R.string.night_mode, NightMode.KEY,
+					(nightMode, out) -> out.setInt(nightMode.night ? 1 : 0)),
+			uniform("notificationCount", INT, R.string.notification_count, Notifications.KEY,
+					(notifications, out) -> out.setInt(notifications.count)),
+			uniform("lastNotificationTime", FLOAT, R.string.last_notification_time,
+					Notifications.KEY,
+					(notifications, out) -> out.setFloat(notifications.secondsSinceLast)),
+			uniform("battery", FLOAT, R.string.battery_level, Battery.KEY,
+					(battery, out) -> out.setFloat(battery.level)),
+			uniform("powerConnected", INT, R.string.power_connected, PowerConnected.KEY,
+					(power, out) -> out.setInt(power.connected ? 1 : 0)),
+			uniform("date", VEC4, R.string.date_time, Clock.KEY,
+					(clock, out) -> out.setVec4(
+							clock.year, clock.month, clock.day, clock.secondOfDay)),
+			uniform("daytime", VEC3, R.string.daytime, Clock.KEY,
+					(clock, out) -> out.setVec3(clock.hour, clock.minute, clock.second)),
+			uniform("mediaVolume", FLOAT, R.string.media_volume_level, MediaVolume.KEY,
+					(volume, out) -> out.setFloat(volume.level)),
+			uniform("micAmplitude", FLOAT, R.string.microphone_amplitude, Microphone.KEY,
+					(mic, out) -> {
+						if (mic.recording) {
+							out.setFloat(mic.amplitude);
+						}
+					}));
 
 	private UniformTable() {
 	}
@@ -65,6 +97,16 @@ public final class UniformTable {
 			@StringRes int description,
 			@NonNull UniformDef.Writer writer) {
 		return new UniformDef(name, type, 0, description, writer);
+	}
+
+	@NonNull
+	private static <S extends UniformSource> UniformDef uniform(
+			@NonNull String name,
+			@NonNull GlslType type,
+			@StringRes int description,
+			@NonNull UniformSource.Key<S> source,
+			@NonNull UniformDef.SourceWriter<S> writer) {
+		return new UniformDef(name, type, 0, description, source, writer);
 	}
 
 	@NonNull

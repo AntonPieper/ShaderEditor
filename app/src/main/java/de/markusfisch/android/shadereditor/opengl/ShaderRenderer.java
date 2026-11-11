@@ -28,33 +28,24 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public static final String UNIFORM_BACKBUFFER = "backbuffer";
-	public static final String UNIFORM_BATTERY = "battery";
 	public static final String UNIFORM_CAMERA_ADDENT = "cameraAddent";
 	public static final String UNIFORM_CAMERA_BACK = "cameraBack";
 	public static final String UNIFORM_CAMERA_FRONT = "cameraFront";
 	public static final String UNIFORM_CAMERA_ORIENTATION = "cameraOrientation";
-	public static final String UNIFORM_DATE = "date";
-	public static final String UNIFORM_DAYTIME = "daytime";
 	public static final String UNIFORM_GRAVITY = "gravity";
 	public static final String UNIFORM_GYROSCOPE = "gyroscope";
-	public static final String UNIFORM_LAST_NOTIFICATION_TIME = "lastNotificationTime";
 	public static final String UNIFORM_LIGHT = "light";
 	public static final String UNIFORM_LINEAR = "linear";
 	public static final String UNIFORM_MAGNETIC = "magnetic";
-	public static final String UNIFORM_NIGHT_MODE = "nightMode";
-	public static final String UNIFORM_NOTIFICATION_COUNT = "notificationCount";
 	public static final String UNIFORM_ORIENTATION = "orientation";
 	public static final String UNIFORM_INCLINATION = "inclination";
 	public static final String UNIFORM_INCLINATION_MATRIX = "inclinationMatrix";
 	public static final String UNIFORM_POSITION = "position";
-	public static final String UNIFORM_POWER_CONNECTED = "powerConnected";
 	public static final String UNIFORM_PRESSURE = "pressure";
 	public static final String UNIFORM_PROXIMITY = "proximity";
 	public static final String UNIFORM_RESOLUTION = "resolution";
 	public static final String UNIFORM_ROTATION_MATRIX = "rotationMatrix";
 	public static final String UNIFORM_ROTATION_VECTOR = "rotationVector";
-	public static final String UNIFORM_MEDIA_VOLUME = "mediaVolume";
-	public static final String UNIFORM_MIC_AMPLITUDE = "micAmplitude";
 
 	private static final int MAX_TEXTURES = 32;
 	private static final long FPS_UPDATE_FREQUENCY_NS = 200000000L;
@@ -84,9 +75,9 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	private volatile int lastFps;
 	private volatile float refreshRate = DEFAULT_REFRESH_RATE;
 
-	public ShaderRenderer(Context context) {
-		this.context = context;
-		builtinUniforms = new BuiltinUniforms(context);
+	public ShaderRenderer(@NonNull EngineHost host) {
+		context = host.context();
+		builtinUniforms = new BuiltinUniforms(host);
 	}
 
 	public void setVersion(int version) {

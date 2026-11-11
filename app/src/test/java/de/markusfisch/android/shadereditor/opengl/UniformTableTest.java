@@ -14,7 +14,7 @@ import java.util.List;
 public class UniformTableTest {
 	private static final float EPSILON = 1e-6f;
 
-	private static final class RecordingOutput implements UniformOutput {
+	static class RecordingOutput implements UniformOutput {
 		final List<String> calls = new ArrayList<>();
 		final List<float[]> values = new ArrayList<>();
 
@@ -34,13 +34,23 @@ public class UniformTableTest {
 		}
 
 		@Override
+		public void setVec3(float x, float y, float z) {
+			record("vec3", new float[]{x, y, z});
+		}
+
+		@Override
+		public void setVec4(float x, float y, float z, float w) {
+			record("vec4", new float[]{x, y, z, w});
+		}
+
+		@Override
 		public void setVec3Array(@NonNull float[] values, int count) {
 			float[] copy = new float[count * 3];
 			System.arraycopy(values, 0, copy, 0, copy.length);
 			record("vec3[" + count + "]", copy);
 		}
 
-		private void record(String call, float[] value) {
+		void record(String call, float[] value) {
 			calls.add(call);
 			values.add(value);
 		}
@@ -90,8 +100,72 @@ public class UniformTableTest {
 	}
 
 	@Test
+	public void writesSystemValuesFromSources() {
+		var nightMode = new SystemSources.NightMode();
+		nightMode.night = true;
+		assertWritten("nightMode", nightMode, "int", 1f);
+
+		var notifications = new SystemSources.Notifications();
+		notifications.count = 3;
+		notifications.secondsSinceLast = 12.5f;
+		assertWritten("notificationCount", notifications, "int", 3f);
+		assertWritten("lastNotificationTime", notifications, "float", 12.5f);
+
+		var battery = new SystemSources.Battery();
+		battery.level = 0.75f;
+		assertWritten("battery", battery, "float", 0.75f);
+
+		var power = new SystemSources.PowerConnected();
+		power.connected = true;
+		assertWritten("powerConnected", power, "int", 1f);
+		power.connected = false;
+		assertWritten("powerConnected", power, "int", 0f);
+
+		var clock = new SystemSources.Clock();
+		clock.year = 2026f;
+		clock.month = 10f;
+		clock.day = 11f;
+		clock.hour = 13f;
+		clock.minute = 14f;
+		clock.second = 15f;
+		clock.secondOfDay = 47655f;
+		assertWritten("date", clock, "vec4", 2026f, 10f, 11f, 47655f);
+		assertWritten("daytime", clock, "vec3", 13f, 14f, 15f);
+
+		var volume = new SystemSources.MediaVolume();
+		volume.level = 0.5f;
+		assertWritten("mediaVolume", volume, "float", 0.5f);
+
+		var mic = new SystemSources.Microphone();
+		mic.recording = true;
+		mic.amplitude = 0.25f;
+		assertWritten("micAmplitude", mic, "float", 0.25f);
+	}
+
+	@Test
+	public void lastNotificationTimeIsNaNWithoutNotifications() {
+		var notifications = new SystemSources.Notifications();
+		RecordingOutput out = new RecordingOutput();
+		UniformTable.get("lastNotificationTime").write(frame(), notifications, out);
+		assertEquals(List.of("float"), out.calls);
+		assertTrue(Float.isNaN(out.values.get(0)[0]));
+	}
+
+	@Test
+	public void micAmplitudeIsNotWrittenWithoutRecording() {
+		var mic = new SystemSources.Microphone();
+		mic.amplitude = 0.25f;
+		RecordingOutput out = new RecordingOutput();
+		UniformTable.get("micAmplitude").write(frame(), mic, out);
+		assertTrue(out.calls.isEmpty());
+	}
+
+	@Test
 	public void describesDeclarations() {
-		assertEquals(13, UniformTable.BUILTINS.size());
+		assertEquals(22, UniformTable.BUILTINS.size());
+		assertEquals("vec4", UniformTable.get("date").getType().getKeyword());
+		assertEquals(UniformTable.get("date").getSource(),
+				UniformTable.get("daytime").getSource());
 		UniformDef pointers = UniformTable.get("pointers");
 		assertEquals(GlslType.VEC3, pointers.getType());
 		assertEquals("pointers[10]", pointers.getDeclarator());
@@ -125,7 +199,7 @@ public class UniformTableTest {
 	@NonNull
 	private static RecordingOutput write(FrameInputs in, String name) {
 		RecordingOutput out = new RecordingOutput();
-		UniformTable.get(name).getWriter().write(in, out);
+		UniformTable.get(name).write(in, null, out);
 		return out;
 	}
 
@@ -135,6 +209,17 @@ public class UniformTableTest {
 			String call,
 			float... expected) {
 		RecordingOutput out = write(in, name);
+		assertEquals(List.of(call), out.calls);
+		assertArrayEquals(expected, out.values.get(0), EPSILON);
+	}
+
+	private static void assertWritten(
+			String name,
+			UniformSource source,
+			String call,
+			float... expected) {
+		RecordingOutput out = new RecordingOutput();
+		UniformTable.get(name).write(frame(), source, out);
 		assertEquals(List.of(call), out.calls);
 		assertArrayEquals(expected, out.values.get(0), EPSILON);
 	}

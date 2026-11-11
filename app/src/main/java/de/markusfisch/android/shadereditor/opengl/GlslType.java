@@ -6,7 +6,8 @@ public enum GlslType {
 	INT("int"),
 	FLOAT("float"),
 	VEC2("vec2"),
-	VEC3("vec3");
+	VEC3("vec3"),
+	VEC4("vec4");
 
 	@NonNull
 	private final String keyword;
