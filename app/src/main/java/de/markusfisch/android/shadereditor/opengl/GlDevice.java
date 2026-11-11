@@ -194,45 +194,20 @@ final class GlDevice {
 		return message;
 	}
 
+	// Takes the faces in CUBE_MAP_TARGETS order.
 	@Nullable
-	String uploadCubemapFromAtlas(@NonNull GlCubemap cubemap,
-			@NonNull Bitmap bitmap) {
+	String uploadCubemap(@NonNull GlCubemap cubemap, @NonNull Bitmap[] faces) {
 		bindTexture(0, cubemap);
-
-		int bitmapWidth = bitmap.getWidth();
-		int bitmapHeight = bitmap.getHeight();
-		int sideWidth = (int) Math.ceil(bitmapWidth / 2f);
-		int sideHeight = Math.round(bitmapHeight / 3f);
-		int sideLength = Math.min(sideWidth, sideHeight);
-		int x = 0;
-		int y = 0;
-		String message = null;
-
-		for (int target : CUBE_MAP_TARGETS) {
-			int[] sidePixels = new int[sideLength * sideLength];
-			bitmap.getPixels(sidePixels, 0, sideLength, x, y, sideLength, sideLength);
-
-			Bitmap side = Bitmap.createBitmap(
-					sideLength,
-					sideLength,
-					Bitmap.Config.ARGB_8888);
-			side.setPremultiplied(false);
-			side.setPixels(sidePixels, 0, sideLength, 0, 0, sideLength, sideLength);
-
-			message = uploadBitmapInternal(target, side, false);
-			side.recycle();
-
+		for (int i = 0; i < CUBE_MAP_TARGETS.length; ++i) {
+			String message = uploadBitmapInternal(
+					CUBE_MAP_TARGETS[i],
+					faces[i],
+					false);
 			if (message != null) {
 				return message;
 			}
-
-			if ((x += sideWidth) >= bitmapWidth) {
-				x = 0;
-				y += sideHeight;
-			}
 		}
-
-		cubemap.setSideLength(sideLength);
+		cubemap.setSideLength(faces[0].getWidth());
 		return null;
 	}
 

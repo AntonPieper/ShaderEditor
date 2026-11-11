@@ -1,6 +1,5 @@
 package de.markusfisch.android.shadereditor.opengl;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.opengl.GLES20;
 
@@ -96,23 +95,21 @@ final class ShaderRenderPipeline {
 		return framebuffers[0] != null && targetTextures[0] != null;
 	}
 
+	// Starts both targets with the seed, or cleared without one.
 	@NonNull
 	List<ProjectDiagnostic> ensureTargets(
-			@NonNull Context context,
 			int width,
 			int height,
 			@NonNull Sampling sampling,
-			@NonNull BackBufferParameters parameters) {
+			@Nullable Bitmap seed) {
 		ArrayList<ProjectDiagnostic> errors = new ArrayList<>();
 		if (hasTargets()) {
 			return errors;
 		}
 
 		releaseTargets();
-		createTarget(context, frontTarget, width, height, sampling, parameters,
-				errors);
-		createTarget(context, backTarget, width, height, sampling, parameters,
-				errors);
+		createTarget(frontTarget, width, height, sampling, seed, errors);
+		createTarget(backTarget, width, height, sampling, seed, errors);
 		device.bindFramebuffer(null);
 		return errors;
 	}
@@ -237,23 +234,20 @@ final class ShaderRenderPipeline {
 	}
 
 	private void createTarget(
-			@NonNull Context context,
 			int index,
 			int width,
 			int height,
 			@NonNull Sampling sampling,
-			@NonNull BackBufferParameters parameters,
+			@Nullable Bitmap seed,
 			@NonNull List<ProjectDiagnostic> errors) {
 		GlTexture2D texture = device.createTexture2D();
 		targetTextures[index] = texture;
 
-		Bitmap bitmap = parameters.getPresetBitmap(context, width, height);
-		if (bitmap != null) {
-			String message = device.uploadTexture2D(texture, bitmap, true);
+		if (seed != null) {
+			String message = device.uploadTexture2D(texture, seed, true);
 			if (message != null) {
 				errors.add(ProjectDiagnostic.error(message));
 			}
-			bitmap.recycle();
 		} else {
 			device.allocateTexture2D(texture, width, height);
 		}
@@ -270,7 +264,7 @@ final class ShaderRenderPipeline {
 					"Framebuffer incomplete: 0x" + Integer.toHexString(status)));
 		}
 
-		if (bitmap == null) {
+		if (seed == null) {
 			device.bindFramebuffer(framebuffer);
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);

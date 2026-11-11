@@ -14,12 +14,14 @@ import android.view.WindowManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 public class ShaderRenderer implements GLSurfaceView.Renderer {
@@ -40,6 +42,8 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	private final ShaderRenderPipeline renderPipeline =
 			new ShaderRenderPipeline(device);
 	private final EngineInputs inputs = new EngineInputs();
+	private final TextureHandOver<DecodedTextures> textureLoads =
+			new TextureHandOver<>();
 	private final UniformSources sources;
 	private final Context context;
 	private final Object thumbnailLock = new Object();
@@ -47,11 +51,17 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	@Nullable
 	private OnRendererListener onRendererListener;
 	@Nullable
+	private volatile Runnable renderRequester;
+	@Nullable
 	private ActiveBuiltins activeBuiltins;
 	@NonNull
 	private ShaderTextureResources textureResources =
 			ShaderTextureResources.empty();
 	private int backBufferUnit = GlUniform.NO_UNIT;
+	// Whether the textures must be decoded again, and whether the ones
+	// of the last load are uploaded.
+	private boolean texturesStale;
+	private boolean texturesReady;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
 	private byte[] thumbnail = new byte[1];
@@ -94,6 +104,12 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		onRendererListener = listener;
 	}
 
+	// Called when decoded textures are ready, so a view that renders only
+	// when dirty draws the frame that waited for them.
+	public void setRenderRequester(@Nullable Runnable requester) {
+		renderRequester = requester;
+	}
+
 	@Override
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 		device.disable(GLES20.GL_CULL_FACE);
@@ -110,12 +126,12 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 
 		if (programManager.hasPreparedShader()) {
 			resetFps();
-			var reloadResult = programManager.reload(context, device);
-			submitErrors(reloadResult.textureErrors());
+			var reloadResult = programManager.reload(device);
 			if (reloadResult.succeeded()) {
 				submitErrors(Collections.emptyList());
 				configure(programManager.getMainProgram());
-			} else if (!reloadResult.programErrors().isEmpty()) {
+				texturesStale = true;
+			} else {
 				submitErrors(reloadResult.programErrors());
 			}
 		}
@@ -135,6 +151,8 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		}
 		if (renderSizeChanged) {
 			renderPipeline.releaseTargets();
+			// The backbuffer preset is tiled to the render size.
+			texturesStale |= programManager.getBackBufferParameters().hasPreset();
 		}
 
 		resetFps();
@@ -151,13 +169,26 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 			return;
 		}
 
+		if (texturesStale) {
+			startTextureLoad();
+		}
+		var textures = textureLoads.take();
+		if (textures != null) {
+			uploadTextures(textures);
+		}
+		if (!texturesReady) {
+			// A requested thumbnail waits for the first complete frame.
+			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
+					GLES20.GL_DEPTH_BUFFER_BIT);
+			return;
+		}
+
 		if (!renderPipeline.hasTargets()) {
 			var targetErrors = renderPipeline.ensureTargets(
-					context,
 					inputs.getRenderWidth(),
 					inputs.getRenderHeight(),
 					programManager.getBackBufferSampling(),
-					programManager.getBackBufferParameters());
+					null);
 			if (!targetErrors.isEmpty()) {
 				submitErrors(targetErrors);
 			}
@@ -196,6 +227,7 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void unregisterListeners() {
+		textureLoads.cancel();
 		releaseSources();
 		clearConfiguration();
 	}
@@ -245,6 +277,49 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 				UniformTable.CAMERA_BACK,
 				UniformTable.CAMERA_FRONT));
 		activeBuiltins = new ActiveBuiltins(device, program, sources);
+	}
+
+	// Decodes the textures off the GL thread; until they are uploaded,
+	// frames are not drawn.
+	private void startTextureLoad() {
+		texturesStale = false;
+		int generation = textureLoads.begin();
+		var samplers = textureResources.getSamplers();
+		var backBuffer = programManager.getBackBufferParameters();
+		texturesReady = !DecodedTextures.isNeeded(samplers, backBuffer);
+		if (texturesReady) {
+			return;
+		}
+		int width = inputs.getRenderWidth();
+		int height = inputs.getRenderHeight();
+		new Thread(() -> {
+			var textureDao = Database.getInstance(context).getDataSource().texture;
+			textureLoads.deliver(generation, DecodedTextures.decode(
+					samplers,
+					backBuffer,
+					width,
+					height,
+					textureDao::getTextureBitmap));
+			var requester = renderRequester;
+			if (requester != null) {
+				requester.run();
+			}
+		}, "ShaderTextureDecoder").start();
+	}
+
+	private void uploadTextures(@NonNull DecodedTextures textures) {
+		var errors = new ArrayList<>(textureResources.upload(device, textures));
+		renderPipeline.releaseTargets();
+		errors.addAll(renderPipeline.ensureTargets(
+				inputs.getRenderWidth(),
+				inputs.getRenderHeight(),
+				programManager.getBackBufferSampling(),
+				textures.backBuffer()));
+		textures.recycle();
+		texturesReady = true;
+		if (!errors.isEmpty()) {
+			submitErrors(errors);
+		}
 	}
 
 	private void clearConfiguration() {

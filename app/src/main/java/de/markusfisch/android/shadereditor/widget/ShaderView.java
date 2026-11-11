@@ -62,6 +62,7 @@ public class ShaderView extends GLSurfaceView {
 
 	private void init(Context context, int renderMode) {
 		renderer = new ShaderRenderer(new ContextEngineHost(context));
+		renderer.setRenderRequester(this::requestRender);
 
 		// On some devices it's important to setEGLContextClientVersion()
 		// even if the docs say it's not used when setEGLContextFactory()

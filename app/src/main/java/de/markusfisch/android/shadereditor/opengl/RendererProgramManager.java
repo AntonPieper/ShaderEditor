@@ -1,7 +1,5 @@
 package de.markusfisch.android.shadereditor.opengl;
 
-import android.content.Context;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -12,22 +10,16 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 final class RendererProgramManager {
 	record ReloadResult(
-			@NonNull List<ProjectDiagnostic> textureErrors,
 			@NonNull List<ProjectDiagnostic> programErrors,
 			boolean succeeded) {
 		@NonNull
-		static ReloadResult success(@NonNull List<ProjectDiagnostic> textureErrors) {
-			return new ReloadResult(List.copyOf(textureErrors), List.of(), true);
+		static ReloadResult success() {
+			return new ReloadResult(List.of(), true);
 		}
 
 		@NonNull
-		static ReloadResult failure(
-				@NonNull List<ProjectDiagnostic> textureErrors,
-				@NonNull List<ProjectDiagnostic> programErrors) {
-			return new ReloadResult(
-					List.copyOf(textureErrors),
-					List.copyOf(programErrors),
-					false);
+		static ReloadResult failure(@NonNull List<ProjectDiagnostic> programErrors) {
+			return new ReloadResult(List.copyOf(programErrors), false);
 		}
 	}
 
@@ -86,22 +78,22 @@ final class RendererProgramManager {
 	}
 
 	@NonNull
-	ReloadResult reload(@NonNull Context context, @NonNull GlDevice device) {
+	ReloadResult reload(@NonNull GlDevice device) {
 		clearPrograms();
 
-		var textureErrors = textureResources.load(context, device);
+		textureResources.createExternalTextures(device);
 		var surfaceResult = device.createProgram(
 				FULL_SCREEN_VERTEX_SHADER,
 				SURFACE_FRAGMENT_SHADER,
 				ShaderLineMapping.identity());
 		if (!surfaceResult.succeeded() || surfaceResult.getProgram() == null) {
-			return ReloadResult.failure(textureErrors, surfaceResult.getInfoLog());
+			return ReloadResult.failure(surfaceResult.getInfoLog());
 		}
 
 		var fragmentShader = preparedShaderSource.getFragmentShader();
 		if (fragmentShader == null) {
 			device.deleteProgram(surfaceResult.getProgram());
-			return ReloadResult.failure(textureErrors, List.of());
+			return ReloadResult.failure(List.of());
 		}
 
 		var mainResult = device.createProgram(
@@ -113,14 +105,14 @@ final class RendererProgramManager {
 				fragmentShader.getLineMapping());
 		if (!mainResult.succeeded() || mainResult.getProgram() == null) {
 			device.deleteProgram(surfaceResult.getProgram());
-			return ReloadResult.failure(textureErrors, mainResult.getInfoLog());
+			return ReloadResult.failure(mainResult.getInfoLog());
 		}
 
 		surfaceProgram = ShaderRenderPipeline.SurfaceProgram.of(
 				device,
 				surfaceResult.getProgram());
 		mainProgram = mainResult.getProgram();
-		return ReloadResult.success(textureErrors);
+		return ReloadResult.success();
 	}
 
 	void discardContextResources() {

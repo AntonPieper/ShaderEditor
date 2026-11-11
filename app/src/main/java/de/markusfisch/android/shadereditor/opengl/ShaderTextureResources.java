@@ -1,6 +1,5 @@
 package de.markusfisch.android.shadereditor.opengl;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
@@ -11,7 +10,6 @@ import androidx.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 final class ShaderTextureResources {
@@ -76,43 +74,58 @@ final class ShaderTextureResources {
 	}
 
 	@NonNull
-	List<ProjectDiagnostic> load(@NonNull Context context, @NonNull GlDevice device) {
-		release(device);
-
-		var errors = new ArrayList<ProjectDiagnostic>();
-		var textureDao = Database.getInstance(context).getDataSource().texture;
+	List<DiscoveredSampler> getSamplers() {
+		var samplers = new ArrayList<DiscoveredSampler>(bindings.size());
 		for (var binding : bindings) {
-			var sampler = binding.sampler();
-			if (sampler.target() == GLES11Ext.GL_TEXTURE_EXTERNAL_OES) {
+			samplers.add(binding.sampler());
+		}
+		return samplers;
+	}
+
+	void createExternalTextures(@NonNull GlDevice device) {
+		release(device);
+		for (var binding : bindings) {
+			if (binding.sampler().target() == GLES11Ext.GL_TEXTURE_EXTERNAL_OES) {
 				loadExternalTexture(device, binding);
-				continue;
-			}
-
-			var bitmap = textureDao.getTextureBitmap(sampler.name());
-			if (bitmap == null) {
-				continue;
-			}
-
-			try {
-				switch (sampler.target()) {
-					case GLES20.GL_TEXTURE_2D -> loadTexture2D(
-							device,
-							binding,
-							errors,
-							bitmap);
-					case GLES20.GL_TEXTURE_CUBE_MAP -> loadCubemap(
-							device,
-							binding,
-							bitmap,
-							errors);
-					default -> {
-					}
-				}
-			} finally {
-				bitmap.recycle();
 			}
 		}
+	}
 
+	// Replaces every 2D and cubemap texture at once with what was decoded
+	// from getSamplers().
+	@NonNull
+	List<ProjectDiagnostic> upload(
+			@NonNull GlDevice device,
+			@NonNull DecodedTextures textures) {
+		var errors = new ArrayList<ProjectDiagnostic>();
+		for (int i = 0; i < bindings.size(); ++i) {
+			var binding = bindings.get(i);
+			int target = binding.sampler().target();
+			if (target == GLES11Ext.GL_TEXTURE_EXTERNAL_OES) {
+				continue;
+			}
+			device.deleteTexture(binding.texture());
+			binding.setTexture(null);
+
+			var bitmaps = textures.get(i);
+			if (bitmaps == null) {
+				continue;
+			}
+			switch (target) {
+				case GLES20.GL_TEXTURE_2D -> loadTexture2D(
+						device,
+						binding,
+						errors,
+						bitmaps[0]);
+				case GLES20.GL_TEXTURE_CUBE_MAP -> loadCubemap(
+						device,
+						binding,
+						bitmaps,
+						errors);
+				default -> {
+				}
+			}
+		}
 		return errors;
 	}
 
@@ -170,12 +183,12 @@ final class ShaderTextureResources {
 	private static void loadCubemap(
 			@NonNull GlDevice device,
 			@NonNull SamplerTextureBinding binding,
-			@NonNull Bitmap bitmap,
+			@NonNull Bitmap[] faces,
 			@NonNull List<ProjectDiagnostic> errors) {
 		var sampler = binding.sampler();
 		var texture = device.createCubemap();
 		device.applySampling(texture, sampler.sampling());
-		var message = device.uploadCubemapFromAtlas(texture, bitmap);
+		var message = device.uploadCubemap(texture, faces);
 		if (message != null) {
 			errors.add(ProjectDiagnostic.error(message));
 			device.deleteTexture(texture);
