@@ -466,7 +466,11 @@ public class ShaderEditor extends LineNumberEditText {
 
 				String converted = convertShaderToySource(e.toString());
 				if (converted != null) {
+					// This replaces the text: e is stale from here on,
+					// and the new text is already tokenized and announced.
 					setTextHighlighted(converted);
+					isApplyingEdit = false;
+					return;
 				}
 
 				if (!isUserInteraction) {
