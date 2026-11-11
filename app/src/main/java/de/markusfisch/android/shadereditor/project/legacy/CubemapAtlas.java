@@ -24,13 +24,15 @@ public final class CubemapAtlas {
 	/**
 	 * Repack the pixels of a stored image, row by row from the top, into
 	 * the strip, pixel for pixel. Return null when the image is too small
-	 * for the squares the old upload cut from it.
+	 * for the squares the old upload cut from it, has fewer pixels than
+	 * its size, or makes a strip too large for an array.
 	 */
 	public static int[] toStrip(int[] pixels, int width, int height) {
 		int sideWidth = (int) Math.ceil(width / 2f);
 		int sideHeight = Math.round(height / 3f);
 		int side = faceSize(width, height);
-		if (side < 1 || pixels.length < width * height) {
+		if (side < 1 || pixels.length < (long) width * height ||
+				6L * side * side > Integer.MAX_VALUE) {
 			return null;
 		}
 		int stripWidth = side * 6;
