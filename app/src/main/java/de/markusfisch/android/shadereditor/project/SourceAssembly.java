@@ -87,7 +87,7 @@ public final class SourceAssembly {
 
 	/**
 	 * Every file read, in order, with the revision used; a null revision
-	 * means the file was absent.
+	 * means the file was absent or could not be read.
 	 */
 	public List<Dependency> dependencies() {
 		return dependencies;
@@ -262,11 +262,12 @@ public final class SourceAssembly {
 				stopped = true;
 				return null;
 			}
-			ProjectFiles.Content content = files.read(file);
+			ProjectFiles.Read read = files.read(file);
 			loaded.put(file, null);
-			if (content == null) {
+			if (!(read instanceof ProjectFiles.Content content)) {
 				dependencies.add(new Dependency(file, null));
-				return unreadable(site, file, "File not found: " + file);
+				return unreadable(site, file,
+						CapturedFiles.problem(file, read));
 			}
 			dependencies.add(new Dependency(file, content.revision()));
 			String text = SourceText.decode(content.bytes());

@@ -22,12 +22,13 @@ import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
  */
 final class PassGraph {
 	/**
-	 * One pass file. {@code directives} is null when the file is
-	 * missing.
+	 * One pass file. {@code directives} is null when the file cannot be
+	 * read, and {@code problem} says why.
 	 */
 	static final class Node {
 		final ProjectPath file;
 		final List<Edge> inputs = new ArrayList<>();
+		String problem;
 		SourceAssembly assembly;
 		HostDirectives directives;
 		Node initialPass;
@@ -68,11 +69,11 @@ final class PassGraph {
 	final Node entry;
 
 	private final Map<ProjectPath, Node> byPath = new HashMap<>();
-	private final ProjectFiles files;
+	private final CapturedFiles files;
 	private final ProjectLimits limits;
 	private boolean stopped;
 
-	private PassGraph(ProjectFiles files, ProjectPath entry,
+	private PassGraph(CapturedFiles files, ProjectPath entry,
 			ProjectLimits limits) {
 		this.files = files;
 		this.limits = limits;
@@ -80,12 +81,12 @@ final class PassGraph {
 	}
 
 	static PassGraph discover(
-			ProjectFiles files,
+			CapturedFiles files,
 			ProjectPath entry,
 			ProjectLimits limits) {
 		PassGraph graph = new PassGraph(files, entry, limits);
 		if (graph.entry.directives == null) {
-			graph.error(entry, 0, "File not found: " + entry);
+			graph.error(entry, 0, graph.entry.problem);
 		}
 		graph.validate();
 		return graph;
@@ -104,10 +105,11 @@ final class PassGraph {
 		node = new Node(file);
 		byPath.put(file, node);
 		nodes.add(node);
-		node.assembly = SourceAssembly.assemble(files, file, limits);
-		if (node.assembly.dependencies().get(0).revision() == null) {
+		node.problem = CapturedFiles.problem(file, files.read(file));
+		if (node.problem != null) {
 			return node;
 		}
+		node.assembly = SourceAssembly.assemble(files, file, limits);
 		node.directives = HostDirectives.parse(node.assembly);
 		diagnostics.addAll(node.directives.diagnostics());
 		for (HostDirective.Input input : node.directives.inputs()) {
@@ -139,11 +141,14 @@ final class PassGraph {
 		} else if (source.getKind() == ProjectPath.Kind.SHADER) {
 			Node producer = node(source, from, line);
 			if (producer != null && producer.directives == null) {
-				error(from, line, "File not found: " + source);
+				error(from, line, producer.problem);
 			}
 			return producer;
-		} else if (!stopped && files.read(source) == null) {
-			error(from, line, "File not found: " + source);
+		} else if (!stopped) {
+			String problem = CapturedFiles.problem(source, files.read(source));
+			if (problem != null) {
+				error(from, line, problem);
+			}
 		}
 		return null;
 	}

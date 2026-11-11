@@ -328,10 +328,12 @@ public class PassGraphTest {
 
 	@Test
 	public void rejectsMorePassesThanTheLimit() {
-		PassGraph graph = PassGraph.discover(new MemoryProjectFiles()
-						.put("main.glsl", lines(input("a.glsl", "a"), MAIN))
-						.put("a.glsl", lines(input("b.glsl", "b"), MAIN))
-						.put("b.glsl", MAIN),
+		PassGraph graph = PassGraph.discover(new CapturedFiles(
+						new MemoryProjectFiles()
+								.put("main.glsl", lines(input("a.glsl", "a"),
+										MAIN))
+								.put("a.glsl", lines(input("b.glsl", "b"), MAIN))
+								.put("b.glsl", MAIN)),
 				path("main.glsl"), new ProjectLimits(16, 1000, 64, 2));
 		assertEquals(List.of("ERROR a.glsl:1 Project has more than the " +
 				"limit of 2 passes"), messages(graph));
@@ -352,7 +354,7 @@ public class PassGraphTest {
 	}
 
 	private static PassGraph discover(MemoryProjectFiles files) {
-		return PassGraph.discover(files, path("main.glsl"),
+		return PassGraph.discover(new CapturedFiles(files), path("main.glsl"),
 				ProjectLimits.DEFAULT);
 	}
 
