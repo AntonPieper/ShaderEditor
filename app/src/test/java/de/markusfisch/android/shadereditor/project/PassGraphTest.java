@@ -30,8 +30,8 @@ public class PassGraphTest {
 	public void g01KeepsDuplicateBasenamesApart() {
 		PassGraph graph = discover(new MemoryProjectFiles()
 				.put("main.glsl", lines(
-						input("b/blur.glsl", "second"),
-						input("a/blur.glsl", "first"),
+						input("b/blur.glsl", "later"),
+						input("a/blur.glsl", "earlier"),
 						MAIN))
 				.put("a/blur.glsl", MAIN)
 				.put("b/blur.glsl", MAIN));
@@ -335,7 +335,7 @@ public class PassGraphTest {
 										MAIN))
 								.put("a.glsl", lines(input("b.glsl", "b"), MAIN))
 								.put("b.glsl", MAIN), limits),
-				path("main.glsl"), limits);
+				path("main.glsl"), limits, BuiltinNames.ALL);
 		assertEquals(List.of("ERROR a.glsl:1 Project has more than the " +
 				"limit of 2 passes"), messages(graph));
 	}
@@ -356,7 +356,8 @@ public class PassGraphTest {
 
 	private static PassGraph discover(MemoryProjectFiles files) {
 		return PassGraph.discover(new CapturedFiles(files,
-				ProjectLimits.DEFAULT), path("main.glsl"), ProjectLimits.DEFAULT);
+				ProjectLimits.DEFAULT), path("main.glsl"), ProjectLimits.DEFAULT,
+				BuiltinNames.ALL);
 	}
 
 	private static List<String> messages(PassGraph graph) {

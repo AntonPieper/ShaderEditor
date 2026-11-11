@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.project.BuiltinNames;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
@@ -603,7 +604,7 @@ public class LegacyShaderConverterTest {
 				? new ProjectFiles.Content(files.get(path), "1")
 				: null;
 		return Preparation.prepare(project, LegacyShaderConverter.SHADER,
-				ProjectLimits.DEFAULT);
+				ProjectLimits.DEFAULT, BuiltinNames.ALL);
 	}
 
 	private static List<ProjectDiagnostic> errors(

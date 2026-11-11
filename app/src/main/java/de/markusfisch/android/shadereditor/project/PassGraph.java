@@ -72,20 +72,23 @@ final class PassGraph {
 	private final Map<ProjectPath, Node> byPath = new HashMap<>();
 	private final CapturedFiles files;
 	private final ProjectLimits limits;
+	private final Set<String> reserved;
 	private boolean stopped;
 
 	private PassGraph(CapturedFiles files, ProjectPath entry,
-			ProjectLimits limits) {
+			ProjectLimits limits, Set<String> reserved) {
 		this.files = files;
 		this.limits = limits;
+		this.reserved = reserved;
 		this.entry = node(entry, entry, 0);
 	}
 
 	static PassGraph discover(
 			CapturedFiles files,
 			ProjectPath entry,
-			ProjectLimits limits) {
-		PassGraph graph = new PassGraph(files, entry, limits);
+			ProjectLimits limits,
+			Set<String> reserved) {
+		PassGraph graph = new PassGraph(files, entry, limits, reserved);
 		if (graph.entry == null) {
 			return graph;
 		} else if (graph.entry.directives == null) {
@@ -113,7 +116,7 @@ final class PassGraph {
 			return node;
 		}
 		node.assembly = SourceAssembly.assemble(files, file, limits);
-		node.directives = HostDirectives.parse(node.assembly);
+		node.directives = HostDirectives.parse(node.assembly, reserved);
 		diagnostics.addAll(node.directives.diagnostics());
 		for (HostDirective.Input input : node.directives.inputs()) {
 			Node producer = source(input.source(), input.file(),

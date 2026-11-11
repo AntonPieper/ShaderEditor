@@ -206,6 +206,38 @@ public class PreparationTest {
 	}
 
 	@Test
+	public void missingManifestEntryIsAnError() {
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.glsl", MAIN)
+				.put("shader-project.json", "{\"entry\": \"missing.glsl\"}"));
+		assertNull(preparation.plan());
+		assertEquals(List.of("ERROR shader-project.json:0 Entry " +
+				"missing.glsl in shader-project.json does not exist"),
+				messages(preparation));
+		assertEquals(List.of("shader-project.json", "main.glsl",
+				"missing.glsl"), dependencyPaths(preparation));
+		assertNotNull(prepare(new MemoryProjectFiles()
+				.put("main.glsl", MAIN)
+				.put("other.glsl", MAIN)
+				.put("shader-project.json", "{\"entry\": \"other.glsl\"}"))
+				.plan());
+	}
+
+	@Test
+	public void versionControlFoldersAreNotDependencies() {
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("main.glsl", lines("#include \"sub/../.git/config\"",
+						MAIN));
+		Preparation preparation = prepare(files);
+		assertNull(preparation.plan());
+		assertEquals(List.of("ERROR main.glsl:1 Path is inside a " +
+				"version-control folder: sub/../.git/config"),
+				messages(preparation));
+		assertEquals(List.of(ProjectManifest.FILE, path("main.glsl")),
+				files.readPaths);
+	}
+
+	@Test
 	public void manifestThatIsNotTextIsAnError() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
 				.put("main.glsl", MAIN)
@@ -220,7 +252,7 @@ public class PreparationTest {
 		Preparation preparation = Preparation.prepare(new MemoryProjectFiles()
 						.put("sub/main.glsl", MAIN)
 						.put("sub/shader-project.json", "nonsense"),
-				path("sub/main.glsl"), ProjectLimits.DEFAULT);
+				path("sub/main.glsl"), ProjectLimits.DEFAULT, BuiltinNames.ALL);
 		assertNotNull(preparation.plan());
 		assertEquals(List.of("shader-project.json", "sub/main.glsl"),
 				dependencyPaths(preparation));
@@ -268,7 +300,7 @@ public class PreparationTest {
 	public void entryMustBeAShader() {
 		Preparation preparation = Preparation.prepare(new MemoryProjectFiles()
 						.put("a.png", new byte[]{1}),
-				path("a.png"), ProjectLimits.DEFAULT);
+				path("a.png"), ProjectLimits.DEFAULT, BuiltinNames.ALL);
 		assertNull(preparation.plan());
 		assertEquals(List.of("ERROR a.png:0 The running shader must be a " +
 				".glsl file: a.png"), messages(preparation));
@@ -309,7 +341,7 @@ public class PreparationTest {
 				? files.read(path)
 				: new ProjectFiles.Failed("permission lost");
 		Preparation preparation = Preparation.prepare(failing,
-				path("main.glsl"), ProjectLimits.DEFAULT);
+				path("main.glsl"), ProjectLimits.DEFAULT, BuiltinNames.ALL);
 		assertNull(preparation.plan());
 		assertEquals(List.of(
 				"ERROR main.glsl:1 Could not read lib.glsl: permission lost",
@@ -323,7 +355,7 @@ public class PreparationTest {
 				"ERROR main.glsl:0 Could not read main.glsl: permission lost"),
 				messages(Preparation.prepare(path -> new ProjectFiles.Failed(
 						"permission lost"), path("main.glsl"),
-						ProjectLimits.DEFAULT)));
+						ProjectLimits.DEFAULT, BuiltinNames.ALL)));
 	}
 
 	@Test
@@ -350,7 +382,8 @@ public class PreparationTest {
 						.put("main.glsl", lines(input("a.glsl", "a"), MAIN))
 						.put("a.glsl", lines(input("b.glsl", "b"), MAIN))
 						.put("b.glsl", MAIN),
-				path("main.glsl"), new ProjectLimits(16, 1000, 100, 3, 16, 100));
+				path("main.glsl"), new ProjectLimits(16, 1000, 100, 3, 16, 100),
+				BuiltinNames.ALL);
 		assertNull(preparation.plan());
 		assertEquals(List.of("ERROR a.glsl:1 Could not read b.glsl: the " +
 				"build reads more than the limit of 3 files"),
@@ -370,7 +403,7 @@ public class PreparationTest {
 		}
 		Preparation preparation = Preparation.prepare(files,
 				path("main.glsl"), new ProjectLimits(16, 10000, 100, 2, 16,
-						100));
+						100), BuiltinNames.ALL);
 		assertNull(preparation.plan());
 		assertEquals(List.of(ProjectManifest.FILE, path("main.glsl")),
 				files.readPaths);
@@ -395,18 +428,19 @@ public class PreparationTest {
 				new ProjectLimits(16, 1000, 100, 64, 0, 100));
 		for (ProjectLimits limits : zeros) {
 			Preparation preparation = Preparation.prepare(files,
-					path("main.glsl"), limits);
+					path("main.glsl"), limits, BuiltinNames.ALL);
 			assertNull(limits.toString(), preparation.plan());
 			assertTrue(messages(preparation).toString(),
 					messages(preparation).get(0).contains("limit of 0"));
 		}
 		assertNotNull(Preparation.prepare(files, path("main.glsl"),
-				new ProjectLimits(16, 1000, 100, 64, 16, 0)).plan());
+				new ProjectLimits(16, 1000, 100, 64, 16, 0),
+				BuiltinNames.ALL).plan());
 	}
 
 	private static Preparation prepare(MemoryProjectFiles files) {
 		return Preparation.prepare(files, path("main.glsl"),
-				ProjectLimits.DEFAULT);
+				ProjectLimits.DEFAULT, BuiltinNames.ALL);
 	}
 
 	private static String input(String source, String name) {

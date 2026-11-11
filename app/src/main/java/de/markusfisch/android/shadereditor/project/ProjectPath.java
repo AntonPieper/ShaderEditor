@@ -4,6 +4,7 @@ import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -20,6 +21,8 @@ public final class ProjectPath {
 	private static final Pattern DRIVE = Pattern.compile("[A-Za-z]:");
 	private static final Pattern SCHEME = Pattern.compile(
 			"[A-Za-z][A-Za-z0-9+.-]*:");
+	private static final Set<String> VERSION_CONTROL = Set.of(
+			".git", ".hg", ".svn");
 
 	private final String path;
 
@@ -107,6 +110,12 @@ public final class ProjectPath {
 			return ProjectParseResult.error(
 					"Path names the project folder, not a file: " + reference,
 					file, 0);
+		}
+		for (String segment : segments) {
+			if (VERSION_CONTROL.contains(segment.toLowerCase(Locale.ROOT))) {
+				return ProjectParseResult.error("Path is inside a " +
+						"version-control folder: " + reference, file, 0);
+			}
 		}
 		return ProjectParseResult.success(
 				new ProjectPath(String.join("/", segments)));
