@@ -1,7 +1,6 @@
 package de.markusfisch.android.shadereditor.fragment;
 
 import android.app.Activity;
-import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,6 +11,7 @@ import androidx.fragment.app.Fragment;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.LoadSampleActivity;
+import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.adapter.SamplesAdapter;
 
 public class LoadSampleFragment extends Fragment {
@@ -28,28 +28,28 @@ public class LoadSampleFragment extends Fragment {
 				false);
 
 		listView = view.findViewById(R.id.samples);
-		initListView(getActivity());
+		initListView();
 
 		return view;
 	}
 
-	private void initListView(Context context) {
-		final SamplesAdapter samplesAdapter = new SamplesAdapter(context);
+	private void initListView() {
+		final SamplesAdapter samplesAdapter = new SamplesAdapter();
 
 		listView.setAdapter(samplesAdapter);
 		listView.setOnItemClickListener((parent, view, position, id) ->
-				loadSample(samplesAdapter.getItem(position)));
+				loadSample((Samples.Sample) samplesAdapter.getItem(position)));
 	}
 
-	private void loadSample(SamplesAdapter.Sample sample) {
+	private void loadSample(Samples.Sample sample) {
 		Activity activity = getActivity();
 		if (activity != null) {
 			LoadSampleActivity.setSampleResult(
 					activity,
-					sample.name,
-					sample.resId,
-					sample.thumbId,
-					sample.quality);
+					activity.getString(sample.nameId()),
+					sample.resId(),
+					sample.thumbId(),
+					sample.quality());
 			activity.finish();
 		}
 	}

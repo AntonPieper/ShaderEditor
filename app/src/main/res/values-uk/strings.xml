@@ -220,7 +220,11 @@
 	<string name="insert_code">Вставте код</string>
 
 	<!-- LoadSampleFragment -->
-	<string name="load_sample">Завантажити зразок</string>
+	<string name="load_sample">Examples</string>
+	<string name="samples_section_start_here">Start here</string>
+	<string name="samples_section_device_inputs">Device inputs</string>
+	<string name="samples_section_techniques">Techniques</string>
+	<string name="samples_section_wallpapers">Wallpapers</string>
 	<string name="sample_battery_name">Батарея</string>
 	<string name="sample_battery_rationale">Горизонтальний датчик батареї</string>
 	<string name="sample_camera_back_name">Задня камера</string>

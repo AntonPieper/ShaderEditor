@@ -203,7 +203,11 @@
 	<string name="no_preset">(無預設)</string>
 	<string name="insert_code">插入程式碼</string>
 
-	<string name="load_sample">載入範例</string>
+	<string name="load_sample">Examples</string>
+	<string name="samples_section_start_here">Start here</string>
+	<string name="samples_section_device_inputs">Device inputs</string>
+	<string name="samples_section_techniques">Techniques</string>
+	<string name="samples_section_wallpapers">Wallpapers</string>
 	<string name="sample_battery_name">電池電量</string>
 	<string name="sample_battery_rationale">水平電池電量指示器</string>
 	<string name="sample_camera_back_name">後置鏡頭</string>
