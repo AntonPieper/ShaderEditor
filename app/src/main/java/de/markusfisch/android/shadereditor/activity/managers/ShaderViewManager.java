@@ -7,7 +7,6 @@ import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import java.util.List;
 
@@ -60,15 +59,9 @@ public class ShaderViewManager {
 		}
 	}
 
-	public void setFragmentShader(@Nullable String src) {
-		shaderView.setFragmentShader(src, quality);
-	}
-
 	public void setProjectSession(@NonNull ShaderProjectSession projectSession) {
 		setQuality(projectSession.getQuality());
-		shaderView.setFragmentShader(
-				projectSession.getEntryPointSource(),
-				projectSession.getQuality());
+		shaderView.setShader(projectSession);
 	}
 
 	public void setVisibility(boolean visible) {
@@ -76,7 +69,7 @@ public class ShaderViewManager {
 	}
 
 	public byte[] getThumbnail() {
-		return shaderView.getRenderer().getThumbnail();
+		return shaderView.getEngine().getThumbnail();
 	}
 
 	public void setQuality(float quality) {
@@ -90,14 +83,14 @@ public class ShaderViewManager {
 	}
 
 	private void initShaderView() {
-		shaderView.getRenderer().setOnRendererListener(new ShaderEngine.OnRendererListener() {
+		shaderView.getEngine().setListener(new ShaderEngine.Listener() {
 			@Override
 			public void onFramesPerSecond(int fps) {
 				listener.onFramesPerSecond(fps);
 			}
 
 			@Override
-			public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
+			public void onDiagnostics(@NonNull List<ProjectDiagnostic> infoLog) {
 				listener.onInfoLog(infoLog);
 			}
 		});
@@ -128,10 +121,7 @@ public class ShaderViewManager {
 				}
 				quality = q;
 				listener.onQualityChanged(quality);
-				// Refresh renderer with new quality
-				shaderView.getRenderer().setQuality(quality);
-				shaderView.onPause();
-				shaderView.onResume();
+				shaderView.setQuality(quality);
 			}
 
 			@Override

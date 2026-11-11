@@ -64,7 +64,7 @@ public class PreviewActivity extends AppCompatActivity {
 				return;
 			}
 
-			renderStatus.setThumbnail(shaderView.getRenderer().getThumbnail());
+			renderStatus.setThumbnail(shaderView.getEngine().getThumbnail());
 		}
 	};
 
@@ -82,8 +82,8 @@ public class PreviewActivity extends AppCompatActivity {
 			return;
 		}
 
-		shaderView.getRenderer().setOnRendererListener(
-				new ShaderEngine.OnRendererListener() {
+		shaderView.getEngine().setListener(
+				new ShaderEngine.Listener() {
 					@Override
 					public void onFramesPerSecond(int fps) {
 						// Invoked from the GL thread.
@@ -91,7 +91,7 @@ public class PreviewActivity extends AppCompatActivity {
 					}
 
 					@Override
-					public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
+					public void onDiagnostics(@NonNull List<ProjectDiagnostic> infoLog) {
 						// Invoked from the GL thread.
 						renderStatus.infoLog = infoLog;
 						if (!infoLog.isEmpty()) {
@@ -144,9 +144,7 @@ public class PreviewActivity extends AppCompatActivity {
 			return false;
 		}
 
-		shaderView.setFragmentShader(
-				projectSession.getEntryPointSource(),
-				projectSession.getQuality());
+		shaderView.setShader(projectSession);
 		return true;
 	}
 

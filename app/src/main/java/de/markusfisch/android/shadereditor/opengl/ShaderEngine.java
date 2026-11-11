@@ -6,7 +6,6 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.hardware.display.DisplayManager;
 import android.opengl.GLES20;
-import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.view.Display;
 import android.view.MotionEvent;
@@ -19,15 +18,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.opengles.GL10;
-
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 
-public class ShaderEngine implements GLSurfaceView.Renderer {
-	public interface OnRendererListener {
-		void onInfoLog(@NonNull List<ProjectDiagnostic> error);
+// The only class a host talks to. Hosts set the shader and post input
+// from any thread; the GL thread calls the context, surface and frame
+// methods.
+public final class ShaderEngine {
+	public interface Listener {
+		// Called on the GL thread; empty when the shader built.
+		void onDiagnostics(@NonNull List<ProjectDiagnostic> diagnostics);
 
 		void onFramesPerSecond(int fps);
 	}
@@ -50,7 +51,7 @@ public class ShaderEngine implements GLSurfaceView.Renderer {
 	private final Object thumbnailLock = new Object();
 
 	@Nullable
-	private OnRendererListener onRendererListener;
+	private Listener listener;
 	@Nullable
 	private volatile Runnable renderRequester;
 	@Nullable
@@ -78,14 +79,13 @@ public class ShaderEngine implements GLSurfaceView.Renderer {
 		sources = new UniformSources(host);
 	}
 
-	public void setVersion(int version) {
-		programManager.setVersion(version);
-	}
-
-	public void setFragmentShader(String source, float quality) {
+	public void setShader(@NonNull ShaderProjectSession session) {
 		inputs.setRuntimeNanos(0);
-		setQuality(quality);
-		programManager.setFragmentShader(source);
+		setQuality(session.getQuality());
+		// Text pasted from other apps may carry non-ASCII characters
+		// that crash some shader compilers.
+		programManager.setFragmentShader(
+				removeNonAscii(session.getEntryPointSource()));
 		resetFps();
 	}
 
@@ -101,8 +101,8 @@ public class ShaderEngine implements GLSurfaceView.Renderer {
 		inputs.setQuality(quality);
 	}
 
-	public void setOnRendererListener(OnRendererListener listener) {
-		onRendererListener = listener;
+	public void setListener(@Nullable Listener listener) {
+		this.listener = listener;
 	}
 
 	// Called when decoded textures are ready, so a view that renders only
@@ -111,8 +111,9 @@ public class ShaderEngine implements GLSurfaceView.Renderer {
 		renderRequester = requester;
 	}
 
-	@Override
-	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+	// GL thread, for every new context of the given GLES major version.
+	public void onContextCreated(int version) {
+		programManager.setVersion(version);
 		device.disable(GLES20.GL_CULL_FACE);
 		device.disable(GLES20.GL_BLEND);
 		device.disable(GLES20.GL_DEPTH_TEST);
@@ -138,8 +139,8 @@ public class ShaderEngine implements GLSurfaceView.Renderer {
 		}
 	}
 
-	@Override
-	public void onSurfaceChanged(GL10 gl, int width, int height) {
+	// GL thread.
+	public void onSurfaceChanged(int width, int height) {
 		long now = System.nanoTime();
 		lastRender = now;
 		refreshRate = getRefreshRate(context);
@@ -159,8 +160,8 @@ public class ShaderEngine implements GLSurfaceView.Renderer {
 		resetFps();
 	}
 
-	@Override
-	public void onDrawFrame(GL10 gl) {
+	// GL thread.
+	public void drawFrame() {
 		var surfaceProgram = programManager.getSurfaceProgram();
 		var mainProgram = programManager.getMainProgram();
 		if (surfaceProgram == null || mainProgram == null) {
@@ -222,22 +223,23 @@ public class ShaderEngine implements GLSurfaceView.Renderer {
 		captureThumbnail();
 		renderPipeline.swapTargets();
 
-		if (onRendererListener != null) {
+		if (listener != null) {
 			updateFps(now);
 		}
 	}
 
-	public void unregisterListeners() {
+	// After the host released the context; the GL thread is not running.
+	public void onContextLost() {
 		textureLoads.cancel();
 		releaseSources();
 		clearConfiguration();
 	}
 
-	public void touchAt(MotionEvent e) {
+	public void pointer(@NonNull MotionEvent e) {
 		inputs.post(e);
 	}
 
-	public void setOffset(float x, float y) {
+	public void offset(float x, float y) {
 		inputs.postOffset(x, y);
 	}
 
@@ -263,8 +265,8 @@ public class ShaderEngine implements GLSurfaceView.Renderer {
 	}
 
 	private void submitErrors(@NonNull List<ProjectDiagnostic> errors) {
-		if (onRendererListener != null) {
-			onRendererListener.onInfoLog(errors);
+		if (listener != null) {
+			listener.onDiagnostics(errors);
 		}
 	}
 
@@ -386,14 +388,19 @@ public class ShaderEngine implements GLSurfaceView.Renderer {
 
 		if (now > nextFpsUpdate) {
 			int fps = Math.round(sum / samples);
-			if (fps != lastFps && onRendererListener != null) {
-				onRendererListener.onFramesPerSecond(fps);
+			if (fps != lastFps && listener != null) {
+				listener.onFramesPerSecond(fps);
 				lastFps = fps;
 			}
 			nextFpsUpdate = now + FPS_UPDATE_FREQUENCY_NS;
 		}
 
 		lastRender = now;
+	}
+
+	@NonNull
+	private static String removeNonAscii(@NonNull String text) {
+		return text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", "");
 	}
 
 	private static int getDeviceRotation(@NonNull Context context) {
