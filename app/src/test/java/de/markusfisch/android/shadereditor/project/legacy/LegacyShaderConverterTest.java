@@ -240,6 +240,42 @@ public class LegacyShaderConverterTest {
 	}
 
 	@Test
+	public void declarationInAConditionalBlockMovesOutOfIt() {
+		Result result = convert(lines("float a;",
+				"#ifdef FOO",
+				"#if BAR",
+				"uniform sampler2D noise; // why",
+				"#endif",
+				"#endif"));
+		assertEquals(lines("float a;",
+				NOISE_DEFAULT,
+				"uniform sampler2D noise;",
+				"#ifdef FOO",
+				"#if BAR",
+				" // why",
+				"#endif",
+				"#endif"), result.shader());
+		assertEquals(List.of(1, 0, 4, 2, 3, 4, 5, 6), result.lines());
+		assertEquals(List.of(new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.WARNING,
+				"Moved uniform sampler2D noise out of the conditional block " +
+						"on line 2, because #pragma se input cannot be " +
+						"inside one", null, 4)), result.diagnostics());
+	}
+
+	@Test
+	public void declarationsInSeveralConditionalBranchesStayAsWritten() {
+		String text = lines("#ifdef FOO",
+				"uniform sampler2D noise;",
+				"#else",
+				"uniform sampler2D noise;",
+				"#endif");
+		Result result = convert(text);
+		assertEquals(text, result.shader());
+		assertEquals(List.of(2, 4), lines(result.diagnostics()));
+	}
+
+	@Test
 	public void libraryTextureNamedLikeTheCameraIsNotBound() {
 		Result result = convert(lines("uniform sampler2D cameraBack;"));
 		assertEquals(lines("uniform sampler2D cameraBack;"), result.shader());

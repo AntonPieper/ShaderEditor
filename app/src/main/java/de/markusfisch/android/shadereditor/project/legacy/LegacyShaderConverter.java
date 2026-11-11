@@ -299,7 +299,7 @@ public final class LegacyShaderConverter {
 		Line directive = new Line("#pragma se input " + arguments, 0);
 		int line = declaration.line;
 		if (scan.depthAt(line) > 0) {
-			// Host directives cannot be inside conditional blocks.
+			hoist(declaration, directive);
 			return;
 		}
 		String text = raw.get(line - 1);
@@ -312,6 +312,46 @@ public final class LegacyShaderConverter {
 		lines.add(new Line((prefix.isBlank() ? prefix : "") +
 				declaration(declaration), line));
 		replaced.put(line, lines);
+	}
+
+	// Host directives cannot be inside conditional blocks, so the
+	// declaration moves before the outermost one around it.
+	private void hoist(Declaration declaration, Line directive) {
+		int line = declaration.line;
+		for (Declaration other : declarations) {
+			if (other != declaration && other.code &&
+					other.name.equals(declaration.name)) {
+				warn(line, declaration.name + " is declared more than " +
+						"once, so this declaration inside #if, #ifdef or " +
+						"#ifndef, where #pragma se input cannot be, is " +
+						"left as written without its texture or " +
+						"settings; declare it once outside the " +
+						"conditional block");
+				return;
+			}
+		}
+		int open = 0;
+		for (PreprocessorScan.Directive d : scan.directives()) {
+			if (d.line() > line) {
+				break;
+			} else if (d.depth() == 0 &&
+					(d.kind() == PreprocessorScan.Kind.IF ||
+							d.kind() == PreprocessorScan.Kind.IFDEF ||
+							d.kind() == PreprocessorScan.Kind.IFNDEF)) {
+				open = d.line();
+			}
+		}
+		insert(open, directive);
+		insert(open, new Line("uniform " + declaration.type + " " +
+				declaration.name + ";", line));
+		String rest = raw.get(line - 1).substring(0, declaration.start) +
+				remainder(declaration);
+		replaced.put(line, List.of(new Line(rest.isBlank()
+				? ""
+				: rest.stripTrailing(), line)));
+		warn(line, "Moved uniform " + declaration.type + " " +
+				declaration.name + " out of the conditional block on line " +
+				open + ", because #pragma se input cannot be inside one");
 	}
 
 	private void dropSettingsComment(Declaration declaration) {
