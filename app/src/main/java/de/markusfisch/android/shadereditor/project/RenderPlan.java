@@ -188,6 +188,7 @@ public record RenderPlan(
 	 * The output of a pass: scaled from the project render size when
 	 * width and height are 0, else that fixed size.
 	 *
+	 * @param scale   a decimal with at most six digits after the point
 	 * @param present how the running shader's output is scaled to the
 	 *                surface; no effect on other passes
 	 * @param file    the file with the target directive, or the pass
@@ -230,20 +231,23 @@ public record RenderPlan(
 		 * why it cannot be allocated with textures of at most maxSize.
 		 */
 		public ProjectParseResult<Size> size(Size project, int maxSize) {
-			if (!isFixed()) {
-				return ProjectParseResult.success(new Size(
-						scaled(project.width), scaled(project.height)));
-			} else if (width > maxSize || height > maxSize) {
-				return ProjectParseResult.error("Target size " + width + "x" +
-						height + " is larger than " + maxSize + ", the " +
-						"largest texture this device supports", file, line);
+			Size size = isFixed()
+					? new Size(width, height)
+					: new Size(scaled(project.width), scaled(project.height));
+			if (size.width > maxSize || size.height > maxSize) {
+				return ProjectParseResult.error("Target size " + size.width +
+						"x" + size.height + " is larger than " + maxSize +
+						", the largest texture this device supports", file,
+						line);
 			}
-			return ProjectParseResult.success(new Size(width, height));
+			return ProjectParseResult.success(size);
 		}
 
-		// The scale is exactly the decimal that was written.
+		// A written scale has at most six digits after the point, so this
+		// is exactly that decimal.
 		private int scaled(int dimension) {
 			return Math.max(1, BigDecimal.valueOf(scale)
+					.setScale(6, RoundingMode.HALF_EVEN)
 					.multiply(BigDecimal.valueOf(dimension))
 					.setScale(0, RoundingMode.FLOOR)
 					.intValue());
