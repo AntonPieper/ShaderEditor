@@ -22,13 +22,14 @@ final class ShaderRenderPipeline {
 		static SurfaceProgram of(@NonNull GlDevice device, @NonNull GlProgram program) {
 			return new SurfaceProgram(
 					program,
-					device.getUniformLocation(program, ShaderRenderer.UNIFORM_RESOLUTION),
+					device.getUniformLocation(program, SURFACE_RESOLUTION),
 					program.getTextureUnit(SURFACE_FRAME));
 		}
 	}
 
 	private static final int THUMBNAIL_WIDTH = 144;
 	private static final int THUMBNAIL_HEIGHT = 144;
+	private static final String SURFACE_RESOLUTION = "resolution";
 	private static final String SURFACE_FRAME = "frame";
 
 	private final float[] thumbnailResolution =

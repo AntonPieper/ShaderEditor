@@ -38,10 +38,6 @@ final class GlDevice {
 		this.maxTextureUnits = maxTextureUnits;
 	}
 
-	int getMaxTextureUnits() {
-		return maxTextureUnits;
-	}
-
 	void disable(int cap) {
 		GLES20.glDisable(cap);
 	}
@@ -341,10 +337,6 @@ final class GlDevice {
 	int getUniformLocation(@NonNull GlProgram program, @NonNull String name) {
 		GlUniform uniform = program.getUniforms().get(name);
 		return uniform != null ? uniform.location() : -1;
-	}
-
-	boolean hasUniform(@NonNull GlProgram program, @NonNull String name) {
-		return getUniformLocation(program, name) > -1;
 	}
 
 	int getAttribLocation(@NonNull GlProgram program, @NonNull String name) {

@@ -1,7 +1,6 @@
 package de.markusfisch.android.shadereditor.adapter;
 
 import android.content.Context;
-import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,10 +9,12 @@ import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.StringRes;
 import androidx.core.content.ContextCompat;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -22,30 +23,25 @@ import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 
 public class PresetUniformAdapter extends BaseAdapter implements Filterable {
+	interface Strings {
+		@NonNull
+		String get(@StringRes int id);
+	}
+
 	public static final class Uniform {
 		public final String type;
 		public final String name;
 
-		private final String rationale;
-		private final int minSdk;
-
-		private boolean isAvailable() {
-			return minSdk <= Build.VERSION.SDK_INT;
-		}
+		final String rationale;
 
 		public boolean isSampler() {
 			return type.startsWith("sampler");
 		}
 
-		private Uniform(
-				String type,
-				String name,
-				String rationale,
-				int minSdk) {
+		private Uniform(String type, String name, String rationale) {
 			this.type = type;
 			this.name = name;
 			this.rationale = rationale;
-			this.minSdk = minSdk;
 		}
 	}
 
@@ -57,50 +53,22 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 
 	public PresetUniformAdapter(Context context) {
 		uniformFormat = context.getString(R.string.uniform_format);
-		uniforms = Arrays.asList(
-				builtin(context, "backbuffer"),
-				builtin(context, "battery"),
-				builtin(context, "cameraAddent",
-						Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1),
-				builtin(context, "cameraBack",
-						Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1),
-				builtin(context, "cameraFront",
-						Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1),
-				builtin(context, "cameraOrientation",
-						Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1),
-				builtin(context, "date"),
-				builtin(context, "daytime"),
-				builtin(context, "frame"),
-				builtin(context, "ftime"),
-				builtin(context, "gravity"),
-				builtin(context, "gyroscope"),
-				builtin(context, "lastNotificationTime"),
-				builtin(context, "inclination"),
-				builtin(context, "inclinationMatrix"),
-				builtin(context, "light"),
-				builtin(context, "linear"),
-				builtin(context, "magnetic"),
-				builtin(context, "nightMode"),
-				builtin(context, "notificationCount"),
-				builtin(context, "offset"),
-				builtin(context, "orientation"),
-				builtin(context, "pointers"),
-				builtin(context, "pointerCount"),
-				builtin(context, "powerConnected"),
-				builtin(context, "pressure"),
-				builtin(context, "proximity"),
-				builtin(context, "resolution"),
-				builtin(context, "rotationMatrix"),
-				builtin(context, "rotationVector"),
-				builtin(context, "second"),
-				builtin(context, "startRandom"),
-				builtin(context, "subsecond"),
-				builtin(context, "time"),
-				builtin(context, "mediaVolume"),
-				builtin(context, "micAmplitude"),
-				builtin(context, "touch"),
-				builtin(context, "touchStart"));
+		uniforms = createUniforms(context::getString);
 		filteredUniforms = uniforms;
+	}
+
+	@NonNull
+	static List<Uniform> createUniforms(@NonNull Strings strings) {
+		var builtins = new ArrayList<>(UniformTable.BUILTINS);
+		Collections.sort(builtins, (a, b) -> a.getName().compareTo(b.getName()));
+		var uniforms = new ArrayList<Uniform>(builtins.size());
+		for (UniformDef uniform : builtins) {
+			uniforms.add(new Uniform(
+					uniform.getType().getKeyword(),
+					uniform.getDeclarator(),
+					strings.get(uniform.getDescription())));
+		}
+		return Collections.unmodifiableList(uniforms);
 	}
 
 	@Override
@@ -133,15 +101,10 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 
 		ViewHolder holder = getViewHolder(convertView);
 		Uniform uniform = filteredUniforms.get(position);
-		boolean enabled = uniform.isAvailable();
-
-		convertView.setEnabled(enabled);
 
 		holder.name.setTextColor(ContextCompat.getColor(
 				parent.getContext(),
-				enabled
-						? android.R.color.primary_text_dark
-						: R.color.disabled_text));
+				android.R.color.primary_text_dark));
 		holder.name.setText(String.format(
 				Locale.US,
 				uniformFormat,
@@ -150,19 +113,6 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 		holder.rationale.setText(uniform.rationale);
 
 		return convertView;
-	}
-
-	private static Uniform builtin(Context context, String name) {
-		return builtin(context, name, 0);
-	}
-
-	private static Uniform builtin(Context context, String name, int minSdk) {
-		UniformDef uniform = UniformTable.get(name);
-		return new Uniform(
-				uniform.getType().getKeyword(),
-				uniform.getDeclarator(),
-				context.getString(uniform.getDescription()),
-				minSdk);
 	}
 
 	private ViewHolder getViewHolder(View view) {
