@@ -21,6 +21,7 @@ import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.LibraryTexture;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.TextureFile;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
+import de.markusfisch.android.shadereditor.project.legacy.StoredFiles.Problem;
 
 /**
  * One database shader presented as project files: the shader converted
@@ -36,12 +37,20 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 	private final LegacyShaderConverter.Result conversion;
 	@NonNull
 	private final Map<ProjectPath, TextureFile> textureFiles = new HashMap<>();
+	@NonNull
+	private final Map<String, DataRecords.TextureInfo> library;
+	@NonNull
+	private final ProjectLimits limits;
 
 	private DatabaseProjectFiles(
 			@NonNull TextureDao textures,
-			@NonNull LegacyShaderConverter.Result conversion) {
+			@NonNull LegacyShaderConverter.Result conversion,
+			@NonNull Map<String, DataRecords.TextureInfo> library,
+			@NonNull ProjectLimits limits) {
 		this.textures = textures;
 		this.conversion = conversion;
+		this.library = library;
+		this.limits = limits;
 		for (TextureFile file : conversion.textures()) {
 			textureFiles.put(file.path(), file);
 		}
@@ -49,12 +58,13 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 
 	/**
 	 * Convert the shader with this id, or return null when there is no
-	 * such shader.
+	 * such shader. Textures are served within limits.
 	 */
 	@Nullable
 	public static DatabaseProjectFiles open(
 			@NonNull DataSource dataSource,
-			long shaderId) {
+			long shaderId,
+			@NonNull ProjectLimits limits) {
 		DataRecords.Shader shader = dataSource.shader.getShader(shaderId);
 		if (shader == null) {
 			return null;
@@ -75,7 +85,8 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 		LegacyShaderConverter.Result conversion = LegacyShaderConverter.convert(
 				text != null ? text : "",
 				name -> find(textures, library, atlases, name));
-		return new DatabaseProjectFiles(textures, conversion);
+		return new DatabaseProjectFiles(textures, conversion, library,
+				limits);
 	}
 
 	/** The conversion, with its line map and diagnostics. */
@@ -94,18 +105,60 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 		if (file == null) {
 			return null;
 		}
+		try {
+			return readTexture(file);
+		} catch (OutOfMemoryError e) {
+			return failed(Problem.NO_MEMORY, file);
+		} catch (RuntimeException e) {
+			// A database error, or a bitmap the platform rejects.
+			return failed(Problem.DATABASE, file);
+		}
+	}
+
+	@NonNull
+	private Read readTexture(@NonNull TextureFile file) {
+		// The stored size is checked before decoding; a texture that is
+		// in neither list has no known size until it is decoded.
+		DataRecords.TextureInfo info = library.get(file.name());
+		String problem = info != null
+				? check(file, info.width(), info.height())
+				: null;
+		if (problem != null) {
+			return new Failed(problem);
+		}
 		Bitmap bitmap = textures.getTextureBitmap(file.name());
 		if (bitmap == null) {
-			return null;
+			return failed(Problem.UNREADABLE, file);
 		}
 		try {
+			problem = check(file, bitmap.getWidth(), bitmap.getHeight());
+			if (problem != null) {
+				return new Failed(problem);
+			}
 			byte[] png = file.cubemap()
 					? strip(bitmap)
 					: BitmapEditor.encodeAsPng(bitmap);
-			return png != null && png.length > 0 ? content(png) : null;
+			if (png == null) {
+				return failed(Problem.NOT_A_CUBEMAP, file);
+			}
+			return png.length > 0
+					? content(png)
+					: failed(Problem.NOT_ENCODED, file);
 		} finally {
 			bitmap.recycle();
 		}
+	}
+
+	@Nullable
+	private String check(@NonNull TextureFile file, int width, int height) {
+		return StoredFiles.check(file.name(), width, height, file.cubemap(),
+				limits.imagePixels());
+	}
+
+	@NonNull
+	private static Read failed(@NonNull Problem problem,
+			@NonNull TextureFile file) {
+		return new Failed(StoredFiles.reason(problem, file.name()));
 	}
 
 	@NonNull
@@ -153,6 +206,7 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 		}
 	}
 
+	// Allocates no more pixels than StoredFiles.check admitted.
 	@Nullable
 	private static byte[] strip(@NonNull Bitmap bitmap) {
 		int width = bitmap.getWidth();
