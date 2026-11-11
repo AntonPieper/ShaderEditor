@@ -62,6 +62,7 @@ public class PresetUniformAdapterTest {
 				"resolution",
 				"rotationMatrix",
 				"rotationVector",
+				"runtime",
 				"second",
 				"startRandom",
 				"subsecond",

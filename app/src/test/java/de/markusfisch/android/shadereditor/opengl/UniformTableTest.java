@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.opengl;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -12,6 +13,8 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import de.markusfisch.android.shadereditor.R;
 
 public class UniformTableTest {
 	private static final float EPSILON = 1e-6f;
@@ -91,6 +94,17 @@ public class UniformTableTest {
 		assertWritten(in, "pointerCount", "int", 2f);
 		assertWritten(in, "pointers", "vec3[2]",
 				10f, 20f, 3f, 30f, 40f, 4f);
+	}
+
+	@Test
+	public void writesRuntimeIndependentlyOfTime() {
+		FrameInputs in = frame();
+		in.runtime = 123.5f;
+		assertWritten(in, "runtime", "float", 123.5f);
+		UniformDef runtime = UniformTable.get("runtime");
+		assertEquals(GlslType.FLOAT, runtime.getType());
+		assertEquals(R.string.rendered_runtime, runtime.getDescription());
+		assertNull(runtime.getSource());
 	}
 
 	@Test
@@ -174,7 +188,7 @@ public class UniformTableTest {
 
 	@Test
 	public void describesDeclarations() {
-		assertEquals(39, UniformTable.BUILTINS.size());
+		assertEquals(40, UniformTable.BUILTINS.size());
 		assertEquals("vec4", UniformTable.get("date").getType().getKeyword());
 		assertEquals(UniformTable.get("date").getSource(),
 				UniformTable.get("daytime").getSource());

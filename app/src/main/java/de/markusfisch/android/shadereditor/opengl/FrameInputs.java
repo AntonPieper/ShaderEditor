@@ -5,6 +5,7 @@ final class FrameInputs {
 
 	final float[] pointers = new float[MAX_POINTERS * 3];
 	float time;
+	float runtime;
 	int frame;
 	float fTimeMax;
 	float width;

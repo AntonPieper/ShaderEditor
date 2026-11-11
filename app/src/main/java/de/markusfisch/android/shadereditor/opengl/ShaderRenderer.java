@@ -66,9 +66,18 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void setFragmentShader(String source, float quality) {
+		builtinUniforms.setRuntimeNanos(0);
 		setQuality(quality);
 		programManager.setFragmentShader(source);
 		resetFps();
+	}
+
+	public long getRuntimeNanos() {
+		return builtinUniforms.getRuntimeNanos();
+	}
+
+	public void setRuntimeNanos(long nanos) {
+		builtinUniforms.setRuntimeNanos(nanos);
 	}
 
 	public void setQuality(float quality) {
