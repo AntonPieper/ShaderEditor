@@ -4,10 +4,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class PressureListener extends AbstractListener {
-	private float pressure = 0f;
-
 	public PressureListener(SensorRegistry sensors) {
-		super(sensors);
+		super(sensors, 1);
 	}
 
 	public boolean register() {
@@ -16,11 +14,7 @@ public class PressureListener extends AbstractListener {
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		pressure = event.values[0];
-	}
-
-	public float getPressure() {
-		return pressure;
+		sample.publish(event.values);
 	}
 }
 

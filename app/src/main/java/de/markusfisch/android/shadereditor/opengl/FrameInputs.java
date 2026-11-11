@@ -8,6 +8,8 @@ final class FrameInputs {
 	float runtime;
 	int frame;
 	float fTimeMax;
+	int surfaceWidth;
+	int surfaceHeight;
 	float width;
 	float height;
 	float touchX;

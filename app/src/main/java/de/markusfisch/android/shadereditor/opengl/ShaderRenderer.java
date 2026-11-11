@@ -32,21 +32,27 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	private static final long FPS_UPDATE_FREQUENCY_NS = 200000000L;
 	private static final float NS_PER_SECOND = 1000000000f;
 	private static final float DEFAULT_REFRESH_RATE = 60f;
+	private static final float DEFAULT_FTIME_MAX = 3f;
 
 	private final GlDevice device = new GlDevice();
 	private final RendererProgramManager programManager =
 			new RendererProgramManager();
 	private final ShaderRenderPipeline renderPipeline =
 			new ShaderRenderPipeline(device, Mesh.fullScreenQuad());
-	private final BuiltinUniforms builtinUniforms;
+	private final EngineInputs inputs = new EngineInputs();
+	private final UniformSources sources;
 	private final Context context;
 	private final Object thumbnailLock = new Object();
 
 	@Nullable
 	private OnRendererListener onRendererListener;
+	@Nullable
+	private ActiveBuiltins activeBuiltins;
 	@NonNull
-	private BuiltinUniforms.SurfaceState surfaceState =
-			BuiltinUniforms.SurfaceState.empty();
+	private ShaderTextureResources textureResources =
+			ShaderTextureResources.empty();
+	private int backBufferUnit = GlUniform.NO_UNIT;
+	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
 	private byte[] thumbnail = new byte[1];
 	private boolean captureThumbnail;
@@ -58,7 +64,7 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 
 	public ShaderRenderer(@NonNull EngineHost host) {
 		context = host.context();
-		builtinUniforms = new BuiltinUniforms(host);
+		sources = new UniformSources(host);
 	}
 
 	public void setVersion(int version) {
@@ -66,22 +72,22 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void setFragmentShader(String source, float quality) {
-		builtinUniforms.setRuntimeNanos(0);
+		inputs.setRuntimeNanos(0);
 		setQuality(quality);
 		programManager.setFragmentShader(source);
 		resetFps();
 	}
 
 	public long getRuntimeNanos() {
-		return builtinUniforms.getRuntimeNanos();
+		return inputs.getRuntimeNanos();
 	}
 
 	public void setRuntimeNanos(long nanos) {
-		builtinUniforms.setRuntimeNanos(nanos);
+		inputs.setRuntimeNanos(nanos);
 	}
 
 	public void setQuality(float quality) {
-		builtinUniforms.setQuality(quality);
+		inputs.setQuality(quality);
 	}
 
 	public void setOnRendererListener(OnRendererListener listener) {
@@ -108,11 +114,7 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 			submitErrors(reloadResult.textureErrors());
 			if (reloadResult.succeeded()) {
 				submitErrors(Collections.emptyList());
-				builtinUniforms.configure(
-						device,
-						programManager.getMainProgram(),
-						programManager.getFTimeMax(),
-						programManager.getTextureResources());
+				configure(programManager.getMainProgram());
 			} else if (!reloadResult.programErrors().isEmpty()) {
 				submitErrors(reloadResult.programErrors());
 			}
@@ -124,8 +126,14 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		long now = System.nanoTime();
 		lastRender = now;
 		refreshRate = getRefreshRate(context);
-		surfaceState = builtinUniforms.updateSurface(width, height, now);
-		if (surfaceState.renderTargetsChanged()) {
+		boolean renderSizeChanged = inputs.resize(width, height, now);
+		sources.setDeviceRotation(getDeviceRotation(context));
+		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
+		var camera = sources.get(CameraSource.KEY);
+		if (camera != null) {
+			camera.reopen();
+		}
+		if (renderSizeChanged) {
 			renderPipeline.releaseTargets();
 		}
 
@@ -146,8 +154,8 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		if (!renderPipeline.hasTargets()) {
 			var targetErrors = renderPipeline.ensureTargets(
 					context,
-					surfaceState.renderWidth(),
-					surfaceState.renderHeight(),
+					inputs.getRenderWidth(),
+					inputs.getRenderHeight(),
 					programManager.getBackBufferParameters());
 			if (!targetErrors.isEmpty()) {
 				submitErrors(targetErrors);
@@ -158,39 +166,45 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 			}
 		}
 
-		var frame = builtinUniforms.beginFrame(renderPipeline.getBackTexture());
-		if (frame == null) {
+		var builtins = activeBuiltins;
+		if (builtins == null) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
 			cancelCaptureThumbnail();
 			return;
 		}
 
+		long now = System.nanoTime();
+		var frame = inputs.capture(now, fTimeMax);
+		builtins.write(frame, now);
+		device.bindEmptyTextures(mainProgram);
+		device.bindTexture(backBufferUnit, renderPipeline.getBackTexture());
+		textureResources.bind(device);
+
 		renderPipeline.renderMainPass(mainProgram);
 		renderPipeline.renderSurfacePass(
 				surfaceProgram,
-				frame.surfaceWidth(),
-				frame.surfaceHeight());
+				frame.surfaceWidth,
+				frame.surfaceHeight);
 		captureThumbnail();
 		renderPipeline.swapTargets();
 
 		if (onRendererListener != null) {
-			updateFps(frame.now());
+			updateFps(now);
 		}
-
-		builtinUniforms.endFrame();
 	}
 
 	public void unregisterListeners() {
-		builtinUniforms.release();
+		releaseSources();
+		clearConfiguration();
 	}
 
 	public void touchAt(MotionEvent e) {
-		builtinUniforms.updateTouch(e);
+		inputs.post(e);
 	}
 
 	public void setOffset(float x, float y) {
-		builtinUniforms.updateOffset(x, y);
+		inputs.postOffset(x, y);
 	}
 
 	public byte[] getThumbnail() {
@@ -220,8 +234,33 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		}
 	}
 
+	private void configure(@NonNull GlProgram program) {
+		releaseSources();
+		fTimeMax = programManager.getFTimeMax();
+		textureResources = programManager.getTextureResources();
+		backBufferUnit = program.getTextureUnit(UniformTable.BACKBUFFER);
+		textureResources.resolveUnits(program);
+		sources.setCameraBinding(textureResources.getFirstBinding(
+				UniformTable.CAMERA_BACK,
+				UniformTable.CAMERA_FRONT));
+		activeBuiltins = new ActiveBuiltins(device, program, sources);
+	}
+
+	private void clearConfiguration() {
+		inputs.pauseRuntime();
+		fTimeMax = DEFAULT_FTIME_MAX;
+		textureResources = ShaderTextureResources.empty();
+		backBufferUnit = GlUniform.NO_UNIT;
+		activeBuiltins = null;
+	}
+
+	private void releaseSources() {
+		sources.stop();
+		sources.setCameraBinding(null);
+	}
+
 	private void discardContextResources() {
-		builtinUniforms.clearConfiguration();
+		clearConfiguration();
 		renderPipeline.discardContextResources();
 		programManager.discardContextResources();
 	}
@@ -268,6 +307,16 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 		}
 
 		lastRender = now;
+	}
+
+	private static int getDeviceRotation(@NonNull Context context) {
+		WindowManager windowManager = (WindowManager) context.getSystemService(
+				Context.WINDOW_SERVICE);
+		if (windowManager == null) {
+			return 0;
+		}
+
+		return windowManager.getDefaultDisplay().getRotation();
 	}
 
 	private static float getRefreshRate(Context context) {

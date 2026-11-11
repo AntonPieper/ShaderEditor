@@ -5,7 +5,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorManager;
 
 public class GyroscopeListener extends AbstractListener {
-	public final float[] rotation = new float[]{1f, 1f, 1f};
+	private final float[] rotation = new float[]{1f, 1f, 1f};
 
 	private static final float NS2S = 1f / 1000000000f;
 	// Only guards the division below: any larger speed normalizes to a
@@ -16,11 +16,12 @@ public class GyroscopeListener extends AbstractListener {
 	private final float[] deltaRotationMatrix = new float[9];
 
 	public GyroscopeListener(SensorRegistry sensors) {
-		super(sensors);
+		super(sensors, 3);
 	}
 
 	public boolean register() {
 		rotation[0] = rotation[1] = rotation[2] = 1f;
+		sample.publish(rotation);
 		return register(Sensor.TYPE_GYROSCOPE);
 	}
 
@@ -52,6 +53,7 @@ public class GyroscopeListener extends AbstractListener {
 			rotation[2] = r0 * deltaRotationMatrix[6] +
 					r1 * deltaRotationMatrix[7] +
 					r2 * deltaRotationMatrix[8];
+			sample.publish(rotation);
 		}
 
 		last = event.timestamp;

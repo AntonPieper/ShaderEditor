@@ -4,10 +4,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
 public class RotationVectorListener extends AbstractListener {
-	public final float[] values = new float[]{0, 0, 0};
-
 	public RotationVectorListener(SensorRegistry sensors) {
-		super(sensors);
+		super(sensors, 3);
 	}
 
 	public boolean register() {
@@ -19,6 +17,6 @@ public class RotationVectorListener extends AbstractListener {
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		System.arraycopy(event.values, 0, values, 0, 3);
+		sample.publish(event.values);
 	}
 }

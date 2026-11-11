@@ -19,13 +19,17 @@ import androidx.lifecycle.LifecycleOwner;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.hardware.AbstractListener;
+import de.markusfisch.android.shadereditor.hardware.Sample;
 import de.markusfisch.android.shadereditor.hardware.SensorRegistry;
 import de.markusfisch.android.shadereditor.opengl.SensorSources.Accelerometer;
 import de.markusfisch.android.shadereditor.opengl.SensorSources.Gravity;
@@ -66,6 +70,7 @@ public class SensorSourcesTest {
 	private static final class Device implements SensorRegistry {
 		final List<Integer> registrations = new ArrayList<>();
 		final Set<Integer> present = new HashSet<>();
+		final Map<Integer, AbstractListener> listeners = new HashMap<>();
 		final UniformSources sources = new UniformSources(HOST, this);
 
 		Device(int... sensorTypes) {
@@ -77,7 +82,11 @@ public class SensorSourcesTest {
 		@Override
 		public boolean register(@NonNull SensorEventListener listener, int sensorType) {
 			registrations.add(sensorType);
-			return present.contains(sensorType);
+			if (!present.contains(sensorType)) {
+				return false;
+			}
+			listeners.put(sensorType, (AbstractListener) listener);
+			return true;
 		}
 
 		@Override
@@ -92,6 +101,11 @@ public class SensorSourcesTest {
 			}
 			new ActiveBuiltins(UniformTable.BUILTINS, uniforms, sources,
 					new LinkOutput());
+		}
+
+		@NonNull
+		Sample sample(int sensorType) {
+			return listeners.get(sensorType).sample;
 		}
 
 		int registrationsOf(int sensorType) {
@@ -250,6 +264,84 @@ public class SensorSourcesTest {
 		rotation.update(1L);
 		assertFalse(rotation.available);
 		assertFalse(rotation.inclined);
+	}
+
+	@Test
+	public void framesSeeGravityAndLinearFromOneAccelerometerSample() throws Exception {
+		var device = new Device(ACCELEROMETER);
+		device.link("gravity", "linear");
+		var gravity = device.sources.get(Gravity.KEY);
+		var linear = device.sources.get(Linear.KEY);
+		var sample = device.sample(ACCELEROMETER);
+		var done = new AtomicBoolean();
+		var publisher = new Thread(() -> {
+			float[] values = new float[6];
+			for (int i = 1; !done.get(); ++i) {
+				Arrays.fill(values, i);
+				sample.publish(values);
+			}
+		});
+		publisher.start();
+		try {
+			for (int frame = 0; frame < 100000; ++frame) {
+				device.sources.update(frame);
+				float value = gravity.values[0];
+				assertArrayEquals(new float[]{value, value, value}, gravity.values, 0f);
+				assertArrayEquals(new float[]{value, value, value}, linear.values, 0f);
+			}
+		} finally {
+			done.set(true);
+			publisher.join();
+		}
+	}
+
+	@Test
+	public void sampleIsCapturedOnlyByUpdate() {
+		var device = new Device(GRAVITY, LINEAR, MAGNETIC,
+				Sensor.TYPE_GYROSCOPE, Sensor.TYPE_GAME_ROTATION_VECTOR,
+				Sensor.TYPE_LIGHT, Sensor.TYPE_PRESSURE, Sensor.TYPE_PROXIMITY);
+		device.link("gravity", "linear", "magnetic", "gyroscope", "rotationVector",
+				"light", "pressure", "proximity");
+		for (int type : device.listeners.keySet()) {
+			device.sample(type).publish(new float[]{1f, 2f, 3f, 4f, 5f, 6f});
+		}
+		device.sources.update(1L);
+		for (int type : device.listeners.keySet()) {
+			device.sample(type).publish(new float[]{7f, 8f, 9f, 10f, 11f, 12f});
+		}
+
+		float[] vector = {1f, 2f, 3f};
+		assertArrayEquals(vector, device.sources.get(Gravity.KEY).values, 0f);
+		assertArrayEquals(vector, device.sources.get(Linear.KEY).values, 0f);
+		assertArrayEquals(vector, device.sources.get(Gyroscope.KEY).values, 0f);
+		assertArrayEquals(vector, device.sources.get(RotationVector.KEY).values, 0f);
+		var magnetic = device.sources.get(Magnetic.KEY);
+		assertArrayEquals(vector, magnetic.values, 0f);
+		assertArrayEquals(new float[]{4f, 5f, 6f}, magnetic.filtered, 0f);
+		assertEquals(1f, device.sources.get(Light.KEY).ambient, 0f);
+		assertEquals(1f, device.sources.get(Pressure.KEY).pressure, 0f);
+		assertEquals(1f, device.sources.get(Proximity.KEY).centimeters, 0f);
+
+		device.sources.update(2L);
+		assertArrayEquals(new float[]{10f, 11f, 12f}, magnetic.filtered, 0f);
+		assertEquals(7f, device.sources.get(Light.KEY).ambient, 0f);
+	}
+
+	// SensorManager is not available here, so this checks what Rotation
+	// derives from: the gravity and field its dependencies captured.
+	@Test
+	public void rotationDerivesFromTheFramesCapturedSet() {
+		var device = new Device(GRAVITY, MAGNETIC);
+		var rotation = device.sources.start(Rotation.KEY);
+		device.sample(GRAVITY).publish(new float[]{1f, 2f, 3f});
+		device.sample(MAGNETIC).publish(new float[]{4f, 5f, 6f, 7f, 8f, 9f});
+		rotation.gravity.update(1L);
+		rotation.magnetic.update(1L);
+		device.sample(GRAVITY).publish(new float[]{10f, 11f, 12f});
+		device.sample(MAGNETIC).publish(new float[]{13f, 14f, 15f, 16f, 17f, 18f});
+
+		assertArrayEquals(new float[]{1f, 2f, 3f}, rotation.gravity.values, 0f);
+		assertArrayEquals(new float[]{7f, 8f, 9f}, rotation.magnetic.filtered, 0f);
 	}
 
 	@Test

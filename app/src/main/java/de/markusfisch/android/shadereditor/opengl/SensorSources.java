@@ -16,6 +16,8 @@ import de.markusfisch.android.shadereditor.hardware.PressureListener;
 import de.markusfisch.android.shadereditor.hardware.ProximityListener;
 import de.markusfisch.android.shadereditor.hardware.RotationVectorListener;
 
+// Each source copies its listener's latest sample in update(), so a frame
+// sees whole vectors, and sources that read other sources update after them.
 final class SensorSources {
 	// Serves both the gravity and the linear acceleration fallback.
 	static final class Accelerometer implements UniformSource {
@@ -25,14 +27,15 @@ final class SensorSources {
 		float[] gravity;
 		@Nullable
 		float[] linear;
+		private final float[] sample = new float[6];
 		private AccelerometerListener listener;
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			listener = new AccelerometerListener(sources.sensors());
 			if (listener.register()) {
-				gravity = listener.gravity;
-				linear = listener.linear;
+				gravity = new float[3];
+				linear = new float[3];
 			}
 		}
 
@@ -42,6 +45,15 @@ final class SensorSources {
 			gravity = null;
 			linear = null;
 		}
+
+		@Override
+		public void update(long now) {
+			if (gravity != null && linear != null) {
+				listener.sample.read(sample);
+				System.arraycopy(sample, 0, gravity, 0, 3);
+				System.arraycopy(sample, 3, linear, 0, 3);
+			}
+		}
 	}
 
 	static final class Gravity implements UniformSource {
@@ -50,19 +62,29 @@ final class SensorSources {
 		@Nullable
 		float[] values;
 		private GravityListener listener;
+		private boolean registered;
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			listener = new GravityListener(sources.sensors());
-			values = listener.register()
-					? listener.values
+			registered = listener.register();
+			values = registered
+					? new float[3]
 					: sources.start(Accelerometer.KEY).gravity;
 		}
 
 		@Override
 		public void stop() {
 			listener.unregister();
+			registered = false;
 			values = null;
+		}
+
+		@Override
+		public void update(long now) {
+			if (registered) {
+				listener.sample.read(values);
+			}
 		}
 	}
 
@@ -72,19 +94,29 @@ final class SensorSources {
 		@Nullable
 		float[] values;
 		private LinearAccelerationListener listener;
+		private boolean registered;
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			listener = new LinearAccelerationListener(sources.sensors());
-			values = listener.register()
-					? listener.values
+			registered = listener.register();
+			values = registered
+					? new float[3]
 					: sources.start(Accelerometer.KEY).linear;
 		}
 
 		@Override
 		public void stop() {
 			listener.unregister();
+			registered = false;
 			values = null;
+		}
+
+		@Override
+		public void update(long now) {
+			if (registered) {
+				listener.sample.read(values);
+			}
 		}
 	}
 
@@ -98,13 +130,20 @@ final class SensorSources {
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			listener = new GyroscopeListener(sources.sensors());
-			values = listener.register() ? listener.rotation : null;
+			values = listener.register() ? new float[3] : null;
 		}
 
 		@Override
 		public void stop() {
 			listener.unregister();
 			values = null;
+		}
+
+		@Override
+		public void update(long now) {
+			if (values != null) {
+				listener.sample.read(values);
+			}
 		}
 	}
 
@@ -115,14 +154,15 @@ final class SensorSources {
 		float[] values;
 		@Nullable
 		float[] filtered;
+		private final float[] sample = new float[6];
 		private MagneticFieldListener listener;
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			listener = new MagneticFieldListener(sources.sensors());
 			if (listener.register()) {
-				values = listener.values;
-				filtered = listener.filtered;
+				values = new float[3];
+				filtered = new float[3];
 			}
 		}
 
@@ -132,6 +172,15 @@ final class SensorSources {
 			values = null;
 			filtered = null;
 		}
+
+		@Override
+		public void update(long now) {
+			if (values != null && filtered != null) {
+				listener.sample.read(sample);
+				System.arraycopy(sample, 0, values, 0, 3);
+				System.arraycopy(sample, 3, filtered, 0, 3);
+			}
+		}
 	}
 
 	static final class Light implements UniformSource {
@@ -139,6 +188,7 @@ final class SensorSources {
 
 		boolean registered;
 		float ambient;
+		private final float[] sample = new float[1];
 		private LightListener listener;
 
 		@Override
@@ -156,7 +206,8 @@ final class SensorSources {
 		@Override
 		public void update(long now) {
 			if (registered) {
-				ambient = listener.getAmbient();
+				listener.sample.read(sample);
+				ambient = sample[0];
 			}
 		}
 	}
@@ -166,6 +217,7 @@ final class SensorSources {
 
 		boolean registered;
 		float pressure;
+		private final float[] sample = new float[1];
 		private PressureListener listener;
 
 		@Override
@@ -183,7 +235,8 @@ final class SensorSources {
 		@Override
 		public void update(long now) {
 			if (registered) {
-				pressure = listener.getPressure();
+				listener.sample.read(sample);
+				pressure = sample[0];
 			}
 		}
 	}
@@ -193,6 +246,7 @@ final class SensorSources {
 
 		boolean registered;
 		float centimeters;
+		private final float[] sample = new float[1];
 		private ProximityListener listener;
 
 		@Override
@@ -210,7 +264,8 @@ final class SensorSources {
 		@Override
 		public void update(long now) {
 			if (registered) {
-				centimeters = listener.getCentimeters();
+				listener.sample.read(sample);
+				centimeters = sample[0];
 			}
 		}
 	}
@@ -225,13 +280,20 @@ final class SensorSources {
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
 			listener = new RotationVectorListener(sources.sensors());
-			values = listener.register() ? listener.values : null;
+			values = listener.register() ? new float[3] : null;
 		}
 
 		@Override
 		public void stop() {
 			listener.unregister();
 			values = null;
+		}
+
+		@Override
+		public void update(long now) {
+			if (values != null) {
+				listener.sample.read(values);
+			}
 		}
 	}
 

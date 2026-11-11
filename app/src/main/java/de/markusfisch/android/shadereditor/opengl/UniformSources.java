@@ -38,6 +38,7 @@ final class UniformSources {
 			source = key.create();
 			byKey.put(key, source);
 			source.start(host, this);
+			// After start, so the sources it started update before it.
 			running.add(source);
 		}
 		return key.cast(source);
