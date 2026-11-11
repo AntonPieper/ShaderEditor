@@ -12,7 +12,7 @@ import java.util.Random;
 
 /**
  * Properties of {@link GlslLexer} for any input. Colours are pinned in
- * the highlighter's LexerStylesTest, next to the old lexer.
+ * the highlighter's LexerStylesTest.
  */
 public class GlslLexerTest {
 	private static final String[] FRAGMENTS = {

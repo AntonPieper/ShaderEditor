@@ -19,4 +19,5 @@
 	<color name="syntax_operator">@color/editor_text</color>
 	<color name="syntax_precision">#00BCD4</color>
 	<color name="syntax_control_flow">#FF9800</color>
+	<color name="syntax_string">#8BC34A</color>
 </resources>

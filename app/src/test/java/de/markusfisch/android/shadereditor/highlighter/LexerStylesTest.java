@@ -1,20 +1,12 @@
 package de.markusfisch.android.shadereditor.highlighter;
 
 import static de.markusfisch.android.shadereditor.highlighter.Styles.assertStyles;
-import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import java.io.IOException;
-import java.util.Map;
-
-import de.markusfisch.android.shadereditor.syntax.BundledShaders;
-
 /**
  * The colour of every character as the editor shows it. See {@link Styles}
- * for the letters. Every case runs against the old lexer and against
- * {@link de.markusfisch.android.shadereditor.syntax.GlslLexer}; where a
- * case has a third string, that is the intended colouring of the new one.
+ * for the letters.
  */
 public class LexerStylesTest {
 	@Test
@@ -239,11 +231,10 @@ public class LexerStylesTest {
 
 	@Test
 	public void lineContinuationInsideAWord() {
-		// Changed: a token never spans a line continuation, so the new
-		// lexer sees two identifiers, and guesses types from them.
+		// A token never spans a line continuation, so these are two
+		// identifiers, and types are guessed from them.
 		assertStyles(
 				"fl\\\noat x;",
-				"ppppppp...",
 				"tt..ttt...");
 	}
 
@@ -292,40 +283,31 @@ public class LexerStylesTest {
 
 	@Test
 	public void pathInPragma() {
-		// Wrong: "a.png" is one string. Fixed by the new lexer.
 		assertStyles(
 				"#pragma se input \"a.png\"",
-				"ddddddd..........x.....x",
 				"ddddddd..........ggggggg");
 	}
 
 	@Test
 	public void pathInInclude() {
-		// Wrong: "a//b.glsl" is one string, not the start of a comment.
-		// Fixed by the new lexer.
+		// "a//b.glsl" is one string, not the start of a comment.
 		assertStyles(
 				"#include \"a//b.glsl\"",
-				"dddddddd.x.ccccccccc",
 				"dddddddd.ggggggggggg");
 	}
 
 	@Test
 	public void directiveAfterBlockComment() {
-		// Wrong: #define is a directive; define is no type name. Fixed by
-		// the new lexer.
 		assertStyles(
 				"/* a\n b */ #define X 1",
-				"cccccccccc.xtttttt...n",
 				"cccccccccc.ddddddd...n");
 	}
 
 	@Test
 	public void commentInsideDirective() {
-		// Wrong: b and c still belong to the directive; b is no type name.
-		// Fixed by the new lexer.
+		// b and c still belong to the directive; b is no type name.
 		assertStyles(
 				"#define A /* c */ b c",
-				"ddddddd...ccccccc.t..",
 				"ddddddd...ccccccc....");
 	}
 
@@ -338,31 +320,24 @@ public class LexerStylesTest {
 
 	@Test
 	public void commentBetweenHashAndName() {
-		// Wrong: pragma is a directive name; pragma and se are no type names.
-		// Fixed by the new lexer.
 		assertStyles(
 				"#/**/pragma se input",
-				"dcccctttttt.tt......",
 				"dccccdddddd.........");
 	}
 
 	@Test
 	public void continuedDirectiveAfterSpace() {
-		// Wrong: the continued line belongs to the directive; b is no type name.
-		// Fixed by the new lexer.
+		// The continued line belongs to the directive; b is no type name.
 		assertStyles(
 				"#define A 1 \\\n+ b c",
-				"ddddddd...n.....t..",
 				"ddddddd...n........");
 	}
 
 	@Test
 	public void continuedDirectiveWithoutSpace() {
-		// Wrong: the number is only "1", not the backslash and newline after it.
-		// Fixed by the new lexer.
+		// The number is only "1", not the backslash and newline after it.
 		assertStyles(
 				"#define A 1\\\n+ b c",
-				"ddddddd...nnn.....",
 				"ddddddd...n.......");
 	}
 
@@ -400,11 +375,9 @@ public class LexerStylesTest {
 
 	@Test
 	public void unterminatedPathInDirective() {
-		// Changed: in the new lexer, an unterminated path is a string to the
-		// end of its line.
+		// An unterminated path is a string to the end of its line.
 		assertStyles(
 				"#include \"a.glsl\nfloat x;",
-				"dddddddd.x.......ppppp...",
 				"dddddddd.ggggggg.ppppp...");
 	}
 
@@ -432,19 +405,8 @@ public class LexerStylesTest {
 
 	@Test
 	public void lowSurrogateDcdc() {
-		// Wrong: the old lexer takes U+DCDC for the end of the text and
-		// stops there. Fixed by the new lexer.
 		assertStyles(
 				"a\uDCDC float",
-				"........",
 				".x.ppppp");
-	}
-
-	@Test
-	public void bundledShadersLookTheSame() throws IOException {
-		for (Map.Entry<String, String> shader : BundledShaders.read().entrySet()) {
-			String source = shader.getValue();
-			assertEquals(shader.getKey(), Styles.of(source), Styles.ofNew(source));
-		}
 	}
 }
