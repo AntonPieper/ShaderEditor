@@ -12,7 +12,11 @@ final class UniformSources {
 	private final ArrayList<UniformSource> running = new ArrayList<>();
 	@NonNull
 	private final EngineHost host;
+	@Nullable
+	private ShaderTextureResources.SamplerTextureBinding cameraBinding;
 	private int deviceRotation;
+	private int renderWidth;
+	private int renderHeight;
 
 	UniformSources(@NonNull EngineHost host) {
 		this.host = host;
@@ -42,6 +46,29 @@ final class UniformSources {
 
 	void setDeviceRotation(int deviceRotation) {
 		this.deviceRotation = deviceRotation;
+	}
+
+	@Nullable
+	ShaderTextureResources.SamplerTextureBinding getCameraBinding() {
+		return cameraBinding;
+	}
+
+	void setCameraBinding(
+			@Nullable ShaderTextureResources.SamplerTextureBinding cameraBinding) {
+		this.cameraBinding = cameraBinding;
+	}
+
+	int getRenderWidth() {
+		return renderWidth;
+	}
+
+	int getRenderHeight() {
+		return renderHeight;
+	}
+
+	void setRenderSize(int renderWidth, int renderHeight) {
+		this.renderWidth = renderWidth;
+		this.renderHeight = renderHeight;
 	}
 
 	void update(long now) {

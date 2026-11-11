@@ -29,7 +29,8 @@ public final class UniformDef {
 	private final int description;
 	@Nullable
 	private final UniformSource.Key<?> source;
-	@NonNull
+	// Null for a declaration only, which the engine never writes.
+	@Nullable
 	private final Body body;
 
 	UniformDef(
@@ -53,13 +54,21 @@ public final class UniformDef {
 				(in, s, out) -> writer.write(source.cast(s), out));
 	}
 
+	UniformDef(
+			@NonNull String name,
+			@NonNull GlslType type,
+			@StringRes int description,
+			@Nullable UniformSource.Key<?> source) {
+		this(name, type, 0, description, source, (Body) null);
+	}
+
 	private UniformDef(
 			@NonNull String name,
 			@NonNull GlslType type,
 			int arrayLength,
 			@StringRes int description,
 			@Nullable UniformSource.Key<?> source,
-			@NonNull Body body) {
+			@Nullable Body body) {
 		this.name = name;
 		this.type = type;
 		this.arrayLength = arrayLength;
@@ -93,10 +102,17 @@ public final class UniformDef {
 		return source;
 	}
 
+	boolean isDeclarationOnly() {
+		return body == null;
+	}
+
 	void write(
 			@NonNull FrameInputs in,
 			@Nullable UniformSource source,
 			@NonNull UniformOutput out) {
+		if (body == null) {
+			throw new IllegalStateException(name + " is a declaration only");
+		}
 		body.write(in, source, out);
 	}
 }

@@ -37,8 +37,6 @@ final class BuiltinUniforms {
 	private final Context context;
 	@NonNull
 	private final UniformSources sources;
-	@NonNull
-	private final BuiltinCameraUniforms cameraUniforms;
 
 	@Nullable
 	private ProgramBindings programBindings;
@@ -57,7 +55,6 @@ final class BuiltinUniforms {
 	BuiltinUniforms(@NonNull EngineHost host) {
 		context = host.context();
 		sources = new UniformSources(host);
-		cameraUniforms = new BuiltinCameraUniforms(host);
 	}
 
 	void setQuality(float quality) {
@@ -74,8 +71,10 @@ final class BuiltinUniforms {
 		this.textureResources = textureResources;
 		programBindings = new ProgramBindings(program);
 
+		sources.setCameraBinding(textureResources.getFirstBinding(
+				ShaderRenderer.UNIFORM_CAMERA_BACK,
+				ShaderRenderer.UNIFORM_CAMERA_FRONT));
 		activeBuiltins = new ActiveBuiltins(device, program, sources);
-		cameraUniforms.configure(device, program, textureResources);
 	}
 
 	@NonNull
@@ -95,10 +94,11 @@ final class BuiltinUniforms {
 		resolution[0] = w;
 		resolution[1] = h;
 
-		cameraUniforms.updateSurface(
-				(int) resolution[0],
-				(int) resolution[1],
-				deviceRotation);
+		sources.setRenderSize((int) resolution[0], (int) resolution[1]);
+		var camera = sources.get(CameraSource.KEY);
+		if (camera != null) {
+			camera.reopen();
+		}
 		return new SurfaceState(
 				(int) resolution[0],
 				(int) resolution[1],
@@ -158,7 +158,6 @@ final class BuiltinUniforms {
 		if (backBufferTexture != null) {
 			bindings.setTexture(ShaderRenderer.UNIFORM_BACKBUFFER, backBufferTexture);
 		}
-		cameraUniforms.apply(bindings);
 		textureResources.applyTo(bindings);
 
 		return new PreparedFrame(
@@ -207,7 +206,7 @@ final class BuiltinUniforms {
 
 	private void releaseModules() {
 		sources.stop();
-		cameraUniforms.release();
+		sources.setCameraBinding(null);
 	}
 
 	private static int getDeviceRotation(@NonNull Context context) {

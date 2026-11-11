@@ -15,5 +15,7 @@ interface UniformOutput {
 
 	void setVec3Array(@NonNull float[] values, int count);
 
+	void setMat2(boolean transpose, @NonNull float[] values);
+
 	void setMat3(boolean transpose, @NonNull float[] values);
 }

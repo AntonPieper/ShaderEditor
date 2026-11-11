@@ -1,11 +1,14 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.LifecycleOwner;
 
 import org.junit.Test;
 
@@ -76,6 +79,11 @@ public class UniformSourcesTest {
 		@Override
 		public void onPermissionNeeded(@NonNull String permission) {
 		}
+
+		@Override
+		public LifecycleOwner cameraOwner() {
+			return null;
+		}
 	};
 
 	private static final List<UniformDef> TABLE = List.of(
@@ -84,7 +92,8 @@ public class UniformSourcesTest {
 			new UniformDef("second", GlslType.INT, 0, 0, FakeSource.KEY,
 					(fake, out) -> out.setInt(fake.starts)),
 			new UniformDef("plain", GlslType.FLOAT, 0, 0,
-					(in, out) -> out.setFloat(in.time)));
+					(in, out) -> out.setFloat(in.time)),
+			new UniformDef("declared", GlslType.SAMPLER_2D, 0, FakeSource.KEY));
 
 	@Test
 	public void sharedSourceStartsOnceAndStops() {
@@ -140,6 +149,34 @@ public class UniformSourcesTest {
 		var sources = new UniformSources(HOST);
 		new ActiveBuiltins(TABLE, program("first", -1), sources, new LocatedOutput());
 		assertEquals(List.of(), events);
+	}
+
+	@Test
+	public void declarationStartsSourceButIsNeverWritten() {
+		events.clear();
+		var sources = new UniformSources(HOST);
+		var output = new LocatedOutput();
+		var builtins = new ActiveBuiltins(TABLE,
+				program("declared", 4), sources, output);
+		assertEquals(List.of("start"), events);
+		builtins.write(new FrameInputs(), 9L);
+		assertEquals(List.of("start", "update", "begin"), events);
+		assertEquals(List.of(), output.locations);
+	}
+
+	@Test
+	public void cameraSamplerAloneStartsCameraSource() {
+		var sources = new UniformSources(HOST);
+		var output = new LocatedOutput();
+		var builtins = new ActiveBuiltins(UniformTable.BUILTINS,
+				program("cameraFront", 0), sources, output);
+		var camera = sources.get(CameraSource.KEY);
+		assertNotNull(camera);
+		assertFalse(camera.open);
+		builtins.write(new FrameInputs(), 1L);
+		assertEquals(List.of(), output.locations);
+		assertEquals(List.of(), output.calls);
+		sources.stop();
 	}
 
 	@NonNull

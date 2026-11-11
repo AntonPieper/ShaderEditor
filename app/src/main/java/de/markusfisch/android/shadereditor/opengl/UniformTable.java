@@ -2,7 +2,10 @@ package de.markusfisch.android.shadereditor.opengl;
 
 import static de.markusfisch.android.shadereditor.opengl.GlslType.FLOAT;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.INT;
+import static de.markusfisch.android.shadereditor.opengl.GlslType.MAT2;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.MAT3;
+import static de.markusfisch.android.shadereditor.opengl.GlslType.SAMPLER_2D;
+import static de.markusfisch.android.shadereditor.opengl.GlslType.SAMPLER_EXTERNAL_OES;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.VEC2;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.VEC3;
 import static de.markusfisch.android.shadereditor.opengl.GlslType.VEC4;
@@ -140,7 +143,25 @@ public final class UniformTable {
 						if (mic.recording) {
 							out.setFloat(mic.amplitude);
 						}
-					}));
+					}),
+			uniform("cameraOrientation", MAT2, R.string.camera_orientation, CameraSource.KEY,
+					(camera, out) -> {
+						if (camera.open) {
+							out.setMat2(false, camera.orientation);
+						}
+					}),
+			uniform("cameraAddent", VEC2, R.string.camera_addent, CameraSource.KEY,
+					(camera, out) -> {
+						if (camera.open) {
+							out.setVec2(camera.addent[0], camera.addent[1]);
+						}
+					}),
+			declaration(ShaderRenderer.UNIFORM_BACKBUFFER, SAMPLER_2D,
+					R.string.previous_frame, null),
+			declaration(ShaderRenderer.UNIFORM_CAMERA_BACK, SAMPLER_EXTERNAL_OES,
+					R.string.camera_back, CameraSource.KEY),
+			declaration(ShaderRenderer.UNIFORM_CAMERA_FRONT, SAMPLER_EXTERNAL_OES,
+					R.string.camera_front, CameraSource.KEY));
 
 	private UniformTable() {
 	}
@@ -178,6 +199,15 @@ public final class UniformTable {
 			@NonNull UniformSource.Key<S> source,
 			@NonNull UniformDef.SourceWriter<S> writer) {
 		return new UniformDef(name, type, 0, description, source, writer);
+	}
+
+	@NonNull
+	private static UniformDef declaration(
+			@NonNull String name,
+			@NonNull GlslType type,
+			@StringRes int description,
+			@Nullable UniformSource.Key<?> source) {
+		return new UniformDef(name, type, description, source);
 	}
 
 	@NonNull
