@@ -30,6 +30,12 @@ public final class ShaderEngine {
 		void onFramesPerSecond(int fps);
 	}
 
+	public interface ThumbnailCallback {
+		// Called on the GL thread with a PNG, or null when the frame
+		// could not be encoded.
+		void onThumbnail(@Nullable byte[] png);
+	}
+
 	private static final long FPS_UPDATE_FREQUENCY_NS = 200000000L;
 	private static final float NS_PER_SECOND = 1000000000f;
 	private static final float DEFAULT_REFRESH_RATE = 60f;
@@ -43,7 +49,8 @@ public final class ShaderEngine {
 			new ShaderSwap<>();
 	private final UniformSources sources;
 	private final Context context;
-	private final Object thumbnailLock = new Object();
+	private final ThumbnailRequests<ThumbnailCallback> thumbnails =
+			new ThumbnailRequests<>();
 
 	@Nullable
 	private Listener listener;
@@ -55,8 +62,6 @@ public final class ShaderEngine {
 	private int backBufferUnit = GlUniform.NO_UNIT;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
-	private byte[] thumbnail = new byte[1];
-	private boolean captureThumbnail;
 	private volatile long nextFpsUpdate;
 	private volatile float sum;
 	private volatile float samples;
@@ -132,6 +137,7 @@ public final class ShaderEngine {
 		}
 		if (renderSizeChanged) {
 			renderPipeline.releaseTargets();
+			thumbnails.onFramesLost();
 			// The backbuffer preset is tiled to the render size.
 			var build = shaders.current();
 			if (build != null &&
@@ -145,6 +151,8 @@ public final class ShaderEngine {
 
 	// GL thread.
 	public void drawFrame() {
+		// Before a newer shader replaces the frame it was asked for.
+		answerThumbnails();
 		swapInNewestShader();
 		var build = shaders.current();
 		var builtins = activeBuiltins;
@@ -153,7 +161,6 @@ public final class ShaderEngine {
 				!renderPipeline.hasSurfaceProgram()) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
-			cancelCaptureThumbnail();
 			return;
 		}
 
@@ -167,7 +174,6 @@ public final class ShaderEngine {
 				submitErrors(targetErrors);
 			}
 			if (!renderPipeline.hasTargets()) {
-				cancelCaptureThumbnail();
 				return;
 			}
 		}
@@ -183,8 +189,9 @@ public final class ShaderEngine {
 		renderPipeline.renderSurfacePass(
 				frame.surfaceWidth,
 				frame.surfaceHeight);
-		captureThumbnail();
 		renderPipeline.swapTargets();
+		thumbnails.onFrame();
+		answerThumbnails();
 
 		if (listener != null) {
 			updateFps(now);
@@ -205,17 +212,26 @@ public final class ShaderEngine {
 		inputs.postOffset(x, y);
 	}
 
-	public byte[] getThumbnail() {
-		synchronized (thumbnailLock) {
-			captureThumbnail = true;
-			try {
-				thumbnailLock.wait(1000);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				captureThumbnail = false;
-				return null;
-			}
-			return thumbnail;
+	// Any thread. Answered after a complete frame of the shader set last,
+	// or of a newer one.
+	public void requestThumbnail(@NonNull ThumbnailCallback callback) {
+		thumbnails.add(shaders.offered(), callback);
+		var requester = renderRequester;
+		if (requester != null) {
+			requester.run();
+		}
+	}
+
+	// GL thread. Answers the thumbnail requests the frame drawn last can
+	// answer; the driver also calls it before the GL thread pauses.
+	public void answerThumbnails() {
+		var callbacks = thumbnails.take(shaders.shown());
+		if (callbacks.isEmpty()) {
+			return;
+		}
+		byte[] png = renderPipeline.captureThumbnail();
+		for (var callback : callbacks) {
+			callback.onThumbnail(png);
 		}
 	}
 
@@ -236,6 +252,7 @@ public final class ShaderEngine {
 		// The sources stop before the build they read from is released.
 		releaseSources();
 		shaders.swapIfComplete();
+		thumbnails.onFramesLost();
 
 		long now = System.nanoTime();
 		lastRender = now;
@@ -267,6 +284,7 @@ public final class ShaderEngine {
 				version,
 				errors);
 		if (build == null) {
+			shaders.failed();
 			submitErrors(errors);
 			return;
 		}
@@ -317,25 +335,7 @@ public final class ShaderEngine {
 		clearConfiguration();
 		shaders.contextLost();
 		renderPipeline.discardContextResources();
-	}
-
-	private void captureThumbnail() {
-		synchronized (thumbnailLock) {
-			if (captureThumbnail) {
-				thumbnail = renderPipeline.captureThumbnail();
-				captureThumbnail = false;
-				thumbnailLock.notifyAll();
-			}
-		}
-	}
-
-	private void cancelCaptureThumbnail() {
-		synchronized (thumbnailLock) {
-			if (captureThumbnail) {
-				captureThumbnail = false;
-				thumbnailLock.notifyAll();
-			}
-		}
+		thumbnails.onFramesLost();
 	}
 
 	private void updateFps(long now) {

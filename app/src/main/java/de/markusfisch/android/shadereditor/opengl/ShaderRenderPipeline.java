@@ -174,14 +174,15 @@ final class ShaderRenderPipeline {
 		backTarget = target;
 	}
 
+	// Of the frame drawn last, after swapTargets().
 	@Nullable
 	byte[] captureThumbnail() {
-		if (thumbnailFramebuffer == null || targetTextures[frontTarget] == null) {
+		if (thumbnailFramebuffer == null || targetTextures[backTarget] == null) {
 			return null;
 		}
 
 		drawSurface(
-				targetTextures[frontTarget],
+				targetTextures[backTarget],
 				(int) thumbnailResolution[0],
 				(int) thumbnailResolution[1],
 				thumbnailFramebuffer);

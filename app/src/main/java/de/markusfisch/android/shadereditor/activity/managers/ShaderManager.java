@@ -204,7 +204,11 @@ public class ShaderManager {
 			return;
 		}
 
-		byte[] thumbnail = getThumbnail();
+		boolean runInBackground =
+				ShaderEditorApp.preferences.doesRunInBackground();
+		byte[] thumbnail = runInBackground
+				? null
+				: PreviewActivity.renderStatus.getThumbnail();
 		if (selectedShaderId > 0) {
 			dataSource.shader.updateShader(
 					selectedShaderId, src, thumbnail, quality);
@@ -212,6 +216,10 @@ public class ShaderManager {
 			selectedShaderId = dataSource.shader.insertShader(
 					src, null, thumbnail, quality);
 			shaderListManager.setSelectedShaderId(selectedShaderId);
+		}
+
+		if (runInBackground) {
+			saveThumbnailLater(selectedShaderId);
 		}
 
 		currentProjectSession = loadSavedProjectSession(selectedShaderId, src);
@@ -222,10 +230,18 @@ public class ShaderManager {
 				Toast.LENGTH_SHORT).show();
 	}
 
-	private byte[] getThumbnail() {
-		return ShaderEditorApp.preferences.doesRunInBackground()
-				? shaderViewManager.getThumbnail()
-				: PreviewActivity.renderStatus.getThumbnail();
+	// The preview answers after its next complete frame, possibly when
+	// another shader is selected already.
+	private void saveThumbnailLater(long shaderId) {
+		shaderViewManager.requestThumbnail(png -> {
+			if (png == null) {
+				return;
+			}
+			activity.runOnUiThread(() -> {
+				dataSource.shader.updateThumbnail(shaderId, png);
+				shaderListManager.loadShadersAsync();
+			});
+		});
 	}
 
 	public void handleSendText(@Nullable Intent intent) {

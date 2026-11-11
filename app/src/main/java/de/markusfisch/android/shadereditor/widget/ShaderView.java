@@ -39,6 +39,9 @@ public class ShaderView extends GLSurfaceView {
 
 	@Override
 	public void onPause() {
+		// Queued events run before the GL thread pauses, while the last
+		// frame is still there.
+		queueEvent(engine::answerThumbnails);
 		super.onPause();
 		engine.onContextLost();
 	}
