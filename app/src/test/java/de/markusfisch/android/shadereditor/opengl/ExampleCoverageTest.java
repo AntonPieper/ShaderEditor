@@ -22,24 +22,16 @@ public class ExampleCoverageTest {
 
 	static {
 		EXEMPT.put("cameraFront", NO_EXAMPLE);
-		EXEMPT.put("date", NO_EXAMPLE);
-		EXEMPT.put("daytime", NO_EXAMPLE);
-		EXEMPT.put("gyroscope", "holds (1, 1, 1) turned by the rotation integrated "
-				+ "since load, not the rate of turn, so no example can show how fast "
-				+ "the phone turns; Window reads rotationMatrix instead");
+		EXEMPT.put("gyroscope", "a direction that turns with the phone, (1, 1, 1) "
+				+ "turned by the rotation since load, which no example uses yet");
 		EXEMPT.put("inclinationMatrix", "only the rotation by inclination about "
 				+ "the east axis; Compass shows the dip from inclination, and no "
 				+ "picture drawn from the matrix can be checked by looking");
 		EXEMPT.put("lastNotificationTime", NO_EXAMPLE);
-		EXEMPT.put("light", NO_EXAMPLE);
 		EXEMPT.put("mediaVolume", NO_EXAMPLE);
 		EXEMPT.put("micAmplitude", NO_EXAMPLE);
-		EXEMPT.put("nightMode", NO_EXAMPLE);
 		EXEMPT.put("notificationCount", NO_EXAMPLE);
 		EXEMPT.put("offset", NO_EXAMPLE);
-		EXEMPT.put("powerConnected", NO_EXAMPLE);
-		EXEMPT.put("pressure", NO_EXAMPLE);
-		EXEMPT.put("proximity", NO_EXAMPLE);
 		EXEMPT.put("rotationVector", "the orientation as an axis times sin(angle / 2), "
 				+ "not turned with the screen and from the game rotation vector, "
 				+ "whose north is arbitrary; rotationMatrix already falls back to it");
