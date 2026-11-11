@@ -13,11 +13,12 @@ This folder is the design. The implementation plan, its ledger, and the prompts 
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Responsibilities, seams, integration points, and constraints |
 | [ENGINE.md](ENGINE.md) | Diagnosis of the rendering engine and its target design |
 | [DECISIONS.md](DECISIONS.md) | Why the contract has its shape, including the decisions of 2026-11-11 |
+| [LANGUAGE.md](LANGUAGE.md) | The editor's tokenizer, highlighting and completion, and the lexical layer shared with project mode |
 | [EXAMPLES.md](EXAMPLES.md) | The bundled examples and include library: purpose, structure, the set, quality bar |
 | [ACCEPTANCE.md](ACCEPTANCE.md) | Named, observable acceptance cases |
 | [examples/README.md](examples/README.md) | Small executable source fixtures and expected results |
 
-The work is a list of small pull requests in three tracks: **E** cleans up the rendering engine, **M** adds project mode, **X** rebuilds the bundled examples. References to "IMPLEMENTATION" and to PR IDs such as E15 or M4 in this folder mean `docs/agents/project-mode/IMPLEMENTATION.md`.
+The work is a list of small pull requests in four tracks: **E** cleans up the rendering engine, **M** adds project mode, **X** rebuilds the bundled examples, **L** reworks the editor's language tooling. References to "IMPLEMENTATION" and to PR IDs such as E15 or M4 in this folder mean `docs/agents/project-mode/IMPLEMENTATION.md`.
 
 ## Decisions already made
 
