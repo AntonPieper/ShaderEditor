@@ -11,7 +11,6 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.TextureSpinnerAdapter;
 import de.markusfisch.android.shadereditor.database.DataRecords.TextureInfo;
 import de.markusfisch.android.shadereditor.database.Database;
-import de.markusfisch.android.shadereditor.opengl.BackBufferParameters;
 
 public class BackBufferParametersView extends LinearLayout {
 	private TextureSpinnerAdapter adapter;
@@ -68,28 +67,19 @@ public class BackBufferParametersView extends LinearLayout {
 	}
 
 	/**
-	 * Updates the given BackBufferParameters object with the preset ID
-	 * selected in the spinner.
+	 * Returns the preset ID selected in the spinner, or null for
+	 * "(no preset)".
 	 */
-	public void getParameters(BackBufferParameters tp) {
-		if (tp == null) {
-			return;
-		}
-
+	public String getPreset() {
 		Object item = presetView.getSelectedItem();
 		if (!(item instanceof TextureInfo textureInfo)) {
-			return;
+			return null;
 		}
 
 		long id = textureInfo.id();
 
 		// The preset is stored as a stringified ID.
-		if (id > 0) {
-			tp.setPreset(String.valueOf(id));
-		} else {
-			// If "(no preset)" is selected, clear the preset.
-			tp.setPreset(null);
-		}
+		return id > 0 ? String.valueOf(id) : null;
 	}
 
 }

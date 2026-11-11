@@ -145,7 +145,7 @@ final class ShaderTextureResources {
 			@NonNull SamplerTextureBinding binding) {
 		var sampler = binding.sampler();
 		var texture = device.createExternalTexture();
-		device.applyTextureParameters(texture, sampler.parameters());
+		device.applySampling(texture, sampler.sampling());
 		binding.setTexture(texture);
 	}
 
@@ -156,7 +156,7 @@ final class ShaderTextureResources {
 			@NonNull Bitmap bitmap) {
 		var sampler = binding.sampler();
 		var texture = device.createTexture2D();
-		device.applyTextureParameters(texture, sampler.parameters());
+		device.applySampling(texture, sampler.sampling());
 		var message = device.uploadTexture2D(texture, bitmap, true);
 		if (message != null) {
 			errors.add(ProjectDiagnostic.error(message));
@@ -174,7 +174,7 @@ final class ShaderTextureResources {
 			@NonNull List<ProjectDiagnostic> errors) {
 		var sampler = binding.sampler();
 		var texture = device.createCubemap();
-		device.applyTextureParameters(texture, sampler.parameters());
+		device.applySampling(texture, sampler.sampling());
 		var message = device.uploadCubemapFromAtlas(texture, bitmap);
 		if (message != null) {
 			errors.add(ProjectDiagnostic.error(message));

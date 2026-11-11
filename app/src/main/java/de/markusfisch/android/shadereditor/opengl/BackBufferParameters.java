@@ -2,7 +2,6 @@ package de.markusfisch.android.shadereditor.opengl;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.opengl.GLES20;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -10,41 +9,15 @@ import androidx.annotation.Nullable;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
 
-public class BackBufferParameters extends TextureParameters {
-	private static final String PRESET = "p";
+// The library texture a backbuffer starts with, tiled to its size.
+final class BackBufferParameters {
+	static final BackBufferParameters NONE = new BackBufferParameters(null);
 
-	private String preset;
+	@Nullable
+	private final String preset;
 
-	public BackBufferParameters() {
-		super(GLES20.GL_NEAREST,
-				GLES20.GL_NEAREST,
-				GLES20.GL_CLAMP_TO_EDGE,
-				GLES20.GL_CLAMP_TO_EDGE);
-	}
-
-	public void setPreset(String preset) {
+	BackBufferParameters(@Nullable String preset) {
 		this.preset = preset;
-	}
-
-	@NonNull
-	@Override
-	public String toString() {
-		String params = super.toString();
-		if (preset != null) {
-			if (params.isEmpty()) {
-				params = HEADER;
-			}
-			params += PRESET + ASSIGN + preset + SEPARATOR;
-		}
-		return params;
-	}
-
-	void reset() {
-		set(GLES20.GL_NEAREST,
-				GLES20.GL_NEAREST,
-				GLES20.GL_CLAMP_TO_EDGE,
-				GLES20.GL_CLAMP_TO_EDGE);
-		preset = null;
 	}
 
 	@Nullable
@@ -107,14 +80,5 @@ public class BackBufferParameters extends TextureParameters {
 		tile.recycle();
 
 		return background;
-	}
-
-	@Override
-	protected void parseParameter(String name, String value) {
-		if (PRESET.equals(name)) {
-			preset = value;
-		} else {
-			super.parseParameter(name, value);
-		}
 	}
 }

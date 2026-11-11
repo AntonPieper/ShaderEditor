@@ -11,9 +11,8 @@ import androidx.fragment.app.Fragment;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.AddUniformActivity;
-import de.markusfisch.android.shadereditor.opengl.BackBufferParameters;
-import de.markusfisch.android.shadereditor.opengl.TextureParameters;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
+import de.markusfisch.android.shadereditor.project.legacy.LegacySamplerSettings;
 import de.markusfisch.android.shadereditor.widget.BackBufferParametersView;
 import de.markusfisch.android.shadereditor.widget.TextureParametersView;
 
@@ -25,7 +24,7 @@ public class TextureParametersFragment extends Fragment {
 	private BackBufferParametersView backBufferParametersView;
 	private String samplerType;
 	private String textureName;
-	private TextureParameters textureParameters;
+	private LegacySamplerSettings defaults;
 	private boolean isBackBuffer;
 
 	public static Fragment newInstance(String type, String name) {
@@ -63,17 +62,17 @@ public class TextureParametersFragment extends Fragment {
 
 		int layout;
 		if (isBackBuffer) {
-			textureParameters = new BackBufferParameters();
+			defaults = LegacySamplerSettings.BACKBUFFER;
 			layout = R.layout.fragment_backbuffer_parameters;
 		} else {
-			textureParameters = new TextureParameters();
+			defaults = LegacySamplerSettings.TEXTURE;
 			layout = R.layout.fragment_texture_parameters;
 		}
 
 		View view = inflater.inflate(layout, container, false);
 
 		textureParameterView = view.findViewById(R.id.texture_parameters);
-		textureParameterView.setDefaults(textureParameters);
+		textureParameterView.setDefaults(defaults);
 
 		if (isBackBuffer) {
 			backBufferParametersView = view.findViewById(
@@ -91,15 +90,15 @@ public class TextureParametersFragment extends Fragment {
 			return;
 		}
 
-		textureParameterView.setParameters(textureParameters);
+		LegacySamplerSettings settings =
+				textureParameterView.getParameters(defaults);
 		if (isBackBuffer) {
-			backBufferParametersView.getParameters(
-					(BackBufferParameters) textureParameters);
+			settings = settings.withPreset(backBufferParametersView.getPreset());
 		}
 
 		AddUniformActivity.setAddUniformResult(activity,
 				"uniform " + samplerType + " " + textureName + ";" +
-						textureParameters.toString());
+						settings.comment(defaults));
 
 		activity.finish();
 	}

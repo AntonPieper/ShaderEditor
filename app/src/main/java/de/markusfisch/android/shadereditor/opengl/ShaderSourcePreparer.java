@@ -12,6 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.fragment.AbstractSamplerPropertiesFragment;
+import de.markusfisch.android.shadereditor.project.legacy.LegacySamplerSettings;
 
 final class ShaderSourcePreparer {
 	private static final String SAMPLER_2D = "2D";
@@ -51,7 +52,8 @@ final class ShaderSourcePreparer {
 					null,
 					fTimeMax,
 					null,
-					new BackBufferParameters(),
+					LegacySamplerSettings.BACKBUFFER.sampling(),
+					BackBufferParameters.NONE,
 					List.of());
 		}
 
@@ -59,7 +61,7 @@ final class ShaderSourcePreparer {
 		PreparedShaderInput preparedInput = new PreparedShaderInput(
 				source,
 				ShaderLineMapping.identity());
-		BackBufferParameters backBufferParameters = new BackBufferParameters();
+		LegacySamplerSettings backBuffer = LegacySamplerSettings.BACKBUFFER;
 		ArrayList<DiscoveredSampler> samplers = new ArrayList<>();
 
 		for (Matcher matcher = PATTERN_SAMPLER.matcher(source); matcher.find(); ) {
@@ -72,7 +74,7 @@ final class ShaderSourcePreparer {
 			}
 
 			if (UniformTable.BACKBUFFER.equals(name)) {
-				backBufferParameters.parse(params);
+				backBuffer = backBuffer.parse(params, true);
 				continue;
 			}
 
@@ -97,7 +99,7 @@ final class ShaderSourcePreparer {
 			samplers.add(new DiscoveredSampler(
 					name,
 					target,
-					new TextureParameters(params)));
+					LegacySamplerSettings.TEXTURE.parse(params, false).sampling()));
 		}
 
 		if (!preparedInput.getSource().contains(SHADER_EDITOR)) {
@@ -108,7 +110,8 @@ final class ShaderSourcePreparer {
 				preparedInput,
 				fTimeMax,
 				gles3Version,
-				backBufferParameters,
+				backBuffer.sampling(),
+				new BackBufferParameters(backBuffer.preset()),
 				samplers);
 	}
 

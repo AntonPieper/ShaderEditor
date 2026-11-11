@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 final class ShaderRenderPipeline {
 	record SurfaceProgram(
@@ -37,12 +38,6 @@ final class ShaderRenderPipeline {
 	private final float[] thumbnailResolution =
 			new float[]{THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT};
 	private final float[] drawResolution = new float[2];
-	private final TextureParameters thumbnailTextureParameters =
-			new TextureParameters(
-					GLES20.GL_LINEAR,
-					GLES20.GL_LINEAR,
-					GLES20.GL_CLAMP_TO_EDGE,
-					GLES20.GL_CLAMP_TO_EDGE);
 	@NonNull
 	private final GlDevice device;
 	private final FullScreenQuad quad = new FullScreenQuad();
@@ -63,7 +58,7 @@ final class ShaderRenderPipeline {
 	List<ProjectDiagnostic> createContextResources() {
 		ArrayList<ProjectDiagnostic> errors = new ArrayList<>();
 		thumbnailTexture = device.createTexture2D();
-		device.applyTextureParameters(thumbnailTexture, thumbnailTextureParameters);
+		device.applySampling(thumbnailTexture, Sampling.IMAGE);
 		device.allocateTexture2D(
 				thumbnailTexture,
 				THUMBNAIL_WIDTH,
@@ -106,6 +101,7 @@ final class ShaderRenderPipeline {
 			@NonNull Context context,
 			int width,
 			int height,
+			@NonNull Sampling sampling,
 			@NonNull BackBufferParameters parameters) {
 		ArrayList<ProjectDiagnostic> errors = new ArrayList<>();
 		if (hasTargets()) {
@@ -113,8 +109,10 @@ final class ShaderRenderPipeline {
 		}
 
 		releaseTargets();
-		createTarget(context, frontTarget, width, height, parameters, errors);
-		createTarget(context, backTarget, width, height, parameters, errors);
+		createTarget(context, frontTarget, width, height, sampling, parameters,
+				errors);
+		createTarget(context, backTarget, width, height, sampling, parameters,
+				errors);
 		device.bindFramebuffer(null);
 		return errors;
 	}
@@ -243,6 +241,7 @@ final class ShaderRenderPipeline {
 			int index,
 			int width,
 			int height,
+			@NonNull Sampling sampling,
 			@NonNull BackBufferParameters parameters,
 			@NonNull List<ProjectDiagnostic> errors) {
 		GlTexture2D texture = device.createTexture2D();
@@ -259,7 +258,7 @@ final class ShaderRenderPipeline {
 			device.allocateTexture2D(texture, width, height);
 		}
 
-		device.applyTextureParameters(texture, parameters);
+		device.applySampling(texture, sampling);
 		device.generateMipmap(texture);
 
 		GlFramebuffer framebuffer = device.createFramebuffer();

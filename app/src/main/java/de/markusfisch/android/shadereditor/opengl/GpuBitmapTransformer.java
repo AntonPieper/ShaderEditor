@@ -25,6 +25,7 @@ import java.util.concurrent.FutureTask;
 
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 public final class GpuBitmapTransformer {
 	private static final String TAG = "GpuBitmapTransformer";
@@ -148,12 +149,6 @@ public final class GpuBitmapTransformer {
 				.order(ByteOrder.nativeOrder())
 				.asFloatBuffer();
 		private final GlDevice device = new GlDevice();
-		private final TextureParameters textureParameters =
-				new TextureParameters(
-						GLES20.GL_LINEAR,
-						GLES20.GL_LINEAR,
-						GLES20.GL_CLAMP_TO_EDGE,
-						GLES20.GL_CLAMP_TO_EDGE);
 
 		private HandlerThread thread;
 		private Handler handler;
@@ -339,7 +334,7 @@ public final class GpuBitmapTransformer {
 			if (sourceTexture == null) {
 				sourceTexture = device.createTexture2D();
 			}
-			device.applyTextureParameters(sourceTexture, textureParameters);
+			device.applySampling(sourceTexture, Sampling.IMAGE);
 			String message = device.uploadTexture2D(sourceTexture, bitmap, true);
 			if (message != null) {
 				throw new IllegalStateException(message);
@@ -354,7 +349,7 @@ public final class GpuBitmapTransformer {
 				framebufferTexture = device.createTexture2D();
 			}
 
-			device.applyTextureParameters(framebufferTexture, textureParameters);
+			device.applySampling(framebufferTexture, Sampling.IMAGE);
 			if (framebufferWidth != dstWidth || framebufferHeight != dstHeight) {
 				device.allocateTexture2D(framebufferTexture, dstWidth, dstHeight);
 				framebufferWidth = dstWidth;

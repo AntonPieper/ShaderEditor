@@ -19,6 +19,10 @@ import de.markusfisch.android.shadereditor.project.SourceLocation;
 public class LegacySamplerSettingsTest {
 	private static final LegacySamplerSettings TEXTURE =
 			LegacySamplerSettings.TEXTURE;
+	// The values the texture parameter screen offers.
+	private static final String[] MINS = {"n", "l", "nl", "nn", "ln", "ll"};
+	private static final String[] MAGS = {"l", "n"};
+	private static final String[] WRAPS = {"r", "m", "c"};
 
 	@Test
 	public void untouchedTextureWritesTheOldDefault() {
@@ -151,6 +155,95 @@ public class LegacySamplerSettingsTest {
 				"///min:l; why", false));
 		assertFalse(LegacySamplerSettings.isSettingsOnly("// min:l;", false));
 		assertFalse(LegacySamplerSettings.isSettingsOnly("", false));
+	}
+
+	@Test
+	public void writesEveryChoiceOfTheTextureScreenAsBefore() {
+		for (String min : MINS) {
+			for (String mag : MAGS) {
+				for (String s : WRAPS) {
+					for (String t : WRAPS) {
+						LegacySamplerSettings settings =
+								TEXTURE.withShortcuts(min, mag, s, t);
+						String comment = settings.comment(TEXTURE);
+						String choice = min + mag + s + t;
+						assertEquals(choice, "nlrr".equals(choice) ? ""
+										: "///min:" + min + ";mag:" + mag +
+										";s:" + s + ";t:" + t + ";",
+								comment);
+						assertEquals(choice, settings,
+								TEXTURE.parse(comment, false));
+						assertEquals(choice, min, settings.minShortcut());
+						assertEquals(choice, mag, settings.magShortcut());
+						assertEquals(choice, s, settings.wrapSShortcut());
+						assertEquals(choice, t, settings.wrapTShortcut());
+					}
+				}
+			}
+		}
+	}
+
+	@Test
+	public void defaultsShowAsTheirShortcuts() {
+		assertEquals("n", TEXTURE.minShortcut());
+		assertEquals("l", TEXTURE.magShortcut());
+		assertEquals("r", TEXTURE.wrapSShortcut());
+		assertEquals("r", TEXTURE.wrapTShortcut());
+		LegacySamplerSettings backbuffer = LegacySamplerSettings.BACKBUFFER;
+		assertEquals("n", backbuffer.minShortcut());
+		assertEquals("n", backbuffer.magShortcut());
+		assertEquals("c", backbuffer.wrapSShortcut());
+		assertEquals("c", backbuffer.wrapTShortcut());
+	}
+
+	@Test
+	public void writesTheBackbufferScreenAsBefore() {
+		LegacySamplerSettings backbuffer = LegacySamplerSettings.BACKBUFFER;
+		assertEquals("", backbuffer.withShortcuts("n", "n", "c", "c")
+				.comment(backbuffer));
+		assertEquals("///min:n;mag:l;s:c;t:c;",
+				backbuffer.withShortcuts("n", "l", "c", "c")
+						.comment(backbuffer));
+		assertEquals("///p:7;", backbuffer.withShortcuts("n", "n", "c", "c")
+				.withPreset("7").comment(backbuffer));
+		LegacySamplerSettings preset = backbuffer
+				.withShortcuts("ll", "l", "r", "m").withPreset("7");
+		assertEquals("///min:ll;mag:l;s:r;t:m;p:7;",
+				preset.comment(backbuffer));
+		assertEquals(preset, backbuffer.parse(preset.comment(backbuffer),
+				true));
+		assertEquals("///min:n;mag:n;s:c;t:c;",
+				backbuffer.comment(TEXTURE));
+	}
+
+	@Test
+	public void writesWhatItReadFromMalformedText() {
+		assertEquals("///min:nl;mag:l;s:r;t:r;",
+				TEXTURE.parse("///min:x;", false).comment(TEXTURE));
+		assertEquals("///min:l;mag:l;s:r;t:r;",
+				TEXTURE.parse("///foo:l;mag:x;s:x;", false).comment(TEXTURE));
+		assertEquals("", TEXTURE.parse("///min:l:n;mag;min;", false)
+				.comment(TEXTURE));
+		assertEquals("", TEXTURE.parse("// ///min:l;", false)
+				.comment(TEXTURE));
+		assertEquals("", TEXTURE.parse(null, false).comment(TEXTURE));
+	}
+
+	@Test
+	public void unknownShortcutsSelectTheFallbackOfTheirKey() {
+		assertEquals(TEXTURE.parse("///min:nl;mag:l;s:r;t:r;", false),
+				TEXTURE.withShortcuts("x", "x", "x", "x"));
+	}
+
+	@Test
+	public void samplingCarriesEveryField() {
+		assertEquals(new Sampling(Filter.LINEAR, Filter.NEAREST,
+						Mipmap.NEAREST, Wrap.MIRROR, Wrap.CLAMP),
+				TEXTURE.parse("///min:ln;mag:n;s:m;t:c;", false).sampling());
+		assertEquals(new Sampling(Filter.NEAREST, Filter.LINEAR, Mipmap.NONE,
+				Wrap.REPEAT, Wrap.REPEAT), TEXTURE.sampling());
+		assertEquals(Sampling.PASS,
+				LegacySamplerSettings.BACKBUFFER.sampling());
 	}
 
 	private static String texture(String params) {
