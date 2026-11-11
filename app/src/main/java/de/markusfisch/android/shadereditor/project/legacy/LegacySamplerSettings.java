@@ -14,7 +14,8 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
  * {@code ///min:..;mag:..;s:..;t:..;} comment, read exactly as the old
  * renderer read them, quirks included: an unknown key sets the
  * minification filter and an unknown value selects the fallback of its
- * key.
+ * key. {@link #comment} writes them back as the texture parameter screen
+ * always has.
  *
  * @param min    base minification filter
  * @param mipmap mipmap mode of the minification filter
@@ -50,6 +51,63 @@ public record LegacySamplerSettings(
 			settings = settings.with(parameter[0], parameter[1], backbuffer);
 		}
 		return settings;
+	}
+
+	/**
+	 * Return the comment that selects these settings on top of defaults,
+	 * as the texture parameter screen writes it: empty when nothing
+	 * differs, all four filter and wrap keys when any of them does, and
+	 * the preset last.
+	 */
+	public String comment(LegacySamplerSettings defaults) {
+		StringBuilder comment = new StringBuilder();
+		if (!sampling().equals(defaults.sampling())) {
+			comment.append("min:").append(minShortcut())
+					.append(";mag:").append(magShortcut())
+					.append(";s:").append(wrapSShortcut())
+					.append(";t:").append(wrapTShortcut()).append(';');
+		}
+		if (preset != null) {
+			comment.append(PRESET).append(':').append(preset).append(';');
+		}
+		return comment.length() == 0 ? "" : HEADER + comment;
+	}
+
+	/** These settings with the four comment values the screen offers. */
+	public LegacySamplerSettings withShortcuts(String min, String mag,
+			String wrapS, String wrapT) {
+		return with("min", min, false).with("mag", mag, false)
+				.with("s", wrapS, false).with("t", wrapT, false);
+	}
+
+	public LegacySamplerSettings withPreset(String preset) {
+		return new LegacySamplerSettings(min, mipmap, mag, wrapS, wrapT,
+				preset);
+	}
+
+	public Sampling sampling() {
+		return new Sampling(min, mag, mipmap, wrapS, wrapT);
+	}
+
+	public String minShortcut() {
+		String base = min == Filter.LINEAR ? "l" : "n";
+		return switch (mipmap) {
+			case NONE -> base;
+			case NEAREST -> base + "n";
+			case LINEAR -> base + "l";
+		};
+	}
+
+	public String magShortcut() {
+		return mag == Filter.NEAREST ? "n" : "l";
+	}
+
+	public String wrapSShortcut() {
+		return shortcut(wrapS);
+	}
+
+	public String wrapTShortcut() {
+		return shortcut(wrapT);
 	}
 
 	/**
@@ -182,6 +240,14 @@ public record LegacySamplerSettings(
 			case "c" -> Wrap.CLAMP;
 			case "m" -> Wrap.MIRROR;
 			default -> Wrap.REPEAT;
+		};
+	}
+
+	private static String shortcut(Wrap wrap) {
+		return switch (wrap) {
+			case CLAMP -> "c";
+			case MIRROR -> "m";
+			case REPEAT -> "r";
 		};
 	}
 

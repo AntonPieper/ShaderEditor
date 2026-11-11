@@ -7,7 +7,7 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.opengl.TextureParameters;
+import de.markusfisch.android.shadereditor.project.legacy.LegacySamplerSettings;
 
 public class TextureParametersView extends LinearLayout {
 	private Spinner minView;
@@ -38,15 +38,16 @@ public class TextureParametersView extends LinearLayout {
 		initSpinner(wrapTView, R.array.wrap_names);
 	}
 
-	public void setDefaults(TextureParameters tp) {
-		setSpinnerValue(minView, R.array.min_values, tp.getMinShortcut());
-		setSpinnerValue(magView, R.array.mag_values, tp.getMagShortcut());
-		setSpinnerValue(wrapSView, R.array.wrap_values, tp.getWrapSShortcut());
-		setSpinnerValue(wrapTView, R.array.wrap_values, tp.getWrapTShortcut());
+	public void setDefaults(LegacySamplerSettings settings) {
+		setSpinnerValue(minView, R.array.min_values, settings.minShortcut());
+		setSpinnerValue(magView, R.array.mag_values, settings.magShortcut());
+		setSpinnerValue(wrapSView, R.array.wrap_values, settings.wrapSShortcut());
+		setSpinnerValue(wrapTView, R.array.wrap_values, settings.wrapTShortcut());
 	}
 
-	public void setParameters(TextureParameters tp) {
-		tp.set(getSpinnerValue(minView, R.array.min_values),
+	public LegacySamplerSettings getParameters(LegacySamplerSettings settings) {
+		return settings.withShortcuts(
+				getSpinnerValue(minView, R.array.min_values),
 				getSpinnerValue(magView, R.array.mag_values),
 				getSpinnerValue(wrapSView, R.array.wrap_values),
 				getSpinnerValue(wrapTView, R.array.wrap_values));

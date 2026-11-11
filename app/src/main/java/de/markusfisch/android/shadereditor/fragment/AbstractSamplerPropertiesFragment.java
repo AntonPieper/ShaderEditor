@@ -23,8 +23,8 @@ import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.AddUniformActivity;
-import de.markusfisch.android.shadereditor.opengl.TextureParameters;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
+import de.markusfisch.android.shadereditor.project.legacy.LegacySamplerSettings;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.TextureParametersView;
 
@@ -145,9 +145,9 @@ public abstract class AbstractSamplerPropertiesFragment extends Fragment {
 		}
 
 		final String name = nameView.getText().toString();
-		final TextureParameters tp = new TextureParameters();
-		textureParameterView.setParameters(tp);
-		final String params = tp.toString();
+		final String params = textureParameterView
+				.getParameters(LegacySamplerSettings.TEXTURE)
+				.comment(LegacySamplerSettings.TEXTURE);
 
 		if (name.trim().isEmpty()) {
 			Toast.makeText(

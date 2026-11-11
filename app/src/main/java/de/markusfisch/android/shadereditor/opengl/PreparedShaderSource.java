@@ -5,12 +5,17 @@ import androidx.annotation.Nullable;
 
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
+import de.markusfisch.android.shadereditor.project.legacy.LegacySamplerSettings;
+
 final class PreparedShaderSource {
 	@Nullable
 	private final PreparedShaderInput fragmentShader;
 	private final float fTimeMax;
 	@Nullable
 	private final String gles3VersionDirective;
+	@NonNull
+	private final Sampling backBufferSampling;
 	@NonNull
 	private final BackBufferParameters backBufferParameters;
 	@NonNull
@@ -20,11 +25,13 @@ final class PreparedShaderSource {
 			@Nullable PreparedShaderInput fragmentShader,
 			float fTimeMax,
 			@Nullable String gles3VersionDirective,
+			@NonNull Sampling backBufferSampling,
 			@NonNull BackBufferParameters backBufferParameters,
 			@NonNull List<DiscoveredSampler> samplers) {
 		this.fragmentShader = fragmentShader;
 		this.fTimeMax = fTimeMax;
 		this.gles3VersionDirective = gles3VersionDirective;
+		this.backBufferSampling = backBufferSampling;
 		this.backBufferParameters = backBufferParameters;
 		this.samplers = List.copyOf(samplers);
 	}
@@ -35,7 +42,8 @@ final class PreparedShaderSource {
 				null,
 				3f,
 				null,
-				new BackBufferParameters(),
+				LegacySamplerSettings.BACKBUFFER.sampling(),
+				BackBufferParameters.NONE,
 				List.of());
 	}
 
@@ -46,6 +54,11 @@ final class PreparedShaderSource {
 
 	float getFTimeMax() {
 		return fTimeMax;
+	}
+
+	@NonNull
+	Sampling getBackBufferSampling() {
+		return backBufferSampling;
 	}
 
 	@NonNull

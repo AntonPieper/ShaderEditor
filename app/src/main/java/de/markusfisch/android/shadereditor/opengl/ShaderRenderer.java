@@ -156,6 +156,7 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 					context,
 					inputs.getRenderWidth(),
 					inputs.getRenderHeight(),
+					programManager.getBackBufferSampling(),
 					programManager.getBackBufferParameters());
 			if (!targetErrors.isEmpty()) {
 				submitErrors(targetErrors);

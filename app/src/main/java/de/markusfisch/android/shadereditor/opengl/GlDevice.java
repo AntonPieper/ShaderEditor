@@ -16,6 +16,7 @@ import javax.microedition.khronos.opengles.GL11ExtensionPack;
 
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 final class GlDevice {
 	private static final int[] CUBE_MAP_TARGETS = {
@@ -130,13 +131,13 @@ final class GlDevice {
 		GLES20.glBindTexture(texture.getTarget(), texture.getId());
 	}
 
-	void applyTextureParameters(@NonNull GlTexture texture,
-			@NonNull TextureParameters parameters) {
+	void applySampling(@NonNull GlTexture texture,
+			@NonNull Sampling sampling) {
 		bindTexture(0, texture);
 		int target = texture.getTarget();
-		int minFilter = parameters.getMinFilter();
-		int wrapS = parameters.getWrapS();
-		int wrapT = parameters.getWrapT();
+		int minFilter = GlSampling.minFilter(sampling);
+		int wrapS = GlSampling.wrap(sampling.wrapS());
+		int wrapT = GlSampling.wrap(sampling.wrapT());
 		if (target == GLES11Ext.GL_TEXTURE_EXTERNAL_OES) {
 			minFilter = switch (minFilter) {
 				case GLES20.GL_NEAREST, GLES20.GL_LINEAR -> minFilter;
@@ -152,7 +153,7 @@ final class GlDevice {
 		GLES20.glTexParameteri(
 				target,
 				GLES20.GL_TEXTURE_MAG_FILTER,
-				parameters.getMagFilter());
+				GlSampling.magFilter(sampling));
 		GLES20.glTexParameteri(
 				target,
 				GLES20.GL_TEXTURE_WRAP_S,

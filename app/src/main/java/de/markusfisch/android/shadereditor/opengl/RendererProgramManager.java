@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 final class RendererProgramManager {
 	record ReloadResult(
@@ -135,6 +136,11 @@ final class RendererProgramManager {
 	@Nullable
 	GlProgram getMainProgram() {
 		return mainProgram;
+	}
+
+	@NonNull
+	Sampling getBackBufferSampling() {
+		return preparedShaderSource.getBackBufferSampling();
 	}
 
 	@NonNull
