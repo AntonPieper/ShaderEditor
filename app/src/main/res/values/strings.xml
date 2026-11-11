@@ -232,16 +232,14 @@
 	<string name="sample_camera_back_rationale">Turn the phone; the view stays upright (camera)</string>
 	<string name="sample_clock_name">Clock</string>
 	<string name="sample_clock_rationale">Compare with the status bar; the hands agree</string>
-	<string name="sample_cloudy_conway_name">Cloudy Conway</string>
-	<string name="sample_cloudy_conway_rationale">A variation on Conway\'s Game of Life.</string>
 	<string name="sample_compass_name">Compass</string>
 	<string name="sample_compass_rationale">Hold it flat and turn; the needle points north</string>
 	<string name="sample_electric_fade_name">Electric Fade</string>
-	<string name="sample_electric_fade_rationale">Like Cloudy Conway but with a preset backbuffer.</string>
+	<string name="sample_electric_fade_rationale">Touch to spark life; dead cells leave a glow</string>
 	<string name="sample_game_of_life_name">Game of Life</string>
 	<string name="sample_game_of_life_rationale">Conway\'s Game of Life. Touch to spark new life.</string>
-	<string name="sample_gles_300_name">GLES 300</string>
-	<string name="sample_gles_300_rationale">Use GLES version 3.00</string>
+	<string name="sample_gles_300_name">GLES 3</string>
+	<string name="sample_gles_300_rationale">Wait a moment; hashed tiles turn their paths</string>
 	<string name="sample_loop_name">Loop</string>
 	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
 	<string name="sample_meters_name">Meters</string>
@@ -255,13 +253,15 @@
 	<string name="sample_sound_name">Sound</string>
 	<string name="sample_sound_rationale">Make a sound; the ring swells (microphone)</string>
 	<string name="sample_swirl_name">Swirl</string>
-	<string name="sample_swirl_rationale">How to distort textures with a swirl pattern</string>
+	<string name="sample_swirl_rationale">Drag across the image; it twists where you began</string>
 	<string name="sample_texture_name">Texture</string>
 	<string name="sample_texture_rationale">How to draw textures</string>
 	<string name="sample_tilt_name">Tilt</string>
 	<string name="sample_tilt_rationale">Tilt the phone; the ball rolls to the low side</string>
 	<string name="sample_touch_name">Touch</string>
 	<string name="sample_touch_rationale">How to process touch input</string>
+	<string name="sample_trails_name">Trails</string>
+	<string name="sample_trails_rationale">Draw with a finger; the stroke fades behind it</string>
 	<string name="sample_window_name">Window</string>
 	<string name="sample_window_rationale">Turn around; the sky stays put behind the glass</string>
 

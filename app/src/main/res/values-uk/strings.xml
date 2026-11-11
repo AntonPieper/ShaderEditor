@@ -232,16 +232,14 @@
 	<string name="sample_camera_back_rationale">Turn the phone; the view stays upright (camera)</string>
 	<string name="sample_clock_name">Clock</string>
 	<string name="sample_clock_rationale">Compare with the status bar; the hands agree</string>
-	<string name="sample_cloudy_conway_name">Cloudy Conway</string>
-	<string name="sample_cloudy_conway_rationale">Варіація «Гри життя» Конвея.</string>
 	<string name="sample_compass_name">Compass</string>
 	<string name="sample_compass_rationale">Hold it flat and turn; the needle points north</string>
 	<string name="sample_electric_fade_name">Електричне згасання</string>
-	<string name="sample_electric_fade_rationale">Як Cloudy Conway, але із попередньо встановленим зворотним буфером.</string>
+	<string name="sample_electric_fade_rationale">Touch to spark life; dead cells leave a glow</string>
 	<string name="sample_game_of_life_name">Гра життя</string>
 	<string name="sample_game_of_life_rationale">Гра життя Конвея. Торкніться, щоб запалити нове життя.</string>
-	<string name="sample_gles_300_name">GLES 300</string>
-	<string name="sample_gles_300_rationale">Використовувати GLES версії 3.00</string>
+	<string name="sample_gles_300_name">GLES 3</string>
+	<string name="sample_gles_300_rationale">Wait a moment; hashed tiles turn their paths</string>
 	<string name="sample_loop_name">Loop</string>
 	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
 	<string name="sample_meters_name">Meters</string>
@@ -255,13 +253,15 @@
 	<string name="sample_sound_name">Sound</string>
 	<string name="sample_sound_rationale">Make a sound; the ring swells (microphone)</string>
 	<string name="sample_swirl_name">Вир</string>
-	<string name="sample_swirl_rationale">Як спотворити текстури за допомогою вихрового візерунка</string>
+	<string name="sample_swirl_rationale">Drag across the image; it twists where you began</string>
 	<string name="sample_texture_name">Текстура</string>
 	<string name="sample_texture_rationale">Як малювати текстури</string>
 	<string name="sample_tilt_name">Tilt</string>
 	<string name="sample_tilt_rationale">Tilt the phone; the ball rolls to the low side</string>
 	<string name="sample_touch_name">Дотик</string>
 	<string name="sample_touch_rationale">Як обробляти сенсорне введення</string>
+	<string name="sample_trails_name">Trails</string>
+	<string name="sample_trails_rationale">Draw with a finger; the stroke fades behind it</string>
 	<string name="sample_window_name">Window</string>
 	<string name="sample_window_rationale">Turn around; the sky stays put behind the glass</string>
 

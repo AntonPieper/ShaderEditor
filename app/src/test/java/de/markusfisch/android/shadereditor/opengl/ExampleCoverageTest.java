@@ -31,8 +31,6 @@ public class ExampleCoverageTest {
 				+ "not turned with the screen and from the game rotation vector, "
 				+ "whose north is arbitrary; rotationMatrix already falls back to it");
 		EXEMPT.put("runtime", "new from upstream; a wallpaper example follows separately");
-		EXEMPT.put("touch", NO_EXAMPLE);
-		EXEMPT.put("touchStart", NO_EXAMPLE);
 	}
 
 	private static final Pattern COMMENTS = Pattern.compile(

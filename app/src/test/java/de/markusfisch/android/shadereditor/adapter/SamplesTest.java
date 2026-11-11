@@ -54,11 +54,11 @@ public class SamplesTest {
 				R.raw.sample_notifications,
 				R.raw.sample_camera_back,
 				R.raw.sample_mirror,
+				R.raw.sample_trails,
 				R.raw.sample_game_of_life,
 				R.raw.sample_electric_fade,
 				R.raw.sample_swirl,
-				R.raw.sample_gles_300,
-				R.raw.sample_cloudy_conway), resIds());
+				R.raw.sample_gles_300), resIds());
 	}
 
 	@Test
