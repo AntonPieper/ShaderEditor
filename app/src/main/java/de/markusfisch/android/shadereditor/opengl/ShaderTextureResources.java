@@ -19,6 +19,7 @@ final class ShaderTextureResources {
 		private final DiscoveredSampler sampler;
 		@Nullable
 		private GlTexture texture;
+		private int unit = GlUniform.NO_UNIT;
 
 		SamplerTextureBinding(@NonNull DiscoveredSampler sampler) {
 			this.sampler = sampler;
@@ -114,11 +115,15 @@ final class ShaderTextureResources {
 		return errors;
 	}
 
-	void applyTo(@NonNull ProgramBindings bindings) {
-		for (var binding : this.bindings) {
-			if (binding.texture() != null) {
-				bindings.setTexture(binding.sampler().name(), binding.texture());
-			}
+	void resolveUnits(@NonNull GlProgram program) {
+		for (var binding : bindings) {
+			binding.unit = program.getTextureUnit(binding.sampler().name());
+		}
+	}
+
+	void bind(@NonNull GlDevice device) {
+		for (var binding : bindings) {
+			device.bindTexture(binding.unit, binding.texture());
 		}
 	}
 

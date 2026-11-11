@@ -162,7 +162,7 @@ public final class GpuBitmapTransformer {
 		private EGLContext context = EGL14.EGL_NO_CONTEXT;
 		private EGLSurface surface = EGL14.EGL_NO_SURFACE;
 		private GlProgram program;
-		private ProgramBindings programBindings;
+		private int frameUnit = GlUniform.NO_UNIT;
 		private GlTexture2D sourceTexture;
 		private GlFramebuffer framebuffer;
 		private GlTexture2D framebufferTexture;
@@ -313,7 +313,7 @@ public final class GpuBitmapTransformer {
 						"Cannot create transform program: " + log);
 			}
 			program = result.getProgram();
-			programBindings = new ProgramBindings(program);
+			frameUnit = program.getTextureUnit("frame");
 		}
 
 		private void makeCurrent() {
@@ -384,9 +384,8 @@ public final class GpuBitmapTransformer {
 			device.setViewport(0, 0, dstWidth, dstHeight);
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT);
 
-			programBindings.clear();
-			programBindings.setTexture("frame", sourceTexture);
-			device.applyBindings(programBindings);
+			device.useProgram(program);
+			device.bindTexture(frameUnit, sourceTexture);
 			device.draw(texturedQuad, program);
 
 			ByteBuffer pixelBuffer = getPixelBuffer(dstWidth * dstHeight * 4);
@@ -484,7 +483,7 @@ public final class GpuBitmapTransformer {
 			surface = EGL14.EGL_NO_SURFACE;
 			device.resetState();
 			program = null;
-			programBindings = null;
+			frameUnit = GlUniform.NO_UNIT;
 			sourceTexture = null;
 			framebuffer = null;
 			framebufferTexture = null;

@@ -14,6 +14,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class ShaderRenderPipeline {
+	record SurfaceProgram(
+			@NonNull GlProgram program,
+			int resolutionLocation,
+			int frameUnit) {
+		@NonNull
+		static SurfaceProgram of(@NonNull GlDevice device, @NonNull GlProgram program) {
+			return new SurfaceProgram(
+					program,
+					device.getUniformLocation(program, ShaderRenderer.UNIFORM_RESOLUTION),
+					program.getTextureUnit(SURFACE_FRAME));
+		}
+	}
+
 	private static final int THUMBNAIL_WIDTH = 144;
 	private static final int THUMBNAIL_HEIGHT = 144;
 	private static final String SURFACE_FRAME = "frame";
@@ -105,9 +118,7 @@ final class ShaderRenderPipeline {
 		return errors;
 	}
 
-	void renderMainPass(
-			@NonNull ProgramBindings bindings,
-			@NonNull GlProgram program) {
+	void renderMainPass(@NonNull GlProgram program) {
 		GlFramebuffer framebuffer = framebuffers[frontTarget];
 		GlTexture2D targetTexture = targetTextures[frontTarget];
 		if (framebuffer == null || targetTexture == null) {
@@ -116,13 +127,12 @@ final class ShaderRenderPipeline {
 
 		device.bindFramebuffer(framebuffer);
 		device.setViewport(0, 0, targetTexture.getWidth(), targetTexture.getHeight());
-		device.applyBindings(bindings);
+		device.useProgram(program);
 		device.draw(fullScreenQuadMesh, program);
 	}
 
 	void renderSurfacePass(
-			@NonNull ProgramBindings surfaceBindings,
-			@NonNull GlProgram surfaceProgram,
+			@NonNull SurfaceProgram surfaceProgram,
 			int surfaceWidth,
 			int surfaceHeight) {
 		drawSurface(
@@ -130,7 +140,6 @@ final class ShaderRenderPipeline {
 				surfaceWidth,
 				surfaceHeight,
 				null,
-				surfaceBindings,
 				surfaceProgram);
 	}
 
@@ -146,9 +155,7 @@ final class ShaderRenderPipeline {
 	}
 
 	@Nullable
-	byte[] captureThumbnail(
-			@NonNull ProgramBindings surfaceBindings,
-			@NonNull GlProgram surfaceProgram) {
+	byte[] captureThumbnail(@NonNull SurfaceProgram surfaceProgram) {
 		if (thumbnailFramebuffer == null || targetTextures[frontTarget] == null) {
 			return null;
 		}
@@ -158,7 +165,6 @@ final class ShaderRenderPipeline {
 				(int) thumbnailResolution[0],
 				(int) thumbnailResolution[1],
 				thumbnailFramebuffer,
-				surfaceBindings,
 				surfaceProgram);
 
 		final int pixels = THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT;
@@ -205,8 +211,7 @@ final class ShaderRenderPipeline {
 			int drawWidth,
 			int drawHeight,
 			@Nullable GlFramebuffer targetFramebuffer,
-			@NonNull ProgramBindings surfaceBindings,
-			@NonNull GlProgram surfaceProgram) {
+			@NonNull SurfaceProgram surfaceProgram) {
 		if (sourceTexture == null) {
 			return;
 		}
@@ -215,14 +220,12 @@ final class ShaderRenderPipeline {
 		device.setViewport(0, 0, drawWidth, drawHeight);
 		drawResolution[0] = drawWidth;
 		drawResolution[1] = drawHeight;
-		surfaceBindings.clear();
-		surfaceBindings.setFloat2(
-				ShaderRenderer.UNIFORM_RESOLUTION,
-				drawResolution);
-		surfaceBindings.setTexture(SURFACE_FRAME, sourceTexture);
-		device.applyBindings(surfaceBindings);
+		GlProgram program = surfaceProgram.program();
+		device.useProgram(program);
+		device.uniform2fv(surfaceProgram.resolutionLocation(), 1, drawResolution);
+		device.bindTexture(surfaceProgram.frameUnit(), sourceTexture);
 		device.clear(GLES20.GL_COLOR_BUFFER_BIT);
-		device.draw(fullScreenQuadMesh, surfaceProgram);
+		device.draw(fullScreenQuadMesh, program);
 	}
 
 	private void discardTargets() {
