@@ -12,11 +12,4 @@ interface GlTexture {
 	boolean isValid();
 
 	void invalidate();
-
-	default void markBindingDirty() {
-	}
-
-	default boolean consumeBindingDirty() {
-		return false;
-	}
 }

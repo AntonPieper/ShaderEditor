@@ -4,7 +4,6 @@ import android.opengl.GLES11Ext;
 
 final class GlExternalTexture implements GlTexture {
 	private int id;
-	private boolean bindingDirty;
 
 	GlExternalTexture(int id) {
 		this.id = id;
@@ -36,20 +35,7 @@ final class GlExternalTexture implements GlTexture {
 	}
 
 	@Override
-	public void markBindingDirty() {
-		bindingDirty = true;
-	}
-
-	@Override
-	public boolean consumeBindingDirty() {
-		boolean dirty = bindingDirty;
-		bindingDirty = false;
-		return dirty;
-	}
-
-	@Override
 	public void invalidate() {
 		id = 0;
-		bindingDirty = false;
 	}
 }

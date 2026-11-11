@@ -34,13 +34,8 @@ final class CameraSource implements UniformSource {
 
 	@Override
 	public void update(long now) {
-		if (listener == null) {
-			return;
-		}
-		listener.update();
-		var binding = sources.getCameraBinding();
-		if (binding != null && binding.texture() != null) {
-			binding.texture().markBindingDirty();
+		if (listener != null) {
+			listener.update();
 		}
 	}
 

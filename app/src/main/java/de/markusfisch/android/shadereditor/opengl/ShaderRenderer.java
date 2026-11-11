@@ -86,7 +86,6 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 
 	@Override
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-		device.resetState();
 		device.disable(GLES20.GL_CULL_FACE);
 		device.disable(GLES20.GL_BLEND);
 		device.disable(GLES20.GL_DEPTH_TEST);
