@@ -1,15 +1,19 @@
 package de.markusfisch.android.shadereditor.opengl;
 
+import androidx.annotation.NonNull;
+
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 final class GlProgram {
 	private int id;
-	private final Map<String, Integer> uniformLocations = new HashMap<>();
+	private Map<String, GlUniform> uniforms;
 	private final Map<String, Integer> attribLocations = new HashMap<>();
 
-	GlProgram(int id) {
+	GlProgram(int id, @NonNull Map<String, GlUniform> uniforms) {
 		this.id = id;
+		this.uniforms = Collections.unmodifiableMap(new HashMap<>(uniforms));
 	}
 
 	int getId() {
@@ -20,8 +24,9 @@ final class GlProgram {
 		return id != 0;
 	}
 
-	Map<String, Integer> getUniformLocations() {
-		return uniformLocations;
+	@NonNull
+	Map<String, GlUniform> getUniforms() {
+		return uniforms;
 	}
 
 	Map<String, Integer> getAttribLocations() {
@@ -30,7 +35,7 @@ final class GlProgram {
 
 	void invalidate() {
 		id = 0;
-		uniformLocations.clear();
+		uniforms = Collections.emptyMap();
 		attribLocations.clear();
 	}
 }

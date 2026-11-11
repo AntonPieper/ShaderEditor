@@ -11,7 +11,9 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.microedition.khronos.opengles.GL11ExtensionPack;
 
@@ -329,7 +331,30 @@ final class GlDevice {
 			return GlProgramBuildResult.failure(infoLog);
 		}
 
-		return GlProgramBuildResult.success(new GlProgram(programId));
+		return GlProgramBuildResult.success(
+				new GlProgram(programId, queryActiveUniforms(programId)));
+	}
+
+	@NonNull
+	private static Map<String, GlUniform> queryActiveUniforms(int programId) {
+		int[] count = new int[1];
+		GLES20.glGetProgramiv(programId, GLES20.GL_ACTIVE_UNIFORMS, count, 0);
+		Map<String, GlUniform> uniforms = new HashMap<>();
+		int[] size = new int[1];
+		int[] type = new int[1];
+		for (int i = 0; i < count[0]; ++i) {
+			String name = GLES20.glGetActiveUniform(programId, i, size, 0, type, 0);
+			if (name == null || name.isEmpty()) {
+				continue;
+			}
+			GlUniform uniform = new GlUniform(name, type[0], size[0],
+					GLES20.glGetUniformLocation(programId, name));
+			uniforms.put(name, uniform);
+			if (name.endsWith("[0]")) {
+				uniforms.put(name.substring(0, name.length() - 3), uniform);
+			}
+		}
+		return uniforms;
 	}
 
 	void deleteProgram(@Nullable GlProgram program) {
@@ -356,13 +381,8 @@ final class GlDevice {
 	}
 
 	int getUniformLocation(@NonNull GlProgram program, @NonNull String name) {
-		Integer location = program.getUniformLocations().get(name);
-		if (location != null) {
-			return location;
-		}
-		int uniformLocation = GLES20.glGetUniformLocation(program.getId(), name);
-		program.getUniformLocations().put(name, uniformLocation);
-		return uniformLocation;
+		GlUniform uniform = program.getUniforms().get(name);
+		return uniform != null ? uniform.location() : -1;
 	}
 
 	boolean hasUniform(@NonNull GlProgram program, @NonNull String name) {
