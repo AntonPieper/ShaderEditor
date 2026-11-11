@@ -9,5 +9,9 @@ interface UniformOutput {
 
 	void setVec2(float x, float y);
 
+	void setVec3(float x, float y, float z);
+
+	void setVec4(float x, float y, float z, float w);
+
 	void setVec3Array(@NonNull float[] values, int count);
 }

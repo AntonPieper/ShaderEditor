@@ -1,21 +1,19 @@
 package de.markusfisch.android.shadereditor.opengl;
 
-import android.app.Activity;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.opengl.GLES11Ext;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.camera.core.CameraSelector;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
 import de.markusfisch.android.shadereditor.hardware.CameraListener;
 
 final class BuiltinCameraUniforms {
 	private final float[] cameraOrientation = new float[4];
+	@NonNull
+	private final EngineHost host;
 	@NonNull
 	private final Context context;
 
@@ -29,8 +27,9 @@ final class BuiltinCameraUniforms {
 	private int renderHeight;
 	private int deviceRotation;
 
-	BuiltinCameraUniforms(@NonNull Context context) {
-		this.context = context;
+	BuiltinCameraUniforms(@NonNull EngineHost host) {
+		this.host = host;
+		context = host.context();
 	}
 
 	void configure(
@@ -109,7 +108,7 @@ final class BuiltinCameraUniforms {
 				binding.sampler().name())
 				? CameraSelector.LENS_FACING_BACK
 				: CameraSelector.LENS_FACING_FRONT;
-		requestPermission(android.Manifest.permission.CAMERA);
+		host.onPermissionNeeded(android.Manifest.permission.CAMERA);
 		cameraListener = new CameraListener(
 				texture.getId(),
 				lensFacing,
@@ -125,19 +124,5 @@ final class BuiltinCameraUniforms {
 			cameraListener.unregister();
 			cameraListener = null;
 		}
-	}
-
-	private void requestPermission(@NonNull String permission) {
-		if (ContextCompat.checkSelfPermission(context, permission) ==
-				PackageManager.PERMISSION_GRANTED) {
-			return;
-		}
-		if (!(context instanceof Activity activity)) {
-			return;
-		}
-		ActivityCompat.requestPermissions(
-				activity,
-				new String[]{permission},
-				1);
 	}
 }

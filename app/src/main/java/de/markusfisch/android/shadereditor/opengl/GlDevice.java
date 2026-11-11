@@ -471,11 +471,6 @@ final class GlDevice {
 						uniform3fv(location, uniform.count, uniform.values);
 					}
 					break;
-				case ProgramBindings.TYPE_FLOAT4:
-					if (uniform.values != null) {
-						uniform4fv(location, uniform.count, uniform.values);
-					}
-					break;
 				case ProgramBindings.TYPE_MATRIX2:
 					if (uniform.values != null) {
 						uniformMatrix2fv(location, uniform.transpose, uniform.values);

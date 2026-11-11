@@ -11,7 +11,6 @@ final class ProgramBindings {
 	static final int TYPE_FLOAT = 2;
 	static final int TYPE_FLOAT2 = 3;
 	static final int TYPE_FLOAT3 = 4;
-	static final int TYPE_FLOAT4 = 5;
 	static final int TYPE_MATRIX2 = 6;
 	static final int TYPE_MATRIX3 = 7;
 
@@ -107,16 +106,6 @@ final class ProgramBindings {
 
 	void setFloat3(@NonNull String name, int count, @NonNull float[] values) {
 		var uniform = getOrCreateUniform(name, TYPE_FLOAT3);
-		uniform.count = count;
-		uniform.values = values;
-	}
-
-	void setFloat4(@NonNull String name, @NonNull float[] values) {
-		setFloat4(name, 1, values);
-	}
-
-	void setFloat4(@NonNull String name, int count, @NonNull float[] values) {
-		var uniform = getOrCreateUniform(name, TYPE_FLOAT4);
 		uniform.count = count;
 		uniform.values = values;
 	}

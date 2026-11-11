@@ -38,7 +38,7 @@ final class BuiltinUniforms {
 	@NonNull
 	private final BuiltinSensorUniforms sensorUniforms;
 	@NonNull
-	private final BuiltinSystemUniforms systemUniforms;
+	private final UniformSources sources;
 	@NonNull
 	private final BuiltinCameraUniforms cameraUniforms;
 
@@ -56,11 +56,11 @@ final class BuiltinUniforms {
 	private float quality = 1f;
 	private float startRandom;
 
-	BuiltinUniforms(@NonNull Context context) {
-		this.context = context;
+	BuiltinUniforms(@NonNull EngineHost host) {
+		context = host.context();
 		sensorUniforms = new BuiltinSensorUniforms(context);
-		systemUniforms = new BuiltinSystemUniforms(context);
-		cameraUniforms = new BuiltinCameraUniforms(context);
+		sources = new UniformSources(host);
+		cameraUniforms = new BuiltinCameraUniforms(host);
 	}
 
 	void setQuality(float quality) {
@@ -76,10 +76,9 @@ final class BuiltinUniforms {
 		this.fTimeMax = fTimeMax;
 		this.textureResources = textureResources;
 		programBindings = new ProgramBindings(program);
-		activeBuiltins = new ActiveBuiltins(device, program);
 
 		sensorUniforms.configure(device, program);
-		systemUniforms.configure(device, program);
+		activeBuiltins = new ActiveBuiltins(device, program, sources);
 		cameraUniforms.configure(device, program, textureResources);
 	}
 
@@ -158,9 +157,8 @@ final class BuiltinUniforms {
 		float delta = (now - startTime) / NS_PER_SECOND;
 
 		captureFrameInputs(delta);
-		builtins.write(frameInputs);
+		builtins.write(frameInputs, now);
 		bindings.clear();
-		systemUniforms.apply(bindings, now);
 		sensorUniforms.apply(bindings);
 		if (backBufferTexture != null) {
 			bindings.setTexture(ShaderRenderer.UNIFORM_BACKBUFFER, backBufferTexture);
@@ -214,7 +212,7 @@ final class BuiltinUniforms {
 
 	private void releaseModules() {
 		sensorUniforms.release();
-		systemUniforms.release();
+		sources.stop();
 		cameraUniforms.release();
 	}
 
