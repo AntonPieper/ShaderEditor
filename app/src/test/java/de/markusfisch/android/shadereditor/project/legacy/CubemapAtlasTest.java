@@ -52,6 +52,16 @@ public class CubemapAtlasTest {
 	}
 
 	@Test
+	public void rejectsSizesWhosePixelCountsOverflow() {
+		// 65536 * 65536 wraps to 0 in int arithmetic.
+		assertNull(CubemapAtlas.toStrip(new int[0], 65536, 65536));
+		assertNull(CubemapAtlas.toStrip(new int[16], 4, Integer.MAX_VALUE));
+		assertNull(CubemapAtlas.toStrip(new int[16], Integer.MAX_VALUE,
+				Integer.MAX_VALUE));
+		assertNull(CubemapAtlas.toStrip(new int[16], -4, -4));
+	}
+
+	@Test
 	public void rejectsImagesTooSmallForTheOldCut() {
 		assertNull(CubemapAtlas.toStrip(new int[1], 1, 1));
 		// Faces of 3 pixels at column 3 do not fit 5 pixels.
