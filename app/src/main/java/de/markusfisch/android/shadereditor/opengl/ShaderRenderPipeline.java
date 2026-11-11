@@ -33,6 +33,19 @@ final class ShaderRenderPipeline {
 	private static final int THUMBNAIL_HEIGHT = 144;
 	private static final String SURFACE_RESOLUTION = "resolution";
 	private static final String SURFACE_FRAME = "frame";
+	private static final String SURFACE_FRAGMENT_SHADER = """
+			#ifdef GL_FRAGMENT_PRECISION_HIGH
+			precision highp float;
+			#else
+			precision mediump float;
+			#endif
+			
+			uniform vec2 resolution;
+			uniform sampler2D frame;
+			void main(void) {
+				gl_FragColor = texture2D(frame,gl_FragCoord.xy / resolution.xy).rgba;
+			}
+			""";
 
 	private final float[] thumbnailResolution =
 			new float[]{THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT};
@@ -48,6 +61,8 @@ final class ShaderRenderPipeline {
 	private GlFramebuffer thumbnailFramebuffer;
 	@Nullable
 	private GlTexture2D thumbnailTexture;
+	@Nullable
+	private SurfaceProgram surfaceProgram;
 
 	ShaderRenderPipeline(@NonNull GlDevice device) {
 		this.device = device;
@@ -56,6 +71,14 @@ final class ShaderRenderPipeline {
 	@NonNull
 	List<ProjectDiagnostic> createContextResources() {
 		ArrayList<ProjectDiagnostic> errors = new ArrayList<>();
+		var surfaceResult = device.createProgram(
+				FullScreenQuad.VERTEX_SHADER,
+				SURFACE_FRAGMENT_SHADER,
+				ShaderLineMapping.identity());
+		if (surfaceResult.getProgram() != null) {
+			surfaceProgram = SurfaceProgram.of(device, surfaceResult.getProgram());
+		}
+		errors.addAll(surfaceResult.getInfoLog());
 		thumbnailTexture = device.createTexture2D();
 		device.applySampling(thumbnailTexture, Sampling.IMAGE);
 		device.allocateTexture2D(
@@ -75,6 +98,7 @@ final class ShaderRenderPipeline {
 	}
 
 	void discardContextResources() {
+		surfaceProgram = null;
 		thumbnailFramebuffer = null;
 		thumbnailTexture = null;
 		discardTargets();
@@ -89,6 +113,10 @@ final class ShaderRenderPipeline {
 		}
 		frontTarget = 0;
 		backTarget = 1;
+	}
+
+	boolean hasSurfaceProgram() {
+		return surfaceProgram != null;
 	}
 
 	boolean hasTargets() {
@@ -127,16 +155,12 @@ final class ShaderRenderPipeline {
 		quad.draw();
 	}
 
-	void renderSurfacePass(
-			@NonNull SurfaceProgram surfaceProgram,
-			int surfaceWidth,
-			int surfaceHeight) {
+	void renderSurfacePass(int surfaceWidth, int surfaceHeight) {
 		drawSurface(
 				targetTextures[frontTarget],
 				surfaceWidth,
 				surfaceHeight,
-				null,
-				surfaceProgram);
+				null);
 	}
 
 	@Nullable
@@ -151,7 +175,7 @@ final class ShaderRenderPipeline {
 	}
 
 	@Nullable
-	byte[] captureThumbnail(@NonNull SurfaceProgram surfaceProgram) {
+	byte[] captureThumbnail() {
 		if (thumbnailFramebuffer == null || targetTextures[frontTarget] == null) {
 			return null;
 		}
@@ -160,8 +184,7 @@ final class ShaderRenderPipeline {
 				targetTextures[frontTarget],
 				(int) thumbnailResolution[0],
 				(int) thumbnailResolution[1],
-				thumbnailFramebuffer,
-				surfaceProgram);
+				thumbnailFramebuffer);
 
 		final int pixels = THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT;
 		final int[] rgba = new int[pixels];
@@ -206,9 +229,8 @@ final class ShaderRenderPipeline {
 			@Nullable GlTexture2D sourceTexture,
 			int drawWidth,
 			int drawHeight,
-			@Nullable GlFramebuffer targetFramebuffer,
-			@NonNull SurfaceProgram surfaceProgram) {
-		if (sourceTexture == null) {
+			@Nullable GlFramebuffer targetFramebuffer) {
+		if (sourceTexture == null || surfaceProgram == null) {
 			return;
 		}
 

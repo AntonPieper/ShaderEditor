@@ -76,6 +76,8 @@ public class ShaderWallpaperService extends WallpaperService {
 		public void onCreate(SurfaceHolder holder) {
 			super.onCreate(holder);
 			view = new ShaderWallpaperView();
+			// Draws once onVisibilityChanged() resumes it.
+			view.onPause();
 			setShader();
 		}
 
@@ -151,17 +153,13 @@ public class ShaderWallpaperService extends WallpaperService {
 		private void setShader() {
 			ShaderProjectSession projectSession = openWallpaperProjectSession();
 			if (view != null && projectSession != null) {
-				view.onPause();
 				saveRuntime();
 				runtimeShaderId = ShaderEditorApp.preferences.getWallpaperShader();
 				hasRuntimeShader = true;
-				view.getEngine().setShader(projectSession);
+				view.setShader(projectSession);
 				if (!isPreview()) {
 					view.getEngine().setRuntimeNanos(
 							ShaderEditorApp.preferences.getWallpaperRuntimeNanos(runtimeShaderId));
-				}
-				if (isVisible()) {
-					view.onResume();
 				}
 			}
 		}

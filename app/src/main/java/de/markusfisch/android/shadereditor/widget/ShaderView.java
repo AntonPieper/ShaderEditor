@@ -52,15 +52,13 @@ public class ShaderView extends GLSurfaceView {
 	}
 
 	public void setShader(@NonNull ShaderProjectSession session) {
-		onPause();
 		engine.setShader(session);
-		onResume();
+		requestRender();
 	}
 
 	public void setQuality(float quality) {
 		engine.setQuality(quality);
-		onPause();
-		onResume();
+		requestRender();
 	}
 
 	@NonNull

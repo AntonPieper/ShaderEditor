@@ -128,6 +128,20 @@ final class EngineInputs {
 		}
 	}
 
+	// GL thread. Restarts the clock for a new shader of this quality.
+	void restart(float quality, long now) {
+		setQuality(quality);
+		resize(surfaceWidth, surfaceHeight, now);
+	}
+
+	int getSurfaceWidth() {
+		return surfaceWidth;
+	}
+
+	int getSurfaceHeight() {
+		return surfaceHeight;
+	}
+
 	int getRenderWidth() {
 		return renderWidth;
 	}
