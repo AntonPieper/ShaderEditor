@@ -64,44 +64,46 @@ public record HostDirectives(
 	}
 
 	private static final class Parser {
+		private final List<SourceAssembly.Line> source;
 		private final List<String> lines;
-		private final List<String> raw;
-		private final SourceMap map;
-		private final PreprocessorScan scan;
-		private final PreprocessorScan.Directive[] byLine;
 		private final List<Input> inputs = new ArrayList<>();
 		private final List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		private Target target;
 		private int targetLine;
 
 		private Parser(SourceAssembly assembly) {
-			raw = assembly.lines();
-			lines = new ArrayList<>(raw);
-			map = assembly.sourceMap();
-			scan = PreprocessorScan.scan(raw, null);
-			byLine = new PreprocessorScan.Directive[raw.size() + 1];
-			for (PreprocessorScan.Directive directive : scan.directives()) {
-				byLine[directive.line()] = directive;
-			}
+			source = assembly.source();
+			lines = new ArrayList<>(assembly.lines());
 		}
 
 		private void run() {
-			for (PreprocessorScan.Directive directive : scan.directives()) {
-				SourceLocation at = map.locate(directive.line());
-				if (directive.kind() != PreprocessorScan.Kind.PRAGMA ||
-						at == null || at.isGenerated()) {
+			for (int line = 1; line <= source.size(); ++line) {
+				SourceAssembly.Line here = source.get(line - 1);
+				PreprocessorScan.Directive directive = here.directive();
+				SourceLocation at = here.at();
+				if (directive == null ||
+						directive.kind() != PreprocessorScan.Kind.PRAGMA) {
 					continue;
 				}
+				String argument = directive.argument();
 				ProjectDiagnostic misspelled = HostDirective.checkSpelling(
-						directive.argument(), at);
+						argument, at);
 				if (misspelled != null) {
 					diagnostics.add(misspelled);
 				}
-				if (!HostDirective.isHostPragma(directive.argument())) {
+				if (argument.endsWith("\\") &&
+						HostDirective.isHostPragma(continued(line))) {
+					error(at, "#pragma se cannot be continued with \\, " +
+							"write the host directive on one line");
+					continue;
+				} else if (!HostDirective.isHostPragma(argument)) {
 					continue;
 				}
-				lines.set(directive.line() - 1, "");
-				if (at.includedFrom() != null) {
+				lines.set(line - 1, "");
+				if (here.blockComment()) {
+					error(at, "Block comments are not allowed on a line " +
+							"with a host directive, use a trailing // comment");
+				} else if (at.includedFrom() != null) {
 					error(at, "Host directives are not allowed in included " +
 							"files (included from " + at.includedFrom() +
 							"), write them in the shader that includes " +
@@ -111,20 +113,27 @@ public record HostDirectives(
 							"#if, #ifdef or #ifndef, move it outside the " +
 							"conditional block");
 				} else {
-					parse(directive.line(), at);
+					parse(line, argument, at);
 				}
 			}
 		}
 
-		private void parse(int line, SourceLocation at) {
-			String text = raw.get(line - 1);
-			int i = scan.code().get(line - 1).indexOf('#') + 1;
-			while (Character.isWhitespace(text.charAt(i))) {
-				++i;
+		// The pragma text that backslashes at line ends join to a line.
+		private String continued(int line) {
+			StringBuilder text = new StringBuilder();
+			String part = source.get(line - 1).directive().argument();
+			while (part.endsWith("\\")) {
+				text.append(part, 0, part.length() - 1);
+				if (line >= source.size() || source.get(line).boundary()) {
+					return text.toString().strip();
+				}
+				part = source.get(line++).code();
 			}
-			i += "pragma".length();
-			HostDirective directive = HostDirective.parse(text.substring(i),
-					at);
+			return text.append(part).toString().strip();
+		}
+
+		private void parse(int line, String argument, SourceLocation at) {
+			HostDirective directive = HostDirective.parse(argument, at);
 			if (directive.command() == HostDirective.Command.TARGET) {
 				if (targetLine > 0) {
 					error(at, "Only one #pragma se target per file, merge " +
@@ -182,17 +191,18 @@ public record HostDirectives(
 
 		private Declaration attach(int line, SourceLocation at) {
 			StringBuilder text = new StringBuilder();
-			for (int l = line + 1; l <= lines.size(); ++l) {
-				SourceLocation here = map.locate(l);
+			for (int l = line + 1; l <= source.size(); ++l) {
+				SourceAssembly.Line next = source.get(l - 1);
+				SourceLocation here = next.at();
 				if (here.isGenerated()) {
 					continue;
-				} else if (here.includedFrom() != null) {
+				} else if (next.boundary()) {
 					error(at, "The declaration after #pragma se input must " +
-							"be in the same file, not in an included file, " +
-							SHAPE);
+							"follow it in the same file, with no #include " +
+							"in between, " + SHAPE);
 					return null;
 				}
-				PreprocessorScan.Directive directive = byLine[l];
+				PreprocessorScan.Directive directive = next.directive();
 				if (directive != null) {
 					boolean input = directive.kind() ==
 							PreprocessorScan.Kind.PRAGMA &&
@@ -206,7 +216,7 @@ public record HostDirectives(
 									here.line());
 					return null;
 				}
-				String code = scan.code().get(l - 1);
+				String code = next.code();
 				text.append(code).append('\n');
 				if (code.indexOf(';') > -1 || code.indexOf('{') > -1) {
 					break;

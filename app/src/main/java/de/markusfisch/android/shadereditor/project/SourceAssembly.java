@@ -8,28 +8,56 @@ import java.util.Map;
 
 /**
  * One shader file with its literal includes expanded statically.
- *
- * @param lines        assembled lines; incomplete when diagnostics
- *                     contain an error
- * @param sourceMap    the origin of every assembled line
- * @param diagnostics  problems with file and line
- * @param dependencies every file read, in order, with the revision used;
- *                     a null revision means the file was absent
- * @param versionLine  1-based assembled line of {@code #version}, or 0
  */
-public record SourceAssembly(
-		List<String> lines,
-		SourceMap sourceMap,
-		List<ProjectDiagnostic> diagnostics,
-		List<Dependency> dependencies,
-		int versionLine) {
+public final class SourceAssembly {
 	public record Dependency(ProjectPath path, String revision) {
 	}
 
-	public SourceAssembly {
-		lines = List.copyOf(lines);
-		diagnostics = List.copyOf(diagnostics);
-		dependencies = List.copyOf(dependencies);
+	/**
+	 * One assembled line as the scan of its own file saw it: the raw
+	 * text, the text with comments blanked, where it comes from, whether
+	 * an include lies between it and the line before, and the directive
+	 * on it, or null.
+	 */
+	record Line(
+			String raw,
+			String code,
+			SourceLocation at,
+			boolean boundary,
+			PreprocessorScan.Directive directive) {
+		/**
+		 * Whether a block comment starts, ends or lies on this line;
+		 * otherwise code is raw without a trailing // comment.
+		 */
+		boolean blockComment() {
+			return !raw.startsWith(code);
+		}
+	}
+
+	private final List<Line> source;
+	private final List<String> lines;
+	private final List<ProjectDiagnostic> diagnostics;
+	private final List<Dependency> dependencies;
+	private final int versionLine;
+	private final SourceMap sourceMap;
+
+	private SourceAssembly(
+			List<Line> source,
+			List<ProjectDiagnostic> diagnostics,
+			List<Dependency> dependencies,
+			int versionLine) {
+		this.source = List.copyOf(source);
+		this.diagnostics = List.copyOf(diagnostics);
+		this.dependencies = List.copyOf(dependencies);
+		this.versionLine = versionLine;
+		List<String> lines = new ArrayList<>(source.size());
+		List<SourceLocation> map = new ArrayList<>(source.size());
+		for (Line line : source) {
+			lines.add(line.raw);
+			map.add(line.at);
+		}
+		this.lines = List.copyOf(lines);
+		sourceMap = new SourceMap(map);
 	}
 
 	public static SourceAssembly assemble(
@@ -38,9 +66,40 @@ public record SourceAssembly(
 			ProjectLimits limits) {
 		Assembler assembler = new Assembler(files, entry, limits);
 		assembler.expand(entry, null);
-		return new SourceAssembly(assembler.lines,
-				new SourceMap(assembler.map), assembler.diagnostics,
+		return new SourceAssembly(assembler.assembled, assembler.diagnostics,
 				assembler.dependencies, assembler.versionLine);
+	}
+
+	/** Assembled lines; incomplete when diagnostics contain an error. */
+	public List<String> lines() {
+		return lines;
+	}
+
+	/** The origin of every assembled line. */
+	public SourceMap sourceMap() {
+		return sourceMap;
+	}
+
+	/** Problems with file and line. */
+	public List<ProjectDiagnostic> diagnostics() {
+		return diagnostics;
+	}
+
+	/**
+	 * Every file read, in order, with the revision used; a null revision
+	 * means the file was absent.
+	 */
+	public List<Dependency> dependencies() {
+		return dependencies;
+	}
+
+	/** 1-based assembled line of {@code #version}, or 0. */
+	public int versionLine() {
+		return versionLine;
+	}
+
+	List<Line> source() {
+		return source;
 	}
 
 	public String text() {
@@ -61,19 +120,22 @@ public record SourceAssembly(
 	 * or at the top when there is none.
 	 */
 	public SourceAssembly withGeneratedLines(List<String> generated) {
-		List<String> updated = new ArrayList<>(lines);
-		updated.addAll(versionLine, generated);
-		return new SourceAssembly(updated,
-				sourceMap.insertGenerated(versionLine, generated.size()),
-				diagnostics, dependencies, versionLine);
+		List<Line> updated = new ArrayList<>(source);
+		List<Line> inserted = new ArrayList<>();
+		for (String text : generated) {
+			inserted.add(new Line(text, text, SourceLocation.GENERATED, false,
+					null));
+		}
+		updated.addAll(versionLine, inserted);
+		return new SourceAssembly(updated, diagnostics, dependencies,
+				versionLine);
 	}
 
 	private record LoadedFile(List<String> lines, PreprocessorScan scan) {
 	}
 
 	private static final class Assembler {
-		private final List<String> lines = new ArrayList<>();
-		private final List<SourceLocation> map = new ArrayList<>();
+		private final List<Line> assembled = new ArrayList<>();
 		private final List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		private final List<Dependency> dependencies = new ArrayList<>();
 		private final Map<ProjectPath, LoadedFile> loaded = new HashMap<>();
@@ -85,6 +147,7 @@ public record SourceAssembly(
 		private int versionLine;
 		private long bytes;
 		private boolean stopped;
+		private boolean boundary;
 
 		private Assembler(
 				ProjectFiles files,
@@ -111,16 +174,24 @@ public record SourceAssembly(
 						directives.get(next).line() == i + 1) {
 					directive = directives.get(next++);
 				}
+				Line line = new Line(source.lines.get(i),
+						source.scan.code().get(i), here, boundary, directive);
 				if (directive != null &&
 						directive.kind() == PreprocessorScan.Kind.INCLUDE) {
+					if (line.blockComment()) {
+						error(here, "Block comments are not allowed on a " +
+								"line with #include, use a trailing // comment");
+					}
+					boundary = true;
 					include(file, directive.argument(), here);
+					boundary = true;
 					continue;
 				}
 				if (directive != null && from == null && versionLine == 0 &&
 						directive.kind() == PreprocessorScan.Kind.VERSION) {
-					versionLine = lines.size() + 1;
+					versionLine = assembled.size() + 1;
 				}
-				emit(source.lines.get(i), here);
+				emit(line);
 			}
 			stack.remove(stack.size() - 1);
 		}
@@ -227,16 +298,16 @@ public record SourceAssembly(
 			return null;
 		}
 
-		private void emit(String line, SourceLocation here) {
-			bytes += line.getBytes(StandardCharsets.UTF_8).length + 1;
+		private void emit(Line line) {
+			bytes += line.raw().getBytes(StandardCharsets.UTF_8).length + 1;
 			if (bytes > limits.sourceBytes()) {
-				error(here, "Assembled source is larger than the limit of " +
-						limits.sourceBytes() + " bytes");
+				error(line.at(), "Assembled source is larger than the limit " +
+						"of " + limits.sourceBytes() + " bytes");
 				stopped = true;
 				return;
 			}
-			lines.add(line);
-			map.add(here);
+			assembled.add(line);
+			boundary = false;
 		}
 
 		private void error(SourceLocation at, String message) {

@@ -276,6 +276,21 @@ public class PreparationTest {
 	}
 
 	@Test
+	public void blockCommentEndingOnConsumedLineIsAnError() {
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.glsl", lines(
+						"/* hello",
+						"*/ #pragma se input \"a.png\"",
+						"uniform sampler2D tex;",
+						MAIN))
+				.put("a.png", new byte[]{1}));
+		assertNull(preparation.plan());
+		assertEquals(List.of("ERROR main.glsl:2 Block comments are not " +
+				"allowed on a line with a host directive, use a trailing " +
+				"// comment"), messages(preparation));
+	}
+
+	@Test
 	public void rejectsMoreFilesThanTheLimit() {
 		Preparation preparation = Preparation.prepare(new MemoryProjectFiles()
 						.put("main.glsl", lines(input("a.glsl", "a"), MAIN))

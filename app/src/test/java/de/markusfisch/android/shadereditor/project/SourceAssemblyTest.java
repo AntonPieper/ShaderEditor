@@ -105,6 +105,25 @@ public class SourceAssemblyTest {
 	}
 
 	@Test
+	public void rejectsBlockCommentOnIncludeLine() {
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("lib.glsl", "float x;\n");
+		assertError(single(assemble(files.put("main.glsl", lines(
+						"/* hello",
+						"*/ #include \"lib.glsl\"",
+						"void main() {}")))),
+				"main.glsl", 2, "Block comments");
+		assertError(single(assemble(files.put("main.glsl", lines(
+						"#include \"lib.glsl\" /* start",
+						"end */",
+						"void main() {}")))),
+				"main.glsl", 1, "Block comments");
+		assertTrue(assemble(files.put("main.glsl",
+				"#include \"lib.glsl\" // a /* comment\n"))
+				.diagnostics().isEmpty());
+	}
+
+	@Test
 	public void rejectsInvalidIncludePathAtIncludeLine() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
 				.put("main.glsl", "\n#include \"../out.glsl\"\n"));

@@ -243,6 +243,29 @@ public class HostDirectivesTest {
 	}
 
 	@Test
+	public void rejectsBlockCommentAnywhereOnHostDirectiveLine() {
+		assertError("Block comments", "/* hello",
+				"*/ #pragma se input \"a.png\"", TEX);
+		assertError("Block comments", "#/**/pragma se input \"a.png\"", TEX);
+		assertError("Block comments", "#pragma se target scale=0.5 /* a",
+				"b */");
+		assertEquals(Filter.LINEAR,
+				input("\"a.png\" filter=linear // a /* b").min());
+	}
+
+	@Test
+	public void rejectsPragmaContinuedIntoHostDirective() {
+		assertError("one line", "#pragma \\", "se target scale=0.5",
+				"void main() {}");
+		assertError("one line", "#pragma s\\", "e input \"a.png\"", TEX);
+		assertError("one line", "#pragma se target scale=0.5 \\", "");
+		HostDirectives unrelated = parse("#pragma optimize(on) \\",
+				"debug(off)");
+		assertTrue(unrelated.diagnostics().isEmpty());
+		assertEquals("#pragma optimize(on) \\", unrelated.lines().get(0));
+	}
+
+	@Test
 	public void rejectsFilterWithMinOrMag() {
 		assertError("filter sets min and mag",
 				"#pragma se input \"a.png\" filter=linear min=nearest", TEX);
@@ -375,6 +398,22 @@ public class HostDirectivesTest {
 						.put("decl.glsl", TEX + "\n"),
 				path("main.glsl"), ProjectLimits.DEFAULT));
 		assertTrue(singleError(result).message().contains("same file"));
+	}
+
+	@Test
+	public void emptyIncludeSeparatesInputFromDeclaration() {
+		HostDirectives result = HostDirectives.parse(SourceAssembly.assemble(
+				new MemoryProjectFiles()
+						.put("main.glsl", lines(
+								"#pragma se input \"a.png\"",
+								"#include \"empty.glsl\"",
+								TEX))
+						.put("empty.glsl", ""),
+				path("main.glsl"), ProjectLimits.DEFAULT));
+		ProjectDiagnostic error = singleError(result);
+		assertEquals(1, error.line());
+		assertTrue(error.message().contains("#include"));
+		assertTrue(result.inputs().isEmpty());
 	}
 
 	@Test
