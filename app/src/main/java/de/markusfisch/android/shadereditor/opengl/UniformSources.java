@@ -6,6 +6,7 @@ import androidx.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.hardware.SensorRegistry;
 
@@ -14,6 +15,9 @@ final class UniformSources {
 	private final ArrayList<UniformSource> running = new ArrayList<>();
 	@NonNull
 	private final EngineHost host;
+	// The keys run() started, or null when they must start again.
+	@Nullable
+	private Set<UniformSource.Key<?>> roots = Set.of();
 	@Nullable
 	private SensorRegistry sensors;
 	@Nullable
@@ -29,6 +33,20 @@ final class UniformSources {
 	UniformSources(@NonNull EngineHost host, @NonNull SensorRegistry sensors) {
 		this.host = host;
 		this.sensors = sensors;
+	}
+
+	// Runs the sources of these keys and the ones they start. When the
+	// same keys run already, they keep running and keep their values;
+	// otherwise all stop first.
+	void run(@NonNull Set<UniformSource.Key<?>> keys) {
+		if (keys.equals(roots)) {
+			return;
+		}
+		stop();
+		roots = keys;
+		for (var key : keys) {
+			start(key);
+		}
 	}
 
 	@NonNull
@@ -73,7 +91,11 @@ final class UniformSources {
 
 	void setCameraBinding(
 			@Nullable ShaderTextureResources.SamplerTextureBinding cameraBinding) {
-		this.cameraBinding = cameraBinding;
+		if (cameraBinding != this.cameraBinding) {
+			this.cameraBinding = cameraBinding;
+			// A running camera streams into the texture of the last binding.
+			roots = null;
+		}
 	}
 
 	int getRenderWidth() {
@@ -101,5 +123,6 @@ final class UniformSources {
 		}
 		running.clear();
 		byKey.clear();
+		roots = Set.of();
 	}
 }

@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.opengl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import android.content.Context;
@@ -18,6 +19,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import de.markusfisch.android.shadereditor.project.RenderPlan;
 
 public class UniformSourcesTest {
 	private static final List<String> events = new ArrayList<>();
@@ -179,6 +182,53 @@ public class UniformSourcesTest {
 		assertEquals(List.of(), output.locations);
 		assertEquals(List.of(), output.calls);
 		sources.stop();
+	}
+
+	@Test
+	public void sourcesTheNextShaderStillReadsKeepRunning() {
+		events.clear();
+		var sources = new UniformSources(HOST);
+		new ActiveBuiltins(TABLE, program("first", 1), sources, new LocatedOutput());
+		var running = sources.get(FakeSource.KEY);
+		new ActiveBuiltins(TABLE, program("second", 2), sources, new LocatedOutput());
+		assertSame(running, sources.get(FakeSource.KEY));
+		assertEquals(List.of("start"), events);
+	}
+
+	@Test
+	public void sourcesTheNextShaderNoLongerReadsStop() {
+		events.clear();
+		var sources = new UniformSources(HOST);
+		new ActiveBuiltins(TABLE, program("first", 1), sources, new LocatedOutput());
+		new ActiveBuiltins(TABLE, program("plain", 2), sources, new LocatedOutput());
+		assertNull(sources.get(FakeSource.KEY));
+		assertEquals(List.of("start", "stop"), events);
+	}
+
+	@Test
+	public void sourcesStopWithoutAShaderAndStartAgainWithOne() {
+		events.clear();
+		var sources = new UniformSources(HOST);
+		new ActiveBuiltins(TABLE, program("first", 1), sources, new LocatedOutput());
+		// What the engine does on context loss, detach and pause.
+		sources.stop();
+		assertNull(sources.get(FakeSource.KEY));
+		new ActiveBuiltins(TABLE, program("first", 1), sources, new LocatedOutput());
+		assertNotNull(sources.get(FakeSource.KEY));
+		assertEquals(List.of("start", "stop", "start"), events);
+	}
+
+	@Test
+	public void anotherCameraBindingStartsTheSourcesAgain() {
+		events.clear();
+		var sources = new UniformSources(HOST);
+		new ActiveBuiltins(TABLE, program("first", 1), sources, new LocatedOutput());
+		sources.setCameraBinding(new ShaderTextureResources.SamplerTextureBinding(
+				new DiscoveredSampler(UniformTable.CAMERA_BACK,
+						GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
+						RenderPlan.Sampling.CAMERA)));
+		new ActiveBuiltins(TABLE, program("first", 1), sources, new LocatedOutput());
+		assertEquals(List.of("start", "stop", "start"), events);
 	}
 
 	@NonNull

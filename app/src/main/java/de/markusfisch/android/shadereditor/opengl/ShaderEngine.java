@@ -198,9 +198,9 @@ public final class ShaderEngine {
 		}
 	}
 
-	// After the host released the context; the GL thread is not running.
+	// After the host released the context, when its view was detached
+	// or paused; the GL thread is not running.
 	public void onContextLost() {
-		releaseSources();
 		discardContextResources();
 	}
 
@@ -246,12 +246,9 @@ public final class ShaderEngine {
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
 		var textures = next.upload(errors);
-		if (!next.isComplete()) {
+		if (shaders.swapIfComplete() == null) {
 			return;
 		}
-		// The sources stop before the build they read from is released.
-		releaseSources();
-		shaders.swapIfComplete();
 		thumbnails.onFramesLost();
 
 		long now = System.nanoTime();
@@ -313,22 +310,30 @@ public final class ShaderEngine {
 		fTimeMax = build.source.getFTimeMax();
 		backBufferUnit = build.program.getTextureUnit(UniformTable.BACKBUFFER);
 		build.textures.resolveUnits(build.program);
-		sources.setCameraBinding(build.textures.getFirstBinding(
-				UniformTable.CAMERA_BACK,
-				UniformTable.CAMERA_FRONT));
-		activeBuiltins = new ActiveBuiltins(device, build.program, sources);
+		runSources(build);
 	}
 
 	private void clearConfiguration() {
 		inputs.pauseRuntime();
 		fTimeMax = DEFAULT_FTIME_MAX;
 		backBufferUnit = GlUniform.NO_UNIT;
-		activeBuiltins = null;
+		runSources(null);
 	}
 
-	private void releaseSources() {
-		sources.stop();
-		sources.setCameraBinding(null);
+	// The one place that decides which sources run: the ones the current
+	// shader reads, and none without one. A lost context, a detached
+	// view and a host in the background all end the current shader.
+	private void runSources(@Nullable ShaderBuild build) {
+		if (build == null) {
+			activeBuiltins = null;
+			sources.stop();
+			sources.setCameraBinding(null);
+			return;
+		}
+		sources.setCameraBinding(build.textures.getFirstBinding(
+				UniformTable.CAMERA_BACK,
+				UniformTable.CAMERA_FRONT));
+		activeBuiltins = new ActiveBuiltins(device, build.program, sources);
 	}
 
 	private void discardContextResources() {
