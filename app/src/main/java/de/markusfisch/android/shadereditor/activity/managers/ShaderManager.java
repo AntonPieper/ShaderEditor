@@ -327,11 +327,15 @@ public class ShaderManager {
 		setModified(false);
 	}
 
+	static long getPendingCrashShaderId(boolean runInBackground,
+			long shaderId) {
+		return runInBackground && shaderId > 0 ? shaderId : 0;
+	}
+
 	private void updatePendingCrashShaderId() {
 		ShaderEditorApp.preferences.setPendingCrashShaderId(
-				ShaderEditorApp.preferences.doesRunInBackground() &&
-						selectedShaderId > 0
-						? selectedShaderId
-						: 0);
+				getPendingCrashShaderId(
+						ShaderEditorApp.preferences.doesRunInBackground(),
+						selectedShaderId));
 	}
 }
