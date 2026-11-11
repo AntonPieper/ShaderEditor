@@ -21,16 +21,11 @@ public class ExampleCoverageTest {
 	private static final Map<String, String> EXEMPT = new TreeMap<>();
 
 	static {
-		EXEMPT.put("cameraFront", NO_EXAMPLE);
 		EXEMPT.put("gyroscope", "a direction that turns with the phone, (1, 1, 1) "
 				+ "turned by the rotation since load, which no example uses yet");
 		EXEMPT.put("inclinationMatrix", "only the rotation by inclination about "
 				+ "the east axis; Compass shows the dip from inclination, and no "
 				+ "picture drawn from the matrix can be checked by looking");
-		EXEMPT.put("lastNotificationTime", NO_EXAMPLE);
-		EXEMPT.put("mediaVolume", NO_EXAMPLE);
-		EXEMPT.put("micAmplitude", NO_EXAMPLE);
-		EXEMPT.put("notificationCount", NO_EXAMPLE);
 		EXEMPT.put("offset", NO_EXAMPLE);
 		EXEMPT.put("rotationVector", "the orientation as an axis times sin(angle / 2), "
 				+ "not turned with the screen and from the game rotation vector, "
