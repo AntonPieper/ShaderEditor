@@ -422,19 +422,16 @@ final class GlDevice {
 		}
 	}
 
-	void uniformMatrix2fv(int location,
-			boolean transpose,
-			@NonNull float[] values) {
+	// GLES 2.0 only takes matrices column by column, without transposing.
+	void uniformMatrix2fv(int location, @NonNull float[] values) {
 		if (location > -1) {
-			GLES20.glUniformMatrix2fv(location, 1, transpose, values, 0);
+			GLES20.glUniformMatrix2fv(location, 1, false, values, 0);
 		}
 	}
 
-	void uniformMatrix3fv(int location,
-			boolean transpose,
-			@NonNull float[] values) {
+	void uniformMatrix3fv(int location, @NonNull float[] values) {
 		if (location > -1) {
-			GLES20.glUniformMatrix3fv(location, 1, transpose, values, 0);
+			GLES20.glUniformMatrix3fv(location, 1, false, values, 0);
 		}
 	}
 

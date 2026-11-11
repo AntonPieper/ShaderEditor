@@ -248,24 +248,26 @@ public class SensorSourcesTest {
 	}
 
 	@Test
-	public void writesRotationMatricesTransposed() {
+	public void shaderSeesRotationMatricesRowByRow() {
 		var rotation = rotation();
 		for (var name : List.of("rotationMatrix", "orientation",
 				"inclinationMatrix", "inclination")) {
 			assertNotWritten(name, rotation);
 		}
 
+		// SensorManager's row-major matrices; a shader indexes m[column][row].
 		float[] matrix = {1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f};
 		System.arraycopy(matrix, 0, rotation.matrix, 0, 9);
 		rotation.available = true;
-		assertWritten("rotationMatrix", rotation, "mat3T", matrix);
+		assertShaderSees(matrix, uploadedMatrix("rotationMatrix", rotation));
 		assertNotWritten("inclinationMatrix", rotation);
 		assertNotWritten("inclination", rotation);
 
-		float[] inclination = {9f, 8f, 7f, 6f, 5f, 4f, 3f, 2f, 1f};
+		float[] inclination = {9f, 7f, 8f, 6f, 5f, 4f, 3f, 1f, 2f};
 		System.arraycopy(inclination, 0, rotation.inclinationMatrix, 0, 9);
 		rotation.inclined = true;
-		assertWritten("inclinationMatrix", rotation, "mat3T", inclination);
+		assertShaderSees(inclination, uploadedMatrix("inclinationMatrix", rotation));
+		assertShaderSees(matrix, uploadedMatrix("rotationMatrix", rotation));
 	}
 
 	@Test
@@ -282,6 +284,23 @@ public class SensorSourcesTest {
 		assertDeclared("proximity", "float", R.string.proximity);
 		assertDeclared("rotationMatrix", "mat3", R.string.device_rotation_matrix);
 		assertDeclared("rotationVector", "vec3", R.string.device_rotation_vector);
+	}
+
+	@NonNull
+	private static float[] uploadedMatrix(String name, UniformSource source) {
+		var out = new UniformTableTest.RecordingOutput();
+		UniformTable.get(name).write(new FrameInputs(), source, out);
+		assertEquals(List.of("mat3"), out.calls);
+		return out.values.get(0);
+	}
+
+	// GL reads an untransposed upload column by column: m[column][row].
+	private static void assertShaderSees(float[] rows, float[] uploaded) {
+		for (int row = 0; row < 3; ++row) {
+			for (int column = 0; column < 3; ++column) {
+				assertEquals(rows[row * 3 + column], uploaded[column * 3 + row], EPSILON);
+			}
+		}
 	}
 
 	@NonNull

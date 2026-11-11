@@ -53,13 +53,13 @@ public class UniformTableTest {
 		}
 
 		@Override
-		public void setMat2(boolean transpose, @NonNull float[] values) {
-			record(transpose ? "mat2T" : "mat2", values.clone());
+		public void setMat2(@NonNull float[] values) {
+			record("mat2", values.clone());
 		}
 
 		@Override
-		public void setMat3(boolean transpose, @NonNull float[] values) {
-			record(transpose ? "mat3T" : "mat3", values.clone());
+		public void setMat3(@NonNull float[] values) {
+			record("mat3", values.clone());
 		}
 
 		void record(String call, float[] value) {
