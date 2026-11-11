@@ -9,9 +9,15 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+
+import de.markusfisch.android.shadereditor.database.DataRecords.TextureInfo;
 
 import de.markusfisch.android.shadereditor.project.ProjectLimits;
+import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.LibraryTexture;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles.Problem;
+import de.markusfisch.android.shadereditor.project.legacy.StoredFiles.Stored;
 
 public class StoredFilesTest {
 	@Test
@@ -106,6 +112,44 @@ public class StoredFilesTest {
 		}
 		assertTrue(StoredFiles.reason(Problem.NO_MEMORY, "noise")
 				.contains("memory"));
+	}
+
+	@Test
+	public void libraryKeepsTheRowTheOldRendererRead() {
+		Map<String, Stored> library = StoredFiles.library(
+				List.of(info(7, "noise", 8, 8), info(3, "noise", 4, 4),
+						info(5, "seed", 8, 8)),
+				List.of(info(9, "sky", 64, 96), info(4, "seed", 2, 3)));
+		assertEquals(new Stored(3L, "noise", 4, 4, false),
+				library.get("noise"));
+		assertEquals(new Stored(9L, "sky", 64, 96, true), library.get("sky"));
+		assertEquals(new Stored(4L, "seed", 2, 3, true),
+				library.get("seed"));
+		assertEquals(new LibraryTexture(true, 64, 96),
+				library.get("sky").texture());
+	}
+
+	@Test
+	public void imageReplacedAfterConversionFails() {
+		// The preset shader was generated for an 8x4 seed; the row read
+		// later holds a 4x4 image.
+		Stored seed = new Stored(5L, "seed", 8, 4, false);
+		assertReason(StoredFiles.changed(seed, 4, 4), "\"seed\"", "8x4",
+				"4x4", "open the shader again");
+		assertNull(StoredFiles.changed(seed, 8, 4));
+		assertNull(StoredFiles.changed(new Stored(null, "seed", 8, 4,
+				false), 8, 4));
+	}
+
+	@Test
+	public void removedTextureSaysToOpenTheShaderAgain() {
+		assertTrue(StoredFiles.reason(Problem.REMOVED, "seed")
+				.contains("open the shader again"));
+	}
+
+	private static TextureInfo info(long id, String name, int width,
+			int height) {
+		return new TextureInfo(id, name, width, height, null);
 	}
 
 	private static void assertReason(String reason, String... parts) {
