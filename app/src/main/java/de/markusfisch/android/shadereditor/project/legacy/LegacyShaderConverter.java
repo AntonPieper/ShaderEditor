@@ -88,6 +88,7 @@ public final class LegacyShaderConverter {
 			"uniform[ \t]+sampler(2D|Cube|ExternalOES)+[ \t]+" +
 					"([a-zA-Z0-9_]+);");
 	private static final int MAX_TEXTURES = 32;
+	private static final Pattern DISCARD = Pattern.compile("\\bdiscard\\b");
 	private static final String BACKBUFFER = "backbuffer";
 
 	private final List<String> raw;
@@ -146,6 +147,7 @@ public final class LegacyShaderConverter {
 			}
 		}
 		convertBackbuffer(backbuffers);
+		warnDiscard();
 		List<String> out = new ArrayList<>();
 		for (int line = 1; line <= raw.size() + 1; ++line) {
 			List<Line> lines = new ArrayList<>(or(before.get(line)));
@@ -387,6 +389,19 @@ public final class LegacyShaderConverter {
 			before.put(line, lines);
 		}
 		lines.add(text);
+	}
+
+	// The old renderer never cleared, so a discarded pixel kept what
+	// the buffer held two frames earlier.
+	private void warnDiscard() {
+		for (int i = 0; i < raw.size(); ++i) {
+			if (DISCARD.matcher(scan.code().get(i)).find()) {
+				warn(i + 1, "Discarded pixels are now opaque black, " +
+						"where they used to keep older content of the " +
+						"output");
+				return;
+			}
+		}
 	}
 
 	private void warn(int line, String message) {
