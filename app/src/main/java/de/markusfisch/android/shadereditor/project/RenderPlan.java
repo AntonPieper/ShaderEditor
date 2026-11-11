@@ -48,7 +48,8 @@ public record RenderPlan(
 	 * @param lines       the source the compiler gets, without the
 	 *                    lines the engine generates
 	 * @param sourceMap   the origin of every line
-	 * @param versionLine 1-based line of {@code #version}, or 0; the
+	 * @param versionLine 1-based line of {@code #version}, or of the end
+	 *                    of a block comment opened on it, or 0; the
 	 *                    engine's generated lines go after it
 	 */
 	public record Program(
