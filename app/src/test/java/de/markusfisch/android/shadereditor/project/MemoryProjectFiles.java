@@ -1,11 +1,14 @@
 package de.markusfisch.android.shadereditor.project;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 final class MemoryProjectFiles implements ProjectFiles {
 	private final Map<ProjectPath, Content> files = new HashMap<>();
+	final List<ProjectPath> readPaths = new ArrayList<>();
 	int reads;
 
 	MemoryProjectFiles put(String path, String text) {
@@ -21,6 +24,7 @@ final class MemoryProjectFiles implements ProjectFiles {
 	@Override
 	public Content read(ProjectPath path) {
 		++reads;
+		readPaths.add(path);
 		return files.get(path);
 	}
 }
