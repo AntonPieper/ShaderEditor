@@ -212,8 +212,6 @@
 	<string name="sample_battery_rationale">显示水平电池电量指示器</string>
 	<string name="sample_camera_back_name">后置摄像头</string>
 	<string name="sample_camera_back_rationale">如何使用后置摄像头纹理（仅限 Android 4.0+）</string>
-	<string name="sample_circles_name">圆圈</string>
-	<string name="sample_circles_rationale">一个简单的绘制多个圆形图案的着色器</string>
 	<string name="sample_cloudy_conway_name">多云康威</string>
 	<string name="sample_cloudy_conway_rationale">康威生命游戏的一个变种。</string>
 	<string name="sample_electric_fade_name">电力淡化</string>
@@ -224,8 +222,12 @@
 	<string name="sample_gles_300_rationale">该着色器展示如何使用 GLES 3.0 版本语法</string>
 	<string name="sample_gravity_name">重力感应</string>
 	<string name="sample_gravity_rationale">演示如何使用重力感应变量</string>
+	<string name="sample_loop_name">Loop</string>
+	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
 	<string name="sample_orientation_name">方向感应</string>
 	<string name="sample_orientation_rationale">演示如何使用方向 uniform 变量</string>
+	<string name="sample_shapes_name">Shapes</string>
+	<string name="sample_shapes_rationale">Touch the screen; the orbit moves to your finger</string>
 	<string name="sample_swirl_name">旋涡</string>
 	<string name="sample_swirl_rationale">演示如何对纹理进行扭曲/旋转变形</string>
 	<string name="sample_texture_name">纹理贴图</string>

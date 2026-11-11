@@ -24,8 +24,6 @@ public class ExampleCoverageTest {
 		EXEMPT.put("cameraFront", NO_EXAMPLE);
 		EXEMPT.put("date", NO_EXAMPLE);
 		EXEMPT.put("daytime", NO_EXAMPLE);
-		EXEMPT.put("frame", NO_EXAMPLE);
-		EXEMPT.put("ftime", NO_EXAMPLE);
 		EXEMPT.put("gyroscope", NO_EXAMPLE);
 		EXEMPT.put("inclination", NO_EXAMPLE);
 		EXEMPT.put("inclinationMatrix", NO_EXAMPLE);
@@ -35,7 +33,6 @@ public class ExampleCoverageTest {
 		EXEMPT.put("magnetic", NO_EXAMPLE);
 		EXEMPT.put("mediaVolume", NO_EXAMPLE);
 		EXEMPT.put("micAmplitude", NO_EXAMPLE);
-		EXEMPT.put("mouse", NO_EXAMPLE);
 		EXEMPT.put("nightMode", NO_EXAMPLE);
 		EXEMPT.put("notificationCount", NO_EXAMPLE);
 		EXEMPT.put("offset", NO_EXAMPLE);
@@ -44,9 +41,6 @@ public class ExampleCoverageTest {
 		EXEMPT.put("proximity", NO_EXAMPLE);
 		EXEMPT.put("rotationMatrix", NO_EXAMPLE);
 		EXEMPT.put("rotationVector", NO_EXAMPLE);
-		EXEMPT.put("second", NO_EXAMPLE);
-		EXEMPT.put("startRandom", NO_EXAMPLE);
-		EXEMPT.put("subsecond", NO_EXAMPLE);
 		EXEMPT.put("touch", NO_EXAMPLE);
 		EXEMPT.put("touchStart", NO_EXAMPLE);
 	}
