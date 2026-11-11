@@ -151,6 +151,66 @@ public class LegacyShaderConverterTest {
 	}
 
 	@Test
+	public void presetNameThatCannotBeAFileNameGetsASafeOne() {
+		Result result = LegacyShaderConverter.convert(lines(
+						"uniform sampler2D a_b;",
+						"uniform sampler2D backbuffer;///p:a/b;"),
+				name -> new LibraryTexture(false, 8, 4));
+		assertEquals(lines("#pragma se target initial=\"presets/a_b_2.glsl\"",
+				"#pragma se input \"textures/a_b.png\" " +
+						"min=nearest mag=linear wrap=repeat",
+				"uniform sampler2D a_b;",
+				"uniform sampler2D backbuffer;"), result.shader());
+		assertEquals(List.of(
+				new TextureFile("a_b", path("textures/a_b.png"), false),
+				new TextureFile("a/b", path("textures/a_b_2.png"), false)),
+				result.textures());
+		assertTrue(result.files().get(path("presets/a_b_2.glsl"))
+				.contains("#pragma se input \"../textures/a_b_2.png\""));
+		assertEquals(List.of("The library texture \"a/b\" has a name " +
+						"that cannot be a file name, so its copy is " +
+						"textures/a_b_2.png"),
+				messages(result));
+		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
+		result = LegacyShaderConverter.convert(
+				lines("uniform sampler2D backbuffer;///p:../../../../foo;"),
+				name -> new LibraryTexture(false, 8, 4));
+		assertEquals(List.of(new TextureFile("../../../../foo",
+				path("textures/____________foo.png"), false)),
+				result.textures());
+		assertTrue(result.files().containsKey(
+				path("presets/____________foo.glsl")));
+		assertEquals(1, result.diagnostics().size());
+		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
+	}
+
+	@Test
+	public void declarationInAMacroBodyStaysAsWrittenUnbound() {
+		String text = lines("precision mediump float;",
+				"#define DECL(x) uniform sampler2D noise; float x;",
+				"DECL(value)",
+				"void main(){value=0.5;" +
+						"gl_FragColor=texture2D(noise,vec2(value));}");
+		Result result = convert(text);
+		assertEquals(text, result.shader());
+		assertTrue(result.textures().isEmpty());
+		assertEquals(List.of(new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.WARNING,
+				"noise is declared by a macro, which #pragma se input " +
+						"cannot annotate, so it is left as written and " +
+						"does not read the library texture noise",
+				null, 2)), result.diagnostics());
+		text = lines("#define DECL \\",
+				"\tuniform sampler2D noise; \\",
+				"\tuniform sampler2D backbuffer;///min:l;mag:l;",
+				"DECL");
+		result = convert(text);
+		assertEquals("#pragma se target present=linear\n" + text,
+				result.shader());
+		assertEquals(List.of(2, 3), lines(result.diagnostics()));
+	}
+
+	@Test
 	public void cameraBuiltinsAndFtimeStayUnchanged() {
 		String text = lines("#define FTIME_PERIOD 2.0",
 				"uniform samplerExternalOES cameraBack;",

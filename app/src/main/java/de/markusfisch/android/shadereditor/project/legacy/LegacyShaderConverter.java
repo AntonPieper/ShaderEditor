@@ -3,10 +3,12 @@ package de.markusfisch.android.shadereditor.project.legacy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,6 +18,7 @@ import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.PreprocessorScan;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectParseResult;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 import de.markusfisch.android.shadereditor.project.SourceText;
@@ -101,6 +104,7 @@ public final class LegacyShaderConverter {
 	private final Library library;
 	private final List<Declaration> declarations = new ArrayList<>();
 	private final Map<String, List<Declaration>> declared = new HashMap<>();
+	private final Set<String> macros = new HashSet<>();
 	private final Map<Integer, List<Line>> before = new TreeMap<>();
 	private final Map<Integer, List<Edit>> edits = new HashMap<>();
 	private final Map<ProjectPath, String> files = new LinkedHashMap<>();
@@ -232,8 +236,21 @@ public final class LegacyShaderConverter {
 				matches.put(declaration.line, declaration);
 			}
 		}
+		Set<Integer> directives = new HashSet<>();
+		for (PreprocessorScan.Directive d : scan.directives()) {
+			directives.add(d.line());
+		}
+		boolean continued = false;
 		for (int i = 0; i < raw.size(); ++i) {
 			Matcher m = DECLARATION.matcher(scan.code().get(i));
+			// A macro body is not a declaration until it is expanded.
+			if (continued || directives.contains(i + 1)) {
+				continued = raw.get(i).endsWith("\\");
+				while (m.find()) {
+					macros.add(m.group(2));
+				}
+				continue;
+			}
 			while (m.find()) {
 				Declaration match = matches.get(i + 1);
 				Declaration declaration = match != null &&
@@ -281,12 +298,13 @@ public final class LegacyShaderConverter {
 		}
 		boolean cube = match.type.equals("samplerCube");
 		List<Declaration> targets = targets(match);
-		warnUndeclared(match, "read the library texture " + name +
+		warnUndeclared(match, "does not read the library texture " + name,
+				"read the library texture " + name +
 				", but it has no declaration like uniform " + match.type +
 				" " + name + "; on one line to attach #pragma se input " +
 				"to, so it is not bound");
 		if (!targets.isEmpty()) {
-			ProjectPath path = texture(name, texture, cube);
+			ProjectPath path = texture(name, texture, cube, match.line);
 			bind(targets, ("\"" + path + "\" " + settings(match)
 					.options(Sampling.IMAGE, !cube)).trim());
 		}
@@ -330,7 +348,8 @@ public final class LegacyShaderConverter {
 		List<Declaration> declarations = or(declared.get(BACKBUFFER));
 		String options = settings.options(Sampling.PASS, true);
 		if (first != null && (!options.isEmpty() || preset != null)) {
-			warnUndeclared(first, "has settings, but " +
+			warnUndeclared(first, "does not get its settings",
+					"has settings, but " +
 					"it has no declaration like uniform sampler2D " +
 					"backbuffer; on one line to attach #pragma se input " +
 					"to, so they are not applied");
@@ -344,9 +363,10 @@ public final class LegacyShaderConverter {
 		}
 		List<String> target = new ArrayList<>();
 		if (preset != null && !declarations.isEmpty()) {
-			ProjectPath image = texture(settings.preset(), preset, false);
-			ProjectPath shader = path("presets/" + settings.preset() +
-					".glsl");
+			ProjectPath image = texture(settings.preset(), preset, false, at);
+			String file = image.getFileName();
+			ProjectPath shader = path("presets/" +
+					file.substring(0, file.length() - 4) + ".glsl");
 			files.put(shader, PresetShader.text("../" + image,
 					preset.width(), preset.height()));
 			target.add("initial=\"" + shader + "\"");
@@ -367,14 +387,38 @@ public final class LegacyShaderConverter {
 		}
 	}
 
+	// A library texture name that cannot be a file name, or names the
+	// file of another texture, gets a safe one.
 	private ProjectPath texture(String name, LibraryTexture texture,
-			boolean cube) {
+			boolean cube, int line) {
 		String suffix = cube == texture.atlas()
 				? ""
 				: cube ? ".cube" : ".atlas";
-		ProjectPath path = path("textures/" + name + suffix + ".png");
+		ProjectPath path = textureFile(name + suffix, name, cube);
+		if (path == null) {
+			String safe = name.replaceAll("[^a-zA-Z0-9_]", "_") + suffix;
+			path = textureFile(safe, name, cube);
+			for (int i = 2; path == null; ++i) {
+				path = textureFile(safe + "_" + i, name, cube);
+			}
+			warn(line, "The library texture \"" + name + "\" has a name " +
+					"that cannot be a file name, so its copy is " + path);
+		}
 		textures.put(path, new TextureFile(name, path, cube));
 		return path;
+	}
+
+	private ProjectPath textureFile(String stem, String name, boolean cube) {
+		String text = "textures/" + stem + ".png";
+		ProjectParseResult<ProjectPath> path = ProjectPath.parse(text);
+		if (stem.contains("/") || !path.isSuccess() ||
+				!path.value().toString().equals(text)) {
+			return null;
+		}
+		TextureFile file = textures.get(path.value());
+		return file == null || (file.name.equals(name) && file.cubemap == cube)
+				? path.value()
+				: null;
 	}
 
 	// The declarations of a match's name that can take what it chose: the
@@ -398,8 +442,14 @@ public final class LegacyShaderConverter {
 
 	// A name that is used but declared in a shape the old pattern found
 	// only in a comment, like over two lines, keeps what it had nowhere.
-	private void warnUndeclared(Declaration match, String message) {
+	private void warnUndeclared(Declaration match, String lost,
+			String message) {
 		if (declared.containsKey(match.name)) {
+			return;
+		} else if (macros.contains(match.name)) {
+			warn(match.line, match.name + " is declared by a macro, which " +
+					"#pragma se input cannot annotate, so it is left as " +
+					"written and " + lost);
 			return;
 		}
 		Pattern use = Pattern.compile("(?<![a-zA-Z0-9_])" + match.name +
