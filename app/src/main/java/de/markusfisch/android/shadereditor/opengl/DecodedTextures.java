@@ -14,6 +14,11 @@ final class DecodedTextures implements TextureHandOver.Recyclable {
 	interface BitmapSource {
 		@Nullable
 		Bitmap get(@NonNull String name);
+
+		@Nullable
+		default Bitmap get(long id) {
+			return null;
+		}
 	}
 
 	// Per sampler: null, one bitmap for a 2D texture, or six cubemap faces.

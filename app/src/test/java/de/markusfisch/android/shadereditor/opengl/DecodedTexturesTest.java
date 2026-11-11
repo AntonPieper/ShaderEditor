@@ -5,8 +5,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import android.graphics.Bitmap;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+
+import androidx.annotation.NonNull;
 
 import org.junit.Test;
 
@@ -56,6 +59,29 @@ public class DecodedTexturesTest {
 		}
 		assertNull(textures.backBuffer());
 		textures.recycle();
+	}
+
+	@Test
+	public void presetIsLookedUpByNameAndThenByRowId() {
+		var requested = new ArrayList<Object>();
+		DecodedTextures.BitmapSource source = new DecodedTextures.BitmapSource() {
+			@Override
+			public Bitmap get(@NonNull String name) {
+				requested.add(name);
+				return null;
+			}
+
+			@Override
+			public Bitmap get(long id) {
+				requested.add(id);
+				return null;
+			}
+		};
+		for (String preset : new String[]{"7", "noise", "07"}) {
+			DecodedTextures.decode(List.of(), new BackBufferParameters(preset),
+					64, 32, source).recycle();
+		}
+		assertEquals(List.of("7", 7L, "noise", "07"), requested);
 	}
 
 	@Test

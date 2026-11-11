@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
+import de.markusfisch.android.shadereditor.project.legacy.LegacySamplerSettings;
 
 // The library texture a backbuffer starts with, tiled to its size.
 final class BackBufferParameters {
@@ -32,6 +33,10 @@ final class BackBufferParameters {
 		}
 
 		Bitmap tile = source.get(preset);
+		long id = LegacySamplerSettings.presetId(preset);
+		if (tile == null && id > 0) {
+			tile = source.get(id);
+		}
 
 		if (tile == null) {
 			return null;

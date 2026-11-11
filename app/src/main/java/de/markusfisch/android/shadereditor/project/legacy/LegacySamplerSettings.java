@@ -73,6 +73,17 @@ public record LegacySamplerSettings(
 		return comment.length() == 0 ? "" : HEADER + comment;
 	}
 
+	/**
+	 * Return the row id a backbuffer preset names, or -1. The texture
+	 * parameter screen wrote row ids for a while, so a preset that no
+	 * library texture is named like is read as one when it can be.
+	 */
+	public static long presetId(String preset) {
+		return preset.matches("[1-9][0-9]{0,17}")
+				? Long.parseLong(preset)
+				: -1;
+	}
+
 	/** These settings with the four comment values the screen offers. */
 	public LegacySamplerSettings withShortcuts(String min, String mag,
 			String wrapS, String wrapT) {

@@ -217,6 +217,33 @@ public class LegacySamplerSettingsTest {
 	}
 
 	@Test
+	public void backbufferScreenPresetRoundTripsByNameAndById() {
+		LegacySamplerSettings backbuffer = LegacySamplerSettings.BACKBUFFER;
+		for (String preset : new String[]{"noise", "1"}) {
+			LegacySamplerSettings settings = backbuffer
+					.withShortcuts("n", "l", "r", "c").withPreset(preset);
+			String comment = settings.comment(backbuffer);
+			assertEquals("///min:n;mag:l;s:r;t:c;p:" + preset + ";", comment);
+			assertEquals(settings, backbuffer.parse(comment, true));
+			assertEquals(preset, backbuffer.parse(comment, true).preset());
+		}
+		assertEquals("noise", backbuffer.parse("///p:noise", true).preset());
+	}
+
+	@Test
+	public void onlyACanonicalPositiveNumberIsAPresetId() {
+		assertEquals(1, LegacySamplerSettings.presetId("1"));
+		assertEquals(42, LegacySamplerSettings.presetId("42"));
+		assertEquals(999999999999999999L,
+				LegacySamplerSettings.presetId("999999999999999999"));
+		for (String preset : new String[]{"noise", "", "0", "07", "-1",
+				"+1", "1a", " 1", "1.0", "9999999999999999999",
+				"\u0661"}) {
+			assertEquals(preset, -1, LegacySamplerSettings.presetId(preset));
+		}
+	}
+
+	@Test
 	public void writesWhatItReadFromMalformedText() {
 		assertEquals("///min:nl;mag:l;s:r;t:r;",
 				TEXTURE.parse("///min:x;", false).comment(TEXTURE));
