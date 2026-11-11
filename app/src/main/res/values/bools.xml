@@ -1,0 +1,4 @@
+<resources>
+	<!-- The development gate of project mode: on only in debug builds. -->
+	<bool name="project_mode">false</bool>
+</resources>

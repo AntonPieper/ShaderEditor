@@ -266,4 +266,5 @@
 	<string name="storage_not_writeable">无法写入数据库</string>
 	<string name="successfully_exported">已成功导出至下载目录</string>
 	<string name="successfully_imported">数据库已成功导入</string>
+	<string name="user_files_summary">Deleted when Shader Editor is uninstalled</string>
 </resources>
