@@ -107,6 +107,8 @@ public final class LegacyShaderConverter {
 	private final Map<ProjectPath, TextureFile> textures =
 			new LinkedHashMap<>();
 	private final List<ProjectDiagnostic> diagnostics = new ArrayList<>();
+	// Whether a block comment is open at the start of each line.
+	private final boolean[] inComment;
 	private LegacySamplerSettings backbuffer = LegacySamplerSettings.BACKBUFFER;
 	private boolean presetMissing;
 
@@ -128,6 +130,7 @@ public final class LegacyShaderConverter {
 		this.raw = raw;
 		this.scan = PreprocessorScan.scan(raw, null);
 		this.library = library;
+		this.inComment = comments(raw);
 		files.put(SHADER, "");
 	}
 
@@ -165,11 +168,25 @@ public final class LegacyShaderConverter {
 		warnDiscard();
 		List<String> out = new ArrayList<>();
 		for (int line = 1; line <= raw.size() + 1; ++line) {
-			List<Line> lines = new ArrayList<>(or(before.get(line)));
-			if (line <= raw.size()) {
-				lines.addAll(edits.containsKey(line)
-						? rewrite(line)
-						: List.of(new Line(raw.get(line - 1), line)));
+			List<Line> lines = new ArrayList<>();
+			int from = 0;
+			if (before.containsKey(line)) {
+				// Inserted lines go where the comment that is open at the
+				// start of the line ends, so that they are code.
+				from = commentEnd(line);
+				if (from > 0) {
+					lines.add(new Line(raw.get(line - 1).substring(0, from),
+							line));
+				}
+				lines.addAll(before.get(line));
+			}
+			if (line > raw.size()) {
+				// Nothing follows.
+			} else if (edits.containsKey(line)) {
+				lines.addAll(rewrite(line, from));
+			} else if (from == 0 ||
+					!raw.get(line - 1).substring(from).isBlank()) {
+				lines.add(new Line(raw.get(line - 1).substring(from), line));
 			}
 			for (Line l : lines) {
 				out.add(l.text);
@@ -456,6 +473,48 @@ public final class LegacyShaderConverter {
 				open + ", because #pragma se input cannot be inside one");
 	}
 
+	// Where a block comment that is open at the start of a line ends on
+	// it, or 0.
+	private int commentEnd(int line) {
+		return line <= raw.size() && inComment[line - 1]
+				? raw.get(line - 1).indexOf("*/") + 2
+				: 0;
+	}
+
+	// Comments as PreprocessorScan reads them.
+	private static boolean[] comments(List<String> lines) {
+		boolean[] open = new boolean[lines.size()];
+		boolean comment = false;
+		for (int l = 0; l < lines.size(); ++l) {
+			open[l] = comment;
+			String line = lines.get(l);
+			boolean directive = false;
+			boolean code = false;
+			for (int i = 0, n = line.length(); i < n; ++i) {
+				char c = line.charAt(i);
+				char next = i + 1 < n ? line.charAt(i + 1) : 0;
+				if (comment) {
+					if (c == '*' && next == '/') {
+						++i;
+						comment = false;
+					}
+				} else if (c == '/' && next == '/') {
+					break;
+				} else if (c == '/' && next == '*') {
+					++i;
+					comment = true;
+				} else if (c == '"' && directive) {
+					int close = line.indexOf('"', i + 1);
+					i = close < 0 ? n : close;
+				} else if (!code && !Character.isWhitespace(c)) {
+					code = true;
+					directive = c == '#';
+				}
+			}
+		}
+		return open;
+	}
+
 	private void edit(Edit edit) {
 		List<Edit> list = edits.get(edit.declaration.line);
 		if (list == null) {
@@ -467,14 +526,13 @@ public final class LegacyShaderConverter {
 
 	// A line with its edits: a directive goes on a line of its own before
 	// the declaration, and code before that keeps its own line.
-	private List<Line> rewrite(int line) {
+	private List<Line> rewrite(int line, int from) {
 		String text = raw.get(line - 1);
 		List<Edit> list = edits.get(line);
 		Collections.sort(list, (a, b) -> Integer.compare(
 				a.declaration.start, b.declaration.start));
 		List<Line> lines = new ArrayList<>();
 		StringBuilder current = new StringBuilder();
-		int from = 0;
 		Edit last = null;
 		for (Edit edit : list) {
 			Declaration declaration = edit.declaration;
@@ -510,7 +568,13 @@ public final class LegacyShaderConverter {
 				BACKBUFFER.equals(declaration.name) && !presetMissing);
 	}
 
+	// Insert before a line, or, when a block comment is open at its start,
+	// on the line that comment ends on, after its end.
 	private void insert(int line, Line text) {
+		while (line <= raw.size() && inComment[line - 1] &&
+				!raw.get(line - 1).contains("*/")) {
+			++line;
+		}
 		List<Line> lines = before.get(line);
 		if (lines == null) {
 			lines = new ArrayList<>();

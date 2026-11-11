@@ -370,6 +370,51 @@ public class LegacyShaderConverterTest {
 	}
 
 	@Test
+	public void movedDeclarationLandsAfterACommentThatEndsOnTheBlockLine() {
+		Result result = convert(lines("/* header",
+				"*/ #ifdef FOO",
+				"uniform sampler2D noise;",
+				"#endif",
+				"void main(){}"));
+		assertEquals(lines("/* header",
+				"*/",
+				NOISE_DEFAULT,
+				"uniform sampler2D noise;",
+				" #ifdef FOO",
+				"",
+				"#endif",
+				"void main(){}"), result.shader());
+		assertEquals(List.of(1, 2, 0, 3, 2, 3, 4, 5), result.lines());
+		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
+	}
+
+	@Test
+	public void targetGoesAfterACommentThatOpensOnTheVersionLine() {
+		Result result = convert(lines("#version 300 es /* note",
+				"*/",
+				"uniform sampler2D backbuffer;///mag:l;"));
+		assertEquals(lines("#version 300 es /* note",
+				"*/",
+				"#pragma se target present=linear",
+				"#pragma se input min=nearest mag=linear",
+				"uniform sampler2D backbuffer;"), result.shader());
+		assertEquals(List.of(1, 2, 0, 0, 3), result.lines());
+		assertEquals(lines("#version 300 es /* a",
+				"b",
+				"*/",
+				"#pragma se target present=linear",
+				" precision mediump float;",
+				"#pragma se input min=nearest mag=linear",
+				"uniform sampler2D backbuffer;"),
+				convert(lines("#version 300 es /* a",
+						"b",
+						"*/ precision mediump float;",
+						"uniform sampler2D backbuffer;///mag:l;")).shader());
+		Preparation preparation = prepare(result);
+		assertTrue(errors(preparation.diagnostics()).isEmpty());
+	}
+
+	@Test
 	public void declarationsInSeveralConditionalBranchesStayAsWritten() {
 		String text = lines("#ifdef FOO",
 				"uniform sampler2D noise;",
