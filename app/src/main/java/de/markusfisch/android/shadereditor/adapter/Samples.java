@@ -120,6 +120,12 @@ public final class Samples {
 					R.string.sample_mirror_rationale,
 					1f),
 			new Sample(Section.TECHNIQUES,
+					R.raw.sample_trails,
+					R.drawable.thumbnail_trails,
+					R.string.sample_trails_name,
+					R.string.sample_trails_rationale,
+					1f),
+			new Sample(Section.TECHNIQUES,
 					R.raw.sample_game_of_life,
 					R.drawable.thumbnail_game_of_life,
 					R.string.sample_game_of_life_name,
@@ -139,16 +145,10 @@ public final class Samples {
 					1f),
 			new Sample(Section.TECHNIQUES,
 					R.raw.sample_gles_300,
-					R.drawable.thumbnail_default,
+					R.drawable.thumbnail_gles_300,
 					R.string.sample_gles_300_name,
 					R.string.sample_gles_300_rationale,
-					1f),
-			new Sample(Section.TECHNIQUES,
-					R.raw.sample_cloudy_conway,
-					R.drawable.thumbnail_cloudy_conway,
-					R.string.sample_cloudy_conway_name,
-					R.string.sample_cloudy_conway_rationale,
-					.125f));
+					1f));
 
 	private Samples() {
 	}
