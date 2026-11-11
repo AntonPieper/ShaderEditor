@@ -24,6 +24,7 @@ final class BuiltinUniforms {
 	private static final float NS_PER_SECOND = 1000000000f;
 	private static final float DEFAULT_FTIME_MAX = 3f;
 
+	private final RuntimeClock runtimeClock = new RuntimeClock();
 	private final float[] surfaceResolution = new float[]{0, 0};
 	private final float[] resolution = new float[]{0, 0};
 	private final float[] touch = new float[]{0, 0};
@@ -59,6 +60,14 @@ final class BuiltinUniforms {
 		sources = new UniformSources(host);
 	}
 
+	long getRuntimeNanos() {
+		return runtimeClock.getElapsedNanos();
+	}
+
+	void setRuntimeNanos(long nanos) {
+		runtimeClock.setElapsedNanos(nanos);
+	}
+
 	void setQuality(float quality) {
 		this.quality = quality;
 	}
@@ -84,6 +93,7 @@ final class BuiltinUniforms {
 
 	@NonNull
 	SurfaceState updateSurface(int width, int height, long now) {
+		runtimeClock.pause();
 		startTime = now;
 		startRandom = (float) Math.random();
 		frameNum = 0;
@@ -175,6 +185,7 @@ final class BuiltinUniforms {
 	}
 
 	void clearConfiguration() {
+		runtimeClock.pause();
 		fTimeMax = DEFAULT_FTIME_MAX;
 		textureResources = ShaderTextureResources.empty();
 		device = null;

@@ -5,14 +5,14 @@ plugins {
 android {
 	namespace = "de.markusfisch.android.shadereditor"
 
-	compileSdk = 36
+	compileSdk = 37
 
 	defaultConfig {
 		minSdk = 23
 		targetSdk = compileSdk
 
-		versionCode = 93
-		versionName = "2.36.2"
+		versionCode = 94
+		versionName = "2.36.3"
 
 		vectorDrawables {
 			useSupportLibrary = true
@@ -59,6 +59,7 @@ dependencies {
 	implementation(libs.androidx.camera.core)
 	implementation(libs.androidx.camera.camera2)
 	implementation(libs.androidx.camera.lifecycle)
+	compileOnly(libs.androidx.concurrent.futures)
 
 	debugImplementation(libs.leakcanary.android)
 
