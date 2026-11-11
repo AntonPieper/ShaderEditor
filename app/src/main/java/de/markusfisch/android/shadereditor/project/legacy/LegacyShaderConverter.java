@@ -277,8 +277,10 @@ public final class LegacyShaderConverter {
 				name.equals("cameraFront");
 		if (match.type.equals("samplerExternalOES")) {
 			if (camera) {
-				bind(targets(match), settings(match).forCamera()
+				List<Declaration> targets = targets(match);
+				bind(targets, settings(match).forCamera()
 						.options(Sampling.CAMERA, true));
+				warnCameraFoundTwice(match, targets);
 			}
 			return;
 		}
@@ -303,10 +305,30 @@ public final class LegacyShaderConverter {
 				", but it has no declaration like uniform " + match.type +
 				" " + name + "; on one line to attach #pragma se input " +
 				"to, so it is not bound");
-		if (!targets.isEmpty()) {
+		List<Declaration> placed = placeable(targets);
+		if (!placed.isEmpty()) {
 			ProjectPath path = texture(name, texture, cube, match.line);
-			bind(targets, ("\"" + path + "\" " + settings(match)
-					.options(Sampling.IMAGE, !cube)).trim());
+			place(placed, new Line("#pragma se input " + ("\"" + path +
+					"\" " + settings(match).options(Sampling.IMAGE, !cube))
+					.trim(), 0));
+		}
+	}
+
+	// The old renderer bound one name once for every match, comments
+	// included, and only the first binding got the camera image, which
+	// the later ones then replaced with none.
+	private void warnCameraFoundTwice(Declaration match,
+			List<Declaration> targets) {
+		int matches = 0;
+		for (Declaration declaration : declarations) {
+			if (declaration.name.equals(match.name)) {
+				++matches;
+			}
+		}
+		if (matches > 1 && !targets.isEmpty()) {
+			warn(match.line, "The old renderer showed no camera image for " +
+					match.name + ", because it found the name more than " +
+					"once, comments included; it now shows the camera");
 		}
 	}
 
@@ -359,7 +381,8 @@ public final class LegacyShaderConverter {
 				edit(new Edit(declaration, null, false));
 			}
 		} else {
-			place(declarations, new Line("#pragma se input " + options, 0));
+			place(placeable(declarations),
+					new Line("#pragma se input " + options, 0));
 		}
 		List<String> target = new ArrayList<>();
 		if (preset != null && !declarations.isEmpty()) {
@@ -470,39 +493,67 @@ public final class LegacyShaderConverter {
 			}
 			return;
 		}
-		place(targets, new Line("#pragma se input " + arguments, 0));
+		place(placeable(targets), new Line("#pragma se input " + arguments,
+				0));
 	}
 
 	// Host directives cannot be inside conditional blocks, so a
 	// declaration in one moves before the outermost block around it,
-	// unless the name is declared elsewhere too.
-	private void place(List<Declaration> declarations, Line directive) {
+	// unless the name is declared elsewhere too. A directive cannot
+	// follow a line that ends in a backslash, which would continue into
+	// it. Return the declarations that get a directive.
+	private List<Declaration> placeable(List<Declaration> declarations) {
 		List<Declaration> top = new ArrayList<>();
 		for (Declaration declaration : declarations) {
 			if (scan.depthAt(declaration.line) == 0) {
 				top.add(declaration);
 			}
 		}
-		if (top.isEmpty() && declarations.size() == 1) {
-			hoist(declarations.get(0), directive);
-			return;
-		}
+		boolean hoist = top.isEmpty() && declarations.size() == 1;
+		List<Declaration> placeable = new ArrayList<>();
 		for (Declaration declaration : declarations) {
-			if (top.contains(declaration)) {
-				edit(new Edit(declaration, directive, false));
-			} else {
+			if (!hoist && !top.contains(declaration)) {
 				warn(declaration.line, declaration.name + " is declared " +
 						"more than once, so this declaration inside #if, " +
 						"#ifdef or #ifndef, where #pragma se input cannot " +
 						"be, is left as written without its texture or " +
 						"settings; declare it once outside the " +
 						"conditional block");
+			} else if (hoist
+					? continues(opening(declaration.line), 0)
+					: continues(declaration.line, declaration.start)) {
+				warn(declaration.line, declaration.name + " would get " +
+						"#pragma se input after a line that ends in a " +
+						"backslash, which would continue into it, so it " +
+						"is left as written without its texture or " +
+						"settings; remove the backslash");
+			} else {
+				placeable.add(declaration);
+			}
+		}
+		return placeable;
+	}
+
+	// Whether a line inserted before this column of a line follows a
+	// line that ends in a backslash.
+	private boolean continues(int line, int column) {
+		return line > 1 && !inComment[line - 1] &&
+				raw.get(line - 1).substring(0, column).isBlank() &&
+				raw.get(line - 2).endsWith("\\");
+	}
+
+	private void place(List<Declaration> declarations, Line directive) {
+		for (Declaration declaration : declarations) {
+			if (scan.depthAt(declaration.line) == 0) {
+				edit(new Edit(declaration, directive, false));
+			} else {
+				hoist(declaration, directive);
 			}
 		}
 	}
 
-	private void hoist(Declaration declaration, Line directive) {
-		int line = declaration.line;
+	// The outermost conditional block around a line.
+	private int opening(int line) {
 		int open = 0;
 		for (PreprocessorScan.Directive d : scan.directives()) {
 			if (d.line() > line) {
@@ -514,6 +565,12 @@ public final class LegacyShaderConverter {
 				open = d.line();
 			}
 		}
+		return open;
+	}
+
+	private void hoist(Declaration declaration, Line directive) {
+		int line = declaration.line;
+		int open = opening(line);
 		insert(open, directive);
 		insert(open, new Line(raw.get(line - 1).substring(declaration.start,
 				declaration.end), line));
