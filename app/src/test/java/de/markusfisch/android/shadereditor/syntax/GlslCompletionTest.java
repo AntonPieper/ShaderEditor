@@ -72,37 +72,33 @@ public class GlslCompletionTest {
 	@Test
 	public void completeWordThatIsDirectiveAndKeyword() {
 		// Wrong: else is offered twice.
-		assertEquals(Arrays.asList("elif", "else", "endif", "error", "else", "equal", "exp",
-						"exp2"),
+		assertEquals(Arrays.asList("elif", "else", "endif", "error", "extension", "else",
+						"equal", "exp", "exp2"),
 				GlslCompletion.words("e", true));
 	}
 
 	@Test
 	public void completeBuiltinsOfOpenGlEs() {
-		// Wrong: gl_FragColor is missing.
-		assertEquals(Arrays.asList("gl_FragCoord", "gl_FragDepth"),
+		assertEquals(Arrays.asList("gl_FragColor", "gl_FragCoord", "gl_FragData",
+						"gl_FragDepth"),
 				complete("gl_Frag"));
-		// Wrong: texture2D is missing.
 		assertEquals(Arrays.asList("texelFetch", "texelFetchOffset", "texture",
-						"textureGather", "textureGatherOffset", "textureGatherOffsets",
-						"textureGrad", "textureGradOffset", "textureLod", "textureLodOffset",
+						"texture2D", "texture2DProj", "textureCube", "textureGrad",
+						"textureGradOffset", "textureLod", "textureLodOffset",
 						"textureOffset", "textureProj", "textureProjGrad",
 						"textureProjGradOffset", "textureProjLod", "textureProjLodOffset",
-						"textureProjOffset", "textureQueryLevels", "textureQueryLod",
-						"textureSamples", "textureSize"),
+						"textureProjOffset", "textureSize"),
 				complete("tex"));
-		// Wrong: restrict cannot be used in an OpenGL ES fragment shader.
-		assertEquals(Arrays.asList("restrict"),
-				complete("res"));
+		// restrict cannot be used in an OpenGL ES fragment shader.
+		assertEquals(Collections.emptyList(), complete("res"));
 	}
 
 	@Test
-	public void completeMisspelledTypes() {
-		// Wrong: samplerBuffer is the type, not samplerbuffer.
+	public void completeNoTypesOfDesktopGlsl() {
 		assertEquals(Collections.emptyList(), complete("samplerB"));
-		assertEquals(Arrays.asList("samplerbuffer"), complete("samplerb"));
-		// Wrong: uimage1DArray is missing.
-		assertEquals(Arrays.asList("uimage1D"), complete("uimage1"));
+		assertEquals(Collections.emptyList(), complete("samplerb"));
+		assertEquals(Collections.emptyList(), complete("uimage1"));
+		assertEquals(Arrays.asList("samplerExternalOES"), complete("samplerE"));
 	}
 
 	@Test

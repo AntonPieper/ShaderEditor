@@ -28,84 +28,49 @@ public class GlslWordsTest {
 		WORDS.put(Style.KEYWORD,
 				"struct void");
 		WORDS.put(Style.PRIMITIVE,
-				"bool const double float int uint");
+				"bool const float int uint");
 		WORDS.put(Style.TYPE_VECTOR,
 				"bvec2 bvec3 bvec4 ivec2 ivec3 ivec4 uvec2 uvec3 uvec4 vec2 vec3 " +
 				"vec4");
 		WORDS.put(Style.TYPE_MATRIX,
-				"dmat2 dmat2x2 dmat2x3 dmat2x4 dmat3 dmat3x2 dmat3x3 dmat3x4 dmat4 " +
-				"dmat4x2 dmat4x3 dmat4x4 dvec2 dvec3 dvec4 mat2 mat2x2 mat2x3 " +
-				"mat2x4 mat3 mat3x2 mat3x3 mat3x4 mat4 mat4x2 mat4x3 mat4x4");
-		WORDS.put(Style.ATOMIC_COUNTER,
-				"atomic_uint");
+				"mat2 mat2x2 mat2x3 mat2x4 mat3 mat3x2 mat3x3 mat3x4 mat4 mat4x2 " +
+				"mat4x3 mat4x4");
 		WORDS.put(Style.TYPE_SAMPLER,
-				"isampler1D isampler1DArray isampler2D isampler2DArray isampler2DMS " +
-				"isampler2DMSArray isampler2DRect isampler3D isamplerCube " +
-				"isamplerCubeArray isamplerbuffer sampler1D sampler1DArray " +
-				"sampler1DArrayShadow sampler1DShadow sampler2D sampler2DArray " +
-				"sampler2DArrayShadow sampler2DMS sampler2DMSArray sampler2DRect " +
-				"sampler2DRectShadow sampler2DShadow sampler3D samplerCube " +
-				"samplerCubeArray samplerCubeArrayShadow samplerCubeShadow " +
-				"samplerbuffer usampler1D usampler1DArray usampler2D " +
-				"usampler2DArray usampler2DMS usampler2DMSArray usampler2DRect " +
-				"usampler3D usamplerCube usamplerCubeArray usamplerbuffer");
-		WORDS.put(Style.TYPE_IMAGE,
-				"iimage1D iimage1DArray iimage2D iimage2DArray iimage2DMS " +
-				"iimage2DMSArray iimage2DRect iimage3D iimageCube iimageCubeArray " +
-				"iimagebuffer image1D image1DArray image2D image2DArray image2DMS " +
-				"image2DMSArray image2DRect image3D imageCube imageCubeArray " +
-				"imagebuffer uimage1D uimage2D uimage2DArray uimage2DMS " +
-				"uimage2DMSArray uimage2DRect uimage3D uimageCube uimageCubeArray " +
-				"uimagebuffer");
+				"isampler2D isampler2DArray isampler3D isamplerCube sampler2D " +
+				"sampler2DArray sampler2DArrayShadow sampler2DShadow sampler3D " +
+				"samplerCube samplerCubeShadow samplerExternalOES usampler2D " +
+				"usampler2DArray usampler3D usamplerCube");
 		WORDS.put(Style.BUILTIN_FUNCTION,
-				"abs acos acosh all any asin asinh atan atanh atomicAdd atomicAnd " +
-				"atomicCompSwap atomicCounter atomicCounterDecrement " +
-				"atomicCounterIncrement atomicExchange atomicMax atomicMin atomicOr " +
-				"atomicXor barrier bitCount bitfieldExtract bitfieldInsert " +
-				"bitfieldReverse ceil clamp cos cosh cross dFdx dFdxCoarse dFdxFine " +
-				"dFdy dFdyCoarse dFdyFine degrees determinant distance dot equal " +
-				"exp exp2 faceforward findLSB findMSB floatBitsToInt " +
-				"floatBitsToUint floor fma fract frexp fwidth fwidthCoarse " +
-				"fwidthFine gl_ClipDistance gl_CullDistance gl_FragCoord " +
-				"gl_FragDepth gl_FrontFacing gl_GlobalInvocationID " +
-				"gl_HelperInvocation gl_InstanceID gl_InvocationID gl_Layer " +
-				"gl_LocalInvocationID gl_LocalInvocationIndex gl_NumSamples " +
-				"gl_NumWorkGroups gl_PatchVerticesIn gl_PointCoord gl_PointSize " +
-				"gl_Position gl_PrimitiveID gl_PrimitiveIDIn gl_SampleID " +
-				"gl_SampleMask gl_SampleMaskIn gl_SamplePosition gl_TessCoord " +
-				"gl_TessLevelInner gl_TessLevelOuter gl_VertexID gl_ViewportIndex " +
-				"gl_WorkGroupID gl_WorkGroupSize greaterThan greaterThanEqual " +
-				"groupMemoryBarrier imageAtomicAdd imageAtomicAnd " +
-				"imageAtomicCompSwap imageAtomicExchange imageAtomicMax " +
-				"imageAtomicMin imageAtomicOr imageAtomicXor imageLoad imageSamples " +
-				"imageSize imageStore imulExtended intBitsToFloat " +
-				"interpolateAtCentroid interpolateAtOffset interpolateAtSample " +
-				"inverse inversesqrt isinf isnan ldexp length lessThan " +
-				"lessThanEqual log log2 matrixCompMult max memoryBarrier " +
-				"memoryBarrierAtomicCounter memoryBarrierBuffer memoryBarrierImage " +
-				"memoryBarrierShared min mix mod modf noise noise1 noise2 noise3 " +
-				"noise4 normalize not notEqual outerProduct packDouble2x32 " +
-				"packHalf2x16 packSnorm2x16 packSnorm4x8 packUnorm packUnorm2x16 " +
-				"packUnorm4x8 pow radians reflect refract round roundEven sign sin " +
-				"sinh smoothstep sqrt step tan tanh texelFetch texelFetchOffset " +
-				"texture textureGather textureGatherOffset textureGatherOffsets " +
+				"abs acos acosh all any asin asinh atan atanh ceil clamp cos cosh " +
+				"cross dFdx dFdy degrees determinant distance dot equal exp exp2 " +
+				"faceforward floatBitsToInt floatBitsToUint floor fract fwidth " +
+				"gl_DepthRange gl_FragColor gl_FragCoord gl_FragData gl_FragDepth " +
+				"gl_FrontFacing gl_MaxCombinedTextureImageUnits gl_MaxDrawBuffers " +
+				"gl_MaxFragmentInputVectors gl_MaxFragmentUniformVectors " +
+				"gl_MaxProgramTexelOffset gl_MaxTextureImageUnits " +
+				"gl_MaxVaryingVectors gl_MaxVertexAttribs gl_MaxVertexOutputVectors " +
+				"gl_MaxVertexTextureImageUnits gl_MaxVertexUniformVectors " +
+				"gl_MinProgramTexelOffset gl_PointCoord greaterThan " +
+				"greaterThanEqual intBitsToFloat inverse inversesqrt isinf isnan " +
+				"length lessThan lessThanEqual log log2 matrixCompMult max min mix " +
+				"mod modf normalize not notEqual outerProduct packHalf2x16 " +
+				"packSnorm2x16 packUnorm2x16 pow radians reflect refract round " +
+				"roundEven sign sin sinh smoothstep sqrt step tan tanh texelFetch " +
+				"texelFetchOffset texture texture2D texture2DProj textureCube " +
 				"textureGrad textureGradOffset textureLod textureLodOffset " +
 				"textureOffset textureProj textureProjGrad textureProjGradOffset " +
-				"textureProjLod textureProjLodOffset textureProjOffset " +
-				"textureQueryLevels textureQueryLod textureSamples textureSize " +
-				"transpose trunc uaddCarry uintBitsToFloat umulExtended " +
-				"unpackDouble2x32 unpackHalf2x16 unpackSnorm2x16 unpackSnorm4x8 " +
-				"unpackUnorm unpackUnorm2x16 unpackUnorm4x8 usubBorrow " +
-				"EmitStreamVertex EmitVertex EndPrimitive EndStreamPrimitive");
+				"textureProjLod textureProjLodOffset textureProjOffset textureSize " +
+				"transpose trunc uintBitsToFloat unpackHalf2x16 unpackSnorm2x16 " +
+				"unpackUnorm2x16");
+		WORDS.put(Style.BOOL,
+				"false true");
 		WORDS.put(Style.PRECISION,
-				"highp invariant lowp mediump precise precision");
+				"highp invariant lowp mediump precision");
 		WORDS.put(Style.CONTROL_FLOW,
-				"break case continue default discard do else for if return " +
-				"subroutine switch while");
+				"break case continue default discard do else for if return switch " +
+				"while");
 		WORDS.put(Style.TYPE_QUALIFIER,
-				"buffer centroid coherent flat in inout layout noperspective out " +
-				"patch readonly restrict sample shared smooth uniform volatile " +
-				"writeonly");
+				"attribute centroid flat in inout layout out smooth uniform varying");
 	}
 
 	@Test
@@ -116,7 +81,7 @@ public class GlslWordsTest {
 					(a, b) -> a + " " + b);
 		}
 		assertEquals(WORDS, actual);
-		assertEquals(352, allWords().size());
+		assertEquals(187, allWords().size());
 	}
 
 	@Test
@@ -158,16 +123,14 @@ public class GlslWordsTest {
 	@Test
 	public void directives() {
 		for (String name : new String[]{"define", "elif", "else", "endif",
-				"error", "if", "ifdef", "ifndef", "include", "line", "pragma",
-				"undef", "version"}) {
+				"error", "extension", "if", "ifdef", "ifndef", "include",
+				"line", "pragma", "undef", "version"}) {
 			assertTrue(name, GlslWords.isDirective("#" + name + " x", 1,
 					1 + name.length()));
 		}
-		// Wrong, kept from the old lexer: extension is a directive.
-		assertFalse(GlslWords.isDirective("extension", 0, 9));
 		assertFalse(GlslWords.isDirective("def", 0, 3));
 		assertFalse(GlslWords.isDirective("defines", 0, 7));
-		assertEquals(Arrays.asList("elif", "else", "endif", "error"),
+		assertEquals(Arrays.asList("elif", "else", "endif", "error", "extension"),
 				GlslWords.matchingDirectives("e"));
 	}
 
@@ -180,14 +143,27 @@ public class GlslWordsTest {
 	}
 
 	@Test
-	public void wordsOfTheOldLexerThatAreWrong() {
-		// Kept so that switching lexers changes nothing; corrected later.
-		assertEquals(Style.TYPE_SAMPLER, style("samplerbuffer"));
-		assertEquals(Style.IDENTIFIER, style("samplerBuffer"));
-		assertEquals(Style.IDENTIFIER, style("uimage1DArray"));
-		assertEquals(Style.IDENTIFIER, style("gl_FragColor"));
-		assertEquals(Style.IDENTIFIER, style("texture2D"));
-		assertEquals(Style.IDENTIFIER, style("true"));
+	public void wordsOfOpenGlEs() {
+		assertEquals(Style.BUILTIN_FUNCTION, style("gl_FragColor"));
+		assertEquals(Style.BUILTIN_FUNCTION, style("texture2D"));
+		assertEquals(Style.BUILTIN_FUNCTION, style("textureCube"));
+		assertEquals(Style.BOOL, style("true"));
+		assertEquals(Style.BOOL, style("false"));
+		assertEquals(Style.TYPE_QUALIFIER, style("attribute"));
+		assertEquals(Style.TYPE_QUALIFIER, style("varying"));
+		assertEquals(Style.TYPE_SAMPLER, style("samplerExternalOES"));
+	}
+
+	@Test
+	public void noWordsOfDesktopGlsl() {
+		// Neither in GLSL ES 1.00 nor in 3.00: misspelt, desktop only, from
+		// a later version, or not for fragment shaders.
+		for (String word : new String[]{"samplerbuffer", "samplerBuffer",
+				"uimage1DArray", "image2D", "atomic_uint", "double", "dvec2",
+				"dmat4", "restrict", "precise", "subroutine", "noise",
+				"textureGather", "fma", "gl_Position", "gl_PointSize"}) {
+			assertEquals(word, Style.IDENTIFIER, style(word));
+		}
 	}
 
 	private static Style style(String word) {

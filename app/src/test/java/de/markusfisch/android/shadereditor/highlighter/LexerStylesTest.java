@@ -27,7 +27,7 @@ public class LexerStylesTest {
 	public void matrices() {
 		assertStyles(
 				"mat4 m; mat2x3 n; dmat3 d;",
-				"mmmm....mmmmmm....mmmmm...");
+				"mmmm....mmmmmm....ttttt...");
 	}
 
 	@Test
@@ -48,14 +48,15 @@ public class LexerStylesTest {
 	public void primitives() {
 		assertStyles(
 				"const int N = 4; bool b; uint u; double d;",
-				"ppppp.ppp.....n..pppp....pppp....pppppp...");
+				"ppppp.ppp.....n..pppp....pppp....tttttt...");
 	}
 
 	@Test
 	public void samplerImageAndAtomicTypes() {
+		// Images and atomic counters do not exist in GLSL ES 3.00.
 		assertStyles(
 				"samplerCube c; image2D img; atomic_uint a;",
-				"sssssssssss....iiiiiii......aaaaaaaaaaa...");
+				"sssssssssss....ttttttt......ttttttttttt...");
 	}
 
 	@Test
@@ -152,10 +153,9 @@ public class LexerStylesTest {
 
 	@Test
 	public void extension() {
-		// Wrong: "extension" is a directive name like "version".
 		assertStyles(
 				"#extension GL_OES_standard_derivatives : enable",
-				"d..............................................");
+				"dddddddddd.....................................");
 	}
 
 	@Test
@@ -204,10 +204,9 @@ public class LexerStylesTest {
 
 	@Test
 	public void mainWithFragColor() {
-		// Wrong: gl_FragColor is a builtin like gl_FragCoord.
 		assertStyles(
 				"void main() {\n\tgl_FragColor = vec4(1.0);\n}",
-				"kkkk..........................vvvv.nnn....");
+				"kkkk...........bbbbbbbbbbbb...vvvv.nnn....");
 	}
 
 	@Test
@@ -219,14 +218,13 @@ public class LexerStylesTest {
 
 	@Test
 	public void backbuffer() {
-		// Wrong: texture2D is a builtin function like texture.
 		assertStyles(
 				"uniform float time;\n" +
 						"uniform sampler2D backbuffer;\n" +
 						"vec4 c = texture2D(backbuffer, uv);",
 				"qqqqqqq.ppppp......." +
 						"qqqqqqq.sssssssss............." +
-						"vvvv...............................");
+						"vvvv.....bbbbbbbbb.................");
 	}
 
 	@Test
@@ -254,31 +252,27 @@ public class LexerStylesTest {
 
 	@Test
 	public void wordsOfOpenGlEs() {
-		// Wrong: true and false are bool literals, attribute and varying
-		// qualifiers, gl_FragColor, texture2D and textureCube builtins and
-		// samplerExternalOES a sampler type; none is a type name.
 		assertStyles(
 				"true false attribute varying gl_FragColor texture2D textureCube " +
 						"samplerExternalOES",
-				"tttt.ttttt.ttttttttt.ttttttt.tttttttttttt.ttttttttt.ttttttttttt." +
-						"..................");
+				"llll.lllll.qqqqqqqqq.qqqqqqq.bbbbbbbbbbbb.bbbbbbbbb.bbbbbbbbbbb." +
+						"ssssssssssssssssss");
 	}
 
 	@Test
 	public void boolLiterals() {
-		// Wrong: true and false are bool literals.
 		assertStyles(
 				"bool b = true || false;",
-				"pppp...................");
+				"pppp.....llll....lllll.");
 	}
 
 	@Test
 	public void misspelledSamplerAndImageTypes() {
-		// Wrong: samplerBuffer and uimage1DArray are the type names, not
-		// samplerbuffer.
+		// None is a type in GLSL ES 3.00, so each is taken for a type name
+		// before the name that follows it.
 		assertStyles(
 				"samplerbuffer samplerBuffer uimage1DArray iimage1DArray",
-				"sssssssssssss.ttttttttttttt...............iiiiiiiiiiiii");
+				"ttttttttttttt.ttttttttttttt.ttttttttttttt..............");
 	}
 
 	@Test

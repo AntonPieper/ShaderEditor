@@ -10,108 +10,64 @@ import java.util.List;
  */
 public final class GlslWords {
 	private static final String[] DIRECTIVES = {
-			"define", "elif", "else", "endif", "error", "if", "ifdef",
-			"ifndef", "include", "line", "pragma", "undef", "version"};
-	private static final String[] WORDS = new String[400];
+			"define", "elif", "else", "endif", "error", "extension", "if",
+			"ifdef", "ifndef", "include", "line", "pragma", "undef",
+			"version"};
+	private static final String[] WORDS = new String[250];
 	private static final Style[] STYLES = new Style[WORDS.length];
 	private static int count;
 
+	// The keywords, built-in variables and built-in functions of GLSL ES
+	// 1.00 and 3.00 that a fragment shader can use.
 	static {
-		add(Style.PRIMITIVE, "const", "bool", "float", "int", "uint",
-				"double");
+		add(Style.PRIMITIVE, "const", "bool", "float", "int", "uint");
+		add(Style.BOOL, "true", "false");
 		add(Style.TYPE_VECTOR, "bvec2", "bvec3", "bvec4", "ivec2", "ivec3",
 				"ivec4", "uvec2", "uvec3", "uvec4", "vec2", "vec3", "vec4");
 		add(Style.TYPE_MATRIX, "mat2", "mat3", "mat4", "mat2x2", "mat2x3",
 				"mat2x4", "mat3x2", "mat3x3", "mat3x4", "mat4x2", "mat4x3",
-				"mat4x4", "dvec2", "dvec3", "dvec4", "dmat2", "dmat3", "dmat4",
-				"dmat2x2", "dmat2x3", "dmat2x4", "dmat3x2", "dmat3x3",
-				"dmat3x4", "dmat4x2", "dmat4x3", "dmat4x4");
-		add(Style.TYPE_QUALIFIER, "centroid", "in", "out", "inout",
-				"uniform", "patch", "sample", "buffer", "shared", "coherent",
-				"volatile", "restrict", "readonly", "writeonly",
-				"noperspective", "flat", "smooth", "layout");
-		add(Style.ATOMIC_COUNTER, "atomic_uint");
+				"mat4x4");
+		add(Style.TYPE_QUALIFIER, "attribute", "varying", "centroid", "in",
+				"out", "inout", "uniform", "flat", "smooth", "layout");
 		add(Style.TYPE_SAMPLER, "sampler2D", "sampler3D", "samplerCube",
 				"sampler2DShadow", "samplerCubeShadow", "sampler2DArray",
 				"sampler2DArrayShadow", "isampler2D", "isampler3D",
 				"isamplerCube", "isampler2DArray", "usampler2D", "usampler3D",
-				"usamplerCube", "usampler2DArray", "sampler1D",
-				"sampler1DShadow", "sampler1DArray", "sampler1DArrayShadow",
-				"isampler1D", "isampler1DArray", "usampler1D",
-				"usampler1DArray", "sampler2DRect", "sampler2DRectShadow",
-				"isampler2DRect", "usampler2DRect", "samplerbuffer",
-				"isamplerbuffer", "usamplerbuffer", "samplerCubeArray",
-				"samplerCubeArrayShadow", "isamplerCubeArray",
-				"usamplerCubeArray", "sampler2DMS", "isampler2DMS",
-				"usampler2DMS", "sampler2DMSArray", "isampler2DMSArray",
-				"usampler2DMSArray");
-		add(Style.TYPE_IMAGE, "image2D", "iimage2D", "uimage2D", "image3D",
-				"iimage3D", "uimage3D", "imageCube", "iimageCube",
-				"uimageCube", "imagebuffer", "iimagebuffer", "uimagebuffer",
-				"image2DArray", "iimage2DArray", "uimage2DArray",
-				"imageCubeArray", "iimageCubeArray", "uimageCubeArray",
-				"image1D", "iimage1D", "uimage1D", "image1DArray",
-				"iimage1DArray", "image2DRect", "iimage2DRect", "uimage2DRect",
-				"image2DMS", "iimage2DMS", "uimage2DMS", "image2DMSArray",
-				"iimage2DMSArray", "uimage2DMSArray");
+				"usamplerCube", "usampler2DArray", "samplerExternalOES");
 		add(Style.KEYWORD, "struct", "void");
 		add(Style.CONTROL_FLOW, "while", "break", "continue", "do", "else",
-				"for", "if", "discard", "return", "switch", "case", "default",
-				"subroutine");
-		add(Style.PRECISION, "invariant", "precise", "highp", "mediump",
-				"lowp", "precision");
-		add(Style.BUILTIN_FUNCTION, "abs", "acos", "acosh", "all", "any",
-				"asin", "asinh", "atan", "atanh", "atomicAdd", "atomicAnd",
-				"atomicCompSwap", "atomicCounter", "atomicCounterDecrement",
-				"atomicCounterIncrement", "atomicExchange", "atomicMax",
-				"atomicMin", "atomicOr", "atomicXor", "barrier", "bitCount",
-				"bitfieldExtract", "bitfieldInsert", "bitfieldReverse", "ceil",
-				"clamp", "cos", "cosh", "cross", "degrees", "determinant",
-				"dFdx", "dFdxCoarse", "dFdxFine", "dFdy", "dFdyCoarse",
-				"dFdyFine", "distance", "dot", "EmitStreamVertex",
-				"EmitVertex", "EndPrimitive", "EndStreamPrimitive", "equal",
-				"exp", "exp2", "faceforward", "findLSB", "findMSB",
-				"floatBitsToInt", "floatBitsToUint", "floor", "fma", "fract",
-				"frexp", "fwidth", "fwidthCoarse", "fwidthFine",
-				"gl_ClipDistance", "gl_CullDistance", "gl_FragCoord",
-				"gl_FragDepth", "gl_FrontFacing", "gl_GlobalInvocationID",
-				"gl_HelperInvocation", "gl_InstanceID", "gl_InvocationID",
-				"gl_Layer", "gl_LocalInvocationID", "gl_LocalInvocationIndex",
-				"gl_NumSamples", "gl_NumWorkGroups", "gl_PatchVerticesIn",
-				"gl_PointCoord", "gl_PointSize", "gl_Position",
-				"gl_PrimitiveID", "gl_PrimitiveIDIn", "gl_SampleID",
-				"gl_SampleMask", "gl_SampleMaskIn", "gl_SamplePosition",
-				"gl_TessCoord", "gl_TessLevelInner", "gl_TessLevelOuter",
-				"gl_VertexID", "gl_ViewportIndex", "gl_WorkGroupID",
-				"gl_WorkGroupSize", "greaterThan", "greaterThanEqual",
-				"groupMemoryBarrier", "imageAtomicAdd", "imageAtomicAnd",
-				"imageAtomicCompSwap", "imageAtomicExchange", "imageAtomicMax",
-				"imageAtomicMin", "imageAtomicOr", "imageAtomicXor",
-				"imageLoad", "imageSamples", "imageSize", "imageStore",
-				"imulExtended", "intBitsToFloat", "interpolateAtCentroid",
-				"interpolateAtOffset", "interpolateAtSample", "inverse",
-				"inversesqrt", "isinf", "isnan", "ldexp", "length", "lessThan",
-				"lessThanEqual", "log", "log2", "matrixCompMult", "max",
-				"memoryBarrier", "memoryBarrierAtomicCounter",
-				"memoryBarrierBuffer", "memoryBarrierImage",
-				"memoryBarrierShared", "min", "mix", "mod", "modf", "noise",
-				"noise1", "noise2", "noise3", "noise4", "normalize", "not",
-				"notEqual", "outerProduct", "packDouble2x32", "packHalf2x16",
-				"packSnorm2x16", "packSnorm4x8", "packUnorm", "packUnorm2x16",
-				"packUnorm4x8", "pow", "radians", "reflect", "refract", "round",
-				"roundEven", "sign", "sin", "sinh", "smoothstep", "sqrt", "step",
-				"tan", "tanh", "texelFetch", "texelFetchOffset", "texture",
-				"textureGather", "textureGatherOffset", "textureGatherOffsets",
-				"textureGrad", "textureGradOffset", "textureLod",
-				"textureLodOffset", "textureOffset", "textureProj",
-				"textureProjGrad", "textureProjGradOffset", "textureProjLod",
-				"textureProjLodOffset", "textureProjOffset",
-				"textureQueryLevels", "textureQueryLod", "textureSamples",
-				"textureSize", "transpose", "trunc", "uaddCarry",
-				"uintBitsToFloat", "umulExtended", "unpackDouble2x32",
-				"unpackHalf2x16", "unpackSnorm2x16", "unpackSnorm4x8",
-				"unpackUnorm", "unpackUnorm2x16", "unpackUnorm4x8",
-				"usubBorrow");
+				"for", "if", "discard", "return", "switch", "case", "default");
+		add(Style.PRECISION, "invariant", "highp", "mediump", "lowp",
+				"precision");
+		add(Style.BUILTIN_FUNCTION, "gl_FragCoord", "gl_FrontFacing",
+				"gl_FragColor", "gl_FragData", "gl_FragDepth", "gl_PointCoord",
+				"gl_DepthRange", "gl_MaxVertexAttribs",
+				"gl_MaxVertexUniformVectors", "gl_MaxVaryingVectors",
+				"gl_MaxVertexOutputVectors", "gl_MaxFragmentInputVectors",
+				"gl_MaxVertexTextureImageUnits",
+				"gl_MaxCombinedTextureImageUnits", "gl_MaxTextureImageUnits",
+				"gl_MaxFragmentUniformVectors", "gl_MaxDrawBuffers",
+				"gl_MinProgramTexelOffset", "gl_MaxProgramTexelOffset");
+		add(Style.BUILTIN_FUNCTION, "radians", "degrees", "sin", "cos",
+				"tan", "asin", "acos", "atan", "sinh", "cosh", "tanh", "asinh",
+				"acosh", "atanh", "pow", "exp", "log", "exp2", "log2", "sqrt",
+				"inversesqrt", "abs", "sign", "floor", "trunc", "round",
+				"roundEven", "ceil", "fract", "mod", "modf", "min", "max",
+				"clamp", "mix", "step", "smoothstep", "isnan", "isinf",
+				"floatBitsToInt", "floatBitsToUint", "intBitsToFloat",
+				"uintBitsToFloat", "packSnorm2x16", "unpackSnorm2x16",
+				"packUnorm2x16", "unpackUnorm2x16", "packHalf2x16",
+				"unpackHalf2x16", "length", "distance", "dot", "cross",
+				"normalize", "faceforward", "reflect", "refract",
+				"matrixCompMult", "outerProduct", "transpose", "determinant",
+				"inverse", "lessThan", "lessThanEqual", "greaterThan",
+				"greaterThanEqual", "equal", "notEqual", "any", "all", "not",
+				"texture2D", "texture2DProj", "textureCube", "textureSize",
+				"texture", "textureProj", "textureLod", "textureOffset",
+				"texelFetch", "texelFetchOffset", "textureProjOffset",
+				"textureLodOffset", "textureProjLod", "textureProjLodOffset",
+				"textureGrad", "textureGradOffset", "textureProjGrad",
+				"textureProjGradOffset", "dFdx", "dFdy", "fwidth");
 	}
 
 	private GlslWords() {
