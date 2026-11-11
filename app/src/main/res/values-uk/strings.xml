@@ -226,9 +226,11 @@
 	<string name="samples_section_techniques">Techniques</string>
 	<string name="samples_section_wallpapers">Wallpapers</string>
 	<string name="sample_battery_name">Батарея</string>
-	<string name="sample_battery_rationale">Горизонтальний датчик батареї</string>
+	<string name="sample_battery_rationale">Plug in the charger; the level rises in pulses</string>
 	<string name="sample_camera_back_name">Задня камера</string>
 	<string name="sample_camera_back_rationale">Як користуватися задньою камерою (тільки на Ice Cream Sandwich або краще)</string>
+	<string name="sample_clock_name">Clock</string>
+	<string name="sample_clock_rationale">Compare with the status bar; the hands agree</string>
 	<string name="sample_cloudy_conway_name">Cloudy Conway</string>
 	<string name="sample_cloudy_conway_rationale">Варіація «Гри життя» Конвея.</string>
 	<string name="sample_compass_name">Compass</string>
@@ -241,6 +243,8 @@
 	<string name="sample_gles_300_rationale">Використовувати GLES версії 3.00</string>
 	<string name="sample_loop_name">Loop</string>
 	<string name="sample_loop_rationale">Rotate to restart; each hand loops at its own rate</string>
+	<string name="sample_meters_name">Meters</string>
+	<string name="sample_meters_rationale">Cover the phone\'s top; the left and right bars drop</string>
 	<string name="sample_shapes_name">Shapes</string>
 	<string name="sample_shapes_rationale">Touch the screen; the orbit moves to your finger</string>
 	<string name="sample_swirl_name">Вир</string>
