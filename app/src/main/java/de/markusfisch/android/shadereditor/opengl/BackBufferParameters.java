@@ -1,12 +1,10 @@
 package de.markusfisch.android.shadereditor.opengl;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
 
 // The library texture a backbuffer starts with, tiled to its size.
@@ -20,18 +18,20 @@ final class BackBufferParameters {
 		this.preset = preset;
 	}
 
+	boolean hasPreset() {
+		return preset != null;
+	}
+
 	@Nullable
-	Bitmap getPresetBitmap(@NonNull Context context, int width, int height) {
+	Bitmap getPresetBitmap(
+			@NonNull DecodedTextures.BitmapSource source,
+			int width,
+			int height) {
 		if (preset == null) {
 			return null;
 		}
 
-		// Use the modern singleton to get the DataSource and fetch the bitmap.
-		Bitmap tile = Database
-				.getInstance(context)
-				.getDataSource()
-				.texture
-				.getTextureBitmap(preset);
+		Bitmap tile = source.get(preset);
 
 		if (tile == null) {
 			return null;
