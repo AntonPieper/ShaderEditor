@@ -152,6 +152,49 @@ public class LegacyShaderConverterTest {
 	}
 
 	@Test
+	public void backbufferPresetIsFoundByNameFirstAndThenByRowId() {
+		List<Long> ids = new ArrayList<>();
+		LegacyShaderConverter.Library library =
+				new LegacyShaderConverter.Library() {
+					@Override
+					public LibraryTexture find(String name) {
+						return "7".equals(name) || "noise".equals(name)
+								? new LibraryTexture(false, 8, 4)
+								: null;
+					}
+
+					@Override
+					public LibraryTexture find(long id) {
+						ids.add(id);
+						return id == 3 ? new LibraryTexture(false, 16, 8)
+								: null;
+					}
+				};
+		Result result = LegacyShaderConverter.convert(
+				lines("uniform sampler2D backbuffer;///p:3;"), library);
+		assertEquals(lines("#pragma se target initial=\"presets/3.glsl\"",
+				"uniform sampler2D backbuffer;"), result.shader());
+		assertEquals(List.of(new TextureFile("3", path("textures/3.png"),
+				false)), result.textures());
+		assertTrue(result.files().get(path("presets/3.glsl"))
+				.contains("// The image is 16x8 pixels."));
+		assertTrue(result.diagnostics().isEmpty());
+		assertEquals(List.of(3L), ids);
+		for (String preset : new String[]{"7", "noise"}) {
+			result = LegacyShaderConverter.convert(lines(
+					"uniform sampler2D backbuffer;///p:" + preset + ";"),
+					library);
+			assertEquals(List.of(new TextureFile(preset,
+					path("textures/" + preset + ".png"), false)),
+					result.textures());
+		}
+		result = LegacyShaderConverter.convert(
+				lines("uniform sampler2D backbuffer;///p:4;"), library);
+		assertTrue(result.textures().isEmpty());
+		assertEquals(List.of(3L, 4L), ids);
+	}
+
+	@Test
 	public void presetNameThatCannotBeAFileNameGetsASafeOne() {
 		Result result = LegacyShaderConverter.convert(lines(
 						"uniform sampler2D a_b;",

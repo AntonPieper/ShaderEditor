@@ -76,7 +76,18 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 		String text = shader.fragmentShader();
 		LegacyShaderConverter.Result conversion = LegacyShaderConverter.convert(
 				text != null ? text : "",
-				name -> find(textures, library, used, name));
+				new LegacyShaderConverter.Library() {
+					@Override
+					public LibraryTexture find(String name) {
+						return DatabaseProjectFiles.find(textures, library,
+								used, name);
+					}
+
+					@Override
+					public LibraryTexture find(long id) {
+						return DatabaseProjectFiles.find(textures, used, id);
+					}
+				});
 		return new DatabaseProjectFiles(textures, conversion, used, limits);
 	}
 
@@ -184,6 +195,25 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 			bitmap.recycle();
 		}
 		used.put(name, stored);
+		return stored.texture();
+	}
+
+	// A backbuffer preset saved as a row id is served under that id.
+	@Nullable
+	private static LibraryTexture find(
+			@NonNull TextureDao textures,
+			@NonNull Map<String, Stored> used,
+			long id) {
+		String key = String.valueOf(id);
+		Stored stored = used.get(key);
+		if (stored == null) {
+			DataRecords.TextureInfo info = textures.getTextureInfo(id);
+			if (info == null) {
+				return null;
+			}
+			stored = new Stored(id, key, info.width(), info.height(), false);
+			used.put(key, stored);
+		}
 		return stored.texture();
 	}
 

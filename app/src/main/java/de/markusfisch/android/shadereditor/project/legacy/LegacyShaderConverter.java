@@ -45,6 +45,11 @@ public final class LegacyShaderConverter {
 	public interface Library {
 		/** Return the texture with this name, or null. */
 		LibraryTexture find(String name);
+
+		/** Return the texture with this row id, or null. */
+		default LibraryTexture find(long id) {
+			return null;
+		}
 	}
 
 	/**
@@ -364,7 +369,7 @@ public final class LegacyShaderConverter {
 					"the screen, which the backbuffer's wrap=repeat did");
 		}
 		LibraryTexture preset = settings.preset() != null
-				? library.find(settings.preset())
+				? findPreset(settings.preset())
 				: null;
 		presetMissing = settings.preset() != null && preset == null;
 		List<Declaration> declarations = or(declared.get(BACKBUFFER));
@@ -408,6 +413,12 @@ public final class LegacyShaderConverter {
 			insert(version + 1, new Line("#pragma se target " +
 					String.join(" ", target), 0));
 		}
+	}
+
+	private LibraryTexture findPreset(String name) {
+		LibraryTexture texture = library.find(name);
+		long id = LegacySamplerSettings.presetId(name);
+		return texture == null && id > 0 ? library.find(id) : texture;
 	}
 
 	// A library texture name that cannot be a file name, or names the

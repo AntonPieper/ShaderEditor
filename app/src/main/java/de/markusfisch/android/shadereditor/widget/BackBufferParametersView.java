@@ -67,8 +67,8 @@ public class BackBufferParametersView extends LinearLayout {
 	}
 
 	/**
-	 * Returns the preset ID selected in the spinner, or null for
-	 * "(no preset)".
+	 * Returns the name of the texture selected in the spinner, or null
+	 * for "(no preset)".
 	 */
 	public String getPreset() {
 		Object item = presetView.getSelectedItem();
@@ -76,10 +76,7 @@ public class BackBufferParametersView extends LinearLayout {
 			return null;
 		}
 
-		long id = textureInfo.id();
-
-		// The preset is stored as a stringified ID.
-		return id > 0 ? String.valueOf(id) : null;
+		return textureInfo.id() > 0 ? textureInfo.name() : null;
 	}
 
 }

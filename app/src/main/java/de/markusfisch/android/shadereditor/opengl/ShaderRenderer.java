@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.opengl;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.hardware.display.DisplayManager;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
@@ -299,7 +300,17 @@ public class ShaderRenderer implements GLSurfaceView.Renderer {
 					backBuffer,
 					width,
 					height,
-					textureDao::getTextureBitmap));
+					new DecodedTextures.BitmapSource() {
+						@Override
+						public Bitmap get(@NonNull String name) {
+							return textureDao.getTextureBitmap(name);
+						}
+
+						@Override
+						public Bitmap get(long id) {
+							return textureDao.getTextureBitmap(id);
+						}
+					}));
 			var requester = renderRequester;
 			if (requester != null) {
 				requester.run();
