@@ -34,7 +34,7 @@ Three seams carry the design. `prepare` takes shape in M1–M4, `ProjectFiles` i
 
 ```text
 ProjectFiles                       // storage, one instance per opened root
-  read(path)  -> bytes + revision | absent
+  read(path)  -> bytes + revision | absent | failed(reason)
   list(dir)   -> entries
   write(path, bytes, expectedRevision) -> outcome
   create / rename / delete            // where the store supports them
@@ -43,6 +43,7 @@ prepare(files, entryPath, limits) -> Preparation    // pure JVM: no Android, no 
   Preparation.plan          RenderPlan, or none
   Preparation.diagnostics   path, line, severity, message
   Preparation.dependencies  every path read, with the revision used
+  Preparation.files         the bytes that were read, so later stages use exactly these
 
 PlanRuntime                        // one per GL context
   build(plan, capabilities) -> candidate | diagnostics
@@ -50,7 +51,7 @@ PlanRuntime                        // one per GL context
   drawFrame(frameInputs)
 ```
 
-`prepare` is the only code that understands manifests, host directives, includes, and the graph. Every consumer uses its result: rendering takes the plan, the editor takes the diagnostics, Share, Save a copy, and Set wallpaper take `dependencies`, and refresh compares the revisions in `dependencies` to decide whether to rebuild. For sharing, it still returns the dependencies it could collect when there is no plan. There is no second producer of `RenderPlan`.
+`prepare` is the only code that understands manifests, host directives, includes, and the graph. Every consumer uses its result: rendering takes the plan, the editor takes the diagnostics, Share, Save a copy, and Set wallpaper take `dependencies`, and refresh compares the revisions in `dependencies` to decide whether to rebuild. For sharing, it still returns the dependencies it could collect when there is no plan: a path named by a directive is collected even when another part of that directive is invalid. The bytes it read stay with the result, so building, sharing and snapshotting never read a file a second time and cannot see a newer version of it. There is no second producer of `RenderPlan`.
 
 `ProjectFiles` is an interface because the variation is real. Implementations: a directory (own storage, installed wallpaper snapshots, archive staging, JVM tests), a SAF tree, a draft overlay that wraps another store and serves unsaved editor text, and, until migration, a view over the database that serves converted shaders and library textures (SPEC 12.2). A wallpaper therefore renders a directory store through the same `prepare` and `PlanRuntime` as the preview.
 
