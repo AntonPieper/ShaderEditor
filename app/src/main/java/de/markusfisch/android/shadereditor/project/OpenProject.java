@@ -16,6 +16,10 @@ import de.markusfisch.android.shadereditor.project.EditingSession.Saved;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Content;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
+import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.Outline;
+import de.markusfisch.android.shadereditor.syntax.Style;
+import de.markusfisch.android.shadereditor.syntax.Tokens;
 
 /**
  * The project open in the editor, for the screens that show it: its
@@ -47,6 +51,10 @@ public final class OpenProject {
 	public record Copy(ProjectPath path, String problem) {
 	}
 
+	/** A file the last build read, and whether it is an image. */
+	public record Used(ProjectPath path, boolean image) {
+	}
+
 	// A file opened in the editor: its text there, the text stored when
 	// it was read, the revision its draft is based on, the text the
 	// journal has, and what the editor keeps for it.
@@ -68,6 +76,7 @@ public final class OpenProject {
 	private final ProjectSessions sessions;
 	private final EditingSession session;
 	private List<ProjectDiagnostic> diagnostics = List.of();
+	private List<Used> used = List.of();
 	private ProjectPath running;
 	private ProjectPath shown;
 
@@ -435,14 +444,60 @@ public final class OpenProject {
 
 	/**
 	 * Prepare what runs from the text in the editor and the drafts, or
-	 * return null when nothing runs. Any thread.
+	 * return null when nothing runs, and keep the files it read as those
+	 * of the last build. Any thread.
 	 */
 	public Preparation prepare(Map<String, String> reserved) {
 		ProjectPath entry = running();
-		return entry != null
+		Preparation preparation = entry != null
 				? Preparation.prepare(files, entry, ProjectLimits.DEFAULT,
 						reserved)
 				: null;
+		List<Used> read = new ArrayList<>();
+		if (preparation != null) {
+			for (SourceAssembly.Dependency dependency :
+					preparation.dependencies()) {
+				ProjectPath path = dependency.path();
+				if (dependency.revision() != null &&
+						!ProjectManifest.FILE.equals(path)) {
+					read.add(new Used(path,
+							path.getKind() == ProjectPath.Kind.IMAGE));
+				}
+			}
+		}
+		synchronized (this) {
+			used = Collections.unmodifiableList(read);
+		}
+		return preparation;
+	}
+
+	/**
+	 * Return the files the last build read, in the order it read them,
+	 * without the manifest and files it could not read.
+	 */
+	public synchronized List<Used> used() {
+		return used;
+	}
+
+	/** Return whether the last build of what runs read path. */
+	public synchronized boolean uses(ProjectPath path) {
+		for (Used file : used) {
+			if (file.path().equals(path)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Return whether path, open in the editor, can run: a .glsl file
+	 * whose own text defines main. Reads only that text, once.
+	 */
+	public boolean canRun(ProjectPath path) {
+		String text = path.getKind() == ProjectPath.Kind.SHADER
+				? text(path)
+				: null;
+		return text != null && definesMain(text);
 	}
 
 	/** Keep the diagnostics of the last build of what runs. */
@@ -503,6 +558,39 @@ public final class OpenProject {
 				? SourceText.decode(bytes)
 				: null;
 		return text != null && text.indexOf('\0') < 0 ? text : null;
+	}
+
+	// Whether text declares a function main outside any other block and
+	// gives it a body, as the lexer reads it.
+	static boolean definesMain(String text) {
+		Tokens tokens = GlslLexer.lex(text);
+		for (Outline.Declaration declaration :
+				Outline.of(tokens, text).declarations()) {
+			if (declaration.kind() != Outline.Kind.FUNCTION ||
+					!"main".equals(declaration.name())) {
+				continue;
+			}
+			int parens = 0;
+			for (int i = tokens.indexAt(declaration.start()) + 1,
+					size = tokens.size(); i < size; ++i) {
+				if (tokens.style(i) == Style.COMMENT ||
+						tokens.inDirective(i)) {
+					continue;
+				}
+				char c = text.charAt(tokens.start(i));
+				if (c == '(') {
+					++parens;
+				} else if (c == ')') {
+					--parens;
+				} else if (parens == 0) {
+					if (c == '{') {
+						return true;
+					}
+					break;
+				}
+			}
+		}
+		return false;
 	}
 
 	private static int compareNames(String a, String b) {
