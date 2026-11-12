@@ -7,9 +7,7 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.DialogFragment;
 
 import java.io.File;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -81,7 +79,7 @@ public class ProjectPreviewActivity extends PreviewActivity {
 				new DirectoryProjectFiles(root),
 				ProjectPath.parse("main.glsl").value(),
 				ProjectLimits.DEFAULT,
-				builtinNames()), quality));
+				UniformTable.types()), quality));
 		return true;
 	}
 
@@ -96,14 +94,5 @@ public class ProjectPreviewActivity extends PreviewActivity {
 		errorList = new ErrorListModal(diagnostics, (file, line) -> {
 		});
 		errorList.showNow(getSupportFragmentManager(), ErrorListModal.TAG);
-	}
-
-	@NonNull
-	private static Set<String> builtinNames() {
-		var names = new HashSet<String>();
-		for (var uniform : UniformTable.BUILTINS) {
-			names.add(uniform.getName());
-		}
-		return names;
 	}
 }

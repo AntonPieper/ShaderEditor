@@ -14,9 +14,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.SensorSources.Gravity;
@@ -174,14 +174,15 @@ public final class UniformTable {
 	private UniformTable() {
 	}
 
-	// The names of the builtins, which preparing a project reserves.
+	// The GLSL types of the builtins by name, which preparing a project
+	// reserves.
 	@NonNull
-	public static Set<String> names() {
-		var names = new HashSet<String>();
+	public static Map<String, String> types() {
+		var types = new HashMap<String, String>();
 		for (var builtin : BUILTINS) {
-			names.add(builtin.getName());
+			types.put(builtin.getName(), builtin.getType().getKeyword());
 		}
-		return names;
+		return types;
 	}
 
 	@NonNull

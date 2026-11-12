@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.project.BuiltinNames;
 import de.markusfisch.android.shadereditor.project.Preparation;
@@ -32,6 +33,7 @@ public class LegacyShaderConverterTest {
 			"sky", new LibraryTexture(true, 64, 96),
 			"cameraBack", new LibraryTexture(false, 8, 8),
 			"time", new LibraryTexture(false, 8, 8));
+	private static final Set<String> NAMES = BuiltinNames.ALL.keySet();
 	private static final String NOISE_DEFAULT =
 			"#pragma se input \"textures/noise.png\" " +
 					"min=nearest mag=linear wrap=repeat";
@@ -173,7 +175,7 @@ public class LegacyShaderConverterTest {
 				};
 		Result result = LegacyShaderConverter.convert(
 				lines("uniform sampler2D backbuffer;///p:3;"), library,
-				BuiltinNames.ALL);
+				NAMES);
 		assertEquals(lines("#pragma se target initial=\"presets/3.glsl\"",
 				"uniform sampler2D backbuffer;"), result.shader());
 		assertEquals(List.of(new TextureFile("3", path("textures/3.png"),
@@ -185,14 +187,14 @@ public class LegacyShaderConverterTest {
 		for (String preset : new String[]{"7", "noise"}) {
 			result = LegacyShaderConverter.convert(lines(
 					"uniform sampler2D backbuffer;///p:" + preset + ";"),
-					library, BuiltinNames.ALL);
+					library, NAMES);
 			assertEquals(List.of(new TextureFile(preset,
 					path("textures/" + preset + ".png"), false)),
 					result.textures());
 		}
 		result = LegacyShaderConverter.convert(
 				lines("uniform sampler2D backbuffer;///p:4;"), library,
-				BuiltinNames.ALL);
+				NAMES);
 		assertTrue(result.textures().isEmpty());
 		assertEquals(List.of(3L, 4L), ids);
 	}
@@ -202,7 +204,7 @@ public class LegacyShaderConverterTest {
 		Result result = LegacyShaderConverter.convert(lines(
 						"uniform sampler2D a_b;",
 						"uniform sampler2D backbuffer;///p:a/b;"),
-				name -> new LibraryTexture(false, 8, 4), BuiltinNames.ALL);
+				name -> new LibraryTexture(false, 8, 4), NAMES);
 		assertEquals(lines("#pragma se target initial=\"presets/a_b_2.glsl\"",
 				"#pragma se input \"textures/a_b.png\" " +
 						"min=nearest mag=linear wrap=repeat",
@@ -221,7 +223,7 @@ public class LegacyShaderConverterTest {
 		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
 		result = LegacyShaderConverter.convert(
 				lines("uniform sampler2D backbuffer;///p:../../../../foo;"),
-				name -> new LibraryTexture(false, 8, 4), BuiltinNames.ALL);
+				name -> new LibraryTexture(false, 8, 4), NAMES);
 		assertEquals(List.of(new TextureFile("../../../../foo",
 				path("textures/____________foo.png"), false)),
 				result.textures());
@@ -439,6 +441,18 @@ public class LegacyShaderConverterTest {
 				"float time_texture;"),
 				convert(lines("uniform sampler2D time;",
 						"float time_texture;")).shader());
+	}
+
+	// Only a sampler2D read the previous frame.
+	@Test
+	public void backbufferOfAnotherSamplerTypeGetsNoInput() {
+		Result result = convert(lines(
+				"uniform samplerCube backbuffer;///min:l;mag:l;s:r;t:r;",
+				"void main() {}"));
+		assertEquals(lines("#pragma se target present=linear",
+				"uniform samplerCube backbuffer;///min:l;mag:l;s:r;t:r;",
+				"void main() {}"), result.shader());
+		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
 	}
 
 	@Test
@@ -845,7 +859,7 @@ public class LegacyShaderConverterTest {
 		};
 		for (String row : rows) {
 			Result result = LegacyShaderConverter.convert(head + row + main,
-					library::get, BuiltinNames.ALL);
+					library::get, NAMES);
 			assertTrue(row, errors(result.diagnostics()).isEmpty());
 			Preparation preparation = prepare(result);
 			assertTrue(row + preparation.diagnostics(),
@@ -854,7 +868,7 @@ public class LegacyShaderConverterTest {
 		}
 		Result discard = LegacyShaderConverter.convert(head +
 				"void main(){if(gl_FragCoord.x<1.0)discard;" +
-				"gl_FragColor=vec4(1.0);}\n", library::get, BuiltinNames.ALL);
+				"gl_FragColor=vec4(1.0);}\n", library::get, NAMES);
 		assertNotNull(prepare(discard).plan());
 		assertEquals(1, discard.diagnostics().size());
 	}
@@ -910,7 +924,7 @@ public class LegacyShaderConverterTest {
 
 	private static Result convert(String text) {
 		return LegacyShaderConverter.convert(text, LIBRARY::get,
-				BuiltinNames.ALL);
+				NAMES);
 	}
 
 	private static String lines(String... lines) {

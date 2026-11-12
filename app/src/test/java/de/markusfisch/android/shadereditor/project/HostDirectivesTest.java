@@ -502,6 +502,25 @@ public class HostDirectivesTest {
 				"#pragma se input filter=linear", TEX);
 	}
 
+	// Only an engine sampler of its own type has a provider.
+	@Test
+	public void rejectsSourcelessInputOnABuiltinThatIsNoSamplerOfItsType() {
+		assertError("time is not an engine sampler",
+				"#pragma se input filter=linear",
+				"uniform sampler2D time;");
+		assertError("backbuffer is an engine sampler of type sampler2D, " +
+						"declare it as uniform sampler2D backbuffer",
+				"#pragma se input filter=linear",
+				"uniform samplerCube backbuffer;");
+		assertError("of type samplerExternalOES",
+				"#pragma se input filter=linear",
+				"uniform sampler2D cameraBack;");
+		assertEquals(1, parse("#pragma se input filter=linear",
+				"uniform samplerExternalOES cameraBack;").inputs().size());
+		assertEquals(1, parse("#pragma se input filter=linear",
+				"uniform sampler2D backbuffer;").inputs().size());
+	}
+
 	@Test
 	public void rejectsPathOnReservedName() {
 		assertError("reserved", "#pragma se input \"a.png\"",
