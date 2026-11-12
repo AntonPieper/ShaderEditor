@@ -30,8 +30,13 @@ public final class OpenProject {
 	public static final ProjectPath MAIN = ProjectPath.parse("main.glsl")
 			.value();
 
-	/** A file or folder in a folder of the project. */
-	public record Item(ProjectPath path, boolean folder) {
+	/**
+	 * A file or folder in a folder of the project, with its size and
+	 * time of last change as the listing told them, or
+	 * {@link ProjectFiles#UNKNOWN}.
+	 */
+	public record Item(ProjectPath path, boolean folder, long size,
+			long modified) {
 	}
 
 	/** The items of a folder, folders first, or why it cannot be listed. */
@@ -113,7 +118,8 @@ public final class OpenProject {
 			// A name no path can spell, like ".git", cannot be used.
 			if (path.isSuccess() &&
 					name.equals(path.value().getFileName())) {
-				items.add(new Item(path.value(), entry.folder()));
+				items.add(new Item(path.value(), entry.folder(),
+						entry.size(), entry.modified()));
 			}
 		}
 		Collections.sort(items, (a, b) -> a.folder() != b.folder()

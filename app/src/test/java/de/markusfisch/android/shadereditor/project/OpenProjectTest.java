@@ -329,6 +329,18 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void listsSizeAndTimeOfLastChange() throws IOException {
+		write("main.glsl", SHADER);
+		assertTrue(new File(root, "main.glsl").setLastModified(
+				1_700_000_000_000L));
+
+		OpenProject.Item item = open().list(null).items().get(0);
+
+		assertEquals(SHADER.length(), item.size());
+		assertEquals(1_700_000_000_000L, item.modified());
+	}
+
+	@Test
 	public void groupsDiagnosticsByFile() throws IOException {
 		OpenProject project = open();
 		ProjectDiagnostic inMain = new ProjectDiagnostic(Severity.WARNING,

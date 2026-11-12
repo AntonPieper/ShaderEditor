@@ -60,7 +60,11 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 			for (String name : names(dir)) {
 				File file = new File(dir, name);
 				if (!isLink(file)) {
-					entries.add(new Entry(nfc(name), file.isDirectory()));
+					boolean isFolder = file.isDirectory();
+					long modified = file.lastModified();
+					entries.add(new Entry(nfc(name), isFolder,
+							isFolder ? UNKNOWN : file.length(),
+							modified > 0 ? modified : UNKNOWN));
 				}
 			}
 			return new Entries(entries);

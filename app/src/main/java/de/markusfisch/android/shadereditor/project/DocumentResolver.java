@@ -12,9 +12,17 @@ import java.util.List;
 public interface DocumentResolver {
 	/**
 	 * A document as the provider describes it: its id, display name,
-	 * whether it is a folder, and its DocumentsContract.Document flags.
+	 * whether it is a folder, its DocumentsContract.Document flags, its
+	 * size in bytes and when it last changed, in milliseconds since the
+	 * epoch, or {@link ProjectFiles#UNKNOWN} when the provider does not
+	 * tell.
 	 */
-	record Document(String id, String name, boolean folder, int flags) {
+	record Document(String id, String name, boolean folder, int flags,
+			long size, long modified) {
+		public Document(String id, String name, boolean folder, int flags) {
+			this(id, name, folder, flags, ProjectFiles.UNKNOWN,
+					ProjectFiles.UNKNOWN);
+		}
 	}
 
 	Document document(String id) throws IOException;
