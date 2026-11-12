@@ -15,9 +15,9 @@ import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.
  */
 public final class StoredFiles {
 	/**
-	 * A library texture as the conversion saw it: its row, or null when
-	 * it is known by name only, its stored size, and whether it is a
-	 * cubemap atlas. The image served for it must have this size.
+	 * A library texture as the conversion saw it: its row, its stored
+	 * size, and whether it is a cubemap atlas. The image served for it
+	 * must have this size.
 	 */
 	public record Stored(Long id, String name, int width, int height,
 			boolean atlas) {

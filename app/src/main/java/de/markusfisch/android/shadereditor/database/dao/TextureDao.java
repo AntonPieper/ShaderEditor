@@ -39,6 +39,35 @@ public class TextureDao {
 	// region Public API
 	@Nullable
 	public DataRecords.TextureInfo getTextureInfo(long id) {
+		return getTextureInfo(DatabaseContract.TextureColumns._ID,
+				String.valueOf(id));
+	}
+
+	// The row a texture of this name is read from, without its pixels.
+	@Nullable
+	public DataRecords.TextureInfo getTextureInfo(@NonNull String name) {
+		return getTextureInfo(DatabaseContract.TextureColumns.NAME, name);
+	}
+
+	// The image of the texture as stored, not decoded, or null.
+	@Nullable
+	public byte[] getTextureData(long id) {
+		String query =
+				"SELECT " + DatabaseContract.TextureColumns.MATRIX +
+						" FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
+						" WHERE " + DatabaseContract.TextureColumns._ID + " = ?";
+		SQLiteDatabase db = dbHelper.getReadableDatabase();
+		try (var cursor = db.rawQuery(query, new String[]{String.valueOf(id)})) {
+			return cursor.moveToFirst()
+					? CursorHelpers.getBlob(cursor,
+							DatabaseContract.TextureColumns.MATRIX)
+					: null;
+		}
+	}
+
+	@Nullable
+	private DataRecords.TextureInfo getTextureInfo(@NonNull String column,
+			@NonNull String value) {
 		var query =
 				"SELECT " +
 						DatabaseContract.TextureColumns._ID + "," +
@@ -47,10 +76,10 @@ public class TextureDao {
 						DatabaseContract.TextureColumns.HEIGHT + "," +
 						DatabaseContract.TextureColumns.THUMB +
 						" FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
-						" WHERE " + DatabaseContract.TextureColumns._ID + " = ?";
+						" WHERE " + column + " = ?";
 
 		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		try (var cursor = db.rawQuery(query, new String[]{String.valueOf(id)})) {
+		try (var cursor = db.rawQuery(query, new String[]{value})) {
 			if (cursor.moveToFirst()) {
 				return new DataRecords.TextureInfo(
 						CursorHelpers.getLong(cursor, DatabaseContract.TextureColumns._ID),
@@ -79,28 +108,6 @@ public class TextureDao {
 						" WHERE " + DatabaseContract.TextureColumns._ID + " = ?";
 		SQLiteDatabase db = dbHelper.getReadableDatabase();
 		try (var cursor = db.rawQuery(query, new String[]{String.valueOf(id)})) {
-			if (cursor.moveToFirst()) {
-				var data = CursorHelpers.getBlob(cursor, DatabaseContract.TextureColumns.MATRIX);
-				if (data != null) {
-					BitmapFactory.Options options = new BitmapFactory.Options();
-					options.inPremultiplied = false;
-					return BitmapFactory.decodeByteArray(data, 0, data.length, options);
-				}
-			}
-		} catch (OutOfMemoryError e) {
-			// A texture might be too big to be loaded into memory.
-		}
-		return null;
-	}
-
-	@Nullable
-	public Bitmap getTextureBitmap(@NonNull String name) {
-		String query =
-				"SELECT " + DatabaseContract.TextureColumns.MATRIX +
-						" FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
-						" WHERE " + DatabaseContract.TextureColumns.NAME + " = ?";
-		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		try (var cursor = db.rawQuery(query, new String[]{name})) {
 			if (cursor.moveToFirst()) {
 				var data = CursorHelpers.getBlob(cursor, DatabaseContract.TextureColumns.MATRIX);
 				if (data != null) {
