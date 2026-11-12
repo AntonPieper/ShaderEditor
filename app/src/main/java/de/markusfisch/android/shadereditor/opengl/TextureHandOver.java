@@ -28,12 +28,14 @@ final class TextureHandOver<T extends TextureHandOver.Recyclable> {
 		}
 	}
 
-	synchronized void deliver(int generation, @NonNull T result) {
+	// Returns false, after recycling it, when nobody will take it.
+	synchronized boolean deliver(int generation, @NonNull T result) {
 		if (generation != this.generation || ready != null) {
 			result.recycle();
-			return;
+			return false;
 		}
 		ready = result;
+		return true;
 	}
 
 	@Nullable

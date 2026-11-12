@@ -24,7 +24,7 @@ public class TextureHandOverTest {
 		assertNull(handOver.take());
 		int generation = handOver.begin();
 		var result = new Result();
-		handOver.deliver(generation, result);
+		assertTrue(handOver.deliver(generation, result));
 		assertSame(result, handOver.take());
 		assertNull(handOver.take());
 		assertFalse(result.recycled);
@@ -35,7 +35,7 @@ public class TextureHandOverTest {
 		int first = handOver.begin();
 		int second = handOver.begin();
 		var stale = new Result();
-		handOver.deliver(first, stale);
+		assertFalse(handOver.deliver(first, stale));
 		assertTrue(stale.recycled);
 		assertNull(handOver.take());
 		var current = new Result();
@@ -64,10 +64,12 @@ public class TextureHandOverTest {
 		assertTrue(ready.recycled);
 		assertNull(handOver.take());
 
+		// The view of a released build was detached; it gets no request
+		// to draw what nobody takes.
 		int generation = handOver.begin();
 		handOver.cancel();
 		var late = new Result();
-		handOver.deliver(generation, late);
+		assertFalse(handOver.deliver(generation, late));
 		assertTrue(late.recycled);
 		assertNull(handOver.take());
 	}

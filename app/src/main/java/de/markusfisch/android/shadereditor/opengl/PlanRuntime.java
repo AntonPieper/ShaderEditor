@@ -166,8 +166,11 @@ final class PlanRuntime implements EngineBuild {
 			return;
 		}
 		new Thread(() -> {
-			decoded.deliver(generation, DecodedImages.decode(files, maxPixels));
-			if (onDecoded != null) {
+			// A build that was released, with its view perhaps, asks for no
+			// frame.
+			if (decoded.deliver(generation,
+					DecodedImages.decode(files, maxPixels)) &&
+					onDecoded != null) {
 				onDecoded.run();
 			}
 		}, "PlanImageDecoder").start();

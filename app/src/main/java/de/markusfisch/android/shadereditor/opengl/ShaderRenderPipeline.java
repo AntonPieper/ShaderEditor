@@ -222,18 +222,21 @@ final class ShaderRenderPipeline {
 			}
 		}
 
+		Bitmap bitmap = null;
 		try (var out = new ByteArrayOutputStream()) {
-			Bitmap.createBitmap(
+			bitmap = Bitmap.createBitmap(
 					argb,
 					THUMBNAIL_WIDTH,
 					THUMBNAIL_HEIGHT,
-					Bitmap.Config.ARGB_8888).compress(
-					Bitmap.CompressFormat.PNG,
-					100,
-					out);
+					Bitmap.Config.ARGB_8888);
+			bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
 			return out.toByteArray();
 		} catch (OutOfMemoryError | IllegalArgumentException | IOException e) {
 			return null;
+		} finally {
+			if (bitmap != null) {
+				bitmap.recycle();
+			}
 		}
 	}
 
