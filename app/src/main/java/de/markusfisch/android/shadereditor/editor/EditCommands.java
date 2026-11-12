@@ -13,6 +13,7 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
  */
 public final class EditCommands {
 	private final Document document;
+	private final Motion motion;
 	private int tabWidth = 4;
 	private boolean indentWithSpaces;
 	// The column of a run of vertical moves, while the head is where
@@ -22,7 +23,12 @@ public final class EditCommands {
 	private int wantedRevision;
 
 	public EditCommands(Document document) {
+		this(document, new Motion());
+	}
+
+	public EditCommands(Document document, Motion motion) {
 		this.document = document;
+		this.motion = motion;
 	}
 
 	/** Set the number of columns between two tab stops. */
@@ -42,7 +48,7 @@ public final class EditCommands {
 	public void moveBackward(boolean extend) {
 		Selection selection = document.selection();
 		moveTo(extend || selection.isEmpty()
-				? Motion.previousChar(document.text(), selection.head())
+				? motion.previousChar(document.text(), selection.head())
 				: selection.start(), extend);
 	}
 
@@ -50,16 +56,16 @@ public final class EditCommands {
 	public void moveForward(boolean extend) {
 		Selection selection = document.selection();
 		moveTo(extend || selection.isEmpty()
-				? Motion.nextChar(document.text(), selection.head())
+				? motion.nextChar(document.text(), selection.head())
 				: selection.end(), extend);
 	}
 
 	public void moveWordBackward(boolean extend) {
-		moveTo(Motion.previousWord(document.text(), head()), extend);
+		moveTo(motion.previousWord(document.text(), head()), extend);
 	}
 
 	public void moveWordForward(boolean extend) {
-		moveTo(Motion.nextWord(document.text(), head()), extend);
+		moveTo(motion.nextWord(document.text(), head()), extend);
 	}
 
 	/**
@@ -72,7 +78,7 @@ public final class EditCommands {
 		int column = head == wantedHead &&
 				document.revision() == wantedRevision
 				? wantedColumn
-				: Motion.column(text, head, tabWidth);
+				: motion.column(text, head, tabWidth);
 		int line = text.lineOf(head) + count;
 		int target;
 		if (line < 0) {
@@ -80,7 +86,7 @@ public final class EditCommands {
 		} else if (line >= text.lineCount()) {
 			target = text.length();
 		} else {
-			target = Motion.offsetAt(text, line, column, tabWidth);
+			target = motion.offsetAt(text, line, column, tabWidth);
 		}
 		moveTo(target, extend);
 		wantedColumn = column;
@@ -89,11 +95,11 @@ public final class EditCommands {
 	}
 
 	public void moveToLineStart(boolean extend) {
-		moveTo(Motion.lineStart(document.text(), head()), extend);
+		moveTo(motion.lineStart(document.text(), head()), extend);
 	}
 
 	public void moveToLineEnd(boolean extend) {
-		moveTo(Motion.lineEnd(document.text(), head()), extend);
+		moveTo(motion.lineEnd(document.text(), head()), extend);
 	}
 
 	public void moveToStart(boolean extend) {
@@ -110,7 +116,7 @@ public final class EditCommands {
 
 	/** Select the word at offset, as Motion.wordAt finds it. */
 	public void selectWord(int offset) {
-		Selection word = Motion.wordAt(document.text(), offset);
+		Selection word = motion.wordAt(document.text(), offset);
 		document.select(word.anchor(), word.head());
 	}
 
@@ -126,23 +132,25 @@ public final class EditCommands {
 	public void deleteBackward() {
 		int head = head();
 		if (!deleteSelection() && head > 0) {
-			document.type(Motion.previousChar(document.text(), head), head,
-					Text.EMPTY);
+			Text text = document.text();
+			int from = motion.previousChar(text, head);
+			document.type(from, motion.nextChar(text, from), Text.EMPTY);
 		}
 	}
 
 	public void deleteForward() {
 		int head = head();
 		if (!deleteSelection() && head < document.text().length()) {
-			document.type(head, Motion.nextChar(document.text(), head),
-					Text.EMPTY);
+			Text text = document.text();
+			int to = motion.nextChar(text, head);
+			document.type(motion.previousChar(text, to), to, Text.EMPTY);
 		}
 	}
 
 	public void deleteWordBackward() {
 		int head = head();
 		if (!deleteSelection()) {
-			document.replace(Motion.previousWord(document.text(), head), head,
+			document.replace(motion.previousWord(document.text(), head), head,
 					Text.EMPTY);
 		}
 	}
@@ -150,7 +158,7 @@ public final class EditCommands {
 	public void deleteWordForward() {
 		int head = head();
 		if (!deleteSelection()) {
-			document.replace(head, Motion.nextWord(document.text(), head),
+			document.replace(head, motion.nextWord(document.text(), head),
 					Text.EMPTY);
 		}
 	}
@@ -175,7 +183,7 @@ public final class EditCommands {
 		int start = selection.start();
 		if (text.lineOf(start) == text.lineOf(selection.end())) {
 			document.type(start, selection.end(), Text.of(level(
-					Motion.column(text, start, tabWidth))));
+					motion.column(text, start, tabWidth))));
 			return;
 		}
 		shiftLines(Text.of(level(0)));

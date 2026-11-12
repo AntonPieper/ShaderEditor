@@ -139,6 +139,48 @@ public class EditCommandsTest {
 	}
 
 	@Test
+	public void jamoOfOneSyllableAreOneChar() {
+		Document document = documentOf("|\u1100\u1161\u11a8");
+		EditCommands commands = new EditCommands(document);
+		commands.moveForward(false);
+		assertEquals(3, document.selection().head());
+		commands.deleteBackward();
+		assertEquals("", document.text().toString());
+	}
+
+	@Test
+	public void aJoinerDoesNotJoinALetterAfterIt() {
+		Document document = documentOf("a\u200db|");
+		new EditCommands(document).deleteBackward();
+		assertEquals("a\u200d", document.text().toString());
+	}
+
+	@Test
+	public void anOffsetInsideACharActsOnAllOfIt() {
+		for (String c : new String[]{"\ud83d\ude00", "e\u0301"}) {
+			String text = "x" + c + "y";
+			Document document = new Document(Text.of(text));
+			EditCommands commands = new EditCommands(document);
+			document.select(2, 2);
+			commands.deleteBackward();
+			assertEquals("xy", document.text().toString());
+			document = new Document(Text.of(text));
+			commands = new EditCommands(document);
+			document.select(2, 2);
+			commands.deleteForward();
+			assertEquals("xy", document.text().toString());
+			document = new Document(Text.of(text));
+			commands = new EditCommands(document);
+			document.select(2, 2);
+			commands.moveForward(false);
+			assertEquals(3, document.selection().head());
+			document.select(2, 2);
+			commands.moveBackward(false);
+			assertEquals(1, document.selection().head());
+		}
+	}
+
+	@Test
 	public void deleteForwardRemovesOneChar() {
 		Document document = documentOf("a|é\nb");
 		EditCommands commands = new EditCommands(document);
