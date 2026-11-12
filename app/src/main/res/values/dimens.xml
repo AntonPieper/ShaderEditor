@@ -1,6 +1,8 @@
 <resources>
 	<dimen name="editor_padding">8dp</dimen>
 	<dimen name="editor_text_size">12sp</dimen>
+	<dimen name="editor_caret_width">2dp</dimen>
+	<dimen name="editor_composing_underline">1dp</dimen>
 	<dimen name="menu_item_height">48dp</dimen>
 	<!-- menu_width = 5 * menu_item_height -->
 	<dimen name="menu_width">240dp</dimen>

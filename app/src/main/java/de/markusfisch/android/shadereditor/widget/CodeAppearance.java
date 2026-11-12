@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.widget;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.text.TextPaint;
@@ -33,6 +34,12 @@ final class CodeAppearance {
 	final int[] styleColors = new int[Style.values().length];
 	final int textColor;
 	final int lineNumberColor;
+	final int errorColor;
+	final int warningColor;
+	final int selectionColor;
+	final int caretColor;
+	final float caretWidth;
+	final float underline;
 	final float padding;
 	int tabWidth = 4;
 	// Of the font and its size.
@@ -52,6 +59,19 @@ final class CodeAppearance {
 		textColor = ContextCompat.getColor(context, R.color.editor_text);
 		lineNumberColor = ContextCompat.getColor(context,
 				R.color.editor_line_numbers);
+		errorColor = ContextCompat.getColor(context, R.color.syntax_error);
+		warningColor = ContextCompat.getColor(context,
+				R.color.syntax_warning);
+		caretColor = ContextCompat.getColor(context, R.color.editor_caret);
+		TypedArray a = context.obtainStyledAttributes(
+				new int[]{android.R.attr.textColorHighlight});
+		try {
+			selectionColor = a.getColor(0, 0x6633b5e5);
+		} finally {
+			a.recycle();
+		}
+		caretWidth = res.getDimension(R.dimen.editor_caret_width);
+		underline = res.getDimension(R.dimen.editor_composing_underline);
 		padding = res.getDimension(R.dimen.editor_padding);
 		paint.setTypeface(Typeface.MONOSPACE);
 		paint.setTextSize(res.getDimension(R.dimen.editor_text_size));
