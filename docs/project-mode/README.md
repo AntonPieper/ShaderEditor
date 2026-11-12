@@ -15,6 +15,7 @@ This folder is the design. The implementation plan, its ledger, and the prompts 
 | [DECISIONS.md](DECISIONS.md) | Why the contract has its shape, including the decisions of 2026-11-11 |
 | [LANGUAGE.md](LANGUAGE.md) | The editor's tokenizer, highlighting and completion, and the lexical layer shared with project mode |
 | [EDITOR.md](EDITOR.md) | The editor core: why the stock text widget cannot be fast, the document model, the editor view, keyboard input, measurements, and the path there |
+| [NAVIGATION.md](NAVIGATION.md) | How people get around once there are projects: personas, user stories, five compared navigation models, the recommended drawer, and the decisions taken |
 | [EXAMPLES.md](EXAMPLES.md) | The bundled examples and include library: purpose, structure, the set, quality bar |
 | [ACCEPTANCE.md](ACCEPTANCE.md) | Named, observable acceptance cases |
 | [examples/README.md](examples/README.md) | Small executable source fixtures and expected results |
