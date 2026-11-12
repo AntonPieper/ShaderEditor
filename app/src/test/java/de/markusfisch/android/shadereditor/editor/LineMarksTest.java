@@ -1,6 +1,8 @@
 package de.markusfisch.android.shadereditor.editor;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -17,11 +19,23 @@ public class LineMarksTest {
 	public void marksTheLinesOfDiagnostics() {
 		Document document = new Document(Text.of(TEXT));
 		LineMarks marks = new LineMarks(document);
-		marks.set(List.of(
+		marks.set(document.revision(), List.of(
 				warning(2), error(2), warning(4), error(0), error(6)));
 		assertEquals("_ E _ W _", marked(marks, document));
-		marks.set(List.of());
+		marks.set(document.revision(), List.of());
 		assertEquals("_ _ _ _ _", marked(marks, document));
+	}
+
+	@Test
+	public void diagnosticsOfAnOlderTextAreLeftOut() {
+		Document document = new Document(Text.of("a\nb"));
+		LineMarks marks = new LineMarks(document);
+		int revision = document.revision();
+		document.replace(0, 0, Text.of("z\n"));
+		assertFalse(marks.set(revision, List.of(error(2))));
+		assertEquals("_ _ _", marked(marks, document));
+		assertTrue(marks.set(document.revision(), List.of(error(3))));
+		assertEquals("_ _ E", marked(marks, document));
 	}
 
 	@Test
@@ -54,12 +68,31 @@ public class LineMarksTest {
 	}
 
 	@Test
-	public void goesWithItsLineWhenJoinedToTheOneBefore() {
+	public void isDroppedWhenItsLineIsJoinedToTheOneBefore() {
 		Document document = new Document(Text.of(TEXT));
-		LineMarks marks = marked(document, warning(2), error(3));
+		LineMarks marks = marked(document, error(3));
 		document.replace(5, 6, Text.EMPTY);
-		assertEquals("_ E _ _", marked(marks, document));
+		assertEquals("_ _ _ _", marked(marks, document));
 		assertEquals("a0\nb1c2\nd3\ne4", document.text().toString());
+	}
+
+	@Test
+	public void staysOnItsLineThroughAJoinAndItsUndo() {
+		Document document = new Document(Text.of("a\nb"));
+		LineMarks marks = marked(document, warning(1), error(2));
+		document.replace(1, 2, Text.EMPTY);
+		document.undo();
+		assertEquals("W _", marked(marks, document));
+	}
+
+	@Test
+	public void movesWhenAllInFrontOfItsLineIsRemoved() {
+		Document document = new Document(Text.of("a\nb"));
+		LineMarks marks = marked(document, error(2));
+		document.replace(0, 2, Text.EMPTY);
+		assertEquals("E", marked(marks, document));
+		document.undo();
+		assertEquals("_ E", marked(marks, document));
 	}
 
 	@Test
@@ -87,7 +120,7 @@ public class LineMarksTest {
 	private static LineMarks marked(Document document,
 			ProjectDiagnostic... diagnostics) {
 		LineMarks marks = new LineMarks(document);
-		marks.set(List.of(diagnostics));
+		marks.set(document.revision(), List.of(diagnostics));
 		return marks;
 	}
 
