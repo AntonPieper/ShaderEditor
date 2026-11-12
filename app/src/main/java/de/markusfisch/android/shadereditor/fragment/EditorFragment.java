@@ -1,7 +1,9 @@
 package de.markusfisch.android.shadereditor.fragment;
 
+import android.content.Context;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,9 +12,13 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
@@ -25,6 +31,11 @@ import de.markusfisch.android.shadereditor.widget.ShaderEditor;
 
 public class EditorFragment extends Fragment {
 	public static final String TAG = "EditorFragment";
+
+	private static final String DRAFT_KEY = "editor_draft_key";
+	// One thread for all drafts so that writes and deletes stay in order.
+	private static final ExecutorService draftExecutor =
+			Executors.newSingleThreadExecutor();
 
 	private View editorContainer;
 	private ShaderEditor shaderEditor;
@@ -40,6 +51,21 @@ public class EditorFragment extends Fragment {
 	private ShaderEditor.OnTextModifiedListener textModifiedListener;
 	@Nullable
 	private ShaderEditor.CodeCompletionListener codeCompletionListener;
+	@Nullable
+	private EditorDraft draft;
+	@Nullable
+	private DraftHolder draftHolder;
+
+	/**
+	 * The text at the last onSaveInstanceState(), kept in memory over a
+	 * configuration change so that a rotation reads no file.
+	 */
+	public static final class DraftHolder extends ViewModel {
+		@Nullable
+		private String key;
+		@Nullable
+		private String text;
+	}
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle state) {
@@ -64,12 +90,89 @@ public class EditorFragment extends Fragment {
 		});
 		setShowLineNumbers(ShaderEditorApp.preferences.showLineNumbers());
 		undoRedo = new UndoRedo(shaderEditor, ShaderEditorApp.editHistory);
-		if (pendingText != null) {
+		String restored = restoreDraft(state);
+		if (restored != null) {
+			// Before the view state restores the selection, and without
+			// clearing the undo history, like EditText's own restore did.
+			// The undo listener only starts in onResume().
+			shaderEditor.setTextHighlighted(restored);
+			pendingText = null;
+		} else if (pendingText != null) {
 			setText(pendingText);
 			pendingText = null;
 		}
 
 		return view;
+	}
+
+	@Override
+	public void onSaveInstanceState(@NonNull Bundle outState) {
+		super.onSaveInstanceState(outState);
+		if (shaderEditor == null) {
+			return;
+		}
+		DraftHolder holder = getDraftHolder();
+		CharSequence current = shaderEditor.getText();
+		String text = current == null ? "" : current.toString();
+		if (holder.key == null || !text.equals(holder.text)) {
+			holder.key = EditorDraft.newKey();
+			holder.text = text;
+			getDraft().save(holder.key, text);
+		}
+		outState.putString(DRAFT_KEY, holder.key);
+	}
+
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		if (getActivity() != null && getActivity().isFinishing()) {
+			// Nothing will be restored from it.
+			getDraft().delete();
+		}
+	}
+
+	@Nullable
+	private String restoreDraft(@Nullable Bundle state) {
+		String key = state == null ? null : state.getString(DRAFT_KEY);
+		if (key == null) {
+			return null;
+		}
+		DraftHolder holder = getDraftHolder();
+		if (key.equals(holder.key)) {
+			return holder.text;
+		}
+		// The process was killed in the background. This is one read of
+		// a small file, once, and the text must be in place before the
+		// first layout so that the scroll views restore their position.
+		StrictMode.ThreadPolicy policy = StrictMode.allowThreadDiskReads();
+		String text;
+		try {
+			text = getDraft().load(key);
+		} finally {
+			StrictMode.setThreadPolicy(policy);
+		}
+		if (text != null) {
+			holder.key = key;
+			holder.text = text;
+		}
+		return text;
+	}
+
+	@NonNull
+	private DraftHolder getDraftHolder() {
+		if (draftHolder == null) {
+			draftHolder = new ViewModelProvider(this).get(DraftHolder.class);
+		}
+		return draftHolder;
+	}
+
+	@NonNull
+	private EditorDraft getDraft() {
+		if (draft == null) {
+			Context context = requireContext().getApplicationContext();
+			draft = new EditorDraft(context::getNoBackupFilesDir, draftExecutor);
+		}
+		return draft;
 	}
 
 	public void setOnTextModifiedListener(@Nullable ShaderEditor.OnTextModifiedListener listener) {
