@@ -252,11 +252,13 @@ The converter is a pure function with no Android or GL dependency: given a DB sh
 | `uniform samplerCube name;` | The same directive; the stored atlas is repacked into the strip of section 4, pixel for pixel |
 | Settings on `backbuffer` | A source-less `se input` with the same options. Its magnification filter also becomes `present` on `se target`, because the old renderer scaled the output with it. |
 | Backbuffer preset `p:name` | `se target initial="..."` naming a generated shader that reproduces the old fit (scale to width, mirror-repeat vertically) with the image's dimensions written in |
-| Camera samplers, builtin uniforms, `FTIME_PERIOD` | Unchanged |
+| Camera samplers, builtin uniforms, `FTIME_PERIOD` (`0` still makes `ftime` NaN) | Unchanged. When a shader declares both camera samplers, the one declared first in the text gets the camera, as before. |
+| `uniform sampler2D name;` matching a library texture whose name is a builtin uniform's (`time`, `mouse`, …) | The uniform is renamed `name_texture`, or `name_texture2`, … when that name is taken, in every use outside comments, and gets the directive of the first row. Compiler messages use the new name. |
+| Characters other than printable ASCII, tab and line feed | Removed before conversion, as the old renderer removed them before it read the text |
 
 Every row is exact. A sampler whose name matches no library texture stays without a provider and gets the ordinary warning of section 3.2.
 
-"Exact" includes the effects of how the old renderer found declarations, wherever they change what a shader shows. It matched a pattern against the raw text, comments included, took the first match on each line, considered at most 32 samplers, and when a name matched more than once applied each match's settings in order, so the last one won. A commented-out declaration therefore still chose the settings, and bound the texture, of a real declaration of the same name that the pattern itself did not match (for example one with a precision qualifier). The converter reproduces these outcomes on the real declaration. The library texture names it writes become file names; a name that cannot be a file name gets a safe one, with a warning.
+"Exact" includes the effects of how the old renderer found declarations, wherever they change what a shader shows. It matched a pattern against the raw text, comments included, took the first match on each line, considered at most 32 samplers besides `backbuffer` (and read no `backbuffer` settings after the 32nd), and when a name matched more than once applied each match's settings in order, so the last one won. A commented-out declaration therefore still chose the settings, and bound the texture, of a real declaration of the same name that the pattern itself did not match (for example one with a precision qualifier). The converter reproduces these outcomes on the real declaration. The library texture names it writes become file names; a name that cannot be a file name gets a safe one, with a warning.
 
 A few old behaviors have no exact form. Each was an accident of the old renderer, not a feature; the converter still produces a shader that compiles, and reports a warning that names what changed:
 
@@ -266,12 +268,15 @@ A few old behaviors have no exact form. Each was an accident of the old renderer
 | `discard`. The old renderer never cleared, so a discarded pixel showed what that buffer held two frames earlier. | Opaque black, as section 5 defines for every pass |
 | Different minification and magnification filters on `backbuffer`, at a quality above 1, where the output is scaled down. | `present` uses one filter in both directions |
 | `backbuffer` with `repeat` wrap and linear magnification: edge pixels of the output blended with the opposite edge. Mirrored repeat is unaffected. | Edges are clamped |
-| A sampler declared inside a conditional block. | The declaration moves in front of the outermost block; if the name is declared more than once it stays as written, without its texture |
+| A sampler declared inside a conditional block. | The declaration moves in front of the outermost block; if the name is declared more than once, or the declaration spans several lines, it stays as written, without its texture |
 | A library texture named like a camera sampler, on a sampler that is not a camera. | Not bound |
 | A sampler declaration produced by a macro (`#define DECL uniform sampler2D noise;`). The old pattern found the name in the macro body. | The source is left as written and the texture is not bound |
-| A backbuffer preset image so wide that its tile, scaled to the target width, is less than a pixel high. The old renderer then used no preset. | Opaque black |
+| A sampler whose name the old pattern last matched with another sampler type, for example `uniform sampler2D noise;` and then `// uniform samplerCube noise;`. The old renderer bound a texture of the other type, so the sampler read whatever its texture unit held from earlier drawing. | Not bound: it reads black |
+| A camera sampler that the old pattern found more than once, comments included. The old renderer gave the camera to the first binding and replaced it with an empty one. | The camera image |
 
-Two differences carry no warning, because one would appear on nearly every shader of that kind: a cubemap's wrap setting is dropped (it only ever affected face seams on GLES2), and a backbuffer preset is resampled once per pixel instead of being pre-scaled, which can differ by a fraction of a pixel.
+Three differences carry no warning, because one would appear on nearly every shader of that kind or cannot be known when converting: a cubemap's wrap setting is dropped (it only ever affected face seams on GLES2); a backbuffer preset is resampled once per pixel instead of being pre-scaled, which can differ by a fraction of a pixel; and a preset image so wide that its tile, scaled to the target width and rounded, is zero pixels high starts as opaque black, where the old renderer used no preset (whether that happens depends on the render width).
+
+Text in a database shader that is project syntax is read as project syntax: an `#include`, a `#pragma se` line or a `#pragma once` that was a driver error or an ignored pragma before now gets the project format's own error or warning, which names it. On a GLES2 context, `#version 300 es` is a capability error reported before compilation instead of a driver error.
 
 ### 12.2 Three phases
 
