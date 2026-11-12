@@ -298,12 +298,14 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Look for changes made elsewhere: keep the drafts, find conflicts,
-	 * read open files without unsaved text again when they changed, and
-	 * find what runs. Return the files read again.
+	 * Look for changes made elsewhere: keep the drafts, forget what
+	 * listings told, find conflicts, read open files without unsaved
+	 * text again when they changed, and find what runs. Return the files
+	 * read again.
 	 */
 	public Set<ProjectPath> refresh() {
 		persist();
+		store.forgetListings();
 		session.refresh();
 		Map<ProjectPath, String> clean = new HashMap<>();
 		synchronized (this) {

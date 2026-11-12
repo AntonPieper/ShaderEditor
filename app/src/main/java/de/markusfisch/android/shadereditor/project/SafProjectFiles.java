@@ -7,18 +7,25 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import de.markusfisch.android.shadereditor.project.DocumentResolver.Document;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 
 /**
  * A project root that is a folder granted through the Storage Access
- * Framework. Opening it reads nothing. A path resolves by listing each
- * folder on the way and matching names exactly in Unicode NFC; two
- * entries with one name fail. A change happens only where the grant
- * allows writing and the document flags offer it; on a root that offers
- * no change at all, every change is unsupported. Revisions are content
+ * Framework. Opening it reads nothing. A path resolves by matching names
+ * exactly in Unicode NFC in the listings of the folders on the way; two
+ * entries with one name fail. A listing is kept, so opening what was
+ * listed is one call, until {@link #forgetListings()}, a rename or a
+ * delete; a name it lacks and a document that is gone are looked up
+ * again. A document renamed elsewhere can be found under its old name
+ * until then. Changes always look up their path again. A change
+ * happens only where the grant allows writing and the document flags
+ * offer it; on a root that offers no change at all, every change is
+ * unsupported. Revisions are content
  * digests, because provider metadata need not change with the bytes.
  * Checking a revision and writing are not one step against other
  * writers. Use it off the main thread.
@@ -64,6 +71,15 @@ public final class SafProjectFiles implements ProjectFiles {
 		}
 	}
 
+	// What the last listing of a folder found: the folder, and its
+	// children by name, TWICE for a name that two children have.
+	private record Listed(Document folder, Map<String, Document> children) {
+	}
+
+	private static final Document TWICE = new Document("", "", false, 0);
+
+	// By the path of the folder, "" for the root.
+	private final Map<String, Listed> listings = new HashMap<>();
 	private final DocumentResolver resolver;
 	private final String rootId;
 	private final boolean writable;
@@ -106,7 +122,7 @@ public final class SafProjectFiles implements ProjectFiles {
 	public Offers offers(ProjectPath path) {
 		try {
 			Document document = path != null
-					? find(start(), segments(path))
+					? known(segments(path))
 					: resolver.document(rootId);
 			return document != null
 					? Offers.of(document, writable)
@@ -118,43 +134,66 @@ public final class SafProjectFiles implements ProjectFiles {
 
 	@Override
 	public Read read(ProjectPath path) {
-		try {
-			Document file = find(start(), segments(path));
-			if (file == null) {
-				return null;
-			} else if (file.folder()) {
-				return new Failed("it is a folder");
+		// A kept listing may name a document that is gone.
+		for (boolean retry = remembers(); ; retry = false) {
+			try {
+				Document file = known(segments(path));
+				if (file == null) {
+					return null;
+				} else if (file.folder()) {
+					return new Failed("it is a folder");
+				}
+				byte[] bytes = resolver.read(file.id());
+				return new Content(bytes, revision(bytes));
+			} catch (IOException | RuntimeException e) {
+				if (!retry) {
+					return new Failed(reason(e, LOST_FOLDER));
+				}
+				forgetListings();
+			} catch (OutOfMemoryError e) {
+				return new Failed("it is too large");
 			}
-			byte[] bytes = resolver.read(file.id());
-			return new Content(bytes, revision(bytes));
-		} catch (IOException | RuntimeException e) {
-			return new Failed(reason(e, LOST_FOLDER));
-		} catch (OutOfMemoryError e) {
-			return new Failed("it is too large");
 		}
 	}
 
 	@Override
 	public Listing list(ProjectPath folder) {
-		try {
-			Document dir = folder != null
-					? find(start(), segments(folder))
-					: start();
-			if (dir == null) {
-				return null;
-			} else if (!dir.folder()) {
-				return new Failed("it is not a folder");
+		for (boolean retry = remembers(); ; retry = false) {
+			try {
+				return listOnce(folder != null
+						? segments(folder)
+						: new String[0]);
+			} catch (IOException | RuntimeException e) {
+				if (!retry) {
+					return new Failed(reason(e, LOST_FOLDER));
+				}
+				forgetListings();
 			}
-			List<Entry> entries = new ArrayList<>();
-			for (Document child : resolver.children(dir.id())) {
-				entries.add(new Entry(nfc(child.name()), child.folder(),
-						child.folder() ? UNKNOWN : child.size(),
-						child.modified()));
-			}
-			return new Entries(entries);
-		} catch (IOException | RuntimeException e) {
-			return new Failed(reason(e, LOST_FOLDER));
 		}
+	}
+
+	@Override
+	public void forgetListings() {
+		synchronized (listings) {
+			listings.clear();
+		}
+	}
+
+	private Listing listOnce(String[] segments) throws IOException {
+		Document dir = known(segments);
+		if (dir == null) {
+			return null;
+		} else if (!dir.folder()) {
+			return new Failed("it is not a folder");
+		}
+		List<Entry> entries = new ArrayList<>();
+		for (Document child : listChildren(key(segments, segments.length),
+				dir)) {
+			entries.add(new Entry(nfc(child.name()), child.folder(),
+					child.folder() ? UNKNOWN : child.size(),
+					child.modified()));
+		}
+		return new Entries(entries);
 	}
 
 	@Override
@@ -209,6 +248,8 @@ public final class SafProjectFiles implements ProjectFiles {
 			return new Done(null);
 		} catch (IOException | RuntimeException e) {
 			return refused(e);
+		} finally {
+			forgetListings();
 		}
 	}
 
@@ -252,6 +293,8 @@ public final class SafProjectFiles implements ProjectFiles {
 			return new Done(null);
 		} catch (IOException | RuntimeException e) {
 			return refused(e);
+		} finally {
+			forgetListings();
 		}
 	}
 
@@ -269,6 +312,8 @@ public final class SafProjectFiles implements ProjectFiles {
 			return new Done(null);
 		} catch (IOException | RuntimeException e) {
 			return refused(e);
+		} finally {
+			forgetListings();
 		}
 	}
 
@@ -318,6 +363,85 @@ public final class SafProjectFiles implements ProjectFiles {
 			throw new Problem(Refusal.UNSUPPORTED, "this folder is read-only");
 		}
 		return root;
+	}
+
+	private boolean remembers() {
+		synchronized (listings) {
+			return !listings.isEmpty();
+		}
+	}
+
+	// Return the document of segments as the kept listings tell it,
+	// listing the folders on the way they do not tell about, or null.
+	private Document known(String[] segments) throws IOException {
+		Document document = start();
+		int i = 0;
+		synchronized (listings) {
+			for (int j = segments.length - 1; j > 0; --j) {
+				Listed listed = listings.get(key(segments, j));
+				if (listed != null) {
+					document = listed.folder();
+					i = j;
+					break;
+				}
+			}
+		}
+		for (; i < segments.length; ++i) {
+			if (!document.folder()) {
+				return null;
+			}
+			String key = key(segments, i);
+			Listed listed;
+			synchronized (listings) {
+				listed = listings.get(key);
+			}
+			Document child = listed != null
+					? listed.children().get(segments[i])
+					: null;
+			if (child == null) {
+				listChildren(key, document);
+				synchronized (listings) {
+					listed = listings.get(key);
+				}
+				child = listed != null
+						? listed.children().get(segments[i])
+						: null;
+			}
+			if (child == TWICE) {
+				throw new Problem(Refusal.FAILED,
+						"two entries are named " + segments[i]);
+			} else if (child == null) {
+				return null;
+			}
+			document = child;
+		}
+		return document;
+	}
+
+	// List folder, the folder at key, and keep what it found.
+	private List<Document> listChildren(String key, Document folder)
+			throws IOException {
+		List<Document> children = resolver.children(folder.id());
+		Map<String, Document> byName = new HashMap<>();
+		for (Document child : children) {
+			String name = nfc(child.name());
+			byName.put(name, byName.containsKey(name) ? TWICE : child);
+		}
+		synchronized (listings) {
+			listings.put(key, new Listed(folder, byName));
+		}
+		return children;
+	}
+
+	private static String key(String[] segments, int count) {
+		StringBuilder key = new StringBuilder();
+		for (int i = 0; i < count; ++i) {
+			if (i > 0) {
+				key.append('/');
+			}
+			key.append(segments[i]);
+		}
+		return key.toString();
 	}
 
 	private Document find(Document root, String[] segments)

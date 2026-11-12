@@ -118,6 +118,17 @@ public class SafProjectFilesChangeTest {
 	}
 
 	@Test
+	public void renamingForgetsTheListings() {
+		documents.put("a.glsl", "a");
+		files.list(null);
+
+		files.rename(path("a.glsl"), path("b.glsl"));
+
+		assertNull(files.read(path("a.glsl")));
+		assertEquals("a", read("b.glsl"));
+	}
+
+	@Test
 	public void renamesAndMovesFilesAndFolders() {
 		documents.put("a.glsl", "a");
 		documents.put("b.glsl", "b");

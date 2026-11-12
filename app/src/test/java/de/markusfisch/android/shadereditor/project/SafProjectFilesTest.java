@@ -61,6 +61,46 @@ public class SafProjectFilesTest {
 	}
 
 	@Test
+	public void openingAListedFileIsOneCall() {
+		FakeDocuments.Node main = documents.put("a/b/main.glsl", "main");
+		FakeDocuments.Node c = documents.folder("a/b/c");
+		files.list(null);
+		files.list(path("a"));
+		files.list(path("a/b"));
+		documents.calls.clear();
+
+		assertEquals("main", read(files, "a/b/main.glsl"));
+		files.list(path("a/b/c"));
+
+		assertEquals(List.of("read " + main.id, "children " + c.id),
+				documents.calls);
+	}
+
+	@Test
+	public void findsAFileReplacedSinceTheListing() {
+		FakeDocuments.Node old = documents.put("lib/common.glsl", "old");
+		files.list(path("lib"));
+		documents.nodes.remove(old.id);
+		documents.put("lib/common.glsl", "new");
+		documents.put("lib/added.glsl", "added");
+
+		assertEquals("new", read(files, "lib/common.glsl"));
+		assertEquals("added", read(files, "lib/added.glsl"));
+	}
+
+	@Test
+	public void forgettingListingsFindsRenamesMadeElsewhere() {
+		FakeDocuments.Node main = documents.put("main.glsl", "main");
+		files.list(null);
+		main.name = "renamed.glsl";
+
+		files.forgetListings();
+
+		assertNull(files.read(path("main.glsl")));
+		assertEquals("main", read(files, "renamed.glsl"));
+	}
+
+	@Test
 	public void revisionChangesWithTheBytes() {
 		documents.put("a.glsl", "same");
 		documents.put("b.glsl", "same");

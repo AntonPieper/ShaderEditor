@@ -305,6 +305,16 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void refreshForgetsWhatListingsTold() {
+		FailingFiles store = new FailingFiles(new DirectoryProjectFiles(root));
+		OpenProject project = open(store);
+
+		project.refresh();
+
+		assertEquals(1, store.forgotten);
+	}
+
+	@Test
 	public void listsOneFolderAtATimeFoldersFirst() throws IOException {
 		write("zeta.glsl", "z");
 		write("Alpha.png", "p");
@@ -438,6 +448,7 @@ public class OpenProjectTest {
 		private final ProjectFiles files;
 		private final List<ProjectPath> listed = new ArrayList<>();
 		private ProjectPath failing;
+		private int forgotten;
 
 		private FailingFiles(ProjectFiles files) {
 			this.files = files;
@@ -452,6 +463,11 @@ public class OpenProjectTest {
 		public Listing list(ProjectPath folder) {
 			listed.add(folder);
 			return files.list(folder);
+		}
+
+		@Override
+		public void forgetListings() {
+			++forgotten;
 		}
 
 		@Override
