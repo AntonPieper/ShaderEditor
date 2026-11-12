@@ -20,13 +20,14 @@ import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectLimits;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 // A prepared single-pass plan linked in the current context, with the
 // images its inputs read and how each input samples its image. It is
 // ready to draw once every image is uploaded, and fails as a whole when
-// one cannot be; it owns its GL objects and is built again from the plan
-// in a new context.
+// one cannot be; it owns its GL objects, its target among them, and is
+// built again from the plan in a new context.
 final class PlanRuntime implements EngineBuild {
 	@NonNull
 	private final GlProgram program;
@@ -37,9 +38,13 @@ final class PlanRuntime implements EngineBuild {
 	@NonNull
 	private final Preparation preparation;
 	@NonNull
+	private final RenderPlan.Pass pass;
+	@NonNull
 	private final PlanBindings bindings;
+	// Whether the pass keeps its previous frame.
+	private final boolean history;
 	private final int glesVersion;
-	private final int backBufferUnit;
+	private final FullScreenQuad quad = new FullScreenQuad();
 	// Told with the outcome, whatever it is.
 	@NonNull
 	private final List<ProjectDiagnostic> warnings = new ArrayList<>();
@@ -52,6 +57,10 @@ final class PlanRuntime implements EngineBuild {
 	// Per image binding on a GLES3 context, else null.
 	@Nullable
 	private int[] samplers;
+	@Nullable
+	private PassTarget target;
+	// Whether the target was made since the last frame.
+	private boolean reset;
 	private boolean complete;
 	private boolean failed;
 
@@ -67,9 +76,10 @@ final class PlanRuntime implements EngineBuild {
 		this.program = program;
 		this.fTimeMax = fTimeMax;
 		this.glesVersion = glesVersion;
-		var pass = preparation.plan().passes().get(preparation.plan().output());
+		var plan = preparation.plan();
+		pass = plan.passes().get(plan.output());
 		bindings = PlanBindings.of(pass, program.getSamplers());
-		backBufferUnit = program.getTextureUnit(UniformTable.BACKBUFFER);
+		history = pass.history() || !bindings.history.isEmpty();
 		warnings.addAll(preparation.diagnostics());
 		warnings.addAll(bindings.warnings);
 		var sampler = bindings.camera;
@@ -254,7 +264,8 @@ final class PlanRuntime implements EngineBuild {
 		return camera;
 	}
 
-	// The pipeline's two targets, which it draws into in turn.
+	// Its own target at the render size, with a second texture when the
+	// pass reads its previous frame; the pipeline's targets go.
 	@Override
 	public boolean createTargets(
 			@NonNull ShaderRenderPipeline pipeline,
@@ -262,56 +273,60 @@ final class PlanRuntime implements EngineBuild {
 			int height,
 			@Nullable Bitmap seed,
 			@NonNull List<ProjectDiagnostic> errors) {
-		var targets = pipeline.createTargets(width, height, Sampling.PASS,
-				seed, errors);
-		if (targets == null) {
+		if (target != null) {
+			target.release();
+			target = null;
+		}
+		// The render size is already scaled by the quality.
+		var size = RenderPlan.Size.project(width, height, 1,
+				device.getMaxTextureSize());
+		if (!size.isSuccess()) {
+			errors.add(size.diagnostic());
 			return false;
 		}
-		pipeline.useTargets(targets);
+		target = PassTarget.create(device, pass.target(), size.value(),
+				history, errors);
+		if (target == null) {
+			return false;
+		}
+		pipeline.releaseTargets();
+		reset = true;
 		return true;
 	}
 
 	@Override
 	public boolean hasTargets(@NonNull ShaderRenderPipeline pipeline) {
-		return pipeline.hasTargets();
+		return target != null;
 	}
 
-	// Binds what each input reads, sampled as it asks, and draws into the
-	// front target, with the back one bound as backbuffer.
+	// Cleared to opaque black before every draw, with its previous frame
+	// when that is read, and presented with nearest filtering.
 	@Override
 	public void draw(
 			@NonNull ShaderRenderPipeline pipeline,
 			@NonNull ActiveBuiltins builtins,
 			@NonNull FrameInputs frame,
 			long now) {
-		builtins.write(frame, now);
-		device.bindEmptyTextures(program);
-		device.bindTexture(backBufferUnit, pipeline.getBackTexture());
-		var images = bindings.images;
-		for (int i = 0; i < images.size(); ++i) {
-			var binding = images.get(i);
-			var texture = textures.get(binding.texture());
-			int unit = binding.sampler().unit();
-			if (texture == null) {
-				continue;
-			} else if (samplers != null) {
-				device.bindTexture(unit, texture);
-				GLES30.glBindSampler(unit, samplers[i]);
-			} else {
-				device.applySampling(unit, texture, binding.sampling());
+		var target = this.target;
+		if (target == null) {
+			return;
+		}
+		var steps = PassSchedule.frame(reset, history);
+		reset = false;
+		for (int i = 0, n = steps.size(); i < n; ++i) {
+			switch (steps.get(i)) {
+				case CLEAR_HISTORY -> target.clearHistory();
+				case CLEAR -> target.clear();
+				case DRAW -> drawPass(target, builtins, frame, now);
+				case SWAP -> target.swap();
+				case PRESENT -> {
+					var output = target.completed();
+					device.applySampling(output, Sampling.PASS);
+					pipeline.present(output, frame.surfaceWidth,
+							frame.surfaceHeight);
+				}
 			}
 		}
-		if (camera != null && bindings.camera != null) {
-			device.bindTexture(bindings.camera.unit(), camera.texture());
-		}
-		pipeline.renderMainPass(program);
-		if (samplers != null) {
-			for (var binding : images) {
-				GLES30.glBindSampler(binding.sampler().unit(), 0);
-			}
-		}
-		pipeline.renderSurfacePass(frame.surfaceWidth, frame.surfaceHeight);
-		pipeline.swapTargets();
 	}
 
 	@Override
@@ -335,6 +350,10 @@ final class PlanRuntime implements EngineBuild {
 			GLES30.glDeleteSamplers(samplers.length, samplers, 0);
 			samplers = null;
 		}
+		if (target != null) {
+			target.release();
+			target = null;
+		}
 	}
 
 	@Override
@@ -349,6 +368,49 @@ final class PlanRuntime implements EngineBuild {
 			camera.setTexture(null);
 		}
 		samplers = null;
+		if (target != null) {
+			target.discard();
+			target = null;
+		}
+	}
+
+	// Binds what each input reads, sampled as it asks, and the previous
+	// frame.
+	private void drawPass(
+			@NonNull PassTarget target,
+			@NonNull ActiveBuiltins builtins,
+			@NonNull FrameInputs frame,
+			long now) {
+		builtins.write(frame, now);
+		device.bindEmptyTextures(program);
+		var images = bindings.images;
+		for (int i = 0; i < images.size(); ++i) {
+			var binding = images.get(i);
+			var texture = textures.get(binding.texture());
+			int unit = binding.sampler().unit();
+			if (texture == null) {
+				continue;
+			} else if (samplers != null) {
+				device.bindTexture(unit, texture);
+				GLES30.glBindSampler(unit, samplers[i]);
+			} else {
+				device.applySampling(unit, texture, binding.sampling());
+			}
+		}
+		for (var binding : bindings.history) {
+			device.applySampling(binding.sampler().unit(), target.completed(),
+					binding.sampling());
+		}
+		if (camera != null && bindings.camera != null) {
+			device.bindTexture(bindings.camera.unit(), camera.texture());
+		}
+		device.useProgram(program);
+		quad.draw();
+		if (samplers != null) {
+			for (var binding : images) {
+				GLES30.glBindSampler(binding.sampler().unit(), 0);
+			}
+		}
 	}
 
 	// Cuts the faces out of the strip one at a time, so only one face is

@@ -69,6 +69,9 @@ final class ShaderRenderPipeline {
 	private GlTexture2D thumbnailTexture;
 	@Nullable
 	private SurfaceProgram surfaceProgram;
+	// What the surface shows, for thumbnails.
+	@Nullable
+	private GlTexture2D presented;
 
 	ShaderRenderPipeline(@NonNull GlDevice device) {
 		this.device = device;
@@ -105,6 +108,7 @@ final class ShaderRenderPipeline {
 
 	void discardContextResources() {
 		surfaceProgram = null;
+		presented = null;
 		thumbnailFramebuffer = null;
 		thumbnailTexture = null;
 		discardTargets();
@@ -167,11 +171,16 @@ final class ShaderRenderPipeline {
 	}
 
 	void renderSurfacePass(int surfaceWidth, int surfaceHeight) {
-		drawSurface(
-				targetTextures[frontTarget],
-				surfaceWidth,
-				surfaceHeight,
-				null);
+		present(targetTextures[frontTarget], surfaceWidth, surfaceHeight);
+	}
+
+	// Stretches the texture over the surface, sampled as it is set up.
+	void present(
+			@Nullable GlTexture2D texture,
+			int surfaceWidth,
+			int surfaceHeight) {
+		presented = texture;
+		drawSurface(texture, surfaceWidth, surfaceHeight, null);
 	}
 
 	@Nullable
@@ -185,15 +194,16 @@ final class ShaderRenderPipeline {
 		backTarget = target;
 	}
 
-	// Of the frame drawn last, after swapTargets().
+	// Of the frame presented last.
 	@Nullable
 	byte[] captureThumbnail() {
-		if (thumbnailFramebuffer == null || targetTextures[backTarget] == null) {
+		if (thumbnailFramebuffer == null || presented == null ||
+				!presented.isValid()) {
 			return null;
 		}
 
 		drawSurface(
-				targetTextures[backTarget],
+				presented,
 				(int) thumbnailResolution[0],
 				(int) thumbnailResolution[1],
 				thumbnailFramebuffer);
