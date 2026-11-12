@@ -149,6 +149,11 @@ final class ShaderBuild implements EngineBuild {
 		return source.getBackBufferParameters().hasPreset();
 	}
 
+	@Override
+	public boolean hasFailed() {
+		return false;
+	}
+
 	@Nullable
 	@Override
 	public ShaderTextureResources.SamplerTextureBinding getCameraBinding() {

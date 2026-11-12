@@ -120,6 +120,22 @@ public class ShaderSwapTest {
 	}
 
 	@Test
+	public void aWaitingBuildThatFailsIsReleasedAndTheCurrentKeepsDrawing() {
+		var a = buildAndSwap("a");
+		swap.offer("b");
+		swap.take();
+		var b = new FakeBuild("b", false);
+		swap.built(b);
+		swap.nextFailed();
+		assertTrue(b.released);
+		assertNull(swap.next());
+		assertNull(swap.swapIfComplete());
+		assertSame(a, swap.current());
+		assertFalse(a.released);
+		assertEquals(2, swap.shown());
+	}
+
+	@Test
 	public void contextLossDiscardsBuildsAndBuildsTheNewestAgain() {
 		var a = buildAndSwap("a");
 		swap.offer("b");

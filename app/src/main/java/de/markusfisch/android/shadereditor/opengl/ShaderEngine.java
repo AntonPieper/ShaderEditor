@@ -250,7 +250,11 @@ public final class ShaderEngine {
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
 		var textures = next.upload(errors);
-		if (shaders.swapIfComplete() == null) {
+		if (next.hasFailed()) {
+			shaders.nextFailed();
+			submitErrors(errors);
+			return;
+		} else if (shaders.swapIfComplete() == null) {
 			return;
 		}
 		thumbnails.onFramesLost();
