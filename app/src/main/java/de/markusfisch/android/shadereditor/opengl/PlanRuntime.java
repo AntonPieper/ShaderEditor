@@ -265,28 +265,37 @@ final class PlanRuntime implements ShaderSwap.Build {
 					}
 				}
 				textures.put(key, texture);
+				if (message == null && needsMipmaps(key)) {
+					message = device.generateMipmap(texture);
+				}
 				if (message != null) {
 					errors.add(locate(key.image(), key.image() + ": " + message));
-				} else if (needsMipmaps(key)) {
-					device.generateMipmap(texture);
 				}
 			}
 		}
 		images.recycle();
+		for (int i = 0; glesVersion >= 3 && errors.isEmpty() &&
+				i < passes.size(); ++i) {
+			var linked = passes.get(i);
+			var message = linked.createSamplers();
+			if (message != null) {
+				errors.add(new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR,
+						"Cannot make the samplers of the inputs: " + message,
+						linked.pass.target().file(), 0));
+			}
+		}
 		diagnostics.addAll(warnings);
 		diagnostics.addAll(errors);
 		if (!errors.isEmpty()) {
 			failed = true;
 			return;
 		}
-		for (int i = 0; glesVersion >= 3 && i < passes.size(); ++i) {
-			passes.get(i).createSamplers();
-		}
 		complete = true;
 	}
 
 	// Whether it can never complete, so it must not replace the current
-	// build: an image did not decode or upload.
+	// build: an image did not decode, upload or get its mipmaps, or the
+	// samplers of its inputs could not be made.
 	boolean hasFailed() {
 		return failed;
 	}
@@ -322,6 +331,11 @@ final class PlanRuntime implements ShaderSwap.Build {
 			errors.add(!size.isSuccess()
 					? size.diagnostic()
 					: initialSize.diagnostic());
+			return ShaderSwap.Allocation.INVALID;
+		}
+		var sampling = bindings.checkHistory(size.value(), glesVersion);
+		if (!sampling.isEmpty()) {
+			errors.addAll(sampling);
 			return ShaderSwap.Allocation.INVALID;
 		}
 		target = PassTarget.create(device, pass.target(), size.value(),

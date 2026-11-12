@@ -215,6 +215,30 @@ public class PlanBindingsTest {
 				"uniform samplerExternalOES other;\n" + MAIN).camera);
 	}
 
+	// A converted backbuffer with wrap=repeat on a phone-sized target.
+	@Test
+	public void repeatingHistoryOfATargetThatIsNotAPowerOfTwoNeedsGles3() {
+		var repeat = bindings(lines(
+				"#pragma se input wrap=repeat",
+				"uniform sampler2D backbuffer;",
+				MAIN), "backbuffer");
+		var errors = repeat.checkHistory(new Size(300, 200), 2);
+		assertEquals(1, errors.size());
+		assertEquals(Severity.ERROR, errors.get(0).severity());
+		assertEquals(1, errors.get(0).line());
+		assertTrue(errors.get(0).message(),
+				errors.get(0).message().contains("300x200"));
+		assertTrue(repeat.checkHistory(new Size(256, 128), 2).isEmpty());
+		assertTrue(repeat.checkHistory(new Size(300, 200), 3).isEmpty());
+		var plain = bindings(lines("uniform sampler2D backbuffer;", MAIN),
+				"backbuffer");
+		assertEquals(1, plain.history.size());
+		assertTrue(plain.checkHistory(new Size(300, 200), 2).isEmpty());
+		var clamped = bindings(lines("#pragma se input filter=linear",
+				"uniform sampler2D backbuffer;", MAIN), "backbuffer");
+		assertTrue(clamped.checkHistory(new Size(300, 200), 2).isEmpty());
+	}
+
 	// The old renderer gave the camera to the first one declared.
 	@Test
 	public void ofTwoCamerasTheOneDeclaredFirstGetsTheCamera() {
