@@ -1,7 +1,6 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import android.Manifest;
-import android.opengl.GLES11Ext;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -10,6 +9,11 @@ import androidx.camera.core.CameraSelector;
 import de.markusfisch.android.shadereditor.hardware.CameraListener;
 
 final class CameraSource implements UniformSource {
+	// The texture the camera streams into, for the camera sampler of
+	// this name.
+	record Binding(@NonNull String sampler, @NonNull GlExternalTexture texture) {
+	}
+
 	static final Key<CameraSource> KEY = CameraSource::new;
 
 	final float[] orientation = new float[4];
@@ -63,14 +67,11 @@ final class CameraSource implements UniformSource {
 		}
 
 		var texture = binding.texture();
-		if (texture == null ||
-				!texture.isValid() ||
-				texture.getTarget() != GLES11Ext.GL_TEXTURE_EXTERNAL_OES) {
+		if (!texture.isValid()) {
 			return;
 		}
 
-		int lensFacing = UniformTable.CAMERA_BACK.equals(
-				binding.sampler().name())
+		int lensFacing = UniformTable.CAMERA_BACK.equals(binding.sampler())
 				? CameraSelector.LENS_FACING_BACK
 				: CameraSelector.LENS_FACING_FRONT;
 		listener = new CameraListener(

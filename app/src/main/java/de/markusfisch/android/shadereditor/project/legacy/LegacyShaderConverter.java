@@ -125,7 +125,7 @@ public final class LegacyShaderConverter {
 		}
 	}
 
-	// The old renderer's sampler pattern and limit, see ShaderSourcePreparer.
+	// The old renderer's sampler pattern and limit.
 	private static final Pattern SAMPLER = Pattern.compile(
 			"uniform[ \t]+sampler(2D|Cube|ExternalOES)+[ \t]+" +
 					"([a-zA-Z0-9_]+);");

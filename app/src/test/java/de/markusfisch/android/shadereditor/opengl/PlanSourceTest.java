@@ -34,7 +34,7 @@ public class PlanSourceTest {
 						"float g() {",
 						"\treturn oops;",
 						"}")));
-		var mapping = ShaderLineMapping.withSourceMap(source.sourceMap());
+		var mapping = source.sourceMap();
 
 		var error = DriverLog.parse("ERROR: 0:" +
 				lineOf(source.fragment(), "\treturn oops;") +

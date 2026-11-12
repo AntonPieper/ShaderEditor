@@ -26,7 +26,7 @@ final class UniformSources {
 	@Nullable
 	private SensorRegistry sensors;
 	@Nullable
-	private ShaderTextureResources.SamplerTextureBinding cameraBinding;
+	private CameraSource.Binding cameraBinding;
 	private int deviceRotation;
 	private int renderWidth;
 	private int renderHeight;
@@ -113,12 +113,11 @@ final class UniformSources {
 	}
 
 	@Nullable
-	ShaderTextureResources.SamplerTextureBinding getCameraBinding() {
+	CameraSource.Binding getCameraBinding() {
 		return cameraBinding;
 	}
 
-	void setCameraBinding(
-			@Nullable ShaderTextureResources.SamplerTextureBinding cameraBinding) {
+	void setCameraBinding(@Nullable CameraSource.Binding cameraBinding) {
 		if (cameraBinding != this.cameraBinding) {
 			this.cameraBinding = cameraBinding;
 			// A running camera streams into the texture of the last binding.

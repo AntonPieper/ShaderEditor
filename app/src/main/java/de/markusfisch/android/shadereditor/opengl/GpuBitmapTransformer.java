@@ -301,7 +301,7 @@ public final class GpuBitmapTransformer {
 			GlProgramBuildResult result = device.createProgram(
 					VERTEX_SHADER,
 					FRAGMENT_SHADER,
-					ShaderLineMapping.identity());
+					null);
 			if (!result.succeeded() || result.getProgram() == null) {
 				List<ProjectDiagnostic> log = result.getInfoLog();
 				throw new IllegalStateException(

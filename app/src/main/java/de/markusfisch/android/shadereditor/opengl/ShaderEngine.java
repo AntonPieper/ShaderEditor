@@ -19,9 +19,8 @@ import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
-import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 
-// The only class a host talks to. Hosts set the shader and post input
+// The only class a host talks to. Hosts set the plan and post input
 // from any thread; the GL thread calls the context, surface and frame
 // methods.
 public final class ShaderEngine {
@@ -57,7 +56,7 @@ public final class ShaderEngine {
 	// the runtime it starts at, and how its diagnostics are shown. A
 	// quality change keeps the latter three.
 	private record Offer(
-			@NonNull EngineShader shader,
+			@NonNull PlanShader shader,
 			@NonNull Object origin,
 			long runtimeNanos,
 			@NonNull Reporting reporting) {
@@ -88,7 +87,7 @@ public final class ShaderEngine {
 	private final ShaderRenderPipeline renderPipeline =
 			new ShaderRenderPipeline(device);
 	private final EngineInputs inputs = new EngineInputs();
-	private final ShaderSwap<Offer, EngineBuild> shaders = new ShaderSwap<>();
+	private final ShaderSwap<Offer, PlanRuntime> shaders = new ShaderSwap<>();
 	private final UniformSources sources;
 	private final Context context;
 	private final ThumbnailRequests<ThumbnailCallback> thumbnails =
@@ -114,24 +113,10 @@ public final class ShaderEngine {
 		sources = new UniformSources(host);
 	}
 
-	// Any thread. At a frame boundary, the GL thread builds the newest
-	// shader while the current one keeps drawing, and swaps it in once
-	// it links and its textures are uploaded.
-	public void setShader(@NonNull ShaderProjectSession session) {
-		setShader(session, 0);
-	}
-
-	// Any thread. Like setShader(session), and the runtime starts at
-	// this value once the shader replaces the one shown.
-	public void setShader(
-			@NonNull ShaderProjectSession session,
-			long runtimeNanos) {
-		shaders.offer(new Offer(new SessionShader(session), session,
-				runtimeNanos, AS_PREPARED));
-	}
-
-	// Any thread. Like setShader(), for a prepared project at a quality;
-	// the diagnostics of its preparation come with those of its build.
+	// Any thread. A prepared project at a quality; the diagnostics of its
+	// preparation come with those of its build. At a frame boundary, the
+	// GL thread builds the newest plan while the current one keeps
+	// drawing, and swaps it in once it links and its images are uploaded.
 	public void setPlan(@NonNull Preparation preparation, float quality) {
 		setPlan(preparation, quality, AS_PREPARED, preparation, 0);
 	}
@@ -150,8 +135,8 @@ public final class ShaderEngine {
 				owner, runtimeNanos, reporting));
 	}
 
-	// Any thread. The runtime of the shader set with this session or
-	// owner while it is shown, or -1.
+	// Any thread. The runtime of the plan set with this owner while it is
+	// shown, or -1.
 	public long getRuntimeNanos(@NonNull Object owner) {
 		return inputs.getRuntimeNanos(owner);
 	}
@@ -204,7 +189,6 @@ public final class ShaderEngine {
 			camera.reopen();
 		}
 		if (renderSizeChanged) {
-			renderPipeline.releaseTargets();
 			thumbnails.onFramesLost();
 			createCurrentTargets();
 		}
@@ -230,7 +214,7 @@ public final class ShaderEngine {
 				revision == null ||
 				builtins == null ||
 				!renderPipeline.hasSurfaceProgram() ||
-				!build.hasTargets(renderPipeline)) {
+				!build.hasTargets()) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
 			return;
@@ -311,36 +295,30 @@ public final class ShaderEngine {
 			return;
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
-		var textures = next.upload(errors);
+		next.upload(errors);
 		// Its targets come before the current build goes, so a build
 		// that cannot draw leaves the current one drawing.
-		var seed = textures != null ? textures.backBuffer() : null;
 		var targetErrors = new ArrayList<ProjectDiagnostic>();
 		boolean ready = !next.hasFailed() && next.isComplete() &&
 				shaders.makeNextTargets(new ShaderSwap.Targets<>() {
 					@NonNull
 					@Override
-					public ShaderSwap.Allocation make(@NonNull EngineBuild build) {
+					public ShaderSwap.Allocation make(@NonNull PlanRuntime build) {
 						targetErrors.clear();
 						return build.createTargets(
-								renderPipeline,
 								EngineInputs.renderSize(inputs.getSurfaceWidth(),
 										build.quality()),
 								EngineInputs.renderSize(inputs.getSurfaceHeight(),
 										build.quality()),
-								seed,
 								targetErrors);
 					}
 
 					@Override
-					public boolean release(@NonNull EngineBuild build) {
-						return build.releaseTargets(renderPipeline);
+					public boolean release(@NonNull PlanRuntime build) {
+						return build.releaseTargets();
 					}
 				});
 		errors.addAll(targetErrors);
-		if (textures != null) {
-			textures.recycle();
-		}
 		if (!ready) {
 			if (next.hasFailed() || next.isComplete()) {
 				report(shaders.nextFailed(), errors);
@@ -373,10 +351,8 @@ public final class ShaderEngine {
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
 		if (build.createTargets(
-				renderPipeline,
 				inputs.getRenderWidth(),
 				inputs.getRenderHeight(),
-				null,
 				errors) != ShaderSwap.Allocation.MADE) {
 			report(shaders.currentRevision(), errors);
 		}
@@ -394,13 +370,8 @@ public final class ShaderEngine {
 		loadTextures(build);
 	}
 
-	// For the render size of the surface at its quality.
-	private void loadTextures(@NonNull EngineBuild build) {
-		build.loadTextures(
-				context,
-				EngineInputs.renderSize(inputs.getSurfaceWidth(), build.quality()),
-				EngineInputs.renderSize(inputs.getSurfaceHeight(), build.quality()),
-				renderRequester);
+	private void loadTextures(@NonNull PlanRuntime build) {
+		build.loadTextures(renderRequester);
 	}
 
 	// Only the outcome of the newest revision reported so far.
@@ -426,7 +397,7 @@ public final class ShaderEngine {
 		}
 	}
 
-	private void configure(@NonNull EngineBuild build) {
+	private void configure(@NonNull PlanRuntime build) {
 		fTimeMax = build.fTimeMax();
 		runSources(build);
 	}
@@ -440,7 +411,7 @@ public final class ShaderEngine {
 	// The one place that decides which sources run: the ones the current
 	// shader reads, and none without one. A lost context, a detached
 	// view and a host in the background all end the current shader.
-	private void runSources(@Nullable EngineBuild build) {
+	private void runSources(@Nullable PlanRuntime build) {
 		if (build == null) {
 			activeBuiltins = null;
 			sources.stop();
