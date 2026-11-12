@@ -41,6 +41,10 @@ final class CameraSource implements UniformSource {
 		if (listener != null) {
 			listener.update();
 			open = listener.getOrientation(orientation, addent);
+			String failure = listener.takeFailure();
+			if (failure != null) {
+				sources.warn(failure);
+			}
 		}
 	}
 

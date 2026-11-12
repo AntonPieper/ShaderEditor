@@ -26,7 +26,6 @@ import java.util.concurrent.ExecutionException;
 
 public class CameraListener {
 	private static final CameraArbiter ARBITER = new CameraArbiter();
-	private static final long PERMISSION_POLL_MS = 500;
 
 	public final int facing;
 
@@ -48,19 +47,13 @@ public class CameraListener {
 			CameraListener.this.release();
 		}
 	};
-	// No callback reaches the engine when the permission is granted, in the
-	// dialog, in the settings or with adb, so a listener without it checks
-	// again until it is granted or the listener stops.
-	private final Runnable waitForPermission = new Runnable() {
-		@Override
-		public void run() {
-			if (hasPermission()) {
-				ARBITER.request(client);
-			} else {
-				mainHandler.postDelayed(this, PERMISSION_POLL_MS);
-			}
+	private final Retry waitForPermission = new Retry(() -> {
+		if (!hasPermission()) {
+			return false;
 		}
-	};
+		ARBITER.request(client);
+		return true;
+	});
 
 	// Main thread only.
 	@Nullable
@@ -76,6 +69,9 @@ public class CameraListener {
 	private final float[] orientation = new float[4];
 	private final float[] addent = new float[2];
 	private boolean bound;
+	// Why the camera did not bind, until it was taken.
+	@Nullable
+	private String failure;
 
 	// Every use of a SurfaceTexture holds surfaceLock. The main thread
 	// creates one for each surface request and releases it when CameraX is
@@ -110,13 +106,13 @@ public class CameraListener {
 				return;
 			}
 			requestPermission.run();
-			mainHandler.postDelayed(waitForPermission, PERMISSION_POLL_MS);
+			waitForPermission.later();
 		});
 	}
 
 	public void unregister() {
 		mainHandler.post(() -> {
-			mainHandler.removeCallbacks(waitForPermission);
+			waitForPermission.stop();
 			ARBITER.withdraw(client);
 			synchronized (surfaceLock) {
 				stopped = true;
@@ -163,7 +159,15 @@ public class CameraListener {
 		try {
 			camera = cameraProvider.bindToLifecycle(owner, cameraSelector, preview);
 		} catch (IllegalArgumentException | IllegalStateException e) {
-			// No such lens, or the owner cannot take the use case.
+			// No such lens, or the owner cannot take the use case. The
+			// client it displaced gets the camera back.
+			synchronized (this) {
+				failure = (facing == CameraSelector.LENS_FACING_FRONT
+						? "The front camera"
+						: "The back camera") + " cannot be opened" +
+						(e.getMessage() != null ? ": " + e.getMessage() : "");
+			}
+			ARBITER.withdraw(client);
 			return;
 		}
 		this.preview = preview;
@@ -238,6 +242,14 @@ public class CameraListener {
 		System.arraycopy(orientation, 0, matrix, 0, orientation.length);
 		System.arraycopy(this.addent, 0, addent, 0, this.addent.length);
 		return true;
+	}
+
+	// Why the camera could not be opened, once, or null.
+	@Nullable
+	public synchronized String takeFailure() {
+		String message = failure;
+		failure = null;
+		return message;
 	}
 
 	public void update() {

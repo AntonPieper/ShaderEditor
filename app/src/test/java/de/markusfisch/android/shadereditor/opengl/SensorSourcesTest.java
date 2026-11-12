@@ -223,9 +223,32 @@ public class SensorSourcesTest {
 		device.link("rotationMatrix", "orientation", "inclination");
 		var rotation = device.sources.get(Rotation.KEY);
 		assertSame(device.sources.get(Gravity.KEY), rotation.gravity);
-		assertNull(rotation.vector);
+		assertNull(rotation.vector());
 		assertNull(device.sources.get(RotationVector.KEY));
 		assertNull(device.sources.get(Accelerometer.KEY));
+	}
+
+	// When gravity and the field give no matrix, such as before the first
+	// samples or in free fall, the rotation uses a vector that runs anyway.
+	@Test
+	public void rotationFallsBackOnARotationVectorThatRuns() {
+		for (var order : List.of(
+				List.of(RotationVector.KEY, Rotation.KEY),
+				List.of(Rotation.KEY, RotationVector.KEY))) {
+			var device = new Device(GRAVITY, MAGNETIC, ROTATION_VECTOR);
+			for (var key : order) {
+				device.sources.start(key);
+			}
+			var rotation = device.sources.get(Rotation.KEY);
+			assertNull(rotation.vector);
+			assertSame(device.sources.get(RotationVector.KEY), rotation.vector());
+			assertNotNull(rotation.vector().values);
+			assertEquals(1, device.registrationsOf(ROTATION_VECTOR));
+		}
+		var device = new Device(GRAVITY, MAGNETIC, ROTATION_VECTOR);
+		device.link("rotationMatrix", "rotationVector");
+		assertSame(device.sources.get(RotationVector.KEY),
+				device.sources.get(Rotation.KEY).vector());
 	}
 
 	@Test

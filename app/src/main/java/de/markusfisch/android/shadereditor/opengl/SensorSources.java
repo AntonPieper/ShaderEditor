@@ -337,6 +337,7 @@ final class SensorSources {
 							gravity.values,
 							magnetic.filtered);
 			if (!inclined) {
+				var vector = vector();
 				if (vector == null || vector.values == null) {
 					available = false;
 					return;
@@ -367,6 +368,14 @@ final class SensorSources {
 						remapped);
 				System.arraycopy(remapped, 0, matrix, 0, 9);
 			}
+		}
+
+		// The rotation vector for when gravity and the magnetic field give
+		// no matrix: the one it started without them, or the one another
+		// uniform runs.
+		@Nullable
+		RotationVector vector() {
+			return vector != null ? vector : sources.get(RotationVector.KEY);
 		}
 
 		// SensorManager fills matrices row by row.

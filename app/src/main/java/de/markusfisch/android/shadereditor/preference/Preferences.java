@@ -77,7 +77,8 @@ public class Preferences {
 	private boolean useTabForIndent = true;
 	private boolean saveOnRun = true;
 	private boolean batteryLow = false;
-	private boolean powerConnected = false;
+	// Written by the battery receiver, read by shaders on the GL thread.
+	private volatile boolean powerConnected = false;
 	private int systemBarColor;
 	private long defaultNewShaderId = 0;
 	private long lastOpenedShaderId = 0;

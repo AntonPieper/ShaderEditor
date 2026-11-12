@@ -197,6 +197,11 @@ public final class ShaderEngine {
 		long now = System.nanoTime();
 		var frame = inputs.capture(now, fTimeMax);
 		builtins.write(frame, now);
+		// A source that failed after it started, such as a camera that
+		// did not open.
+		if (sources.takeWarned()) {
+			report(revision, new ArrayList<>(sources.getWarnings()));
+		}
 		device.bindEmptyTextures(build.program());
 		device.bindTexture(backBufferUnit, renderPipeline.getBackTexture());
 		build.draw(renderPipeline);
@@ -306,6 +311,7 @@ public final class ShaderEngine {
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
 		configure(next);
 		errors.addAll(sources.getWarnings());
+		sources.takeWarned();
 		resetFps();
 		report(shown, errors);
 	}

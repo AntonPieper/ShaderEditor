@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.opengl.GLES11Ext;
@@ -201,6 +202,22 @@ public class UniformSourcesTest {
 				sources.getWarnings().get(0).severity());
 		sources.stop();
 		assertEquals(List.of(), sources.getWarnings());
+	}
+
+	@Test
+	public void warningAfterTheStartIsReportedOnce() {
+		var sources = new UniformSources(HOST);
+		sources.warn("no camera");
+		assertTrue(sources.takeWarned());
+		assertFalse(sources.takeWarned());
+		sources.warn("no camera");
+		assertFalse(sources.takeWarned());
+		sources.warn("The front camera cannot be opened");
+		assertTrue(sources.takeWarned());
+		assertEquals(2, sources.getWarnings().size());
+		sources.warn("again");
+		sources.stop();
+		assertFalse(sources.takeWarned());
 	}
 
 	@Test

@@ -17,6 +17,7 @@ final class UniformSources {
 	private final ArrayList<UniformSource> running = new ArrayList<>();
 	// What the running sources cannot provide on this host.
 	private final ArrayList<ProjectDiagnostic> warnings = new ArrayList<>();
+	private boolean warned;
 	@NonNull
 	private final EngineHost host;
 	// The keys run() started, or null when they must start again.
@@ -67,8 +68,21 @@ final class UniformSources {
 	}
 
 	void warn(@NonNull String message) {
+		for (var warning : warnings) {
+			if (warning.message().equals(message)) {
+				return;
+			}
+		}
 		warnings.add(new ProjectDiagnostic(
 				ProjectDiagnostic.Severity.WARNING, message, null, 0));
+		warned = true;
+	}
+
+	// Whether a source warned since this was asked last.
+	boolean takeWarned() {
+		boolean result = warned;
+		warned = false;
+		return result;
 	}
 
 	@NonNull
@@ -138,6 +152,7 @@ final class UniformSources {
 		running.clear();
 		byKey.clear();
 		warnings.clear();
+		warned = false;
 		roots = Set.of();
 	}
 }
