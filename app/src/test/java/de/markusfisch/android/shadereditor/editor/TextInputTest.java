@@ -265,12 +265,27 @@ public class TextInputTest {
 				Integer.MAX_VALUE);
 		assertEquals(1_000_000 - MAX_READ, window.offset());
 		assertEquals(2 * MAX_READ, window.text().length());
-		document.select(0, document.text().length());
-		assertEquals(MAX_READ, input.getSelectedText().length());
-		window = input.getSurroundingText(9, 9);
+	}
+
+	@Test
+	public void readsThatWouldCutTheSelectionDecline() {
+		open("{" + "x".repeat(5000) + "}");
+		assertNull(input.getSelectedText());
+		assertNull(input.getSurroundingText(0, 0));
+		Window window = input.getExtractedText(1, false);
 		assertEquals(0, window.offset());
-		assertEquals(MAX_READ, window.selectionEnd());
+		assertEquals(0, window.selectionStart());
+		assertEquals(5000, window.selectionEnd());
 		assertEquals(MAX_READ, window.text().length());
+	}
+
+	@Test
+	public void extractedTextKeepsTheDirectionOfTheSelection() {
+		open("ab}cde{f");
+		assertEquals(new Window(0, 5, 2, "abcdef"),
+				input.getExtractedText(1, false));
+		assertEquals(new Window(0, 2, 5, "abcdef"),
+				input.getSurroundingText(9, 9));
 	}
 
 	@Test

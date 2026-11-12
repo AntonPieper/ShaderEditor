@@ -30,7 +30,12 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
  * key, goes to Document.replace, which ends the run.
  * <p>
  * A read returns at most MAX_READ characters on either side of the
- * selection and of the selection itself, so it costs what it returns.
+ * selection and of the selection itself, so it costs what it returns,
+ * and it never tells a selection that is not there. A selection longer
+ * than MAX_READ makes getSelectedText and getSurroundingText decline,
+ * with null; getExtractedText then cuts its text after MAX_READ
+ * characters of the selection and keeps the real anchor and head, so
+ * the keyboard sees that the text is cut and not the selection.
  * <p>
  * Given a KeyboardSession, it writes every call with its answer, what
  * the keyboard was told, and every change and selection of the app.
@@ -54,7 +59,11 @@ public final class TextInput {
 		}
 	}
 
-	/** Text of the document from offset, and the selection within it. */
+	/**
+	 * Text of the document from offset, and the ends of the selection
+	 * counted from offset: sorted for getSurroundingText, anchor and head
+	 * for getExtractedText, where the head may lie beyond a cut text.
+	 */
 	public record Window(int offset, int selectionStart, int selectionEnd,
 			String text) {
 	}
@@ -247,31 +256,34 @@ public final class TextInput {
 		return read(after, "getTextAfterCursor", n);
 	}
 
-	/** Return the selected text, null if the selection is empty. */
+	/**
+	 * Return the selected text, null if the selection is empty or longer
+	 * than MAX_READ.
+	 */
 	public String getSelectedText() {
 		if (closed) {
 			return null;
 		}
 		Selection selection = document.selection();
-		String selected = selection.isEmpty()
+		String selected = selection.isEmpty() || !fits(selection)
 				? null
 				: document.text().substring(selection.start(),
-						Math.min(selection.end(),
-								selection.start() + MAX_READ));
+						selection.end());
 		return read(selected, "getSelectedText");
 	}
 
 	/**
 	 * Return the selection with up to before characters before it and
-	 * up to after behind it. A selection longer than MAX_READ ends the
-	 * window.
+	 * up to after behind it, null if it is longer than MAX_READ.
 	 */
 	public Window getSurroundingText(int before, int after) {
 		if (closed) {
 			return null;
 		}
-		return read(window(before, after), "getSurroundingText", before,
-				after);
+		return read(fits(document.selection())
+						? window(before, after, true)
+						: null,
+				"getSurroundingText", before, after);
 	}
 
 	/**
@@ -288,8 +300,8 @@ public final class TextInput {
 			monitored = true;
 			this.token = token;
 		}
-		return read(window(MAX_READ, MAX_READ), "getExtractedText", token,
-				monitor);
+		return read(window(MAX_READ, MAX_READ, false), "getExtractedText",
+				token, monitor);
 	}
 
 	/**
@@ -537,7 +549,10 @@ public final class TextInput {
 		return Character.isSurrogatePair(s.charAt(0), s.charAt(1));
 	}
 
-	private Window window(int before, int after) {
+	// Returns the selection, cut after MAX_READ characters, with up to
+	// before characters before it and after behind it if it is not cut;
+	// its ends sorted or as anchor and head.
+	private Window window(int before, int after, boolean sorted) {
 		Text text = document.text();
 		Selection selection = document.selection();
 		int start = selection.start();
@@ -546,8 +561,15 @@ public final class TextInput {
 		int to = end < selection.end()
 				? end
 				: end + clamp(after, Math.min(MAX_READ, text.length() - end));
-		return new Window(from, start - from, end - from,
-				text.substring(from, to));
+		String s = text.substring(from, to);
+		return sorted
+				? new Window(from, start - from, selection.end() - from, s)
+				: new Window(from, selection.anchor() - from,
+						selection.head() - from, s);
+	}
+
+	private static boolean fits(Selection selection) {
+		return selection.end() - selection.start() <= MAX_READ;
 	}
 
 	// Tells the keyboard what changed since it was told last, until
@@ -581,7 +603,7 @@ public final class TextInput {
 		toldSelection = selection;
 		toldComposingStart = start;
 		toldComposingEnd = end;
-		Window window = extract ? window(MAX_READ, MAX_READ) : null;
+		Window window = extract ? window(MAX_READ, MAX_READ, false) : null;
 		if (extract) {
 			session.updateExtractedText(token, window);
 		}
