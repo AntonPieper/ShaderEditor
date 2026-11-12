@@ -40,6 +40,8 @@ public class GlslWordsTest {
 				"sampler2DArray sampler2DArrayShadow sampler2DShadow sampler3D " +
 				"samplerCube samplerCubeShadow samplerExternalOES usampler2D " +
 				"usampler2DArray usampler3D usamplerCube");
+		WORDS.put(Style.TYPE,
+				"gl_DepthRangeParameters");
 		WORDS.put(Style.BUILTIN_FUNCTION,
 				"abs acos acosh all any asin asinh atan atanh ceil clamp cos cosh " +
 				"cross dFdx dFdy degrees determinant distance dot equal exp exp2 " +
@@ -65,12 +67,13 @@ public class GlslWordsTest {
 		WORDS.put(Style.BOOL,
 				"false true");
 		WORDS.put(Style.PRECISION,
-				"highp invariant lowp mediump precision");
+				"highp lowp mediump precision");
 		WORDS.put(Style.CONTROL_FLOW,
 				"break case continue default discard do else for if return switch " +
 				"while");
 		WORDS.put(Style.TYPE_QUALIFIER,
-				"attribute centroid flat in inout layout out smooth uniform varying");
+				"attribute centroid flat in inout invariant layout out smooth " +
+				"uniform varying");
 	}
 
 	@Test
@@ -81,7 +84,7 @@ public class GlslWordsTest {
 					(a, b) -> a + " " + b);
 		}
 		assertEquals(WORDS, actual);
-		assertEquals(187, allWords().size());
+		assertEquals(188, allWords().size());
 	}
 
 	@Test
@@ -152,6 +155,8 @@ public class GlslWordsTest {
 		assertEquals(Style.TYPE_QUALIFIER, style("attribute"));
 		assertEquals(Style.TYPE_QUALIFIER, style("varying"));
 		assertEquals(Style.TYPE_SAMPLER, style("samplerExternalOES"));
+		assertEquals(Style.TYPE, style("gl_DepthRangeParameters"));
+		assertEquals(Style.TYPE_QUALIFIER, style("invariant"));
 	}
 
 	@Test

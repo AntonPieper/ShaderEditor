@@ -17,8 +17,8 @@ public final class GlslWords {
 	private static final Style[] STYLES = new Style[WORDS.length];
 	private static int count;
 
-	// The keywords, built-in variables and built-in functions of GLSL ES
-	// 1.00 and 3.00 that a fragment shader can use.
+	// The keywords, built-in variables, constants, types and functions of
+	// GLSL ES 1.00 and 3.00 that a fragment shader can use.
 	static {
 		add(Style.PRIMITIVE, "const", "bool", "float", "int", "uint");
 		add(Style.BOOL, "true", "false");
@@ -28,17 +28,18 @@ public final class GlslWords {
 				"mat2x4", "mat3x2", "mat3x3", "mat3x4", "mat4x2", "mat4x3",
 				"mat4x4");
 		add(Style.TYPE_QUALIFIER, "attribute", "varying", "centroid", "in",
-				"out", "inout", "uniform", "flat", "smooth", "layout");
+				"out", "inout", "uniform", "flat", "smooth", "layout",
+				"invariant");
 		add(Style.TYPE_SAMPLER, "sampler2D", "sampler3D", "samplerCube",
 				"sampler2DShadow", "samplerCubeShadow", "sampler2DArray",
 				"sampler2DArrayShadow", "isampler2D", "isampler3D",
 				"isamplerCube", "isampler2DArray", "usampler2D", "usampler3D",
 				"usamplerCube", "usampler2DArray", "samplerExternalOES");
+		add(Style.TYPE, "gl_DepthRangeParameters");
 		add(Style.KEYWORD, "struct", "void");
 		add(Style.CONTROL_FLOW, "while", "break", "continue", "do", "else",
 				"for", "if", "discard", "return", "switch", "case", "default");
-		add(Style.PRECISION, "invariant", "highp", "mediump", "lowp",
-				"precision");
+		add(Style.PRECISION, "highp", "mediump", "lowp", "precision");
 		add(Style.BUILTIN_FUNCTION, "gl_FragCoord", "gl_FrontFacing",
 				"gl_FragColor", "gl_FragData", "gl_FragDepth", "gl_PointCoord",
 				"gl_DepthRange", "gl_MaxVertexAttribs",
