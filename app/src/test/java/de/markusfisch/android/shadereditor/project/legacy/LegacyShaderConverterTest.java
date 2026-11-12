@@ -30,7 +30,8 @@ public class LegacyShaderConverterTest {
 	private static final Map<String, LibraryTexture> LIBRARY = Map.of(
 			"noise", new LibraryTexture(false, 256, 128),
 			"sky", new LibraryTexture(true, 64, 96),
-			"cameraBack", new LibraryTexture(false, 8, 8));
+			"cameraBack", new LibraryTexture(false, 8, 8),
+			"time", new LibraryTexture(false, 8, 8));
 	private static final String NOISE_DEFAULT =
 			"#pragma se input \"textures/noise.png\" " +
 					"min=nearest mag=linear wrap=repeat";
@@ -42,7 +43,7 @@ public class LegacyShaderConverterTest {
 				result.shader());
 		assertEquals(List.of(new TextureFile("noise", path(
 				"textures/noise.png"), false)), result.textures());
-		assertEquals(List.of(0, 1), result.lines());
+		assertEquals(List.of(-1, 1), result.lines());
 		assertTrue(result.diagnostics().isEmpty());
 	}
 
@@ -104,7 +105,7 @@ public class LegacyShaderConverterTest {
 				"#pragma se target present=linear",
 				"#pragma se input filter=linear",
 				"uniform sampler2D backbuffer;"), result.shader());
-		assertEquals(List.of(1, 0, 0, 2), result.lines());
+		assertEquals(List.of(1, -2, -2, 2), result.lines());
 		assertTrue(result.diagnostics().isEmpty());
 		assertEquals(lines("uniform sampler2D backbuffer;"),
 				convert(lines("uniform sampler2D backbuffer;")).shader());
@@ -171,7 +172,8 @@ public class LegacyShaderConverterTest {
 					}
 				};
 		Result result = LegacyShaderConverter.convert(
-				lines("uniform sampler2D backbuffer;///p:3;"), library);
+				lines("uniform sampler2D backbuffer;///p:3;"), library,
+				BuiltinNames.ALL);
 		assertEquals(lines("#pragma se target initial=\"presets/3.glsl\"",
 				"uniform sampler2D backbuffer;"), result.shader());
 		assertEquals(List.of(new TextureFile("3", path("textures/3.png"),
@@ -183,13 +185,14 @@ public class LegacyShaderConverterTest {
 		for (String preset : new String[]{"7", "noise"}) {
 			result = LegacyShaderConverter.convert(lines(
 					"uniform sampler2D backbuffer;///p:" + preset + ";"),
-					library);
+					library, BuiltinNames.ALL);
 			assertEquals(List.of(new TextureFile(preset,
 					path("textures/" + preset + ".png"), false)),
 					result.textures());
 		}
 		result = LegacyShaderConverter.convert(
-				lines("uniform sampler2D backbuffer;///p:4;"), library);
+				lines("uniform sampler2D backbuffer;///p:4;"), library,
+				BuiltinNames.ALL);
 		assertTrue(result.textures().isEmpty());
 		assertEquals(List.of(3L, 4L), ids);
 	}
@@ -199,7 +202,7 @@ public class LegacyShaderConverterTest {
 		Result result = LegacyShaderConverter.convert(lines(
 						"uniform sampler2D a_b;",
 						"uniform sampler2D backbuffer;///p:a/b;"),
-				name -> new LibraryTexture(false, 8, 4));
+				name -> new LibraryTexture(false, 8, 4), BuiltinNames.ALL);
 		assertEquals(lines("#pragma se target initial=\"presets/a_b_2.glsl\"",
 				"#pragma se input \"textures/a_b.png\" " +
 						"min=nearest mag=linear wrap=repeat",
@@ -218,7 +221,7 @@ public class LegacyShaderConverterTest {
 		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
 		result = LegacyShaderConverter.convert(
 				lines("uniform sampler2D backbuffer;///p:../../../../foo;"),
-				name -> new LibraryTexture(false, 8, 4));
+				name -> new LibraryTexture(false, 8, 4), BuiltinNames.ALL);
 		assertEquals(List.of(new TextureFile("../../../../foo",
 				path("textures/____________foo.png"), false)),
 				result.textures());
@@ -310,7 +313,7 @@ public class LegacyShaderConverterTest {
 				"uniform highp sampler2D noise;",
 				"void main(){gl_FragColor=texture2D(noise,vec2(0.5));}"),
 				result.shader());
-		assertEquals(List.of(1, 0, 2, 3), result.lines());
+		assertEquals(List.of(1, -2, 2, 3), result.lines());
 		assertEquals(List.of(new TextureFile("noise", path(
 				"textures/noise.png"), false)), result.textures());
 		assertTrue(result.diagnostics().isEmpty());
@@ -347,7 +350,7 @@ public class LegacyShaderConverterTest {
 				"#pragma se input \"textures/noise.png\" " +
 						"min=nearest mag=linear wrap=clamp,repeat",
 				"uniform sampler2D noise; // x"), result.shader());
-		assertEquals(List.of(1, 2, 0, 2), result.lines());
+		assertEquals(List.of(1, 2, -2, 2), result.lines());
 	}
 
 	@Test
@@ -359,15 +362,47 @@ public class LegacyShaderConverterTest {
 		assertTrue(result.textures().isEmpty());
 		assertEquals(List.of("The old renderer bound noise as a " +
 						"samplerCube from line 2, so uniform sampler2D noise " +
-						"read no texture; it stays without one"),
+						"did not read the texture but whatever its texture " +
+						"unit held from earlier drawing; it now reads black"),
 				messages(result));
+	}
+
+	// The old pattern bound the declaration by name through the comment.
+	@Test
+	public void commentedMatchBindsADeclarationOverSeveralLines() {
+		Result result = convert(lines("// uniform sampler2D noise;",
+				"uniform sampler2D",
+				"\tnoise;",
+				"void main(){gl_FragColor=texture2D(noise,vec2(0.5));}"));
+		assertEquals(lines("// uniform sampler2D noise;",
+				NOISE_DEFAULT,
+				"uniform sampler2D",
+				"\tnoise;",
+				"void main(){gl_FragColor=texture2D(noise,vec2(0.5));}"),
+				result.shader());
+		assertEquals(List.of(1, -2, 2, 3, 4), result.lines());
+		assertEquals(1, result.textures().size());
+		assertTrue(result.diagnostics().isEmpty());
+		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
+	}
+
+	@Test
+	public void declarationOverSeveralLinesInAConditionalBlockStaysAsWritten() {
+		String text = lines("// uniform sampler2D noise;",
+				"#ifdef GL_ES",
+				"uniform sampler2D",
+				"\tnoise;",
+				"#endif");
+		Result result = convert(text);
+		assertEquals(text, result.shader());
+		assertTrue(result.textures().isEmpty());
+		assertEquals(List.of(3), lines(result.diagnostics()));
 	}
 
 	@Test
 	public void matchWithoutADeclarationToAnnotateWarnsWhereItIsUsed() {
 		String text = lines("// uniform sampler2D noise;",
-				"uniform sampler2D",
-				"\tnoise;",
+				"uniform sampler2D other, noise;",
 				"void main(){gl_FragColor=texture2D(noise,vec2(0.5));}");
 		Result result = convert(text);
 		assertEquals(text, result.shader());
@@ -375,9 +410,35 @@ public class LegacyShaderConverterTest {
 		assertEquals(List.of(new ProjectDiagnostic(
 				ProjectDiagnostic.Severity.WARNING,
 				"noise read the library texture noise, but it has no " +
-						"declaration like uniform sampler2D noise; on one " +
-						"line to attach #pragma se input to, so it is not " +
-						"bound", null, 1)), result.diagnostics());
+						"declaration like uniform sampler2D noise; to " +
+						"attach #pragma se input to, so it is not bound",
+				null, 1)), result.diagnostics());
+	}
+
+	// The old renderer could not set the builtin on a sampler and bound
+	// the texture; an input cannot take a builtin's name.
+	@Test
+	public void textureNamedLikeABuiltinReadsItUnderAFreeName() {
+		Result result = convert(lines("uniform sampler2D time;",
+				"// time is a texture here",
+				"#define T time",
+				"void main(){gl_FragColor=texture2D(time,vec2(0.5))+",
+				"\ttexture2D(T,vec2(0.0));}"));
+		assertEquals(lines("#pragma se input \"textures/time.png\" " +
+						"min=nearest mag=linear wrap=repeat",
+				"uniform sampler2D time_texture;",
+				"// time is a texture here",
+				"#define T time_texture",
+				"void main(){gl_FragColor=texture2D(time_texture,vec2(0.5))+",
+				"\ttexture2D(T,vec2(0.0));}"), result.shader());
+		assertTrue(result.diagnostics().isEmpty());
+		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
+		assertEquals(lines("#pragma se input \"textures/time.png\" " +
+						"min=nearest mag=linear wrap=repeat",
+				"uniform sampler2D time_texture2;",
+				"float time_texture;"),
+				convert(lines("uniform sampler2D time;",
+						"float time_texture;")).shader());
 	}
 
 	@Test
@@ -388,14 +449,19 @@ public class LegacyShaderConverterTest {
 						"uniform highp sampler2D backbuffer;"),
 				convert(lines("// uniform sampler2D backbuffer; ///mag:l;",
 						"uniform highp sampler2D backbuffer;")).shader());
+		assertEquals(lines("// uniform sampler2D backbuffer; ///s:m;",
+						"#pragma se input wrap=mirror,clamp",
+						"uniform sampler2D",
+						"backbuffer;"),
+				convert(lines("// uniform sampler2D backbuffer; ///s:m;",
+						"uniform sampler2D",
+						"backbuffer;")).shader());
 		assertEquals(List.of("backbuffer has settings, but it has no " +
-						"declaration like uniform sampler2D backbuffer; on " +
-						"one line to attach #pragma se input to, so they " +
-						"are not applied"),
+						"declaration like uniform sampler2D backbuffer; to " +
+						"attach #pragma se input to, so they are not applied"),
 				messages(convert(lines(
 						"// uniform sampler2D backbuffer; ///s:m;",
-						"uniform sampler2D",
-						"backbuffer;"))));
+						"uniform sampler2D a, backbuffer;"))));
 	}
 
 	@Test
@@ -404,7 +470,7 @@ public class LegacyShaderConverterTest {
 				"*/ uniform sampler2D noise;"));
 		assertEquals(lines("/* a", "*/", NOISE_DEFAULT,
 				"uniform sampler2D noise;"), result.shader());
-		assertEquals(List.of(1, 2, 0, 2), result.lines());
+		assertEquals(List.of(1, 2, -2, 2), result.lines());
 	}
 
 	@Test
@@ -465,7 +531,7 @@ public class LegacyShaderConverterTest {
 				" // why",
 				"#endif",
 				"#endif"), result.shader());
-		assertEquals(List.of(1, 0, 4, 2, 3, 4, 5, 6), result.lines());
+		assertEquals(List.of(1, -4, 4, 2, 3, 4, 5, 6), result.lines());
 		assertEquals(List.of(new ProjectDiagnostic(
 				ProjectDiagnostic.Severity.WARNING,
 				"Moved uniform sampler2D noise out of the conditional block " +
@@ -488,7 +554,7 @@ public class LegacyShaderConverterTest {
 				"",
 				"#endif",
 				"void main(){}"), result.shader());
-		assertEquals(List.of(1, 2, 0, 3, 2, 3, 4, 5), result.lines());
+		assertEquals(List.of(1, 2, -3, 3, 2, 3, 4, 5), result.lines());
 		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
 	}
 
@@ -502,7 +568,7 @@ public class LegacyShaderConverterTest {
 				"#pragma se target present=linear",
 				"#pragma se input min=nearest mag=linear",
 				"uniform sampler2D backbuffer;"), result.shader());
-		assertEquals(List.of(1, 2, 0, 0, 3), result.lines());
+		assertEquals(List.of(1, 2, -3, -3, 3), result.lines());
 		assertEquals(lines("#version 300 es /* a",
 				"b",
 				"*/",
@@ -594,7 +660,7 @@ public class LegacyShaderConverterTest {
 				"uniform samplerCube sky;",
 				"#include \"missing.glsl\"",
 				"void main() {}"));
-		assertEquals(List.of(0, 1, 2, 0, 3, 4, 5), result.lines());
+		assertEquals(List.of(-1, 1, 2, -3, 3, 4, 5), result.lines());
 		assertEquals(List.of(2), lines(result.diagnostics()));
 		assertEquals(2, result.originalLine(3));
 		Preparation preparation = prepare(result);
@@ -607,7 +673,7 @@ public class LegacyShaderConverterTest {
 		assertNotNull(preparation.diagnostics().toString(), missing);
 		assertEquals(6, missing.line());
 		assertEquals(4, result.originalLine(missing.line()));
-		assertEquals(0, result.originalLine(4));
+		assertEquals(3, result.originalLine(4));
 		assertEquals(0, result.originalLine(8));
 	}
 
@@ -637,7 +703,7 @@ public class LegacyShaderConverterTest {
 				diagnostic(ProjectDiagnostic.Severity.ERROR, "include",
 						null, 2),
 				diagnostic(ProjectDiagnostic.Severity.ERROR, "decode",
-						null, 0),
+						null, 1),
 				diagnostic(ProjectDiagnostic.Severity.ERROR, "seed",
 						null, 0),
 				unlocated,
@@ -648,6 +714,27 @@ public class LegacyShaderConverterTest {
 		assertEquals("raw", result.toOriginal(List.of(new ProjectDiagnostic(
 				ProjectDiagnostic.Severity.ERROR, "message",
 				LegacyShaderConverter.SHADER, 5, "raw"))).get(0).raw());
+	}
+
+	// A preset image that does not decode.
+	@Test
+	public void errorsOfAGeneratedFileAreAtTheLineItWasGeneratedFor() {
+		Result result = convert(lines("void main() {}",
+				"uniform sampler2D backbuffer;///p:noise;"));
+		ProjectPath preset = path("presets/noise.glsl");
+		assertTrue(result.files().containsKey(preset));
+		assertEquals(List.of(
+				diagnostic(ProjectDiagnostic.Severity.ERROR, "decode",
+						null, 2),
+				diagnostic(ProjectDiagnostic.Severity.ERROR, "target",
+						null, 2)),
+				result.toOriginal(List.of(
+						diagnostic(ProjectDiagnostic.Severity.ERROR, "decode",
+								preset, 7),
+						diagnostic(ProjectDiagnostic.Severity.WARNING,
+								"initial has no effect", path("main.glsl"), 1),
+						diagnostic(ProjectDiagnostic.Severity.ERROR, "target",
+								path("main.glsl"), 1))));
 	}
 
 	// L01
@@ -758,7 +845,7 @@ public class LegacyShaderConverterTest {
 		};
 		for (String row : rows) {
 			Result result = LegacyShaderConverter.convert(head + row + main,
-					library::get);
+					library::get, BuiltinNames.ALL);
 			assertTrue(row, errors(result.diagnostics()).isEmpty());
 			Preparation preparation = prepare(result);
 			assertTrue(row + preparation.diagnostics(),
@@ -767,7 +854,7 @@ public class LegacyShaderConverterTest {
 		}
 		Result discard = LegacyShaderConverter.convert(head +
 				"void main(){if(gl_FragCoord.x<1.0)discard;" +
-				"gl_FragColor=vec4(1.0);}\n", library::get);
+				"gl_FragColor=vec4(1.0);}\n", library::get, BuiltinNames.ALL);
 		assertNotNull(prepare(discard).plan());
 		assertEquals(1, discard.diagnostics().size());
 	}
@@ -822,7 +909,8 @@ public class LegacyShaderConverterTest {
 	}
 
 	private static Result convert(String text) {
-		return LegacyShaderConverter.convert(text, LIBRARY::get);
+		return LegacyShaderConverter.convert(text, LIBRARY::get,
+				BuiltinNames.ALL);
 	}
 
 	private static String lines(String... lines) {

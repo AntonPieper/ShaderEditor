@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
@@ -57,30 +58,35 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 
 	/**
 	 * Convert the shader with this id, or return null when there is no
-	 * such shader. Textures are served within limits.
+	 * such shader. Textures are served within limits; reserved are the
+	 * names of the builtin uniforms.
 	 */
 	@Nullable
 	public static DatabaseProjectFiles open(
 			@NonNull DataSource dataSource,
 			long shaderId,
-			@NonNull ProjectLimits limits) {
+			@NonNull ProjectLimits limits,
+			@NonNull Set<String> reserved) {
 		DataRecords.Shader shader = dataSource.shader.getShader(shaderId);
 		if (shader == null) {
 			return null;
 		}
 		String text = shader.fragmentShader();
-		return convert(dataSource.texture, text != null ? text : "", limits);
+		return convert(dataSource.texture, text != null ? text : "", limits,
+				reserved);
 	}
 
 	/**
 	 * Convert the text of a database shader, such as the unsaved text of
-	 * one in the editor. Textures are served within limits.
+	 * one in the editor. Textures are served within limits; reserved are
+	 * the names of the builtin uniforms.
 	 */
 	@NonNull
 	public static DatabaseProjectFiles convert(
 			@NonNull TextureDao textures,
 			@NonNull String text,
-			@NonNull ProjectLimits limits) {
+			@NonNull ProjectLimits limits,
+			@NonNull Set<String> reserved) {
 		Map<String, Stored> library = StoredFiles.library(
 				textures.getTextures(null),
 				textures.getSamplerCubeTextures(null));
@@ -98,7 +104,7 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 					public LibraryTexture find(long id) {
 						return DatabaseProjectFiles.find(textures, used, id);
 					}
-				});
+				}, reserved);
 		return new DatabaseProjectFiles(textures, conversion, used, limits);
 	}
 

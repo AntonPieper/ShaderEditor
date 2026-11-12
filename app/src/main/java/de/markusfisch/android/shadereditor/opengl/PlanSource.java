@@ -77,16 +77,13 @@ record PlanSource(
 		return matcher.find() ? Integer.parseInt(matcher.group(1)) : 100;
 	}
 
-	// The default without a period or with one that is not positive, NaN
-	// when it is not a number.
+	// The default without a period, NaN when it is not a number. A period
+	// of 0 keeps its meaning: ftime is NaN.
 	private static float fTimeMax(@NonNull String text) {
 		Matcher matcher = FTIME.matcher(text);
 		if (matcher.find()) {
 			try {
-				float period = Float.parseFloat(matcher.group(1));
-				if (period > 0) {
-					return period;
-				}
+				return Float.parseFloat(matcher.group(1));
 			} catch (NumberFormatException e) {
 				return Float.NaN;
 			}

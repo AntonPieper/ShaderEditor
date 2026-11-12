@@ -112,9 +112,24 @@ public class PlanSourceTest {
 		assertEquals(5f, source(2, plan(
 				"main.glsl", lines("#include \"period.glsl\"", "void main() {}"),
 				"period.glsl", "#define FTIME_PERIOD 5.\n")).fTimeMax(), 0f);
-		assertEquals(3f, source(2, plan("main.glsl", lines(
+		assertEquals(3f, source(2, plan("main.glsl",
+				"void main() {}\n")).fTimeMax(), 0f);
+	}
+
+	// The old renderer divided by it, so ftime was NaN.
+	@Test
+	public void zeroFTimePeriodKeepsItsMeaning() {
+		var source = source(2, plan("main.glsl", lines(
 				"#define FTIME_PERIOD 0",
-				"void main() {}"))).fTimeMax(), 0f);
+				"void main() {}")));
+		assertEquals(0f, source.fTimeMax(), 0f);
+		var in = new FrameInputs();
+		in.time = 1f;
+		in.fTimeMax = source.fTimeMax();
+		var out = new UniformTableTest.RecordingOutput();
+		UniformTable.get("ftime").write(in, null, out);
+		assertEquals(List.of("float"), out.calls);
+		assertTrue(Float.isNaN(out.values.get(0)[0]));
 	}
 
 	@Test
