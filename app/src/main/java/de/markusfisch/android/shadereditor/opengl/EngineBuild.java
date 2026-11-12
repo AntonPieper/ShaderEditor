@@ -23,9 +23,6 @@ interface EngineBuild extends ShaderSwap.Build {
 	@NonNull
 	Sampling backBufferSampling();
 
-	// Whether a new render size needs it built again.
-	boolean isSizedToRender();
-
 	// Decodes what it reads off the GL thread; until upload() took it,
 	// it is not complete.
 	void loadTextures(

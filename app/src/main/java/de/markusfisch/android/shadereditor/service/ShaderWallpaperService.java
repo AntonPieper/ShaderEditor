@@ -70,7 +70,8 @@ public class ShaderWallpaperService extends WallpaperService {
 		private final Handler mainHandler = new Handler(Looper.getMainLooper());
 		private ShaderWallpaperView view;
 		private long runtimeShaderId;
-		private boolean hasRuntimeShader;
+		@Nullable
+		private ShaderProjectSession runtimeSession;
 		// GL thread only.
 		private String shownWarnings = "";
 
@@ -165,10 +166,15 @@ public class ShaderWallpaperService extends WallpaperService {
 			}
 		}
 
+		// Saves the runtime of the shader set last while it is shown.
 		private void saveRuntime() {
-			if (view != null && hasRuntimeShader && !isPreview()) {
+			if (view == null || runtimeSession == null || isPreview()) {
+				return;
+			}
+			long nanos = view.getEngine().getRuntimeNanos(runtimeSession);
+			if (nanos >= 0) {
 				ShaderEditorApp.preferences.setWallpaperRuntimeNanos(
-						runtimeShaderId, view.getEngine().getRuntimeNanos());
+						runtimeShaderId, nanos);
 			}
 		}
 
@@ -177,12 +183,11 @@ public class ShaderWallpaperService extends WallpaperService {
 			if (view != null && projectSession != null) {
 				saveRuntime();
 				runtimeShaderId = ShaderEditorApp.preferences.getWallpaperShader();
-				hasRuntimeShader = true;
-				view.setShader(projectSession);
-				if (!isPreview()) {
-					view.getEngine().setRuntimeNanos(
-							ShaderEditorApp.preferences.getWallpaperRuntimeNanos(runtimeShaderId));
-				}
+				runtimeSession = projectSession;
+				view.setShader(projectSession, isPreview()
+						? 0
+						: ShaderEditorApp.preferences.getWallpaperRuntimeNanos(
+								runtimeShaderId));
 			}
 		}
 

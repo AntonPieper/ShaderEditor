@@ -51,12 +51,17 @@ final class EngineInputs {
 		return Math.round(surfaceSize * quality);
 	}
 
-	long getRuntimeNanos() {
-		return runtimeClock.getElapsedNanos();
+	// Any thread. The runtime of this owner while it is shown, or -1.
+	long getRuntimeNanos(@NonNull Object owner) {
+		return runtimeClock.getElapsedNanos(owner);
 	}
 
-	void setRuntimeNanos(long nanos) {
-		runtimeClock.setElapsedNanos(nanos);
+	// GL thread, when a shader is shown. The runtime counts for this
+	// owner and starts at nanos, unless it counts for this owner already.
+	void showRuntime(@NonNull Object owner, long nanos) {
+		if (runtimeClock.getElapsedNanos(owner) < 0) {
+			runtimeClock.start(owner, nanos);
+		}
 	}
 
 	void pauseRuntime() {
