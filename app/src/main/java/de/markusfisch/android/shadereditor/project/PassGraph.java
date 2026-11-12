@@ -72,11 +72,11 @@ final class PassGraph {
 	private final Map<ProjectPath, Node> byPath = new HashMap<>();
 	private final CapturedFiles files;
 	private final ProjectLimits limits;
-	private final Set<String> reserved;
+	private final Map<String, String> reserved;
 	private boolean stopped;
 
 	private PassGraph(CapturedFiles files, ProjectPath entry,
-			ProjectLimits limits, Set<String> reserved) {
+			ProjectLimits limits, Map<String, String> reserved) {
 		this.files = files;
 		this.limits = limits;
 		this.reserved = reserved;
@@ -87,7 +87,7 @@ final class PassGraph {
 			CapturedFiles files,
 			ProjectPath entry,
 			ProjectLimits limits,
-			Set<String> reserved) {
+			Map<String, String> reserved) {
 		PassGraph graph = new PassGraph(files, entry, limits, reserved);
 		if (graph.entry == null) {
 			return graph;

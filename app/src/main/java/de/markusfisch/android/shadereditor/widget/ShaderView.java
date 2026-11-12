@@ -168,10 +168,10 @@ public class ShaderView extends GLSurfaceView {
 		Preparation preparation;
 		LegacyShaderConverter.Result conversion = null;
 		try {
-			var reserved = UniformTable.names();
+			var reserved = UniformTable.types();
 			var files = DatabaseProjectFiles.convert(Database.getInstance(
 					getContext()).getDataSource().texture, text, limits,
-					reserved);
+					reserved.keySet());
 			conversion = files.conversion();
 			preparation = Preparation.prepare(files,
 					LegacyShaderConverter.SHADER, limits, reserved);

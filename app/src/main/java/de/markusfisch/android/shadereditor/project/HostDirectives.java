@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.project;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,12 +55,13 @@ public record HostDirectives(
 
 	/**
 	 * Parse the host directives of an assembled pass file. reserved are
-	 * the names of the engine's builtin uniforms: an input with a path
-	 * cannot use one, an input without a path must.
+	 * the GLSL types of the engine's builtin uniforms by name: an input
+	 * with a path cannot use one, an input without a path must name an
+	 * engine sampler of its type.
 	 */
 	public static HostDirectives parse(
 			SourceAssembly assembly,
-			Set<String> reserved) {
+			Map<String, String> reserved) {
 		Parser parser = new Parser(assembly, reserved);
 		parser.run();
 		List<ProjectDiagnostic> diagnostics =
@@ -78,7 +80,7 @@ public record HostDirectives(
 
 	private static final class Parser {
 		private final List<SourceAssembly.Line> source;
-		private final Set<String> reserved;
+		private final Map<String, String> reserved;
 		private final List<String> lines;
 		private final List<Input> inputs = new ArrayList<>();
 		private final List<Reference> references = new ArrayList<>();
@@ -86,7 +88,7 @@ public record HostDirectives(
 		private Target target;
 		private int targetLine;
 
-		private Parser(SourceAssembly assembly, Set<String> reserved) {
+		private Parser(SourceAssembly assembly, Map<String, String> reserved) {
 			source = assembly.source();
 			this.reserved = reserved;
 			lines = new ArrayList<>(assembly.lines());
@@ -197,11 +199,16 @@ public record HostDirectives(
 				error(at, "An image source is read as sampler2D or " +
 						"samplerCube, not " + type);
 			}
-			if (source == null && !reserved.contains(name)) {
+			String builtin = reserved.get(name);
+			if (source == null && builtin != null &&
+					builtin.startsWith("sampler") && !builtin.equals(type)) {
+				error(at, name + " is an engine sampler of type " + builtin +
+						", declare it as uniform " + builtin + " " + name);
+			} else if (source == null && !type.equals(builtin)) {
 				error(at, name + " is not an engine sampler, add a path " +
 						"such as #pragma se input \"assets/" + name +
 						".png\"");
-			} else if (source != null && reserved.contains(name)) {
+			} else if (source != null && builtin != null) {
 				error(at, name + " is reserved for a builtin uniform, " +
 						"rename the uniform to bind " + source);
 			}

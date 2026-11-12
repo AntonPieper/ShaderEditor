@@ -532,16 +532,24 @@ public final class LegacyShaderConverter {
 					"backbuffer; to attach #pragma se input to, so they " +
 					"are not applied");
 		}
+		// Only a sampler2D read the previous frame, and only it takes the
+		// engine's backbuffer input.
+		List<Declaration> readers = new ArrayList<>();
+		for (Declaration declaration : declarations) {
+			if (declaration.type.equals("sampler2D")) {
+				readers.add(declaration);
+			}
+		}
 		if (options.isEmpty()) {
 			for (Declaration declaration : declarations) {
 				edit(new Edit(declaration, null, false));
 			}
 		} else {
-			place(placeable(declarations),
+			place(placeable(readers),
 					new Line("#pragma se input " + options, 0));
 		}
 		List<String> target = new ArrayList<>();
-		if (preset != null && !declarations.isEmpty()) {
+		if (preset != null && !readers.isEmpty()) {
 			ProjectPath image = texture(settings.preset(), preset, false, at);
 			String file = image.getFileName();
 			ProjectPath shader = path("presets/" +

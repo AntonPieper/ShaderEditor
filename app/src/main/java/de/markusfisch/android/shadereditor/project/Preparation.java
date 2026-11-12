@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
@@ -43,14 +42,15 @@ public record Preparation(
 	 * Prepare the running shader entry of a project. Every file is read
 	 * once, and only the manifest, its entry and files the running
 	 * shader depends on are read. Images are not decoded. reserved are
-	 * the names of the engine's builtin uniforms: an input with a path
-	 * cannot use one, an input without a path must.
+	 * the GLSL types of the engine's builtin uniforms by name: an input
+	 * with a path cannot use one, an input without a path must name an
+	 * engine sampler of its type.
 	 */
 	public static Preparation prepare(
 			ProjectFiles files,
 			ProjectPath entry,
 			ProjectLimits limits,
-			Set<String> reserved) {
+			Map<String, String> reserved) {
 		CapturedFiles captured = new CapturedFiles(files, limits);
 		List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		ProjectParseResult<ProjectManifest> manifest = readManifest(captured);
