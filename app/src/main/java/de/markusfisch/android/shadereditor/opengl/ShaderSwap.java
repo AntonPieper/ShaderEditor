@@ -5,7 +5,8 @@ import androidx.annotation.Nullable;
 
 // Hands the shaders hosts set on any thread to the GL thread. Only the
 // newest one waiting is built. Its build waits as next while the current
-// build keeps drawing, and replaces it once it is complete.
+// build keeps drawing, and replaces it once it is complete. Shaders are
+// numbered in the order they were offered.
 final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	interface Build {
 		// Whether everything it draws with is uploaded.
@@ -18,27 +19,37 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		void discard();
 	}
 
+	private record Offer<S>(@NonNull S shader, int number) {
+	}
+
 	// Guarded by this.
 	@Nullable
-	private S pending;
+	private Offer<S> pending;
+	@Nullable
+	private Offer<S> taken;
 	@Nullable
 	private S latest;
-	@Nullable
-	private S taken;
+	private int offered;
 	// GL thread only.
 	@Nullable
-	private S nextShader;
+	private Offer<S> nextShader;
 	@Nullable
-	private S currentShader;
+	private Offer<S> currentShader;
 	@Nullable
 	private B next;
 	@Nullable
 	private B current;
+	private int shown;
 
 	// Any thread. Replaces a shader that was not taken yet.
 	synchronized void offer(@NonNull S shader) {
-		pending = shader;
+		pending = new Offer<>(shader, ++offered);
 		latest = shader;
+	}
+
+	// Any thread. The number of the shader offered last.
+	synchronized int offered() {
+		return offered;
 	}
 
 	// Any thread. The shader offered last.
@@ -50,17 +61,24 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	// GL thread, at a frame boundary: the newest shader to build, or null.
 	@Nullable
 	synchronized S take() {
-		S shader = pending;
-		pending = null;
-		if (shader != null) {
-			taken = shader;
+		if (pending == null) {
+			return null;
 		}
-		return shader;
+		taken = pending;
+		pending = null;
+		return taken.shader();
+	}
+
+	// GL thread. The shader taken last did not build; the current build
+	// keeps drawing and shows its outcome.
+	synchronized void failed() {
+		if (taken != null) {
+			shown = Math.max(shown, taken.number());
+		}
 	}
 
 	// GL thread. The build of the shader taken last supersedes a next
-	// build that is still waiting. When a build fails, nothing calls
-	// this, and the current build keeps drawing.
+	// build that is still waiting.
 	synchronized void built(@NonNull B build) {
 		if (next != null) {
 			next.release();
@@ -81,6 +99,9 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		}
 		current = next;
 		currentShader = nextShader;
+		if (currentShader != null) {
+			shown = Math.max(shown, currentShader.number());
+		}
 		next = null;
 		nextShader = null;
 		return current;
@@ -94,6 +115,12 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	@Nullable
 	B next() {
 		return next;
+	}
+
+	// GL thread. The number of the newest shader whose outcome is on
+	// screen: it draws, or it failed and an older one draws.
+	int shown() {
+		return shown;
 	}
 
 	// GL thread. Builds the shader of the current build again, unless a

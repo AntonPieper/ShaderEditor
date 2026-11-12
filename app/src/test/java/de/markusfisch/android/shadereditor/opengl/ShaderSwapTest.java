@@ -64,7 +64,7 @@ public class ShaderSwapTest {
 		var a = buildAndSwap("a");
 		swap.offer("broken");
 		assertEquals("broken", swap.take());
-		// A failed link never reaches built().
+		swap.failed();
 		assertNull(swap.swapIfComplete());
 		assertSame(a, swap.current());
 		assertFalse(a.released);
@@ -113,6 +113,7 @@ public class ShaderSwapTest {
 		swap.built(b);
 		swap.offer("broken");
 		swap.take();
+		swap.failed();
 		b.complete = true;
 		assertSame(b, swap.swapIfComplete());
 		assertFalse(b.released);
@@ -154,6 +155,46 @@ public class ShaderSwapTest {
 		swap.offer("b");
 		swap.rebuildCurrent();
 		assertEquals("b", swap.take());
+	}
+
+	@Test
+	public void numbersShadersInTheOrderTheyWereOffered() {
+		assertEquals(0, swap.offered());
+		swap.offer("a");
+		swap.offer("b");
+		assertEquals(2, swap.offered());
+	}
+
+	@Test
+	public void showsTheNewestShaderThatDrawsOrFailed() {
+		buildAndSwap("a");
+		assertEquals(1, swap.shown());
+		swap.offer("broken");
+		swap.take();
+		swap.failed();
+		assertEquals(2, swap.shown());
+
+		swap.offer("c");
+		swap.take();
+		var c = new FakeBuild("c", false);
+		swap.built(c);
+		assertEquals(2, swap.shown());
+		c.complete = true;
+		swap.swapIfComplete();
+		assertEquals(3, swap.shown());
+	}
+
+	@Test
+	public void rebuildingAnOlderShaderDoesNotLowerWhatIsShown() {
+		buildAndSwap("a");
+		swap.offer("broken");
+		swap.take();
+		swap.failed();
+		swap.rebuildCurrent();
+		swap.take();
+		swap.built(new FakeBuild("a", true));
+		swap.swapIfComplete();
+		assertEquals(2, swap.shown());
 	}
 
 	@NonNull

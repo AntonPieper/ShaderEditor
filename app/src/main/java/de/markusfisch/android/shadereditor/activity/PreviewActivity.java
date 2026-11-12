@@ -64,7 +64,7 @@ public class PreviewActivity extends AppCompatActivity {
 				return;
 			}
 
-			renderStatus.setThumbnail(shaderView.getEngine().getThumbnail());
+			shaderView.getEngine().requestThumbnail(renderStatus::setThumbnail);
 		}
 	};
 
