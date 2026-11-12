@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.project;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -17,16 +18,25 @@ import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 
 /**
- * The project open in the editor, for the screens that show it: the
- * text and editor state of every file opened, saving, changes made
- * elsewhere, and what runs, prepared from that text. Unsaved text is kept by an {@link EditingSession}, so
- * it survives the process. Methods that read or write storage are called
- * from one worker thread at a time; the others only touch memory and
- * may be called from any thread.
+ * The project open in the editor, for the screens that show it: its
+ * folders, the text and editor state of every file opened, saving,
+ * changes made elsewhere, what runs, prepared from that text, and the
+ * diagnostics of its last build by file. Unsaved text is kept by an
+ * {@link EditingSession}, so it survives the process. Methods that read
+ * or write storage are called from one worker thread at a time; the
+ * others only touch memory and may be called from any thread.
  */
 public final class OpenProject {
 	public static final ProjectPath MAIN = ProjectPath.parse("main.glsl")
 			.value();
+
+	/** A file or folder in a folder of the project. */
+	public record Item(ProjectPath path, boolean folder) {
+	}
+
+	/** The items of a folder, folders first, or why it cannot be listed. */
+	public record Folder(List<Item> items, String problem) {
+	}
 
 	/** Where a copy was written, or why it was not. */
 	public record Copy(ProjectPath path, String problem) {
@@ -52,6 +62,7 @@ public final class OpenProject {
 	private final ProjectFiles store;
 	private final ProjectSessions sessions;
 	private final EditingSession session;
+	private List<ProjectDiagnostic> diagnostics = List.of();
 	private ProjectPath running;
 	private ProjectPath shown;
 
@@ -81,6 +92,35 @@ public final class OpenProject {
 
 	public String id() {
 		return id;
+	}
+
+	/**
+	 * Return the files and folders in folder, the root when null; only
+	 * that folder is listed.
+	 */
+	public Folder list(ProjectPath folder) {
+		ProjectFiles.Listing listing = store.list(folder);
+		if (!(listing instanceof ProjectFiles.Entries entries)) {
+			return new Folder(List.of(), listing == null
+					? "the folder does not exist anymore"
+					: ((ProjectFiles.Failed) listing).reason());
+		}
+		List<Item> items = new ArrayList<>();
+		for (ProjectFiles.Entry entry : entries.entries()) {
+			String name = entry.name();
+			ProjectParseResult<ProjectPath> path = ProjectPath.parse(
+					folder != null ? folder + "/" + name : name);
+			// A name no path can spell, like ".git", cannot be used.
+			if (path.isSuccess() &&
+					name.equals(path.value().getFileName())) {
+				items.add(new Item(path.value(), entry.folder()));
+			}
+		}
+		Collections.sort(items, (a, b) -> a.folder() != b.folder()
+				? a.folder() ? -1 : 1
+				: compareNames(a.path().getFileName(),
+						b.path().getFileName()));
+		return new Folder(items, null);
 	}
 
 	/**
@@ -397,6 +437,39 @@ public final class OpenProject {
 				: null;
 	}
 
+	/** Keep the diagnostics of the last build of what runs. */
+	public synchronized void setDiagnostics(
+			List<ProjectDiagnostic> diagnostics) {
+		this.diagnostics = List.copyOf(diagnostics);
+	}
+
+	/** Return the diagnostics of the last build, of all files. */
+	public synchronized List<ProjectDiagnostic> diagnostics() {
+		return diagnostics;
+	}
+
+	/** Return the diagnostics of the last build located in file. */
+	public synchronized List<ProjectDiagnostic> diagnostics(ProjectPath file) {
+		List<ProjectDiagnostic> inFile = new ArrayList<>();
+		for (ProjectDiagnostic diagnostic : diagnostics) {
+			if (file != null && file.equals(diagnostic.file())) {
+				inFile.add(diagnostic);
+			}
+		}
+		return inFile;
+	}
+
+	/** Return how many diagnostics of the last build are errors. */
+	public synchronized int errors() {
+		int errors = 0;
+		for (ProjectDiagnostic diagnostic : diagnostics) {
+			if (diagnostic.severity() == ProjectDiagnostic.Severity.ERROR) {
+				++errors;
+			}
+		}
+		return errors;
+	}
+
 	private ProjectPath freeCopyPath(ProjectPath path) {
 		String name = path.toString();
 		int dot = name.lastIndexOf('.');
@@ -422,6 +495,11 @@ public final class OpenProject {
 				? SourceText.decode(bytes)
 				: null;
 		return text != null && text.indexOf('\0') < 0 ? text : null;
+	}
+
+	private static int compareNames(String a, String b) {
+		int order = a.compareToIgnoreCase(b);
+		return order != 0 ? order : a.compareTo(b);
 	}
 
 	// The project as the editor has it: open files with their text in

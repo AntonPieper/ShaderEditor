@@ -16,6 +16,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,6 +26,7 @@ import de.markusfisch.android.shadereditor.project.EditingSession.Conflict;
 import de.markusfisch.android.shadereditor.project.EditingSession.Failed;
 import de.markusfisch.android.shadereditor.project.EditingSession.Outcome;
 import de.markusfisch.android.shadereditor.project.EditingSession.Saved;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic.Severity;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 
@@ -301,6 +305,50 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void listsOneFolderAtATimeFoldersFirst() throws IOException {
+		write("zeta.glsl", "z");
+		write("Alpha.png", "p");
+		write("beta/deep/x.glsl", "x");
+		write("lib/common.glsl", "c");
+		write(".git/HEAD", "ref");
+		FailingFiles store = new FailingFiles(new DirectoryProjectFiles(root));
+		OpenProject project = open(store);
+
+		OpenProject.Folder top = project.list(null);
+
+		assertNull(top.problem());
+		assertEquals(List.of("beta", "lib", "Alpha.png", "zeta.glsl"),
+				names(top));
+		assertTrue(top.items().get(0).folder());
+		assertEquals(Collections.singletonList((ProjectPath) null),
+				store.listed);
+		assertEquals(List.of("deep"), names(project.list(path("beta"))));
+		assertEquals(path("beta/deep/x.glsl"),
+				project.list(path("beta/deep")).items().get(0).path());
+		assertNotNull(project.list(path("gone")).problem());
+	}
+
+	@Test
+	public void groupsDiagnosticsByFile() throws IOException {
+		OpenProject project = open();
+		ProjectDiagnostic inMain = new ProjectDiagnostic(Severity.WARNING,
+				"unused", path("main.glsl"), 3);
+		ProjectDiagnostic inLib = new ProjectDiagnostic(Severity.ERROR,
+				"syntax error", path("lib/common.glsl"), 7);
+		ProjectDiagnostic nowhere = ProjectDiagnostic.error("driver crashed");
+
+		project.setDiagnostics(List.of(inMain, inLib, nowhere));
+
+		assertEquals(List.of(inLib), project.diagnostics(
+				path("lib/common.glsl")));
+		assertEquals(List.of(inMain), project.diagnostics(path("main.glsl")));
+		assertEquals(List.of(), project.diagnostics(path("other.glsl")));
+		assertEquals(List.of(), project.diagnostics(null));
+		assertEquals(List.of(inMain, inLib, nowhere), project.diagnostics());
+		assertEquals(2, project.errors());
+	}
+
+	@Test
 	public void opensOnlyTextInTheEditor() throws IOException {
 		write("image.png", "not really");
 		Files.write(new File(root, "data.bin").toPath(), new byte[]{0, 1, 2});
@@ -362,12 +410,21 @@ public class OpenProjectTest {
 				StandardCharsets.UTF_8);
 	}
 
+	private static List<String> names(OpenProject.Folder folder) {
+		List<String> names = new ArrayList<>();
+		for (OpenProject.Item item : folder.items()) {
+			names.add(item.path().getFileName());
+		}
+		return names;
+	}
+
 	private static ProjectPath path(String path) {
 		return ProjectPath.parse(path).value();
 	}
 
 	private static final class FailingFiles implements ProjectFiles {
 		private final ProjectFiles files;
+		private final List<ProjectPath> listed = new ArrayList<>();
 		private ProjectPath failing;
 
 		private FailingFiles(ProjectFiles files) {
@@ -381,6 +438,7 @@ public class OpenProjectTest {
 
 		@Override
 		public Listing list(ProjectPath folder) {
+			listed.add(folder);
 			return files.list(folder);
 		}
 
