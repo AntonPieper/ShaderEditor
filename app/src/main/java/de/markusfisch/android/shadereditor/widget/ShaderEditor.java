@@ -64,6 +64,8 @@ public class ShaderEditor extends LineNumberEditText {
 			"\\xA0");
 	private static final ArrayList<String> DEFAULT_COMPLETIONS = new ArrayList<>();
 	private static final Tokens NO_TOKENS = GlslLexer.lex("");
+	private static final Analysis NO_ANALYSIS = new Analysis(NO_TOKENS,
+			Outline.of(NO_TOKENS, ""));
 
 	static {
 		DEFAULT_COMPLETIONS.add("{");
@@ -77,9 +79,9 @@ public class ShaderEditor extends LineNumberEditText {
 	private int revision = 0;
 	private final int[] colors = new int[Style.values().length];
 	private final TokenListUpdater tokenListUpdater = new TokenListUpdater(
-			(tokenRevision, tokens, text) -> post(() -> {
+			(tokenRevision, analysis, text) -> post(() -> {
 				if (tokenRevision == revision) {
-					provideCompletions(tokens, text);
+					provideCompletions(analysis, text);
 				}
 			}));
 	private final Runnable updateRunnable = new Runnable() {
@@ -380,13 +382,13 @@ public class ShaderEditor extends LineNumberEditText {
 	protected void onSelectionChanged(int selStart, int selEnd) {
 		super.onSelectionChanged(selStart, selEnd);
 		Editable text = getText();
-		Tokens completedTokens;
+		Analysis completed;
 		if (text != null &&
 				codeCompletionListener != null &&
 				getSelectionStart() == getSelectionEnd() &&
 				!isApplyingEdit &&
-				(completedTokens = tokenListUpdater.getCompletedTokens(revision)) != null) {
-			provideCompletions(completedTokens, text);
+				(completed = tokenListUpdater.getCompleted(revision)) != null) {
+			provideCompletions(completed, text);
 		}
 	}
 
@@ -561,7 +563,7 @@ public class ShaderEditor extends LineNumberEditText {
 			clearSpans(e, 0, length, ForegroundColorSpan.class);
 			return e;
 		}
-		Tokens newTokens = tokenListUpdater.ensureUpdated(e, revision);
+		Tokens newTokens = tokenListUpdater.ensureUpdated(e, revision).tokens();
 
 		if (complete) {
 			clearSpans(e, 0, length, ForegroundColorSpan.class);
@@ -597,12 +599,13 @@ public class ShaderEditor extends LineNumberEditText {
 	}
 
 	private void provideCompletions(
-			@NonNull Tokens tokens,
+			@NonNull Analysis analysis,
 			@NonNull CharSequence text) {
 		CodeCompletionListener listener = codeCompletionListener;
 		if (listener == null) {
 			return;
 		}
+		Tokens tokens = analysis.tokens();
 		int start = getSelectionStart();
 		int index = GlslCompletion.tokenBefore(tokens, start);
 		if (index < 0) {
@@ -616,7 +619,9 @@ public class ShaderEditor extends LineNumberEditText {
 		int positionInToken = start - tokens.start(index);
 		List<String> completions = GlslCompletion.words(
 				text.subSequence(tokens.start(index), start).toString(),
-				tokens.inDirective(index));
+				tokens.inDirective(index),
+				analysis.outline(),
+				tokens.start(index));
 
 		if (completions.isEmpty()) {
 			completions = DEFAULT_COMPLETIONS;
@@ -747,7 +752,10 @@ public class ShaderEditor extends LineNumberEditText {
 
 	@FunctionalInterface
 	interface OnTokenized {
-		void onTokens(int revision, @NonNull Tokens tokens, @NonNull CharSequence text);
+		void onTokens(int revision, @NonNull Analysis analysis, @NonNull CharSequence text);
+	}
+
+	record Analysis(@NonNull Tokens tokens, @NonNull Outline outline) {
 	}
 
 	private static class TabWidthSpan
@@ -795,7 +803,7 @@ public class ShaderEditor extends LineNumberEditText {
 		}
 	}
 
-	static class TokenizeCalculation implements Callable<Tokens> {
+	static class TokenizeCalculation implements Callable<Analysis> {
 		private final String text;
 		private final int revision;
 		@NonNull
@@ -811,11 +819,13 @@ public class ShaderEditor extends LineNumberEditText {
 		}
 
 		@Override
-		public Tokens call() {
+		public Analysis call() {
 			Tokens tokens = GlslLexer.lex(text);
-			tokens = Outline.of(tokens, text).colourTypes(tokens, text);
-			onTokenized.onTokens(revision, tokens, text);
-			return tokens;
+			Outline outline = Outline.of(tokens, text);
+			Analysis analysis = new Analysis(
+					outline.colourTypes(tokens, text), outline);
+			onTokenized.onTokens(revision, analysis, text);
+			return analysis;
 		}
 	}
 
@@ -825,9 +835,9 @@ public class ShaderEditor extends LineNumberEditText {
 		@NonNull
 		private final ExecutorService executor = Executors.newSingleThreadExecutor();
 		@Nullable
-		private FutureTask<Tokens> task;
+		private FutureTask<Analysis> task;
 		@Nullable
-		private Tokens completedTokens;
+		private Analysis completed;
 		private int revision = -1;
 		private int completedRevision = -1;
 
@@ -836,21 +846,21 @@ public class ShaderEditor extends LineNumberEditText {
 		}
 
 		@Nullable
-		public synchronized Tokens getCompletedTokens(int revision) {
-			return revision == completedRevision ? completedTokens : null;
+		public synchronized Analysis getCompleted(int revision) {
+			return revision == completedRevision ? completed : null;
 		}
 
-		private synchronized void setCompleted(int revision, @NonNull Tokens tokens) {
+		private synchronized void setCompleted(int revision, @NonNull Analysis analysis) {
 			if (revision != this.revision) {
 				return;
 			}
 			completedRevision = revision;
-			completedTokens = tokens;
+			completed = analysis;
 		}
 
 		@NonNull
-		public Tokens ensureUpdated(@NonNull CharSequence text, int revision) {
-			FutureTask<Tokens> futureTask;
+		public Analysis ensureUpdated(@NonNull CharSequence text, int revision) {
+			FutureTask<Analysis> futureTask;
 			synchronized (this) {
 				if (task == null || revision != this.revision) {
 					update(text, revision);
@@ -858,19 +868,19 @@ public class ShaderEditor extends LineNumberEditText {
 				futureTask = task;
 			}
 			if (futureTask == null) {
-				return NO_TOKENS;
+				return NO_ANALYSIS;
 			}
 			try {
-				Tokens tokens = futureTask.get();
-				setCompleted(revision, tokens);
-				return tokens;
+				Analysis analysis = futureTask.get();
+				setCompleted(revision, analysis);
+				return analysis;
 			} catch (ExecutionException | InterruptedException e) {
 				throw new RuntimeException(e);
 			}
 		}
 
 		public void update(@NonNull CharSequence text, int revision) {
-			FutureTask<Tokens> currentTask;
+			FutureTask<Analysis> currentTask;
 			synchronized (this) {
 				if (revision == this.revision && task != null) {
 					return;
@@ -880,9 +890,9 @@ public class ShaderEditor extends LineNumberEditText {
 				task = new FutureTask<>(new TokenizeCalculation(
 						revision,
 						text.toString(),
-						(tokenRevision, tokens, tokenText) -> {
-							setCompleted(tokenRevision, tokens);
-							onTokenized.onTokens(tokenRevision, tokens, tokenText);
+						(tokenRevision, analysis, tokenText) -> {
+							setCompleted(tokenRevision, analysis);
+							onTokenized.onTokens(tokenRevision, analysis, tokenText);
 						}));
 			}
 			if (currentTask != null) {
