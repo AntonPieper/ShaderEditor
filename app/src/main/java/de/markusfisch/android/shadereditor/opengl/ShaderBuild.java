@@ -26,6 +26,7 @@ final class ShaderBuild implements EngineBuild {
 	private final TextureHandOver<DecodedTextures> decoded =
 			new TextureHandOver<>();
 	private boolean complete;
+	private boolean failed;
 	// The render size its backbuffer seed decodes for.
 	private int seedWidth;
 	private int seedHeight;
@@ -53,7 +54,7 @@ final class ShaderBuild implements EngineBuild {
 			float quality,
 			int version,
 			@NonNull List<ProjectDiagnostic> errors) {
-		var source = ShaderSourcePreparer.prepare(text, version);
+		var source = ShaderSourcePreparer.prepare(text, version, errors);
 		var fragmentShader = source.getFragmentShader();
 		if (fragmentShader == null) {
 			return null;
@@ -90,23 +91,29 @@ final class ShaderBuild implements EngineBuild {
 			return;
 		}
 		new Thread(() -> {
-			var textureDao = Database.getInstance(context).getDataSource().texture;
-			decoded.deliver(generation, DecodedTextures.decode(
-					samplers,
-					backBuffer,
-					width,
-					height,
-					new DecodedTextures.BitmapSource() {
-						@Override
-						public Bitmap get(@NonNull String name) {
-							return textureDao.getTextureBitmap(name);
-						}
+			DecodedTextures result;
+			try {
+				var textureDao = Database.getInstance(context).getDataSource().texture;
+				result = DecodedTextures.decode(
+						samplers,
+						backBuffer,
+						width,
+						height,
+						new DecodedTextures.BitmapSource() {
+							@Override
+							public Bitmap get(@NonNull String name) {
+								return textureDao.getTextureBitmap(name);
+							}
 
-						@Override
-						public Bitmap get(long id) {
-							return textureDao.getTextureBitmap(id);
-						}
-					}));
+							@Override
+							public Bitmap get(long id) {
+								return textureDao.getTextureBitmap(id);
+							}
+						});
+			} catch (RuntimeException | OutOfMemoryError e) {
+				result = DecodedTextures.failed(e);
+			}
+			decoded.deliver(generation, result);
 			if (onDecoded != null) {
 				onDecoded.run();
 			}
@@ -114,14 +121,21 @@ final class ShaderBuild implements EngineBuild {
 	}
 
 	// GL thread. Uploads what was decoded, if it is ready, and returns it
-	// for its backbuffer seed; the caller recycles it.
+	// for its backbuffer seed; the caller recycles it. The build is
+	// complete when everything uploaded, and cannot draw when it adds
+	// errors.
 	@Nullable
 	@Override
 	public DecodedTextures upload(@NonNull List<ProjectDiagnostic> errors) {
 		var result = decoded.take();
 		if (result != null) {
-			errors.addAll(textures.upload(device, result));
-			complete = true;
+			var error = result.error();
+			var uploadErrors = error != null
+					? List.of(ProjectDiagnostic.error(error))
+					: textures.upload(device, result);
+			errors.addAll(uploadErrors);
+			complete = uploadErrors.isEmpty();
+			failed = !complete;
 		}
 		return result;
 	}
@@ -158,7 +172,7 @@ final class ShaderBuild implements EngineBuild {
 
 	@Override
 	public boolean hasFailed() {
-		return false;
+		return failed;
 	}
 
 	@Nullable

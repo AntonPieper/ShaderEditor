@@ -12,6 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.fragment.AbstractSamplerPropertiesFragment;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.legacy.LegacySamplerSettings;
 
 final class ShaderSourcePreparer {
@@ -42,12 +43,18 @@ final class ShaderSourcePreparer {
 	private ShaderSourcePreparer() {
 	}
 
+	// Adds why to errors and prepares no fragment shader when the source
+	// cannot be prepared.
 	@NonNull
 	static PreparedShaderSource prepare(
 			@Nullable String source,
-			int version) {
+			int version,
+			@NonNull List<ProjectDiagnostic> errors) {
 		float fTimeMax = parseFTime(source);
-		if (source == null) {
+		if (source != null && Float.isNaN(fTimeMax)) {
+			errors.add(fTimeError(source));
+		}
+		if (source == null || Float.isNaN(fTimeMax)) {
 			return new PreparedShaderSource(
 					null,
 					fTimeMax,
@@ -115,17 +122,35 @@ final class ShaderSourcePreparer {
 				samplers);
 	}
 
-	private static float parseFTime(@Nullable String source) {
+	// The period FTIME_PERIOD defines, NaN when it is no number, or the
+	// default without one.
+	static float parseFTime(@Nullable String source) {
 		if (source != null) {
 			Matcher matcher = PATTERN_FTIME.matcher(source);
 			String period;
 			if (matcher.find() &&
 					matcher.groupCount() > 0 &&
 					(period = matcher.group(1)) != null) {
-				return Float.parseFloat(period);
+				try {
+					return Float.parseFloat(period);
+				} catch (NumberFormatException e) {
+					return Float.NaN;
+				}
 			}
 		}
 		return 3f;
+	}
+
+	@NonNull
+	private static ProjectDiagnostic fTimeError(@NonNull String source) {
+		Matcher matcher = PATTERN_FTIME.matcher(source);
+		boolean found = matcher.find();
+		return new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.ERROR,
+				"FTIME_PERIOD " + (found ? matcher.group(1) + " " : "") +
+						"is not a number",
+				null,
+				found ? countSourceLines(source, matcher.start()) + 1 : 0);
 	}
 
 	@Nullable

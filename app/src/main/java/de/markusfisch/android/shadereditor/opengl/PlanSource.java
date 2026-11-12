@@ -47,6 +47,11 @@ record PlanSource(
 					at != null ? at.line() : 0));
 			return null;
 		}
+		float fTimeMax = fTimeMax(text);
+		if (Float.isNaN(fTimeMax)) {
+			errors.add(fTimeError(program));
+			return null;
+		}
 		var generated = new ArrayList<String>();
 		generated.add("#define SHADER_EDITOR 1");
 		if (EXTERNAL_SAMPLER.matcher(text).find()) {
@@ -64,7 +69,7 @@ record PlanSource(
 						: FullScreenQuad.VERTEX_SHADER,
 				program.sourceMap().insertGenerated(program.versionLine(),
 						generated.size()),
-				fTimeMax(text));
+				fTimeMax);
 	}
 
 	private static int languageVersion(@NonNull String text) {
@@ -72,6 +77,8 @@ record PlanSource(
 		return matcher.find() ? Integer.parseInt(matcher.group(1)) : 100;
 	}
 
+	// The default without a period or with one that is not positive, NaN
+	// when it is not a number.
 	private static float fTimeMax(@NonNull String text) {
 		Matcher matcher = FTIME.matcher(text);
 		if (matcher.find()) {
@@ -81,10 +88,29 @@ record PlanSource(
 					return period;
 				}
 			} catch (NumberFormatException e) {
-				// Fall through to the default, as without a period.
+				return Float.NaN;
 			}
 		}
 		return DEFAULT_FTIME_MAX;
+	}
+
+	@NonNull
+	private static ProjectDiagnostic fTimeError(@NonNull RenderPlan.Program program) {
+		String text = program.text();
+		Matcher matcher = FTIME.matcher(text);
+		boolean found = matcher.find();
+		int line = 1;
+		for (int i = 0, end = found ? matcher.start() : 0; i < end; ++i) {
+			if (text.charAt(i) == '\n') {
+				++line;
+			}
+		}
+		SourceLocation at = found ? program.sourceMap().locate(line) : null;
+		return new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR,
+				"FTIME_PERIOD " + (found ? matcher.group(1) + " " : "") +
+						"is not a number",
+				at != null ? at.file() : program.file(),
+				at != null ? at.line() : 0);
 	}
 
 	// Text pasted from other apps may carry non-ASCII characters that
