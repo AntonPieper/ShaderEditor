@@ -60,6 +60,7 @@ public class ErrorAdapter extends ListAdapter<ProjectDiagnostic, ErrorAdapter.Vi
 			String location = error.location();
 			if (!location.isEmpty()) {
 				errorLine.setText(String.format(Locale.getDefault(), "%s: ", location));
+				errorLine.setVisibility(View.VISIBLE);
 			} else {
 				errorLine.setVisibility(View.GONE);
 			}

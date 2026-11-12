@@ -25,13 +25,14 @@ public class EngineInputsTest {
 	@Test
 	public void resizeReportsOnlyChangedRenderSizes() {
 		var inputs = new EngineInputs();
-		inputs.setQuality(.5f);
+		inputs.restart(.5f, 0L);
 		assertTrue(inputs.resize(1080, 1920, 0L));
 		assertEquals(540, inputs.getRenderWidth());
 		assertEquals(960, inputs.getRenderHeight());
 		assertFalse(inputs.resize(1080, 1920, 0L));
-		inputs.setQuality(1f);
-		assertTrue(inputs.resize(1080, 1920, 0L));
+		inputs.restart(1f, 0L);
+		assertEquals(1080, inputs.getRenderWidth());
+		assertFalse(inputs.resize(1080, 1920, 0L));
 
 		var in = inputs.capture(0L, 3f);
 		assertEquals(1080, in.surfaceWidth);
@@ -87,8 +88,8 @@ public class EngineInputsTest {
 	@Test
 	public void touchIsScaledToTheRenderTarget() {
 		var inputs = new EngineInputs();
-		inputs.setQuality(.5f);
 		inputs.resize(200, 400, 0L);
+		inputs.restart(.5f, 0L);
 
 		inputs.post(touch(MotionEvent.ACTION_DOWN, 20f, 40f, 5f));
 		var in = inputs.capture(0L, 3f);
@@ -180,6 +181,32 @@ public class EngineInputsTest {
 				for (int i = 0; i < in.pointerCount * 3; ++i) {
 					assertEquals(in.pointerCount, in.pointers[i], 0f);
 				}
+			}
+		} finally {
+			done.set(true);
+			poster.join();
+		}
+	}
+
+	// A pointer posted while the quality changes is scaled with the old
+	// quality and size or with the new ones, never with one of each.
+	@Test
+	public void qualityAndRenderSizeChangeTogether() throws Exception {
+		var inputs = new EngineInputs();
+		inputs.resize(800, 800, 0L);
+		inputs.post(touch(MotionEvent.ACTION_DOWN, 100f, 100f, 1f));
+		var done = new AtomicBoolean();
+		var poster = new Thread(() -> {
+			while (!done.get()) {
+				inputs.post(touch(MotionEvent.ACTION_MOVE, 100f, 100f, 1f));
+			}
+		});
+		poster.start();
+		try {
+			for (int frame = 0; frame < 200000; ++frame) {
+				inputs.restart(frame % 2 == 0 ? .5f : 1f, frame);
+				float touchY = inputs.capture(frame, 3f).touchY;
+				assertTrue("touchY " + touchY, touchY == 700f || touchY == 350f);
 			}
 		} finally {
 			done.set(true);

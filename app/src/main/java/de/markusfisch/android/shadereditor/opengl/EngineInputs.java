@@ -68,12 +68,6 @@ final class EngineInputs {
 		runtimeClock.pause();
 	}
 
-	void setQuality(float quality) {
-		synchronized (lock) {
-			this.quality = quality;
-		}
-	}
-
 	void post(@NonNull MotionEvent e) {
 		post(Touch.of(e));
 	}
@@ -117,13 +111,29 @@ final class EngineInputs {
 
 	// GL thread. Restarts the clock and returns true when the render size changed.
 	boolean resize(int width, int height, long now) {
+		float quality;
+		synchronized (lock) {
+			quality = this.quality;
+		}
+		return restart(width, height, quality, now);
+	}
+
+	// GL thread. Restarts the clock for a new shader of this quality.
+	void restart(float quality, long now) {
+		restart(surfaceWidth, surfaceHeight, quality, now);
+	}
+
+	private boolean restart(int width, int height, float quality, long now) {
 		runtimeClock.pause();
 		startTime = now;
 		startRandom = (float) Math.random();
 		frame = 0;
 		surfaceWidth = width;
 		surfaceHeight = height;
+		// Together, so a pointer is never scaled with one of the new
+		// quality and the old size.
 		synchronized (lock) {
+			this.quality = quality;
 			int w = renderSize(width, quality);
 			int h = renderSize(height, quality);
 			boolean changed = w != renderWidth || h != renderHeight;
@@ -131,12 +141,6 @@ final class EngineInputs {
 			renderHeight = h;
 			return changed;
 		}
-	}
-
-	// GL thread. Restarts the clock for a new shader of this quality.
-	void restart(float quality, long now) {
-		setQuality(quality);
-		resize(surfaceWidth, surfaceHeight, now);
 	}
 
 	int getSurfaceWidth() {
