@@ -306,4 +306,13 @@
 	<string name="successfully_exported">Экспортированно в загрузки</string>
 	<string name="successfully_imported">База данных импортирована</string>
 	<string name="user_files_summary">Deleted when Shader Editor is uninstalled</string>
+
+	<!-- Navigation drawer -->
+	<string name="nav_shaders">Shaders</string>
+	<plurals name="nav_shaders_count">
+		<item quantity="one">%d shader</item>
+		<item quantity="few">%d shaders</item>
+		<item quantity="many">%d shaders</item>
+		<item quantity="other">%d shaders</item>
+	</plurals>
 </resources>
