@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.widget;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -9,11 +10,19 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowInsets;
+import android.widget.EdgeEffect;
+import android.widget.OverScroller;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.WindowInsetsCompat;
 
+import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
@@ -43,6 +52,8 @@ public class CodeView extends View {
 	}
 
 	private static final long BLINK = 500;
+	private static final int HORIZONTAL = 1;
+	private static final int VERTICAL = 2;
 
 	private final CodeAppearance appearance;
 	private final Paint fill = new Paint();
@@ -59,10 +70,21 @@ public class CodeView extends View {
 		@Override
 		public void onUpdate() {
 			restartBlink();
+			scrollInside(getScrollX(), getScrollY());
 			invalidate();
 		}
 	};
 	private final Runnable blink = this::blink;
+	private final OverScroller scroller;
+	private final GestureDetector gestures;
+	private final EdgeEffect edgeTop;
+	private final EdgeEffect edgeBottom;
+	private final EdgeEffect edgeLeft;
+	private final EdgeEffect edgeRight;
+	private Insets insets = Insets.NONE;
+	private boolean caretIntoViewWhenLaidOut;
+	// The axis a drag is locked to.
+	private int axis;
 	private Document document;
 	private LineStyles styles;
 	private LineMarks marks;
@@ -82,11 +104,53 @@ public class CodeView extends View {
 	}
 
 	public CodeView(Context context, @Nullable AttributeSet attrs) {
-		super(context, attrs);
+		super(context, attrs, 0, R.style.CodeView);
 		appearance = new CodeAppearance(context);
 		cache = new LineCache(appearance);
 		setFocusable(true);
 		setFocusableInTouchMode(true);
+		scroller = new OverScroller(context);
+		edgeTop = new EdgeEffect(context);
+		edgeBottom = new EdgeEffect(context);
+		edgeLeft = new EdgeEffect(context);
+		edgeRight = new EdgeEffect(context);
+		gestures = new GestureDetector(context,
+				new GestureDetector.SimpleOnGestureListener() {
+					@Override
+					public boolean onDown(@NonNull MotionEvent e) {
+						scroller.forceFinished(true);
+						axis = 0;
+						return true;
+					}
+
+					@Override
+					public boolean onSingleTapUp(@NonNull MotionEvent e) {
+						placeCaret(e.getX(), e.getY());
+						return true;
+					}
+
+					@Override
+					public boolean onScroll(@Nullable MotionEvent down,
+							@NonNull MotionEvent e, float dx, float dy) {
+						if (axis == 0) {
+							axis = down != null
+									? dominant(e.getX() - down.getX(),
+											e.getY() - down.getY())
+									: dominant(dx, dy);
+						}
+						drag(axis == HORIZONTAL ? dx : 0,
+								axis == VERTICAL ? dy : 0, e);
+						return true;
+					}
+
+					@Override
+					public boolean onFling(@Nullable MotionEvent down,
+							@NonNull MotionEvent e, float vx, float vy) {
+						fling(axis == HORIZONTAL ? (int) -vx : 0,
+								axis == VERTICAL ? (int) -vy : 0);
+						return true;
+					}
+				});
 	}
 
 	/**
@@ -159,6 +223,135 @@ public class CodeView extends View {
 
 	public int getLineHeight() {
 		return appearance.lineHeight;
+	}
+
+	/** Scroll as little as it takes to show the selection's head. */
+	public void bringCaretIntoView() {
+		if (document == null) {
+			return;
+		}
+		if (getWidth() == 0 || getHeight() == 0) {
+			caretIntoViewWhenLaidOut = true;
+			return;
+		}
+		caretIntoViewWhenLaidOut = false;
+		Text text = document.text();
+		int head = document.selection().head();
+		int n = text.lineOf(head);
+		float x = textLeft(text.lineCount()) +
+				layoutOf(n).xOf(head - text.lineStart(n));
+		float top = textTop() + n * appearance.lineHeight;
+		float margin = appearance.charWidth * 4;
+		int scrollX = getScrollX();
+		int scrollY = getScrollY();
+		float visibleLeft = scrollX + textLeft(text.lineCount());
+		float visibleRight = scrollX + getWidth() - insets.right;
+		if (x - margin < visibleLeft) {
+			scrollX -= (int) Math.ceil(visibleLeft - x + margin);
+		} else if (x + margin > visibleRight) {
+			scrollX += (int) Math.ceil(x + margin - visibleRight);
+		}
+		if (top < scrollY + insets.top) {
+			scrollY = (int) top - insets.top;
+		} else if (top + appearance.lineHeight >
+				scrollY + getHeight() - insets.bottom) {
+			scrollY = (int) Math.ceil(top + appearance.lineHeight -
+					getHeight() + insets.bottom);
+		}
+		scroller.forceFinished(true);
+		scrollInside(scrollX, scrollY);
+	}
+
+	/** Fling with the given velocity in pixels per second. */
+	public void fling(int velocityX, int velocityY) {
+		scroller.fling(getScrollX(), getScrollY(), velocityX, velocityY,
+				0, maxScrollX(), 0, maxScrollY());
+		postInvalidateOnAnimation();
+	}
+
+	/** Scroll to x and y, kept inside the range of the text. */
+	@Override
+	public void scrollTo(int x, int y) {
+		caretIntoViewWhenLaidOut = false;
+		scrollInside(x, y);
+	}
+
+	@Override
+	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+		super.onSizeChanged(w, h, oldw, oldh);
+		if (caretIntoViewWhenLaidOut) {
+			bringCaretIntoView();
+		} else {
+			scrollInside(getScrollX(), getScrollY());
+		}
+	}
+
+	@Override
+	public void computeScroll() {
+		if (!scroller.computeScrollOffset()) {
+			return;
+		}
+		int y = scroller.getCurrY();
+		int velocity = (int) scroller.getCurrVelocity();
+		if (y <= 0 && getScrollY() > 0) {
+			edgeTop.onAbsorb(velocity);
+		} else if (y >= maxScrollY() && getScrollY() < maxScrollY()) {
+			edgeBottom.onAbsorb(velocity);
+		}
+		scrollTo(scroller.getCurrX(), y);
+		postInvalidateOnAnimation();
+	}
+
+	// The gesture detector calls performClick for a tap.
+	@SuppressLint("ClickableViewAccessibility")
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+		boolean handled = gestures.onTouchEvent(event);
+		int action = event.getActionMasked();
+		if (action == MotionEvent.ACTION_UP ||
+				action == MotionEvent.ACTION_CANCEL) {
+			edgeTop.onRelease();
+			edgeBottom.onRelease();
+			edgeLeft.onRelease();
+			edgeRight.onRelease();
+			postInvalidateOnAnimation();
+		}
+		return handled || super.onTouchEvent(event);
+	}
+
+	@Override
+	public WindowInsets onApplyWindowInsets(WindowInsets windowInsets) {
+		insets = WindowInsetsCompat.toWindowInsetsCompat(windowInsets, this)
+				.getInsets(WindowInsetsCompat.Type.systemBars() |
+						WindowInsetsCompat.Type.displayCutout() |
+						WindowInsetsCompat.Type.ime());
+		scrollInside(getScrollX(), getScrollY());
+		invalidate();
+		return windowInsets;
+	}
+
+	@Override
+	public void draw(@NonNull Canvas canvas) {
+		super.draw(canvas);
+		int w = getWidth();
+		int h = getHeight();
+		boolean more = drawEdge(canvas, edgeTop, 0, 0, 0, w, h);
+		more |= drawEdge(canvas, edgeBottom, w, h, 180, w, h);
+		more |= drawEdge(canvas, edgeLeft, 0, h, 270, h, w);
+		more |= drawEdge(canvas, edgeRight, w, 0, 90, h, w);
+		if (more) {
+			postInvalidateOnAnimation();
+		}
+	}
+
+	@Override
+	protected int computeVerticalScrollRange() {
+		return document == null ? 0 : maxScrollY() + getHeight();
+	}
+
+	@Override
+	protected int computeHorizontalScrollRange() {
+		return document == null ? 0 : maxScrollX() + getWidth();
 	}
 
 	@Override
@@ -291,12 +484,12 @@ public class CodeView extends View {
 
 	/** Return where line 0 starts. */
 	float textTop() {
-		return getPaddingTop();
+		return getPaddingTop() + insets.top;
 	}
 
 	/** Return where the numbers of the lines start. */
 	float gutterLeft() {
-		return getPaddingLeft();
+		return getPaddingLeft() + insets.left;
 	}
 
 	/** Return where the text of a line starts, without scrolling. */
@@ -317,6 +510,84 @@ public class CodeView extends View {
 	LineLayout layoutOf(int n) {
 		return cache.get(document.text().line(n),
 				styles != null ? styles.runs(n) : null, false).layout();
+	}
+
+	// The last line can scroll up to the middle of the space between the
+	// system bars, or above the keyboard.
+	private int maxScrollY() {
+		int visible = getHeight() - insets.top - insets.bottom;
+		float bottom = textTop() + document.text().lineCount() *
+				appearance.lineHeight + getPaddingBottom() + insets.bottom +
+				visible / 2f;
+		return Math.max(0, (int) Math.ceil(bottom - getHeight()));
+	}
+
+	private int maxScrollX() {
+		float right = textLeft(document.text().lineCount()) + textWidth() +
+				appearance.charWidth + getPaddingRight() + insets.right;
+		return Math.max(0, (int) Math.ceil(right - getWidth()));
+	}
+
+	private void drag(float dx, float dy, MotionEvent e) {
+		float x = getScrollX() + dx;
+		float y = getScrollY() + dy;
+		int maxX = maxScrollX();
+		int maxY = maxScrollY();
+		float w = getWidth();
+		float h = getHeight();
+		if (y < 0) {
+			edgeTop.onPull(-y / h, e.getX() / w);
+		} else if (y > maxY) {
+			edgeBottom.onPull((y - maxY) / h, 1 - e.getX() / w);
+		}
+		if (x < 0) {
+			edgeLeft.onPull(-x / w, 1 - e.getY() / h);
+		} else if (x > maxX) {
+			edgeRight.onPull((x - maxX) / w, e.getY() / h);
+		}
+		scrollTo(Math.round(x), Math.round(y));
+		postInvalidateOnAnimation();
+	}
+
+	private boolean drawEdge(Canvas canvas, EdgeEffect edge, int x, int y,
+			int degrees, int width, int height) {
+		if (edge.isFinished()) {
+			return false;
+		}
+		int save = canvas.save();
+		canvas.translate(getScrollX() + x, getScrollY() + y);
+		canvas.rotate(degrees);
+		edge.setSize(width, height);
+		boolean more = edge.draw(canvas);
+		canvas.restoreToCount(save);
+		return more;
+	}
+
+	private void placeCaret(float x, float y) {
+		if (document == null) {
+			return;
+		}
+		Text text = document.text();
+		int n = CodeGeometry.lineAt(y + getScrollY(), textTop(),
+				appearance.lineHeight, text.lineCount());
+		int offset = text.lineStart(n) + layoutOf(n).offsetAt(
+				x + getScrollX() - textLeft(text.lineCount()));
+		document.select(offset, offset);
+		requestFocus();
+		performClick();
+	}
+
+	private void scrollInside(int x, int y) {
+		super.scrollTo(document == null ? 0 : clamp(x, maxScrollX()),
+				document == null ? 0 : clamp(y, maxScrollY()));
+	}
+
+	private static int dominant(float dx, float dy) {
+		return Math.abs(dx) > Math.abs(dy) ? HORIZONTAL : VERTICAL;
+	}
+
+	private static int clamp(int value, int max) {
+		return Math.max(0, Math.min(value, max));
 	}
 
 	private void drawLineNumbers(Canvas canvas, int first, int last,
