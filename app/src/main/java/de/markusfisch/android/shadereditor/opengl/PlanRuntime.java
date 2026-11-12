@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -24,10 +25,11 @@ import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 // A prepared single-pass plan linked in the current context, with the
-// images its inputs read and how each input samples its image. It is
-// ready to draw once every image is uploaded, and fails as a whole when
-// one cannot be; it owns its GL objects, its target among them, and is
-// built again from the plan in a new context.
+// images its inputs read and how each input samples its image, and the
+// image or shader its history starts as. It is ready to draw once every
+// image is uploaded, and fails as a whole when one cannot be; it owns its
+// GL objects, its targets among them, and is built again from the plan in
+// a new context.
 final class PlanRuntime implements EngineBuild {
 	private final float quality;
 	@NonNull
@@ -36,6 +38,17 @@ final class PlanRuntime implements EngineBuild {
 	private final Preparation preparation;
 	@NonNull
 	private final PlanPass running;
+	// The shader the history starts as, drawn once per reset, or null.
+	@Nullable
+	private final PlanPass initialPass;
+	// The image the history starts as, or null.
+	@Nullable
+	private final ProjectPath initialImage;
+	// The running pass first.
+	@NonNull
+	private final List<PlanPass> passes;
+	@NonNull
+	private final List<GlProgram> programs;
 	@NonNull
 	private final RenderPlan.Pass pass;
 	@NonNull
@@ -46,6 +59,7 @@ final class PlanRuntime implements EngineBuild {
 	private final Sampling presentSampling;
 	private final int glesVersion;
 	private final FrameInputs passFrame = new FrameInputs();
+	private final FrameInputs initialFrame = new FrameInputs();
 	private final FullScreenQuad quad = new FullScreenQuad();
 	// Told with the outcome, whatever it is.
 	@NonNull
@@ -57,8 +71,13 @@ final class PlanRuntime implements EngineBuild {
 	@Nullable
 	private final ShaderTextureResources.SamplerTextureBinding camera;
 	@Nullable
+	private GlTexture2D initialTexture;
+	@Nullable
 	private PassTarget target;
-	// Whether the target was made since the last frame.
+	// What the initial shader draws into.
+	@Nullable
+	private PassTarget initialTarget;
+	// Whether the targets were made since the last frame.
 	private boolean reset;
 	private boolean complete;
 	private boolean failed;
@@ -67,28 +86,47 @@ final class PlanRuntime implements EngineBuild {
 			@NonNull GlDevice device,
 			@NonNull PlanShader shader,
 			@NonNull PlanPass running,
+			@Nullable PlanPass initialPass,
 			int glesVersion) {
 		this.device = device;
 		this.preparation = shader.preparation();
 		this.quality = shader.quality();
 		this.running = running;
+		this.initialPass = initialPass;
 		this.glesVersion = glesVersion;
 		pass = running.pass;
 		bindings = running.bindings;
+		var initial = pass.initial();
+		initialImage = initial != null &&
+				initial.kind() == RenderPlan.Source.Kind.IMAGE
+				? initial.image()
+				: null;
+		passes = initialPass != null
+				? List.of(running, initialPass)
+				: List.of(running);
+		programs = initialPass != null
+				? List.of(running.program, initialPass.program)
+				: List.of(running.program);
 		history = pass.history() || !bindings.history.isEmpty();
 		var present = pass.target().present();
 		presentSampling = new Sampling(present, present, Mipmap.NONE,
 				Wrap.CLAMP, Wrap.CLAMP);
 		warnings.addAll(preparation.diagnostics());
-		warnings.addAll(running.warnings);
-		var sampler = bindings.camera;
-		if (sampler != null) {
+		// The camera of the running pass, or else of the initial shader.
+		PlanBindings cameraBindings = null;
+		for (var linked : passes) {
+			warnings.addAll(linked.warnings);
+			if (cameraBindings == null && linked.bindings.camera != null) {
+				cameraBindings = linked.bindings;
+			}
+		}
+		if (cameraBindings != null && cameraBindings.camera != null) {
+			var sampling = cameraBindings.cameraSampling;
 			var texture = device.createExternalTexture();
-			device.applySampling(texture, bindings.cameraSampling);
+			device.applySampling(texture, sampling);
 			camera = new ShaderTextureResources.SamplerTextureBinding(
-					new DiscoveredSampler(sampler.name(),
-							GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
-							bindings.cameraSampling));
+					new DiscoveredSampler(cameraBindings.camera.name(),
+							GLES11Ext.GL_TEXTURE_EXTERNAL_OES, sampling));
 			camera.setTexture(texture);
 		} else {
 			camera = null;
@@ -116,17 +154,29 @@ final class PlanRuntime implements EngineBuild {
 		}
 		var running = PlanPass.link(device, plan, plan.output(), glesVersion,
 				reasons);
+		var initial = plan.passes().get(plan.output()).initial();
+		PlanPass initialPass = null;
+		if (running != null && initial != null &&
+				initial.kind() == RenderPlan.Source.Kind.PASS) {
+			initialPass = PlanPass.link(device, plan, initial.pass(),
+					glesVersion, reasons);
+			if (initialPass == null) {
+				running.release();
+				running = null;
+			}
+		}
 		if (running == null) {
 			errors.addAll(reasons);
 			return null;
 		}
-		return new PlanRuntime(device, shader, running, glesVersion);
+		return new PlanRuntime(device, shader, running, initialPass,
+				glesVersion);
 	}
 
 	@NonNull
 	@Override
 	public List<GlProgram> programs() {
-		return List.of(running.program);
+		return programs;
 	}
 
 	@Override
@@ -153,8 +203,15 @@ final class PlanRuntime implements EngineBuild {
 			int width,
 			int height,
 			@Nullable Runnable onDecoded) {
+		var paths = new LinkedHashSet<ProjectPath>();
+		for (var linked : passes) {
+			paths.addAll(linked.bindings.imagePaths());
+		}
+		if (initialImage != null && history) {
+			paths.add(initialImage);
+		}
 		var files = new HashMap<ProjectPath, byte[]>();
-		for (var path : bindings.imagePaths()) {
+		for (var path : paths) {
 			var content = preparation.files().get(path);
 			if (content != null) {
 				files.put(path, content.bytes());
@@ -178,7 +235,7 @@ final class PlanRuntime implements EngineBuild {
 	}
 
 	// GL thread. Uploads the images once they are decoded, or fails when
-	// one cannot be used as its inputs ask; it starts no backbuffer.
+	// one cannot be used as its inputs ask or start its history.
 	@Nullable
 	@Override
 	public DecodedTextures upload(@NonNull List<ProjectDiagnostic> diagnostics) {
@@ -188,15 +245,32 @@ final class PlanRuntime implements EngineBuild {
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
 		for (var problem : images.problems.entrySet()) {
-			errors.add(bindings.locate(problem.getKey(), problem.getValue()));
+			errors.add(locate(problem.getKey(), problem.getValue()));
 		}
-		errors.addAll(bindings.check(images.sizes(), glesVersion,
-				device.getMaxTextureSize(), device.getMaxCubemapSize()));
+		int maxSize = device.getMaxTextureSize();
+		for (var linked : passes) {
+			errors.addAll(linked.bindings.check(images.sizes(), glesVersion,
+					maxSize, device.getMaxCubemapSize()));
+		}
+		var seed = initialImage != null ? images.images.get(initialImage) : null;
+		if (seed != null && (seed.width() > maxSize || seed.height() > maxSize)) {
+			errors.add(locate(initialImage, initialImage + " is " +
+					seed.width() + "x" + seed.height() + ", larger than " +
+					maxSize + ", the largest texture this device supports"));
+		}
+		var keys = new LinkedHashSet<PlanBindings.Texture>();
+		for (var linked : passes) {
+			for (var binding : linked.bindings.images) {
+				keys.add(binding.texture());
+			}
+		}
+		if (seed != null) {
+			keys.add(new PlanBindings.Texture(initialImage, false));
+		}
 		if (errors.isEmpty()) {
-			for (var binding : bindings.images) {
-				var key = binding.texture();
+			for (var key : keys) {
 				var image = images.images.get(key.image());
-				if (image == null || textures.containsKey(key)) {
+				if (image == null) {
 					continue;
 				}
 				GlTexture texture;
@@ -210,12 +284,14 @@ final class PlanRuntime implements EngineBuild {
 					texture = texture2D;
 					message = device.uploadTexture2D(texture2D, image.width(),
 							image.height(), image.rgba());
+					if (key.image().equals(initialImage)) {
+						initialTexture = texture2D;
+					}
 				}
 				textures.put(key, texture);
 				if (message != null) {
-					errors.add(bindings.locate(key.image(),
-							key.image() + ": " + message));
-				} else if (bindings.needsMipmaps(key)) {
+					errors.add(locate(key.image(), key.image() + ": " + message));
+				} else if (needsMipmaps(key)) {
 					device.generateMipmap(texture);
 				}
 			}
@@ -227,8 +303,8 @@ final class PlanRuntime implements EngineBuild {
 			failed = true;
 			return null;
 		}
-		if (glesVersion >= 3) {
-			running.createSamplers();
+		for (int i = 0; glesVersion >= 3 && i < passes.size(); ++i) {
+			passes.get(i).createSamplers();
 		}
 		complete = true;
 		return null;
@@ -247,7 +323,8 @@ final class PlanRuntime implements EngineBuild {
 
 	// Its own target at the size the plan says, the render size times
 	// scale or a fixed size, with a second texture when the pass reads its
-	// previous frame; the pipeline's targets go.
+	// previous frame, and one for the initial shader at the size its own
+	// target says; the pipeline's targets go.
 	@Override
 	public boolean createTargets(
 			@NonNull ShaderRenderPipeline pipeline,
@@ -255,10 +332,7 @@ final class PlanRuntime implements EngineBuild {
 			int height,
 			@Nullable Bitmap seed,
 			@NonNull List<ProjectDiagnostic> errors) {
-		if (target != null) {
-			target.release();
-			target = null;
-		}
+		releaseTargets();
 		// The render size is already scaled by the quality.
 		int max = device.getMaxTextureSize();
 		var project = RenderPlan.Size.project(width, height, 1, max);
@@ -273,6 +347,20 @@ final class PlanRuntime implements EngineBuild {
 				history, errors);
 		if (target == null) {
 			return false;
+		} else if (initialPass != null && history) {
+			var shaderTarget = initialPass.pass.target();
+			var initialSize = shaderTarget.size(project.value(), max);
+			initialTarget = initialSize.isSuccess()
+					? PassTarget.create(device, shaderTarget,
+					initialSize.value(), false, errors)
+					: null;
+			if (initialTarget == null) {
+				if (!initialSize.isSuccess()) {
+					errors.add(initialSize.diagnostic());
+				}
+				releaseTargets();
+				return false;
+			}
 		}
 		pipeline.releaseTargets();
 		reset = true;
@@ -297,11 +385,14 @@ final class PlanRuntime implements EngineBuild {
 		if (target == null) {
 			return;
 		}
-		var steps = PassSchedule.frame(reset, history);
+		var steps = PassSchedule.frame(reset, history,
+				initialImage != null || initialPass != null);
 		reset = false;
 		for (int i = 0, n = steps.size(); i < n; ++i) {
 			switch (steps.get(i)) {
 				case CLEAR_HISTORY -> target.clearHistory();
+				case INITIAL -> drawInitial(pipeline, target, builtins, frame,
+						now);
 				case CLEAR -> target.clear();
 				case DRAW -> drawPass(target, builtins, frame, now);
 				case SWAP -> target.swap();
@@ -323,7 +414,9 @@ final class PlanRuntime implements EngineBuild {
 	@Override
 	public void release() {
 		decoded.cancel();
-		running.release();
+		for (var linked : passes) {
+			linked.release();
+		}
 		for (var texture : textures.values()) {
 			device.deleteTexture(texture);
 		}
@@ -332,16 +425,15 @@ final class PlanRuntime implements EngineBuild {
 			device.deleteTexture(camera.texture());
 			camera.setTexture(null);
 		}
-		if (target != null) {
-			target.release();
-			target = null;
-		}
+		releaseTargets();
 	}
 
 	@Override
 	public void discard() {
 		decoded.cancel();
-		running.discard();
+		for (var linked : passes) {
+			linked.discard();
+		}
 		for (var texture : textures.values()) {
 			texture.invalidate();
 		}
@@ -352,6 +444,21 @@ final class PlanRuntime implements EngineBuild {
 		if (target != null) {
 			target.discard();
 			target = null;
+		}
+		if (initialTarget != null) {
+			initialTarget.discard();
+			initialTarget = null;
+		}
+	}
+
+	private void releaseTargets() {
+		if (target != null) {
+			target.release();
+			target = null;
+		}
+		if (initialTarget != null) {
+			initialTarget.release();
+			initialTarget = null;
 		}
 	}
 
@@ -367,6 +474,60 @@ final class PlanRuntime implements EngineBuild {
 				target.completed());
 		quad.draw();
 		running.unbind();
+	}
+
+	// Stretches the image, or what the initial shader draws at its own
+	// size with time and frame at zero, over the previous frame.
+	private void drawInitial(
+			@NonNull ShaderRenderPipeline pipeline,
+			@NonNull PassTarget target,
+			@NonNull ActiveBuiltins builtins,
+			@NonNull FrameInputs frame,
+			long now) {
+		var picture = initialTexture;
+		var shader = initialPass;
+		var drawn = initialTarget;
+		if (shader != null && drawn != null) {
+			drawn.clear();
+			var size = drawn.size();
+			initialFrame.scale(frame, size.width(), size.height());
+			initialFrame.time = 0;
+			initialFrame.frame = 0;
+			builtins.write(1, initialFrame, now);
+			shader.bind(textures, camera != null ? camera.texture() : null,
+					null);
+			quad.draw();
+			shader.unbind();
+			picture = drawn.completed();
+		}
+		if (picture != null) {
+			device.applySampling(picture, Sampling.IMAGE);
+			pipeline.stretch(picture, target.history());
+		}
+	}
+
+	private boolean needsMipmaps(@NonNull PlanBindings.Texture texture) {
+		for (var linked : passes) {
+			if (linked.bindings.needsMipmaps(texture)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// A problem with an image, at the first input that reads it, or else
+	// at the target that starts from it.
+	@NonNull
+	private ProjectDiagnostic locate(
+			@NonNull ProjectPath image,
+			@NonNull String message) {
+		for (var linked : passes) {
+			if (linked.bindings.imagePaths().contains(image)) {
+				return linked.bindings.locate(image, message);
+			}
+		}
+		return new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR, message,
+				pass.target().file(), pass.target().line());
 	}
 
 	// Cuts the faces out of the strip one at a time, so only one face is

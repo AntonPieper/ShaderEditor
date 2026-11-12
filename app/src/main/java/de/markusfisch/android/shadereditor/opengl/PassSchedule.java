@@ -12,6 +12,8 @@ final class PassSchedule {
 	enum Step {
 		// Clears the previous frame to opaque black.
 		CLEAR_HISTORY,
+		// Draws the initial content over the previous frame.
+		INITIAL,
 		// Clears what the pass draws into to opaque black.
 		CLEAR,
 		DRAW,
@@ -28,16 +30,23 @@ final class PassSchedule {
 	private static final List<Step> HISTORY_RESET = List.of(
 			Step.CLEAR_HISTORY, Step.CLEAR, Step.DRAW, Step.SWAP,
 			Step.PRESENT);
+	private static final List<Step> INITIAL_RESET = List.of(
+			Step.CLEAR_HISTORY, Step.INITIAL, Step.CLEAR, Step.DRAW,
+			Step.SWAP, Step.PRESENT);
 
 	private PassSchedule() {
 	}
 
-	// reset is whether the targets were made since the last frame.
+	// reset is whether the targets were made since the last frame,
+	// initial whether the pass has an initial source, which has no effect
+	// without history.
 	@NonNull
-	static List<Step> frame(boolean reset, boolean history) {
+	static List<Step> frame(boolean reset, boolean history, boolean initial) {
 		if (!history) {
 			return FRAME;
+		} else if (!reset) {
+			return HISTORY_FRAME;
 		}
-		return reset ? HISTORY_RESET : HISTORY_FRAME;
+		return initial ? INITIAL_RESET : HISTORY_RESET;
 	}
 }

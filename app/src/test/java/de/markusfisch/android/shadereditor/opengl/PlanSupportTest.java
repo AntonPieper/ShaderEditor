@@ -78,14 +78,60 @@ public class PlanSupportTest {
 	}
 
 	@Test
-	public void refusesInitial() {
-		var plan = plan("main.glsl", lines(
+	public void acceptsAnInitialImage() {
+		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
 						"#pragma se target initial=\"seed.png\"",
 						"uniform sampler2D backbuffer;",
 						MAIN),
-				"seed.png", PNG);
-		assertEquals(List.of(error("se target initial needs a newer " +
-				"version of ShaderEditor", 1)), PlanSupport.refusals(plan));
+				"seed.png", PNG)).isEmpty());
+	}
+
+	@Test
+	public void acceptsAnInitialShaderThatReadsAnImage() {
+		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+						"#pragma se target initial=\"seed.glsl\"",
+						"uniform sampler2D backbuffer;",
+						MAIN),
+				"seed.glsl", lines(
+						"#pragma se input \"a.png\"",
+						"uniform sampler2D a;",
+						"#pragma se target scale=0.5",
+						MAIN),
+				"a.png", PNG)).isEmpty());
+		// Ordered by path, the initial shader may come first.
+		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+						"#pragma se target initial=\"a.glsl\"",
+						"uniform sampler2D backbuffer;",
+						MAIN),
+				"a.glsl", MAIN)).isEmpty());
+	}
+
+	@Test
+	public void refusesWhatAnInitialShaderCannotHaveYet() {
+		assertEquals(List.of(new ProjectDiagnostic(Severity.ERROR,
+						"se target initial needs a newer version of " +
+								"ShaderEditor", path("seed.glsl"), 1)),
+				PlanSupport.refusals(plan("main.glsl", lines(
+								"#pragma se target initial=\"seed.glsl\"",
+								"uniform sampler2D backbuffer;",
+								MAIN),
+						"seed.glsl", lines(
+								"#pragma se target initial=\"seed.png\"",
+								"uniform sampler2D backbuffer;",
+								MAIN),
+						"seed.png", PNG)));
+		assertEquals(List.of(new ProjectDiagnostic(Severity.ERROR,
+						"Reading the output of b.glsl needs a newer version " +
+								"of ShaderEditor", path("seed.glsl"), 1)),
+				PlanSupport.refusals(plan("main.glsl", lines(
+								"#pragma se target initial=\"seed.glsl\"",
+								"uniform sampler2D backbuffer;",
+								MAIN),
+						"seed.glsl", lines(
+								"#pragma se input \"b.glsl\"",
+								"uniform sampler2D b;",
+								MAIN),
+						"b.glsl", MAIN)));
 	}
 
 	@Test

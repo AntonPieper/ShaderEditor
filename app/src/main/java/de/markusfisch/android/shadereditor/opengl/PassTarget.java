@@ -76,8 +76,14 @@ final class PassTarget {
 		return textures[textures.length - 1 - current];
 	}
 
+	// What holds the previous frame until swap().
+	@NonNull
+	GlFramebuffer history() {
+		return framebuffers[framebuffers.length - 1 - current];
+	}
+
 	void clearHistory() {
-		bind(framebuffers[framebuffers.length - 1 - current]);
+		bind(history());
 	}
 
 	void clear() {

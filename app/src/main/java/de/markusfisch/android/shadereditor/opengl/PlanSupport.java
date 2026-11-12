@@ -12,8 +12,10 @@ import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
 
 // This runtime draws one pass that reads images, engine samplers and its
-// own previous frame into an RGBA8 target of any size. Anything else is
-// refused as a whole, with one diagnostic per directive that asks for it.
+// own previous frame into an RGBA8 target of any size, with the initial
+// content of that frame from an image or a shader of the same kind.
+// Anything else is refused as a whole, with one diagnostic per directive
+// that asks for it.
 final class PlanSupport {
 	private static final String NEWER = " a newer version of ShaderEditor";
 
@@ -38,12 +40,17 @@ final class PlanSupport {
 				errors.add(error("se target format needs" + NEWER,
 						target.file(), target.line()));
 			}
-			if (pass.initial() != null) {
+			if (pass.initial() != null && i != plan.output()) {
 				errors.add(error("se target initial needs" + NEWER,
 						target.file(), target.line()));
 			}
 		}
-		if (errors.isEmpty() && plan.passes().size() != 1) {
+		// The running pass, and the shader it starts from.
+		var initial = plan.passes().get(plan.output()).initial();
+		int passes = initial != null && initial.kind() == Source.Kind.PASS
+				? 2
+				: 1;
+		if (errors.isEmpty() && plan.passes().size() != passes) {
 			errors.add(error("Projects with more than one pass need" + NEWER,
 					null, 0));
 		}
