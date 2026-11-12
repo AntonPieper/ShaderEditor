@@ -167,7 +167,8 @@ public final class Document {
 	/**
 	 * Replace the range [from, to) by text, as an undo step of its own
 	 * or as part of the step of the current batch. The selection
-	 * follows the change as Change.map moves it.
+	 * follows the change as Change.map moves it. Replacing a range by
+	 * the text it holds only moves the selection so; it is no change.
 	 */
 	public void replace(int from, int to, Text text) {
 		edit(from, to, text, false);
@@ -278,7 +279,9 @@ public final class Document {
 
 	private void edit(int from, int to, Text text, boolean typed) {
 		Change change = new Change(from, this.text.slice(from, to), text);
-		if (from == to && text.length() == 0) {
+		if (same(change.removed(), text)) {
+			select(change.map(selection.anchor()),
+					change.map(selection.head()));
 			return;
 		}
 		beginBatch();
@@ -343,6 +346,19 @@ public final class Document {
 				historyChars > MAX_CHARS)) {
 			historyChars -= undo.removeFirst().chars;
 		}
+	}
+
+	// Returns whether a and b hold the same characters.
+	private static boolean same(Text a, Text b) {
+		if (a.length() != b.length() || a.lineCount() != b.lineCount()) {
+			return false;
+		}
+		for (int i = a.lineCount(); i-- > 0; ) {
+			if (!a.line(i).equals(b.line(i))) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	// Returns whether b replaces a range that touches what a inserted.

@@ -384,6 +384,18 @@ public class TextInputTest {
 	}
 
 	@Test
+	public void recommittedUnchangedCompositionIsNoEdit() {
+		open("|abc");
+		int revision = document.revision();
+		input.setComposingRegion(0, 3);
+		input.commitText("abc", 1);
+		assertMarked("abc|");
+		assertEquals(revision, document.revision());
+		assertFalse(document.canUndo());
+		assertFalse(document.isModified());
+	}
+
+	@Test
 	public void undoWhileComposingFinishesIt() {
 		open("|");
 		input.setComposingText("ab", 1);
