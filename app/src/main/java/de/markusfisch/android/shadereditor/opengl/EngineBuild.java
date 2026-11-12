@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -8,7 +9,6 @@ import androidx.annotation.Nullable;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
-import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 // A shader linked in the current context, as the engine swaps it in and
 // draws it, whatever kind of shader it was built from.
@@ -19,9 +19,6 @@ interface EngineBuild extends ShaderSwap.Build {
 	float quality();
 
 	float fTimeMax();
-
-	@NonNull
-	Sampling backBufferSampling();
 
 	// Decodes what it reads off the GL thread; until upload() took it,
 	// it is not complete.
@@ -44,6 +41,25 @@ interface EngineBuild extends ShaderSwap.Build {
 	@Nullable
 	ShaderTextureResources.SamplerTextureBinding getCameraBinding();
 
-	// GL thread. Binds what it reads and draws into the pipeline.
-	void draw(@NonNull ShaderRenderPipeline pipeline);
+	// GL thread, before it replaces the current build and whenever the
+	// render size changed: makes what it draws into for this render size,
+	// starting as the seed or cleared. Returns false and adds why when it
+	// cannot; it has nothing to draw into then.
+	boolean createTargets(
+			@NonNull ShaderRenderPipeline pipeline,
+			int width,
+			int height,
+			@Nullable Bitmap seed,
+			@NonNull List<ProjectDiagnostic> errors);
+
+	// GL thread.
+	boolean hasTargets(@NonNull ShaderRenderPipeline pipeline);
+
+	// GL thread. Writes the builtins for these inputs, draws a frame and
+	// puts it on the surface.
+	void draw(
+			@NonNull ShaderRenderPipeline pipeline,
+			@NonNull ActiveBuiltins builtins,
+			@NonNull FrameInputs frame,
+			long now);
 }
