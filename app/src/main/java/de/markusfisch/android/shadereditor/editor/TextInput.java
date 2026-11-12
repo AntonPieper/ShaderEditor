@@ -37,8 +37,9 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
  * characters of the selection and keeps the real anchor and head, so
  * the keyboard sees that the text is cut and not the selection.
  * <p>
- * Given a KeyboardSession, it writes every call with its answer, what
- * the keyboard was told, and every change and selection of the app.
+ * Given a KeyboardSession, it writes when it opens and closes, every
+ * call with its answer, what the keyboard was told, and every change
+ * and selection of the app.
  */
 public final class TextInput {
 	public static final int MAX_READ = 4096;
@@ -69,11 +70,12 @@ public final class TextInput {
 	}
 
 	private static final Object[] NO_ARGS = {};
-	private static final KeyboardSession NONE = new KeyboardSession(null);
 
 	private final Document document;
 	private final Listener listener;
 	private final KeyboardSession session;
+	// The number of this connection in the session.
+	private final int id;
 	private final Document.Listener changes = new Document.Listener() {
 		@Override
 		public void onChange(Change change, Text before) {
@@ -81,7 +83,7 @@ public final class TextInput {
 				composingStart = composingEnd = -1;
 				recorded = new Selection(change.map(recorded.anchor()),
 						change.map(recorded.head()));
-				session.replaced(change.start(),
+				session.changed(id, change.start(),
 						change.start() + change.removed().length(),
 						change.inserted());
 			} else if (composingStart > -1) {
@@ -128,11 +130,11 @@ public final class TextInput {
 			KeyboardSession session) {
 		this.document = document;
 		this.listener = listener;
-		this.session = session != null ? session : NONE;
+		this.session = session != null ? session : KeyboardSession.NONE;
 		toldSelection = recorded = document.selection();
 		toldRevision = document.revision();
 		document.addListener(changes);
-		this.session.start(document.text(), recorded);
+		id = this.session.open(document, recorded);
 	}
 
 	/** Return where the composing region starts, -1 if there is none. */
@@ -316,7 +318,7 @@ public final class TextInput {
 		noteSelection();
 		++batches;
 		document.beginBatch();
-		session.call("beginBatchEdit", NO_ARGS, true);
+		session.call(id, "beginBatchEdit", NO_ARGS, true);
 		return true;
 	}
 
@@ -327,12 +329,12 @@ public final class TextInput {
 		}
 		noteSelection();
 		if (batches == 0) {
-			session.call("endBatchEdit", NO_ARGS, false);
+			session.call(id, "endBatchEdit", NO_ARGS, false);
 			return false;
 		}
 		document.endBatch();
 		boolean open = --batches > 0;
-		session.call("endBatchEdit", NO_ARGS, open);
+		session.call(id, "endBatchEdit", NO_ARGS, open);
 		if (!open) {
 			report();
 		}
@@ -355,7 +357,7 @@ public final class TextInput {
 		for (; batches > 0; --batches) {
 			document.endBatch();
 		}
-		session.end(document.text(), document.selection());
+		session.close(id, document.text(), document.selection());
 	}
 
 	private boolean begin() {
@@ -371,7 +373,7 @@ public final class TextInput {
 	// own when the document updates, and tells the keyboard.
 	private boolean done(String name, Object... args) {
 		recorded = document.selection();
-		session.call(name, args, true);
+		session.call(id, name, args, true);
 		document.endBatch();
 		if (batches == 0) {
 			report();
@@ -605,10 +607,10 @@ public final class TextInput {
 		toldComposingEnd = end;
 		Window window = extract ? window(MAX_READ, MAX_READ, false) : null;
 		if (extract) {
-			session.updateExtractedText(token, window);
+			session.updateExtractedText(id, token, window);
 		}
 		if (moved) {
-			session.updateSelection(selection.anchor(), selection.head(),
+			session.updateSelection(id, selection.anchor(), selection.head(),
 					start, end);
 		}
 		if (extract) {
@@ -623,7 +625,7 @@ public final class TextInput {
 
 	private <T> T read(T answer, String name, Object... args) {
 		noteSelection();
-		session.call(name, args, answer);
+		session.call(id, name, args, answer);
 		return answer;
 	}
 
@@ -632,7 +634,7 @@ public final class TextInput {
 		Selection selection = document.selection();
 		if (!selection.equals(recorded)) {
 			recorded = selection;
-			session.selected(selection);
+			session.selected(id, selection);
 		}
 	}
 
