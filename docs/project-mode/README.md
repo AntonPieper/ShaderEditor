@@ -16,6 +16,7 @@ This folder is the design. The implementation plan, its ledger, and the prompts 
 | [LANGUAGE.md](LANGUAGE.md) | The editor's tokenizer, highlighting and completion, and the lexical layer shared with project mode |
 | [EDITOR.md](EDITOR.md) | The editor core: why the stock text widget cannot be fast, the document model, the editor view, keyboard input, measurements, and the path there |
 | [NAVIGATION.md](NAVIGATION.md) | How people get around once there are projects: personas, user stories, five compared navigation models, the recommended drawer, and the decisions taken |
+| [STYLE.md](STYLE.md) | The visual language: an audit of today's screens, three compared directions, how code stays readable over the shader, the style guide (colour, shape, type, states), the path of small pull requests, and the decisions taken |
 | [EXAMPLES.md](EXAMPLES.md) | The bundled examples and include library: purpose, structure, the set, quality bar |
 | [ACCEPTANCE.md](ACCEPTANCE.md) | Named, observable acceptance cases |
 | [examples/README.md](examples/README.md) | Small executable source fixtures and expected results |
