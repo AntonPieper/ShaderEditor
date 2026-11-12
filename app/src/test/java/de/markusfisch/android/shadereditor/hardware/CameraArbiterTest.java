@@ -77,6 +77,43 @@ public class CameraArbiterTest {
 		assertEquals(List.of("c-", "b+", "b-", "a+"), events);
 	}
 
+	// The editor uses the back camera; the preview asks for a front lens
+	// the device does not have, so the preview withdraws when its bind
+	// fails, at once or once the camera provider is ready.
+	@Test
+	public void requesterThatCannotBindGivesTheCameraBack() {
+		var editor = client("editor");
+		arbiter.request(editor);
+		var front = new CameraArbiter.Client() {
+			@Override
+			public void acquire() {
+				events.add("front+");
+				arbiter.withdraw(this);
+			}
+
+			@Override
+			public void release() {
+				events.add("front-");
+			}
+		};
+		arbiter.request(front);
+		assertSame(editor, arbiter.getHolder());
+		assertEquals(List.of("editor+", "editor-", "front+", "front-", "editor+"),
+				events);
+	}
+
+	@Test
+	public void requesterThatFailsLaterGivesTheCameraBack() {
+		var editor = client("editor");
+		var front = client("front");
+		arbiter.request(editor);
+		arbiter.request(front);
+		events.clear();
+		arbiter.withdraw(front);
+		assertSame(editor, arbiter.getHolder());
+		assertEquals(List.of("front-", "editor+"), events);
+	}
+
 	@Test
 	public void repeatedRequestAndUnknownWithdrawAreIgnored() {
 		var editor = client("editor");

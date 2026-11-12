@@ -14,6 +14,7 @@ import java.util.Calendar;
 
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.hardware.MicInputListener;
+import de.markusfisch.android.shadereditor.hardware.Retry;
 import de.markusfisch.android.shadereditor.service.NotificationService;
 
 final class SystemSources {
@@ -207,23 +208,33 @@ final class SystemSources {
 		private final float[] sample = new float[1];
 		@Nullable
 		private MicInputListener listener;
+		@Nullable
+		private Retry retry;
 
+		// Without the permission, or while the microphone is busy, it
+		// tries again until it records.
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
-			listener = new MicInputListener(host.context());
-			if (!listener.register()) {
-				listener = null;
-				if (!host.onPermissionNeeded(
-						android.Manifest.permission.RECORD_AUDIO)) {
-					sources.warn("The microphone may not record; run this " +
-							"shader in the app once to allow it");
-				}
+			var listener = new MicInputListener(host.context());
+			this.listener = listener;
+			if (listener.register()) {
+				return;
 			}
-			recording = listener != null;
+			if (!host.onPermissionNeeded(
+					android.Manifest.permission.RECORD_AUDIO)) {
+				sources.warn("The microphone may not record; run this " +
+						"shader in the app once to allow it");
+			}
+			retry = new Retry(listener::register);
+			retry.later();
 		}
 
 		@Override
 		public void stop() {
+			if (retry != null) {
+				retry.stop();
+				retry = null;
+			}
 			if (listener != null) {
 				listener.unregister();
 				listener = null;
@@ -233,7 +244,8 @@ final class SystemSources {
 
 		@Override
 		public void update(long now) {
-			if (listener != null) {
+			recording = listener != null && listener.isRecording();
+			if (recording) {
 				listener.sample.read(sample);
 				amplitude = sample[0];
 			}

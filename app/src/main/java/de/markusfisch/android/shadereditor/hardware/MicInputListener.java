@@ -18,8 +18,11 @@ public class MicInputListener extends AbstractListener {
 			CHANNEL_CONFIG,
 			AUDIO_FORMAT);
 
+	// Guarded by this; register() may run on the main thread to try again
+	// while unregister() runs on the GL thread.
 	private AudioRecord audioRecord;
 	private Thread recordingThread;
+	private boolean unregistered;
 	private volatile boolean isRecording = false;
 	private final float[] amplitude = new float[1];
 
@@ -31,7 +34,8 @@ public class MicInputListener extends AbstractListener {
 	}
 
 	@Override
-	public void unregister() {
+	public synchronized void unregister() {
+		unregistered = true;
 		if (!isRecording) {
 			return;
 		}
@@ -55,11 +59,13 @@ public class MicInputListener extends AbstractListener {
 		sample.publish(amplitude);
 	}
 
-	public boolean register() {
-
-
+	// Starts recording, unless it was unregistered.
+	public synchronized boolean register() {
 		if (isRecording) {
 			return true;
+		}
+		if (unregistered) {
+			return false;
 		}
 
 		if (ContextCompat.checkSelfPermission(this.context, Manifest.permission.RECORD_AUDIO)
@@ -78,7 +84,14 @@ public class MicInputListener extends AbstractListener {
 				AUDIO_FORMAT,
 				BUFFER_SIZE);
 
-		if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
+		if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED) {
+			try {
+				audioRecord.startRecording();
+			} catch (IllegalStateException e) {
+				// Another app may record; the state below says so.
+			}
+		}
+		if (audioRecord.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
 			audioRecord.release();
 			audioRecord = null;
 			return false;
@@ -96,9 +109,12 @@ public class MicInputListener extends AbstractListener {
 		return true;
 	}
 
+	public boolean isRecording() {
+		return isRecording;
+	}
+
 	private void processAudioData() {
 		short[] buffer = new short[BUFFER_SIZE / 2]; // 16-bit PCM, so 2 bytes per sample
-		audioRecord.startRecording();
 
 		while (isRecording) {
 			int read = audioRecord.read(buffer, 0, buffer.length);
