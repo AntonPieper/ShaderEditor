@@ -15,6 +15,7 @@ import androidx.lifecycle.LifecycleOwner;
 import java.util.HashSet;
 
 import de.markusfisch.android.shadereditor.opengl.EngineHost;
+import de.markusfisch.android.shadereditor.service.NotificationService;
 
 final class ContextEngineHost implements EngineHost {
 	private static final int PERMISSION_REQUEST_CODE = 1;
@@ -37,25 +38,43 @@ final class ContextEngineHost implements EngineHost {
 	}
 
 	@Override
-	public void onPermissionNeeded(@NonNull String permission) {
+	public boolean onPermissionNeeded(@NonNull String permission) {
+		if (isGranted(permission)) {
+			return true;
+		}
+		if (!(context instanceof Activity activity)) {
+			return false;
+		}
 		mainHandler.post(() -> {
-			if (ContextCompat.checkSelfPermission(context, permission) ==
-					PackageManager.PERMISSION_GRANTED ||
-					!requested.add(permission)) {
-				return;
-			}
-			if (context instanceof Activity activity && !activity.isFinishing()) {
+			if (!isGranted(permission) &&
+					requested.add(permission) &&
+					!activity.isFinishing()) {
 				ActivityCompat.requestPermissions(
 						activity,
 						new String[]{permission},
 						PERMISSION_REQUEST_CODE);
 			}
 		});
+		return true;
+	}
+
+	@Override
+	public boolean onNotificationAccessNeeded() {
+		if (!(context instanceof Activity)) {
+			return false;
+		}
+		NotificationService.requirePermissions(context);
+		return true;
 	}
 
 	@Nullable
 	@Override
 	public LifecycleOwner cameraOwner() {
 		return context instanceof LifecycleOwner owner ? owner : null;
+	}
+
+	private boolean isGranted(@NonNull String permission) {
+		return ContextCompat.checkSelfPermission(context, permission) ==
+				PackageManager.PERMISSION_GRANTED;
 	}
 }

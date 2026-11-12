@@ -5,14 +5,18 @@ import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import de.markusfisch.android.shadereditor.hardware.SensorRegistry;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 final class UniformSources {
 	private final Map<UniformSource.Key<?>, UniformSource> byKey = new HashMap<>();
 	private final ArrayList<UniformSource> running = new ArrayList<>();
+	// What the running sources cannot provide on this host.
+	private final ArrayList<ProjectDiagnostic> warnings = new ArrayList<>();
 	@NonNull
 	private final EngineHost host;
 	// The keys run() started, or null when they must start again.
@@ -60,6 +64,16 @@ final class UniformSources {
 			running.add(source);
 		}
 		return key.cast(source);
+	}
+
+	void warn(@NonNull String message) {
+		warnings.add(new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.WARNING, message, null, 0));
+	}
+
+	@NonNull
+	List<ProjectDiagnostic> getWarnings() {
+		return warnings;
 	}
 
 	@NonNull
@@ -123,6 +137,7 @@ final class UniformSources {
 		}
 		running.clear();
 		byKey.clear();
+		warnings.clear();
 		roots = Set.of();
 	}
 }

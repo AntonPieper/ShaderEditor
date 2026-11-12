@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 
 public class UniformSourcesTest {
@@ -82,7 +83,13 @@ public class UniformSourcesTest {
 		}
 
 		@Override
-		public void onPermissionNeeded(@NonNull String permission) {
+		public boolean onPermissionNeeded(@NonNull String permission) {
+			return false;
+		}
+
+		@Override
+		public boolean onNotificationAccessNeeded() {
+			return false;
 		}
 
 		@Override
@@ -182,6 +189,18 @@ public class UniformSourcesTest {
 		assertEquals(List.of(), output.locations);
 		assertEquals(List.of(), output.calls);
 		sources.stop();
+	}
+
+	@Test
+	public void cameraOnAHostWithoutOwnerWarnsUntilItStops() {
+		var sources = new UniformSources(HOST);
+		new ActiveBuiltins(UniformTable.BUILTINS,
+				program("cameraBack", 0), sources, new LocatedOutput());
+		assertEquals(1, sources.getWarnings().size());
+		assertEquals(ProjectDiagnostic.Severity.WARNING,
+				sources.getWarnings().get(0).severity());
+		sources.stop();
+		assertEquals(List.of(), sources.getWarnings());
 	}
 
 	@Test
