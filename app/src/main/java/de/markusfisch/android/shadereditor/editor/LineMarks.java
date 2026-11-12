@@ -17,7 +17,9 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic.Severity;
  * mark is dropped when its line can no longer be told apart: when a
  * change removes all of its line's text, joins its line to text in
  * front of it, or, for an empty line, removes text next to or around the
- * line's start. A missing mark is better than one on the wrong line.
+ * line's start. A missing mark is better than one on the wrong line. A
+ * change that replaces several lines by as many, as indenting does,
+ * keeps every mark where it is.
  */
 public final class LineMarks {
 	private static final Severity[] SEVERITIES = Severity.values();
@@ -79,7 +81,9 @@ public final class LineMarks {
 	}
 
 	private void move(Document.Change change, Text before) {
-		if (size == 0) {
+		int removed = change.removed().lineCount();
+		if (size == 0 || (removed > 1 &&
+				removed == change.inserted().lineCount())) {
 			return;
 		}
 		int start = change.start();

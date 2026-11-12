@@ -96,6 +96,17 @@ public class LineMarksTest {
 	}
 
 	@Test
+	public void staysOnItsLineWhenLinesAreIndented() {
+		Document document = new Document(Text.of(TEXT));
+		LineMarks marks = marked(document, warning(2), error(3));
+		document.select(0, document.text().length());
+		new EditCommands(document).indent();
+		assertEquals("_ W E _ _", marked(marks, document));
+		document.undo();
+		assertEquals("_ W E _ _", marked(marks, document));
+	}
+
+	@Test
 	public void isDroppedWhenAllTextOfItsLineIsRemoved() {
 		Document document = new Document(Text.of(TEXT));
 		LineMarks marks = marked(document, error(2), error(3), error(5));
