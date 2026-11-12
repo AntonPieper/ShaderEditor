@@ -19,9 +19,9 @@ import de.markusfisch.android.shadereditor.project.ProjectFiles.Done;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Entries;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Entry;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Failed;
+import de.markusfisch.android.shadereditor.project.ProjectFiles.Offers;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Refusal;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Refused;
-import de.markusfisch.android.shadereditor.project.SafProjectFiles.Offers;
 
 public class DocumentProjectFilesTest {
 	private static final Failed OPEN_FOLDER =
@@ -110,17 +110,20 @@ public class DocumentProjectFilesTest {
 
 	@Test
 	public void readOnlyDocumentOrGrantIsNotWritten() {
+		assertEquals(new Offers(true, false, false, false, false),
+				files.offers(files.getPath()));
+		assertEquals(Offers.NONE, files.offers(null));
 		String seen = ((Content) files.read(files.getPath())).revision();
 		shader.flags = DocumentsContract.Document.FLAG_SUPPORTS_DELETE;
 		assertRefused(Refusal.UNSUPPORTED, files.write(files.getPath(),
 				bytes("x"), seen));
-		assertEquals(Offers.NONE.write(), files.offers().write());
+		assertEquals(Offers.NONE.write(), files.offers(files.getPath()).write());
 
 		shader.flags = FakeDocuments.FILE_FLAGS;
 		files = open(false);
 		assertRefused(Refusal.UNSUPPORTED, files.write(files.getPath(),
 				bytes("x"), seen));
-		assertEquals(Offers.NONE, files.offers());
+		assertEquals(Offers.NONE, files.offers(files.getPath()));
 		assertEquals("void main() {}", documents.text(shader));
 	}
 
@@ -132,7 +135,7 @@ public class DocumentProjectFilesTest {
 		assertEquals(new Refused(Refusal.FAILED,
 				DocumentProjectFiles.LOST_FILE), files.write(files.getPath(),
 				bytes("x"), null));
-		assertEquals(Offers.NONE, files.offers());
+		assertEquals(Offers.NONE, files.offers(files.getPath()));
 	}
 
 	@Test

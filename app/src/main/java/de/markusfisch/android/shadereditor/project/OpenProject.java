@@ -149,6 +149,14 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Return the changes the storage offers for the file or folder at
+	 * path, the root when null; none when there is no such file.
+	 */
+	public ProjectFiles.Offers offers(ProjectPath path) {
+		return store.offers(path);
+	}
+
+	/**
 	 * Read path for the editor, its draft or the stored text, unless it
 	 * is open already. Return null when it is open, or why it cannot be
 	 * edited.

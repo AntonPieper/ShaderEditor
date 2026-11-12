@@ -62,6 +62,20 @@ public interface ProjectFiles {
 	}
 
 	/**
+	 * The changes a file or folder offers: writing a file, creating in a
+	 * folder, renaming, moving and deleting it.
+	 */
+	record Offers(boolean write, boolean create, boolean rename,
+			boolean move, boolean delete) {
+		public static final Offers NONE = new Offers(false, false, false,
+				false, false);
+
+		public boolean any() {
+			return write || create || rename || move || delete;
+		}
+	}
+
+	/**
 	 * What a change did: {@link Done} or {@link Refused}.
 	 */
 	interface Change {
@@ -106,6 +120,15 @@ public interface ProjectFiles {
 	 */
 	default Listing list(ProjectPath folder) {
 		return new Failed("this storage cannot list folders");
+	}
+
+	/**
+	 * Return the changes the file or folder at path, the root when null,
+	 * offers; none when there is no such file or folder. A change it
+	 * does not offer is refused; one it offers can still fail.
+	 */
+	default Offers offers(ProjectPath path) {
+		return Offers.NONE;
 	}
 
 	/**

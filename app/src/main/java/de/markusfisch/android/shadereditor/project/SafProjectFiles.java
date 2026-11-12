@@ -35,40 +35,23 @@ public final class SafProjectFiles implements ProjectFiles {
 			"ShaderEditor lost access to this folder, choose it again";
 
 	/**
-	 * The changes a document offers.
+	 * Map the flags of a document to the changes it offers; nothing is
+	 * offered without a writable grant.
 	 */
-	public record Offers(boolean write, boolean create, boolean rename,
-			boolean move, boolean delete) {
-		public static final Offers NONE = new Offers(false, false, false,
-				false, false);
-
-		/**
-		 * Map the flags of a document; nothing is offered without a
-		 * writable grant.
-		 */
-		@SuppressLint("InlinedApi")
-		public static Offers of(Document document, boolean writable) {
-			if (!writable) {
-				return NONE;
-			}
-			int flags = document.flags();
-			return new Offers(
-					!document.folder() && has(flags,
-							DocumentsContract.Document.FLAG_SUPPORTS_WRITE),
-					document.folder() && has(flags,
-							DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE),
-					has(flags, DocumentsContract.Document.FLAG_SUPPORTS_RENAME),
-					has(flags, DocumentsContract.Document.FLAG_SUPPORTS_MOVE),
-					has(flags, DocumentsContract.Document.FLAG_SUPPORTS_DELETE));
+	@SuppressLint("InlinedApi")
+	public static Offers offers(Document document, boolean writable) {
+		if (!writable) {
+			return Offers.NONE;
 		}
-
-		public boolean any() {
-			return write || create || rename || move || delete;
-		}
-
-		private static boolean has(int flags, int flag) {
-			return (flags & flag) != 0;
-		}
+		int flags = document.flags();
+		return new Offers(
+				!document.folder() && has(flags,
+						DocumentsContract.Document.FLAG_SUPPORTS_WRITE),
+				document.folder() && has(flags,
+						DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE),
+				has(flags, DocumentsContract.Document.FLAG_SUPPORTS_RENAME),
+				has(flags, DocumentsContract.Document.FLAG_SUPPORTS_MOVE),
+				has(flags, DocumentsContract.Document.FLAG_SUPPORTS_DELETE));
 	}
 
 	// What the last listing of a folder found: the folder, and its
@@ -117,15 +100,17 @@ public final class SafProjectFiles implements ProjectFiles {
 
 	/**
 	 * Return the changes the document at path, the root when path is
-	 * null, offers; none when there is no such document.
+	 * null, offers; none when there is no such document. A listed
+	 * document needs no call, the root one.
 	 */
+	@Override
 	public Offers offers(ProjectPath path) {
 		try {
 			Document document = path != null
 					? known(segments(path))
 					: resolver.document(rootId);
 			return document != null
-					? Offers.of(document, writable)
+					? offers(document, writable)
 					: Offers.NONE;
 		} catch (IOException | RuntimeException e) {
 			return Offers.NONE;
@@ -206,7 +191,7 @@ public final class SafProjectFiles implements ProjectFiles {
 			if (file != null) {
 				if (file.folder()) {
 					throw new Problem(Refusal.FAILED, "it is a folder");
-				} else if (!Offers.of(file, writable).write()) {
+				} else if (!offers(file, writable).write()) {
 					throw new Problem(Refusal.UNSUPPORTED,
 							"the storage cannot change " + path);
 				} else if (!revision(resolver.read(file.id())).equals(
@@ -276,7 +261,7 @@ public final class SafProjectFiles implements ProjectFiles {
 			String name = target[target.length - 1];
 			boolean move = !folderOf(from).equals(folderOf(to));
 			boolean rename = !nfc(document.name()).equals(name);
-			Offers offers = Offers.of(document, writable);
+			Offers offers = offers(document, writable);
 			if ((move && !offers.move()) || (rename && !offers.rename())) {
 				throw new Problem(Refusal.UNSUPPORTED, "the storage cannot " +
 						(move ? "move " : "rename ") + from);
@@ -304,7 +289,7 @@ public final class SafProjectFiles implements ProjectFiles {
 			Document document = find(changeableRoot(), segments(path));
 			if (document == null) {
 				throw new Problem(Refusal.ABSENT, "there is no " + path);
-			} else if (!Offers.of(document, writable).delete()) {
+			} else if (!offers(document, writable).delete()) {
 				throw new Problem(Refusal.UNSUPPORTED,
 						"the storage cannot delete " + path);
 			}
@@ -359,7 +344,7 @@ public final class SafProjectFiles implements ProjectFiles {
 
 	private Document changeableRoot() throws IOException {
 		Document root = writable ? resolver.document(rootId) : null;
-		if (root == null || !Offers.of(root, true).any()) {
+		if (root == null || !offers(root, true).any()) {
 			throw new Problem(Refusal.UNSUPPORTED, "this folder is read-only");
 		}
 		return root;
@@ -496,7 +481,7 @@ public final class SafProjectFiles implements ProjectFiles {
 
 	private Document create(Document folder, String name, boolean isFolder)
 			throws IOException {
-		if (!Offers.of(folder, writable).create()) {
+		if (!offers(folder, writable).create()) {
 			throw new Problem(Refusal.UNSUPPORTED,
 					"the storage cannot create " + name + " here");
 		}
@@ -527,6 +512,10 @@ public final class SafProjectFiles implements ProjectFiles {
 		} catch (IOException | RuntimeException e) {
 			// Leave it; the change is refused either way.
 		}
+	}
+
+	private static boolean has(int flags, int flag) {
+		return (flags & flag) != 0;
 	}
 
 	private static String folderOf(ProjectPath path) {

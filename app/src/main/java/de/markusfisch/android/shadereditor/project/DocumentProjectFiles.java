@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.project.DocumentResolver.Document;
-import de.markusfisch.android.shadereditor.project.SafProjectFiles.Offers;
 
 /**
  * A project of one document opened on its own, without a folder. The
@@ -63,11 +62,19 @@ public final class DocumentProjectFiles implements ProjectFiles {
 	}
 
 	/**
-	 * Return the changes the document offers.
+	 * Return what the document offers when path is its path: at most
+	 * writing, since it has no folder to change.
 	 */
-	public Offers offers() {
+	@Override
+	public Offers offers(ProjectPath path) {
+		if (!this.path.equals(path)) {
+			return Offers.NONE;
+		}
 		try {
-			return Offers.of(resolver.document(id), writable);
+			return SafProjectFiles.offers(resolver.document(id),
+					writable).write()
+					? new Offers(true, false, false, false, false)
+					: Offers.NONE;
 		} catch (IOException | RuntimeException e) {
 			return Offers.NONE;
 		}
@@ -106,7 +113,7 @@ public final class DocumentProjectFiles implements ProjectFiles {
 		}
 		try {
 			Document document = resolver.document(id);
-			if (!Offers.of(document, writable).write()) {
+			if (!SafProjectFiles.offers(document, writable).write()) {
 				return new Refused(Refusal.UNSUPPORTED,
 						"this file is read-only");
 			} else if (!SafProjectFiles.revision(resolver.read(id)).equals(
