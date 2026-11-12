@@ -271,13 +271,30 @@ public final class ShaderEngine {
 		var textures = next.upload(errors);
 		// Its targets come before the current build goes, so a build
 		// that cannot draw leaves the current one drawing.
+		var seed = textures != null ? textures.backBuffer() : null;
+		var targetErrors = new ArrayList<ProjectDiagnostic>();
 		boolean ready = !next.hasFailed() && next.isComplete() &&
-				next.createTargets(
-						renderPipeline,
-						EngineInputs.renderSize(inputs.getSurfaceWidth(), next.quality()),
-						EngineInputs.renderSize(inputs.getSurfaceHeight(), next.quality()),
-						textures != null ? textures.backBuffer() : null,
-						errors);
+				shaders.makeNextTargets(new ShaderSwap.Targets<>() {
+					@NonNull
+					@Override
+					public ShaderSwap.Allocation make(@NonNull EngineBuild build) {
+						targetErrors.clear();
+						return build.createTargets(
+								renderPipeline,
+								EngineInputs.renderSize(inputs.getSurfaceWidth(),
+										build.quality()),
+								EngineInputs.renderSize(inputs.getSurfaceHeight(),
+										build.quality()),
+								seed,
+								targetErrors);
+					}
+
+					@Override
+					public boolean release(@NonNull EngineBuild build) {
+						return build.releaseTargets(renderPipeline);
+					}
+				});
+		errors.addAll(targetErrors);
 		if (textures != null) {
 			textures.recycle();
 		}
@@ -312,12 +329,12 @@ public final class ShaderEngine {
 			return;
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
-		if (!build.createTargets(
+		if (build.createTargets(
 				renderPipeline,
 				inputs.getRenderWidth(),
 				inputs.getRenderHeight(),
 				null,
-				errors)) {
+				errors) != ShaderSwap.Allocation.MADE) {
 			report(shaders.currentRevision(), errors);
 		}
 	}

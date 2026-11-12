@@ -45,9 +45,10 @@ interface EngineBuild extends ShaderSwap.Build {
 
 	// GL thread, before it replaces the current build and whenever the
 	// render size changed: makes what it draws into for this render size,
-	// starting as the seed or cleared. Returns false and adds why when it
-	// cannot; it has nothing to draw into then.
-	boolean createTargets(
+	// starting as the seed or cleared. Adds why when it cannot; it has
+	// nothing to draw into then.
+	@NonNull
+	ShaderSwap.Allocation createTargets(
 			@NonNull ShaderRenderPipeline pipeline,
 			int width,
 			int height,
@@ -56,6 +57,9 @@ interface EngineBuild extends ShaderSwap.Build {
 
 	// GL thread.
 	boolean hasTargets(@NonNull ShaderRenderPipeline pipeline);
+
+	// GL thread. Releases what it draws into; false when it had nothing.
+	boolean releaseTargets(@NonNull ShaderRenderPipeline pipeline);
 
 	// GL thread. Writes the builtins for these inputs, draws a frame and
 	// puts it on the surface.
