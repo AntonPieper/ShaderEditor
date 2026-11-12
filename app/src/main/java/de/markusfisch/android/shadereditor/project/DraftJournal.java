@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.project.DraftFiles.Draft;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
@@ -78,6 +80,36 @@ public final class DraftJournal {
 			}
 		}
 		return drafts;
+	}
+
+	/**
+	 * Return the path of every kept draft, reading only the start of
+	 * each draft and not its text.
+	 */
+	public Set<ProjectPath> paths() {
+		Set<ProjectPath> paths = new HashSet<>();
+		String[] names = dir.list();
+		if (names == null) {
+			return paths;
+		}
+		for (String name : names) {
+			if (!name.endsWith(SUFFIX)) {
+				continue;
+			}
+			try (DataInputStream in = new DataInputStream(
+					new FileInputStream(new File(dir, name)))) {
+				ProjectParseResult<ProjectPath> path = in.readInt() == MAGIC
+						? ProjectPath.parse(in.readUTF())
+						: null;
+				if (path != null && path.isSuccess() &&
+						name(path.value()).equals(name)) {
+					paths.add(path.value());
+				}
+			} catch (IOException e) {
+				// Not a draft; leave it alone.
+			}
+		}
+		return paths;
 	}
 
 	/**

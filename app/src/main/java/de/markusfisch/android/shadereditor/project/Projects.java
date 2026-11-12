@@ -64,7 +64,8 @@ public final class Projects {
 	}
 
 	/**
-	 * Open the project of session id again, with the drafts it kept.
+	 * Open the project of session id again, with the drafts it kept, and
+	 * remember it as the one open last.
 	 */
 	public Opened open(String id) {
 		Locator locator = sessions.locator(id);
@@ -81,6 +82,7 @@ public final class Projects {
 							: "it is not a known project");
 		}
 		sessions.touch(id, System.currentTimeMillis());
+		sessions.setLast(id);
 		return new Opened(id, project, null);
 	}
 

@@ -90,6 +90,8 @@ public final class OpenProject {
 	private final Set<ProjectPath> keptEdits = new HashSet<>();
 	private final ProjectFiles files = new Edited();
 	private final String id;
+	private final String name;
+	private final String location;
 	private final ProjectFiles store;
 	private final ProjectSessions sessions;
 	private final EditingSession session;
@@ -97,22 +99,29 @@ public final class OpenProject {
 	private List<Used> used = List.of();
 	private ProjectPath running;
 	private ProjectPath shown;
+	// The file shown as the session keeps it.
+	private ProjectPath keptShown;
 	private State announced;
 	private Executor executor;
 	private Runnable listener;
 	private boolean pending;
 
 	private OpenProject(String id, ProjectFiles store,
-			ProjectSessions sessions, EditingSession session) {
+			ProjectSessions sessions, EditingSession session,
+			ProjectSessions.Recent recent) {
 		this.id = id;
+		name = recent != null ? recent.name() : null;
+		location = recent != null ? recent.location() : null;
 		this.store = store;
 		this.sessions = sessions;
 		this.session = session;
 	}
 
 	/**
-	 * Open session id of sessions over store with the drafts it kept and
-	 * find what runs; return null when there is no such session.
+	 * Open session id of sessions over store with the drafts it kept,
+	 * the file shown last and its name and location among the recent
+	 * projects, and find what runs; return null when there is no such
+	 * session.
 	 */
 	public static OpenProject open(String id, ProjectFiles store,
 			ProjectSessions sessions) {
@@ -121,13 +130,30 @@ public final class OpenProject {
 			return null;
 		}
 		OpenProject project = new OpenProject(id, store, sessions,
-				EditingSession.restore(store, journal));
+				EditingSession.restore(store, journal), sessions.recent(id));
+		project.shown = project.keptShown = sessions.shown(id);
 		project.findRunning();
 		return project;
 	}
 
 	public String id() {
 		return id;
+	}
+
+	/**
+	 * Return the name of the project's folder as listed among the
+	 * recent projects, or null when it is not listed.
+	 */
+	public String name() {
+		return name;
+	}
+
+	/**
+	 * Return where the project's folder is, as listed among the recent
+	 * projects, or null when it is not listed.
+	 */
+	public String location() {
+		return location;
 	}
 
 	/**
@@ -262,7 +288,10 @@ public final class OpenProject {
 		}
 	}
 
-	/** Return the file shown in the editor, or null. */
+	/**
+	 * Return the file shown in the editor, or null; after opening, the
+	 * file shown last.
+	 */
 	public synchronized ProjectPath shown() {
 		return shown;
 	}
@@ -286,9 +315,10 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Keep the text of every open file durably where it changed since;
-	 * text that is stored like this drops its draft. Return whether
-	 * every draft was kept durably; it is kept in memory either way.
+	 * Keep the text of every open file and the file shown durably where
+	 * they changed since; text that is stored like this drops its draft.
+	 * Return whether all was kept durably; it is kept in memory either
+	 * way.
 	 */
 	public boolean persist() {
 		record Change(ProjectPath path, Doc doc, String text) {
@@ -302,7 +332,17 @@ public final class OpenProject {
 				}
 			}
 		}
+		ProjectPath show;
+		synchronized (this) {
+			show = shown;
+		}
 		boolean durable = true;
+		if (show == null ? keptShown != null : !show.equals(keptShown)) {
+			durable = sessions.setShown(id, show);
+			if (durable) {
+				keptShown = show;
+			}
+		}
 		for (Change change : changes) {
 			Doc doc = change.doc();
 			durable &= change.text().equals(doc.stored)
