@@ -16,6 +16,7 @@ import androidx.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 
@@ -79,6 +80,13 @@ public final class ShaderEngine {
 	public void setShader(@NonNull ShaderProjectSession session) {
 		inputs.setRuntimeNanos(0);
 		shaders.offer(new SessionShader(session));
+	}
+
+	// Any thread. Like setShader(), for a prepared project at a quality;
+	// the diagnostics of its preparation come with those of its build.
+	public void setPlan(@NonNull Preparation preparation, float quality) {
+		inputs.setRuntimeNanos(0);
+		shaders.offer(new PlanShader(preparation, quality));
 	}
 
 	public long getRuntimeNanos() {
