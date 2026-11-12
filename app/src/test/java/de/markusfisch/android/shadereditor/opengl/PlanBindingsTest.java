@@ -116,6 +116,31 @@ public class PlanBindingsTest {
 	}
 
 	@Test
+	public void anUnannotatedBackbufferReadsThePreviousFrame() {
+		var plan = plan("main.glsl", lines(
+				"uniform sampler2D backbuffer;",
+				MAIN));
+		var bindings = PlanBindings.of(plan.passes().get(0),
+				List.of(sampler("backbuffer", GLES20.GL_SAMPLER_2D).withUnit(2)));
+		assertEquals(1, bindings.history.size());
+		assertEquals(2, bindings.history.get(0).sampler().unit());
+		assertSame(Sampling.PASS, bindings.history.get(0).sampling());
+		assertTrue(bindings.images.isEmpty());
+	}
+
+	@Test
+	public void aBackbufferOfAnotherTypeOrOptimizedAwayReadsNothing() {
+		var plan = plan("main.glsl", lines(
+				"uniform samplerCube backbuffer;",
+				MAIN));
+		assertTrue(PlanBindings.of(plan.passes().get(0), List.of(
+				sampler("backbuffer", GLES20.GL_SAMPLER_CUBE).withUnit(0)))
+				.history.isEmpty());
+		assertTrue(PlanBindings.of(plan.passes().get(0), List.of())
+				.history.isEmpty());
+	}
+
+	@Test
 	public void anUnannotatedCameraKeepsItsDefaultSampling() {
 		var bindings = PlanBindings.of(plan("main.glsl", MAIN).passes().get(0),
 				List.of(sampler("cameraBack", GLES11Ext.GL_SAMPLER_EXTERNAL_OES)

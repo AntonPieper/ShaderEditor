@@ -1,12 +1,14 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import android.opengl.GLES11Ext;
+import android.opengl.GLES20;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +48,15 @@ final class PlanBindings {
 		}
 	}
 
+	// A sampler that reads the previous frame of its own pass: the active
+	// backbuffer that no input annotates.
+	record HistoryBinding(@NonNull GlUniform sampler, @NonNull Sampling sampling) {
+	}
+
 	@NonNull
 	final List<ImageBinding> images;
+	@NonNull
+	final List<HistoryBinding> history;
 	// The first active camera sampler, or null.
 	@Nullable
 	final GlUniform camera;
@@ -59,10 +68,12 @@ final class PlanBindings {
 
 	private PlanBindings(
 			@NonNull List<ImageBinding> images,
+			@NonNull List<HistoryBinding> history,
 			@Nullable GlUniform camera,
 			@NonNull Sampling cameraSampling,
 			@NonNull List<ProjectDiagnostic> warnings) {
 		this.images = List.copyOf(images);
+		this.history = List.copyOf(history);
 		this.camera = camera;
 		this.cameraSampling = cameraSampling;
 		this.warnings = List.copyOf(warnings);
@@ -81,9 +92,12 @@ final class PlanBindings {
 			}
 		}
 		var images = new ArrayList<ImageBinding>();
+		var history = new ArrayList<HistoryBinding>();
+		var declared = new HashSet<String>();
 		var warnings = new ArrayList<ProjectDiagnostic>();
 		var cameraSampling = Sampling.CAMERA;
 		for (var input : pass.inputs()) {
+			declared.add(input.uniform());
 			var sampler = active.get(input.uniform());
 			if (sampler == null) {
 				warnings.add(new ProjectDiagnostic(
@@ -97,7 +111,13 @@ final class PlanBindings {
 				cameraSampling = input.sampling();
 			}
 		}
-		return new PlanBindings(images, camera, cameraSampling, warnings);
+		var backbuffer = active.get(UniformTable.BACKBUFFER);
+		if (backbuffer != null && !declared.contains(backbuffer.name()) &&
+				backbuffer.textureTarget() == GLES20.GL_TEXTURE_2D) {
+			history.add(new HistoryBinding(backbuffer, Sampling.PASS));
+		}
+		return new PlanBindings(images, history, camera, cameraSampling,
+				warnings);
 	}
 
 	// The images that active samplers read, each once.
