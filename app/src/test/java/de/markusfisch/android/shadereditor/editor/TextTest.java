@@ -184,6 +184,33 @@ public class TextTest {
 	}
 
 	@Test
+	public void longestLineAfterRandomEdits() {
+		Random random = new Random(9);
+		StringBuilder expected = new StringBuilder();
+		Text text = Text.EMPTY;
+		for (int i = 0; i < 5_000; ++i) {
+			int length = expected.length();
+			int from = random.nextInt(length + 1);
+			int to = Math.min(length, from + removal(random, length));
+			StringBuilder insert = new StringBuilder();
+			for (int n = insertion(random); n-- > 0; ) {
+				// Lines of very different lengths, so that the longest
+				// one moves between leaves and is often removed.
+				insert.append(random.nextInt(random.nextInt(200) + 2) == 0
+						? '\n'
+						: 'x');
+			}
+			text = text.replace(from, to, Text.of(insert));
+			expected.replace(from, to, insert.toString());
+			int longest = 0;
+			for (String line : expected.toString().split("\n", -1)) {
+				longest = Math.max(longest, line.length());
+			}
+			assertEquals(longest, text.longestLineLength());
+		}
+	}
+
+	@Test
 	public void randomEditsAgreeWithStringBuilder() {
 		Random random = new Random(6);
 		StringBuilder expected = new StringBuilder();
