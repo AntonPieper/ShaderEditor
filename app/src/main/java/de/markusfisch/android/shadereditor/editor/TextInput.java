@@ -24,6 +24,9 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
  * are undo steps of their own. A read returns at most MAX_READ
  * characters on either side of the selection and of the selection
  * itself, so it costs what it returns.
+ * <p>
+ * Given a KeyboardSession, it writes every call with its answer, what
+ * the keyboard was told, and every change and selection of the app.
  */
 public final class TextInput {
 	public static final int MAX_READ = 4096;
@@ -46,13 +49,22 @@ public final class TextInput {
 			String text) {
 	}
 
+	private static final Object[] NO_ARGS = {};
+	private static final KeyboardSession NONE = new KeyboardSession(null);
+
 	private final Document document;
 	private final Listener listener;
+	private final KeyboardSession session;
 	private final Document.Listener changes = new Document.Listener() {
 		@Override
 		public void onChange(Change change, Text before) {
 			if (!applying) {
 				composingStart = composingEnd = -1;
+				recorded = new Selection(change.map(recorded.anchor()),
+						change.map(recorded.head()));
+				session.replaced(change.start(),
+						change.start() + change.removed().length(),
+						change.inserted());
 			} else if (composingStart > -1) {
 				setComposing(change.map(composingStart),
 						change.map(composingEnd));
@@ -61,8 +73,11 @@ public final class TextInput {
 
 		@Override
 		public void onUpdate() {
-			if (!applying && batches == 0) {
-				report();
+			if (!applying) {
+				noteSelection();
+				if (batches == 0) {
+					report();
+				}
 			}
 		}
 	};
@@ -79,17 +94,30 @@ public final class TextInput {
 	private int toldComposingStart = -1;
 	private int toldComposingEnd = -1;
 	private int toldRevision;
+	// The selection as the session has it.
+	private Selection recorded;
+	// The call that is changing the document, and its arguments.
+	private String call;
+	private Object[] args;
 
 	/**
 	 * Start a connection to document; the keyboard knows its selection
 	 * from EditorInfo and no composing region.
 	 */
 	public TextInput(Document document, Listener listener) {
+		this(document, listener, null);
+	}
+
+	/** Start a connection as above, and write it to session. */
+	public TextInput(Document document, Listener listener,
+			KeyboardSession session) {
 		this.document = document;
 		this.listener = listener;
-		toldSelection = document.selection();
+		this.session = session != null ? session : NONE;
+		toldSelection = recorded = document.selection();
 		toldRevision = document.revision();
 		document.addListener(changes);
+		this.session.start(document.text(), recorded);
 	}
 
 	/** Return where the composing region starts, -1 if there is none. */
@@ -109,7 +137,7 @@ public final class TextInput {
 	 * characters before its start.
 	 */
 	public boolean commitText(CharSequence text, int position) {
-		if (!begin()) {
+		if (!begin("commitText", text, position)) {
 			return false;
 		}
 		Text committed = Text.of(text != null ? text : "");
@@ -121,7 +149,7 @@ public final class TextInput {
 
 	/** Replace as commitText does, and compose the new text. */
 	public boolean setComposingText(CharSequence text, int position) {
-		if (!begin()) {
+		if (!begin("setComposingText", text, position)) {
 			return false;
 		}
 		Text composed = Text.of(text != null ? text : "");
@@ -135,7 +163,7 @@ public final class TextInput {
 	 * may come in either order and are clamped to the text.
 	 */
 	public boolean setComposingRegion(int start, int end) {
-		if (!begin()) {
+		if (!begin("setComposingRegion", start, end)) {
 			return false;
 		}
 		int length = document.text().length();
@@ -146,7 +174,7 @@ public final class TextInput {
 
 	/** Keep the composing text and forget the region. */
 	public boolean finishComposingText() {
-		if (!begin()) {
+		if (!begin("finishComposingText")) {
 			return false;
 		}
 		composingStart = composingEnd = -1;
@@ -158,12 +186,13 @@ public final class TextInput {
 	 * selection and the composing region, never half a surrogate pair.
 	 */
 	public boolean deleteSurroundingText(int before, int after) {
-		return delete(before, after, false);
+		return delete("deleteSurroundingText", before, after, false);
 	}
 
 	/** Delete as deleteSurroundingText does, counting code points. */
 	public boolean deleteSurroundingTextInCodePoints(int before, int after) {
-		return delete(before, after, true);
+		return delete("deleteSurroundingTextInCodePoints", before, after,
+				true);
 	}
 
 	/**
@@ -171,7 +200,7 @@ public final class TextInput {
 	 * ignored; the keyboard will be told the real one.
 	 */
 	public boolean setSelection(int start, int end) {
-		if (!begin()) {
+		if (!begin("setSelection", start, end)) {
 			return false;
 		}
 		int length = document.text().length();
@@ -187,8 +216,9 @@ public final class TextInput {
 			return null;
 		}
 		int start = document.selection().start();
-		return document.text().substring(
+		String before = document.text().substring(
 				start - clamp(n, Math.min(MAX_READ, start)), start);
+		return read(before, "getTextBeforeCursor", n);
 	}
 
 	/** Return up to n characters behind the selection. */
@@ -198,8 +228,9 @@ public final class TextInput {
 		}
 		Text text = document.text();
 		int end = document.selection().end();
-		return text.substring(end,
+		String after = text.substring(end,
 				end + clamp(n, Math.min(MAX_READ, text.length() - end)));
+		return read(after, "getTextAfterCursor", n);
 	}
 
 	/** Return the selected text, null if the selection is empty. */
@@ -208,11 +239,12 @@ public final class TextInput {
 			return null;
 		}
 		Selection selection = document.selection();
-		return selection.isEmpty()
+		String selected = selection.isEmpty()
 				? null
 				: document.text().substring(selection.start(),
 						Math.min(selection.end(),
 								selection.start() + MAX_READ));
+		return read(selected, "getSelectedText");
 	}
 
 	/**
@@ -221,7 +253,11 @@ public final class TextInput {
 	 * window.
 	 */
 	public Window getSurroundingText(int before, int after) {
-		return closed ? null : window(before, after);
+		if (closed) {
+			return null;
+		}
+		return read(window(before, after), "getSurroundingText", before,
+				after);
 	}
 
 	/**
@@ -238,7 +274,8 @@ public final class TextInput {
 			monitored = true;
 			this.token = token;
 		}
-		return window(MAX_READ, MAX_READ);
+		return read(window(MAX_READ, MAX_READ), "getExtractedText", token,
+				monitor);
 	}
 
 	/**
@@ -250,21 +287,30 @@ public final class TextInput {
 		if (closed) {
 			return false;
 		}
+		noteSelection();
 		++batches;
 		document.beginBatch();
+		session.call("beginBatchEdit", NO_ARGS, true);
 		return true;
 	}
 
 	/** Close a batch edit; return whether one is still open. */
 	public boolean endBatchEdit() {
-		if (closed || batches == 0) {
+		if (closed) {
+			return false;
+		}
+		noteSelection();
+		if (batches == 0) {
+			session.call("endBatchEdit", NO_ARGS, false);
 			return false;
 		}
 		document.endBatch();
-		if (--batches == 0) {
+		boolean open = --batches > 0;
+		session.call("endBatchEdit", NO_ARGS, open);
+		if (!open) {
 			report();
 		}
-		return batches > 0;
+		return open;
 	}
 
 	/**
@@ -275,18 +321,23 @@ public final class TextInput {
 		if (closed) {
 			return;
 		}
+		noteSelection();
 		closed = true;
 		document.removeListener(changes);
 		composingStart = composingEnd = -1;
 		for (; batches > 0; --batches) {
 			document.endBatch();
 		}
+		session.end(document.text(), document.selection());
 	}
 
-	private boolean begin() {
+	private boolean begin(String name, Object... args) {
 		if (closed) {
 			return false;
 		}
+		noteSelection();
+		call = name;
+		this.args = args;
 		applying = true;
 		document.beginBatch();
 		return true;
@@ -295,6 +346,8 @@ public final class TextInput {
 	private boolean done() {
 		document.endBatch();
 		applying = false;
+		recorded = document.selection();
+		session.call(call, args, true);
 		if (batches == 0) {
 			report();
 		}
@@ -327,8 +380,9 @@ public final class TextInput {
 		composingEnd = empty ? -1 : end;
 	}
 
-	private boolean delete(int before, int after, boolean codePoints) {
-		if (!begin()) {
+	private boolean delete(String name, int before, int after,
+			boolean codePoints) {
+		if (!begin(name, before, after)) {
 			return false;
 		}
 		Selection selection = document.selection();
@@ -410,16 +464,34 @@ public final class TextInput {
 				composingStart != toldComposingStart ||
 				composingEnd != toldComposingEnd;
 		if (monitored && (moved || document.revision() != toldRevision)) {
-			listener.onUpdateExtractedText(token,
-					window(MAX_READ, MAX_READ));
+			Window window = window(MAX_READ, MAX_READ);
+			session.updateExtractedText(token, window);
+			listener.onUpdateExtractedText(token, window);
 		}
 		toldRevision = document.revision();
 		if (moved) {
 			toldSelection = selection;
 			toldComposingStart = composingStart;
 			toldComposingEnd = composingEnd;
+			session.updateSelection(selection.anchor(), selection.head(),
+					composingStart, composingEnd);
 			listener.onUpdateSelection(selection.anchor(), selection.head(),
 					composingStart, composingEnd);
+		}
+	}
+
+	private <T> T read(T answer, String name, Object... args) {
+		noteSelection();
+		session.call(name, args, answer);
+		return answer;
+	}
+
+	// Writes a selection the app made since the session last had one.
+	private void noteSelection() {
+		Selection selection = document.selection();
+		if (!selection.equals(recorded)) {
+			recorded = selection;
+			session.selected(selection);
 		}
 	}
 
