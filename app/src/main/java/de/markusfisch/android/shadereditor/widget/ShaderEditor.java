@@ -70,6 +70,8 @@ public class ShaderEditor extends LineNumberEditText {
 	private static final Analysis NO_ANALYSIS = new Analysis(NO_TOKENS,
 			Outline.of(NO_TOKENS, ""));
 	private static final List<String> BUILTIN_UNIFORMS = new ArrayList<>();
+	// The width TextView lays out text that scrolls horizontally with.
+	private static final int VERY_WIDE = 1024 * 1024;
 
 	static {
 		DEFAULT_COMPLETIONS.add("{");
@@ -128,6 +130,14 @@ public class ShaderEditor extends LineNumberEditText {
 	private Tokens tokens = NO_TOKENS;
 	private final EditedRange editedRange = new EditedRange();
 	private boolean isApplyingEdit = false;
+	private final LineWidths lineWidths = new LineWidths();
+	// The layout lineWidths was measured with.
+	@Nullable
+	private Layout measuredLayout;
+	private int editFirstLine = -1;
+	private int editRemovedBreaks;
+	// Not initialized: TextView's constructor may set it.
+	private boolean horizontallyScrolling;
 
 	public ShaderEditor(Context context) {
 		super(context);
@@ -214,6 +224,104 @@ public class ShaderEditor extends LineNumberEditText {
 		if (e != null) {
 			convertTabs(e, 0, e.length());
 		}
+		// Every line with a tab changed its width.
+		measuredLayout = null;
+		requestLayout();
+	}
+
+	@Override
+	public void setHorizontallyScrolling(boolean whether) {
+		super.setHorizontallyScrolling(whether);
+		horizontallyScrolling = whether;
+	}
+
+	/**
+	 * Measures as wide as the widest line, like TextView does for
+	 * wrap_content, but measures only the lines that changed.
+	 * <p>
+	 * TextView measures every line on each measure (TextView.desired()).
+	 * It also lays out the whole text again on each measure: a
+	 * DynamicLayout without ellipsis reports its layout width, VERY_WIDE,
+	 * as its ellipsized width, which never equals the width TextView
+	 * compares it with. Measuring TextView exactly VERY_WIDE wide keeps
+	 * its layout, which is VERY_WIDE wide anyway, and this view then
+	 * takes the width TextView would have chosen.
+	 */
+	@Override
+	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+		if (!horizontallyScrolling) {
+			measuredLayout = null;
+			super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+			return;
+		}
+		int padding = getCompoundPaddingLeft() + getCompoundPaddingRight();
+		super.onMeasure(
+				MeasureSpec.makeMeasureSpec(VERY_WIDE + padding,
+						MeasureSpec.EXACTLY),
+				heightMeasureSpec);
+		int mode = MeasureSpec.getMode(widthMeasureSpec);
+		int size = MeasureSpec.getSize(widthMeasureSpec);
+		int width;
+		if (mode == MeasureSpec.EXACTLY) {
+			width = size;
+		} else {
+			width = desiredWidth() + padding;
+			int maxWidth = getMaxWidth();
+			if (maxWidth >= 0) {
+				width = Math.min(width, maxWidth);
+			}
+			width = Math.max(width, getMinWidth());
+			width = Math.max(width, getSuggestedMinimumWidth());
+			if (mode == MeasureSpec.AT_MOST) {
+				width = Math.min(width, size);
+			}
+		}
+		setMeasuredDimension(width, getMeasuredHeight());
+	}
+
+	/**
+	 * @return the width of the widest line, as TextView.desired()
+	 * computes it from Layout.getLineMax()
+	 */
+	private int desiredWidth() {
+		Layout layout = getLayout();
+		if (layout == null) {
+			measuredLayout = null;
+			return 0;
+		}
+		if (layout != measuredLayout ||
+				lineWidths.lineCount() != layout.getLineCount()) {
+			measuredLayout = layout;
+			lineWidths.reset(layout.getLineCount());
+		}
+		return (int) Math.ceil(lineWidths.max(layout::getLineMax));
+	}
+
+	/**
+	 * Records which lines an edit replaces, before it happens.
+	 */
+	private void beforeLinesChange(CharSequence s, int start, int count) {
+		Layout layout = getLayout();
+		if (layout == null || layout != measuredLayout) {
+			editFirstLine = -1;
+			return;
+		}
+		editFirstLine = layout.getLineForOffset(start);
+		editRemovedBreaks = LineWidths.breaks(s, start, start + count);
+	}
+
+	/**
+	 * Measures the lines an edit replaced again on the next measure.
+	 */
+	private void onLinesChanged(CharSequence s, int start, int count) {
+		if (editFirstLine < 0) {
+			return;
+		}
+		if (!lineWidths.replace(editFirstLine, editRemovedBreaks,
+				LineWidths.breaks(s, start, start + count))) {
+			measuredLayout = null;
+		}
+		editFirstLine = -1;
 	}
 
 	public boolean hasErrors() {
@@ -479,6 +587,7 @@ public class ShaderEditor extends LineNumberEditText {
 				this.start = start;
 				this.count = count;
 				editedRange.replace(start, before, count);
+				onLinesChanged(s, start, count);
 			}
 
 			@Override
@@ -488,6 +597,7 @@ public class ShaderEditor extends LineNumberEditText {
 					int count,
 					int after) {
 				isApplyingEdit = true;
+				beforeLinesChange(s, start, count);
 			}
 
 			@Override
