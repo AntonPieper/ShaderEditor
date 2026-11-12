@@ -81,6 +81,20 @@ public record Preparation(
 				captured.contents());
 	}
 
+	/**
+	 * The warning for initial content of the pass in file that nothing
+	 * reads, at its target directive. Preparation gives it when the text
+	 * cannot read the previous frame, linking when its backbuffer turns
+	 * out to be unused.
+	 */
+	public static ProjectDiagnostic initialWithoutEffect(ProjectPath pass,
+			ProjectPath file, int line) {
+		return new ProjectDiagnostic(ProjectDiagnostic.Severity.WARNING,
+				"initial has no effect because nothing reads the previous " +
+						"frame of " + pass + ", read it with frame=previous " +
+						"or remove initial", file, line);
+	}
+
 	// Return null when there is no manifest.
 	private static ProjectParseResult<ProjectManifest> readManifest(
 			ProjectFiles files) {
