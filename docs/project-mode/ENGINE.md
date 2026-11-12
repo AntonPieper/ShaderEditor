@@ -1,10 +1,10 @@
-# Rendering engine: diagnosis and target design
+# Rendering engine: diagnosis and design
 
 This file covers the engine and its driver, for existing DB shaders as much as for project mode. It is the design behind `PlanRuntime` in ARCHITECTURE 2. The engine work is a track of its own (IMPLEMENTATION, track E): every step is useful without project mode and can land upstream by itself.
 
-Paths are under `app/src/main/java/de/markusfisch/android/shadereditor/`. Findings refer to checkout `cf4ac23`.
+Paths are under `app/src/main/java/de/markusfisch/android/shadereditor/`. Findings refer to checkout `cf4ac23`. The engine now follows the design in section 2; section 1 and the left column of section 3 name the code it replaced, which is deleted.
 
-## 1. What is wrong today
+## 1. What was wrong
 
 ### One uniform is declared in up to seven places
 
@@ -52,7 +52,7 @@ Frame uniforms such as `time` skip layer 1 and rely on layer 4; sensor uniforms 
 
 `GlDevice` (616 lines) forwards GL calls one to one and keeps a state cache whose savings do not matter at a handful of draws per frame. `Mesh`, `Geometry`, and `VertexAttribute` model arbitrary meshes for one full-screen quad, and `GlDevice.draw` duplicates the vertex buffer on every frame. `PreparedShaderInput`, `PreparedShaderSource`, `DiscoveredSampler`, `GlProgramBuildResult`, and `RendererProgramManager.ReloadResult` each wrap two or three fields and are unpacked by their only caller. `GpuBitmapTransformer` (503 lines) carries a second copy of context setup, program compilation, and quad drawing.
 
-## 2. Target design
+## 2. Design
 
 Five parts, each with one job and a small surface. The rule that removes the duplication: **a program describes itself once at link time, and a uniform is declared once in a table. Everything else is derived.**
 
@@ -83,7 +83,7 @@ static final List<UniformDef> BUILTINS = List.of(
     uniform("time",       FLOAT, R.string.time_in_seconds,
             (in, out) -> out.set(in.time)),
     uniform("resolution", VEC2,  R.string.resolution_in_pixels,
-            (in, out) -> out.set(in.passWidth, in.passHeight)),
+            (in, out) -> out.set(in.width, in.height)),
     uniform("battery",    FLOAT, R.string.battery_level, Battery::new,
             (battery, out) -> out.set(battery.level())),
     uniform("gravity",    VEC3,  R.string.gravity_vector, Gravity::new,
@@ -96,7 +96,7 @@ A value that needs the outside world comes from a source:
 
 ```java
 interface UniformSource {
-    void start(EngineHost host);        // register listeners; may report a missing permission
+    void start(EngineHost host, UniformSources sources);  // register listeners; may report a missing permission
     void stop();
     default void update(long now) {}    // once per frame, before any write; throttle here
 }
@@ -114,7 +114,7 @@ Adding a uniform becomes: one table line, one string, and a `UniformSource` clas
 
 ### 2.3 `FrameInputs`
 
-Clock, frame number, pointer state, wallpaper offset, surface size, quality, and device rotation are plain engine state, captured into one value at the start of a frame. Writers read it. Render size is computed by the engine from surface size and quality, not by a uniform class. Per-pass fields (`passWidth`, pointer positions scaled to the pass) derive from the same capture, which is exactly the rule in SPEC 7.
+Clock, frame number, pointer state, wallpaper offset, surface size, quality, and device rotation are plain engine state (`EngineInputs`), captured into one `FrameInputs` value at the start of a frame. Writers read it. Render size is computed by the engine from surface size and quality, not by a uniform class. Per-pass fields (`width`, `height`, pointer positions scaled to the pass) derive from the same capture, which is exactly the rule in SPEC 7.
 
 ### 2.4 `EngineHost`
 
@@ -123,12 +123,13 @@ The engine receives what it needs from its host through one explicit interface i
 ```java
 interface EngineHost {
     Context context();
-    void onPermissionNeeded(String permission);       // the host decides whether and how to ask
+    boolean onPermissionNeeded(String permission);    // the host decides whether and how to ask; false: it cannot
+    boolean onNotificationAccessNeeded();             // the same, for notification access
     @Nullable LifecycleOwner cameraOwner();           // null: camera inputs report "not available here"
 }
 ```
 
-The editor, the preview activity, and the wallpaper service each implement it. No rendering code requests permissions or reads preference globals.
+`ContextEngineHost` in `widget/` implements it for `ShaderView`, which the editor, the preview activity, and the wallpaper service use; a context that is not an `Activity` cannot ask. No rendering code requests permissions or reads preference globals.
 
 ### 2.5 `ShaderEngine` and the driver
 
@@ -144,13 +145,13 @@ requestThumbnail(callback)
 listener: diagnostics, fps
 ```
 
-`ShaderRenderer` shrinks to the `GLSurfaceView.Renderer` adapter. A new plan is built on the GL thread while the old one keeps drawing, and it replaces the old one only when it links. The EGL context survives edits. All engine state is touched on the GL thread only.
+`ShaderView` holds the `GLSurfaceView.Renderer` adapter, a few lines that call the engine. A new plan is built on the GL thread while the old one keeps drawing, and it replaces the old one only when it links. The EGL context survives edits. All engine state is touched on the GL thread only.
 
 A plan is the `RenderPlan` of ARCHITECTURE 2, and `prepare` is its only producer. A DB shader is converted to project files in memory first (SPEC 12), so the engine has one dialect: name-based texture lookup, `///` comments, and backbuffer presets are known to the converter and to nothing else. Images are decoded before the plan reaches the GL thread.
 
 ## 3. What is deleted
 
-| Today | Replaced by |
+| Before | Replaced by |
 | --- | --- |
 | `UNIFORM_*` constants, `has*` flags, `configure`/`apply`/`release` blocks | Uniform table and sources |
 | `BuiltinUniforms`, `BuiltinSystemUniforms`, `BuiltinSensorUniforms`, `BuiltinCameraUniforms` | Table, sources, `FrameInputs` |
@@ -158,8 +159,8 @@ A plan is the `RenderPlan` of ARCHITECTURE 2, and `prepare` is its only producer
 | `GlStateCache`, `markBindingDirty` | Explicit binds per draw |
 | `PATTERN_SAMPLER`, `DiscoveredSampler`, `ShaderTextureResources` | Reflected sampler slots plus the plan's inputs |
 | `Mesh`, `Geometry`, `VertexAttribute` | One full-screen quad |
-| `RendererProgramManager`, `ShaderRenderPipeline` | `PlanRuntime` |
-| `TextureParameters` as UI model, codec, and GL state | An immutable sampler-settings value (min, mag, mipmap, wrap per axis); the `///` codec moves into the converter |
+| `RendererProgramManager`, the pass drawing of `ShaderRenderPipeline` | `PlanRuntime`; `ShaderRenderPipeline` now only presents the result and captures the thumbnail |
+| `TextureParameters` as UI model, codec, and GL state | An immutable sampler-settings value (min, mag, mipmap, wrap per axis), `RenderPlan.Sampling`, applied by `GlSampling`; the `///` codec is in the converter (`LegacySamplerSettings`) |
 | `BackBufferParameters` and its preset tiling | `se target initial` and a generated seed shader |
 | Reload by context teardown, `wait(1000)` thumbnail | Plan swap on the GL thread, callback |
 
