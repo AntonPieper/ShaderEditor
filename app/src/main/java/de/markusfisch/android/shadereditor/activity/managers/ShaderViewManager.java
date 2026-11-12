@@ -13,7 +13,6 @@ import java.util.List;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
-import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
 public class ShaderViewManager {
@@ -59,9 +58,9 @@ public class ShaderViewManager {
 		}
 	}
 
-	public void setProjectSession(@NonNull ShaderProjectSession projectSession) {
-		setQuality(projectSession.getQuality());
-		shaderView.setShader(projectSession);
+	public void setShader(@NonNull String text, float quality) {
+		setQuality(quality);
+		shaderView.setShader(text, quality);
 	}
 
 	public void setVisibility(boolean visible) {
@@ -69,7 +68,7 @@ public class ShaderViewManager {
 	}
 
 	public void requestThumbnail(@NonNull ShaderEngine.ThumbnailCallback callback) {
-		shaderView.getEngine().requestThumbnail(callback);
+		shaderView.requestThumbnail(callback);
 	}
 
 	public void setQuality(float quality) {

@@ -33,6 +33,11 @@ import de.markusfisch.android.shadereditor.project.SourceText;
 public final class LegacyShaderConverter {
 	/** Where the converted shader is. */
 	public static final ProjectPath SHADER = path("main.glsl");
+	/**
+	 * How a sampler that reads no image gets one in the old conventions,
+	 * formatted with its name.
+	 */
+	public static final String ADD_TEXTURE = "add a texture named %s";
 
 	/**
 	 * A library texture: whether it is stored as a cubemap atlas, and
@@ -88,6 +93,35 @@ public final class LegacyShaderConverter {
 		/** The original line of a 1-based converted line, or 0. */
 		public int originalLine(int line) {
 			return line < 1 || line > lines.size() ? 0 : lines.get(line - 1);
+		}
+
+		/**
+		 * Return diagnostics of the converted files at lines of the
+		 * original text, followed by what the conversion found. One
+		 * about a line or a file the conversion generated has no
+		 * location, and is left out when it is a warning: such a
+		 * warning is about the conversion, which reports what it
+		 * changes itself, and not about the original text.
+		 */
+		public List<ProjectDiagnostic> toOriginal(
+				List<ProjectDiagnostic> converted) {
+			List<ProjectDiagnostic> original = new ArrayList<>();
+			for (ProjectDiagnostic diagnostic : converted) {
+				ProjectPath file = diagnostic.file();
+				int line = SHADER.equals(file)
+						? originalLine(diagnostic.line())
+						: 0;
+				if (file == null) {
+					original.add(diagnostic);
+				} else if (line > 0 || diagnostic.severity() ==
+						ProjectDiagnostic.Severity.ERROR) {
+					original.add(new ProjectDiagnostic(diagnostic.severity(),
+							diagnostic.message(), null, line,
+							diagnostic.raw()));
+				}
+			}
+			original.addAll(diagnostics);
+			return original;
 		}
 	}
 

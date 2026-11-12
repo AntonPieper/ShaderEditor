@@ -1,21 +1,16 @@
 package de.markusfisch.android.shadereditor.activity;
 
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.io.Serializable;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
-import de.markusfisch.android.shadereditor.project.LooseShaderFileProjectSource;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
-import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
 public class PreviewActivity extends AppCompatActivity {
@@ -52,7 +47,6 @@ public class PreviewActivity extends AppCompatActivity {
 	}
 
 	public static final String FRAGMENT_SHADER = "fragment_shader";
-	public static final String PROJECT_SESSION = "project_session";
 	public static final String QUALITY = "quality";
 	public static final RenderStatus renderStatus = new RenderStatus();
 
@@ -64,7 +58,7 @@ public class PreviewActivity extends AppCompatActivity {
 				return;
 			}
 
-			shaderView.getEngine().requestThumbnail(renderStatus::setThumbnail);
+			shaderView.requestThumbnail(renderStatus::setThumbnail);
 		}
 	};
 
@@ -143,49 +137,14 @@ public class PreviewActivity extends AppCompatActivity {
 	}
 
 	protected boolean setShaderFromIntent(Intent intent) {
-		ShaderProjectSession projectSession = getProjectSession(intent);
-		if (shaderView == null || projectSession == null) {
+		String fragmentShader = intent != null
+				? intent.getStringExtra(FRAGMENT_SHADER)
+				: null;
+		if (shaderView == null || fragmentShader == null) {
 			return false;
 		}
 
-		shaderView.setShader(projectSession);
+		shaderView.setShader(fragmentShader, intent.getFloatExtra(QUALITY, 1f));
 		return true;
-	}
-
-	@Nullable
-	private static ShaderProjectSession getProjectSession(Intent intent) {
-		if (intent == null) {
-			return null;
-		}
-
-		ShaderProjectSession projectSession = getSerializedProjectSession(intent);
-		if (projectSession != null) {
-			return projectSession;
-		}
-
-		String fragmentShader = intent.getStringExtra(FRAGMENT_SHADER);
-		if (fragmentShader == null) {
-			return null;
-		}
-
-		return new LooseShaderFileProjectSource(
-				null,
-				fragmentShader,
-				intent.getFloatExtra(QUALITY, 1f)).openSession();
-	}
-
-	@Nullable
-	private static ShaderProjectSession getSerializedProjectSession(
-			@NonNull Intent intent) {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-			return intent.getSerializableExtra(
-					PROJECT_SESSION,
-					ShaderProjectSession.class);
-		}
-		@SuppressWarnings("deprecation")
-		Serializable extra = intent.getSerializableExtra(PROJECT_SESSION);
-		return extra instanceof ShaderProjectSession
-				? (ShaderProjectSession) extra
-				: null;
 	}
 }

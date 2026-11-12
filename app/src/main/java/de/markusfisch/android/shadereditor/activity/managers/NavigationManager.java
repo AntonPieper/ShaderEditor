@@ -16,7 +16,6 @@ import de.markusfisch.android.shadereditor.activity.LoadSampleActivity;
 import de.markusfisch.android.shadereditor.activity.PreferencesActivity;
 import de.markusfisch.android.shadereditor.activity.PreviewActivity;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
-import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 
 public class NavigationManager {
 	@NonNull
@@ -43,11 +42,11 @@ public class NavigationManager {
 				"https://github.com/markusfisch/ShaderEditor/blob/master/FAQ.md")));
 	}
 
-	public void showPreview(@NonNull ShaderProjectSession projectSession,
+	public void showPreview(@NonNull String fragmentShader, float quality,
 			ActivityResultLauncher<Intent> launcher) {
 		Intent intent = new Intent(activity, PreviewActivity.class);
-		intent.putExtra(PreviewActivity.QUALITY, projectSession.getQuality());
-		intent.putExtra(PreviewActivity.PROJECT_SESSION, projectSession);
+		intent.putExtra(PreviewActivity.QUALITY, quality);
+		intent.putExtra(PreviewActivity.FRAGMENT_SHADER, fragmentShader);
 
 		if (ShaderEditorApp.preferences.doesRunInNewTask() &&
 				Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

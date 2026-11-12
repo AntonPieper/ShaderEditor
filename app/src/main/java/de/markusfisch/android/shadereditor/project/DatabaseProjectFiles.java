@@ -68,14 +68,25 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 		if (shader == null) {
 			return null;
 		}
-		TextureDao textures = dataSource.texture;
+		String text = shader.fragmentShader();
+		return convert(dataSource.texture, text != null ? text : "", limits);
+	}
+
+	/**
+	 * Convert the text of a database shader, such as the unsaved text of
+	 * one in the editor. Textures are served within limits.
+	 */
+	@NonNull
+	public static DatabaseProjectFiles convert(
+			@NonNull TextureDao textures,
+			@NonNull String text,
+			@NonNull ProjectLimits limits) {
 		Map<String, Stored> library = StoredFiles.library(
 				textures.getTextures(null),
 				textures.getSamplerCubeTextures(null));
 		Map<String, Stored> used = new HashMap<>();
-		String text = shader.fragmentShader();
 		LegacyShaderConverter.Result conversion = LegacyShaderConverter.convert(
-				text != null ? text : "",
+				text,
 				new LegacyShaderConverter.Library() {
 					@Override
 					public LibraryTexture find(String name) {

@@ -9,13 +9,16 @@ import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 // A prepared project: its plan, its diagnostics and the bytes of the
-// files it read, which are all its images are decoded from.
-record PlanShader(@NonNull Preparation preparation, float quality)
-		implements EngineShader {
+// files it read, which are all its images are decoded from, with the fix
+// its warnings name for a sampler that reads no image.
+record PlanShader(
+		@NonNull Preparation preparation,
+		float quality,
+		@NonNull String textureFix) implements EngineShader {
 	@NonNull
 	@Override
 	public EngineShader withQuality(float quality) {
-		return new PlanShader(preparation, quality);
+		return new PlanShader(preparation, quality, textureFix);
 	}
 
 	@Nullable

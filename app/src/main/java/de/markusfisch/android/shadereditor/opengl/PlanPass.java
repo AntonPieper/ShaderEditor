@@ -52,12 +52,15 @@ final class PlanPass {
 	}
 
 	// GL thread. Returns null and adds why when it does not link.
+	// textureFix is the fix its warnings name for a sampler without an
+	// image.
 	@Nullable
 	static PlanPass link(
 			@NonNull GlDevice device,
 			@NonNull RenderPlan plan,
 			int index,
 			int glesVersion,
+			@NonNull String textureFix,
 			@NonNull List<ProjectDiagnostic> errors) {
 		var pass = plan.passes().get(index);
 		var source = PlanSource.of(plan.programs().get(pass.program()),
@@ -82,7 +85,7 @@ final class PlanPass {
 		}
 		warnings.addAll(UniformWarnings.check(
 				program.getUniforms().values(), inputs,
-				UniformWarnings.ADD_INPUT, source.fragment(), lineMapping));
+				textureFix, source.fragment(), lineMapping));
 		return new PlanPass(device, pass, program, bindings, warnings,
 				source.fTimeMax());
 	}
