@@ -214,6 +214,9 @@ public final class LegacyShaderConverter {
 	public static Result convert(String text, Library library,
 			Set<String> reserved) {
 		text = text.replace("\r\n", "\n").replace('\r', '\n');
+		// The old renderer removed what is not ASCII before it read the
+		// text, so a stray character only went away.
+		text = text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", "");
 		LegacyShaderConverter converter = new LegacyShaderConverter(
 				SourceText.lines(text), library, reserved);
 		List<Integer> lines = new ArrayList<>();

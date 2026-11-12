@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.project;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -39,6 +40,8 @@ public record HostDirectives(
 
 	private static final Set<String> SAMPLER_TYPES = Set.of(
 			"sampler2D", "samplerCube", "samplerExternalOES");
+	// What GLSL reads as whitespace besides the space and line ends.
+	private static final String WHITESPACE = "\t\u000b\f\r";
 	private static final Set<String> PRECISIONS = Set.of(
 			"lowp", "mediump", "highp");
 	private static final Pattern TOKEN = Pattern.compile(
@@ -137,6 +140,30 @@ public record HostDirectives(
 				if (parsed.path() != null) {
 					references.add(new Reference(parsed.path(), at.file(),
 							at.line()));
+				}
+			}
+			checkCharacters();
+		}
+
+		// Shader compilers read ASCII, and some crash on other characters;
+		// in a comment or a consumed directive, such as a path, they are
+		// allowed.
+		private void checkCharacters() {
+			for (int i = 0; i < source.size(); ++i) {
+				String code = source.get(i).code();
+				for (int c = 0; !lines.get(i).isEmpty() && c < code.length(); ) {
+					int character = code.codePointAt(c);
+					if (character > 0x7e || (character < 0x20 &&
+							WHITESPACE.indexOf(character) < 0)) {
+						error(source.get(i).at(), String.format(Locale.ROOT,
+								"Character %s (U+%04X) outside a comment, " +
+										"shader compilers read only ASCII " +
+										"code; replace it",
+								new String(Character.toChars(character)),
+								character));
+						break;
+					}
+					c += Character.charCount(character);
 				}
 			}
 		}

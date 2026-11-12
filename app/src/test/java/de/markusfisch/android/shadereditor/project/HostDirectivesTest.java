@@ -502,6 +502,28 @@ public class HostDirectivesTest {
 				"#pragma se input filter=linear", TEX);
 	}
 
+	// A full-width plus would vanish and turn 1+2 into 12.
+	@Test
+	public void nonAsciiCharacterInCodeIsAnErrorAtItsLine() {
+		HostDirectives result = parse("float a;",
+				"float v = 1\uff0b2;");
+		ProjectDiagnostic error = singleError(result);
+		assertEquals(2, error.line());
+		assertEquals(path("shaders/main.glsl"), error.file());
+		assertTrue(error.message(), error.message().contains("U+FF0B"));
+		assertEquals(List.of(), parse("// caf\u00e9",
+				"/* \u2603 */ float a;").diagnostics());
+		assertEquals(List.of(), parse("float a;\u000c").diagnostics());
+	}
+
+	@Test
+	public void nonAsciiPathOfAnInputIsNoCodeCharacter() {
+		HostDirectives result = parse("#pragma se input \"caf\u00e9.png\"",
+				"uniform sampler2D tex;");
+		assertEquals(List.of(), result.diagnostics());
+		assertEquals(1, result.inputs().size());
+	}
+
 	// Only an engine sampler of its own type has a provider.
 	@Test
 	public void rejectsSourcelessInputOnABuiltinThatIsNoSamplerOfItsType() {
