@@ -27,10 +27,12 @@ public abstract class Text {
 
 	private final int length;
 	private final int lines;
+	private final int longestLine;
 
-	private Text(int length, int lines) {
+	private Text(int length, int lines, int longestLine) {
 		this.length = length;
 		this.lines = lines;
+		this.longestLine = longestLine;
 	}
 
 	/**
@@ -62,6 +64,11 @@ public abstract class Text {
 	/** Return the number of lines, at least 1. */
 	public final int lineCount() {
 		return lines;
+	}
+
+	/** Return the length of the longest line, without its line break. */
+	public final int longestLineLength() {
+		return longestLine;
 	}
 
 	/** Return line n, counted from 0, without its line break. */
@@ -268,7 +275,7 @@ public abstract class Text {
 		private final String[] text;
 
 		private Leaf(String[] text) {
-			super(lengthOf(text), text.length);
+			super(lengthOf(text), text.length, longestOf(text));
 			this.text = text;
 		}
 
@@ -282,6 +289,14 @@ public abstract class Text {
 				length += line.length();
 			}
 			return length;
+		}
+
+		private static int longestOf(String[] lines) {
+			int longest = 0;
+			for (String line : lines) {
+				longest = Math.max(longest, line.length());
+			}
+			return longest;
 		}
 
 		@Override
@@ -370,8 +385,16 @@ public abstract class Text {
 		private final Text[] children;
 
 		private Node(Text[] children, int length, int lines) {
-			super(length, lines);
+			super(length, lines, longestOf(children));
 			this.children = children;
+		}
+
+		private static int longestOf(Text[] children) {
+			int longest = 0;
+			for (Text child : children) {
+				longest = Math.max(longest, child.longestLine);
+			}
+			return longest;
 		}
 
 		private static Node of(List<Text> children) {
