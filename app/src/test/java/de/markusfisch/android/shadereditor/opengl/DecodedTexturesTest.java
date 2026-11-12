@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.opengl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.graphics.Bitmap;
@@ -95,6 +96,43 @@ public class DecodedTexturesTest {
 					throw new AssertionError(name);
 				});
 		assertNull(textures.backBuffer());
+	}
+
+	@Test
+	public void cubemapAtlasMustHoldEveryFaceItCuts() {
+		assertTrue(DecodedTextures.isCubemapAtlas(2, 3));
+		assertTrue(DecodedTextures.isCubemapAtlas(1024, 1536));
+		assertTrue(DecodedTextures.isCubemapAtlas(101, 150));
+		assertFalse(DecodedTextures.isCubemapAtlas(0, 0));
+		assertFalse(DecodedTextures.isCubemapAtlas(1, 1));
+		assertFalse(DecodedTextures.isCubemapAtlas(1, 3));
+		// An odd width puts the right column past the edge.
+		assertFalse(DecodedTextures.isCubemapAtlas(3, 6));
+		assertFalse(DecodedTextures.isCubemapAtlas(99, 150));
+		// A square image is too short for three rows.
+		assertFalse(DecodedTextures.isCubemapAtlas(512, 512));
+	}
+
+	@Test
+	public void decodeThatThrowsBecomesAFailure() {
+		var thrown = assertThrows(IllegalStateException.class,
+				() -> DecodedTextures.decode(
+						List.of(TEXTURE, CUBEMAP),
+						BackBufferParameters.NONE,
+						64,
+						32,
+						name -> {
+							if (name.equals("sky")) {
+								throw new IllegalStateException("database closed");
+							}
+							return null;
+						}));
+		var failed = DecodedTextures.failed(thrown);
+		assertEquals("Cannot load the textures: database closed", failed.error());
+		assertNull(failed.backBuffer());
+		failed.recycle();
+		assertEquals("Cannot load the textures: java.lang.OutOfMemoryError",
+				DecodedTextures.failed(new OutOfMemoryError()).error());
 	}
 
 	private static DiscoveredSampler sampler(String name, int target) {

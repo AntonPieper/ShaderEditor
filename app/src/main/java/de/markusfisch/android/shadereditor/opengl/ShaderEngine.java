@@ -164,6 +164,7 @@ public final class ShaderEngine {
 		if (renderSizeChanged) {
 			renderPipeline.releaseTargets();
 			thumbnails.onFramesLost();
+			createCurrentTargets();
 		}
 		// What a build decoded may depend on the render size.
 		var stale = shaders.resized(width, height);
@@ -186,24 +187,11 @@ public final class ShaderEngine {
 		if (build == null ||
 				revision == null ||
 				builtins == null ||
-				!renderPipeline.hasSurfaceProgram()) {
+				!renderPipeline.hasSurfaceProgram() ||
+				!renderPipeline.hasTargets()) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
 			return;
-		}
-
-		if (!renderPipeline.hasTargets()) {
-			var targetErrors = renderPipeline.ensureTargets(
-					inputs.getRenderWidth(),
-					inputs.getRenderHeight(),
-					build.backBufferSampling(),
-					null);
-			if (!targetErrors.isEmpty()) {
-				submitErrors(targetErrors);
-			}
-			if (!renderPipeline.hasTargets()) {
-				return;
-			}
 		}
 
 		long now = System.nanoTime();
@@ -283,12 +271,28 @@ public final class ShaderEngine {
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
 		var textures = next.upload(errors);
-		if (next.hasFailed()) {
-			report(shaders.nextFailed(), errors);
-			return;
-		} else if (shaders.swapIfComplete() == null) {
+		ShaderRenderPipeline.Targets targets = null;
+		// Its targets come before the current build goes, so a build
+		// that cannot draw leaves the current one drawing.
+		if (!next.hasFailed() && next.isComplete()) {
+			targets = renderPipeline.createTargets(
+					EngineInputs.renderSize(inputs.getSurfaceWidth(), next.quality()),
+					EngineInputs.renderSize(inputs.getSurfaceHeight(), next.quality()),
+					next.backBufferSampling(),
+					textures != null ? textures.backBuffer() : null,
+					errors);
+		}
+		if (textures != null) {
+			textures.recycle();
+		}
+		if (targets == null) {
+			if (next.hasFailed() || next.isComplete()) {
+				report(shaders.nextFailed(), errors);
+			}
 			return;
 		}
+		shaders.swapIfComplete();
+		renderPipeline.useTargets(targets);
 		thumbnails.onFramesLost();
 		var shown = Objects.requireNonNull(shaders.currentRevision());
 		inputs.showRuntime(
@@ -301,17 +305,28 @@ public final class ShaderEngine {
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
 		configure(next);
 		errors.addAll(sources.getWarnings());
-		renderPipeline.releaseTargets();
-		errors.addAll(renderPipeline.ensureTargets(
-				inputs.getRenderWidth(),
-				inputs.getRenderHeight(),
-				next.backBufferSampling(),
-				textures != null ? textures.backBuffer() : null));
-		if (textures != null) {
-			textures.recycle();
-		}
 		resetFps();
 		report(shown, errors);
+	}
+
+	// After a resize, the build drawing starts again with cleared targets.
+	private void createCurrentTargets() {
+		var build = shaders.current();
+		if (build == null) {
+			return;
+		}
+		var errors = new ArrayList<ProjectDiagnostic>();
+		var targets = renderPipeline.createTargets(
+				inputs.getRenderWidth(),
+				inputs.getRenderHeight(),
+				build.backBufferSampling(),
+				null,
+				errors);
+		if (targets != null) {
+			renderPipeline.useTargets(targets);
+		} else {
+			report(shaders.currentRevision(), errors);
+		}
 	}
 
 	private void build(@NonNull ShaderSwap.Revision<Offer> revision) {

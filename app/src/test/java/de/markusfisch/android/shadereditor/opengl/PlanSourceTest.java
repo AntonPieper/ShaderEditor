@@ -113,11 +113,25 @@ public class PlanSourceTest {
 				"main.glsl", lines("#include \"period.glsl\"", "void main() {}"),
 				"period.glsl", "#define FTIME_PERIOD 5.\n")).fTimeMax(), 0f);
 		assertEquals(3f, source(2, plan("main.glsl", lines(
-				"#define FTIME_PERIOD 1..2",
-				"void main() {}"))).fTimeMax(), 0f);
-		assertEquals(3f, source(2, plan("main.glsl", lines(
 				"#define FTIME_PERIOD 0",
 				"void main() {}"))).fTimeMax(), 0f);
+	}
+
+	@Test
+	public void malformedFTimePeriodIsAnErrorAtItsLine() {
+		var errors = new ArrayList<ProjectDiagnostic>();
+		var plan = plan(
+				"main.glsl", lines(
+						"precision mediump float;",
+						"#include \"period.glsl\"",
+						"void main() {}"),
+				"period.glsl", lines(
+						"// the period",
+						"#define FTIME_PERIOD 1..2"));
+		assertNull(PlanSource.of(plan.programs().get(plan.output()), 2, errors));
+		assertEquals(List.of(new ProjectDiagnostic(Severity.ERROR,
+				"FTIME_PERIOD 1..2 is not a number", path("period.glsl"), 2)),
+				errors);
 	}
 
 	@Test

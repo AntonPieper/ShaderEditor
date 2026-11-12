@@ -37,7 +37,8 @@ interface EngineBuild extends ShaderSwap.Build {
 	@Nullable
 	DecodedTextures upload(@NonNull List<ProjectDiagnostic> diagnostics);
 
-	// Whether it can never complete, so it must not replace the current.
+	// Whether it can never complete, so it must not replace the current:
+	// what it reads did not decode or upload.
 	boolean hasFailed();
 
 	@Nullable
