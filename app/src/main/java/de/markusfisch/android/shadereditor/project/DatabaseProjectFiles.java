@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.project;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -136,10 +137,12 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 
 	// Serves the row the conversion used, decoded at the size it used,
 	// so a texture replaced since then fails instead of mixing the two.
+	// Both sizes are checked before the pixels are decoded.
 	@NonNull
 	private Read readTexture(@NonNull TextureFile file) {
 		Stored stored = used.get(file.name());
-		if (stored == null) {
+		Long id = stored != null ? stored.id() : null;
+		if (id == null) {
 			return failed(Problem.UNREADABLE, file);
 		}
 		String problem = StoredFiles.check(file.name(), stored.width(),
@@ -147,21 +150,28 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 		if (problem != null) {
 			return new Failed(problem);
 		}
-		Long id = stored.id();
-		Bitmap bitmap = id != null
-				? textures.getTextureBitmap(id)
-				: textures.getTextureBitmap(stored.name());
-		if (bitmap == null) {
-			return failed(id != null && textures.getTextureInfo(id) == null
+		byte[] data = textures.getTextureData(id);
+		if (data == null) {
+			return failed(textures.getTextureInfo(id) == null
 					? Problem.REMOVED
 					: Problem.UNREADABLE, file);
 		}
+		BitmapFactory.Options options = new BitmapFactory.Options();
+		options.inJustDecodeBounds = true;
+		BitmapFactory.decodeByteArray(data, 0, data.length, options);
+		problem = StoredFiles.changed(stored, options.outWidth,
+				options.outHeight);
+		if (problem != null) {
+			return new Failed(problem);
+		}
+		options = new BitmapFactory.Options();
+		options.inPremultiplied = false;
+		Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length,
+				options);
+		if (bitmap == null) {
+			return failed(Problem.UNREADABLE, file);
+		}
 		try {
-			problem = StoredFiles.changed(stored, bitmap.getWidth(),
-					bitmap.getHeight());
-			if (problem != null) {
-				return new Failed(problem);
-			}
 			byte[] png = file.cubemap()
 					? strip(bitmap)
 					: BitmapEditor.encodeAsPng(bitmap);
@@ -190,8 +200,8 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 				: new Failed("SHA-256 is not available on this device");
 	}
 
-	// A texture that is neither square nor an atlas is in neither list,
-	// so its size is only known once it is decoded.
+	// A texture that is neither square nor an atlas is in neither list;
+	// its row says its size.
 	@Nullable
 	private static LibraryTexture find(
 			@NonNull TextureDao textures,
@@ -203,13 +213,12 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 			stored = library.get(name);
 		}
 		if (stored == null) {
-			Bitmap bitmap = textures.getTextureBitmap(name);
-			if (bitmap == null) {
+			DataRecords.TextureInfo info = textures.getTextureInfo(name);
+			if (info == null) {
 				return null;
 			}
-			stored = new Stored(null, name, bitmap.getWidth(),
-					bitmap.getHeight(), false);
-			bitmap.recycle();
+			stored = new Stored(info.id(), name, info.width(), info.height(),
+					false);
 		}
 		used.put(name, stored);
 		return stored.texture();
