@@ -38,6 +38,11 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	// The newest revision taken.
 	@Nullable
 	private Revision<S> taken;
+	// The revision that drew last before the context was lost, built
+	// again when nothing newer can draw, until something draws or its
+	// own build fails.
+	@Nullable
+	private Revision<S> fallback;
 	// GL thread only.
 	@Nullable
 	private Revision<S> nextRevision;
@@ -72,11 +77,20 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	synchronized Revision<S> take() {
 		var revision = pending;
 		pending = null;
-		if (revision != null &&
-				(taken == null || revision.number() > taken.number())) {
+		if (revision == null) {
+			return current == null && next == null ? fallback : null;
+		}
+		if (taken == null || revision.number() > taken.number()) {
 			taken = revision;
 		}
 		return revision;
+	}
+
+	// GL thread. This revision did not build.
+	synchronized void failed(@NonNull Revision<S> revision) {
+		if (is(fallback, revision.number())) {
+			fallback = null;
+		}
 	}
 
 	// GL thread. The build of this revision supersedes a next build that
@@ -103,6 +117,9 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		currentRevision = nextRevision;
 		next = null;
 		nextRevision = null;
+		synchronized (this) {
+			fallback = null;
+		}
 		return current;
 	}
 
@@ -112,6 +129,9 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	@Nullable
 	Revision<S> nextFailed() {
 		var revision = nextRevision;
+		if (revision != null) {
+			failed(revision);
+		}
 		if (next != null) {
 			next.release();
 		}
@@ -151,7 +171,8 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	synchronized boolean canDraw(int number) {
 		return is(pending, number) ||
 				is(nextRevision, number) ||
-				is(currentRevision, number);
+				is(currentRevision, number) ||
+				is(fallback, number);
 	}
 
 	// GL thread, after the surface changed. Returns the next build when
@@ -174,8 +195,12 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	}
 
 	// After the context was lost. Its builds go with it, and the newest
-	// revision taken is built again, unless a newer one waits.
+	// revision taken is built again, unless a newer one waits. When that
+	// cannot draw, the revision that drew last is built again.
 	synchronized void contextLost() {
+		if (currentRevision != null) {
+			fallback = currentRevision;
+		}
 		if (next != null) {
 			next.discard();
 		}

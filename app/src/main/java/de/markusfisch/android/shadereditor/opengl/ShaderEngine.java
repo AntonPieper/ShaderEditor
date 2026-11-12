@@ -261,8 +261,9 @@ public final class ShaderEngine {
 	}
 
 	private void swapInNewestShader() {
-		var revision = shaders.take();
-		if (revision != null) {
+		for (var revision = shaders.take();
+				revision != null;
+				revision = shaders.take()) {
 			build(revision);
 		}
 		var next = shaders.next();
@@ -333,6 +334,7 @@ public final class ShaderEngine {
 		var errors = new ArrayList<ProjectDiagnostic>();
 		var build = revision.shader().shader().link(device, version, errors);
 		if (build == null) {
+			shaders.failed(revision);
 			report(revision, errors);
 			return;
 		}

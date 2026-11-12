@@ -244,8 +244,132 @@ public class ShaderSwapTest {
 		buildAndSwap("a");
 		swap.offer("b");
 		swap.contextLost();
-		assertEquals("b", swap.take().shader());
+		var b = swap.take();
+		assertEquals("b", b.shader());
+		swap.built(b, new FakeBuild("b", false));
 		assertNull(swap.take());
+	}
+
+	// Run A, edit it into broken B, leave the app and come back.
+	@Test
+	public void contextLossBuildsTheLastWorkingShaderWhenTheNewestFails() {
+		buildAndSwap("a");
+		swap.offer("broken");
+		var broken = swap.take();
+		swap.failed(broken);
+		assertTrue(swap.report(broken));
+		swap.contextLost();
+
+		assertEquals("broken", swap.take().shader());
+		swap.failed(broken);
+		assertTrue(swap.report(broken));
+		assertTrue(swap.canDraw(1));
+		var fallback = swap.take();
+		assertNotNull(fallback);
+		assertEquals("a", fallback.shader());
+		assertEquals(1, fallback.number());
+		var a = new FakeBuild("a", true);
+		swap.built(fallback, a);
+		assertNull(swap.take());
+		assertSame(a, swap.swapIfComplete());
+		assertFalse(swap.report(swap.currentRevision()));
+		assertNull(swap.take());
+	}
+
+	@Test
+	public void contextLossBuildsOnlyTheNewestWhenItBuilds() {
+		buildAndSwap("a");
+		swap.offer("b");
+		swap.contextLost();
+		var b = swap.take();
+		assertEquals("b", b.shader());
+		swap.built(b, new FakeBuild("b", false));
+		assertNull(swap.take());
+		swap.next().complete = true;
+		swap.swapIfComplete();
+		assertFalse(swap.canDraw(1));
+		swap.contextLost();
+		b = swap.take();
+		assertEquals("b", b.shader());
+		swap.built(b, new FakeBuild("b", false));
+		assertNull(swap.take());
+	}
+
+	// The wallpaper draws A and is hidden; a shader that does not compile
+	// is chosen before it shows again.
+	@Test
+	public void shaderOfferedWhileTheContextIsLostDoesNotLoseTheLastWorkingOne() {
+		buildAndSwap("a");
+		swap.contextLost();
+		swap.offer("broken");
+		var broken = swap.take();
+		assertEquals("broken", broken.shader());
+		swap.failed(broken);
+		var fallback = swap.take();
+		assertNotNull(fallback);
+		assertEquals("a", fallback.shader());
+		var a = new FakeBuild("a", true);
+		swap.built(fallback, a);
+		assertNull(swap.take());
+		assertSame(a, swap.swapIfComplete());
+		assertNull(swap.take());
+	}
+
+	@Test
+	public void newestThatDrewLastAndFailsAgainIsNotBuiltOnceMore() {
+		buildAndSwap("a");
+		swap.contextLost();
+		var a = swap.take();
+		assertEquals("a", a.shader());
+		swap.failed(a);
+		assertNull(swap.take());
+	}
+
+	@Test
+	public void lastWorkingShaderThatFailsToBuildIsNotBuiltAgain() {
+		buildAndSwap("a");
+		swap.offer("broken");
+		swap.failed(swap.take());
+		swap.contextLost();
+		swap.failed(swap.take());
+		var fallback = swap.take();
+		swap.failed(fallback);
+		assertNull(swap.take());
+		assertFalse(swap.canDraw(fallback.number()));
+	}
+
+	// The last working shader is a plan whose images no longer load, so
+	// it fails as it loads, and nothing is built again.
+	@Test
+	public void lastWorkingPlanThatFailsWhileItLoadsIsNotBuiltAgain() {
+		buildAndSwap("plan");
+		swap.offer("broken");
+		var broken = swap.take();
+		swap.failed(broken);
+		assertTrue(swap.report(broken));
+		swap.contextLost();
+		swap.failed(swap.take());
+		var fallback = swap.take();
+		assertEquals("plan", fallback.shader());
+		swap.built(fallback, new FakeBuild("plan", false));
+		var failed = swap.nextFailed();
+		assertSame(fallback, failed);
+		assertFalse(swap.report(failed));
+		assertNull(swap.take());
+		assertFalse(swap.canDraw(fallback.number()));
+	}
+
+	@Test
+	public void lastWorkingShaderSurvivesAnotherContextLossWhileItLoads() {
+		buildAndSwap("a");
+		swap.offer("broken");
+		swap.failed(swap.take());
+		swap.contextLost();
+		swap.failed(swap.take());
+		swap.built(swap.take(), new FakeBuild("a", false));
+		swap.contextLost();
+		assertEquals("broken", swap.take().shader());
+		assertEquals("a", swap.take().shader());
 	}
 
 	@Test
