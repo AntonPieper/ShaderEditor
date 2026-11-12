@@ -42,7 +42,7 @@ public class MainMenuManager {
 
 		void onToggleExtraKeys();
 
-		long getSelectedShaderId();
+		boolean isWallpaper();
 	}
 
 	public interface NavigationActions {
@@ -134,9 +134,8 @@ public class MainMenuManager {
 		View menuView = popupWindow.getContentView();
 		updateUndoRedoMenu(menuView);
 
-		long selectedShaderId = shaderActions.getSelectedShaderId();
 		((Button) menuView.findViewById(R.id.update_wallpaper)).setText(
-				ShaderEditorApp.preferences.getWallpaperShader() == selectedShaderId
+				shaderActions.isWallpaper()
 						? R.string.update_wallpaper
 						: R.string.set_as_wallpaper);
 
