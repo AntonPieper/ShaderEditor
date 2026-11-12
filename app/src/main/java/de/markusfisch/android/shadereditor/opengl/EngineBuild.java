@@ -13,8 +13,10 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 // A shader linked in the current context, as the engine swaps it in and
 // draws it, whatever kind of shader it was built from.
 interface EngineBuild extends ShaderSwap.Build {
+	// The programs whose builtins it reads, the one drawn every frame
+	// first.
 	@NonNull
-	GlProgram program();
+	List<GlProgram> programs();
 
 	float quality();
 

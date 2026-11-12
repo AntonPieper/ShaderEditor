@@ -150,8 +150,8 @@ final class ShaderBuild implements EngineBuild {
 
 	@NonNull
 	@Override
-	public GlProgram program() {
-		return program;
+	public List<GlProgram> programs() {
+		return List.of(program);
 	}
 
 	@Override

@@ -388,7 +388,7 @@ public final class ShaderEngine {
 			return;
 		}
 		sources.setCameraBinding(build.getCameraBinding());
-		activeBuiltins = new ActiveBuiltins(device, build.program(), sources);
+		activeBuiltins = new ActiveBuiltins(device, build.programs(), sources);
 	}
 
 	private void discardContextResources() {
