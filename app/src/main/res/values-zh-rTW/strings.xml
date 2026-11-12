@@ -279,4 +279,10 @@
 	<string name="successfully_exported">已成功匯出至下載目錄</string>
 	<string name="successfully_imported">資料庫已成功匯入</string>
 	<string name="user_files_summary">Deleted when Shader Editor is uninstalled</string>
+
+	<!-- Navigation drawer -->
+	<string name="nav_shaders">Shaders</string>
+	<plurals name="nav_shaders_count">
+		<item quantity="other">%d shaders</item>
+	</plurals>
 </resources>

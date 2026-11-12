@@ -302,4 +302,11 @@
 	<string name="successfully_exported">Exported to Downloads</string>
 	<string name="successfully_imported">Database imported</string>
 	<string name="user_files_summary">Deleted when Shader Editor is uninstalled</string>
+
+	<!-- Navigation drawer -->
+	<string name="nav_shaders">Shaders</string>
+	<plurals name="nav_shaders_count">
+		<item quantity="one">%d shader</item>
+		<item quantity="other">%d shaders</item>
+	</plurals>
 </resources>
