@@ -86,10 +86,15 @@ public final class Document {
 	private Selection selection = new Selection(0, 0);
 	private int batches;
 	private boolean updated;
-	// The step the changes of this batch go to.
+	// The changes of this batch, which become a step of the history when
+	// it ends.
 	private Step batchStep;
+	// The step batchStep continues if it is typing.
+	private Step continued;
 	// The step that typing may continue.
 	private Step typing;
+	// Whether the selection moved since the last change of this batch.
+	private boolean moved;
 	// The step the saved text is after, null for the start of history.
 	private Step saved;
 	private int historyChars;
@@ -146,6 +151,7 @@ public final class Document {
 			selection = new Selection(anchor, head);
 			updated = true;
 			typing = null;
+			moved = true;
 			endBatch();
 		}
 	}
@@ -171,8 +177,9 @@ public final class Document {
 
 	/**
 	 * Start a batch: until the matching endBatch, the changes are one
-	 * undo step, and listeners hear of each change but are told only
-	 * once that the document updated. Batches nest.
+	 * undo step, which continues the run of typing only if they are all
+	 * typing, and listeners hear of each change but are told only once
+	 * that the document updated. Batches nest.
 	 */
 	public void beginBatch() {
 		++batches;
@@ -195,7 +202,7 @@ public final class Document {
 	}
 
 	public boolean canUndo() {
-		return !undo.isEmpty();
+		return !undo.isEmpty() || batchStep != null;
 	}
 
 	public boolean canRedo() {
@@ -204,14 +211,14 @@ public final class Document {
 
 	/** Undo the last step and select what was selected before it. */
 	public void undo() {
-		Step step = undo.peekLast();
+		endStep();
+		Step step = undo.pollLast();
 		if (step == null) {
 			return;
 		}
 		beginBatch();
-		endStep();
 		typing = null;
-		redo.addLast(undo.removeLast());
+		redo.addLast(step);
 		for (int i = step.changes.size(); i-- > 0; ) {
 			Change change = step.changes.get(i);
 			apply(new Change(change.start(), change.inserted(),
@@ -223,14 +230,14 @@ public final class Document {
 
 	/** Redo the last undone step and select what it selected. */
 	public void redo() {
-		Step step = redo.peekLast();
+		endStep();
+		Step step = redo.pollLast();
 		if (step == null) {
 			return;
 		}
 		beginBatch();
-		endStep();
 		typing = null;
-		undo.addLast(redo.removeLast());
+		undo.addLast(step);
 		for (Change change : step.changes) {
 			apply(change);
 		}
@@ -257,7 +264,7 @@ public final class Document {
 
 	/** Return whether the text differs from the one last saved. */
 	public boolean isModified() {
-		return undo.peekLast() != saved;
+		return batchStep != null || undo.peekLast() != saved;
 	}
 
 	private void edit(int from, int to, Text text, boolean typed) {
@@ -286,14 +293,10 @@ public final class Document {
 
 	private void record(Change change, boolean typed) {
 		long now = clock.millis();
-		Step step = batchStep;
-		if (step == null && typed && typing != null &&
-				now - typing.time < TYPING_PAUSE &&
-				touches(typing.changes.get(0), change)) {
-			step = typing;
-		}
-		if (step == null) {
-			step = new Step(selection);
+		if (batchStep == null) {
+			batchStep = new Step(selection);
+			continued = typed && typing != null &&
+					now - typing.time < TYPING_PAUSE ? typing : null;
 			for (Step dropped : redo) {
 				historyChars -= dropped.chars;
 				if (dropped == saved) {
@@ -301,14 +304,33 @@ public final class Document {
 				}
 			}
 			redo.clear();
+		}
+		batchStep.add(change, typed);
+		batchStep.time = now;
+		moved = false;
+	}
+
+	// Ends the step of the current batch: one typed change that touches
+	// what the run of typing changed continues it, any other is a step
+	// of its own.
+	private void endStep() {
+		Step step = batchStep;
+		if (step == null) {
+			return;
+		}
+		batchStep = null;
+		step.selectionAfter = selection;
+		if (continued != null && step.typed &&
+				touches(continued.changes.get(0), step.changes.get(0))) {
+			historyChars -= continued.chars;
+			continued.join(step);
+			step = continued;
+		} else {
 			undo.addLast(step);
 		}
-		historyChars -= step.chars;
-		step.add(change, typed);
 		historyChars += step.chars;
-		step.time = now;
-		batchStep = step;
-		typing = step.typed ? step : null;
+		continued = null;
+		typing = step.typed && !moved ? step : null;
 		while (undo.size() > 1 && (undo.size() > MAX_STEPS ||
 				historyChars > MAX_CHARS)) {
 			Step dropped = undo.removeFirst();
@@ -318,14 +340,6 @@ public final class Document {
 			} else if (saved == dropped) {
 				saved = null;
 			}
-		}
-	}
-
-	// Ends the step of the current batch; typing may continue it.
-	private void endStep() {
-		if (batchStep != null) {
-			batchStep.selectionAfter = selection;
-			batchStep = null;
 		}
 	}
 
@@ -381,6 +395,15 @@ public final class Document {
 			changes.add(change);
 			chars += size(change);
 			this.typed = typed && last < 0;
+		}
+
+		// Continues this typed step by the typed step next.
+		private void join(Step next) {
+			Change change = compose(changes.get(0), next.changes.get(0));
+			changes.set(0, change);
+			chars = size(change);
+			selectionAfter = next.selectionAfter;
+			time = next.time;
 		}
 
 		private static int size(Change change) {

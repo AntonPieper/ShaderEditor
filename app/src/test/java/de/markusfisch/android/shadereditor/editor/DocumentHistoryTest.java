@@ -205,6 +205,18 @@ public class DocumentHistoryTest {
 	}
 
 	@Test
+	public void batchWithAnEditLeavesTheTypingBeforeIt() {
+		Document document = document("");
+		type(document, "a");
+		document.beginBatch();
+		type(document, "b");
+		document.replace(0, 1, Text.of("A"));
+		document.endBatch();
+		document.undo();
+		assertEquals("a", document.text().toString());
+	}
+
+	@Test
 	public void undoInsideABatch() {
 		Document document = document("");
 		Events events = new Events(document);
