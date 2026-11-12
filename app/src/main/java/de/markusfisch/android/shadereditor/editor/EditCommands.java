@@ -7,7 +7,9 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
  * A move with extend keeps the anchor of the selection and moves its
  * head; without, the selection collapses to where the head goes. Moves
  * up and down aim at the column the caret had before the first of
- * them, so the caret returns to it after a shorter line. A delete
+ * them, so the caret returns to it after a shorter line; any other
+ * change of the selection or the text, and another tab width, ends the
+ * run. A delete
  * removes the selection if there is one. Deleting a character, a line
  * break and an indentation typed at the caret are typing, for undo.
  */
@@ -16,10 +18,11 @@ public final class EditCommands {
 	private final Motion motion;
 	private int tabWidth = 4;
 	private boolean indentWithSpaces;
-	// The column of a run of vertical moves, while the head is where
-	// the last of them put it.
+	// The column of a run of vertical moves, while the selection is the
+	// one the last of them made. The document makes a new selection for
+	// every change, and undo, which restores an old one, a new revision.
 	private int wantedColumn;
-	private int wantedHead = -1;
+	private Selection wantedSelection;
 	private int wantedRevision;
 
 	public EditCommands(Document document) {
@@ -34,6 +37,7 @@ public final class EditCommands {
 	/** Set the number of columns between two tab stops. */
 	public void setTabWidth(int tabWidth) {
 		this.tabWidth = tabWidth;
+		wantedSelection = null;
 	}
 
 	/**
@@ -75,7 +79,7 @@ public final class EditCommands {
 	public void moveLines(int count, boolean extend) {
 		Text text = document.text();
 		int head = head();
-		int column = head == wantedHead &&
+		int column = document.selection() == wantedSelection &&
 				document.revision() == wantedRevision
 				? wantedColumn
 				: motion.column(text, head, tabWidth);
@@ -90,7 +94,7 @@ public final class EditCommands {
 		}
 		moveTo(target, extend);
 		wantedColumn = column;
-		wantedHead = target;
+		wantedSelection = document.selection();
 		wantedRevision = document.revision();
 	}
 

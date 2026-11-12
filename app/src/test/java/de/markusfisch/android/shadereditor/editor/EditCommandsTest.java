@@ -62,6 +62,38 @@ public class EditCommandsTest {
 	}
 
 	@Test
+	public void movingAwayAndBackForgetsTheWantedColumn() {
+		Document document = documentOf("abcd|\nx\nabcdef");
+		EditCommands commands = new EditCommands(document);
+		commands.moveLines(1, false);
+		commands.moveBackward(false);
+		commands.moveForward(false);
+		commands.moveLines(1, false);
+		assertEquals("abcd\nx\na|bcdef", stateOf(document));
+	}
+
+	@Test
+	public void selectingAwayAndBackForgetsTheWantedColumn() {
+		Document document = documentOf("abcd|\nx\nabcdef");
+		EditCommands commands = new EditCommands(document);
+		commands.moveLines(1, false);
+		document.select(0, 0);
+		document.select(6, 6);
+		commands.moveLines(1, false);
+		assertEquals("abcd\nx\na|bcdef", stateOf(document));
+	}
+
+	@Test
+	public void anotherTabWidthForgetsTheWantedColumn() {
+		Document document = documentOf("\tx|\n\tabcdefgh\nabcdefgh");
+		EditCommands commands = new EditCommands(document);
+		commands.moveLines(1, false);
+		commands.setTabWidth(2);
+		commands.moveLines(1, false);
+		assertEquals("\tx\n\tabcdefgh\nabc|defgh", stateOf(document));
+	}
+
+	@Test
 	public void anEditForgetsTheWantedColumn() {
 		Document document = documentOf("abcde|f\nab\nabcdefgh");
 		EditCommands commands = new EditCommands(document);
