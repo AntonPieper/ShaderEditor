@@ -13,6 +13,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
@@ -27,6 +29,11 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
 // from the pass's inputs and the samplers the program reflects. A sampler
 // without an input or an engine provider keeps the empty texture.
 final class PlanBindings {
+	private static final Pattern COMMENT = Pattern.compile(
+			"//[^\n]*|/\\*.*?(\\*/|$)", Pattern.DOTALL);
+	private static final Pattern EXTERNAL = Pattern.compile(
+			"\\bsamplerExternalOES\\s+(\\w+)");
+
 	// The texture made from an image: 2D, or a cubemap cut from a strip.
 	record Texture(@NonNull ProjectPath image, boolean cubemap) {
 	}
@@ -84,17 +91,20 @@ final class PlanBindings {
 		this.warnings = List.copyOf(warnings);
 	}
 
-	// self is the index of the pass in its plan.
+	// self is the index of the pass in its plan, text what its program
+	// compiles.
 	@NonNull
 	static PlanBindings of(
 			@NonNull RenderPlan.Pass pass,
 			int self,
-			@NonNull List<GlUniform> samplers) {
+			@NonNull List<GlUniform> samplers,
+			@NonNull String text) {
 		var active = new HashMap<String, GlUniform>();
+		var external = externalSamplers(text);
 		GlUniform camera = null;
 		for (var sampler : samplers) {
 			active.put(sampler.name(), sampler);
-			if (camera == null && isCamera(sampler)) {
+			if (camera == null && isCamera(sampler, external)) {
 				camera = sampler;
 			}
 		}
@@ -240,10 +250,28 @@ final class PlanBindings {
 		return ProjectDiagnostic.error(message);
 	}
 
-	private static boolean isCamera(@NonNull GlUniform sampler) {
-		return sampler.textureTarget() == GLES11Ext.GL_TEXTURE_EXTERNAL_OES &&
-				(UniformTable.CAMERA_BACK.equals(sampler.name()) ||
-						UniformTable.CAMERA_FRONT.equals(sampler.name()));
+	// Some drivers, the emulator's among them, report a samplerExternalOES
+	// as a sampler2D; its declaration tells the two apart then.
+	private static boolean isCamera(
+			@NonNull GlUniform sampler,
+			@NonNull Set<String> external) {
+		int target = sampler.textureTarget();
+		return (UniformTable.CAMERA_BACK.equals(sampler.name()) ||
+				UniformTable.CAMERA_FRONT.equals(sampler.name())) &&
+				(target == GLES11Ext.GL_TEXTURE_EXTERNAL_OES ||
+						(target == GLES20.GL_TEXTURE_2D &&
+								external.contains(sampler.name())));
+	}
+
+	// The names text declares as samplerExternalOES outside of comments.
+	@NonNull
+	static Set<String> externalSamplers(@NonNull String text) {
+		var names = new HashSet<String>();
+		Matcher m = EXTERNAL.matcher(COMMENT.matcher(text).replaceAll(" "));
+		while (m.find()) {
+			names.add(m.group(1));
+		}
+		return names;
 	}
 
 	private static boolean isPowerOfTwo(int n) {

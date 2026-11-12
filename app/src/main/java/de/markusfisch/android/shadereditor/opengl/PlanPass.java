@@ -73,7 +73,8 @@ final class PlanPass {
 			errors.addAll(result.getInfoLog());
 			return null;
 		}
-		var bindings = PlanBindings.of(pass, index, program.getSamplers());
+		var bindings = PlanBindings.of(pass, index, program.getSamplers(),
+				source.fragment());
 		var warnings = new ArrayList<>(bindings.warnings);
 		var inputs = new HashSet<String>();
 		for (var input : pass.inputs()) {
