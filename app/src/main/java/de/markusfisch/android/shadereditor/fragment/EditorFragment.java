@@ -29,6 +29,10 @@ public class EditorFragment extends Fragment {
 	private View editorContainer;
 	private ShaderEditor shaderEditor;
 	private UndoRedo undoRedo;
+	// Text set before the view exists, for example from an intent
+	// that started the activity.
+	@Nullable
+	private String pendingText;
 
 	@Nullable
 	private ShaderEditor.OnEditPausedListener editPausedListener;
@@ -60,6 +64,10 @@ public class EditorFragment extends Fragment {
 		});
 		setShowLineNumbers(ShaderEditorApp.preferences.showLineNumbers());
 		undoRedo = new UndoRedo(shaderEditor, ShaderEditorApp.editHistory);
+		if (pendingText != null) {
+			setText(pendingText);
+			pendingText = null;
+		}
 
 		return view;
 	}
@@ -145,6 +153,10 @@ public class EditorFragment extends Fragment {
 	}
 
 	public void setText(String text) {
+		if (shaderEditor == null) {
+			pendingText = text;
+			return;
+		}
 		clearError();
 		undoRedo.clearHistory();
 		undoRedo.stopListeningForChanges();

@@ -110,16 +110,10 @@ public class MainActivity extends AppCompatActivity {
 				v -> uiManager.toggleCodeVisibility(),
 				v -> editorFragment.showErrors());
 
-		shaderManager.handleSendText(getIntent());
-
-		if (state == null) {
-			Intent intent = getIntent();
-			String action = intent != null ? intent.getAction() : null;
-			if (!Intent.ACTION_SEND.equals(action) &&
-					!Intent.ACTION_VIEW.equals(action)) {
-				isInitialLoad = true;
-			}
-		}
+		// Only load the last shader when no incoming text was opened,
+		// or it would replace that text.
+		boolean openedText = shaderManager.handleSendText(getIntent());
+		isInitialLoad = state == null && !openedText;
 
 		editorFragment.setOnEditPausedListener(text -> {
 			if (ShaderEditorApp.preferences.doesRunOnChange()) {
@@ -186,10 +180,14 @@ public class MainActivity extends AppCompatActivity {
 
 	@Override
 	protected void onPostCreate(Bundle state) {
+		// Activity.onPostCreate() sets the toolbar to the activity label,
+		// which would replace a title set in onCreate(), for example the
+		// name of an opened file.
+		CharSequence title = state != null
+				? state.getCharSequence(TOOLBAR_TITLE)
+				: uiManager.getToolbarTitle();
 		super.onPostCreate(state);
-		if (state != null) {
-			uiManager.setToolbarTitle(state.getCharSequence(TOOLBAR_TITLE));
-		}
+		uiManager.setToolbarTitle(title);
 		if (uiManager.drawerToggle != null) {
 			uiManager.drawerToggle.syncState();
 		}
