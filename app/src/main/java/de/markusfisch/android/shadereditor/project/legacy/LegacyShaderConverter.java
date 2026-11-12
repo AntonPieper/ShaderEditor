@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.project.legacy;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -69,8 +70,12 @@ public final class LegacyShaderConverter {
 	 *                    {@link #SHADER} first
 	 * @param textures    library textures the files read
 	 * @param lines       for every line of the converted shader, its
-	 *                    1-based line in the original text, or 0 for an
-	 *                    inserted line
+	 *                    1-based line in the original text; negative for
+	 *                    a line the conversion inserted for the original
+	 *                    line of that magnitude, 0 for one inserted for
+	 *                    none
+	 * @param origins     for every other file the conversion generated,
+	 *                    the original line it was generated for
 	 * @param diagnostics what could not be converted exactly, at lines
 	 *                    of the original text and with no file
 	 */
@@ -78,11 +83,13 @@ public final class LegacyShaderConverter {
 			Map<ProjectPath, String> files,
 			List<TextureFile> textures,
 			List<Integer> lines,
+			Map<ProjectPath, Integer> origins,
 			List<ProjectDiagnostic> diagnostics) {
 		public Result {
 			files = Collections.unmodifiableMap(new LinkedHashMap<>(files));
 			textures = List.copyOf(textures);
 			lines = List.copyOf(lines);
+			origins = Collections.unmodifiableMap(new HashMap<>(origins));
 			diagnostics = List.copyOf(diagnostics);
 		}
 
@@ -90,38 +97,49 @@ public final class LegacyShaderConverter {
 			return files.get(SHADER);
 		}
 
-		/** The original line of a 1-based converted line, or 0. */
+		/**
+		 * The original line of a 1-based converted line, or of the line
+		 * it was inserted for, or 0.
+		 */
 		public int originalLine(int line) {
-			return line < 1 || line > lines.size() ? 0 : lines.get(line - 1);
+			return Math.abs(converted(line));
 		}
 
 		/**
 		 * Return diagnostics of the converted files at lines of the
 		 * original text, followed by what the conversion found. One
-		 * about a line or a file the conversion generated has no
-		 * location, and is left out when it is a warning: such a
-		 * warning is about the conversion, which reports what it
-		 * changes itself, and not about the original text.
+		 * about a line or a file the conversion generated is at the
+		 * line it was generated for, and is left out when it is a
+		 * warning: such a warning is about the conversion, which
+		 * reports what it changes itself, like an unused texture that
+		 * the old renderer did not report either.
 		 */
 		public List<ProjectDiagnostic> toOriginal(
 				List<ProjectDiagnostic> converted) {
 			List<ProjectDiagnostic> original = new ArrayList<>();
 			for (ProjectDiagnostic diagnostic : converted) {
 				ProjectPath file = diagnostic.file();
-				int line = SHADER.equals(file)
-						? originalLine(diagnostic.line())
-						: 0;
+				int line = 0;
+				if (SHADER.equals(file)) {
+					line = converted(diagnostic.line());
+				} else if (origins.containsKey(file)) {
+					line = -origins.get(file);
+				}
 				if (file == null) {
 					original.add(diagnostic);
 				} else if (line > 0 || diagnostic.severity() ==
 						ProjectDiagnostic.Severity.ERROR) {
 					original.add(new ProjectDiagnostic(diagnostic.severity(),
-							diagnostic.message(), null, line,
+							diagnostic.message(), null, Math.abs(line),
 							diagnostic.raw()));
 				}
 			}
 			original.addAll(diagnostics);
 			return original;
+		}
+
+		private int converted(int line) {
+			return line < 1 || line > lines.size() ? 0 : lines.get(line - 1);
 		}
 	}
 
@@ -136,11 +154,18 @@ public final class LegacyShaderConverter {
 					"(sampler2D|samplerCube|samplerExternalOES)\\s+" +
 					"([a-zA-Z0-9_]+)\\s*;");
 	private static final Pattern DISCARD = Pattern.compile("\\bdiscard\\b");
+	private static final Pattern IDENTIFIER = Pattern.compile(
+			"[a-zA-Z_][a-zA-Z0-9_]*");
 	private static final String BACKBUFFER = "backbuffer";
 
 	private final List<String> raw;
 	private final PreprocessorScan scan;
 	private final Library library;
+	private final Set<String> reserved;
+	// Uniforms named like builtins that read a library texture, and the
+	// names they get.
+	private final Map<String, String> renames = new HashMap<>();
+	private final Map<ProjectPath, Integer> origins = new HashMap<>();
 	private final List<Declaration> declarations = new ArrayList<>();
 	private final Map<String, List<Declaration>> declared = new HashMap<>();
 	private final Set<String> macros = new HashSet<>();
@@ -156,8 +181,10 @@ public final class LegacyShaderConverter {
 	private boolean presetMissing;
 
 	// matched: found by the old renderer's pattern, so params were read.
+	// One that continues on later lines ends at the end of its first.
 	private record Declaration(int line, int start, int end, String type,
-			String name, String params, boolean code, boolean matched) {
+			String name, String params, boolean code, boolean matched,
+			boolean multiline) {
 	}
 
 	// A declaration on its line that gets a directive before it, or
@@ -166,22 +193,29 @@ public final class LegacyShaderConverter {
 			boolean remove) {
 	}
 
+	// original is negative for a line inserted for that original line.
 	private record Line(String text, int original) {
 	}
 
-	private LegacyShaderConverter(List<String> raw, Library library) {
+	private LegacyShaderConverter(List<String> raw, Library library,
+			Set<String> reserved) {
 		this.raw = raw;
 		this.scan = PreprocessorScan.scan(raw, null);
 		this.library = library;
+		this.reserved = reserved;
 		this.inComment = comments(scan);
 		files.put(SHADER, "");
 	}
 
-	/** Convert the text of a database shader. */
-	public static Result convert(String text, Library library) {
+	/**
+	 * Convert the text of a database shader. reserved are the names of
+	 * the builtin uniforms, which an input cannot take.
+	 */
+	public static Result convert(String text, Library library,
+			Set<String> reserved) {
 		text = text.replace("\r\n", "\n").replace('\r', '\n');
 		LegacyShaderConverter converter = new LegacyShaderConverter(
-				SourceText.lines(text), library);
+				SourceText.lines(text), library, reserved);
 		List<Integer> lines = new ArrayList<>();
 		String shader = converter.run(lines);
 		if (text.endsWith("\n") && !shader.isEmpty()) {
@@ -190,7 +224,7 @@ public final class LegacyShaderConverter {
 		converter.files.put(SHADER, shader);
 		return new Result(converter.files,
 				new ArrayList<>(converter.textures.values()), lines,
-				converter.diagnostics);
+				converter.origins, converter.diagnostics);
 	}
 
 	private String run(List<Integer> map) {
@@ -236,6 +270,7 @@ public final class LegacyShaderConverter {
 				map.add(l.original);
 			}
 		}
+		rename(out, map);
 		return String.join("\n", out);
 	}
 
@@ -255,7 +290,7 @@ public final class LegacyShaderConverter {
 					line.substring(m.end()),
 					code.length() >= m.end() &&
 							code.regionMatches(m.start(), line, m.start(),
-									m.end() - m.start()), true);
+									m.end() - m.start()), true, false);
 			declarations.add(declaration);
 			if (BACKBUFFER.equals(declaration.name)) {
 				// Settings in a comment still scaled the output.
@@ -267,7 +302,7 @@ public final class LegacyShaderConverter {
 	}
 
 	// Every declaration in code, by name, wherever the old pattern did or
-	// did not match it.
+	// did not match it, also one over several lines.
 	private void findDeclared() {
 		Map<Integer, Declaration> matches = new HashMap<>();
 		for (Declaration declaration : declarations) {
@@ -280,11 +315,13 @@ public final class LegacyShaderConverter {
 			directives.add(d.line());
 		}
 		boolean continued = false;
+		boolean[] macro = new boolean[raw.size()];
 		for (int i = 0; i < raw.size(); ++i) {
 			Matcher m = DECLARATION.matcher(scan.code().get(i));
 			// A macro body is not a declaration until it is expanded.
 			if (continued || directives.contains(i + 1)) {
 				continued = raw.get(i).endsWith("\\");
+				macro[i] = true;
 				while (m.find()) {
 					macros.add(m.group(2));
 				}
@@ -292,20 +329,52 @@ public final class LegacyShaderConverter {
 			}
 			while (m.find()) {
 				Declaration match = matches.get(i + 1);
-				Declaration declaration = match != null &&
-						match.start == m.start()
+				declare(match != null && match.start == m.start()
 						? match
 						: new Declaration(i + 1, m.start(), m.end(),
 								m.group(1), m.group(2),
-								raw.get(i).substring(m.end()), true, false);
-				List<Declaration> list = declared.get(declaration.name);
-				if (list == null) {
-					list = new ArrayList<>();
-					declared.put(declaration.name, list);
-				}
-				list.add(declaration);
+								raw.get(i).substring(m.end()), true, false,
+								false));
 			}
 		}
+		findMultiline(macro);
+	}
+
+	// The old pattern bound such a declaration by name through a match in
+	// a comment.
+	private void findMultiline(boolean[] macro) {
+		String code = String.join("\n", scan.code());
+		int[] starts = new int[raw.size() + 1];
+		for (int i = 0; i < raw.size(); ++i) {
+			starts[i + 1] = starts[i] + scan.code().get(i).length() + 1;
+		}
+		for (Matcher m = DECLARATION.matcher(code); m.find(); ) {
+			int first = lineOf(starts, m.start());
+			int last = lineOf(starts, m.end() - 1);
+			boolean inMacro = false;
+			for (int i = first; i <= last; ++i) {
+				inMacro |= macro[i];
+			}
+			if (first != last && !inMacro) {
+				declare(new Declaration(first + 1, m.start() - starts[first],
+						raw.get(first).length(), m.group(1), m.group(2), "",
+						true, false, true));
+			}
+		}
+	}
+
+	private void declare(Declaration declaration) {
+		List<Declaration> list = declared.get(declaration.name);
+		if (list == null) {
+			list = new ArrayList<>();
+			declared.put(declaration.name, list);
+		}
+		list.add(declaration);
+	}
+
+	private static int lineOf(int[] starts, int offset) {
+		int i = Arrays.binarySearch(starts, offset);
+		return i >= 0 ? i : -i - 2;
 	}
 
 	// The match chose the texture and settings of its name; write them on
@@ -342,14 +411,62 @@ public final class LegacyShaderConverter {
 		warnUndeclared(match, "does not read the library texture " + name,
 				"read the library texture " + name +
 				", but it has no declaration like uniform " + match.type +
-				" " + name + "; on one line to attach #pragma se input " +
-				"to, so it is not bound");
+				" " + name + "; to attach #pragma se input to, so it is " +
+				"not bound");
 		List<Declaration> placed = placeable(targets);
 		if (!placed.isEmpty()) {
 			ProjectPath path = texture(name, texture, cube, match.line);
 			place(placed, new Line("#pragma se input " + ("\"" + path +
 					"\" " + settings(match).options(Sampling.IMAGE, !cube))
 					.trim(), 0));
+			// An input cannot take the name of a builtin, which the old
+			// renderer did not set on a sampler.
+			if (reserved.contains(name)) {
+				renames.put(name, freeName(name));
+			}
+		}
+	}
+
+	// A name used nowhere in the text, comments included.
+	private String freeName(String name) {
+		Set<String> used = new HashSet<>();
+		for (Matcher m = IDENTIFIER.matcher(String.join("\n", raw));
+				m.find(); ) {
+			used.add(m.group());
+		}
+		String free = name + "_texture";
+		for (int i = 2; used.contains(free) || reserved.contains(free) ||
+				renames.containsValue(free); ++i) {
+			free = name + "_texture" + i;
+		}
+		return free;
+	}
+
+	// The uniforms named like builtins take their new names in the code
+	// of the original lines, also in macros and uses; comments and
+	// inserted lines keep their text.
+	private void rename(List<String> out, List<Integer> map) {
+		if (renames.isEmpty()) {
+			return;
+		}
+		List<String> code = PreprocessorScan.scan(out, null).code();
+		for (int i = 0; i < out.size(); ++i) {
+			if (map.get(i) <= 0) {
+				continue;
+			}
+			String text = out.get(i);
+			StringBuilder renamed = new StringBuilder();
+			int from = 0;
+			for (Matcher m = IDENTIFIER.matcher(code.get(i)); m.find(); ) {
+				String to = renames.get(m.group());
+				if (to != null) {
+					renamed.append(text, from, m.start()).append(to);
+					from = m.end();
+				}
+			}
+			if (from > 0) {
+				out.set(i, renamed.append(text.substring(from)).toString());
+			}
 		}
 	}
 
@@ -412,8 +529,8 @@ public final class LegacyShaderConverter {
 			warnUndeclared(first, "does not get its settings",
 					"has settings, but " +
 					"it has no declaration like uniform sampler2D " +
-					"backbuffer; on one line to attach #pragma se input " +
-					"to, so they are not applied");
+					"backbuffer; to attach #pragma se input to, so they " +
+					"are not applied");
 		}
 		if (options.isEmpty()) {
 			for (Declaration declaration : declarations) {
@@ -431,6 +548,7 @@ public final class LegacyShaderConverter {
 					file.substring(0, file.length() - 4) + ".glsl");
 			files.put(shader, PresetShader.text("../" + image,
 					preset.width(), preset.height()));
+			origins.put(shader, at);
 			target.add("initial=\"" + shader + "\"");
 		}
 		if (settings.mag() == Filter.LINEAR) {
@@ -445,7 +563,7 @@ public final class LegacyShaderConverter {
 				}
 			}
 			insert(version + 1, new Line("#pragma se target " +
-					String.join(" ", target), 0));
+					String.join(" ", target), -at));
 		}
 	}
 
@@ -501,15 +619,17 @@ public final class LegacyShaderConverter {
 				warn(declaration.line, "The old renderer bound " +
 						match.name + " as a " + match.type + " from line " +
 						match.line + ", so uniform " + declaration.type +
-						" " + match.name + " read no texture; it stays " +
-						"without one");
+						" " + match.name + " did not read the texture but " +
+						"whatever its texture unit held from earlier " +
+						"drawing; it now reads black");
 			}
 		}
 		return targets;
 	}
 
 	// A name that is used but declared in a shape the old pattern found
-	// only in a comment, like over two lines, keeps what it had nowhere.
+	// only in a comment, like a list of uniforms, keeps what it had
+	// nowhere.
 	private void warnUndeclared(Declaration match, String lost,
 			String message) {
 		if (declared.containsKey(match.name)) {
@@ -564,6 +684,13 @@ public final class LegacyShaderConverter {
 						"be, is left as written without its texture or " +
 						"settings; declare it once outside the " +
 						"conditional block");
+			} else if (hoist && declaration.multiline) {
+				warn(declaration.line, declaration.name + " is declared " +
+						"over several lines inside #if, #ifdef or #ifndef, " +
+						"where #pragma se input cannot be, so it is left " +
+						"as written without its texture or settings; " +
+						"declare it on one line outside the conditional " +
+						"block");
 			} else if (hoist
 					? continues(opening(declaration.line), 0)
 					: continues(declaration.line, declaration.start)) {
@@ -616,7 +743,7 @@ public final class LegacyShaderConverter {
 	private void hoist(Declaration declaration, Line directive) {
 		int line = declaration.line;
 		int open = opening(line);
-		insert(open, directive);
+		insert(open, new Line(directive.text, -line));
 		insert(open, new Line(raw.get(line - 1).substring(declaration.start,
 				declaration.end), line));
 		edit(new Edit(declaration, null, true));
@@ -671,7 +798,7 @@ public final class LegacyShaderConverter {
 							line));
 					current.setLength(0);
 				}
-				lines.add(edit.directive);
+				lines.add(new Line(edit.directive.text, -line));
 			}
 			if (!edit.remove) {
 				current.append(text, declaration.start, declaration.end);

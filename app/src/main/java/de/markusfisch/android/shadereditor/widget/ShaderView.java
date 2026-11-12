@@ -168,11 +168,13 @@ public class ShaderView extends GLSurfaceView {
 		Preparation preparation;
 		LegacyShaderConverter.Result conversion = null;
 		try {
+			var reserved = UniformTable.names();
 			var files = DatabaseProjectFiles.convert(Database.getInstance(
-					getContext()).getDataSource().texture, text, limits);
+					getContext()).getDataSource().texture, text, limits,
+					reserved);
 			conversion = files.conversion();
 			preparation = Preparation.prepare(files,
-					LegacyShaderConverter.SHADER, limits, UniformTable.names());
+					LegacyShaderConverter.SHADER, limits, reserved);
 		} catch (RuntimeException e) {
 			preparation = new Preparation(null, List.of(ProjectDiagnostic.error(
 					"Cannot load the textures: " + e.getMessage())),
