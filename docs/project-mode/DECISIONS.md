@@ -174,3 +174,8 @@ Made with the maintainer, one by one, after both reviews. The guiding principle 
 | Pixels a shader discards | Always cleared to opaque black; the converter warns on old shaders that use `discard` | The old renderer left what the buffer held two frames earlier, an accident of never clearing and of alternating two buffers. Nothing documents it and it flickers. Rejected: an opt-out that would make "whatever the texture last held" part of the format, and a new keep-previous-frame mode, which is a feature for later if anyone asks. |
 | `GpuBitmapTransformer` | Rebased on the engine classes after the engine lands (E18) | Removes a second copy of compile and draw code once the shared pieces exist. |
 | Agent files | `IMPLEMENTATION.md`, `HANDOFF.md`, `PROMPTS.md` moved to `docs/agents/project-mode/` | AGENTS.md keeps agent configuration out of upstream PRs; the design folder can now be offered upstream. |
+
+## Target allocation before the swap (2026-11-12)
+
+The first version of SPEC 9 released the previous plan's targets before allocating the new ones, so that the two never coexist and peak memory stays at one set. An independent review of the engine showed the cost: a candidate was swapped in before anyone knew whether its targets could be made, and a failure replaced a working picture with nothing. Targets are now part of the candidate and are allocated and checked before the swap. The price is two sets of targets for the moment of the swap. To keep the old guarantee for devices where two sets do not fit, a failed allocation releases the previous plan's targets and tries once more; only if that fails too is the error state shown.
+
