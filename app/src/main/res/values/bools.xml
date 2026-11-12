@@ -2,7 +2,7 @@
 	<!-- The development gate of project mode: on only in debug builds. -->
 	<bool name="project_mode">false</bool>
 	<!-- Draw database shaders with the old pipeline instead of through
-	the converter and the plan runtime; false in debug builds, where it
-	can be set to true to compare the two. -->
-	<bool name="legacy_renderer">true</bool>
+	the converter and the plan runtime; set to true in a debug build to
+	compare the two. -->
+	<bool name="legacy_renderer">false</bool>
 </resources>

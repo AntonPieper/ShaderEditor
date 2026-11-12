@@ -1,4 +1,3 @@
 <resources>
 	<bool name="project_mode">true</bool>
-	<bool name="legacy_renderer">false</bool>
 </resources>
