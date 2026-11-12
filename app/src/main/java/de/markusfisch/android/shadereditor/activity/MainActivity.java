@@ -166,6 +166,9 @@ public class MainActivity extends AppCompatActivity {
 
 	@Override
 	protected void onDestroy() {
+		if (shaderManager != null) {
+			shaderManager.destroy();
+		}
 		if (shaderListManager != null) {
 			shaderListManager.destroy();
 		}
@@ -381,9 +384,8 @@ public class MainActivity extends AppCompatActivity {
 				if (defaultId > 0 && dataSource.shader.getShader(defaultId) != null) {
 					duplicateShader(defaultId);
 				} else {
-					long newId = dataSource.shader.insertNewShader();
-					shaderManager.selectShader(newId);
-					shaderListManager.loadShadersAsync();
+					shaderManager.createShaderFromResource(null,
+							R.raw.new_shader, R.drawable.thumbnail_new_shader, 1f);
 				}
 			}
 
