@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.project;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -348,6 +349,68 @@ public class OpenProjectTest {
 
 		assertEquals(SHADER.length(), item.size());
 		assertEquals(1_700_000_000_000L, item.modified());
+	}
+
+	@Test
+	public void keepsWhatTheLastBuildRead() throws IOException {
+		write("main.glsl", "#include \"lib/common.glsl\"\n" +
+				"#pragma se input \"noise.png\"\n" +
+				"uniform sampler2D noise;\n" + SHADER);
+		write("lib/common.glsl", "// common\n");
+		write("noise.png", "not decoded");
+		write("shader-project.json", "{}");
+		write("other.glsl", SHADER);
+		OpenProject project = open();
+		assertEquals(List.of(), project.used());
+
+		project.prepare(BuiltinNames.ALL);
+
+		assertEquals(List.of(new OpenProject.Used(path("main.glsl"), false),
+						new OpenProject.Used(path("lib/common.glsl"), false),
+						new OpenProject.Used(path("noise.png"), true)),
+				project.used());
+		assertTrue(project.uses(path("lib/common.glsl")));
+		assertFalse(project.uses(path("other.glsl")));
+		assertFalse(project.uses(ProjectManifest.FILE));
+	}
+
+	@Test
+	public void leavesOutFilesTheBuildCouldNotRead() throws IOException {
+		write("main.glsl", "#include \"missing.glsl\"\n" + SHADER);
+		OpenProject project = open();
+
+		project.prepare(BuiltinNames.ALL);
+
+		assertEquals(List.of(new OpenProject.Used(path("main.glsl"), false)),
+				project.used());
+	}
+
+	@Test
+	public void runsAGlslFileWhoseOwnTextDefinesMain() throws IOException {
+		write("main.glsl", SHADER);
+		write("tight.glsl", "void main(){}");
+		write("lib/common.glsl", "float f() { return 1.0; }\n");
+		write("declared.glsl", "void main();\n");
+		write("disabled.glsl", "#if 0\nvoid main() {}\n#endif\n");
+		write("commented.glsl", "// void main() {}\n");
+		write("notes.txt", SHADER);
+		OpenProject project = open();
+		for (String file : List.of("main.glsl", "tight.glsl",
+				"lib/common.glsl", "declared.glsl", "disabled.glsl",
+				"commented.glsl", "notes.txt")) {
+			assertNull(project.load(path(file)));
+		}
+
+		assertTrue(project.canRun(path("main.glsl")));
+		assertTrue(project.canRun(path("tight.glsl")));
+		assertFalse(project.canRun(path("lib/common.glsl")));
+		assertFalse(project.canRun(path("declared.glsl")));
+		assertFalse(project.canRun(path("disabled.glsl")));
+		assertFalse(project.canRun(path("commented.glsl")));
+		assertFalse(project.canRun(path("notes.txt")));
+		assertFalse(project.canRun(path("other.glsl")));
+		project.edit(path("lib/common.glsl"), "void main() {}");
+		assertTrue(project.canRun(path("lib/common.glsl")));
 	}
 
 	@Test
