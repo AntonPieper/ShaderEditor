@@ -6,7 +6,6 @@ import androidx.annotation.Nullable;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
-import de.markusfisch.android.shadereditor.project.legacy.LegacySamplerSettings;
 
 final class PreparedShaderSource {
 	@Nullable
@@ -34,17 +33,6 @@ final class PreparedShaderSource {
 		this.backBufferSampling = backBufferSampling;
 		this.backBufferParameters = backBufferParameters;
 		this.samplers = List.copyOf(samplers);
-	}
-
-	@NonNull
-	static PreparedShaderSource empty() {
-		return new PreparedShaderSource(
-				null,
-				3f,
-				null,
-				LegacySamplerSettings.BACKBUFFER.sampling(),
-				BackBufferParameters.NONE,
-				List.of());
 	}
 
 	@Nullable

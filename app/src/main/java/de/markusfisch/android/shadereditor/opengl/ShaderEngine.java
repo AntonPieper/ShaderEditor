@@ -3,7 +3,6 @@ package de.markusfisch.android.shadereditor.opengl;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.hardware.display.DisplayManager;
 import android.opengl.GLES20;
 import android.os.Build;
@@ -15,10 +14,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 
@@ -39,13 +36,11 @@ public final class ShaderEngine {
 	private static final float DEFAULT_FTIME_MAX = 3f;
 
 	private final GlDevice device = new GlDevice();
-	private final RendererProgramManager programManager =
-			new RendererProgramManager();
 	private final ShaderRenderPipeline renderPipeline =
 			new ShaderRenderPipeline(device);
 	private final EngineInputs inputs = new EngineInputs();
-	private final TextureHandOver<DecodedTextures> textureLoads =
-			new TextureHandOver<>();
+	private final ShaderSwap<ShaderProjectSession, ShaderBuild> shaders =
+			new ShaderSwap<>();
 	private final UniformSources sources;
 	private final Context context;
 	private final Object thumbnailLock = new Object();
@@ -56,14 +51,8 @@ public final class ShaderEngine {
 	private volatile Runnable renderRequester;
 	@Nullable
 	private ActiveBuiltins activeBuiltins;
-	@NonNull
-	private ShaderTextureResources textureResources =
-			ShaderTextureResources.empty();
+	private int version = 2;
 	private int backBufferUnit = GlUniform.NO_UNIT;
-	// Whether the textures must be decoded again, and whether the ones
-	// of the last load are uploaded.
-	private boolean texturesStale;
-	private boolean texturesReady;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
 	private byte[] thumbnail = new byte[1];
@@ -79,14 +68,12 @@ public final class ShaderEngine {
 		sources = new UniformSources(host);
 	}
 
+	// Any thread. At a frame boundary, the GL thread builds the newest
+	// shader while the current one keeps drawing, and swaps it in once
+	// it links and its textures are uploaded.
 	public void setShader(@NonNull ShaderProjectSession session) {
 		inputs.setRuntimeNanos(0);
-		setQuality(session.getQuality());
-		// Text pasted from other apps may carry non-ASCII characters
-		// that crash some shader compilers.
-		programManager.setFragmentShader(
-				removeNonAscii(session.getEntryPointSource()));
-		resetFps();
+		shaders.offer(session);
 	}
 
 	public long getRuntimeNanos() {
@@ -97,8 +84,12 @@ public final class ShaderEngine {
 		inputs.setRuntimeNanos(nanos);
 	}
 
+	// Any thread. Builds the shader set last again with this quality.
 	public void setQuality(float quality) {
-		inputs.setQuality(quality);
+		var session = shaders.latest();
+		if (session != null) {
+			shaders.offer(session.withQuality(quality));
+		}
 	}
 
 	public void setListener(@Nullable Listener listener) {
@@ -113,7 +104,7 @@ public final class ShaderEngine {
 
 	// GL thread, for every new context of the given GLES major version.
 	public void onContextCreated(int version) {
-		programManager.setVersion(version);
+		this.version = version;
 		device.disable(GLES20.GL_CULL_FACE);
 		device.disable(GLES20.GL_BLEND);
 		device.disable(GLES20.GL_DEPTH_TEST);
@@ -121,21 +112,9 @@ public final class ShaderEngine {
 
 		discardContextResources();
 		device.createContextResources();
-		var thumbnailErrors = renderPipeline.createContextResources();
-		if (!thumbnailErrors.isEmpty()) {
-			submitErrors(thumbnailErrors);
-		}
-
-		if (programManager.hasPreparedShader()) {
-			resetFps();
-			var reloadResult = programManager.reload(device);
-			if (reloadResult.succeeded()) {
-				submitErrors(Collections.emptyList());
-				configure(programManager.getMainProgram());
-				texturesStale = true;
-			} else {
-				submitErrors(reloadResult.programErrors());
-			}
+		var errors = renderPipeline.createContextResources();
+		if (!errors.isEmpty()) {
+			submitErrors(errors);
 		}
 	}
 
@@ -154,7 +133,11 @@ public final class ShaderEngine {
 		if (renderSizeChanged) {
 			renderPipeline.releaseTargets();
 			// The backbuffer preset is tiled to the render size.
-			texturesStale |= programManager.getBackBufferParameters().hasPreset();
+			var build = shaders.current();
+			if (build != null &&
+					build.source.getBackBufferParameters().hasPreset()) {
+				shaders.rebuildCurrent();
+			}
 		}
 
 		resetFps();
@@ -162,26 +145,15 @@ public final class ShaderEngine {
 
 	// GL thread.
 	public void drawFrame() {
-		var surfaceProgram = programManager.getSurfaceProgram();
-		var mainProgram = programManager.getMainProgram();
-		if (surfaceProgram == null || mainProgram == null) {
+		swapInNewestShader();
+		var build = shaders.current();
+		var builtins = activeBuiltins;
+		if (build == null ||
+				builtins == null ||
+				!renderPipeline.hasSurfaceProgram()) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
 			cancelCaptureThumbnail();
-			return;
-		}
-
-		if (texturesStale) {
-			startTextureLoad();
-		}
-		var textures = textureLoads.take();
-		if (textures != null) {
-			uploadTextures(textures);
-		}
-		if (!texturesReady) {
-			// A requested thumbnail waits for the first complete frame.
-			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
-					GLES20.GL_DEPTH_BUFFER_BIT);
 			return;
 		}
 
@@ -189,7 +161,7 @@ public final class ShaderEngine {
 			var targetErrors = renderPipeline.ensureTargets(
 					inputs.getRenderWidth(),
 					inputs.getRenderHeight(),
-					programManager.getBackBufferSampling(),
+					build.source.getBackBufferSampling(),
 					null);
 			if (!targetErrors.isEmpty()) {
 				submitErrors(targetErrors);
@@ -200,24 +172,15 @@ public final class ShaderEngine {
 			}
 		}
 
-		var builtins = activeBuiltins;
-		if (builtins == null) {
-			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
-					GLES20.GL_DEPTH_BUFFER_BIT);
-			cancelCaptureThumbnail();
-			return;
-		}
-
 		long now = System.nanoTime();
 		var frame = inputs.capture(now, fTimeMax);
 		builtins.write(frame, now);
-		device.bindEmptyTextures(mainProgram);
+		device.bindEmptyTextures(build.program);
 		device.bindTexture(backBufferUnit, renderPipeline.getBackTexture());
-		textureResources.bind(device);
+		build.textures.bind(device);
 
-		renderPipeline.renderMainPass(mainProgram);
+		renderPipeline.renderMainPass(build.program);
 		renderPipeline.renderSurfacePass(
-				surfaceProgram,
 				frame.surfaceWidth,
 				frame.surfaceHeight);
 		captureThumbnail();
@@ -230,9 +193,8 @@ public final class ShaderEngine {
 
 	// After the host released the context; the GL thread is not running.
 	public void onContextLost() {
-		textureLoads.cancel();
 		releaseSources();
-		clearConfiguration();
+		discardContextResources();
 	}
 
 	public void pointer(@NonNull MotionEvent e) {
@@ -257,6 +219,65 @@ public final class ShaderEngine {
 		}
 	}
 
+	private void swapInNewestShader() {
+		var session = shaders.take();
+		if (session != null) {
+			build(session);
+		}
+		var next = shaders.next();
+		if (next == null) {
+			return;
+		}
+		var errors = new ArrayList<ProjectDiagnostic>();
+		var textures = next.upload(errors);
+		if (!next.isComplete()) {
+			return;
+		}
+		// The sources stop before the build they read from is released.
+		releaseSources();
+		shaders.swapIfComplete();
+
+		long now = System.nanoTime();
+		lastRender = now;
+		inputs.restart(next.quality, now);
+		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
+		configure(next);
+		renderPipeline.releaseTargets();
+		errors.addAll(renderPipeline.ensureTargets(
+				inputs.getRenderWidth(),
+				inputs.getRenderHeight(),
+				next.source.getBackBufferSampling(),
+				textures != null ? textures.backBuffer() : null));
+		if (textures != null) {
+			textures.recycle();
+		}
+		resetFps();
+		submitErrors(errors);
+	}
+
+	private void build(@NonNull ShaderProjectSession session) {
+		var errors = new ArrayList<ProjectDiagnostic>();
+		float quality = session.getQuality();
+		// Text pasted from other apps may carry non-ASCII characters
+		// that crash some shader compilers.
+		var build = ShaderBuild.link(
+				device,
+				removeNonAscii(session.getEntryPointSource()),
+				quality,
+				version,
+				errors);
+		if (build == null) {
+			submitErrors(errors);
+			return;
+		}
+		shaders.built(build);
+		build.loadTextures(
+				context,
+				EngineInputs.renderSize(inputs.getSurfaceWidth(), quality),
+				EngineInputs.renderSize(inputs.getSurfaceHeight(), quality),
+				renderRequester);
+	}
+
 	private void resetFps() {
 		sum = 0;
 		samples = 0;
@@ -270,75 +291,19 @@ public final class ShaderEngine {
 		}
 	}
 
-	private void configure(@NonNull GlProgram program) {
-		releaseSources();
-		fTimeMax = programManager.getFTimeMax();
-		textureResources = programManager.getTextureResources();
-		backBufferUnit = program.getTextureUnit(UniformTable.BACKBUFFER);
-		textureResources.resolveUnits(program);
-		sources.setCameraBinding(textureResources.getFirstBinding(
+	private void configure(@NonNull ShaderBuild build) {
+		fTimeMax = build.source.getFTimeMax();
+		backBufferUnit = build.program.getTextureUnit(UniformTable.BACKBUFFER);
+		build.textures.resolveUnits(build.program);
+		sources.setCameraBinding(build.textures.getFirstBinding(
 				UniformTable.CAMERA_BACK,
 				UniformTable.CAMERA_FRONT));
-		activeBuiltins = new ActiveBuiltins(device, program, sources);
-	}
-
-	// Decodes the textures off the GL thread; until they are uploaded,
-	// frames are not drawn.
-	private void startTextureLoad() {
-		texturesStale = false;
-		int generation = textureLoads.begin();
-		var samplers = textureResources.getSamplers();
-		var backBuffer = programManager.getBackBufferParameters();
-		texturesReady = !DecodedTextures.isNeeded(samplers, backBuffer);
-		if (texturesReady) {
-			return;
-		}
-		int width = inputs.getRenderWidth();
-		int height = inputs.getRenderHeight();
-		new Thread(() -> {
-			var textureDao = Database.getInstance(context).getDataSource().texture;
-			textureLoads.deliver(generation, DecodedTextures.decode(
-					samplers,
-					backBuffer,
-					width,
-					height,
-					new DecodedTextures.BitmapSource() {
-						@Override
-						public Bitmap get(@NonNull String name) {
-							return textureDao.getTextureBitmap(name);
-						}
-
-						@Override
-						public Bitmap get(long id) {
-							return textureDao.getTextureBitmap(id);
-						}
-					}));
-			var requester = renderRequester;
-			if (requester != null) {
-				requester.run();
-			}
-		}, "ShaderTextureDecoder").start();
-	}
-
-	private void uploadTextures(@NonNull DecodedTextures textures) {
-		var errors = new ArrayList<>(textureResources.upload(device, textures));
-		renderPipeline.releaseTargets();
-		errors.addAll(renderPipeline.ensureTargets(
-				inputs.getRenderWidth(),
-				inputs.getRenderHeight(),
-				programManager.getBackBufferSampling(),
-				textures.backBuffer()));
-		textures.recycle();
-		texturesReady = true;
-		if (!errors.isEmpty()) {
-			submitErrors(errors);
-		}
+		activeBuiltins = new ActiveBuiltins(device, build.program, sources);
 	}
 
 	private void clearConfiguration() {
 		inputs.pauseRuntime();
 		fTimeMax = DEFAULT_FTIME_MAX;
-		textureResources = ShaderTextureResources.empty();
 		backBufferUnit = GlUniform.NO_UNIT;
 		activeBuiltins = null;
 	}
@@ -350,15 +315,14 @@ public final class ShaderEngine {
 
 	private void discardContextResources() {
 		clearConfiguration();
+		shaders.contextLost();
 		renderPipeline.discardContextResources();
-		programManager.discardContextResources();
 	}
 
 	private void captureThumbnail() {
 		synchronized (thumbnailLock) {
-			var surfaceProgram = programManager.getSurfaceProgram();
-			if (captureThumbnail && surfaceProgram != null) {
-				thumbnail = renderPipeline.captureThumbnail(surfaceProgram);
+			if (captureThumbnail) {
+				thumbnail = renderPipeline.captureThumbnail();
 				captureThumbnail = false;
 				thumbnailLock.notifyAll();
 			}

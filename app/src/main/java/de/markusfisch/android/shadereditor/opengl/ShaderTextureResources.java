@@ -55,11 +55,6 @@ final class ShaderTextureResources {
 		return new ShaderTextureResources(bindings);
 	}
 
-	@NonNull
-	static ShaderTextureResources empty() {
-		return new ShaderTextureResources(List.of());
-	}
-
 	void discard() {
 		for (var binding : bindings) {
 			binding.setTexture(null);
