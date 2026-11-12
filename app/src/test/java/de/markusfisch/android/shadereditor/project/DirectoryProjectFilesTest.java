@@ -107,6 +107,21 @@ public class DirectoryProjectFilesTest {
 	}
 
 	@Test
+	public void listsSizeAndTimeOfLastChange() throws IOException {
+		assertTrue(put("main.glsl", "void main() {}").setLastModified(
+				1_700_000_000_000L));
+		put("lib/common.glsl", "");
+
+		Entries entries = (Entries) files.list(null);
+
+		assertEquals(Set.of(new Entry("main.glsl", false, 14,
+						1_700_000_000_000L),
+				new Entry("lib", true, ProjectFiles.UNKNOWN,
+						new File(root, "lib").lastModified())),
+				Set.copyOf(entries.entries()));
+	}
+
+	@Test
 	public void writesFilesAndMissingFolders() throws IOException {
 		Change change = files.write(path("passes/blur.glsl"), bytes("x"),
 				null);

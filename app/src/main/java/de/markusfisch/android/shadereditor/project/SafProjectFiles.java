@@ -147,7 +147,9 @@ public final class SafProjectFiles implements ProjectFiles {
 			}
 			List<Entry> entries = new ArrayList<>();
 			for (Document child : resolver.children(dir.id())) {
-				entries.add(new Entry(nfc(child.name()), child.folder()));
+				entries.add(new Entry(nfc(child.name()), child.folder(),
+						child.folder() ? UNKNOWN : child.size(),
+						child.modified()));
 			}
 			return new Entries(entries);
 		} catch (IOException | RuntimeException e) {

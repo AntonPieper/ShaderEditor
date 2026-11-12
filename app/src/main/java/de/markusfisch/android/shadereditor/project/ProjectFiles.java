@@ -44,12 +44,21 @@ public interface ProjectFiles {
 		}
 	}
 
+	/** A size or time the storage did not tell. */
+	long UNKNOWN = -1;
+
 	/**
-	 * One entry of a folder: its name in Unicode NFC and whether it is
-	 * a folder. Two entries whose names normalize alike both appear;
-	 * a path to either fails to read.
+	 * One entry of a folder: its name in Unicode NFC, whether it is a
+	 * folder, its size in bytes and when it last changed, in
+	 * milliseconds since the epoch, as the listing told them, or
+	 * {@link #UNKNOWN}. Two entries whose names normalize alike both
+	 * appear; a path to either fails to read.
 	 */
-	record Entry(String name, boolean folder) {
+	record Entry(String name, boolean folder, long size, long modified) {
+		/** An entry of which the storage told no size or time. */
+		public Entry(String name, boolean folder) {
+			this(name, folder, UNKNOWN, UNKNOWN);
+		}
 	}
 
 	/**

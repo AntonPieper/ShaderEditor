@@ -29,6 +29,7 @@ class FakeDocuments implements DocumentResolver {
 		int flags;
 		Node parent;
 		byte[] bytes = new byte[0];
+		long modified = ProjectFiles.UNKNOWN;
 
 		Node(String id, String name, boolean folder, int flags) {
 			this.id = id;
@@ -102,9 +103,7 @@ class FakeDocuments implements DocumentResolver {
 
 	@Override
 	public Document document(String id) throws IOException {
-		Node node = node("document", id);
-		return new Document(node.id, node.name, node.folder,
-				node.flags);
+		return document(node("document", id));
 	}
 
 	@Override
@@ -116,8 +115,7 @@ class FakeDocuments implements DocumentResolver {
 		}
 		List<Document> documents = new ArrayList<>();
 		for (Node node : children(folder)) {
-			documents.add(new Document(node.id, node.name,
-					node.folder, node.flags));
+			documents.add(document(node));
 		}
 		return documents;
 	}
@@ -168,6 +166,12 @@ class FakeDocuments implements DocumentResolver {
 			delete(child.id);
 		}
 		nodes.remove(node.id);
+	}
+
+	private static Document document(Node node) {
+		return new Document(node.id, node.name, node.folder, node.flags,
+				node.folder ? ProjectFiles.UNKNOWN : node.bytes.length,
+				node.modified);
 	}
 
 	private boolean taken(Node folder, String name, Node except) {

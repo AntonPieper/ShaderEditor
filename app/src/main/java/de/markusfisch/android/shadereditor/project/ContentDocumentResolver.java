@@ -25,6 +25,8 @@ public final class ContentDocumentResolver implements DocumentResolver {
 			DocumentsContract.Document.COLUMN_DISPLAY_NAME,
 			DocumentsContract.Document.COLUMN_MIME_TYPE,
 			DocumentsContract.Document.COLUMN_FLAGS,
+			DocumentsContract.Document.COLUMN_SIZE,
+			DocumentsContract.Document.COLUMN_LAST_MODIFIED,
 	};
 
 	private final ContentResolver resolver;
@@ -163,7 +165,13 @@ public final class ContentDocumentResolver implements DocumentResolver {
 		return new Document(cursor.getString(0), name != null ? name : "",
 				DocumentsContract.Document.MIME_TYPE_DIR.equals(
 						cursor.getString(2)),
-				cursor.getInt(3));
+				cursor.getInt(3), known(cursor, 4), known(cursor, 5));
+	}
+
+	private static long known(Cursor cursor, int column) {
+		return cursor.isNull(column)
+				? ProjectFiles.UNKNOWN
+				: cursor.getLong(column);
 	}
 
 	private static String id(Uri uri, String failure) throws IOException {

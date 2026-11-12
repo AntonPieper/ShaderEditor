@@ -88,6 +88,21 @@ public class SafProjectFilesTest {
 	}
 
 	@Test
+	public void listsSizeAndTimeOfLastChangeWithoutReading() {
+		documents.put("main.glsl", "void main() {}").modified = 1234;
+		documents.put("lib/common.glsl", "");
+		documents.calls.clear();
+
+		Entries entries = (Entries) files.list(null);
+
+		assertEquals(Set.of(new Entry("main.glsl", false, 14, 1234),
+						new Entry("lib", true)),
+				Set.copyOf(entries.entries()));
+		assertEquals(List.of("children " + documents.root.id),
+				documents.calls);
+	}
+
+	@Test
 	public void namesDifferingInCaseAreDifferentPaths() {
 		documents.put("Main.glsl", "upper");
 		assertNull(files.read(path("main.glsl")));
