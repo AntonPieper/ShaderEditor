@@ -9,6 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 import de.markusfisch.android.shadereditor.project.DraftFiles.Draft;
 import de.markusfisch.android.shadereditor.project.EditingSession.Outcome;
@@ -28,7 +29,8 @@ import de.markusfisch.android.shadereditor.syntax.Tokens;
  * diagnostics of its last build by file. Unsaved text is kept by an
  * {@link EditingSession}, so it survives the process. Methods that read
  * or write storage are called from one worker thread at a time; the
- * others only touch memory and may be called from any thread.
+ * others only touch memory and may be called from any thread. One
+ * listener hears when what the screens mark changes.
  */
 public final class OpenProject {
 	public static final ProjectPath MAIN = ProjectPath.parse("main.glsl")
@@ -76,6 +78,12 @@ public final class OpenProject {
 		private Object state;
 	}
 
+	// What the listener hears about.
+	private record State(Set<ProjectPath> unsaved, Set<ProjectPath> conflicts,
+			ProjectPath running, List<Used> used,
+			List<ProjectDiagnostic> diagnostics) {
+	}
+
 	private static final int MAX_TEXT = ProjectLimits.DEFAULT.sourceBytes();
 
 	private final Map<ProjectPath, Doc> docs = new HashMap<>();
@@ -89,6 +97,10 @@ public final class OpenProject {
 	private List<Used> used = List.of();
 	private ProjectPath running;
 	private ProjectPath shown;
+	private State announced;
+	private Executor executor;
+	private Runnable listener;
+	private boolean pending;
 
 	private OpenProject(String id, ProjectFiles store,
 			ProjectSessions sessions, EditingSession session) {
@@ -116,6 +128,20 @@ public final class OpenProject {
 
 	public String id() {
 		return id;
+	}
+
+	/**
+	 * Call listener through executor, such as the main thread's, when
+	 * the files with unsaved text, the diagnostics, what runs, the files
+	 * the last build read or the conflicts change; changes that come
+	 * before the call is made are heard once. A listener set before
+	 * replaces it; null stops listening.
+	 */
+	public synchronized void setListener(Executor executor,
+			Runnable listener) {
+		this.executor = executor;
+		this.listener = listener;
+		announced = state();
 	}
 
 	/**
@@ -205,11 +231,19 @@ public final class OpenProject {
 	}
 
 	/** Set the text of path, open in the editor, as it is there now. */
-	public synchronized void edit(ProjectPath path, String text) {
-		Doc doc = docs.get(path);
-		if (doc != null) {
+	public void edit(ProjectPath path, String text) {
+		synchronized (this) {
+			Doc doc = docs.get(path);
+			if (doc == null) {
+				return;
+			}
+			boolean unsaved = !doc.text.equals(doc.stored);
 			doc.text = text;
+			if (unsaved == !text.equals(doc.stored)) {
+				return;
+			}
 		}
+		changed();
 	}
 
 	/**
@@ -311,6 +345,7 @@ public final class OpenProject {
 				}
 			}
 		}
+		changed();
 		return outcomes;
 	}
 
@@ -364,6 +399,7 @@ public final class OpenProject {
 			}
 		}
 		findRunning();
+		changed();
 		return reloaded;
 	}
 
@@ -377,15 +413,20 @@ public final class OpenProject {
 			docs.remove(path);
 			keptEdits.remove(path);
 		}
-		return load(path);
+		String problem = load(path);
+		changed();
+		return problem;
 	}
 
 	/**
 	 * Keep the unsaved text of path although the file changed elsewhere;
 	 * the next explicit save overwrites the file.
 	 */
-	public synchronized void keepEdits(ProjectPath path) {
-		keptEdits.add(path);
+	public void keepEdits(ProjectPath path) {
+		synchronized (this) {
+			keptEdits.add(path);
+		}
+		changed();
 	}
 
 	/**
@@ -414,6 +455,7 @@ public final class OpenProject {
 			docs.put(to, copy);
 		}
 		load(path);
+		changed();
 		return new Copy(to, null);
 	}
 
@@ -445,6 +487,7 @@ public final class OpenProject {
 		synchronized (this) {
 			running = found;
 		}
+		changed();
 		return found;
 	}
 
@@ -457,6 +500,7 @@ public final class OpenProject {
 		synchronized (this) {
 			running = path;
 		}
+		changed();
 		return sessions.setRunning(id, path);
 	}
 
@@ -486,6 +530,7 @@ public final class OpenProject {
 		synchronized (this) {
 			used = Collections.unmodifiableList(read);
 		}
+		changed();
 		return preparation;
 	}
 
@@ -519,9 +564,11 @@ public final class OpenProject {
 	}
 
 	/** Keep the diagnostics of the last build of what runs. */
-	public synchronized void setDiagnostics(
-			List<ProjectDiagnostic> diagnostics) {
-		this.diagnostics = List.copyOf(diagnostics);
+	public void setDiagnostics(List<ProjectDiagnostic> diagnostics) {
+		synchronized (this) {
+			this.diagnostics = List.copyOf(diagnostics);
+		}
+		changed();
 	}
 
 	/** Return the diagnostics of the last build, of all files. */
@@ -579,6 +626,41 @@ public final class OpenProject {
 			}
 		}
 		return errors;
+	}
+
+	private synchronized State state() {
+		return new State(unsaved(), conflicts().keySet(), running, used,
+				diagnostics);
+	}
+
+	// Call the listener, unless nothing it hears about changed or a call
+	// is on its way.
+	private void changed() {
+		Executor post;
+		synchronized (this) {
+			State state = state();
+			if (state.equals(announced)) {
+				return;
+			}
+			announced = state;
+			if (listener == null || pending) {
+				return;
+			}
+			pending = true;
+			post = executor;
+		}
+		post.execute(this::announce);
+	}
+
+	private void announce() {
+		Runnable call;
+		synchronized (this) {
+			pending = false;
+			call = listener;
+		}
+		if (call != null) {
+			call.run();
+		}
 	}
 
 	private static boolean under(ProjectPath file, ProjectPath path) {
