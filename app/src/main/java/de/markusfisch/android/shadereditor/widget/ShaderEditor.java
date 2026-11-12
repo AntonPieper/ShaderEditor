@@ -9,7 +9,6 @@ import android.text.InputFilter;
 import android.text.InputType;
 import android.text.Layout;
 import android.text.Spannable;
-import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextWatcher;
@@ -286,7 +285,7 @@ public class ShaderEditor extends LineNumberEditText {
 
 		// `setText` can't be overridden
 		tokenListUpdater.update(text, ++revision);
-		setText(highlight(new SpannableStringBuilder(text), true));
+		setText(colourAll(text));
 		editedRange.reset();
 		isUserInteraction = true;
 
@@ -563,11 +562,47 @@ public class ShaderEditor extends LineNumberEditText {
 
 	private void highlightWithoutChange(@NonNull Editable e) {
 		isUserInteraction = false;
-		highlight(e, false);
+		highlight(e);
 		isUserInteraction = true;
 	}
 
-	private Editable highlight(@NonNull Editable e, boolean complete) {
+	/**
+	 * @return the text for setText() with a colour span for every token
+	 * and the tab stops, which convertTabs() then finds in place
+	 */
+	private CharSequence colourAll(@NonNull CharSequence text) {
+		// When pasting text from other apps, e.g. Github Mobile code
+		// viewer, the text can be tainted with No-Break Space (U+00A0)
+		// characters.
+		String plain = PATTERN_NO_BREAK_SPACE.matcher(text).replaceAll(" ");
+		int length = plain.length();
+		if (length == 0) {
+			tokens = NO_TOKENS;
+			return plain;
+		}
+		ColouredText coloured = new ColouredText(plain, 0);
+		for (IndentTabStop stop : tabStops) {
+			coloured.setSpan(stop, 0, length, Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+		}
+		if (ShaderEditorApp.preferences.disableHighlighting() &&
+				length > 4096) {
+			return coloured;
+		}
+		Tokens newTokens = tokenListUpdater.ensureUpdated(plain, revision).tokens();
+		for (int i = 0, size = newTokens.size(); i < size; ++i) {
+			@ColorInt int color = colors[newTokens.style(i).ordinal()];
+			if (color != textColor) {
+				coloured.setSpan(
+						new ForegroundColorSpan(color),
+						newTokens.start(i), newTokens.end(i),
+						Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+			}
+		}
+		tokens = newTokens;
+		return coloured;
+	}
+
+	private void highlight(@NonNull Editable e) {
 		int length = e.length();
 
 		clearError(e);
@@ -575,7 +610,7 @@ public class ShaderEditor extends LineNumberEditText {
 		if (length == 0) {
 			tokens = NO_TOKENS;
 			editedRange.reset();
-			return e;
+			return;
 		}
 
 		// When pasting text from other apps, e.g. Github Mobile code
@@ -588,41 +623,26 @@ public class ShaderEditor extends LineNumberEditText {
 		if (ShaderEditorApp.preferences.disableHighlighting() &&
 				length > 4096) {
 			clearSpans(e, 0, length, ForegroundColorSpan.class);
-			return e;
+			return;
 		}
 		Tokens newTokens = tokenListUpdater.ensureUpdated(e, revision).tokens();
 
-		if (complete) {
-			clearSpans(e, 0, length, ForegroundColorSpan.class);
-			for (int i = 0, size = newTokens.size(); i < size; ++i) {
-				@ColorInt int color = colors[newTokens.style(i).ordinal()];
-				if (color != textColor) {
-					e.setSpan(
-							new ForegroundColorSpan(color),
-							newTokens.start(i), newTokens.end(i),
-							Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-				}
-			}
-		} else {
-			EditedRange.Restyle restyle = editedRange.restyle(newTokens,
-					TokenDiff.of(tokens, newTokens));
-			if (restyle.start < restyle.end) {
-				clearSpans(e, restyle.start, restyle.end, ForegroundColorSpan.class);
-			}
-			for (int i = restyle.firstToken; i < restyle.endToken; ++i) {
-				e.setSpan(
-						new ForegroundColorSpan(
-								colors[newTokens.style(i).ordinal()]),
-						newTokens.start(i),
-						newTokens.end(i),
-						Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-			}
+		EditedRange.Restyle restyle = editedRange.restyle(newTokens,
+				TokenDiff.of(tokens, newTokens));
+		if (restyle.start < restyle.end) {
+			clearSpans(e, restyle.start, restyle.end, ForegroundColorSpan.class);
+		}
+		for (int i = restyle.firstToken; i < restyle.endToken; ++i) {
+			e.setSpan(
+					new ForegroundColorSpan(
+							colors[newTokens.style(i).ordinal()]),
+					newTokens.start(i),
+					newTokens.end(i),
+					Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 		}
 
 		tokens = newTokens;
 		editedRange.reset();
-
-		return e;
 	}
 
 	private void provideCompletions(
