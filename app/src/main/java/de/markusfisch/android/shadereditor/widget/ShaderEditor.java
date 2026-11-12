@@ -1,5 +1,8 @@
 package de.markusfisch.android.shadereditor.widget;
 
+import static de.markusfisch.android.shadereditor.editor.Analysis.endifEnd;
+import static de.markusfisch.android.shadereditor.editor.Analysis.uniformLineEnd;
+
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -58,11 +61,6 @@ public class ShaderEditor extends LineNumberEditText {
 	private static final Pattern PATTERN_TRAILING_WHITE_SPACE = Pattern.compile(
 			"[\\t ]+$",
 			Pattern.MULTILINE);
-	private static final Pattern PATTERN_INSERT_UNIFORM = Pattern.compile(
-			"^([ \t]*uniform.+)$",
-			Pattern.MULTILINE);
-	private static final Pattern PATTERN_ENDIF = Pattern.compile(
-			"(#endif)\\b");
 	private static final Pattern PATTERN_NO_BREAK_SPACE = Pattern.compile(
 			"\\xA0");
 	private static final Tokens NO_TOKENS = GlslLexer.lex("");
@@ -345,13 +343,7 @@ public class ShaderEditor extends LineNumberEditText {
 		}
 		removeUniform(e, statement);
 
-		Matcher m = PATTERN_INSERT_UNIFORM.matcher(e);
-		int start = -1;
-
-		while (m.find()) {
-			start = m.end();
-		}
-
+		int start = uniformLineEnd(e);
 		if (start > -1) {
 			// Add line break before statement because it's
 			// inserted before the last line-break.
@@ -363,7 +355,7 @@ public class ShaderEditor extends LineNumberEditText {
 
 			// Add an empty line between the last #endif
 			// and the now following uniform.
-			if ((start = endIndexOfLastEndIf(e)) > -1) {
+			if ((start = endifEnd(e)) > -1) {
 				statement = "\n" + statement;
 			}
 
@@ -437,17 +429,6 @@ public class ShaderEditor extends LineNumberEditText {
 		if (m.find()) {
 			e.delete(m.start(), m.end());
 		}
-	}
-
-	private int endIndexOfLastEndIf(Editable e) {
-		Matcher m = PATTERN_ENDIF.matcher(e);
-		int idx = -1;
-
-		while (m.find()) {
-			idx = m.end();
-		}
-
-		return idx;
 	}
 
 	private void init(@NonNull Context context) {
