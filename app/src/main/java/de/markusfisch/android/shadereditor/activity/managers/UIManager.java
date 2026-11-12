@@ -95,9 +95,9 @@ public class UIManager {
 		return toolbar.getTitle();
 	}
 
-	public void setToolbarTitle(CharSequence name) {
-		toolbar.setTitle(name);
-		toolbar.setSubtitle(null);
+	public void setToolbarTitle(CharSequence title, CharSequence subtitle) {
+		toolbar.setTitle(title);
+		toolbar.setSubtitle(subtitle);
 	}
 
 	public void closeDrawers() {

@@ -30,12 +30,15 @@ import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 
-public class ShaderManager {
+// A database shader open in the editor, or text that becomes one when
+// it is saved.
+public class ShaderManager implements OpenItem {
 	public final ActivityResultLauncher<Intent> addUniformLauncher;
 	public final ActivityResultLauncher<Intent> loadSampleLauncher;
 	public final ActivityResultLauncher<Intent> previewShaderLauncher;
 
 	private static final String SELECTED_SHADER_ID = "selected_shader_id";
+	private static final String SELECTED_SHADER_TITLE = "selected_shader_title";
 	private static final String DEFAULT_TITLE = "main.glsl";
 	private static final long NO_SHADER = 0;
 
@@ -43,12 +46,15 @@ public class ShaderManager {
 	private final EditorFragment editorFragment;
 	private final ShaderViewManager shaderViewManager;
 	private final ShaderListManager shaderListManager;
-	private final UIManager uiManager;
+	private final NavigationManager navigationManager;
 	private final DataSource dataSource;
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
+	private final Runnable titleListener;
 
 	private long selectedShaderId = NO_SHADER;
+	@NonNull
+	private String title = "";
 	private float quality = 1f;
 	private boolean isModified = false;
 
@@ -56,15 +62,17 @@ public class ShaderManager {
 			EditorFragment editorFragment,
 			ShaderViewManager shaderViewManager,
 			ShaderListManager shaderListManager,
-			UIManager uiManager,
+			NavigationManager navigationManager,
 			DataSource dataSource,
-			ShaderViewManager.Listener shaderViewManagerListener) {
+			ShaderViewManager.Listener shaderViewManagerListener,
+			@NonNull Runnable titleListener) {
 		this.activity = activity;
 		this.editorFragment = editorFragment;
 		this.shaderViewManager = shaderViewManager;
 		this.shaderListManager = shaderListManager;
-		this.uiManager = uiManager;
+		this.navigationManager = navigationManager;
 		this.dataSource = dataSource;
+		this.titleListener = titleListener;
 
 		addUniformLauncher = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -140,17 +148,37 @@ public class ShaderManager {
 		});
 	}
 
+	@NonNull
+	@Override
+	public String getTitle() {
+		return title;
+	}
+
+	@Nullable
+	@Override
+	public String getSubtitle() {
+		return null;
+	}
+
+	@Override
 	public float getQuality() {
 		return quality;
 	}
 
+	@Override
 	public void setQuality(float quality) {
 		this.quality = quality;
 		setModified(true);
 	}
 
+	@Override
 	public boolean isModified() {
 		return isModified;
+	}
+
+	@Override
+	public void onTextModified() {
+		setModified(true);
 	}
 
 	public void setModified(boolean modified) {
@@ -164,11 +192,13 @@ public class ShaderManager {
 
 	public void saveState(@NonNull Bundle outState) {
 		outState.putLong(SELECTED_SHADER_ID, selectedShaderId);
+		outState.putString(SELECTED_SHADER_TITLE, title);
 	}
 
 	public void restoreState(@NonNull Bundle savedInstanceState) {
 		selectedShaderId = savedInstanceState.getLong(
 				SELECTED_SHADER_ID, NO_SHADER);
+		title = savedInstanceState.getString(SELECTED_SHADER_TITLE, "");
 	}
 
 	public void selectShader(long id) {
@@ -192,6 +222,16 @@ public class ShaderManager {
 				shader.fragmentShader(),
 				shader.quality(),
 				getTitle(shader));
+	}
+
+	@Override
+	public boolean can(@NonNull Action action) {
+		return can(action, selectedShaderId);
+	}
+
+	@Override
+	public void save(boolean explicit) {
+		saveShader(explicit);
 	}
 
 	public void saveShader() {
@@ -308,12 +348,73 @@ public class ShaderManager {
 				shader.quality());
 	}
 
+	// Select a new copy of the shader with this id.
+	public void selectCopy(long shaderId) {
+		long newId = duplicateShader(shaderId);
+		if (newId > 0) {
+			selectShader(newId);
+			shaderListManager.loadShadersAsync();
+		}
+	}
+
+	@Override
+	public void saveCopy() {
+		if (!can(Action.SAVE_COPY)) {
+			return;
+		}
+		if (isModified()) {
+			saveShader();
+		}
+		selectCopy(selectedShaderId);
+	}
+
 	public void deleteShader(long shaderId) {
 		dataSource.shader.removeShader(shaderId);
 		if (shaderId == selectedShaderId) {
 			selectedShaderId = NO_SHADER;
 			updatePendingCrashShaderId();
 		}
+	}
+
+	@Override
+	public void delete() {
+		if (!can(Action.DELETE)) {
+			return;
+		}
+		deleteShader(selectedShaderId);
+		selectShader(dataSource.shader.getFirstShaderId());
+		shaderListManager.loadShadersAsync();
+	}
+
+	// The shader with this id was given this name in the list.
+	public void shaderRenamed(long shaderId, @NonNull String name) {
+		if (shaderId == selectedShaderId) {
+			title = name;
+			titleListener.run();
+		}
+	}
+
+	@Override
+	public void share() {
+		navigationManager.shareShader(editorFragment.getText());
+	}
+
+	@Override
+	public boolean isWallpaper() {
+		return ShaderEditorApp.preferences.getWallpaperShader() ==
+				selectedShaderId;
+	}
+
+	@Override
+	public void setAsWallpaper() {
+		if (!can(Action.WALLPAPER)) {
+			return;
+		}
+		if (isModified()) {
+			saveShader();
+		}
+		ShaderEditorApp.preferences.setWallpaperShader(0); // Force change
+		ShaderEditorApp.preferences.setWallpaperShader(selectedShaderId);
 	}
 
 	private void applyShader(long shaderId,
@@ -323,15 +424,25 @@ public class ShaderManager {
 		selectedShaderId = shaderId;
 		this.quality = quality;
 		editorFragment.setText(text);
-		uiManager.setToolbarTitle(toolbarTitle);
+		title = toolbarTitle;
+		titleListener.run();
 		shaderListManager.setSelectedShaderId(selectedShaderId);
 		shaderViewManager.setShader(text, quality);
 		updatePendingCrashShaderId();
 		setModified(false);
 	}
 
+	// Only a shader stored in the database can be copied, deleted or be
+	// the wallpaper.
+	static boolean can(@NonNull Action action, long shaderId) {
+		return switch (action) {
+			case SAVE, SHARE -> true;
+			case SAVE_COPY, DELETE, WALLPAPER -> shaderId > 0;
+		};
+	}
+
 	@NonNull
-	private static String getTitle(@NonNull DataRecords.Shader shader) {
+	static String getTitle(@NonNull DataRecords.Shader shader) {
 		String title = shader.getTitle();
 		if (title == null || title.trim().isEmpty()) {
 			return "Shader " + shader.id();

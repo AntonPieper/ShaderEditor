@@ -28,6 +28,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.managers.ExtraKeysManager;
 import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationManager;
+import de.markusfisch.android.shadereditor.activity.managers.OpenItem;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderViewManager;
@@ -52,6 +53,9 @@ public class MainActivity extends AppCompatActivity {
 	private EditorFragment editorFragment;
 	private UIManager uiManager;
 	private ShaderManager shaderManager;
+	// What the editor has open. shaderManager is only used directly to
+	// open and create database shaders.
+	private OpenItem open;
 	private ShaderListManager shaderListManager;
 	private ShaderViewManager shaderViewManager;
 	private NavigationManager navigationManager;
@@ -96,9 +100,11 @@ public class MainActivity extends AppCompatActivity {
 				editorFragment,
 				shaderViewManager,
 				shaderListManager,
-				uiManager,
+				navigationManager,
 				dataSource,
-				createShaderViewListener());
+				createShaderViewListener(),
+				this::showOpenTitle);
+		open = shaderManager;
 
 		MainMenuManager mainMenuManager = new MainMenuManager(
 				this,
@@ -122,10 +128,10 @@ public class MainActivity extends AppCompatActivity {
 					editorFragment.clearError();
 					editorFragment.highlightErrors();
 				}
-				shaderViewManager.setShader(text, shaderManager.getQuality());
+				shaderViewManager.setShader(text, open.getQuality());
 			}
 		});
-		editorFragment.setOnTextModifiedListener(() -> shaderManager.setModified(true));
+		editorFragment.setOnTextModifiedListener(() -> open.onTextModified());
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
 	}
 
@@ -157,7 +163,7 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onPause() {
 		if (ShaderEditorApp.preferences.autoSave()) {
-			shaderManager.saveShader();
+			open.save(false);
 		}
 		ShaderEditorApp.preferences.setPendingCrashShaderId(0);
 		super.onPause();
@@ -190,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
 				? state.getCharSequence(TOOLBAR_TITLE)
 				: uiManager.getToolbarTitle();
 		super.onPostCreate(state);
-		uiManager.setToolbarTitle(title);
+		uiManager.setToolbarTitle(title, open.getSubtitle());
 		if (uiManager.drawerToggle != null) {
 			uiManager.drawerToggle.syncState();
 		}
@@ -204,7 +210,7 @@ public class MainActivity extends AppCompatActivity {
 			public void onShaderSelected(long id) {
 				isInitialLoad = false;
 				if (ShaderEditorApp.preferences.autoSave()) {
-					shaderManager.saveShader();
+					open.save(false);
 				}
 				uiManager.closeDrawers();
 				shaderManager.selectShader(id);
@@ -212,9 +218,7 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onShaderRenamed(long id, @NonNull String name) {
-				if (id == shaderManager.getSelectedShaderId()) {
-					uiManager.setToolbarTitle(name);
-				}
+				shaderManager.shaderRenamed(id, name);
 				shaderListManager.loadShadersAsync();
 			}
 
@@ -305,7 +309,7 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onQualityChanged(float quality) {
-				shaderManager.setQuality(quality);
+				open.setQuality(quality);
 			}
 
 			private void showError(String error) {
@@ -382,7 +386,7 @@ public class MainActivity extends AppCompatActivity {
 			public void onAddShader() {
 				long defaultId = ShaderEditorApp.preferences.getDefaultNewShader();
 				if (defaultId > 0 && dataSource.shader.getShader(defaultId) != null) {
-					duplicateShader(defaultId);
+					shaderManager.selectCopy(defaultId);
 				} else {
 					shaderManager.createShaderFromResource(null,
 							R.raw.new_shader, R.drawable.thumbnail_new_shader, 1f);
@@ -391,39 +395,30 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onSaveShader() {
-				shaderManager.saveShader(true);
+				open.save(true);
 			}
 
 			@Override
 			public void onDuplicateShader() {
-				if (editorFragment == null || shaderManager.getSelectedShaderId() < 1) {
-					return;
-				}
-				if (shaderManager.isModified()) {
-					shaderManager.saveShader();
-				}
-				duplicateShader(shaderManager.getSelectedShaderId());
+				open.saveCopy();
 			}
 
 			@Override
 			public void onDeleteShader() {
-				if (shaderManager.getSelectedShaderId() < 1) {
+				if (!open.can(OpenItem.Action.DELETE)) {
 					return;
 				}
 				new MaterialAlertDialogBuilder(MainActivity.this)
 						.setMessage(R.string.sure_remove_shader)
-						.setPositiveButton(android.R.string.ok, (dialog, which) -> {
-							shaderManager.deleteShader(shaderManager.getSelectedShaderId());
-							shaderManager.selectShader(dataSource.shader.getFirstShaderId());
-							shaderListManager.loadShadersAsync();
-						})
+						.setPositiveButton(android.R.string.ok,
+								(dialog, which) -> open.delete())
 						.setNegativeButton(android.R.string.cancel, null)
 						.show();
 			}
 
 			@Override
 			public void onShareShader() {
-				navigationManager.shareShader(editorFragment.getText());
+				open.share();
 			}
 
 			@Override
@@ -438,8 +433,8 @@ public class MainActivity extends AppCompatActivity {
 
 
 			@Override
-			public long getSelectedShaderId() {
-				return shaderManager.getSelectedShaderId();
+			public boolean isWallpaper() {
+				return open.isWallpaper();
 			}
 		};
 	}
@@ -470,26 +465,15 @@ public class MainActivity extends AppCompatActivity {
 		};
 	}
 
-	private void duplicateShader(long id) {
-		// The ShaderManager is now responsible for getting the shader details.
-		// We just need to pass the ID.
-		long newId = shaderManager.duplicateShader(id);
-		if (newId > 0) {
-			shaderManager.selectShader(newId);
-			shaderListManager.loadShadersAsync();
-		}
+	private void showOpenTitle() {
+		uiManager.setToolbarTitle(open.getTitle(), open.getSubtitle());
 	}
 
 	private void updateWallpaper() {
-		if (shaderManager.getSelectedShaderId() < 1) {
+		if (!open.can(OpenItem.Action.WALLPAPER)) {
 			return;
 		}
-		if (shaderManager.isModified()) {
-			shaderManager.saveShader();
-		}
-
-		ShaderEditorApp.preferences.setWallpaperShader(0); // Force change
-		ShaderEditorApp.preferences.setWallpaperShader(shaderManager.getSelectedShaderId());
+		open.setAsWallpaper();
 
 		int messageId = R.string.wallpaper_set;
 		if (!WallpaperManager.getInstance(this).isWallpaperSupported()) {
@@ -513,12 +497,12 @@ public class MainActivity extends AppCompatActivity {
 		editorFragment.clearError();
 		if (ShaderEditorApp.preferences.doesSaveOnRun()) {
 			PreviewActivity.renderStatus.reset();
-			shaderManager.saveShader();
+			open.save(false);
 		}
 		if (ShaderEditorApp.preferences.doesRunInBackground()) {
-			shaderViewManager.setShader(src, shaderManager.getQuality());
+			shaderViewManager.setShader(src, open.getQuality());
 		} else {
-			navigationManager.showPreview(src, shaderManager.getQuality(),
+			navigationManager.showPreview(src, open.getQuality(),
 					shaderManager.previewShaderLauncher);
 		}
 	}
