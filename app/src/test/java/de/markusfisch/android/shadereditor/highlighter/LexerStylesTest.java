@@ -230,10 +230,11 @@ public class LexerStylesTest {
 	@Test
 	public void lineContinuationInsideAWord() {
 		// A token never spans a line continuation, so these are two
-		// identifiers, and types are guessed from them.
+		// identifiers. The type guess stops at the line end, so only oat
+		// is taken for a type name.
 		assertStyles(
 				"fl\\\noat x;",
-				"tt..ttt...");
+				"....ttt...");
 	}
 
 	@Test
@@ -366,11 +367,11 @@ public class LexerStylesTest {
 	}
 
 	@Test
-	public void typeGuessForMissingSemicolon() {
-		// Wrong: y is a variable, not a type name.
+	public void typeGuessStopsAtALineEnd() {
+		// y is not taken for a type name, because z is on the next line.
 		assertStyles(
 				"x = y\nz = 1;",
-				"....t.....n.");
+				"..........n.");
 	}
 
 	@Test
