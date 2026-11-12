@@ -168,6 +168,46 @@ public class ProjectSessionsTest {
 		assertNull(restarted.recent(again));
 	}
 
+	@Test
+	public void tellsAboutAProjectWithoutOpeningIt() {
+		String id = sessions.open(new Locator(Kind.DIRECTORY,
+				project.getPath()));
+		assertNull(sessions.shown(id));
+		assertEquals(Set.of(), sessions.unsaved(id));
+
+		assertTrue(sessions.setShown(id, path("lib/common.glsl")));
+		sessions.drafts(id).put(path("main.glsl"),
+				new DraftFiles.Draft("edited", "r0"));
+		sessions.drafts(id).put(path("lib/common.glsl"),
+				new DraftFiles.Draft("edited", null));
+		ProjectSessions restarted = new ProjectSessions(root);
+
+		assertEquals(path("lib/common.glsl"), restarted.shown(id));
+		assertEquals(Set.of(path("main.glsl"), path("lib/common.glsl")),
+				restarted.unsaved(id));
+		assertTrue(restarted.setShown(id, null));
+		assertNull(restarted.shown(id));
+		assertEquals(Set.of(), restarted.unsaved("unknown1"));
+	}
+
+	@Test
+	public void remembersTheSessionOpenLast() {
+		String id = sessions.open(new Locator(Kind.DIRECTORY,
+				project.getPath()));
+		assertNull(sessions.last());
+		assertFalse(sessions.setLast("unknown1"));
+
+		assertTrue(sessions.setLast(id));
+
+		assertEquals(id, new ProjectSessions(root).last());
+		assertTrue(sessions.setLast(null));
+		assertNull(sessions.last());
+		assertTrue(sessions.setLast(id));
+		assertTrue(sessions.remove(id));
+		assertNull(sessions.last());
+		assertEquals(List.of(), sessions.recent());
+	}
+
 	private static List<String> ids(List<ProjectSessions.Recent> recent) {
 		List<String> ids = new ArrayList<>();
 		for (ProjectSessions.Recent session : recent) {

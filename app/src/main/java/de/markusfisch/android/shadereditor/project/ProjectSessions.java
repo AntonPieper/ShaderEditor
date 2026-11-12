@@ -12,15 +12,18 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
  * Short ids of opened projects, kept as app metadata in an app-private
  * folder: each id has a folder with the locator of its store, the
- * journal of its drafts, the file chosen to run and how it is listed
- * among the recent projects, so screens can pass the id instead of
- * project content. Removing a session never touches the project's
- * files. Use it off the main thread.
+ * journal of its drafts, the file chosen to run, the file shown last
+ * and how it is listed among the recent projects, so screens can pass
+ * the id instead of project content and tell about a project without
+ * opening it. The folder also keeps which session was open last.
+ * Removing a session never touches the project's files. Use it off the
+ * main thread.
  */
 public final class ProjectSessions {
 	/** What a locator points at. */
@@ -57,7 +60,9 @@ public final class ProjectSessions {
 	private static final String LOCATOR = "locator";
 	private static final String DRAFTS = "drafts";
 	private static final String RUNNING = "running";
+	private static final String SHOWN = "shown";
 	private static final String RECENT = "recent";
+	private static final String LAST = "last";
 	private static final String DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
 	private static final int LENGTH = 8;
 	private static final Pattern ID = Pattern.compile(
@@ -222,26 +227,7 @@ public final class ProjectSessions {
 	 * none was chosen.
 	 */
 	public ProjectPath running(String id) {
-		File file = file(id, RUNNING);
-		if (file == null || !file.isFile()) {
-			return null;
-		}
-		try (InputStream in = new FileInputStream(file)) {
-			byte[] data = new byte[(int) file.length()];
-			new DataInputStream(in).readFully(data);
-			DataInputStream running = new DataInputStream(
-					new ByteArrayInputStream(data));
-			if (running.readInt() != MAGIC) {
-				return null;
-			}
-			ProjectParseResult<ProjectPath> path = ProjectPath.parse(
-					running.readUTF());
-			return path.isSuccess() && running.read() < 0
-					? path.value()
-					: null;
-		} catch (IOException e) {
-			return null;
-		}
+		return readPath(file(id, RUNNING));
 	}
 
 	/**
@@ -249,18 +235,71 @@ public final class ProjectSessions {
 	 * is kept.
 	 */
 	public boolean setRunning(String id, ProjectPath path) {
-		File dir = file(id, null);
-		if (dir == null || locator(id) == null) {
-			return false;
+		return writePath(id, RUNNING, path);
+	}
+
+	/**
+	 * Return the file shown last in session id, or null when none was
+	 * kept.
+	 */
+	public ProjectPath shown(String id) {
+		return readPath(file(id, SHOWN));
+	}
+
+	/**
+	 * Remember path as the file shown in session id, none when null.
+	 * Return whether it is kept.
+	 */
+	public boolean setShown(String id, ProjectPath path) {
+		return writePath(id, SHOWN, path);
+	}
+
+	/**
+	 * Return the files with unsaved text in session id, from its
+	 * journal, without reading their text; none when there is no such
+	 * session.
+	 */
+	public Set<ProjectPath> unsaved(String id) {
+		DraftJournal journal = drafts(id);
+		return journal != null ? journal.paths() : Set.of();
+	}
+
+	/**
+	 * Return the session that was open last, or null when none was or
+	 * it is gone.
+	 */
+	public String last() {
+		File file = new File(root, LAST);
+		if (!file.isFile()) {
+			return null;
+		}
+		try (DataInputStream in = new DataInputStream(
+				new FileInputStream(file))) {
+			String id = in.readInt() == MAGIC ? in.readUTF() : null;
+			return locator(id) != null ? id : null;
+		} catch (IOException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * Remember session id as the one open now; null when no session is.
+	 * Return whether it is kept.
+	 */
+	public boolean setLast(String id) {
+		File file = new File(root, LAST);
+		if (id == null) {
+			return !file.exists() || file.delete();
 		}
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 		try (DataOutputStream out = new DataOutputStream(bytes)) {
 			out.writeInt(MAGIC);
-			out.writeUTF(path.toString());
+			out.writeUTF(id);
 		} catch (IOException e) {
 			return false;
 		}
-		return DraftJournal.replace(dir, RUNNING, bytes.toByteArray());
+		return locator(id) != null &&
+				DraftJournal.replace(root, LAST, bytes.toByteArray());
 	}
 
 	/**
@@ -279,6 +318,47 @@ public final class ProjectSessions {
 			return false;
 		}
 		return !dir.exists() || delete(dir);
+	}
+
+	private static ProjectPath readPath(File file) {
+		if (file == null || !file.isFile()) {
+			return null;
+		}
+		try (InputStream in = new FileInputStream(file)) {
+			byte[] data = new byte[(int) file.length()];
+			new DataInputStream(in).readFully(data);
+			DataInputStream path = new DataInputStream(
+					new ByteArrayInputStream(data));
+			if (path.readInt() != MAGIC) {
+				return null;
+			}
+			ProjectParseResult<ProjectPath> parsed = ProjectPath.parse(
+					path.readUTF());
+			return parsed.isSuccess() && path.read() < 0
+					? parsed.value()
+					: null;
+		} catch (IOException e) {
+			return null;
+		}
+	}
+
+	// Keep path in the file name of session id, or delete it when null.
+	private boolean writePath(String id, String name, ProjectPath path) {
+		File dir = file(id, null);
+		if (dir == null || locator(id) == null) {
+			return false;
+		} else if (path == null) {
+			File file = new File(dir, name);
+			return !file.exists() || file.delete();
+		}
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		try (DataOutputStream out = new DataOutputStream(bytes)) {
+			out.writeInt(MAGIC);
+			out.writeUTF(path.toString());
+		} catch (IOException e) {
+			return false;
+		}
+		return DraftJournal.replace(dir, name, bytes.toByteArray());
 	}
 
 	private String newId() {

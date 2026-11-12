@@ -513,6 +513,31 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void knowsItsNameAndWhereItIs() {
+		assertNull(open().name());
+		new ProjectSessions(sessionsDir).remember(id, "aurora",
+				"ShaderEditor / Shaders", 1);
+
+		OpenProject project = open();
+
+		assertEquals("aurora", project.name());
+		assertEquals("ShaderEditor / Shaders", project.location());
+	}
+
+	@Test
+	public void showsTheFileShownLastAfterReopening() throws IOException {
+		write("lib/common.glsl", "// common\n");
+		OpenProject project = open();
+		project.show(path("lib/common.glsl"));
+
+		assertTrue(project.persist());
+
+		assertEquals(path("lib/common.glsl"), open().shown());
+		assertEquals(path("lib/common.glsl"),
+				new ProjectSessions(sessionsDir).shown(id));
+	}
+
+	@Test
 	public void groupsDiagnosticsByFile() throws IOException {
 		OpenProject project = open();
 		ProjectDiagnostic inMain = new ProjectDiagnostic(Severity.WARNING,
