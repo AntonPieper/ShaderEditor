@@ -90,6 +90,15 @@ final class UniformSources {
 		return warnings;
 	}
 
+	// The diagnostics of a revision: what its build reported, and what
+	// its sources cannot provide.
+	@NonNull
+	List<ProjectDiagnostic> withWarnings(@NonNull List<ProjectDiagnostic> built) {
+		var diagnostics = new ArrayList<>(built);
+		diagnostics.addAll(warnings);
+		return diagnostics;
+	}
+
 	@NonNull
 	SensorRegistry sensors() {
 		if (sensors == null) {

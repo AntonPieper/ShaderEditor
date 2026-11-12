@@ -219,6 +219,24 @@ public class UniformSourcesTest {
 		assertEquals(List.of(), sources.getWarnings());
 	}
 
+	// The shader showed with a warning of its build, then the camera
+	// failed to open.
+	@Test
+	public void lateSourceWarningKeepsTheDiagnosticsOfTheBuild() {
+		var sources = new UniformSources(HOST);
+		var built = List.of(new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.WARNING,
+				"Nothing provides foo, so it reads zero", null, 3));
+		assertEquals(built, sources.withWarnings(built));
+		sources.warn("The back camera cannot be opened");
+		var reported = sources.withWarnings(built);
+		assertEquals(2, reported.size());
+		assertSame(built.get(0), reported.get(0));
+		assertEquals("The back camera cannot be opened",
+				reported.get(1).message());
+		assertEquals(1, built.size());
+	}
+
 	@Test
 	public void warningAfterTheStartIsReportedOnce() {
 		var sources = new UniformSources(HOST);

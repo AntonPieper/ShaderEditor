@@ -99,6 +99,10 @@ public final class ShaderEngine {
 	private volatile Runnable renderRequester;
 	@Nullable
 	private ActiveBuiltins activeBuiltins;
+	// What the build of the current revision reported when it was swapped
+	// in, still valid when a source warns later.
+	@NonNull
+	private List<ProjectDiagnostic> built = List.of();
 	private int version = 2;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
@@ -233,7 +237,7 @@ public final class ShaderEngine {
 		// A source that failed after it started, such as a camera that
 		// did not open.
 		if (sources.takeWarned()) {
-			report(revision, new ArrayList<>(sources.getWarnings()));
+			report(revision, sources.withWarnings(built));
 		}
 		thumbnails.onFrame(revision.number());
 		answerThumbnails();
@@ -361,10 +365,10 @@ public final class ShaderEngine {
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
 		fTimeMax = next.fTimeMax();
 		runSources(next);
-		errors.addAll(sources.getWarnings());
+		built = errors;
 		sources.takeWarned();
 		resetFps();
-		report(shown, errors);
+		report(shown, sources.withWarnings(built));
 	}
 
 	// After a resize, the build drawing starts again with cleared targets.
