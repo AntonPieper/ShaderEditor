@@ -13,10 +13,10 @@ import java.util.regex.Pattern;
 
 /**
  * Short ids of opened projects, kept as app metadata in an app-private
- * folder: each id has a folder with the locator of its store and the
- * journal of its drafts, so screens can pass the id instead of project
- * content. Removing a session never touches the project's files. Use
- * it off the main thread.
+ * folder: each id has a folder with the locator of its store, the
+ * journal of its drafts and the file chosen to run, so screens can pass
+ * the id instead of project content. Removing a session never touches
+ * the project's files. Use it off the main thread.
  */
 public final class ProjectSessions {
 	/** What a locator points at. */
@@ -43,6 +43,7 @@ public final class ProjectSessions {
 	private static final int MAGIC = 0x5345534c;
 	private static final String LOCATOR = "locator";
 	private static final String DRAFTS = "drafts";
+	private static final String RUNNING = "running";
 	private static final String DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
 	private static final int LENGTH = 8;
 	private static final Pattern ID = Pattern.compile(
@@ -122,6 +123,52 @@ public final class ProjectSessions {
 		return locator(id) != null
 				? new DraftJournal(file(id, DRAFTS))
 				: null;
+	}
+
+	/**
+	 * Return the file last chosen to run in session id, or null when
+	 * none was chosen.
+	 */
+	public ProjectPath running(String id) {
+		File file = file(id, RUNNING);
+		if (file == null || !file.isFile()) {
+			return null;
+		}
+		try (InputStream in = new FileInputStream(file)) {
+			byte[] data = new byte[(int) file.length()];
+			new DataInputStream(in).readFully(data);
+			DataInputStream running = new DataInputStream(
+					new ByteArrayInputStream(data));
+			if (running.readInt() != MAGIC) {
+				return null;
+			}
+			ProjectParseResult<ProjectPath> path = ProjectPath.parse(
+					running.readUTF());
+			return path.isSuccess() && running.read() < 0
+					? path.value()
+					: null;
+		} catch (IOException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * Remember path as the file to run in session id. Return whether it
+	 * is kept.
+	 */
+	public boolean setRunning(String id, ProjectPath path) {
+		File dir = file(id, null);
+		if (dir == null || locator(id) == null) {
+			return false;
+		}
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		try (DataOutputStream out = new DataOutputStream(bytes)) {
+			out.writeInt(MAGIC);
+			out.writeUTF(path.toString());
+		} catch (IOException e) {
+			return false;
+		}
+		return DraftJournal.replace(dir, RUNNING, bytes.toByteArray());
 	}
 
 	/**
