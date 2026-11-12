@@ -330,6 +330,26 @@ public class EditCommandsTest {
 		assertEquals("a^b\ncd|", stateOf(document));
 	}
 
+	@Test
+	public void indentingManyLinesIsOneChange() {
+		Document document = new Document(Text.of("a\n".repeat(1000)));
+		int[] changes = new int[1];
+		document.addListener(new Document.Listener() {
+			@Override
+			public void onChange(Document.Change change, Text before) {
+				++changes[0];
+			}
+		});
+		document.select(0, document.text().length());
+		EditCommands commands = new EditCommands(document);
+		commands.indent();
+		commands.unindent();
+		document.undo();
+		document.redo();
+		assertEquals(4, changes[0]);
+		assertEquals("a\n".repeat(1000), document.text().toString());
+	}
+
 	// Returns a document of state: '|' marks the head of the selection
 	// and '^' its anchor, if that is elsewhere.
 	static Document documentOf(String state) {

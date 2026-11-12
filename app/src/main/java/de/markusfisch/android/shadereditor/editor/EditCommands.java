@@ -190,7 +190,7 @@ public final class EditCommands {
 					motion.column(text, start, tabWidth))));
 			return;
 		}
-		shiftLines(Text.of(level(0)));
+		shiftLines(level(0));
 	}
 
 	/**
@@ -202,9 +202,9 @@ public final class EditCommands {
 	}
 
 	// Indents each line of the selection by level, or unindents it if
-	// level is null. An end of the selection at the start of a line
-	// stays there; one in a line moves with its text.
-	private void shiftLines(Text level) {
+	// level is null, in one change. An end of the selection at the start
+	// of a line stays there; one in a line moves with its text.
+	private void shiftLines(String level) {
 		Text text = document.text();
 		Selection selection = document.selection();
 		int first = text.lineOf(selection.start());
@@ -216,18 +216,22 @@ public final class EditCommands {
 		int headLine = text.lineOf(selection.head());
 		int anchor = selection.anchor() - text.lineStart(anchorLine);
 		int head = selection.head() - text.lineStart(headLine);
-		document.beginBatch();
-		for (int line = last; line >= first; --line) {
-			int start = text.lineStart(line);
+		StringBuilder shifted = new StringBuilder();
+		boolean changed = false;
+		for (int line = first; line <= last; ++line) {
 			String s = text.line(line);
+			if (line > first) {
+				shifted.append('\n');
+			}
 			int added;
 			if (level != null) {
 				added = s.isEmpty() ? 0 : level.length();
-				document.replace(start, start, added > 0 ? level : Text.EMPTY);
+				shifted.append(added > 0 ? level : "").append(s);
 			} else {
 				added = -leadingLevel(s);
-				document.replace(start, start - added, Text.EMPTY);
+				shifted.append(s, -added, s.length());
 			}
+			changed |= added != 0;
 			if (line == anchorLine) {
 				anchor = shift(anchor, added);
 			}
@@ -235,9 +239,16 @@ public final class EditCommands {
 				head = shift(head, added);
 			}
 		}
-		Text shifted = document.text();
-		document.select(shifted.lineStart(anchorLine) + anchor,
-				shifted.lineStart(headLine) + head);
+		if (!changed) {
+			return;
+		}
+		document.beginBatch();
+		document.replace(text.lineStart(first),
+				text.lineStart(last) + text.line(last).length(),
+				Text.of(shifted));
+		text = document.text();
+		document.select(text.lineStart(anchorLine) + anchor,
+				text.lineStart(headLine) + head);
 		document.endBatch();
 	}
 
