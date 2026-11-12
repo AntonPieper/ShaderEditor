@@ -28,6 +28,7 @@ final class GlDevice {
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_X};
 
 	private int maxTextureUnits;
+	private int maxTextureSize;
 	@Nullable
 	private GlTexture2D emptyTexture2D;
 	@Nullable
@@ -45,6 +46,8 @@ final class GlDevice {
 		int[] units = new int[1];
 		GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_IMAGE_UNITS, units, 0);
 		maxTextureUnits = units[0];
+		GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, units, 0);
+		maxTextureSize = units[0];
 
 		ByteBuffer black = ByteBuffer.allocateDirect(4);
 		black.put(3, (byte) 0xff);
@@ -76,6 +79,10 @@ final class GlDevice {
 				bindTexture(sampler.unit() + i, texture);
 			}
 		}
+	}
+
+	int getMaxTextureSize() {
+		return maxTextureSize;
 	}
 
 	void disable(int cap) {
@@ -133,7 +140,13 @@ final class GlDevice {
 
 	void applySampling(@NonNull GlTexture texture,
 			@NonNull Sampling sampling) {
-		bindTexture(0, texture);
+		applySampling(0, texture, sampling);
+	}
+
+	// Leaves the texture bound to unit.
+	void applySampling(int unit, @NonNull GlTexture texture,
+			@NonNull Sampling sampling) {
+		bindTexture(unit, texture);
 		int target = texture.getTarget();
 		int minFilter = GlSampling.minFilter(sampling);
 		int wrapS = GlSampling.wrap(sampling.wrapS());
@@ -190,6 +203,20 @@ final class GlDevice {
 				flipY);
 		if (message == null) {
 			texture.setSize(bitmap.getWidth(), bitmap.getHeight());
+		}
+		return message;
+	}
+
+	// Takes RGBA8 rows from the bottom.
+	@Nullable
+	String uploadTexture2D(@NonNull GlTexture2D texture,
+			int width,
+			int height,
+			@NonNull Buffer rgba) {
+		bindTexture(0, texture);
+		String message = uploadRgba(GLES20.GL_TEXTURE_2D, width, height, rgba);
+		if (message == null) {
+			texture.setSize(width, height);
 		}
 		return message;
 	}
@@ -473,17 +500,26 @@ final class GlDevice {
 	private static String uploadBitmapInternal(int target,
 			@NonNull Bitmap bitmap,
 			boolean flipY) {
+		return uploadRgba(target, bitmap.getWidth(), bitmap.getHeight(),
+				BitmapEditor.createRgbaBuffer(bitmap, flipY));
+	}
+
+	@Nullable
+	private static String uploadRgba(int target,
+			int width,
+			int height,
+			@NonNull Buffer rgba) {
 		clearGlErrors();
 		GLES20.glTexImage2D(
 				target,
 				0,
 				GLES20.GL_RGBA,
-				bitmap.getWidth(),
-				bitmap.getHeight(),
+				width,
+				height,
 				0,
 				GLES20.GL_RGBA,
 				GLES20.GL_UNSIGNED_BYTE,
-				BitmapEditor.createRgbaBuffer(bitmap, flipY));
+				rgba);
 		int error = getLastGlError();
 		if (error != GLES20.GL_NO_ERROR) {
 			return "glTexImage2D failed with GL error 0x" + Integer.toHexString(error);

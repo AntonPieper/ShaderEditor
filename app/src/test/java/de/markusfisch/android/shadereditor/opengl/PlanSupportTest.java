@@ -19,25 +19,19 @@ public class PlanSupportTest {
 	private static final String PNG = "\u0089PNG";
 
 	@Test
-	public void acceptsOnePassWithEngineSamplersAndDefaultTarget() {
+	public void acceptsOnePassWithImagesEngineSamplersAndDefaultTarget() {
 		var plan = plan("main.glsl", lines(
+						"#pragma se input \"a.png\" wrap=repeat mipmap=linear",
+						"uniform sampler2D a;",
+						"#pragma se input \"a.png\" filter=nearest",
+						"uniform sampler2D b;",
 						"#pragma se input filter=linear",
 						"uniform samplerExternalOES cameraBack;",
 						"uniform sampler2D backbuffer;",
 						"#pragma se target scale=1 format=rgba8 present=nearest",
-						MAIN));
-		assertTrue(PlanSupport.refusals(plan).isEmpty());
-	}
-
-	@Test
-	public void refusesImageInputs() {
-		var plan = plan("main.glsl", lines(
-						"#pragma se input \"a.png\"",
-						"uniform sampler2D a;",
 						MAIN),
 				"a.png", PNG);
-		assertEquals(List.of(error("Image inputs need a newer version " +
-				"of ShaderEditor", 1)), PlanSupport.refusals(plan));
+		assertTrue(PlanSupport.refusals(plan).isEmpty());
 	}
 
 	@Test

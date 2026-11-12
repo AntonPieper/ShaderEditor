@@ -40,6 +40,9 @@ interface EngineBuild extends ShaderSwap.Build {
 	@Nullable
 	DecodedTextures upload(@NonNull List<ProjectDiagnostic> diagnostics);
 
+	// Whether it can never complete, so it must not replace the current.
+	boolean hasFailed();
+
 	@Nullable
 	ShaderTextureResources.SamplerTextureBinding getCameraBinding();
 

@@ -12,8 +12,8 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
 
-// This runtime draws one pass that reads engine samplers into the
-// default target. Anything else is refused as a whole, with one
+// This runtime draws one pass that reads images and engine samplers into
+// the default target. Anything else is refused as a whole, with one
 // diagnostic per directive that asks for it.
 final class PlanSupport {
 	private static final String NEWER = " a newer version of ShaderEditor";
@@ -35,10 +35,9 @@ final class PlanSupport {
 							: "Reading the output of " +
 							file(plan, source.pass()) + " needs" + NEWER,
 							input.file(), input.line()));
-				} else if (source.kind() == Source.Kind.IMAGE) {
-					errors.add(error("samplerCube".equals(input.samplerType())
-							? "Cubemap images need" + NEWER
-							: "Image inputs need" + NEWER,
+				} else if (source.kind() == Source.Kind.IMAGE &&
+						"samplerCube".equals(input.samplerType())) {
+					errors.add(error("Cubemap images need" + NEWER,
 							input.file(), input.line()));
 				}
 			}

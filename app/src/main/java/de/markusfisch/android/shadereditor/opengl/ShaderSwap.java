@@ -107,6 +107,20 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		return current;
 	}
 
+	// GL thread. The next build can never complete: it is released, and
+	// the current build keeps drawing and shows its outcome.
+	synchronized void nextFailed() {
+		if (next == null) {
+			return;
+		}
+		next.release();
+		if (nextShader != null) {
+			shown = Math.max(shown, nextShader.number());
+		}
+		next = null;
+		nextShader = null;
+	}
+
 	@Nullable
 	B current() {
 		return current;

@@ -9,7 +9,7 @@ import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 // A prepared project: its plan, its diagnostics and the bytes of the
-// files it read.
+// files it read, which are all its images are decoded from.
 record PlanShader(@NonNull Preparation preparation, float quality)
 		implements EngineShader {
 	@NonNull
