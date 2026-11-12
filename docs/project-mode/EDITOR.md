@@ -661,3 +661,28 @@ Three points of section 4 were built differently, for reasons found while buildi
 - **The undo history is bounded twice:** at 1,000 steps and at 4,000,000 characters of removed plus inserted text. Past either bound the oldest steps are dropped; the newest step is always kept. A cap on steps alone does not bound memory when one step can be a whole file.
 
 Measured on the JVM at 5,000, 50,000 and 500,000 lines: a typed character costs 0.5 to 3.4 µs and does not grow with the number of lines; an edit of one line of a 500,000-line text creates at most 12 new tree nodes. Still open from section 4.4: `Text` does not yet keep the longest line per node, which the view needs for its horizontal scroll range.
+
+## 13. After the independent review of the core (2026-11-12)
+
+An independent review of the pure-Java core (T1 to T7, T14) found 29 issues, one of them serious (undo of a mixed keyboard batch also undid typing from before it). All were fixed with a regression test each, except the deviations below, which are accepted on purpose. This section wins over sections 4.1 to 4.5 where they differ.
+
+**What changed in the interfaces.**
+
+- **`Document`.** A batch decides its undo step when it ends: it continues the run of typing only if it is one typed change that touches the run; otherwise it is a step of its own. Every text in the history has a state number; a save takes `state()` with the text and reports `markSaved(state)` when it finishes, so undo back to an asynchronously saved text shows unmodified. Replacing a range by the same text only moves the selection.
+- **`TextInput`.** A change counts as the keyboard's only during `TextInput`'s own call to the document. Updates to the keyboard go out one at a time, stored before any listener runs. Both ranges of a surrounding delete are checked before anything is deleted; the code-point variant follows Android's rule for invalid surrogates. A selection longer than the 4,096-character window makes `getSelectedText` and `getSurroundingText` return null; extracted text is cut but reports the real anchor and head. `finishComposingText` on a closed connection returns true.
+- **What one character is** comes from `Motion.Boundaries`, by default `java.text.BreakIterator`. The Android shell may supply the platform's or the layout's answer through the same seam. Emoji with skin tones, joined emoji and flags are one character on Android and several on the desktop Java that runs the tests, so they are checked on a device (T10, T11).
+- **`LineStyles` and the view.** The view calls `show(from, to)` with the lines it draws, `runs(n)` for each, and, while `continuation()` is not null, runs it off the main thread and calls `apply(result)` until it returns false. Work after an edit or a `show` is at most the shown lines plus the budget; `apply` stores at most 4,096 states per call.
+- **`LineMarks.set(revision, diagnostics)`** does not install diagnostics made for an older revision, and drops a mark that can no longer be placed (its line joined to text in front of it). A missing mark is better than one on the wrong line.
+- **Indenting many lines is one change**, so its undo is one tree replacement.
+- **Completion** offers at most 50 words from names sorted off the main thread, and leaves out the declaration being typed only when the names are for the current revision.
+- **Keyboard sessions** record, per line, the time since the session began and who acted (a connection number or `app`); connections have `open` and `close` lines; app actions are recorded as what was asked (undo, redo, a key, a command) with the resulting changes as expected output. Lines collect in memory until the shell drains them; at 1,048,576 characters the session ends with a `truncated` line.
+
+**Accepted deviations from section 1, with their measured size.**
+
+- **The line states are a gap buffer of bytes.** An edit far from the last one moves bytes in proportion to the distance in lines: 5.5 µs median at 500,000 lines on the desktop JVM. Opening allocates one byte per line. Both are proportional to the file in theory and negligible in practice; a chunked structure is not worth its code.
+- **Error marks are scanned on every edit.** Their number is the number of diagnostics of one build, which is small.
+- **Memory can exceed four bytes per character** on extreme files: a whole-file analysis keeps twelve bytes per token. To be measured on the phone before the switch (T17), with the limit of decision D7 in mind.
+- **A one-line commit from the keyboard is typing for undo**, whatever its length: a glide word and a keyboard's clipboard paste are the same call. Text the view itself pastes goes through `Document.replace` and is its own step.
+- **Recording is an instrument, not a feature**: it is bounded, off by default, and meant for small texts.
+
+**Still to do on devices:** the Android shell must send a lone committed line break to the Enter command (Gboard sends Enter as text), build `replaceText` from the primitives, and close an old `TextInput` itself on Android 6, which has no `closeConnection`.
