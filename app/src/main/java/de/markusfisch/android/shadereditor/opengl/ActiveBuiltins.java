@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -117,6 +118,7 @@ final class ActiveBuiltins {
 			@NonNull Output output) {
 		this.sources = sources;
 		this.output = output;
+		var keys = new LinkedHashSet<UniformSource.Key<?>>();
 		var active = new ArrayList<Slot>();
 		for (var uniform : table) {
 			GlUniform uniformSlot = reflected.get(uniform.getName());
@@ -125,13 +127,22 @@ final class ActiveBuiltins {
 					!uniform.fits(uniformSlot)) {
 				continue;
 			}
-			var key = uniform.getSource();
-			var source = key != null ? sources.start(key) : null;
+			if (uniform.getSource() != null) {
+				keys.add(uniform.getSource());
+			}
 			if (!uniform.isDeclarationOnly()) {
-				active.add(new Slot(uniform, uniformSlot.location(), source));
+				active.add(new Slot(uniform, uniformSlot.location(), null));
 			}
 		}
-		slots = active.toArray(new Slot[0]);
+		// Runs what this shader reads and stops what it does not.
+		sources.run(keys);
+		slots = new Slot[active.size()];
+		for (int i = 0; i < slots.length; ++i) {
+			var slot = active.get(i);
+			var key = slot.uniform().getSource();
+			slots[i] = new Slot(slot.uniform(), slot.location(),
+					key != null ? sources.start(key) : null);
+		}
 	}
 
 	void write(@NonNull FrameInputs inputs, long now) {

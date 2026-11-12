@@ -46,6 +46,12 @@ public class ShaderView extends GLSurfaceView {
 		engine.onContextLost();
 	}
 
+	@Override
+	protected void onDetachedFromWindow() {
+		super.onDetachedFromWindow();
+		engine.onContextLost();
+	}
+
 	// Click handling is implemented in the engine.
 	@SuppressLint("ClickableViewAccessibility")
 	@Override
