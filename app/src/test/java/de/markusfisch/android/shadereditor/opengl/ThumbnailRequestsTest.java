@@ -1,6 +1,8 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -59,7 +61,7 @@ public class ThumbnailRequestsTest {
 		a.complete = true;
 		swap.swapIfComplete();
 		build("a, edited");
-		requests.add(swap.offered(), "save a");
+		requests.add(swap.requested(), "save a");
 
 		var b = build("b");
 		assertEquals(List.of("save a"), requests.drop(swap::canDraw));
@@ -74,7 +76,7 @@ public class ThumbnailRequestsTest {
 		var a = build("a");
 		a.complete = true;
 		swap.swapIfComplete();
-		requests.add(swap.offered(), "save a");
+		requests.add(swap.requested(), "save a");
 		build("b");
 		assertEquals(List.of(), requests.drop(swap::canDraw));
 		requests.onFrame(swap.currentRevision().number());
@@ -84,10 +86,10 @@ public class ThumbnailRequestsTest {
 	@Test
 	public void shaderThatFailsIsAnsweredWithNothing() {
 		swap.offer("broken");
-		requests.add(swap.offered(), "save");
+		requests.add(swap.requested(), "save");
 		assertEquals(List.of(), requests.drop(swap::canDraw));
-		swap.take();
-		requests.add(swap.offered(), "save again");
+		swap.failed(swap.take());
+		requests.add(swap.requested(), "save again");
 		assertEquals(List.of("save", "save again"), requests.drop(swap::canDraw));
 	}
 
@@ -96,9 +98,9 @@ public class ThumbnailRequestsTest {
 		var a = build("a");
 		a.complete = true;
 		swap.swapIfComplete();
-		requests.add(swap.offered(), "save a");
+		requests.add(swap.requested(), "save a");
 		build("plan");
-		requests.add(swap.offered(), "save plan");
+		requests.add(swap.requested(), "save plan");
 		swap.nextFailed();
 		assertEquals(List.of("save plan"), requests.drop(swap::canDraw));
 		requests.onFrame(swap.currentRevision().number());
@@ -107,7 +109,7 @@ public class ThumbnailRequestsTest {
 
 	@Test
 	public void askedBeforeAnyShaderIsAnsweredWithNothing() {
-		requests.add(swap.offered(), "save");
+		requests.add(swap.requested(), "save");
 		assertEquals(List.of("save"), requests.drop(swap::canDraw));
 	}
 
@@ -116,12 +118,71 @@ public class ThumbnailRequestsTest {
 		var a = build("a");
 		a.complete = true;
 		swap.swapIfComplete();
-		requests.add(swap.offered(), "save");
+		requests.add(swap.requested(), "save");
 		swap.contextLost();
 		requests.onFramesLost();
 		assertEquals(List.of(), requests.drop(swap::canDraw));
-		assertEquals(List.of("save"), requests.takeAll());
-		assertEquals(List.of(), requests.takeAll());
+		assertEquals(List.of("save"), requests.close());
+		assertEquals(List.of(), requests.close());
+	}
+
+	// Set A, ask for its thumbnail, set B before A is prepared: A's
+	// request names A and is never answered with B's picture.
+	@Test
+	public void requestNamesTheShaderAskedForBeforeItIsPrepared() {
+		var shown = build("shown");
+		shown.complete = true;
+		swap.swapIfComplete();
+		int a = swap.request();
+		requests.add(swap.requested(), "save a");
+		int b = swap.request();
+		assertFalse(swap.offer(a, "a"));
+		assertTrue(swap.offer(b, "b"));
+		assertEquals(List.of("save a"), requests.drop(swap::canDraw));
+		var built = new ShaderSwapTest.FakeBuild("b", true);
+		swap.built(swap.take(), built);
+		swap.swapIfComplete();
+		requests.onFrame(swap.currentRevision().number());
+		assertEquals(List.of(), requests.take());
+	}
+
+	@Test
+	public void requestForAShaderStillBeingPreparedWaitsForIt() {
+		int a = swap.request();
+		requests.add(swap.requested(), "save a");
+		assertEquals(List.of(), requests.drop(swap::canDraw));
+		swap.offer(a, "a");
+		var built = new ShaderSwapTest.FakeBuild("a", true);
+		swap.built(swap.take(), built);
+		swap.swapIfComplete();
+		assertEquals(List.of(), requests.drop(swap::canDraw));
+		requests.onFrame(swap.currentRevision().number());
+		assertEquals(List.of("save a"), requests.take());
+	}
+
+	// The view is detached while a thumbnail request is still on its way.
+	@Test
+	public void requestAfterClosingIsRefused() {
+		requests.add(1, "before");
+		assertEquals(List.of("before"), requests.close());
+		assertFalse(requests.add(1, "late"));
+		assertEquals(List.of(), requests.close());
+		requests.open();
+		assertTrue(requests.add(1, "attached again"));
+	}
+
+	// A resize after which the shader drawing gets no targets.
+	@Test
+	public void shaderThatLostItsTargetsIsAnsweredWithNothing() {
+		var a = build("a");
+		a.complete = true;
+		swap.swapIfComplete();
+		requests.onFrame(swap.currentRevision().number());
+		requests.onFramesLost();
+		requests.add(swap.requested(), "save a");
+		assertEquals(List.of(), requests.drop(swap::canDraw));
+		swap.currentFailed();
+		assertEquals(List.of("save a"), requests.drop(swap::canDraw));
 	}
 
 	private ShaderSwapTest.FakeBuild build(String shader) {

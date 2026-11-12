@@ -47,8 +47,6 @@ final class ShaderRenderPipeline {
 			}
 			""";
 
-	private final float[] thumbnailResolution =
-			new float[]{THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT};
 	private final float[] drawResolution = new float[2];
 	@NonNull
 	private final GlDevice device;
@@ -132,8 +130,8 @@ final class ShaderRenderPipeline {
 
 		drawSurface(
 				presented,
-				(int) thumbnailResolution[0],
-				(int) thumbnailResolution[1],
+				THUMBNAIL_WIDTH,
+				THUMBNAIL_HEIGHT,
 				thumbnailFramebuffer);
 
 		final int pixels = THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT;

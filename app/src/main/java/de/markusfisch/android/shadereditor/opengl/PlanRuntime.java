@@ -181,12 +181,6 @@ final class PlanRuntime implements ShaderSwap.Build {
 		return running.fTimeMax;
 	}
 
-	// Its images do not depend on the render size.
-	@Override
-	public boolean fits(int width, int height) {
-		return true;
-	}
-
 	// Decodes its images off the GL thread from the bytes the preparation
 	// captured; until upload() took them, it is not complete.
 	void loadTextures(@Nullable Runnable onDecoded) {
