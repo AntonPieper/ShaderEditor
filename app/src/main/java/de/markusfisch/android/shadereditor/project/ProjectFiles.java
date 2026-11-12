@@ -109,6 +109,14 @@ public interface ProjectFiles {
 	}
 
 	/**
+	 * Forget what listings told about the folders, so that the next call
+	 * looks up every path in storage again, to see changes made
+	 * elsewhere. A store that keeps nothing does nothing.
+	 */
+	default void forgetListings() {
+	}
+
+	/**
 	 * Write a file if it is still at expectedRevision, the revision the
 	 * caller last read, or still absent when that is null. Missing
 	 * folders are created. A file at another revision is refused as
