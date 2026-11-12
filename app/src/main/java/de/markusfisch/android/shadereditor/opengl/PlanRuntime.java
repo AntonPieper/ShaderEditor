@@ -16,6 +16,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
+import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectLimits;
@@ -43,7 +45,10 @@ final class PlanRuntime implements EngineBuild {
 	private final PlanBindings bindings;
 	// Whether the pass keeps its previous frame.
 	private final boolean history;
+	@NonNull
+	private final Sampling presentSampling;
 	private final int glesVersion;
+	private final FrameInputs passFrame = new FrameInputs();
 	private final FullScreenQuad quad = new FullScreenQuad();
 	// Told with the outcome, whatever it is.
 	@NonNull
@@ -82,6 +87,9 @@ final class PlanRuntime implements EngineBuild {
 		pass = plan.passes().get(plan.output());
 		bindings = PlanBindings.of(pass, plan.output(), program.getSamplers());
 		history = pass.history() || !bindings.history.isEmpty();
+		var present = pass.target().present();
+		presentSampling = new Sampling(present, present, Mipmap.NONE,
+				Wrap.CLAMP, Wrap.CLAMP);
 		warnings.addAll(preparation.diagnostics());
 		warnings.addAll(bindings.warnings);
 		var sampler = bindings.camera;
@@ -266,8 +274,9 @@ final class PlanRuntime implements EngineBuild {
 		return camera;
 	}
 
-	// Its own target at the render size, with a second texture when the
-	// pass reads its previous frame; the pipeline's targets go.
+	// Its own target at the size the plan says, the render size times
+	// scale or a fixed size, with a second texture when the pass reads its
+	// previous frame; the pipeline's targets go.
 	@Override
 	public boolean createTargets(
 			@NonNull ShaderRenderPipeline pipeline,
@@ -280,8 +289,11 @@ final class PlanRuntime implements EngineBuild {
 			target = null;
 		}
 		// The render size is already scaled by the quality.
-		var size = RenderPlan.Size.project(width, height, 1,
-				device.getMaxTextureSize());
+		int max = device.getMaxTextureSize();
+		var project = RenderPlan.Size.project(width, height, 1, max);
+		var size = project.isSuccess()
+				? pass.target().size(project.value(), max)
+				: project;
 		if (!size.isSuccess()) {
 			errors.add(size.diagnostic());
 			return false;
@@ -302,7 +314,8 @@ final class PlanRuntime implements EngineBuild {
 	}
 
 	// Cleared to opaque black before every draw, with its previous frame
-	// when that is read, and presented with nearest filtering.
+	// when that is read, and presented with the filter the target asks
+	// for.
 	@Override
 	public void draw(
 			@NonNull ShaderRenderPipeline pipeline,
@@ -323,7 +336,7 @@ final class PlanRuntime implements EngineBuild {
 				case SWAP -> target.swap();
 				case PRESENT -> {
 					var output = target.completed();
-					device.applySampling(output, Sampling.PASS);
+					device.applySampling(output, presentSampling);
 					pipeline.present(output, frame.surfaceWidth,
 							frame.surfaceHeight);
 				}
@@ -380,13 +393,14 @@ final class PlanRuntime implements EngineBuild {
 	}
 
 	// Binds what each input reads, sampled as it asks, and the previous
-	// frame.
+	// frame, with resolution and pixel positions in the target's size.
 	private void drawPass(
 			@NonNull PassTarget target,
 			@NonNull ActiveBuiltins builtins,
 			@NonNull FrameInputs frame,
 			long now) {
-		builtins.write(frame, now);
+		passFrame.scale(frame, target.size().width(), target.size().height());
+		builtins.write(passFrame, now);
 		device.bindEmptyTextures(program);
 		var images = bindings.images;
 		for (int i = 0; i < images.size(); ++i) {
