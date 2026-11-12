@@ -122,4 +122,8 @@
 		<item name="rippleColor">?attr/colorControlHighlight</item>
 		<item name="cornerRadius">0dp</item>
 	</style>
+
+	<style name="CodeView">
+		<item name="android:scrollbars">vertical|horizontal</item>
+	</style>
 </resources>
