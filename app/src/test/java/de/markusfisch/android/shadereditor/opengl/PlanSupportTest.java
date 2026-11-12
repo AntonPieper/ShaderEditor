@@ -35,7 +35,7 @@ public class PlanSupportTest {
 	}
 
 	@Test
-	public void refusesPassInputs() {
+	public void refusesInputsFromOtherPasses() {
 		var plan = plan("main.glsl", lines(
 						"#pragma se input \"b.glsl\"",
 						"uniform sampler2D b;",
@@ -45,20 +45,17 @@ public class PlanSupportTest {
 				"b.glsl", MAIN);
 		assertEquals(List.of(
 				error("Reading the output of b.glsl needs a newer version " +
-						"of ShaderEditor", 1),
-				error("Reading the previous frame with se input needs a " +
-						"newer version of ShaderEditor", 3)), PlanSupport.refusals(plan));
+						"of ShaderEditor", 1)), PlanSupport.refusals(plan));
 	}
 
 	@Test
-	public void refusesAnAnnotatedBackbuffer() {
-		var plan = plan("main.glsl", lines(
+	public void acceptsReadingItsOwnPreviousFrame() {
+		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
 				"#pragma se input filter=linear",
 				"uniform sampler2D backbuffer;",
-				MAIN));
-		assertEquals(List.of(error("Reading the previous frame with se " +
-						"input needs a newer version of ShaderEditor", 1)),
-				PlanSupport.refusals(plan));
+				"#pragma se input \"main.glsl\" frame=previous",
+				"uniform sampler2D self;",
+				MAIN))).isEmpty());
 	}
 
 	@Test
