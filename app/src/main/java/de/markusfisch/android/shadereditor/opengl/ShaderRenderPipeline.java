@@ -183,6 +183,12 @@ final class ShaderRenderPipeline {
 		drawSurface(texture, surfaceWidth, surfaceHeight, null);
 	}
 
+	// Stretches the texture over the framebuffer, sampled as it is set up.
+	void stretch(@NonNull GlTexture2D texture, @NonNull GlFramebuffer framebuffer) {
+		drawSurface(texture, framebuffer.getWidth(), framebuffer.getHeight(),
+				framebuffer);
+	}
+
 	@Nullable
 	GlTexture2D getBackTexture() {
 		return targetTextures[backTarget];
