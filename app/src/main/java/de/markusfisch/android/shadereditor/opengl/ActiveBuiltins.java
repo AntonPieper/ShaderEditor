@@ -8,6 +8,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
+// The builtins the programs of a build read, with the sources they need
+// running once for all of them.
 final class ActiveBuiltins {
 	interface Output extends UniformOutput {
 		void begin();
@@ -99,16 +101,17 @@ final class ActiveBuiltins {
 	@NonNull
 	private final UniformSources sources;
 	@NonNull
-	private final Output output;
+	private final List<Output> outputs;
+	// Per program.
 	@NonNull
-	private final Slot[] slots;
+	private final Slot[][] slots;
 
 	ActiveBuiltins(
 			@NonNull GlDevice device,
-			@NonNull GlProgram program,
+			@NonNull List<GlProgram> programs,
 			@NonNull UniformSources sources) {
-		this(UniformTable.BUILTINS, program.getUniforms(), sources,
-				new GlOutput(device, program));
+		this(UniformTable.BUILTINS, uniforms(programs), sources,
+				outputs(device, programs));
 	}
 
 	ActiveBuiltins(
@@ -116,41 +119,84 @@ final class ActiveBuiltins {
 			@NonNull Map<String, GlUniform> reflected,
 			@NonNull UniformSources sources,
 			@NonNull Output output) {
+		this(table, List.of(reflected), sources, List.of(output));
+	}
+
+	ActiveBuiltins(
+			@NonNull List<UniformDef> table,
+			@NonNull List<Map<String, GlUniform>> reflected,
+			@NonNull UniformSources sources,
+			@NonNull List<Output> outputs) {
 		this.sources = sources;
-		this.output = output;
+		this.outputs = outputs;
 		var keys = new LinkedHashSet<UniformSource.Key<?>>();
-		var active = new ArrayList<Slot>();
-		for (var uniform : table) {
-			GlUniform uniformSlot = reflected.get(uniform.getName());
-			if (uniformSlot == null ||
-					uniformSlot.location() < 0 ||
-					!uniform.fits(uniformSlot)) {
-				continue;
-			}
-			if (uniform.getSource() != null) {
-				keys.add(uniform.getSource());
-			}
-			if (!uniform.isDeclarationOnly()) {
-				active.add(new Slot(uniform, uniformSlot.location(), null));
+		var active = new ArrayList<List<Slot>>();
+		for (var uniforms : reflected) {
+			var program = new ArrayList<Slot>();
+			active.add(program);
+			for (var uniform : table) {
+				GlUniform uniformSlot = uniforms.get(uniform.getName());
+				if (uniformSlot == null ||
+						uniformSlot.location() < 0 ||
+						!uniform.fits(uniformSlot)) {
+					continue;
+				}
+				if (uniform.getSource() != null) {
+					keys.add(uniform.getSource());
+				}
+				if (!uniform.isDeclarationOnly()) {
+					program.add(new Slot(uniform, uniformSlot.location(), null));
+				}
 			}
 		}
-		// Runs what this shader reads and stops what it does not.
+		// Runs what these shaders read and stops what they do not.
 		sources.run(keys);
-		slots = new Slot[active.size()];
-		for (int i = 0; i < slots.length; ++i) {
-			var slot = active.get(i);
-			var key = slot.uniform().getSource();
-			slots[i] = new Slot(slot.uniform(), slot.location(),
-					key != null ? sources.start(key) : null);
+		slots = new Slot[active.size()][];
+		for (int p = 0; p < slots.length; ++p) {
+			var program = active.get(p);
+			slots[p] = new Slot[program.size()];
+			for (int i = 0; i < slots[p].length; ++i) {
+				var slot = program.get(i);
+				var key = slot.uniform().getSource();
+				slots[p][i] = new Slot(slot.uniform(), slot.location(),
+						key != null ? sources.start(key) : null);
+			}
 		}
 	}
 
+	// Of the first program.
 	void write(@NonNull FrameInputs inputs, long now) {
+		write(0, inputs, now);
+	}
+
+	void write(int program, @NonNull FrameInputs inputs, long now) {
 		sources.update(now);
+		var output = outputs.get(program);
 		output.begin();
-		for (var slot : slots) {
+		for (var slot : slots[program]) {
 			output.setLocation(slot.location());
 			slot.uniform().write(inputs, slot.source(), output);
 		}
+	}
+
+	@NonNull
+	private static List<Map<String, GlUniform>> uniforms(
+			@NonNull List<GlProgram> programs) {
+		var uniforms = new ArrayList<Map<String, GlUniform>>();
+		for (var program : programs) {
+			uniforms.add(program.getUniforms());
+		}
+		return uniforms;
+	}
+
+	@NonNull
+	private static List<Output> outputs(
+			@NonNull GlDevice device,
+			@NonNull List<GlProgram> programs) {
+		var outputs = new ArrayList<Output>();
+		for (var program : programs) {
+			outputs.add(new GlOutput(device, program));
+		}
+		return outputs;
 	}
 }

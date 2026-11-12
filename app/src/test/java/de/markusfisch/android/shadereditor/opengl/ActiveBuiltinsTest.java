@@ -65,6 +65,51 @@ public class ActiveBuiltinsTest {
 		assertEquals(List.of("vec3[1]"), out.calls);
 	}
 
+	private static final class CountingSource implements UniformSource {
+		static final Key<CountingSource> KEY = CountingSource::new;
+
+		int starts;
+
+		@Override
+		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
+			++starts;
+		}
+
+		@Override
+		public void stop() {
+		}
+	}
+
+	@Test
+	public void programsOfOneBuildShareTheirSourcesAndKeepTheirSlots() {
+		var table = List.of(
+				new UniformDef("time", GlslType.FLOAT, 0, 0,
+						(in, out) -> out.setFloat(in.time)),
+				new UniformDef("starts", GlslType.INT, 0, 0, CountingSource.KEY,
+						(source, out) -> out.setInt(source.starts)));
+		var running = new LocatedOutput();
+		var initial = new LocatedOutput();
+		var sources = new UniformSources(UniformSourcesTest.HOST);
+		var builtins = new ActiveBuiltins(table, List.of(
+				Map.of("time", new GlUniform("time", GLES20.GL_FLOAT, 1, 1)),
+				Map.of("time", new GlUniform("time", GLES20.GL_FLOAT, 1, 2),
+						"starts", new GlUniform("starts", GLES20.GL_INT, 1, 3))),
+				sources, List.of(running, initial));
+		// Started for the second program, which the first does not read.
+		assertEquals(1, sources.get(CountingSource.KEY).starts);
+		var in = new FrameInputs();
+		in.time = 4;
+		builtins.write(in, 1L);
+		assertEquals(List.of(1), running.locations);
+		assertEquals(List.of(), initial.locations);
+		in.time = 0;
+		builtins.write(1, in, 1L);
+		assertEquals(List.of(2, 3), initial.locations);
+		assertEquals(List.of("float", "int"), initial.calls);
+		assertEquals(0f, initial.values.get(0)[0], 0f);
+		assertEquals(1f, initial.values.get(1)[0], 0f);
+	}
+
 	@NonNull
 	private static LocatedOutput write(@NonNull Map<String, GlUniform> uniforms) {
 		return write(new FrameInputs(), uniforms);

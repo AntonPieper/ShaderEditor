@@ -125,8 +125,8 @@ final class PlanRuntime implements EngineBuild {
 
 	@NonNull
 	@Override
-	public GlProgram program() {
-		return running.program;
+	public List<GlProgram> programs() {
+		return List.of(running.program);
 	}
 
 	@Override
