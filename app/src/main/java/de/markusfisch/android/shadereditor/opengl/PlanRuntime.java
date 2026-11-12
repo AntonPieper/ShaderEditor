@@ -1,9 +1,5 @@
 package de.markusfisch.android.shadereditor.opengl;
 
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.opengl.GLES11Ext;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -30,7 +26,7 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 // image is uploaded, and fails as a whole when one cannot be; it owns its
 // GL objects, its targets among them, and is built again from the plan in
 // a new context.
-final class PlanRuntime implements EngineBuild {
+final class PlanRuntime implements ShaderSwap.Build {
 	private final float quality;
 	@NonNull
 	private final GlDevice device;
@@ -69,7 +65,7 @@ final class PlanRuntime implements EngineBuild {
 	private final TextureHandOver<DecodedImages> decoded =
 			new TextureHandOver<>();
 	@Nullable
-	private final ShaderTextureResources.SamplerTextureBinding camera;
+	private final CameraSource.Binding camera;
 	@Nullable
 	private GlTexture2D initialTexture;
 	@Nullable
@@ -121,13 +117,10 @@ final class PlanRuntime implements EngineBuild {
 			}
 		}
 		if (cameraBindings != null && cameraBindings.camera != null) {
-			var sampling = cameraBindings.cameraSampling;
 			var texture = device.createExternalTexture();
-			device.applySampling(texture, sampling);
-			camera = new ShaderTextureResources.SamplerTextureBinding(
-					new DiscoveredSampler(cameraBindings.camera.name(),
-							GLES11Ext.GL_TEXTURE_EXTERNAL_OES, sampling));
-			camera.setTexture(texture);
+			device.applySampling(texture, cameraBindings.cameraSampling);
+			camera = new CameraSource.Binding(cameraBindings.camera.name(),
+					texture);
 		} else {
 			camera = null;
 		}
@@ -173,19 +166,18 @@ final class PlanRuntime implements EngineBuild {
 				glesVersion);
 	}
 
+	// The programs whose builtins it reads, the one drawn every frame
+	// first.
 	@NonNull
-	@Override
-	public List<GlProgram> programs() {
+	List<GlProgram> programs() {
 		return programs;
 	}
 
-	@Override
-	public float quality() {
+	float quality() {
 		return quality;
 	}
 
-	@Override
-	public float fTimeMax() {
+	float fTimeMax() {
 		return running.fTimeMax;
 	}
 
@@ -195,14 +187,9 @@ final class PlanRuntime implements EngineBuild {
 		return true;
 	}
 
-	// Decodes its images from the bytes the preparation captured; their
-	// size does not depend on the render size.
-	@Override
-	public void loadTextures(
-			@NonNull Context context,
-			int width,
-			int height,
-			@Nullable Runnable onDecoded) {
+	// Decodes its images off the GL thread from the bytes the preparation
+	// captured; until upload() took them, it is not complete.
+	void loadTextures(@Nullable Runnable onDecoded) {
 		var paths = new LinkedHashSet<ProjectPath>();
 		for (var linked : passes) {
 			paths.addAll(linked.bindings.imagePaths());
@@ -235,13 +222,12 @@ final class PlanRuntime implements EngineBuild {
 	}
 
 	// GL thread. Uploads the images once they are decoded, or fails when
-	// one cannot be used as its inputs ask or start its history.
-	@Nullable
-	@Override
-	public DecodedTextures upload(@NonNull List<ProjectDiagnostic> diagnostics) {
+	// one cannot be used as its inputs ask or start its history, and adds
+	// what the host should be told.
+	void upload(@NonNull List<ProjectDiagnostic> diagnostics) {
 		var images = decoded.take();
 		if (images == null) {
-			return null;
+			return;
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
 		for (var problem : images.problems.entrySet()) {
@@ -301,37 +287,35 @@ final class PlanRuntime implements EngineBuild {
 		diagnostics.addAll(errors);
 		if (!errors.isEmpty()) {
 			failed = true;
-			return null;
+			return;
 		}
 		for (int i = 0; glesVersion >= 3 && i < passes.size(); ++i) {
 			passes.get(i).createSamplers();
 		}
 		complete = true;
-		return null;
 	}
 
-	@Override
-	public boolean hasFailed() {
+	// Whether it can never complete, so it must not replace the current
+	// build: an image did not decode or upload.
+	boolean hasFailed() {
 		return failed;
 	}
 
 	@Nullable
-	@Override
-	public ShaderTextureResources.SamplerTextureBinding getCameraBinding() {
+	CameraSource.Binding getCameraBinding() {
 		return camera;
 	}
 
-	// Its own target at the size the plan says, the render size times
-	// scale or a fixed size, with a second texture when the pass reads its
-	// previous frame, and one for the initial shader at the size its own
-	// target says; the pipeline's targets go.
+	// GL thread, before it replaces the current build and whenever the
+	// render size changed: makes its own target at the size the plan
+	// says, the render size times scale or a fixed size, with a second
+	// texture when the pass reads its previous frame, and one for the
+	// initial shader at the size its own target says. Adds why when it
+	// cannot; it has nothing to draw into then.
 	@NonNull
-	@Override
-	public ShaderSwap.Allocation createTargets(
-			@NonNull ShaderRenderPipeline pipeline,
+	ShaderSwap.Allocation createTargets(
 			int width,
 			int height,
-			@Nullable Bitmap seed,
 			@NonNull List<ProjectDiagnostic> errors) {
 		releaseTargets();
 		// The render size is already scaled by the quality.
@@ -363,28 +347,18 @@ final class PlanRuntime implements EngineBuild {
 				return ShaderSwap.Allocation.FAILED;
 			}
 		}
-		pipeline.releaseTargets();
 		reset = true;
 		return ShaderSwap.Allocation.MADE;
 	}
 
-	@Override
-	public boolean hasTargets(@NonNull ShaderRenderPipeline pipeline) {
+	boolean hasTargets() {
 		return target != null;
 	}
 
-	@Override
-	public boolean releaseTargets(@NonNull ShaderRenderPipeline pipeline) {
-		boolean had = target != null;
-		releaseTargets();
-		return had;
-	}
-
-	// Cleared to opaque black before every draw, with its previous frame
-	// when that is read, and presented with the filter the target asks
-	// for.
-	@Override
-	public void draw(
+	// GL thread. Cleared to opaque black before every draw, with its
+	// previous frame when that is read, and presented with the filter the
+	// target asks for.
+	void draw(
 			@NonNull ShaderRenderPipeline pipeline,
 			@NonNull ActiveBuiltins builtins,
 			@NonNull FrameInputs frame,
@@ -431,7 +405,6 @@ final class PlanRuntime implements EngineBuild {
 		textures.clear();
 		if (camera != null) {
 			device.deleteTexture(camera.texture());
-			camera.setTexture(null);
 		}
 		releaseTargets();
 	}
@@ -447,7 +420,7 @@ final class PlanRuntime implements EngineBuild {
 		}
 		textures.clear();
 		if (camera != null) {
-			camera.setTexture(null);
+			camera.texture().invalidate();
 		}
 		if (target != null) {
 			target.discard();
@@ -459,7 +432,9 @@ final class PlanRuntime implements EngineBuild {
 		}
 	}
 
-	private void releaseTargets() {
+	// GL thread. Releases what it draws into; false when it had nothing.
+	boolean releaseTargets() {
+		boolean had = target != null;
 		if (target != null) {
 			target.release();
 			target = null;
@@ -468,6 +443,7 @@ final class PlanRuntime implements EngineBuild {
 			initialTarget.release();
 			initialTarget = null;
 		}
+		return had;
 	}
 
 	// With resolution and pixel positions in the target's size.

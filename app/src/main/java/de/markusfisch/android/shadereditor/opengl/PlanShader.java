@@ -14,16 +14,15 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 record PlanShader(
 		@NonNull Preparation preparation,
 		float quality,
-		@NonNull String textureFix) implements EngineShader {
+		@NonNull String textureFix) {
 	@NonNull
-	@Override
-	public EngineShader withQuality(float quality) {
+	PlanShader withQuality(float quality) {
 		return new PlanShader(preparation, quality, textureFix);
 	}
 
+	// GL thread. Returns null and adds why when it does not link.
 	@Nullable
-	@Override
-	public EngineBuild link(
+	PlanRuntime link(
 			@NonNull GlDevice device,
 			int version,
 			@NonNull List<ProjectDiagnostic> errors) {

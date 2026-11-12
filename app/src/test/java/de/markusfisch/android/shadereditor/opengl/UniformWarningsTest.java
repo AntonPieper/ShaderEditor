@@ -23,6 +23,7 @@ import de.markusfisch.android.shadereditor.project.SourceLocation;
 import de.markusfisch.android.shadereditor.project.SourceMap;
 
 public class UniformWarningsTest {
+	private static final String ADD_TEXTURE = "add a texture named %s";
 	private static final List<UniformDef> TABLE = UniformTable.BUILTINS;
 
 	@Test
@@ -192,18 +193,17 @@ public class UniformWarningsTest {
 	}
 
 	@Test
-	public void warningsAreLocatedThroughInsertedLines() {
-		var lineMapping = ShaderLineMapping.withLeadingInsertedLines(1);
+	public void warningsWithoutASourceMapKeepTheirLine() {
 		var warnings = UniformWarnings.check(
 				List.of(uniform("tmie", GLES20.GL_FLOAT)), Set.of(),
-				UniformWarnings.ADD_LIBRARY_TEXTURE,
+				ADD_TEXTURE,
 				"#define SHADER_EDITOR 1\nprecision mediump float;\n" +
 						"uniform float tmie;\n",
-				lineMapping);
+				null);
 		assertEquals(1, warnings.size());
 		assertEquals(ProjectDiagnostic.Severity.WARNING, warnings.get(0).severity());
 		assertNull(warnings.get(0).file());
-		assertEquals(2, warnings.get(0).line());
+		assertEquals(3, warnings.get(0).line());
 	}
 
 	@Test
@@ -223,7 +223,7 @@ public class UniformWarningsTest {
 				Set.of(), UniformWarnings.ADD_INPUT,
 				"#version 300 es\n#define SHADER_EDITOR 1\n" +
 						"// inputs\nuniform sampler2D photo;\nvoid main() {}\n",
-				ShaderLineMapping.withSourceMap(sourceMap));
+				sourceMap);
 		assertEquals(2, warnings.size());
 		assertEquals("lib/inputs.glsl:2: Nothing provides photo, so it reads " +
 						"black; attach an image to it with #pragma se input \"path\"",
@@ -238,10 +238,10 @@ public class UniformWarningsTest {
 				List.of(uniform("tmie", GLES20.GL_FLOAT),
 						uniform("time", GLES20.GL_FLOAT_VEC3),
 						uniform("photo", GLES20.GL_SAMPLER_2D)),
-				Set.of(), UniformWarnings.ADD_LIBRARY_TEXTURE,
+				Set.of(), ADD_TEXTURE,
 				"uniform float tmie;\nuniform vec3 time;\n" +
 						"uniform sampler2D photo;\n",
-				ShaderLineMapping.identity());
+				null);
 		assertEquals(3, warnings.size());
 		assertFalse(ProjectDiagnostic.anyError(warnings));
 		var mixed = new ArrayList<>(warnings);
@@ -286,6 +286,6 @@ public class UniformWarningsTest {
 		var findings = UniformWarnings.find(List.of(uniform), TABLE, Set.of());
 		assertEquals(1, findings.size());
 		return UniformWarnings.message(findings.get(0), TABLE,
-				UniformWarnings.ADD_LIBRARY_TEXTURE);
+				ADD_TEXTURE);
 	}
 }

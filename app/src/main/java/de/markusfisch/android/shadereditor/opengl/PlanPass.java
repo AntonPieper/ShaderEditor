@@ -68,9 +68,8 @@ final class PlanPass {
 		if (source == null) {
 			return null;
 		}
-		var lineMapping = ShaderLineMapping.withSourceMap(source.sourceMap());
 		var result = device.createProgram(source.vertex(), source.fragment(),
-				lineMapping);
+				source.sourceMap());
 		var program = result.getProgram();
 		if (!result.succeeded() || program == null) {
 			errors.addAll(result.getInfoLog());
@@ -85,7 +84,7 @@ final class PlanPass {
 		}
 		warnings.addAll(UniformWarnings.check(
 				program.getUniforms().values(), inputs,
-				textureFix, source.fragment(), lineMapping));
+				textureFix, source.fragment(), source.sourceMap()));
 		return new PlanPass(device, pass, program, bindings, warnings,
 				source.fTimeMax());
 	}

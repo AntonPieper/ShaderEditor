@@ -21,12 +21,10 @@ import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
 
-import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.DatabaseProjectFiles;
-import de.markusfisch.android.shadereditor.project.LooseShaderFileProjectSource;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectLimits;
@@ -120,14 +118,6 @@ public class ShaderView extends GLSurfaceView {
 			@NonNull String text,
 			float quality,
 			long runtimeNanos) {
-		if (getResources().getBoolean(R.bool.legacy_renderer)) {
-			var session = new LooseShaderFileProjectSource(null, text,
-					quality).openSession();
-			runtimeOwner = session;
-			engine.setShader(session, runtimeNanos);
-			requestRender();
-			return;
-		}
 		var owner = new Object();
 		runtimeOwner = owner;
 		// Converting reads the textures it names from the database.

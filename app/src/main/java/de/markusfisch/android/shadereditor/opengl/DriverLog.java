@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,11 +32,11 @@ final class DriverLog {
 	@NonNull
 	static List<ProjectDiagnostic> parse(
 			@NonNull String infoLog,
-			@NonNull ShaderLineMapping lineMapping) {
+			@Nullable SourceMap sourceMap) {
 		String[] lines = infoLog.split("\n");
 		List<ProjectDiagnostic> diagnostics = new ArrayList<>(lines.length);
 		for (String line : lines) {
-			diagnostics.add(parseLine(line, lineMapping));
+			diagnostics.add(parseLine(line, sourceMap));
 		}
 		return diagnostics;
 	}
@@ -43,7 +44,7 @@ final class DriverLog {
 	@NonNull
 	private static ProjectDiagnostic parseLine(
 			@NonNull String text,
-			@NonNull ShaderLineMapping lineMapping) {
+			@Nullable SourceMap sourceMap) {
 		Severity severity = WARNING.matcher(text).find()
 				? Severity.WARNING
 				: Severity.ERROR;
@@ -52,9 +53,7 @@ final class DriverLog {
 			return new ProjectDiagnostic(severity, text, null, 0);
 		}
 		String message = Objects.requireNonNull(matcher.group(3));
-		int line = lineMapping.toSourceLine(Integer.parseInt(
-				Objects.requireNonNull(matcher.group(2))));
-		SourceMap sourceMap = lineMapping.getSourceMap();
+		int line = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
 		if (sourceMap == null) {
 			return new ProjectDiagnostic(severity, message, null,
 					Math.max(line, 0), text);

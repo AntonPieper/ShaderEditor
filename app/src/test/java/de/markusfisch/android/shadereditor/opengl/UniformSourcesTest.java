@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
-import de.markusfisch.android.shadereditor.project.RenderPlan;
 
 public class UniformSourcesTest {
 	private static final List<String> events = new ArrayList<>();
@@ -259,10 +258,8 @@ public class UniformSourcesTest {
 		events.clear();
 		var sources = new UniformSources(HOST);
 		new ActiveBuiltins(TABLE, program("first", 1), sources, new LocatedOutput());
-		sources.setCameraBinding(new ShaderTextureResources.SamplerTextureBinding(
-				new DiscoveredSampler(UniformTable.CAMERA_BACK,
-						GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
-						RenderPlan.Sampling.CAMERA)));
+		sources.setCameraBinding(new CameraSource.Binding(
+				UniformTable.CAMERA_BACK, new GlExternalTexture(1)));
 		new ActiveBuiltins(TABLE, program("first", 1), sources, new LocatedOutput());
 		assertEquals(List.of("start", "stop", "start"), events);
 	}

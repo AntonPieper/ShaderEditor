@@ -17,6 +17,7 @@ import javax.microedition.khronos.opengles.GL11ExtensionPack;
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
+import de.markusfisch.android.shadereditor.project.SourceMap;
 
 final class GlDevice {
 	private static final int[] CUBE_MAP_TARGETS = {
@@ -312,11 +313,11 @@ final class GlDevice {
 	GlProgramBuildResult createProgram(
 			@NonNull String vertexSource,
 			@NonNull String fragmentSource,
-			@NonNull ShaderLineMapping fragmentLineMapping) {
+			@Nullable SourceMap fragmentSourceMap) {
 		ShaderCompileResult vertexCompile = compileShader(
 				GLES20.GL_VERTEX_SHADER,
 				vertexSource,
-				ShaderLineMapping.identity());
+				null);
 		if (vertexCompile.shader == null) {
 			return GlProgramBuildResult.failure(vertexCompile.infoLog);
 		}
@@ -324,7 +325,7 @@ final class GlDevice {
 		ShaderCompileResult fragmentCompile = compileShader(
 				GLES20.GL_FRAGMENT_SHADER,
 				fragmentSource,
-				fragmentLineMapping);
+				fragmentSourceMap);
 		if (fragmentCompile.shader == null) {
 			deleteShader(vertexCompile.shader);
 			return GlProgramBuildResult.failure(fragmentCompile.infoLog);
@@ -354,7 +355,7 @@ final class GlDevice {
 		if (linkStatus[0] != GLES20.GL_TRUE) {
 			List<ProjectDiagnostic> infoLog = DriverLog.parse(
 					GLES20.glGetProgramInfoLog(programId),
-					fragmentLineMapping);
+					fragmentSourceMap);
 			GLES20.glDeleteProgram(programId);
 			return GlProgramBuildResult.failure(infoLog);
 		}
@@ -468,7 +469,7 @@ final class GlDevice {
 	@Nullable
 	private ShaderCompileResult compileShader(int type,
 			@NonNull String source,
-			@NonNull ShaderLineMapping lineMapping) {
+			@Nullable SourceMap sourceMap) {
 		int shaderId = GLES20.glCreateShader(type);
 		if (shaderId == 0) {
 			return new ShaderCompileResult(
@@ -484,7 +485,7 @@ final class GlDevice {
 		if (compiled[0] == 0) {
 			List<ProjectDiagnostic> infoLog = DriverLog.parse(
 					GLES20.glGetShaderInfoLog(shaderId),
-					lineMapping);
+					sourceMap);
 			GLES20.glDeleteShader(shaderId);
 			return new ShaderCompileResult(null, infoLog);
 		}

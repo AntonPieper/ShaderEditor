@@ -15,13 +15,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.SourceMap;
 
 // What a linked program reads that the engine does not set: an active
 // uniform that nothing provides, and a builtin declared with a type that
 // does not fit. Both are warnings; the shader runs and reads zero there.
 final class UniformWarnings {
-	// The fix for a sampler without a provider, formatted with its name.
-	static final String ADD_LIBRARY_TEXTURE = "add a texture named %s";
+	// The fix for a sampler without a provider in a project file.
 	static final String ADD_INPUT =
 			"attach an image to it with #pragma se input \"path\"";
 
@@ -47,13 +47,13 @@ final class UniformWarnings {
 			@NonNull Set<String> provided,
 			@NonNull String textureFix,
 			@NonNull String text,
-			@NonNull ShaderLineMapping lineMapping) {
+			@Nullable SourceMap sourceMap) {
 		var warnings = new ArrayList<ProjectDiagnostic>();
 		for (var finding : find(reflected, UniformTable.BUILTINS, provided)) {
 			warnings.add(locate(
 					message(finding, UniformTable.BUILTINS, textureFix),
 					declarationLine(text, finding.name()),
-					lineMapping));
+					sourceMap));
 		}
 		return warnings;
 	}
@@ -232,14 +232,12 @@ final class UniformWarnings {
 	private static ProjectDiagnostic locate(
 			@NonNull String message,
 			int preparedLine,
-			@NonNull ShaderLineMapping lineMapping) {
-		int line = lineMapping.toSourceLine(preparedLine);
-		var sourceMap = lineMapping.getSourceMap();
-		if (sourceMap == null || line < 1) {
+			@Nullable SourceMap sourceMap) {
+		if (sourceMap == null || preparedLine < 1) {
 			return new ProjectDiagnostic(ProjectDiagnostic.Severity.WARNING,
-					message, null, Math.max(line, 0));
+					message, null, Math.max(preparedLine, 0));
 		}
-		var at = sourceMap.locate(line);
+		var at = sourceMap.locate(preparedLine);
 		return at == null || at.isGenerated()
 				? new ProjectDiagnostic(ProjectDiagnostic.Severity.WARNING,
 				message, null, 0)
