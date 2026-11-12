@@ -247,6 +247,11 @@ public class Preferences {
 		return sortByLastModification;
 	}
 
+	public void setSortByLastModification(boolean sort) {
+		sortByLastModification = sort;
+		preferences.edit().putBoolean(SORT_BY_LAST_MODIFICATION, sort).apply();
+	}
+
 	public boolean doesRunOnChange() {
 		return runMode == RUN_AUTO;
 	}

@@ -291,4 +291,11 @@
 	<string name="nav_up">Up</string>
 	<string name="nav_read_only">Read-only</string>
 	<string name="nav_examples_count">%d examples, read-only</string>
+	<string name="nav_order_changed">Last changed first</string>
+	<string name="nav_order_name">By name</string>
+	<string name="nav_rename">Rename</string>
+	<string name="nav_duplicate">Duplicate</string>
+	<string name="nav_delete">Delete</string>
+	<string name="nav_no_shaders">No shaders yet</string>
+	<string name="nav_no_shaders_text">A new shader is saved here.</string>
 </resources>

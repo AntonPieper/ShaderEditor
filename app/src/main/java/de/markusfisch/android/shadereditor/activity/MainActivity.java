@@ -223,6 +223,31 @@ public class MainActivity extends AppCompatActivity {
 					}
 
 					@Override
+					public void onDuplicateShader(long id) {
+						if (id == shaderManager.getSelectedShaderId() &&
+								shaderManager.isModified()) {
+							shaderManager.saveShader();
+						}
+						shaderManager.duplicateShader(id);
+						shaderListManager.loadShadersAsync();
+					}
+
+					@Override
+					public void onDeleteShader(long id) {
+						boolean wasOpen = id == shaderManager.getSelectedShaderId();
+						if (wasOpen) {
+							// Or selecting another one saves it again.
+							shaderManager.setModified(false);
+						}
+						shaderManager.deleteShader(id);
+						if (wasOpen) {
+							shaderManager.selectShader(
+									dataSource.shader.getFirstShaderId());
+						}
+						shaderListManager.loadShadersAsync();
+					}
+
+					@Override
 					public void onOpenExample(@NonNull Samples.Sample sample) {
 						if (shaderManager.isModified()) {
 							shaderManager.saveShader();
