@@ -309,5 +309,6 @@
 		<item quantity="one">%d shader</item>
 		<item quantity="other">%d shaders</item>
 	</plurals>
+	<string name="nav_new">New</string>
 	<string name="nav_running">Running</string>
 </resources>

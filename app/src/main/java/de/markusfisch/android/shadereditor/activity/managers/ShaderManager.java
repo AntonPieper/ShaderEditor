@@ -45,7 +45,7 @@ public class ShaderManager implements OpenItem {
 	private final AppCompatActivity activity;
 	private final EditorFragment editorFragment;
 	private final ShaderViewManager shaderViewManager;
-	private final ShaderListManager shaderListManager;
+	private final ShaderList shaderListManager;
 	private final NavigationManager navigationManager;
 	private final DataSource dataSource;
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -61,7 +61,7 @@ public class ShaderManager implements OpenItem {
 	public ShaderManager(@NonNull AppCompatActivity activity,
 			EditorFragment editorFragment,
 			ShaderViewManager shaderViewManager,
-			ShaderListManager shaderListManager,
+			ShaderList shaderListManager,
 			NavigationManager navigationManager,
 			DataSource dataSource,
 			ShaderViewManager.Listener shaderViewManagerListener,
