@@ -113,8 +113,9 @@ final class ShaderBuild implements EngineBuild {
 			} catch (RuntimeException | OutOfMemoryError e) {
 				result = DecodedTextures.failed(e);
 			}
-			decoded.deliver(generation, result);
-			if (onDecoded != null) {
+			// A build that was released, with its view perhaps, asks for no
+			// frame.
+			if (decoded.deliver(generation, result) && onDecoded != null) {
 				onDecoded.run();
 			}
 		}, "ShaderTextureDecoder").start();

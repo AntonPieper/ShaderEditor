@@ -66,7 +66,7 @@ public final class ShaderEngine {
 			new ThumbnailRequests<>();
 
 	@Nullable
-	private Listener listener;
+	private volatile Listener listener;
 	@Nullable
 	private volatile Runnable renderRequester;
 	@Nullable
@@ -374,6 +374,7 @@ public final class ShaderEngine {
 	}
 
 	private void submitErrors(@NonNull List<ProjectDiagnostic> errors) {
+		var listener = this.listener;
 		if (listener != null) {
 			listener.onDiagnostics(errors);
 		}
@@ -427,6 +428,7 @@ public final class ShaderEngine {
 
 		if (now > nextFpsUpdate) {
 			int fps = Math.round(sum / samples);
+			var listener = this.listener;
 			if (fps != lastFps && listener != null) {
 				listener.onFramesPerSecond(fps);
 				lastFps = fps;
