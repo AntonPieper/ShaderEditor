@@ -74,8 +74,6 @@ public final class Document {
 	// newest step is always kept.
 	private static final int MAX_STEPS = 1000;
 	private static final int MAX_CHARS = 4_000_000;
-	// The saved text is no longer reachable by undo or redo.
-	private static final Step UNREACHABLE = new Step(null);
 
 	private final ArrayDeque<Step> undo = new ArrayDeque<>();
 	private final ArrayDeque<Step> redo = new ArrayDeque<>();
@@ -83,6 +81,9 @@ public final class Document {
 	private Listener[] listeners = new Listener[0];
 	private Text text;
 	private int revision;
+	// The revision that first made the text; undo and redo return to it.
+	private int state;
+	private int saved;
 	private Selection selection = new Selection(0, 0);
 	private int batches;
 	private boolean updated;
@@ -95,8 +96,6 @@ public final class Document {
 	private Step typing;
 	// Whether the selection moved since the last change of this batch.
 	private boolean moved;
-	// The step the saved text is after, null for the start of history.
-	private Step saved;
 	private int historyChars;
 
 	public Document(Text text) {
@@ -116,6 +115,15 @@ public final class Document {
 	/** Return the number of changes made so far. */
 	public int revision() {
 		return revision;
+	}
+
+	/**
+	 * Return where the current text is in the history: undo and redo
+	 * return to the state of the text they return to, and every other
+	 * change makes a new one. A save takes it with the text it saves.
+	 */
+	public int state() {
+		return state;
 	}
 
 	public Selection selection() {
@@ -225,6 +233,7 @@ public final class Document {
 					change.removed()));
 		}
 		selection = step.selectionBefore;
+		state = step.stateBefore;
 		endBatch();
 	}
 
@@ -242,29 +251,29 @@ public final class Document {
 			apply(change);
 		}
 		selection = step.selectionAfter;
+		state = step.stateAfter;
 		endBatch();
 	}
 
 	/**
-	 * Remember that the file holds text now. If that is the current
-	 * text, the document is unmodified until it changes, and again
-	 * whenever undo or redo return to it. Otherwise, as when the user
-	 * typed on while a save was running, it is modified until the next
-	 * time the file holds its text.
+	 * Remember that the file holds the text of state, as state() was
+	 * when the save took the text. The document is unmodified whenever
+	 * undo and redo return to that state, and now if it is current. A
+	 * state the history cannot return to, as one of a run of typing that
+	 * went on while the save ran, or -1 for a text the document never
+	 * had, leaves it modified until the next markSaved.
 	 */
-	public void markSaved(Text text) {
-		if (text == this.text) {
+	public void markSaved(int state) {
+		if (state == this.state) {
 			endStep();
 			typing = null;
-			saved = undo.peekLast();
-		} else {
-			saved = UNREACHABLE;
 		}
+		saved = state;
 	}
 
 	/** Return whether the text differs from the one last saved. */
 	public boolean isModified() {
-		return batchStep != null || undo.peekLast() != saved;
+		return state != saved;
 	}
 
 	private void edit(int from, int to, Text text, boolean typed) {
@@ -275,6 +284,7 @@ public final class Document {
 		beginBatch();
 		record(change, typed);
 		apply(change);
+		state = revision;
 		endBatch();
 	}
 
@@ -294,14 +304,11 @@ public final class Document {
 	private void record(Change change, boolean typed) {
 		long now = clock.millis();
 		if (batchStep == null) {
-			batchStep = new Step(selection);
+			batchStep = new Step(selection, state);
 			continued = typed && typing != null &&
 					now - typing.time < TYPING_PAUSE ? typing : null;
 			for (Step dropped : redo) {
 				historyChars -= dropped.chars;
-				if (dropped == saved) {
-					saved = UNREACHABLE;
-				}
 			}
 			redo.clear();
 		}
@@ -320,6 +327,7 @@ public final class Document {
 		}
 		batchStep = null;
 		step.selectionAfter = selection;
+		step.stateAfter = state;
 		if (continued != null && step.typed &&
 				touches(continued.changes.get(0), step.changes.get(0))) {
 			historyChars -= continued.chars;
@@ -333,13 +341,7 @@ public final class Document {
 		typing = step.typed && !moved ? step : null;
 		while (undo.size() > 1 && (undo.size() > MAX_STEPS ||
 				historyChars > MAX_CHARS)) {
-			Step dropped = undo.removeFirst();
-			historyChars -= dropped.chars;
-			if (saved == null) {
-				saved = UNREACHABLE;
-			} else if (saved == dropped) {
-				saved = null;
-			}
+			historyChars -= undo.removeFirst().chars;
 		}
 	}
 
@@ -373,14 +375,17 @@ public final class Document {
 	private static final class Step {
 		private final List<Change> changes = new ArrayList<>();
 		private final Selection selectionBefore;
+		private final int stateBefore;
 		private Selection selectionAfter;
+		private int stateAfter;
 		// Whether this step is one typed change that typing may continue.
 		private boolean typed = true;
 		private long time;
 		private int chars;
 
-		private Step(Selection selectionBefore) {
+		private Step(Selection selectionBefore, int stateBefore) {
 			this.selectionBefore = selectionBefore;
+			this.stateBefore = stateBefore;
 		}
 
 		private void add(Change change, boolean typed) {
@@ -403,6 +408,7 @@ public final class Document {
 			changes.set(0, change);
 			chars = size(change);
 			selectionAfter = next.selectionAfter;
+			stateAfter = next.stateAfter;
 			time = next.time;
 		}
 
