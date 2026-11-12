@@ -32,7 +32,7 @@ The project root is the folder the user opened. Only a manifest directly in that
 
 One rule selects the running shader, and it applies identically on open, reopen, and refresh:
 
-1. the file the user last chose with Run this file for this folder, if it still exists;
+1. the file the user last ran in this folder (by tapping it or with Run this file), if it still exists;
 2. otherwise the `entry` of a valid manifest;
 3. otherwise `main.glsl`, if present;
 4. otherwise nothing runs.
