@@ -16,6 +16,7 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -257,9 +258,11 @@ public class MainActivity extends AppCompatActivity {
 	@Contract(" -> new")
 	private ShaderViewManager.Listener createShaderViewListener() {
 		return new ShaderViewManager.Listener() {
-			private final View showErrors = findViewById(R.id.show_errors);
+			private final MaterialButton showErrors = findViewById(R.id.show_errors);
 			private final View mainCoordinator = findViewById(R.id.main_coordinator);
 			private final View toolbar = findViewById(R.id.toolbar);
+			// Warnings show once, not again on every run.
+			private List<ProjectDiagnostic> shownWarnings = List.of();
 
 			@Override
 			public void onFramesPerSecond(int fps) {
@@ -273,11 +276,27 @@ public class MainActivity extends AppCompatActivity {
 			public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
 				runOnUiThread(() -> {
 					editorFragment.setErrors(infoLog);
-					showErrors.setVisibility(editorFragment.hasErrors()
-							? View.VISIBLE
-							: View.GONE);
+					showErrors.setVisibility(infoLog.isEmpty()
+							? View.GONE
+							: View.VISIBLE);
+					showErrors.setIconResource(editorFragment.hasErrors()
+							? R.drawable.ic_error
+							: R.drawable.ic_warning);
 					if (editorFragment.hasErrors()) {
-						showError(infoLog.get(0).toString());
+						shownWarnings = List.of();
+						for (var diagnostic : infoLog) {
+							if (diagnostic.severity() ==
+									ProjectDiagnostic.Severity.ERROR) {
+								showError(diagnostic.toString());
+								break;
+							}
+						}
+					} else if (!infoLog.equals(shownWarnings)) {
+						shownWarnings = infoLog;
+						if (!infoLog.isEmpty()) {
+							showError(getString(R.string.warning_message,
+									infoLog.get(0).toString()));
+						}
 					}
 				});
 			}

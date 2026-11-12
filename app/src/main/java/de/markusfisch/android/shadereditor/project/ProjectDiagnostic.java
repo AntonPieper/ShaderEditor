@@ -34,6 +34,19 @@ public record ProjectDiagnostic(
 	}
 
 	/**
+	 * Whether one of these is an error; warnings alone leave the shader
+	 * running.
+	 */
+	public static boolean anyError(Iterable<ProjectDiagnostic> diagnostics) {
+		for (ProjectDiagnostic diagnostic : diagnostics) {
+			if (diagnostic.severity() == Severity.ERROR) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * The file and line to show before the message, or "" when neither
 	 * is known.
 	 */

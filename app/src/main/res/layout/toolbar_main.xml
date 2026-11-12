@@ -40,7 +40,7 @@
 		app:icon="@drawable/ic_play_arrow"
 		app:iconSize="24dp" />
 
-	<Button
+	<com.google.android.material.button.MaterialButton
 		android:id="@+id/show_errors"
 		style="@style/IconButton"
 		android:layout_width="48dp"
