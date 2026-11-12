@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.UriPermission;
 import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
 import android.net.Uri;
 import android.os.Process;
 import android.provider.DocumentsContract;
@@ -13,6 +14,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
+import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 import de.markusfisch.android.shadereditor.provider.UserFilesProvider;
 
 /**
@@ -82,6 +85,82 @@ public final class SafProjects {
 					// Already released.
 				}
 			}
+		}
+	}
+
+	/**
+	 * Return the locator of a tree from ACTION_OPEN_DOCUMENT_TREE, the
+	 * directory for a folder of ShaderEditor's own provider, or null
+	 * when that folder does not exist.
+	 */
+	public static Locator locate(Context context, Uri tree) {
+		if (!UserFilesProvider.AUTHORITY.equals(tree.getAuthority())) {
+			return new Locator(Kind.TREE, tree.toString());
+		}
+		try {
+			return new Locator(Kind.DIRECTORY, new ProviderDocuments(
+					UserFilesProvider.getUserFilesDir(context)).file(
+					DocumentsContract.getTreeDocumentId(tree)).getPath());
+		} catch (FileNotFoundException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * Open the folder of locator, telling whether it is still there.
+	 */
+	public static Opened open(Context context, Locator locator) {
+		if (locator.kind() == Kind.TREE) {
+			return openFolder(context, Uri.parse(locator.value()));
+		} else if (locator.kind() != Kind.DIRECTORY) {
+			return closed("only folders open here");
+		}
+		File dir = new File(locator.value());
+		return dir.isDirectory()
+				? new Opened(new DirectoryProjectFiles(dir), null, null)
+				: closed("this folder is no longer available");
+	}
+
+	/**
+	 * Return the name of the folder of locator and where it is, to tell
+	 * it apart in lists; null when it cannot be reached.
+	 */
+	public static String[] describe(Context context, Locator locator) {
+		if (locator.kind() == Kind.DIRECTORY) {
+			File dir;
+			File root;
+			try {
+				dir = new File(locator.value()).getCanonicalFile();
+				root = UserFilesProvider.getUserFilesDir(context)
+						.getCanonicalFile();
+			} catch (IOException e) {
+				return null;
+			}
+			StringBuilder location = new StringBuilder(
+					UserFilesProvider.TITLE);
+			for (File parent = dir.getParentFile();
+					parent != null && !parent.equals(root);
+					parent = parent.getParentFile()) {
+				location.insert(UserFilesProvider.TITLE.length(),
+						" / " + parent.getName());
+			}
+			return dir.equals(root)
+					? new String[]{UserFilesProvider.TITLE, ""}
+					: new String[]{dir.getName(), location.toString()};
+		}
+		Uri tree = Uri.parse(locator.value());
+		try {
+			String name = ContentDocumentResolver.forTree(
+					context.getContentResolver(), tree).document(
+					DocumentsContract.getTreeDocumentId(tree)).name();
+			PackageManager manager = context.getPackageManager();
+			ProviderInfo provider = manager.resolveContentProvider(
+					tree.getAuthority(), 0);
+			return new String[]{name, provider != null
+					? provider.loadLabel(manager).toString()
+					: tree.getAuthority()};
+		} catch (IOException | RuntimeException e) {
+			return null;
 		}
 	}
 

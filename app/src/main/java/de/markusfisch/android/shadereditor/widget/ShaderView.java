@@ -9,6 +9,7 @@ import android.view.MotionEvent;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -25,9 +26,12 @@ import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.DatabaseProjectFiles;
+import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectLimits;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter;
 
 public class ShaderView extends GLSurfaceView {
@@ -58,6 +62,13 @@ public class ShaderView extends GLSurfaceView {
 				thread.setDaemon(true);
 				return thread;
 			});
+
+	private static final ProjectPath EMPTY = ProjectPath.parse("empty.glsl")
+			.value();
+	private static final byte[] EMPTY_SHADER = ("precision mediump float;\n" +
+			"void main() {\n" +
+			"\tgl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n" +
+			"}\n").getBytes(StandardCharsets.US_ASCII);
 
 	// The newest shader request that waits to be prepared.
 	private final AtomicReference<Runnable> waiting = new AtomicReference<>();
@@ -130,15 +141,28 @@ public class ShaderView extends GLSurfaceView {
 		// Thumbnails and quality changes from now on are of this shader.
 		int request = engine.request();
 		// Converting reads the textures it names from the database.
-		if (waiting.getAndSet(() -> prepare(request, text, quality, owner,
-				runtimeNanos)) == null) {
-			PREPARER.execute(() -> {
-				var preparation = waiting.getAndSet(null);
-				if (preparation != null) {
-					preparation.run();
-				}
-			});
-		}
+		prepareLater(() -> prepare(request, text, quality, owner,
+				runtimeNanos));
+	}
+
+	// Shows what runs in project at this quality, prepared from the text
+	// the editor has, or an empty picture when nothing runs.
+	public void setProject(@NonNull OpenProject project, float quality) {
+		var owner = new Object();
+		runtimeOwner = owner;
+		int request = engine.request();
+		prepareLater(() -> {
+			var reserved = UniformTable.types();
+			var preparation = project.prepare(reserved);
+			if (preparation == null) {
+				preparation = Preparation.prepare(path -> path.equals(EMPTY)
+						? new ProjectFiles.Content(EMPTY_SHADER, "empty")
+						: null, EMPTY, ProjectLimits.DEFAULT, reserved);
+			}
+			if (engine.setPlan(request, preparation, quality, owner)) {
+				requestRender();
+			}
+		});
 	}
 
 	// The runtime of the shader set last while it is shown, or -1.
@@ -156,6 +180,17 @@ public class ShaderView extends GLSurfaceView {
 	@NonNull
 	public ShaderEngine getEngine() {
 		return engine;
+	}
+
+	private void prepareLater(@NonNull Runnable preparation) {
+		if (waiting.getAndSet(preparation) == null) {
+			PREPARER.execute(() -> {
+				var next = waiting.getAndSet(null);
+				if (next != null) {
+					next.run();
+				}
+			});
+		}
 	}
 
 	private void prepare(

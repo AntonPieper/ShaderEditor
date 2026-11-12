@@ -150,6 +150,17 @@ public final class ShaderEngine {
 				owner, runtimeNanos, reporting));
 	}
 
+	// Any thread. Like setPlan(preparation, quality), for the revision
+	// request() returned and the runtime of owner. Returns false and
+	// drops the plan when a newer revision was requested meanwhile.
+	public boolean setPlan(
+			int request,
+			@NonNull Preparation preparation,
+			float quality,
+			@NonNull Object owner) {
+		return setPlan(request, preparation, quality, AS_PREPARED, owner, 0);
+	}
+
 	// Any thread. The runtime of the plan set with this owner while it is
 	// shown, or -1.
 	public long getRuntimeNanos(@NonNull Object owner) {

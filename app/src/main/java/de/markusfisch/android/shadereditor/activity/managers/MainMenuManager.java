@@ -43,6 +43,14 @@ public class MainMenuManager {
 		void onToggleExtraKeys();
 
 		long getSelectedShaderId();
+
+		boolean isProjectOpen();
+
+		void onShowFiles();
+
+		boolean canRunThisFile();
+
+		void onRunThisFile();
 	}
 
 	public interface NavigationActions {
@@ -94,6 +102,8 @@ public class MainMenuManager {
 			editorActions.onRedo();
 			updateUndoRedoMenu(popupWindow.getContentView());
 		}, false);
+		setClickListener(R.id.project_files, shaderActions::onShowFiles);
+		setClickListener(R.id.run_this_file, shaderActions::onRunThisFile);
 		setClickListener(R.id.add_shader, shaderActions::onAddShader);
 		setClickListener(R.id.save_shader, shaderActions::onSaveShader);
 		setClickListener(R.id.duplicate_shader, shaderActions::onDuplicateShader);
@@ -133,6 +143,11 @@ public class MainMenuManager {
 	private void prepareMenu() {
 		View menuView = popupWindow.getContentView();
 		updateUndoRedoMenu(menuView);
+
+		menuView.findViewById(R.id.project_files).setVisibility(
+				shaderActions.isProjectOpen() ? View.VISIBLE : View.GONE);
+		menuView.findViewById(R.id.run_this_file).setVisibility(
+				shaderActions.canRunThisFile() ? View.VISIBLE : View.GONE);
 
 		long selectedShaderId = shaderActions.getSelectedShaderId();
 		((Button) menuView.findViewById(R.id.update_wallpaper)).setText(

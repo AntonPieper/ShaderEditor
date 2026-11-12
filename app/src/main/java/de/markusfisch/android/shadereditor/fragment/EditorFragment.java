@@ -44,6 +44,8 @@ public class EditorFragment extends Fragment {
 	// that started the activity.
 	@Nullable
 	private String pendingText;
+	@Nullable
+	private UndoRedo.EditHistory pendingHistory;
 
 	@Nullable
 	private ShaderEditor.OnEditPausedListener editPausedListener;
@@ -98,8 +100,9 @@ public class EditorFragment extends Fragment {
 			shaderEditor.setTextHighlighted(restored);
 			pendingText = null;
 		} else if (pendingText != null) {
-			setText(pendingText);
+			setText(pendingText, pendingHistory);
 			pendingText = null;
+			pendingHistory = null;
 		}
 
 		return view;
@@ -255,13 +258,35 @@ public class EditorFragment extends Fragment {
 		return shaderEditor.getCleanText();
 	}
 
+	// The text as it is in the editor, which its undo history refers
+	// to; unlike getText(), trailing white space is kept.
+	public String getRawText() {
+		return shaderEditor.getText() != null
+				? shaderEditor.getText().toString()
+				: "";
+	}
+
 	public void setText(String text) {
+		setText(text, null);
+	}
+
+	// Shows text with history as its undo history, which the caller
+	// keeps for the file it belongs to, or with the cleared history of
+	// database shaders when history is null.
+	public void setText(String text, @Nullable UndoRedo.EditHistory history) {
 		if (shaderEditor == null) {
 			pendingText = text;
+			pendingHistory = history;
 			return;
 		}
 		clearError();
-		undoRedo.clearHistory();
+		undoRedo.detachListener();
+		undoRedo = new UndoRedo(shaderEditor, history != null
+				? history
+				: ShaderEditorApp.editHistory);
+		if (history == null) {
+			undoRedo.clearHistory();
+		}
 		undoRedo.stopListeningForChanges();
 		shaderEditor.setTextHighlighted(text);
 		undoRedo.listenForChanges();

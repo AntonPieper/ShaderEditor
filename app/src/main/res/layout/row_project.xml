@@ -1,0 +1,37 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:gravity="start|center_vertical"
+	android:orientation="horizontal"
+	android:padding="16dp"
+	android:background="@drawable/drawer_item_selector">
+	<ImageView
+		android:id="@+id/project_icon"
+		android:contentDescription="@null"
+		android:src="@drawable/ic_folder"
+		android:layout_marginEnd="32dp"
+		android:layout_width="24dp"
+		android:layout_height="24dp"/>
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical">
+		<TextView
+			android:id="@+id/project_name"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:textColor="@color/drawer_text_unselected"
+			android:textSize="14sp"
+			android:lines="1"
+			android:ellipsize="end"/>
+		<TextView
+			android:id="@+id/project_location"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:textColor="@color/drawer_text_unselected"
+			android:textSize="12sp"
+			android:lines="1"
+			android:ellipsize="start"/>
+	</LinearLayout>
+</LinearLayout>

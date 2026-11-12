@@ -28,6 +28,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.managers.ExtraKeysManager;
 import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationManager;
+import de.markusfisch.android.shadereditor.activity.managers.ProjectManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderViewManager;
@@ -55,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
 	private ShaderListManager shaderListManager;
 	private ShaderViewManager shaderViewManager;
 	private NavigationManager navigationManager;
+	private ProjectManager projectManager;
 	private DataSource dataSource;
 	private boolean isInitialLoad = false;
 
@@ -88,15 +90,25 @@ public class MainActivity extends AppCompatActivity {
 				editorFragment,
 				extraKeysManager,
 				shaderViewManager);
+		var sessions = ProjectManager.sessions(this);
 		shaderListManager = new ShaderListManager(this,
 				findViewById(R.id.shaders),
 				dataSource,
+				getResources().getBoolean(R.bool.project_mode) ? sessions : null,
 				createShaderListListener());
+		projectManager = new ProjectManager(this,
+				editorFragment,
+				shaderViewManager,
+				uiManager,
+				sessions,
+				createProjectListener());
+		projectManager.restoreState(state);
 		shaderManager = new ShaderManager(this,
 				editorFragment,
 				shaderViewManager,
 				shaderListManager,
 				uiManager,
+				projectManager,
 				dataSource,
 				createShaderViewListener());
 
@@ -109,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
 		uiManager.setupToolbar(mainMenuManager::show,
 				v -> this.runShader(),
 				v -> uiManager.toggleCodeVisibility(),
-				v -> editorFragment.showErrors());
+				v -> showErrors());
 
 		// Only load the last shader when no incoming text was opened,
 		// or it would replace that text.
@@ -117,15 +129,28 @@ public class MainActivity extends AppCompatActivity {
 		isInitialLoad = state == null && !openedText;
 
 		editorFragment.setOnEditPausedListener(text -> {
+			if (projectManager.isOpen()) {
+				projectManager.persist();
+			}
 			if (ShaderEditorApp.preferences.doesRunOnChange()) {
 				if (editorFragment.hasErrors()) {
 					editorFragment.clearError();
 					editorFragment.highlightErrors();
 				}
-				shaderViewManager.setShader(text, shaderManager.getQuality());
+				if (projectManager.isOpen()) {
+					projectManager.run();
+				} else {
+					shaderViewManager.setShader(text, shaderManager.getQuality());
+				}
 			}
 		});
-		editorFragment.setOnTextModifiedListener(() -> shaderManager.setModified(true));
+		editorFragment.setOnTextModifiedListener(() -> {
+			if (projectManager.isOpen()) {
+				projectManager.onTextModified();
+			} else {
+				shaderManager.setModified(true);
+			}
+		});
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
 	}
 
@@ -141,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onSaveInstanceState(@NonNull Bundle state) {
 		shaderManager.saveState(state);
+		projectManager.saveState(state);
 		state.putBoolean(CODE_VISIBLE, editorFragment.isCodeVisible());
 		state.putCharSequence(TOOLBAR_TITLE, uiManager.getToolbarTitle());
 		super.onSaveInstanceState(state);
@@ -152,6 +178,7 @@ public class MainActivity extends AppCompatActivity {
 		uiManager.updateUiToPreferences();
 		shaderListManager.loadShadersAsync();
 		shaderViewManager.onResume();
+		projectManager.refresh();
 	}
 
 	@Override
@@ -159,6 +186,7 @@ public class MainActivity extends AppCompatActivity {
 		if (ShaderEditorApp.preferences.autoSave()) {
 			shaderManager.saveShader();
 		}
+		projectManager.persist();
 		ShaderEditorApp.preferences.setPendingCrashShaderId(0);
 		super.onPause();
 		shaderViewManager.onPause();
@@ -168,6 +196,9 @@ public class MainActivity extends AppCompatActivity {
 	protected void onDestroy() {
 		if (shaderListManager != null) {
 			shaderListManager.destroy();
+		}
+		if (projectManager != null) {
+			projectManager.destroy();
 		}
 		super.onDestroy();
 	}
@@ -218,7 +249,29 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onAllShadersDeleted() {
 				isInitialLoad = false;
-				shaderManager.selectShader(0);
+				if (!projectManager.isOpen()) {
+					shaderManager.selectShader(0);
+				}
+			}
+
+			@Override
+			public void onOpenFolder() {
+				isInitialLoad = false;
+				uiManager.closeDrawers();
+				projectManager.openFolder();
+			}
+
+			@Override
+			public void onProjectSelected(@NonNull String id) {
+				isInitialLoad = false;
+				uiManager.closeDrawers();
+				projectManager.open(id);
+			}
+
+			@Override
+			public void onProjectRemoved(@NonNull String id) {
+				projectManager.remove(id, () -> shaderManager.selectShader(
+						ShaderEditorApp.preferences.getLastOpenedShader()));
 			}
 
 			@Override
@@ -267,21 +320,28 @@ public class MainActivity extends AppCompatActivity {
 			public void onFramesPerSecond(int fps) {
 				if (fps > 0) {
 					ShaderEditorApp.preferences.setPendingCrashShaderId(0);
-					uiManager.setToolbarSubtitle(fps + " fps");
+					runOnUiThread(() -> uiManager.setToolbarSubtitle(
+							projectManager.isOpen()
+									? projectManager.getSubtitle(fps)
+									: fps + " fps"));
 				}
 			}
 
 			@Override
 			public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
 				runOnUiThread(() -> {
-					editorFragment.setErrors(infoLog);
+					// A project's diagnostics are marked in their files.
+					editorFragment.setErrors(projectManager.isOpen()
+							? projectManager.setDiagnostics(infoLog)
+							: infoLog);
+					boolean hasErrors = ProjectDiagnostic.anyError(infoLog);
 					showErrors.setVisibility(infoLog.isEmpty()
 							? View.GONE
 							: View.VISIBLE);
-					showErrors.setIconResource(editorFragment.hasErrors()
+					showErrors.setIconResource(hasErrors
 							? R.drawable.ic_error
 							: R.drawable.ic_warning);
-					if (editorFragment.hasErrors()) {
+					if (hasErrors) {
 						shownWarnings = List.of();
 						for (var diagnostic : infoLog) {
 							if (diagnostic.severity() ==
@@ -302,7 +362,11 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onQualityChanged(float quality) {
-				shaderManager.setQuality(quality);
+				if (projectManager.isOpen()) {
+					projectManager.setQuality(quality);
+				} else {
+					shaderManager.setQuality(quality);
+				}
 			}
 
 			private void showError(String error) {
@@ -310,7 +374,7 @@ public class MainActivity extends AppCompatActivity {
 								error,
 								Snackbar.LENGTH_LONG)
 						.setAction(R.string.details,
-								v -> editorFragment.showErrors());
+								v -> showErrors());
 				moveSnackBarOverActionBar(snackbar.getView());
 				snackbar.show();
 			}
@@ -341,6 +405,30 @@ public class MainActivity extends AppCompatActivity {
 				}
 				params.topMargin = topInset;
 				snackbarView.setLayoutParams(params);
+			}
+		};
+	}
+
+	@NonNull
+	@Contract(" -> new")
+	private ProjectManager.Listener createProjectListener() {
+		return new ProjectManager.Listener() {
+			@Override
+			public void onProjectOpening() {
+				if (shaderManager.isModified()) {
+					shaderManager.saveShader();
+				}
+			}
+
+			@Override
+			public void onProjectOpened() {
+				shaderManager.closeShader();
+			}
+
+			@Override
+			public void onProjectsChanged() {
+				shaderListManager.setSelectedProjectId(projectManager.getId());
+				shaderListManager.loadShadersAsync();
 			}
 		};
 	}
@@ -439,6 +527,26 @@ public class MainActivity extends AppCompatActivity {
 			public long getSelectedShaderId() {
 				return shaderManager.getSelectedShaderId();
 			}
+
+			@Override
+			public boolean isProjectOpen() {
+				return projectManager.isOpen();
+			}
+
+			@Override
+			public void onShowFiles() {
+				projectManager.showFiles(null);
+			}
+
+			@Override
+			public boolean canRunThisFile() {
+				return projectManager.canRunThisFile();
+			}
+
+			@Override
+			public void onRunThisFile() {
+				projectManager.runThisFile();
+			}
 		};
 	}
 
@@ -506,7 +614,28 @@ public class MainActivity extends AppCompatActivity {
 		Toast.makeText(this, messageId, Toast.LENGTH_SHORT).show();
 	}
 
+	private void showErrors() {
+		if (projectManager.isOpen()) {
+			projectManager.showErrors();
+		} else {
+			editorFragment.showErrors();
+		}
+	}
+
 	private void runShader() {
+		if (projectManager.isOpen()) {
+			if (ShaderEditorApp.preferences.doesSaveOnRun()) {
+				projectManager.save(false);
+			}
+			if (ShaderEditorApp.preferences.doesRunInBackground()) {
+				projectManager.run();
+			} else {
+				projectManager.preview(id -> navigationManager.showProjectPreview(
+						id, projectManager.getQuality(),
+						shaderManager.previewShaderLauncher));
+			}
+			return;
+		}
 		String src = editorFragment.getText();
 		editorFragment.clearError();
 		if (ShaderEditorApp.preferences.doesSaveOnRun()) {

@@ -40,6 +40,7 @@ public class ShaderManager {
 	private final ShaderViewManager shaderViewManager;
 	private final ShaderListManager shaderListManager;
 	private final UIManager uiManager;
+	private final ProjectManager projectManager;
 	private final DataSource dataSource;
 
 	private long selectedShaderId = NO_SHADER;
@@ -51,6 +52,7 @@ public class ShaderManager {
 			ShaderViewManager shaderViewManager,
 			ShaderListManager shaderListManager,
 			UIManager uiManager,
+			ProjectManager projectManager,
 			DataSource dataSource,
 			ShaderViewManager.Listener shaderViewManagerListener) {
 		this.activity = activity;
@@ -58,6 +60,7 @@ public class ShaderManager {
 		this.shaderViewManager = shaderViewManager;
 		this.shaderListManager = shaderListManager;
 		this.uiManager = uiManager;
+		this.projectManager = projectManager;
 		this.dataSource = dataSource;
 
 		addUniformLauncher = activity.registerForActivityResult(
@@ -174,7 +177,10 @@ public class ShaderManager {
 	}
 
 	public void saveShader(boolean force) {
-		if (!force && !isModified()) {
+		if (projectManager.isOpen()) {
+			projectManager.save(force);
+			return;
+		} else if (!force && !isModified()) {
 			return;
 		}
 
@@ -283,6 +289,14 @@ public class ShaderManager {
 				shader.quality());
 	}
 
+	// When a project replaced the shader shown.
+	public void closeShader() {
+		selectedShaderId = NO_SHADER;
+		shaderListManager.setSelectedShaderId(NO_SHADER);
+		updatePendingCrashShaderId();
+		setModified(false);
+	}
+
 	public void deleteShader(long shaderId) {
 		dataSource.shader.removeShader(shaderId);
 		if (shaderId == selectedShaderId) {
@@ -295,6 +309,7 @@ public class ShaderManager {
 			@NonNull String text,
 			float quality,
 			@NonNull String toolbarTitle) {
+		projectManager.close();
 		selectedShaderId = shaderId;
 		this.quality = quality;
 		editorFragment.setText(text);

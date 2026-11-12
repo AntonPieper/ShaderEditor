@@ -9,8 +9,12 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.activity.managers.ProjectManager;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
+import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.SafProjects;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
 public class PreviewActivity extends AppCompatActivity {
@@ -47,6 +51,8 @@ public class PreviewActivity extends AppCompatActivity {
 	}
 
 	public static final String FRAGMENT_SHADER = "fragment_shader";
+	// The session id of a project, whose drafts are in its journal.
+	public static final String PROJECT_ID = "project_id";
 	public static final String QUALITY = "quality";
 	public static final RenderStatus renderStatus = new RenderStatus();
 
@@ -141,11 +147,37 @@ public class PreviewActivity extends AppCompatActivity {
 		String fragmentShader = intent != null
 				? intent.getStringExtra(FRAGMENT_SHADER)
 				: null;
-		if (shaderView == null || fragmentShader == null) {
+		String projectId = intent != null
+				? intent.getStringExtra(PROJECT_ID)
+				: null;
+		if (shaderView == null || (fragmentShader == null &&
+				(projectId == null ||
+						!getResources().getBoolean(R.bool.project_mode)))) {
 			return false;
 		}
 
-		shaderView.setShader(fragmentShader, intent.getFloatExtra(QUALITY, 1f));
+		float quality = intent.getFloatExtra(QUALITY, 1f);
+		if (fragmentShader != null) {
+			shaderView.setShader(fragmentShader, quality);
+		} else {
+			showProject(shaderView, projectId, quality);
+		}
 		return true;
+	}
+
+	private void showProject(ShaderView view, String id, float quality) {
+		new Thread(() -> {
+			var sessions = ProjectManager.sessions(this);
+			var locator = sessions.locator(id);
+			var opened = locator != null ? SafProjects.open(this, locator) : null;
+			var project = opened != null && opened.files() != null
+					? OpenProject.open(id, opened.files(), sessions)
+					: null;
+			if (project != null) {
+				view.setProject(project, quality);
+			} else {
+				runOnUiThread(this::finish);
+			}
+		}).start();
 	}
 }

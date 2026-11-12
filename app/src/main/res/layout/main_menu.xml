@@ -43,6 +43,24 @@
 		</LinearLayout>
 
 		<Button
+			android:id="@+id/project_files"
+			style="@style/MenuItem"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/menu_item_height"
+			android:text="@string/files"
+			android:visibility="gone"
+			app:icon="@drawable/ic_folder" />
+
+		<Button
+			android:id="@+id/run_this_file"
+			style="@style/MenuItem"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/menu_item_height"
+			android:text="@string/run_this_file"
+			android:visibility="gone"
+			app:icon="@drawable/ic_play_arrow" />
+
+		<Button
 			android:id="@+id/add_shader"
 			style="@style/MenuItem"
 			android:layout_width="match_parent"

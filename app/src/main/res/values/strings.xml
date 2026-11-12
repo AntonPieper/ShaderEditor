@@ -302,4 +302,23 @@
 	<string name="successfully_exported">Exported to Downloads</string>
 	<string name="successfully_imported">Database imported</string>
 	<string name="user_files_summary">Deleted when Shader Editor is uninstalled</string>
+	<string name="cannot_open_folder">Cannot open the folder: %1$s</string>
+	<string name="open_folder">Open folder</string>
+	<string name="remove">Remove</string>
+	<string name="remove_recent_project">Remove “%1$s” from this list? Its files stay where they are; unsaved changes in it are lost.</string>
+	<string name="saved">Saved</string>
+	<string name="not_saved">Not saved</string>
+	<string name="retry">Retry</string>
+	<string name="files">Files</string>
+	<string name="empty_folder">Nothing in this folder</string>
+	<string name="run_this_file">Run this file</string>
+	<string name="running">Running</string>
+	<string name="preview_of">Preview: %1$s</string>
+	<string name="open_shader_then_run">Open a shader, then Run</string>
+	<string name="error_count">Errors: %1$d</string>
+	<string name="conflict">It has unsaved changes here and was changed outside ShaderEditor: %1$s.</string>
+	<string name="reload_from_file">Reload from file</string>
+	<string name="keep_my_edits">Keep my edits</string>
+	<string name="save_a_copy">Save a copy</string>
+	<string name="saved_as">Saved as %1$s</string>
 </resources>

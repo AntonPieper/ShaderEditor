@@ -12,6 +12,7 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
+import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
@@ -61,6 +62,11 @@ public class ShaderViewManager {
 	public void setShader(@NonNull String text, float quality) {
 		setQuality(quality);
 		shaderView.setShader(text, quality);
+	}
+
+	public void setProject(@NonNull OpenProject project, float quality) {
+		setQuality(quality);
+		shaderView.setProject(project, quality);
 	}
 
 	public void setVisibility(boolean visible) {

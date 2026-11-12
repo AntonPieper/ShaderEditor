@@ -44,9 +44,20 @@ public class NavigationManager {
 
 	public void showPreview(@NonNull String fragmentShader, float quality,
 			ActivityResultLauncher<Intent> launcher) {
-		Intent intent = new Intent(activity, PreviewActivity.class);
+		showPreview(new Intent(activity, PreviewActivity.class).putExtra(
+				PreviewActivity.FRAGMENT_SHADER, fragmentShader), quality, launcher);
+	}
+
+	// Shows what runs in a project, which the preview opens by its id.
+	public void showProjectPreview(@NonNull String projectId, float quality,
+			ActivityResultLauncher<Intent> launcher) {
+		showPreview(new Intent(activity, PreviewActivity.class).putExtra(
+				PreviewActivity.PROJECT_ID, projectId), quality, launcher);
+	}
+
+	private void showPreview(@NonNull Intent intent, float quality,
+			ActivityResultLauncher<Intent> launcher) {
 		intent.putExtra(PreviewActivity.QUALITY, quality);
-		intent.putExtra(PreviewActivity.FRAGMENT_SHADER, fragmentShader);
 
 		if (ShaderEditorApp.preferences.doesRunInNewTask() &&
 				Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
