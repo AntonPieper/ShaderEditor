@@ -254,13 +254,34 @@ public class ShaderManager {
 		}
 
 		Uri uri = intent.getData();
-		if (uri == null) {
+		String text;
+		if (uri != null) {
+			text = readText(uri);
+		} else {
+			// Text shared from another app comes as an extra.
+			text = intent.getStringExtra(Intent.EXTRA_TEXT);
+		}
+		if (text == null) {
 			return false;
 		}
 
+		ShaderProjectSession projectSession =
+				new LooseShaderFileProjectSource(uri, text, 1f)
+						.openSession();
+		PreviewActivity.renderStatus.reset();
+		intent.setAction(null);
+		applyProjectSession(NO_SHADER,
+				projectSession,
+				projectSession.getProject().getTitle());
+		setModified(true);
+		return true;
+	}
+
+	@Nullable
+	private String readText(@NonNull Uri uri) {
 		try (InputStream in = activity.getContentResolver().openInputStream(uri)) {
 			if (in == null) {
-				return false;
+				return null;
 			}
 			byte[] buffer = new byte[4096];
 			int len;
@@ -268,20 +289,11 @@ public class ShaderManager {
 			while ((len = in.read(buffer)) != -1) {
 				sb.append(new String(buffer, 0, len, StandardCharsets.UTF_8));
 			}
-			ShaderProjectSession projectSession =
-					new LooseShaderFileProjectSource(uri, sb.toString(), 1f)
-							.openSession();
-			PreviewActivity.renderStatus.reset();
-			intent.setAction(null);
-			applyProjectSession(NO_SHADER,
-					projectSession,
-					projectSession.getProject().getTitle());
-			setModified(true);
-			return true;
+			return sb.toString();
 		} catch (IOException e) {
 			Toast.makeText(activity, R.string.unsuitable_text,
 					Toast.LENGTH_SHORT).show();
-			return false;
+			return null;
 		}
 	}
 
