@@ -59,17 +59,22 @@ public class PlanSupportTest {
 	}
 
 	@Test
-	public void refusesTargetsOtherThanTheDefault() {
-		assertEquals(List.of(error("se target scale, format needs a newer " +
+	public void acceptsTargetsOfAnySizeAndPresent() {
+		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+				"#pragma se target scale=0.5 present=linear",
+				MAIN))).isEmpty());
+		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+				MAIN,
+				"#pragma se target size=64x64"))).isEmpty());
+	}
+
+	@Test
+	public void refusesFormatsOtherThanRgba8() {
+		assertEquals(List.of(error("se target format needs a newer " +
 						"version of ShaderEditor", 1)),
 				PlanSupport.refusals(plan("main.glsl", lines(
 						"#pragma se target scale=0.5 format=rgba16f",
 						MAIN))));
-		assertEquals(List.of(error("se target size, present needs a newer " +
-						"version of ShaderEditor", 2)),
-				PlanSupport.refusals(plan("main.glsl", lines(
-						MAIN,
-						"#pragma se target size=64x64 present=linear"))));
 	}
 
 	@Test

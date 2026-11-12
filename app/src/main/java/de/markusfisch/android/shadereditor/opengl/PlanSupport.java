@@ -5,7 +5,6 @@ import androidx.annotation.NonNull;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.markusfisch.android.shadereditor.project.HostDirective.Filter;
 import de.markusfisch.android.shadereditor.project.HostDirective.Format;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -13,8 +12,8 @@ import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
 
 // This runtime draws one pass that reads images, engine samplers and its
-// own previous frame into the default target. Anything else is refused as
-// a whole, with one diagnostic per directive that asks for it.
+// own previous frame into an RGBA8 target of any size. Anything else is
+// refused as a whole, with one diagnostic per directive that asks for it.
 final class PlanSupport {
 	private static final String NEWER = " a newer version of ShaderEditor";
 
@@ -35,21 +34,9 @@ final class PlanSupport {
 				}
 			}
 			var target = pass.target();
-			var options = new ArrayList<String>();
-			if (target.isFixed()) {
-				options.add("size");
-			} else if (target.scale() != 1) {
-				options.add("scale");
-			}
 			if (target.format() != Format.RGBA8) {
-				options.add("format");
-			}
-			if (target.present() != Filter.NEAREST) {
-				options.add("present");
-			}
-			if (!options.isEmpty()) {
-				errors.add(error("se target " + String.join(", ", options) +
-						" needs" + NEWER, target.file(), target.line()));
+				errors.add(error("se target format needs" + NEWER,
+						target.file(), target.line()));
 			}
 			if (pass.initial() != null) {
 				errors.add(error("se target initial needs" + NEWER,
