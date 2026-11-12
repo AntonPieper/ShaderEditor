@@ -443,6 +443,16 @@ public class LegacyShaderConverterTest {
 						"float time_texture;")).shader());
 	}
 
+	// The old renderer removed it before it compiled the text.
+	@Test
+	public void nonAsciiCharactersAreRemovedAsBefore() {
+		Result result = convert(lines("// caf\u00e9",
+				"float v = 1\uff0b2;"));
+		assertEquals(lines("// caf", "float v = 12;"), result.shader());
+		assertEquals(List.of(1, 2), result.lines());
+		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
+	}
+
 	// Only a sampler2D read the previous frame.
 	@Test
 	public void backbufferOfAnotherSamplerTypeGetsNoInput() {

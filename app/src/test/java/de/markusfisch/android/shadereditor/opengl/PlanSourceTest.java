@@ -4,6 +4,7 @@ import static de.markusfisch.android.shadereditor.opengl.TestProjects.lines;
 import static de.markusfisch.android.shadereditor.opengl.TestProjects.path;
 import static de.markusfisch.android.shadereditor.opengl.TestProjects.plan;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -150,12 +151,36 @@ public class PlanSourceTest {
 	}
 
 	@Test
-	public void removesNonAsciiCharactersButKeepsTheLines() {
+	public void blanksNonAsciiCharactersOfCommentsButKeepsTheLines() {
 		var source = source(2, plan("main.glsl", lines(
-				"// été",
+				"// \u00e9t\u00e9",
 				"void main() {}")));
-		assertEquals(lines("#define SHADER_EDITOR 1", "// t", "void main() {}"),
+		assertEquals(lines("#define SHADER_EDITOR 1", "//  t ", "void main() {}"),
 				source.fragment());
+	}
+
+	// The comment names a camera, but the shader reads none.
+	@Test
+	public void commentsRequireNoExtension() {
+		var source = source(2, plan("main.glsl", lines(
+				"// would read a samplerExternalOES here",
+				"/* uniform samplerExternalOES cameraBack; */",
+				"void main() {}")));
+		assertFalse(source.fragment(), source.fragment().contains("#extension"));
+	}
+
+	@Test
+	public void versionInACommentIsNoVersion() {
+		var errors = new ArrayList<ProjectDiagnostic>();
+		var plan = plan("main.glsl", lines(
+				"/*",
+				"#version 300 es",
+				"*/",
+				"void main() {}"));
+		var source = PlanSource.of(plan.programs().get(0), 2, errors);
+		assertEquals(List.of(), errors);
+		assertNotNull(source);
+		assertEquals(FullScreenQuad.VERTEX_SHADER, source.vertex());
 	}
 
 	private static PlanSource source(int glesVersion, RenderPlan plan) {

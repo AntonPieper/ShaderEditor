@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.project.PreprocessorScan;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.SourceLocation;
@@ -22,8 +23,7 @@ record PlanSource(
 		@NonNull SourceMap sourceMap,
 		float fTimeMax) {
 	private static final float DEFAULT_FTIME_MAX = 3f;
-	private static final Pattern VERSION = Pattern.compile(
-			"^[ \\t]*#[ \\t]*version[ \\t]+(\\d{1,9})", Pattern.MULTILINE);
+	private static final Pattern VERSION = Pattern.compile("\\d{1,9}");
 	private static final Pattern FTIME = Pattern.compile(
 			"^#define[ \\t]+FTIME_PERIOD[ \\t]+([0-9.]+)[ \\t]*$",
 			Pattern.MULTILINE);
@@ -37,7 +37,9 @@ record PlanSource(
 			int glesVersion,
 			@NonNull List<ProjectDiagnostic> errors) {
 		String text = program.text();
-		int version = languageVersion(text);
+		// What the compiler reads: comments mean nothing.
+		var scan = PreprocessorScan.scan(program.lines(), null);
+		int version = languageVersion(scan);
 		if (version >= 300 && glesVersion < 3) {
 			SourceLocation at = program.sourceMap().locate(program.versionLine());
 			errors.add(new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR,
@@ -54,7 +56,7 @@ record PlanSource(
 		}
 		var generated = new ArrayList<String>();
 		generated.add("#define SHADER_EDITOR 1");
-		if (EXTERNAL_SAMPLER.matcher(text).find()) {
+		if (EXTERNAL_SAMPLER.matcher(String.join("\n", scan.code())).find()) {
 			generated.add(version >= 300
 					? "#extension GL_OES_EGL_image_external_essl3 : require"
 					: "#extension GL_OES_EGL_image_external : require");
@@ -72,9 +74,16 @@ record PlanSource(
 				fTimeMax);
 	}
 
-	private static int languageVersion(@NonNull String text) {
-		Matcher matcher = VERSION.matcher(text);
-		return matcher.find() ? Integer.parseInt(matcher.group(1)) : 100;
+	private static int languageVersion(@NonNull PreprocessorScan scan) {
+		for (var directive : scan.directives()) {
+			if (directive.kind() == PreprocessorScan.Kind.VERSION) {
+				Matcher matcher = VERSION.matcher(directive.argument());
+				return matcher.lookingAt()
+						? Integer.parseInt(matcher.group())
+						: 100;
+			}
+		}
+		return 100;
 	}
 
 	// The default without a period, NaN when it is not a number. A period
@@ -110,10 +119,11 @@ record PlanSource(
 				at != null ? at.line() : 0);
 	}
 
-	// Text pasted from other apps may carry non-ASCII characters that
-	// crash some shader compilers. Line breaks stay, so lines still map.
+	// Comments may carry non-ASCII characters, which crash some shader
+	// compilers; preparation refuses them in code, where only whitespace
+	// becomes a space. Line breaks stay, so lines still map.
 	@NonNull
 	private static String removeNonAscii(@NonNull String text) {
-		return text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", "");
+		return text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", " ");
 	}
 }
