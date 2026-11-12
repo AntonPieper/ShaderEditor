@@ -108,6 +108,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 			warnings.addAll(linked.warnings);
 			bindings.add(linked.bindings);
 		}
+		checkInitial(shader.preparation().plan(), pass, history, warnings);
 		var open = PlanBindings.openCamera(bindings);
 		camera = open != null
 				? new CameraSource.Binding(open, device.createExternalTexture())
@@ -119,6 +120,26 @@ final class PlanRuntime implements ShaderSwap.Build {
 						" reads black, because only one camera can be open " +
 						"and the running shader reads " + open));
 			}
+		}
+	}
+
+	// Initial content that nothing reads has no effect. Preparation warns
+	// when the text cannot read the previous frame; whether a backbuffer
+	// in it is used is only known now.
+	static void checkInitial(
+			@NonNull RenderPlan plan,
+			@NonNull RenderPlan.Pass pass,
+			boolean history,
+			@NonNull List<ProjectDiagnostic> warnings) {
+		var target = pass.target();
+		if (pass.initial() == null || history) {
+			return;
+		}
+		var warning = Preparation.initialWithoutEffect(
+				plan.programs().get(pass.program()).file(), target.file(),
+				target.line());
+		if (!warnings.contains(warning)) {
+			warnings.add(warning);
 		}
 	}
 

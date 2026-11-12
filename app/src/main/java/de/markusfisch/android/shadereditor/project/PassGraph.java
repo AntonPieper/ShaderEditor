@@ -208,15 +208,12 @@ final class PassGraph {
 				}
 			}
 		}
+		// With a backbuffer in the text, linking decides.
 		for (Node node : nodes) {
 			if (node.hasInitial() && !node.history &&
 					!readAtReset.contains(node) && !mentionsBackbuffer(node)) {
 				HostDirective.Target target = node.directives.target();
-				diagnostics.add(new ProjectDiagnostic(
-						ProjectDiagnostic.Severity.WARNING,
-						"initial has no effect because nothing reads the " +
-								"previous frame of " + node.file + ", read " +
-								"it with frame=previous or remove initial",
+				diagnostics.add(Preparation.initialWithoutEffect(node.file,
 						target.file(), target.line()));
 			}
 		}
