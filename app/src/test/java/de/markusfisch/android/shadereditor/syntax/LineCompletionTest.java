@@ -57,8 +57,42 @@ public class LineCompletionTest {
 		Outline outline = Outline.of(GlslLexer.lex(text), text);
 		assertEquals(new GlslCompletion.Completions(List.of("time"), 3),
 				GlslCompletion.atColumn(LexedLine.of(text, false,
-						GlslLexer.TEXT_START, new LineTokens()), 9, 0, outline,
-						EXTRA));
+						GlslLexer.TEXT_START, new LineTokens()), 9, 0,
+						GlslCompletion.Names.of(outline), true, EXTRA));
+	}
+
+	@Test
+	public void anOlderOutlineLeavesOutNoDeclaration() {
+		String text = "float target;";
+		GlslCompletion.Names names = GlslCompletion.Names.of(
+				Outline.of(GlslLexer.lex(text), text));
+		// The declaration started at 6, where "ta" starts now.
+		LexedLine line = LexedLine.of("      ta", false,
+				GlslLexer.TEXT_START, new LineTokens());
+		assertEquals(List.of("target", "tan", "tanh"),
+				GlslCompletion.atColumn(line, 8, 0, names, false,
+						List.of()).words());
+		assertEquals(List.of("tan", "tanh"),
+				GlslCompletion.atColumn(line, 8, 0, names, true,
+						List.of()).words());
+	}
+
+	@Test
+	public void offersAtMostFiftyWords() {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 1000; ++i) {
+			sb.append("float v").append(i).append(";\n");
+		}
+		String text = sb.toString();
+		GlslCompletion.Names names = GlslCompletion.Names.of(
+				Outline.of(GlslLexer.lex(text), text));
+		List<String> words = GlslCompletion.atColumn(LexedLine.of("v", false,
+				GlslLexer.TEXT_START, new LineTokens()), 1, 0, names, true,
+				List.of()).words();
+		assertEquals(50, words.size());
+		assertEquals("v0", words.get(0));
+		assertEquals("v1", words.get(1));
+		assertEquals("v10", words.get(2));
 	}
 
 	@Test
@@ -72,13 +106,15 @@ public class LineCompletionTest {
 				line.state() & GlslLexer.BLOCK_COMMENT);
 		assertEquals(GlslCompletion.atOffset(tokens, text, 12, outline,
 						EXTRA),
-				GlslCompletion.atColumn(line, 7, 5, outline, EXTRA));
+				GlslCompletion.atColumn(line, 7, 5,
+						GlslCompletion.Names.of(outline), true, EXTRA));
 	}
 
 	private static void assertEveryOffset(String name, String source) {
 		String text = source.replace("\r\n", "\n").replace('\r', '\n');
 		Tokens tokens = GlslLexer.lex(text);
 		Outline outline = Outline.of(tokens, text);
+		GlslCompletion.Names names = GlslCompletion.Names.of(outline);
 		String[] lines = text.split("\n", -1);
 		LineTokens lineTokens = new LineTokens();
 		int state = GlslLexer.TEXT_START;
@@ -94,7 +130,7 @@ public class LineCompletionTest {
 						GlslCompletion.atOffset(tokens, text, offset, outline,
 								EXTRA),
 						GlslCompletion.atColumn(lexed, column, lineStart,
-								outline, EXTRA));
+								names, true, EXTRA));
 			}
 			state = lexed.endState();
 			lineStart += line.length() + 1;

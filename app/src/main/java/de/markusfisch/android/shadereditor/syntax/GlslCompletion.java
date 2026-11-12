@@ -16,6 +16,9 @@ public final class GlslCompletion {
 	public static final List<String> KEYS = Collections.unmodifiableList(
 			Arrays.asList("{", "}", "(", ")", "[", "]"));
 
+	/** The most words {@link #atColumn} offers. */
+	public static final int MAX_WORDS = 50;
+
 	/**
 	 * Words to offer and how many characters of the word at the cursor
 	 * each of them repeats: the position the insertion starts at.
@@ -53,15 +56,18 @@ public final class GlslCompletion {
 
 	/**
 	 * What {@link #atOffset} gives for the same cursor, from the cursor's
-	 * line alone. The outline may be of an older text; its declarations
-	 * then complete what they declared then.
+	 * line alone, but at most {@link #MAX_WORDS} words. The names may be
+	 * of an older text; its declarations then complete what they
+	 * declared then, the one being typed included.
 	 *
 	 * @param line      the cursor's line as it was tokenized
 	 * @param column    the cursor's offset in line
 	 * @param lineStart the offset of the line in the text
+	 * @param current   whether names are of the current text
 	 */
 	public static Completions atColumn(LexedLine line, int column,
-			int lineStart, Outline outline, List<String> extraWords) {
+			int lineStart, Names names, boolean current,
+			List<String> extraWords) {
 		int state = line.state();
 		boolean continued = (state & (GlslLexer.BLOCK_COMMENT |
 				GlslLexer.LINE_COMMENT)) != 0;
@@ -89,8 +95,9 @@ public final class GlslCompletion {
 				return IN_COMMENT;
 			}
 		}
-		return of(text.substring(start, column), line.inDirective(index),
-				outline, lineStart + start, extraWords);
+		String prefix = text.substring(start, column);
+		return of(prefix, names.words(prefix, line.inDirective(index),
+				current ? lineStart + start : -1, extraWords));
 	}
 
 	/**
@@ -155,12 +162,106 @@ public final class GlslCompletion {
 
 	private static Completions of(String prefix, boolean inDirective,
 			Outline outline, int wordStart, List<String> extraWords) {
-		List<String> words = words(prefix, inDirective, outline, wordStart,
-				extraWords);
+		return of(prefix, words(prefix, inDirective, outline, wordStart,
+				extraWords));
+	}
+
+	private static Completions of(String prefix, List<String> words) {
 		if (words.isEmpty() ||
 				(words.size() == 1 && words.get(0).equals(prefix))) {
 			return NO_WORD;
 		}
 		return new Completions(words, prefix.length());
+	}
+
+	/**
+	 * The names an outline declares, sorted, for completing them without
+	 * looking at every declaration. Immutable; made where the outline is.
+	 */
+	public static final class Names {
+		private final Outline outline;
+		// Each name once, sorted, and how many declarations have it.
+		private final String[] names;
+		private final int[] counts;
+
+		private Names(Outline outline, String[] names, int[] counts) {
+			this.outline = outline;
+			this.names = names;
+			this.counts = counts;
+		}
+
+		public static Names of(Outline outline) {
+			List<Outline.Declaration> declarations = outline.declarations();
+			String[] names = new String[declarations.size()];
+			for (int i = 0; i < names.length; ++i) {
+				names[i] = declarations.get(i).name();
+			}
+			Arrays.sort(names);
+			int[] counts = new int[names.length];
+			int size = 0;
+			for (String name : names) {
+				if (size > 0 && names[size - 1].equals(name)) {
+					++counts[size - 1];
+				} else {
+					names[size] = name;
+					counts[size++] = 1;
+				}
+			}
+			return new Names(outline, Arrays.copyOf(names, size),
+					Arrays.copyOf(counts, size));
+		}
+
+		// Returns what words returns, but at most MAX_WORDS of them.
+		private List<String> words(String prefix, boolean inDirective,
+				int wordStart, List<String> extraWords) {
+			if (prefix.isEmpty()) {
+				return new ArrayList<>();
+			}
+			Set<String> words = new LinkedHashSet<>();
+			if (inDirective) {
+				add(words, GlslWords.matchingDirectives(prefix), prefix);
+			}
+			String typed = wordStart < 0 ? null : declaredAt(wordStart);
+			int i = Arrays.binarySearch(names, prefix);
+			for (i = i < 0 ? -i - 1 : i; i < names.length &&
+					words.size() < MAX_WORDS &&
+					names[i].startsWith(prefix); ++i) {
+				if (counts[i] > 1 || !names[i].equals(typed)) {
+					words.add(names[i]);
+				}
+			}
+			add(words, GlslWords.matching(prefix), prefix);
+			add(words, extraWords, prefix);
+			return new ArrayList<>(words);
+		}
+
+		// Returns the name declared at start, or null.
+		private String declaredAt(int start) {
+			List<Outline.Declaration> declarations = outline.declarations();
+			int low = 0;
+			int high = declarations.size() - 1;
+			while (low <= high) {
+				int mid = (low + high) >>> 1;
+				Outline.Declaration declaration = declarations.get(mid);
+				if (declaration.start() < start) {
+					low = mid + 1;
+				} else if (declaration.start() > start) {
+					high = mid - 1;
+				} else {
+					return declaration.name();
+				}
+			}
+			return null;
+		}
+
+		private static void add(Set<String> words, List<String> more,
+				String prefix) {
+			for (int i = 0, n = more.size(); i < n &&
+					words.size() < MAX_WORDS; ++i) {
+				if (more.get(i).startsWith(prefix)) {
+					words.add(more.get(i));
+				}
+			}
+		}
 	}
 }

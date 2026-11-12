@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
 import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
@@ -20,11 +21,12 @@ public final class Analysis {
 			Pattern.MULTILINE);
 	private static final Pattern ENDIF = Pattern.compile("(#endif)\\b");
 	/** The analysis of the empty text, for no revision. */
-	public static final Analysis NONE = of(Text.EMPTY, -1);
+	public static final Analysis NONE = of(Text.EMPTY, -1, null);
 
 	private final int revision;
 	private final Tokens tokens;
 	private final Outline outline;
+	private final GlslCompletion.Names names;
 	private final Set<String> typeNames;
 	private final int uniformLineEnd;
 	private final int endifEnd;
@@ -34,13 +36,18 @@ public final class Analysis {
 		this.revision = revision;
 		this.tokens = tokens;
 		this.outline = outline;
+		this.names = GlslCompletion.Names.of(outline);
 		this.typeNames = typeNames;
 		this.uniformLineEnd = uniformLineEnd;
 		this.endifEnd = endifEnd;
 	}
 
-	/** Return the analysis of text, which is the document at revision. */
-	public static Analysis of(Text text, int revision) {
+	/**
+	 * Return the analysis of text, which is the document at revision.
+	 * It shares the set of type names of previous, the analysis before
+	 * or null, if the names are the same.
+	 */
+	public static Analysis of(Text text, int revision, Analysis previous) {
 		String string = text.toString();
 		Tokens tokens = GlslLexer.lex(string);
 		Outline outline = Outline.of(tokens, string);
@@ -50,8 +57,12 @@ public final class Analysis {
 				typeNames.add(declaration.name());
 			}
 		}
+		boolean same = previous != null &&
+				previous.typeNames.equals(typeNames);
 		return new Analysis(revision, outline.colourTypes(tokens, string),
-				outline, Collections.unmodifiableSet(typeNames),
+				outline, same
+						? previous.typeNames
+						: Collections.unmodifiableSet(typeNames),
 				lastEnd(UNIFORM_LINE, string), lastEnd(ENDIF, string));
 	}
 
@@ -85,7 +96,15 @@ public final class Analysis {
 		return outline;
 	}
 
-	/** Return the names of the declared struct types. */
+	/** Return the declared names, as completion takes them. */
+	public GlslCompletion.Names names() {
+		return names;
+	}
+
+	/**
+	 * Return the names of the declared struct types: the same set as the
+	 * analysis before had while the names stay the same.
+	 */
 	public Set<String> typeNames() {
 		return typeNames;
 	}

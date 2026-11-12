@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.editor;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
 
@@ -16,7 +17,7 @@ public class AnalysisTest {
 	public void analysesTheWholeTextForItsRevision() {
 		Analysis analysis = Analysis.of(Text.of(
 				"struct Ray { vec3 o; };\nRay\nr;\nfloat f() { return 1.; }"),
-				7);
+				7, Analysis.NONE);
 		assertEquals(7, analysis.revision());
 		assertEquals(Set.of("Ray"), analysis.typeNames());
 		assertEquals(List.of("Ray", "r", "f"), names(analysis));
@@ -26,13 +27,26 @@ public class AnalysisTest {
 	}
 
 	@Test
+	public void keepsTheSetOfTypeNamesWhileTheyStayTheSame() {
+		Analysis first = Analysis.of(Text.of("struct A { int a; };"), 0,
+				Analysis.NONE);
+		Analysis second = Analysis.of(Text.of("struct A { int b; };"), 1,
+				first);
+		assertSame(first.typeNames(), second.typeNames());
+		Analysis third = Analysis.of(Text.of("struct B { int b; };"), 2,
+				second);
+		assertEquals(Set.of("B"), third.typeNames());
+	}
+
+	@Test
 	public void findsWhereAddUniformInserts() {
 		String text = "#ifdef GL_ES\n#endif\nuniform float a;\n" +
 				"  uniform vec2 b;\nvoid main() {}\n";
-		Analysis analysis = Analysis.of(Text.of(text), 0);
+		Analysis analysis = Analysis.of(Text.of(text), 0, Analysis.NONE);
 		assertEquals(text.indexOf(";\nvoid") + 1, analysis.uniformLineEnd());
 		assertEquals(text.indexOf("\nuniform"), analysis.endifEnd());
-		Analysis none = Analysis.of(Text.of("void main() {}"), 0);
+		Analysis none = Analysis.of(Text.of("void main() {}"), 0,
+				Analysis.NONE);
 		assertEquals(-1, none.uniformLineEnd());
 		assertEquals(-1, none.endifEnd());
 	}
