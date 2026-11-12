@@ -26,9 +26,9 @@ public class GlslWordsTest {
 
 	static {
 		WORDS.put(Style.KEYWORD,
-				"struct void");
+				"struct");
 		WORDS.put(Style.PRIMITIVE,
-				"bool const float int uint");
+				"bool float int uint void");
 		WORDS.put(Style.TYPE_VECTOR,
 				"bvec2 bvec3 bvec4 ivec2 ivec3 ivec4 uvec2 uvec3 uvec4 vec2 vec3 " +
 				"vec4");
@@ -72,8 +72,8 @@ public class GlslWordsTest {
 				"break case continue default discard do else for if return switch " +
 				"while");
 		WORDS.put(Style.TYPE_QUALIFIER,
-				"attribute centroid flat in inout invariant layout out smooth " +
-				"uniform varying");
+				"attribute centroid const flat in inout invariant layout out " +
+				"smooth uniform varying");
 	}
 
 	@Test

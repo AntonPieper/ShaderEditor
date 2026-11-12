@@ -48,7 +48,7 @@ public class LexerStylesTest {
 	public void primitives() {
 		assertStyles(
 				"const int N = 4; bool b; uint u; double d;",
-				"ppppp.ppp.....n..pppp....pppp....tttttt...");
+				"qqqqq.ppp.....n..pppp....pppp....tttttt...");
 	}
 
 	@Test
@@ -206,14 +206,14 @@ public class LexerStylesTest {
 	public void mainWithFragColor() {
 		assertStyles(
 				"void main() {\n\tgl_FragColor = vec4(1.0);\n}",
-				"kkkk...........bbbbbbbbbbbb...vvvv.nnn....");
+				"pppp...........bbbbbbbbbbbb...vvvv.nnn....");
 	}
 
 	@Test
 	public void mainImage() {
 		assertStyles(
 				"void mainImage(out vec4 fragColor, in vec2 fragCoord) {}",
-				"kkkk...........qqq.vvvv............qq.vvvv..............");
+				"pppp...........qqq.vvvv............qq.vvvv..............");
 	}
 
 	@Test
