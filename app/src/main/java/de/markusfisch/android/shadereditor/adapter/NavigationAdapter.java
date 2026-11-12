@@ -28,28 +28,39 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 		void onTap(@NonNull Item item);
 
 		void onLongPress(@NonNull Item item, @NonNull View view);
+
+		void onNewShader();
+
+		void onShowExamples();
 	}
 
 	private static final int HEADING = 0;
 	private static final int ROW = 1;
+	private static final int EMPTY = 2;
 
 	private final Listener listener;
 	// Decoded thumbnails, for as long as the listing holds their bytes.
 	private final WeakHashMap<byte[], Bitmap> bitmaps = new WeakHashMap<>();
 	private List<Item> items = List.of();
+	private boolean empty;
 
 	public NavigationAdapter(@NonNull Listener listener) {
 		this.listener = listener;
 	}
 
-	public void setItems(@NonNull List<Item> items) {
+	/**
+	 * @param empty whether to say that there is nothing, when there is
+	 *              nothing to show
+	 */
+	public void setItems(@NonNull List<Item> items, boolean empty) {
 		this.items = items;
+		this.empty = empty && items.isEmpty();
 		notifyDataSetChanged();
 	}
 
 	/** The position of the selected row, or -1. */
 	public int getSelectedPosition() {
-		for (int i = 0, size = items.size(); i < size; ++i) {
+		for (int i = 0, size = empty ? 0 : items.size(); i < size; ++i) {
 			if (items.get(i).selected()) {
 				return i;
 			}
@@ -59,11 +70,14 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
 	@Override
 	public int getItemCount() {
-		return items.size();
+		return empty ? 1 : items.size();
 	}
 
 	@Override
 	public int getItemViewType(int position) {
+		if (empty) {
+			return EMPTY;
+		}
 		return items.get(position).row() == null ? HEADING : ROW;
 	}
 
@@ -72,6 +86,16 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 	public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent,
 			int viewType) {
 		LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+		if (viewType == EMPTY) {
+			View view = inflater.inflate(R.layout.row_navigation_empty,
+					parent, false);
+			view.findViewById(R.id.navigation_empty_new).setOnClickListener(
+					v -> listener.onNewShader());
+			view.findViewById(R.id.navigation_empty_examples)
+					.setOnClickListener(v -> listener.onShowExamples());
+			return new RecyclerView.ViewHolder(view) {
+			};
+		}
 		if (viewType == HEADING) {
 			return new RecyclerView.ViewHolder(inflater.inflate(
 					R.layout.row_navigation_heading, parent, false)) {
@@ -84,11 +108,10 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 	@Override
 	public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder,
 			int position) {
-		Item item = items.get(position);
 		if (holder instanceof RowHolder rowHolder) {
-			rowHolder.bind(item);
-		} else {
-			((TextView) holder.itemView).setText(item.heading());
+			rowHolder.bind(items.get(position));
+		} else if (holder.itemView instanceof TextView heading) {
+			heading.setText(items.get(position).heading());
 		}
 	}
 

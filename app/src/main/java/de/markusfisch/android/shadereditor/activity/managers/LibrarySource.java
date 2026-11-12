@@ -1,10 +1,14 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
-import android.content.Context;
+import android.app.Activity;
 import android.text.format.DateUtils;
+import android.view.View;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -18,25 +22,33 @@ import java.util.TimeZone;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords.ShaderInfo;
+import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Order;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
+import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 
 /** The database shaders as the level Shaders. */
 final class LibrarySource implements Source {
 	private static final long DAY = 86_400_000L;
 
-	private final Context context;
+	private final Activity context;
+	private final DataSource dataSource;
 	private final ShaderListManager.Listener listener;
+	private final NavigationDrawer.Host host;
 	private List<ShaderInfo> shaders = List.of();
 
-	LibrarySource(@NonNull Context context,
-			@NonNull ShaderListManager.Listener listener) {
-		this.context = context;
+	LibrarySource(@NonNull Activity activity,
+			@NonNull DataSource dataSource,
+			@NonNull ShaderListManager.Listener listener,
+			@NonNull NavigationDrawer.Host host) {
+		this.context = activity;
+		this.dataSource = dataSource;
 		this.listener = listener;
+		this.host = host;
 	}
 
 	@NonNull
@@ -66,10 +78,13 @@ final class LibrarySource implements Source {
 					shader.id() == wallpaper
 							? EnumSet.of(Row.Mark.WALLPAPER)
 							: EnumSet.noneOf(Row.Mark.class),
-					EnumSet.noneOf(Row.Action.class)));
+					EnumSet.of(Row.Action.RENAME, Row.Action.DUPLICATE,
+							Row.Action.DELETE)));
 		}
 		return new Listing(context.getString(R.string.nav_shaders),
-				context.getResources().getQuantityString(
+				rows.isEmpty()
+						? context.getString(R.string.nav_no_shaders)
+						: context.getResources().getQuantityString(
 						R.plurals.nav_shaders_count, rows.size(), rows.size()),
 				false,
 				true,
@@ -86,6 +101,35 @@ final class LibrarySource implements Source {
 
 	@Override
 	public void act(Row row, Row.Action action) {
+		long id = Long.parseLong(row.key());
+		switch (action) {
+			case RENAME -> rename(id, row.name());
+			case DUPLICATE -> host.onDuplicateShader(id);
+			case DELETE -> new MaterialAlertDialogBuilder(context)
+					.setMessage(R.string.sure_remove_shader)
+					.setPositiveButton(android.R.string.ok,
+							(dialog, which) -> host.onDeleteShader(id))
+					.setNegativeButton(android.R.string.cancel, null)
+					.show();
+		}
+	}
+
+	private void rename(long id, @NonNull String title) {
+		View view = context.getLayoutInflater().inflate(
+				R.layout.dialog_rename_shader, null);
+		EditText nameView = view.findViewById(R.id.name);
+		nameView.setText(title);
+		new MaterialAlertDialogBuilder(context)
+				.setTitle(R.string.rename_shader)
+				.setView(view)
+				.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+					String newName = nameView.getText().toString();
+					dataSource.shader.updateShaderName(id, newName);
+					listener.onShaderRenamed(id, newName);
+					SoftKeyboard.hide(context, nameView);
+				})
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
 	}
 
 	// Today with the time, yesterday, or the date; the year only when

@@ -4,12 +4,17 @@ import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.graphics.drawable.Drawable;
+import android.view.Gravity;
+import android.view.Menu;
 import android.view.View;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -32,6 +37,7 @@ import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Order;
+import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
 
@@ -42,6 +48,10 @@ import de.markusfisch.android.shadereditor.navigation.Tap;
 public class NavigationDrawer implements ShaderList {
 	public interface Host {
 		void onAddShader();
+
+		void onDuplicateShader(long id);
+
+		void onDeleteShader(long id);
 
 		void onOpenExample(@NonNull Samples.Sample sample);
 	}
@@ -55,8 +65,10 @@ public class NavigationDrawer implements ShaderList {
 	private final ShaderListManager.Listener listener;
 	private final DrawerLayout drawerLayout;
 	private final View drawer;
+	private final Host host;
 	private final View up;
 	private final View upSpace;
+	private final View menu;
 	private final TextView title;
 	private final View readOnly;
 	private final TextView subtitle;
@@ -75,6 +87,7 @@ public class NavigationDrawer implements ShaderList {
 	private Level level = Level.LIBRARY;
 	private Listing listing;
 	private Item.Place open;
+	private boolean loaded;
 
 	public NavigationDrawer(@NonNull AppCompatActivity activity,
 			@NonNull DataSource dataSource,
@@ -83,7 +96,8 @@ public class NavigationDrawer implements ShaderList {
 		this.activity = activity;
 		this.dataSource = dataSource;
 		this.listener = listener;
-		library = new LibrarySource(activity, listener);
+		this.host = host;
+		library = new LibrarySource(activity, dataSource, listener, host);
 		sources.put(Level.LIBRARY, library);
 		sources.put(Level.EXAMPLES, new ExamplesSource(activity, host));
 		sources.put(Level.FOLDERS, new FoldersSource(activity, library));
@@ -102,16 +116,15 @@ public class NavigationDrawer implements ShaderList {
 		up = drawer.findViewById(R.id.navigation_up);
 		up.setOnClickListener(v -> go(level.up()));
 		upSpace = drawer.findViewById(R.id.navigation_up_space);
+		menu = drawer.findViewById(R.id.navigation_menu);
+		menu.setOnClickListener(v -> showOrderMenu());
 		title = drawer.findViewById(R.id.navigation_title);
 		readOnly = drawer.findViewById(R.id.navigation_read_only);
 		subtitle = drawer.findViewById(R.id.navigation_subtitle);
 		lists = drawer.findViewById(R.id.navigation_lists);
 		bar = drawer.findViewById(R.id.navigation_bar);
 		newButton = drawer.findViewById(R.id.navigation_new);
-		newButton.setOnClickListener(v -> {
-			host.onAddShader();
-			close();
-		});
+		newButton.setOnClickListener(v -> addShader());
 		list = initList(R.id.navigation_list);
 		nextList = initList(R.id.navigation_list_next);
 
@@ -208,6 +221,17 @@ public class NavigationDrawer implements ShaderList {
 					@Override
 					public void onLongPress(@NonNull Item item,
 							@NonNull View view) {
+						showRowMenu(item, view);
+					}
+
+					@Override
+					public void onNewShader() {
+						addShader();
+					}
+
+					@Override
+					public void onShowExamples() {
+						go(Level.EXAMPLES);
 					}
 				}));
 		return recyclerView;
@@ -237,6 +261,7 @@ public class NavigationDrawer implements ShaderList {
 			return;
 		}
 		library.setShaders(shaders);
+		loaded = true;
 		listener.onShadersLoaded(shaders);
 		if (shaders.isEmpty()) {
 			listener.onAllShadersDeleted();
@@ -256,7 +281,7 @@ public class NavigationDrawer implements ShaderList {
 	private void refresh() {
 		listing = list(level);
 		showHeader();
-		adapter(list).setItems(items());
+		show(list);
 	}
 
 	// Slides the next level in from the side it lies on; a level
@@ -273,14 +298,14 @@ public class NavigationDrawer implements ShaderList {
 		nextList.setTranslationX(0);
 		nextList.setVisibility(View.GONE);
 		if (direction == 0 || !drawerLayout.isDrawerVisible(drawer)) {
-			adapter(list).setItems(items());
+			show(list);
 			list.scrollToPosition(0);
 			return;
 		}
 		RecyclerView out = list;
 		list = nextList;
 		nextList = out;
-		adapter(list).setItems(items());
+		show(list);
 		list.scrollToPosition(0);
 		int width = lists.getWidth();
 		list.setTranslationX(direction * width);
@@ -302,16 +327,16 @@ public class NavigationDrawer implements ShaderList {
 						: Order.BY_NAME);
 	}
 
-	@NonNull
-	private List<Item> items() {
+	private void show(@NonNull RecyclerView list) {
 		// What runs is what is open while shaders come from the database.
-		return Item.of(listing, level, open, open);
+		adapter(list).setItems(Item.of(listing, level, open, open), loaded);
 	}
 
 	private void showHeader() {
 		boolean canGoUp = level.up() != null;
 		up.setVisibility(canGoUp ? View.VISIBLE : View.GONE);
 		upSpace.setVisibility(canGoUp ? View.GONE : View.VISIBLE);
+		menu.setVisibility(listing.sortable() ? View.VISIBLE : View.GONE);
 		title.setText(listing.title());
 		readOnly.setVisibility(listing.readOnly() ? View.VISIBLE : View.GONE);
 		subtitle.setText(listing.subtitle());
@@ -341,6 +366,65 @@ public class NavigationDrawer implements ShaderList {
 			default -> {
 			}
 		}
+	}
+
+	private void addShader() {
+		host.onAddShader();
+		close();
+	}
+
+	private void showOrderMenu() {
+		boolean changed = ShaderEditorApp.preferences.sortByLastModification();
+		PopupMenu popup = new PopupMenu(activity, menu, Gravity.END);
+		popup.setForceShowIcon(true);
+		addCheckItem(popup.getMenu(), R.string.nav_order_changed, changed);
+		addCheckItem(popup.getMenu(), R.string.nav_order_name, !changed);
+		popup.setOnMenuItemClickListener(item -> {
+			ShaderEditorApp.preferences.setSortByLastModification(
+					item.getItemId() == R.string.nav_order_changed);
+			refresh();
+			return true;
+		});
+		popup.show();
+	}
+
+	private void addCheckItem(@NonNull Menu menu, int title, boolean checked) {
+		Drawable check = AppCompatResources.getDrawable(activity,
+				R.drawable.ic_check);
+		if (check != null && !checked) {
+			// Keeps the names in line with the checked one.
+			check = check.mutate();
+			check.setAlpha(0);
+		}
+		menu.add(Menu.NONE, title, Menu.NONE, title).setIcon(check);
+	}
+
+	private void showRowMenu(@NonNull Item item, @NonNull View view) {
+		Row row = item.row();
+		if (row.actions().isEmpty()) {
+			return;
+		}
+		PopupMenu popup = new PopupMenu(activity, view, Gravity.END);
+		popup.setForceShowIcon(true);
+		Menu rowMenu = popup.getMenu();
+		for (Row.Action action : row.actions()) {
+			switch (action) {
+				case RENAME -> rowMenu.add(Menu.NONE, action.ordinal(),
+						Menu.NONE, R.string.nav_rename).setIcon(R.drawable.ic_edit);
+				case DUPLICATE -> rowMenu.add(Menu.NONE, action.ordinal(),
+						Menu.NONE, R.string.nav_duplicate)
+						.setIcon(R.drawable.ic_file_copy);
+				case DELETE -> rowMenu.add(Menu.NONE, action.ordinal(),
+						Menu.NONE, R.string.nav_delete)
+						.setIcon(R.drawable.ic_delete_forever);
+			}
+		}
+		Source source = source(level);
+		popup.setOnMenuItemClickListener(menuItem -> {
+			source.act(row, Row.Action.values()[menuItem.getItemId()]);
+			return true;
+		});
+		popup.show();
 	}
 
 	private void scrollToSelected() {

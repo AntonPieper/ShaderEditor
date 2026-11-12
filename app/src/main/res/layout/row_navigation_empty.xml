@@ -1,0 +1,52 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:gravity="center_horizontal"
+	android:orientation="vertical"
+	android:paddingStart="28dp"
+	android:paddingTop="56dp"
+	android:paddingEnd="28dp">
+
+	<TextView
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="@string/nav_no_shaders"
+		android:textAppearance="?attr/textAppearanceTitleMedium"
+		android:textColor="?attr/colorOnSurface" />
+
+	<TextView
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="6dp"
+		android:gravity="center"
+		android:text="@string/nav_no_shaders_text"
+		android:textAppearance="?attr/textAppearanceBodyMedium"
+		android:textColor="?attr/colorOnSurfaceVariant" />
+
+	<LinearLayout
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="20dp"
+		android:orientation="horizontal">
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/navigation_empty_new"
+			style="@style/Widget.Material3.Button"
+			android:layout_width="wrap_content"
+			android:layout_height="@dimen/navigation_button_height"
+			android:layout_marginEnd="8dp"
+			android:insetTop="0dp"
+			android:insetBottom="0dp"
+			android:text="@string/add_shader" />
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/navigation_empty_examples"
+			style="@style/Widget.Material3.Button.OutlinedButton"
+			android:layout_width="wrap_content"
+			android:layout_height="@dimen/navigation_button_height"
+			android:insetTop="0dp"
+			android:insetBottom="0dp"
+			android:text="@string/load_sample" />
+	</LinearLayout>
+</LinearLayout>
