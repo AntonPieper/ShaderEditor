@@ -8,7 +8,7 @@ This document captures how the app is structured today so you can change it conf
 - ShaderEditor is an Android GLSL playground/live wallpaper. Users edit fragment shaders, preview them live, import textures/uniforms, and set any shader as a wallpaper (`README.md`).
 - The whole product lives in a single Android application module under `app/`. Source is Java (language level 17) with Gradle Kotlin build scripts.
 - The UI is a single-activity, multi-fragment setup with custom widgets for the editor, shader preview, uniform pickers, and texture tooling.
-- Sensors, camera, microphone, battery status, wallpaper offsets, notification counts, etc., are exposed to shaders as uniforms via `ShaderRenderer`.
+- Sensors, camera, microphone, battery status, wallpaper offsets, notification counts, etc., are exposed to shaders as uniforms via `ShaderEngine`.
 
 ---
 
@@ -65,19 +65,19 @@ This document captures how the app is structured today so you can change it conf
 - Compile errors from the GL renderer are visualized by `ErrorListModal` and `ErrorAdapter` (`widget/ErrorListModal.java:1`, `adapter/ErrorAdapter.java:1`).
 
 ### 4.4 Shader preview + rendering
-- `ShaderView` (`widget/ShaderView.java:1`) wraps a `GLSurfaceView`, sets the GLES client version, installs a custom EGL context factory (prefers GLES3 but falls back to GLES2), forwards touch events to the renderer, and scrubs non-ASCII characters before sending shader source to OpenGL.
-- `ShaderRenderer` (`opengl/ShaderRenderer.java:1`) is the core engine:
-  - Parses shader code for `sampler2D`, `samplerCube`, and `samplerExternalOES` uniforms, manages backbuffer FBOs, thumbnails, and resolution scaling via the "quality" multiplier.
-  - Exposes dozens of uniforms (time, resolution, multi-touch, sensors, battery, day/night, notification counts/time, camera frames, mic amplitude, wallpaper offsets, etc.). Sensor listeners live in `hardware/*` (e.g., `AccelerometerListener`, `CameraListener`, `MicInputListener`, etc.) and are registered only when the shader actually references the relevant uniform.
+- `ShaderView` (`widget/ShaderView.java:1`) wraps a `GLSurfaceView`, sets the GLES client version, installs a custom EGL context factory (prefers GLES3 but falls back to GLES2), forwards touch events to `ShaderEngine`, and prepares the text of a database shader on a worker thread before handing the plan to the engine, which scrubs non-ASCII characters before sending shader source to OpenGL.
+- `ShaderEngine` (`opengl/ShaderEngine.java:1`) is the core engine and the only class a host talks to. Hosts set the prepared plan and post input from any thread; the GL thread calls its context, surface, and frame methods:
+  - Builds a new plan (`PlanRuntime`) on the GL thread while the old one keeps drawing. After linking, `GlProgram` lists the active uniforms and samplers, so no source text is parsed for them. Manages pass targets (`PassTarget`, which also serve as backbuffers), thumbnails (`ThumbnailRequests`), and resolution scaling via the "quality" multiplier.
+  - Exposes dozens of uniforms (time, resolution, multi-touch, sensors, battery, day/night, notification counts/time, camera frames, mic amplitude, wallpaper offsets, etc.), each declared once in `UniformTable.BUILTINS`. Sensor listeners live in `hardware/*` (e.g., `AccelerometerListener`, `CameraListener`, `MicInputListener`, etc.); `SensorSources`, `SystemSources`, and `CameraSource` wrap them as `UniformSource`s that run only while the shader uses a uniform that needs them.
   - Taps Android services: `NotificationService` for notification uniforms, `BatteryLevelReceiver` for power state, media volume via `AudioManager`, wallpaper offsets, etc.
-  - Uses `TextureBinder`, `TextureParameters`, and `BackBufferParameters` to manage imported textures/backbuffer configuration.
-  - Publishes FPS + compile info logs back to UI threads via `ShaderRenderer.OnRendererListener`.
+  - Uses `PlanBindings` to decide what each sampler reads and `GlSampling` to apply its sampler state; images are decoded off the GL thread (`DecodedImages`).
+  - Publishes FPS + diagnostics back to UI threads via `ShaderEngine.Listener`.
 - `ShaderViewManager` (`activity/managers/ShaderViewManager.java:1`) coordinates `ShaderView` lifecycle with the activity, exposes the quality spinner, and pushes renderer events to `MainActivity`.
 - `PreviewActivity` (`activity/PreviewActivity.java:1`) runs shaders fullscreen when the user prefers manual runs. Its static `RenderStatus` object transports FPS/errors/thumbnail data back to `MainActivity`.
 
 ### 4.5 Wallpaper & services
-- `ShaderWallpaperService` (`service/ShaderWallpaperService.java:1`) hosts a `GLSurfaceView` inside a live wallpaper engine. It listens for preference changes (`Preferences.WALLPAPER_SHADER`, `SAVE_BATTERY`), enforces low-power render modes when the receiver marks the battery low, and reuses `ShaderView`/`ShaderRenderer`.
-- `NotificationService` (`service/NotificationService.java:1`) is a notification listener. Its static getters feed `ShaderRenderer` uniforms `notificationCount` and `lastNotificationTime`. It prompts the user to enable the listener when needed.
+- `ShaderWallpaperService` (`service/ShaderWallpaperService.java:1`) hosts a `GLSurfaceView` inside a live wallpaper engine. It listens for preference changes (`Preferences.WALLPAPER_SHADER`, `SAVE_BATTERY`), enforces low-power render modes when the receiver marks the battery low, and reuses `ShaderView`/`ShaderEngine`.
+- `NotificationService` (`service/NotificationService.java:1`) is a notification listener. Its static getters feed `SystemSources.Notifications`, which provides the uniforms `notificationCount` and `lastNotificationTime`. It prompts the user to enable the listener when needed.
 - `BatteryLevelReceiver` (`receiver/BatteryLevelReceiver.java:1`) toggles low-power mode and power-connected flags and updates wallpaper render modes.
 
 ---
@@ -130,8 +130,8 @@ This document captures how the app is structured today so you can change it conf
 ---
 
 ## 8. Sensors, camera, audio, and permissions
-- Sensors (accelerometer, gyroscope, gravity, rotation vector, magnetic field, light, linear acceleration, pressure, proximity) share a base `AbstractListener` (`hardware/AbstractListener.java:1`). `ShaderRenderer` registers/unregisters them based on uniforms in the shader source. Sensor delays honor the preference set in settings.
-- Camera textures use `CameraX` (`hardware/CameraListener.java:1`) with `ProcessCameraProvider` and `SurfaceTexture`. Both front/back cameras are exposed, along with orientation matrices and addent vectors (`UNIFORM_CAMERA_ADDENT`, `UNIFORM_CAMERA_ORIENTATION`). The wallpaper engine acts as the `LifecycleOwner` when rendering live wallpapers.
+- Sensors (accelerometer, gyroscope, gravity, rotation vector, magnetic field, light, linear acceleration, pressure, proximity) share a base `AbstractListener` (`hardware/AbstractListener.java:1`). `ShaderEngine` starts and stops them (through `UniformSources`) based on the uniforms the running shader uses. Sensor delays honor the preference set in settings.
+- Camera textures use `CameraX` (`hardware/CameraListener.java:1`) with `ProcessCameraProvider` and `SurfaceTexture`. Both front/back cameras are exposed, along with orientation matrices and addent vectors (`cameraAddent`, `cameraOrientation`). The wallpaper engine acts as the `LifecycleOwner` when rendering live wallpapers.
 - Microphone input (`hardware/MicInputListener.java:1`) samples amplitudes via `AudioRecord`. RECORD_AUDIO permission must already be granted (no custom request flow here).
 - Notifications require the Notification Listener permission; `NotificationService.requirePermissions()` prompts with a dialog.
 - Media volume uniforms query `AudioManager` each frame.
@@ -160,9 +160,9 @@ This document captures how the app is structured today so you can change it conf
 - Follow `CONTRIBUTING.md`: tabs for indentation, EditorConfig is authoritative, align with Android Studio defaults otherwise. Keep commits focused (one feature per commit) and prefer squash merges.
 - Most helpers live under `activity/managers/`; resist the urge to introduce new global singletons—prefer scoped manager classes or fragments.
 - Shared state flows through the `ShaderManager`/`ShaderListManager`/`ShaderViewManager` triad. If you add new shader metadata, update all of them plus the DAO and UI surfaces.
-- Rendering code runs on GL threads; do not touch UI widgets from inside `ShaderRenderer`. Use `queueEvent()` or the provided listener callbacks to hand results back to the main thread.
+- Rendering code runs on GL threads; do not touch UI widgets from inside `ShaderEngine`. Use `queueEvent()` or the provided listener callbacks to hand results back to the main thread.
 - Keep database interactions inside DAOs; they already open/close databases in `try-with-resources`. Long-running reads are dispatched to single-thread executors + main-thread handlers (follow the patterns in `ShaderListManager` and `UniformSampler2dPageFragment`).
-- When adding uniforms or sensors, define new constants in `ShaderRenderer`, expose them in `PresetUniformAdapter`, and wire end-to-end (renderer uniform location, value assignment, UI copy).
+- When adding uniforms or sensors, add one entry to `UniformTable.BUILTINS` (name, type, description string, writer; a `UniformSource` when new hardware is involved). `PresetUniformAdapter` and editor completion read the same table.
 - Build/res dependencies:
   - Material components for dialogs, tabs, snackbars.
   - `androidx.preference` for settings.
@@ -184,10 +184,10 @@ This document captures how the app is structured today so you can change it conf
 ---
 
 ## 13. Common change scenarios
-- **Add a new sensor/uniform**: extend `ShaderRenderer` (new constant, uniform location lookup, value updates), register/unregister a new listener in `hardware/`, add it to `PresetUniformAdapter`, and document it in `FAQ.md`/UI strings. Consider its availability (API level) and gating preferences.
+- **Add a new sensor/uniform**: add an entry to `UniformTable.BUILTINS` (name, type, description string, writer), add a listener in `hardware/` and a `UniformSource` for it when new hardware is involved (`PresetUniformAdapter` reads the table), and document it in `FAQ.md`/UI strings. Consider its availability (API level) and gating preferences.
 - **Add shader metadata** (e.g., tags): update `DatabaseContract`, bump DB version, add columns to `ShaderDao` CRUD, persist via `ShaderManager`, show via `ShaderAdapter`/layouts.
 - **Add a new sample shader**: drop a `.glsl` file + thumbnail in `res/raw`/`res/drawable`, extend `SamplesAdapter` entry, add translation strings for name/rationale, and bump screenshots if needed.
-- **Modify shader preview behavior**: touch `ShaderViewManager`, `ShaderRenderer`, and `MainActivity`. Remember manual-run flows rely on `PreviewActivity`, not the embedded GLSurfaceView.
+- **Modify shader preview behavior**: touch `ShaderViewManager`, `ShaderEngine`, and `MainActivity`. Remember manual-run flows rely on `PreviewActivity`, not the embedded GLSurfaceView.
 - **Adjust import/export**: modify `ImportExportAsFiles` and the preference wiring; keep runtime permissions + scoped storage differences in mind.
 - **Extend preferences**: add entries to `res/xml/preferences.xml`, define keys/defaults in `Preferences`, update `PreferencesFragment` summaries and any code paths referencing the new setting.
 - **Release prep**: update `CHANGELOG.md`, `fastlane/metadata/**/changelogs`, bump `versionCode`/`versionName` in `app/build.gradle.kts`, run `make release` or `make bundle`, and refresh screenshots if UI changed.
@@ -208,7 +208,7 @@ This document captures how the app is structured today so you can change it conf
 - Prefer `ShaderEditorApp.preferences` for all preference reads/writes to keep state centralized.
 - Respect the async loading patterns: DAO operations should not touch the UI thread; use `Executors` + `Handler` the same way existing code does.
 - Mind multi-window: `PreviewActivity` is marked `singleInstance` and may run adjacent to `MainActivity` if `RUN_MODE` is set accordingly.
-- Keep GLSL sources ASCII-only to avoid compiler crashes (`ShaderView.removeNonAscii()` already enforces this).
+- Keep GLSL sources ASCII-only to avoid compiler crashes (`PlanSource.removeNonAscii()` already enforces this).
 - When touching layout/system bar behavior, update `SystemBarMetrics` to maintain consistent inset handling.
 - For wallpaper-specific bugs, remember the engine uses `GLSurfaceView.RENDERMODE_WHEN_DIRTY` when on low battery; test both render modes.
 - Always recycle/release bitmaps and textures (see `TextureViewFragment` and `BitmapEditor`) to avoid spikes.

@@ -30,7 +30,7 @@ There is one dialect and one producer of plans. A database shader is converted t
 
 ### Seams
 
-Three seams carry the design. `prepare` takes shape in M1–M4, `ProjectFiles` in M7, and `PlanRuntime` in E15–E17; ENGINE.md is its design. Keep everything else private to its module. Names are conceptual; the shapes are not.
+Three seams carry the design. `prepare` is `Preparation.prepare` and `ProjectFiles` is the interface of that name, both in `project/`; `PlanRuntime` is in `opengl/`, and ENGINE.md is its design. Keep everything else private to its module. Names are conceptual; the shapes are not.
 
 ```text
 ProjectFiles                       // storage, one instance per opened root
@@ -55,7 +55,7 @@ PlanRuntime                        // one per GL context
 
 `ProjectFiles` is an interface because the variation is real. Implementations: a directory (own storage, installed wallpaper snapshots, archive staging, JVM tests), a SAF tree, a draft overlay that wraps another store and serves unsaved editor text, and, until migration, a view over the database that serves converted shaders and library textures (SPEC 12.2). A wallpaper therefore renders a directory store through the same `prepare` and `PlanRuntime` as the preview.
 
-Do not turn the other rows into interfaces with factories and registries. Plain records/value objects and a few concrete coordinators are sufficient. Keep `prepare` and the plan types free of Android so they have meaningful JVM tests. Text and binary assets are separate values; do not base64-encode images into `ShaderProjectFile.source`.
+Do not turn the other rows into interfaces with factories and registries. Plain records/value objects and a few concrete coordinators are sufficient. Keep `prepare` and the plan types free of Android so they have meaningful JVM tests. Text and binary assets are separate values; do not base64-encode images into source text.
 
 File authoring uses normalized shader paths as default pass identities. The runtime receives an explicit instance ID distinct from a program identity. Do not require identical source text to compile twice, but defer content-hash program caches until profiling justifies them. Shared includes and small wrapper files are the initial user-facing reuse mechanism.
 
@@ -65,20 +65,18 @@ All paths below are under `app/src/main/java/de/markusfisch/android/shadereditor
 
 | Area | Starting points | Required integration |
 | --- | --- | --- |
-| Project models | `project/ShaderProject*`, `*ShaderProjectSource` | Keep origins/locators separate from semantic descriptions; support binary resources and revision snapshots |
+| Project models | `project/ProjectFiles`, `OpenProject`, `EditingSession`, `ProjectSessions`, `Preparation`, `RenderPlan` | Keep origins/locators separate from semantic descriptions; support binary resources and revision snapshots |
 | Editor/session loading | `activity/managers/ShaderManager`, `ShaderViewManager` | Stop reducing every session to the entry source; route save to its actual store |
 | Navigation | `activity/managers/NavigationManager`, `activity/PreviewActivity` | Small recoverable session/snapshot identifiers instead of serialized project payloads |
 | Editor UI | `fragment/EditorFragment`, `widget/ShaderEditor`, `view/UndoRedo` | File-aware editing, source diagnostics, separate per-file history |
-| Source preparation | `opengl/ShaderSourcePreparer`, `PreparedShaderSource`, `ShaderLineMapping`, `ShaderError` | Replaced by `prepare`; the sampler pattern and `///` parsing move into the converter |
-| Program lifecycle | `opengl/RendererProgramManager` | Candidate build/activation; old plan survives failed build |
-| Rendering | `opengl/ShaderRenderer`, `ShaderRenderPipeline` | Consume ordered plan; targets per instance; project-wide frame transaction |
-| GL/resources | `opengl/GlDevice`, `ProgramBindings`, `ShaderTextureResources`, GL wrappers | Per-input sampling, typed targets, queried limits, lifecycle ownership |
-| Builtins | `opengl/BuiltinUniforms`, sensor/system/camera helpers | Graph-wide provider demand and frame capture; per-pass bindings/coordinate transform |
+| Source preparation | `project/Preparation`, `SourceAssembly`, `SourceMap`, `opengl/PlanSource` | `prepare` produces the plan and diagnostics; the sampler pattern and `///` parsing are in the converter (`project/legacy/LegacyShaderConverter`) |
+| Program lifecycle | `opengl/ShaderSwap`, `PlanRuntime` | Candidate build/activation; old plan survives failed build |
+| Rendering | `opengl/ShaderEngine`, `PlanRuntime`, `ShaderRenderPipeline` | Consume ordered plan; targets per instance; project-wide frame transaction |
+| GL/resources | `opengl/GlDevice`, `PlanBindings`, `DecodedImages`, GL wrappers | Per-input sampling, typed targets, queried limits, lifecycle ownership |
+| Builtins | `opengl/UniformTable`, `UniformSources`, `FrameInputs`, sensor/system/camera sources | Graph-wide provider demand and frame capture; per-pass bindings/coordinate transform |
 | Persistence/library | DAOs, `io/ExternalFile`, import/export helpers, library manager | Preserve DB-backed records; new native project registry and stores |
 | Wallpaper | `service/ShaderWallpaperService`, preferences | Durable installed snapshot and preserved legacy selection/runtime behavior |
 | Resource insertion | AddUniform activity/fragments, texture pickers | Generate native annotations and local copies for native sessions |
-
-At the inspected base, `ShaderProjectSession` is serializable, `ShaderProjectFile` is text-only, preview callers extract `getEntryPointSource()`, and `saveShader()` writes back to the legacy database. The folder source class is not a complete SAF persistence layer. These are integration gaps, not a reason to replace the entire application architecture.
 
 ## 4. Preparation and validation order
 
@@ -105,7 +103,7 @@ Cancellation/freshness rules apply to parse, decode, and GL completion. A cancel
 - Query capabilities once per context, then validate candidate requirements against that snapshot.
 - A candidate holds linked programs and uploaded images. Render targets are allocated at activation, after the old plan's targets are released; histories reset on activation, so the two sets never coexist. Validate formats, sizes, and unit counts against the capability snapshot before activation, so allocation failure is rare; when it happens, report it and show the error state.
 
-Keep a project-wide frame snapshot for time/sensors/camera. Per-pass `ProgramBindings` set the program's own target dimensions, coordinate-transformed pointers, explicit inputs, and fixed historical references. Avoid repeatedly configuring/releasing builtin listeners for each pass.
+Keep a project-wide frame snapshot for time/sensors/camera. Per pass, `FrameInputs.scale` gives the program's own target dimensions and coordinate-transformed pointers, and `PlanBindings` holds explicit inputs and fixed historical references. Avoid repeatedly configuring/releasing builtin listeners for each pass.
 
 ## 6. Per-input sampling
 
