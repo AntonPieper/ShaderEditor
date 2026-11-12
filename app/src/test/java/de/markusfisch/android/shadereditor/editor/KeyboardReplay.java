@@ -1,37 +1,65 @@
 package de.markusfisch.android.shadereditor.editor;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Replays keyboard sessions in the format KeyboardSession writes: makes
- * every call and app change of a session to a new TextInput on its
- * start text, records what that writes, and fails at the first line
- * that differs. App changes that follow each other, up to and including
- * an app select, were one update of the document and are replayed as
- * one batch.
+ * Replays keyboard sessions in the format KeyboardSession writes: opens,
+ * calls, closes and app actions are made again to new TextInputs and
+ * documents, on a clock set to the time of each line, and what that
+ * writes must be the session's lines, times aside; it fails at the first
+ * line that differs. The app's undo, redo and select are made here, any
+ * other action goes to the handler. A session ends at truncated.
  */
 final class KeyboardReplay {
+	/** Does what the app was asked to do, as the view would. */
+	interface Handler {
+		void perform(Document document, String name, List<String> args);
+	}
+
 	private record Quoted(String text) {
 	}
 
+	// A word written as it is.
+	private record Word(String text) {
+		@Override
+		public String toString() {
+			return text;
+		}
+	}
+
+	// What TextInput and the document write in answer to the others.
+	private static final Set<String> OUTPUTS = Set.of("updateSelection",
+			"updateExtractedText", "changed", "selected");
+
 	private final String source;
+	private final Handler handler;
 	private final List<String> expected = new ArrayList<>();
 	private final List<Integer> lineNumbers = new ArrayList<>();
-	private final StringBuilder recorded = new StringBuilder();
+	private final List<String> written = new ArrayList<>();
+	private final List<TextInput> inputs = new ArrayList<>();
+	private final long[] now = {0};
 	private int compared;
+	private final KeyboardSession session = new KeyboardSession(
+			() -> now[0], Integer.MAX_VALUE);
 	private Document document;
-	private TextInput input;
-	private boolean inBatch;
 
-	private KeyboardReplay(String source) {
+	private KeyboardReplay(String source, Handler handler) {
 		this.source = source;
+		this.handler = handler;
 	}
 
 	static void replay(String source, List<String> lines) {
-		new KeyboardReplay(source).run(lines);
+		replay(source, lines, (document, name, args) ->
+				fail(source + ": no handler for " + name));
+	}
+
+	static void replay(String source, List<String> lines, Handler handler) {
+		new KeyboardReplay(source, handler).run(lines);
 	}
 
 	static List<Object> tokenize(String line) {
@@ -83,95 +111,116 @@ final class KeyboardReplay {
 		}
 		for (int i = 0; i < expected.size(); ++i) {
 			List<Object> tokens = tokenize(expected.get(i));
-			boolean app = "app".equals(tokens.get(0));
-			if (inBatch && !app) {
-				endBatch();
+			String name = (String) tokens.get(2);
+			if ("truncated".equals(name)) {
+				expected.subList(i, expected.size()).clear();
+				break;
 			}
-			apply(i, tokens);
-			if (!inBatch) {
+			if (!OUTPUTS.contains(name)) {
+				now[0] = Long.parseLong((String) tokens.get(0));
+				apply(i, tokens);
 				compare();
 			}
 		}
-		if (inBatch) {
-			endBatch();
-		}
 		compare();
-		if (compared < expected.size()) {
-			fail(at(compared) + "expected\n  " + expected.get(compared) +
+		if (written.size() < expected.size()) {
+			int next = written.size();
+			fail(at(next) + "expected\n  " + expected.get(next) +
 					"\nbut the editor wrote nothing more");
 		}
 	}
 
 	private void apply(int index, List<Object> t) {
-		String name = (String) t.get(0);
+		String who = (String) t.get(1);
+		String name = (String) t.get(2);
+		if ("app".equals(who)) {
+			perform(name, t.subList(3, t.size()));
+			return;
+		}
+		int connection = Integer.parseInt(who);
+		if ("open".equals(name)) {
+			String text = string(t, 5);
+			if (text != null) {
+				document = new Document(Text.of(text), () -> now[0]);
+				document.select(number(t, 3), number(t, 4));
+			}
+			inputs.add(new TextInput(document, (a, b, c, d) -> {
+			}, session));
+			assertEquals(at(index) + "connection", inputs.size(), connection);
+			return;
+		}
+		TextInput input = inputs.get(connection - 1);
 		switch (name) {
-			case "start" -> {
-				document = new Document(Text.of(string(t, 3)));
-				document.select(number(t, 1), number(t, 2));
-				input = new TextInput(document, (a, b, c, d) -> {
-				}, new KeyboardSession(recorded));
-			}
-			case "end" -> input.closeConnection();
-			case "updateSelection", "updateExtractedText" -> {
-			}
-			case "app" -> {
-				if (!inBatch) {
-					document.beginBatch();
-					inBatch = true;
-				}
-				if ("select".equals(t.get(1))) {
-					document.select(number(t, 2), number(t, 3));
-					endBatch();
-				} else {
-					document.replace(number(t, 2), number(t, 3),
-							Text.of(string(t, 4)));
-				}
-			}
-			case "commitText" -> input.commitText(string(t, 1), number(t, 2));
+			case "close" -> input.closeConnection();
+			case "commitText" -> input.commitText(string(t, 3), number(t, 4));
 			case "setComposingText" ->
-					input.setComposingText(string(t, 1), number(t, 2));
+					input.setComposingText(string(t, 3), number(t, 4));
 			case "setComposingRegion" ->
-					input.setComposingRegion(number(t, 1), number(t, 2));
+					input.setComposingRegion(number(t, 3), number(t, 4));
 			case "finishComposingText" -> input.finishComposingText();
 			case "deleteSurroundingText" ->
-					input.deleteSurroundingText(number(t, 1), number(t, 2));
+					input.deleteSurroundingText(number(t, 3), number(t, 4));
 			case "deleteSurroundingTextInCodePoints" ->
-					input.deleteSurroundingTextInCodePoints(number(t, 1),
-							number(t, 2));
+					input.deleteSurroundingTextInCodePoints(number(t, 3),
+							number(t, 4));
 			case "setSelection" ->
-					input.setSelection(number(t, 1), number(t, 2));
+					input.setSelection(number(t, 3), number(t, 4));
 			case "getTextBeforeCursor" ->
-					input.getTextBeforeCursor(number(t, 1));
+					input.getTextBeforeCursor(number(t, 3));
 			case "getTextAfterCursor" ->
-					input.getTextAfterCursor(number(t, 1));
+					input.getTextAfterCursor(number(t, 3));
 			case "getSelectedText" -> input.getSelectedText();
 			case "getSurroundingText" ->
-					input.getSurroundingText(number(t, 1), number(t, 2));
-			case "getExtractedText" -> input.getExtractedText(number(t, 1),
-					Boolean.parseBoolean((String) t.get(2)));
+					input.getSurroundingText(number(t, 3), number(t, 4));
+			case "getExtractedText" -> input.getExtractedText(number(t, 3),
+					Boolean.parseBoolean((String) t.get(4)));
 			case "beginBatchEdit" -> input.beginBatchEdit();
 			case "endBatchEdit" -> input.endBatchEdit();
 			default -> fail(at(index) + "unknown call " + name);
 		}
 	}
 
-	private void endBatch() {
-		inBatch = false;
-		document.endBatch();
+	// Writes an action of the app as the app would, and makes it.
+	private void perform(String name, List<Object> tokens) {
+		Object[] values = new Object[tokens.size()];
+		List<String> args = new ArrayList<>();
+		for (int i = 0; i < values.length; ++i) {
+			Object token = tokens.get(i);
+			if (token instanceof Quoted quoted) {
+				values[i] = quoted.text();
+				args.add(quoted.text());
+			} else {
+				values[i] = token == null ? null : new Word((String) token);
+				args.add((String) token);
+			}
+		}
+		session.action(name, values);
+		switch (name) {
+			case "undo" -> document.undo();
+			case "redo" -> document.redo();
+			case "select" -> document.select(Integer.parseInt(args.get(0)),
+					Integer.parseInt(args.get(1)));
+			default -> handler.perform(document, name, args);
+		}
 	}
 
 	// Fails at the first line the editor wrote that the session has not.
 	private void compare() {
-		String[] lines = recorded.toString().split("\n");
-		for (; compared < lines.length; ++compared) {
+		String drained = session.drain();
+		if (!drained.isEmpty()) {
+			written.addAll(List.of(drained.split("\n")));
+		}
+		for (; compared < written.size(); ++compared) {
+			String line = written.get(compared);
 			if (compared >= expected.size()) {
-				fail(source + ": the editor wrote more:\n  " +
-						lines[compared]);
+				fail(source + ": the editor wrote more:\n  " + line);
 			}
-			if (!tokenize(lines[compared]).equals(
-					tokenize(expected.get(compared)))) {
+			List<Object> wrote = tokenize(line);
+			List<Object> session = tokenize(expected.get(compared));
+			if (!wrote.subList(1, wrote.size()).equals(
+					session.subList(1, session.size()))) {
 				fail(at(compared) + "expected\n  " + expected.get(compared) +
-						"\nbut the editor wrote\n  " + lines[compared]);
+						"\nbut the editor wrote\n  " + line);
 			}
 		}
 	}

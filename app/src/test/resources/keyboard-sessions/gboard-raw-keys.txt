@@ -2,35 +2,36 @@
 # default, TYPE_NULL), as the prototype logged it: every key arrives as
 # key events that the view handles, and the keyboard reads around the
 # caret at focus and after each key. Written by hand from that log, on
-# a small text. A key's up event may arrive before or after the view
-# handled its down event.
-start 15 15 "void main() {\n\t\n}"
-getTextBeforeCursor 600 -> "void main() {\n\t"
-getTextAfterCursor 600 -> "\n}"
-getSelectedText -> null
-# sendKeyEvent 0 34 -> true
-# sendKeyEvent 1 34 -> true
-app replace 15 15 "f"
-updateSelection 16 16 -1 -1
-getTextBeforeCursor 600 -> "void main() {\n\tf"
-getTextAfterCursor 600 -> "\n}"
-getSelectedText -> null
-# sendKeyEvent 0 43 -> true
-app replace 16 16 "o"
-updateSelection 17 17 -1 -1
-# sendKeyEvent 1 43 -> true
-getTextBeforeCursor 600 -> "void main() {\n\tfo"
-getTextAfterCursor 600 -> "\n}"
-getSelectedText -> null
-# sendKeyEvent 0 66 -> true
-# sendKeyEvent 1 66 -> true
-app replace 17 17 "\n"
-updateSelection 18 18 -1 -1
-getTextBeforeCursor 600 -> "void main() {\n\tfo\n"
-getTextAfterCursor 600 -> "\n}"
-getSelectedText -> null
-# sendKeyEvent 0 67 -> true
-# sendKeyEvent 1 67 -> true
-app replace 17 18 ""
-updateSelection 17 17 -1 -1
-end 17 17 "void main() {\n\tfo\n}"
+# a small text, with made-up times. A key line is an event as the view
+# handled it, down (0) or up (1); a key's up event may come before or
+# after the view handled its down event.
+0 1 open 15 15 "void main() {\n\t\n}"
+3 1 getTextBeforeCursor 600 -> "void main() {\n\t"
+3 1 getTextAfterCursor 600 -> "\n}"
+4 1 getSelectedText -> null
+300 app key 0 34 0
+300 1 changed 15 15 "f"
+300 1 updateSelection 16 16 -1 -1
+370 app key 1 34 0
+372 1 getTextBeforeCursor 600 -> "void main() {\n\tf"
+372 1 getTextAfterCursor 600 -> "\n}"
+373 1 getSelectedText -> null
+480 app key 0 43 0
+480 1 changed 16 16 "o"
+480 1 updateSelection 17 17 -1 -1
+540 app key 1 43 0
+542 1 getTextBeforeCursor 600 -> "void main() {\n\tfo"
+542 1 getTextAfterCursor 600 -> "\n}"
+543 1 getSelectedText -> null
+900 app key 0 66 0
+900 1 changed 17 17 "\n"
+900 1 updateSelection 18 18 -1 -1
+960 app key 1 66 0
+962 1 getTextBeforeCursor 600 -> "void main() {\n\tfo\n"
+962 1 getTextAfterCursor 600 -> "\n}"
+963 1 getSelectedText -> null
+1500 app key 0 67 0
+1500 1 changed 17 18 ""
+1500 1 updateSelection 17 17 -1 -1
+1560 app key 1 67 0
+2400 1 close -> 17 17 "void main() {\n\tfo\n}"
