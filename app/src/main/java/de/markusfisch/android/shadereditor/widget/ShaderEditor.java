@@ -391,6 +391,18 @@ public class ShaderEditor extends LineNumberEditText {
 		return AUTOFILL_TYPE_NONE;
 	}
 
+	/**
+	 * Keep the text out of the saved instance state. EditText always
+	 * saves it, spans included, and a large shader makes that state too
+	 * big for the Binder transaction that carries it, which crashes the
+	 * app when it goes to the background. The selection is still saved.
+	 * EditorFragment keeps the text somewhere else.
+	 */
+	@Override
+	public boolean getFreezesText() {
+		return false;
+	}
+
 	@Nullable
 	@Override
 	public InputConnection onCreateInputConnection(
