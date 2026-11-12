@@ -99,11 +99,11 @@ public class ActiveBuiltinsTest {
 		assertEquals(1, sources.get(CountingSource.KEY).starts);
 		var in = new FrameInputs();
 		in.time = 4;
-		builtins.write(in, 1L);
+		builtins.write(in);
 		assertEquals(List.of(1), running.locations);
 		assertEquals(List.of(), initial.locations);
 		in.time = 0;
-		builtins.write(1, in, 1L);
+		builtins.write(1, in);
 		assertEquals(List.of(2, 3), initial.locations);
 		assertEquals(List.of("float", "int"), initial.calls);
 		assertEquals(0f, initial.values.get(0)[0], 0f);
@@ -121,7 +121,7 @@ public class ActiveBuiltinsTest {
 			@NonNull Map<String, GlUniform> uniforms) {
 		var out = new LocatedOutput();
 		var sources = new UniformSources(UniformSourcesTest.HOST);
-		new ActiveBuiltins(UniformTable.BUILTINS, uniforms, sources, out).write(in, 1L);
+		new ActiveBuiltins(UniformTable.BUILTINS, uniforms, sources, out).write(in);
 		return out;
 	}
 }
