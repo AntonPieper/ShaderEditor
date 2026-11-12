@@ -138,15 +138,15 @@ public class PlanBindingsTest {
 						"uniform sampler2D b;",
 						MAIN),
 				"a1", "a2", "b");
-		assertTrue(bindings.needsMipmaps(path("a.png")));
-		assertFalse(bindings.needsMipmaps(path("b.png")));
+		assertTrue(bindings.needsMipmaps(texture("a.png", false)));
+		assertFalse(bindings.needsMipmaps(texture("b.png", false)));
 	}
 
 	@Test
 	public void gles3SamplesOneImageWithDifferentSettings() {
 		var bindings = twoSettingsOfOneImage();
 		assertTrue(bindings.check(Map.of(path("a.png"), new Size(300, 200)),
-				3, MAX_SIZE).isEmpty());
+				3, MAX_SIZE, MAX_SIZE).isEmpty());
 	}
 
 	@Test
@@ -156,7 +156,7 @@ public class PlanBindingsTest {
 						"with different settings, which needs OpenGL ES 3.0; " +
 						"this device only has OpenGL ES 2.0", 3)),
 				bindings.check(Map.of(path("a.png"), new Size(256, 128)), 2,
-						MAX_SIZE));
+						MAX_SIZE, MAX_SIZE));
 	}
 
 	@Test
@@ -169,7 +169,7 @@ public class PlanBindingsTest {
 						MAIN),
 				"a1", "a2");
 		assertTrue(bindings.check(Map.of(path("a.png"), new Size(64, 64)), 2,
-				MAX_SIZE).isEmpty());
+				MAX_SIZE, MAX_SIZE).isEmpty());
 	}
 
 	@Test
@@ -199,8 +199,8 @@ public class PlanBindingsTest {
 						"reads it only with wrap=clamp and mipmap=none, and " +
 						"this device has no OpenGL ES 3.0; resize the image or " +
 						"change the settings of mipmapped", 3)),
-				bindings.check(sizes, 2, MAX_SIZE));
-		assertTrue(bindings.check(sizes, 3, MAX_SIZE).isEmpty());
+				bindings.check(sizes, 2, MAX_SIZE, MAX_SIZE));
+		assertTrue(bindings.check(sizes, 3, MAX_SIZE, MAX_SIZE).isEmpty());
 	}
 
 	@Test
@@ -215,10 +215,10 @@ public class PlanBindingsTest {
 		var expected = List.of(error("big.png is 5000x100, larger than " +
 				"4096, the largest texture this device supports", 1));
 		var sizes = Map.of(path("big.png"), new Size(5000, 100));
-		assertEquals(expected, bindings.check(sizes, 3, MAX_SIZE));
-		assertEquals(expected, bindings.check(sizes, 2, MAX_SIZE));
+		assertEquals(expected, bindings.check(sizes, 3, MAX_SIZE, MAX_SIZE));
+		assertEquals(expected, bindings.check(sizes, 2, MAX_SIZE, MAX_SIZE));
 		assertTrue(bindings.check(Map.of(path("big.png"), new Size(4096, 4096)),
-				3, MAX_SIZE).isEmpty());
+				3, MAX_SIZE, MAX_SIZE).isEmpty());
 	}
 
 	@Test
@@ -230,6 +230,95 @@ public class PlanBindingsTest {
 				"a");
 		assertEquals(error("Cannot decode a.png", 2),
 				bindings.locate(path("a.png"), "Cannot decode a.png"));
+	}
+
+	@Test
+	public void readsASamplerCubeImageAsACubemap() {
+		var bindings = cubeBindings(lines(
+				"#pragma se input \"sky.png\" mipmap=nearest",
+				"uniform samplerCube sky;",
+				"#pragma se input \"sky.png\"",
+				"uniform sampler2D flat;",
+				MAIN), "sky", "flat");
+		assertEquals(texture("sky.png", true),
+				bindings.images.get(0).texture());
+		assertEquals(texture("sky.png", false),
+				bindings.images.get(1).texture());
+		assertEquals(Set.of(path("sky.png")), bindings.imagePaths());
+		assertTrue(bindings.needsMipmaps(texture("sky.png", true)));
+		assertFalse(bindings.needsMipmaps(texture("sky.png", false)));
+	}
+
+	@Test
+	public void refusesACubemapThatIsNotAStripOfSixSquares() {
+		var bindings = cubeBindings(lines(
+				"#pragma se input \"sky.png\"",
+				"uniform samplerCube sky;",
+				MAIN), "sky");
+		var expected = List.of(error("sky.png is 600x200, but a samplerCube " +
+				"reads a strip of six square faces, six times as wide as " +
+				"high", 1));
+		assertEquals(expected, bindings.check(
+				Map.of(path("sky.png"), new Size(600, 200)), 3, MAX_SIZE,
+				MAX_SIZE));
+		assertEquals(expected, bindings.check(
+				Map.of(path("sky.png"), new Size(600, 200)), 2, MAX_SIZE,
+				MAX_SIZE));
+		assertTrue(bindings.check(Map.of(path("sky.png"), new Size(1200, 200)),
+				3, MAX_SIZE, MAX_SIZE).isEmpty());
+	}
+
+	@Test
+	public void measuresACubemapByItsFaces() {
+		var bindings = cubeBindings(lines(
+				"#pragma se input \"sky.png\" mipmap=linear",
+				"uniform samplerCube sky;",
+				MAIN), "sky");
+		// The strip is wider than a 2D texture may be; its faces are not.
+		assertTrue(bindings.check(Map.of(path("sky.png"), new Size(6144, 1024)),
+				3, 4096, 2048).isEmpty());
+		assertTrue(bindings.check(Map.of(path("sky.png"), new Size(768, 128)),
+				2, MAX_SIZE, MAX_SIZE).isEmpty());
+		assertEquals(List.of(error("sky.png has faces of 1024x1024, larger " +
+						"than 512, the largest cubemap face this device " +
+						"supports", 1)),
+				bindings.check(Map.of(path("sky.png"), new Size(6144, 1024)),
+						3, 4096, 512));
+		assertEquals(List.of(error("sky.png has faces of 100x100, not a " +
+						"power of two, so OpenGL ES 2.0 reads it only with " +
+						"wrap=clamp and mipmap=none, and this device has no " +
+						"OpenGL ES 3.0; resize the image or change the " +
+						"settings of sky", 1)),
+				bindings.check(Map.of(path("sky.png"), new Size(600, 100)),
+						2, MAX_SIZE, MAX_SIZE));
+	}
+
+	@Test
+	public void gles2ReadsAStripAsCubemapAndAsImageWithDifferentSettings() {
+		var bindings = cubeBindings(lines(
+				"#pragma se input \"sky.png\"",
+				"uniform samplerCube sky;",
+				"#pragma se input \"sky.png\" filter=nearest",
+				"uniform sampler2D flat;",
+				MAIN), "sky", "flat");
+		assertTrue(bindings.check(Map.of(path("sky.png"), new Size(1536, 256)),
+				2, MAX_SIZE, MAX_SIZE).isEmpty());
+	}
+
+	private static PlanBindings cubeBindings(String main, String... active) {
+		RenderPlan plan = plan("main.glsl", main, "sky.png", PNG);
+		var uniforms = new ArrayList<GlUniform>();
+		for (int i = 0; i < active.length; ++i) {
+			uniforms.add(new GlUniform(active[i], "sky".equals(active[i])
+					? GLES20.GL_SAMPLER_CUBE
+					: GLES20.GL_SAMPLER_2D, 1, i));
+		}
+		return PlanBindings.of(plan.passes().get(0),
+				new GlProgram(1, uniforms).getSamplers());
+	}
+
+	private static PlanBindings.Texture texture(String image, boolean cubemap) {
+		return new PlanBindings.Texture(path(image), cubemap);
 	}
 
 	private static PlanBindings twoSettingsOfOneImage() {

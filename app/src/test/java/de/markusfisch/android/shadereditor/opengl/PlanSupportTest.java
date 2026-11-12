@@ -87,14 +87,13 @@ public class PlanSupportTest {
 	}
 
 	@Test
-	public void refusesCubemapImages() {
+	public void acceptsCubemapImages() {
 		var plan = plan("main.glsl", lines(
 						MAIN,
-						"#pragma se input \"sky.png\"",
+						"#pragma se input \"sky.png\" mipmap=linear",
 						"uniform samplerCube sky;"),
 				"sky.png", PNG);
-		assertEquals(List.of(error("Cubemap images need a newer version " +
-				"of ShaderEditor", 2)), PlanSupport.refusals(plan));
+		assertTrue(PlanSupport.refusals(plan).isEmpty());
 	}
 
 	@Test

@@ -29,6 +29,7 @@ final class GlDevice {
 
 	private int maxTextureUnits;
 	private int maxTextureSize;
+	private int maxCubemapSize;
 	@Nullable
 	private GlTexture2D emptyTexture2D;
 	@Nullable
@@ -48,6 +49,8 @@ final class GlDevice {
 		maxTextureUnits = units[0];
 		GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, units, 0);
 		maxTextureSize = units[0];
+		GLES20.glGetIntegerv(GLES20.GL_MAX_CUBE_MAP_TEXTURE_SIZE, units, 0);
+		maxCubemapSize = units[0];
 
 		ByteBuffer black = ByteBuffer.allocateDirect(4);
 		black.put(3, (byte) 0xff);
@@ -83,6 +86,10 @@ final class GlDevice {
 
 	int getMaxTextureSize() {
 		return maxTextureSize;
+	}
+
+	int getMaxCubemapSize() {
+		return maxCubemapSize;
 	}
 
 	void disable(int cap) {
@@ -236,6 +243,22 @@ final class GlDevice {
 		}
 		cubemap.setSideLength(faces[0].getWidth());
 		return null;
+	}
+
+	// Takes face 0 to 5, +X, -X, +Y, -Y, +Z, -Z, as RGBA8 rows from the
+	// top.
+	@Nullable
+	String uploadCubemapFace(@NonNull GlCubemap cubemap,
+			int face,
+			int side,
+			@NonNull Buffer rgba) {
+		bindTexture(0, cubemap);
+		String message = uploadRgba(GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
+				side, side, rgba);
+		if (message == null) {
+			cubemap.setSideLength(side);
+		}
+		return message;
 	}
 
 	void generateMipmap(@NonNull GlTexture texture) {

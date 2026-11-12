@@ -7,6 +7,8 @@ import android.opengl.GLES30;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,7 +41,8 @@ final class PlanRuntime implements EngineBuild {
 	// Told with the outcome, whatever it is.
 	@NonNull
 	private final List<ProjectDiagnostic> warnings = new ArrayList<>();
-	private final Map<ProjectPath, GlTexture2D> textures = new HashMap<>();
+	private final Map<PlanBindings.Texture, GlTexture> textures =
+			new HashMap<>();
 	private final TextureHandOver<DecodedImages> decoded =
 			new TextureHandOver<>();
 	@Nullable
@@ -200,18 +203,31 @@ final class PlanRuntime implements EngineBuild {
 			errors.add(bindings.locate(problem.getKey(), problem.getValue()));
 		}
 		errors.addAll(bindings.check(images.sizes(), glesVersion,
-				device.getMaxTextureSize()));
+				device.getMaxTextureSize(), device.getMaxCubemapSize()));
 		if (errors.isEmpty()) {
-			for (var entry : images.images.entrySet()) {
-				var path = entry.getKey();
-				var image = entry.getValue();
-				var texture = device.createTexture2D();
-				textures.put(path, texture);
-				var message = device.uploadTexture2D(texture, image.width(),
-						image.height(), image.rgba());
+			for (var binding : bindings.images) {
+				var key = binding.texture();
+				var image = images.images.get(key.image());
+				if (image == null || textures.containsKey(key)) {
+					continue;
+				}
+				GlTexture texture;
+				String message;
+				if (key.cubemap()) {
+					var cubemap = device.createCubemap();
+					texture = cubemap;
+					message = uploadCubemap(cubemap, image);
+				} else {
+					var texture2D = device.createTexture2D();
+					texture = texture2D;
+					message = device.uploadTexture2D(texture2D, image.width(),
+							image.height(), image.rgba());
+				}
+				textures.put(key, texture);
 				if (message != null) {
-					errors.add(bindings.locate(path, path + ": " + message));
-				} else if (bindings.needsMipmaps(path)) {
+					errors.add(bindings.locate(key.image(),
+							key.image() + ": " + message));
+				} else if (bindings.needsMipmaps(key)) {
 					device.generateMipmap(texture);
 				}
 			}
@@ -247,7 +263,7 @@ final class PlanRuntime implements EngineBuild {
 		var images = bindings.images;
 		for (int i = 0; i < images.size(); ++i) {
 			var binding = images.get(i);
-			var texture = textures.get(binding.image());
+			var texture = textures.get(binding.texture());
 			int unit = binding.sampler().unit();
 			if (texture == null) {
 				continue;
@@ -304,6 +320,25 @@ final class PlanRuntime implements EngineBuild {
 			camera.setTexture(null);
 		}
 		samplers = null;
+	}
+
+	// Cuts the faces out of the strip one at a time, so only one face is
+	// copied at once.
+	@Nullable
+	private String uploadCubemap(@NonNull GlCubemap cubemap,
+			@NonNull DecodedImages.Image image) {
+		int side = image.height();
+		var strip = image.rgba().asIntBuffer();
+		var face = ByteBuffer.allocateDirect(side * side * 4)
+				.order(ByteOrder.nativeOrder());
+		for (int i = 0; i < CubemapStrip.FACES; ++i) {
+			CubemapStrip.cut(strip, side, i, face.asIntBuffer());
+			var message = device.uploadCubemapFace(cubemap, i, side, face);
+			if (message != null) {
+				return message;
+			}
+		}
+		return null;
 	}
 
 	private void createSamplers() {
