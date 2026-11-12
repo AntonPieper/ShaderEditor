@@ -325,8 +325,9 @@ final class PlanRuntime implements EngineBuild {
 	// scale or a fixed size, with a second texture when the pass reads its
 	// previous frame, and one for the initial shader at the size its own
 	// target says; the pipeline's targets go.
+	@NonNull
 	@Override
-	public boolean createTargets(
+	public ShaderSwap.Allocation createTargets(
 			@NonNull ShaderRenderPipeline pipeline,
 			int width,
 			int height,
@@ -339,37 +340,44 @@ final class PlanRuntime implements EngineBuild {
 		var size = project.isSuccess()
 				? pass.target().size(project.value(), max)
 				: project;
-		if (!size.isSuccess()) {
-			errors.add(size.diagnostic());
-			return false;
+		var initialSize = initialPass != null && history && project.isSuccess()
+				? initialPass.pass.target().size(project.value(), max)
+				: null;
+		if (!size.isSuccess() ||
+				(initialSize != null && !initialSize.isSuccess())) {
+			errors.add(!size.isSuccess()
+					? size.diagnostic()
+					: initialSize.diagnostic());
+			return ShaderSwap.Allocation.INVALID;
 		}
 		target = PassTarget.create(device, pass.target(), size.value(),
 				history, errors);
 		if (target == null) {
-			return false;
-		} else if (initialPass != null && history) {
-			var shaderTarget = initialPass.pass.target();
-			var initialSize = shaderTarget.size(project.value(), max);
-			initialTarget = initialSize.isSuccess()
-					? PassTarget.create(device, shaderTarget,
-					initialSize.value(), false, errors)
-					: null;
+			return ShaderSwap.Allocation.FAILED;
+		} else if (initialSize != null) {
+			initialTarget = PassTarget.create(device,
+					initialPass.pass.target(), initialSize.value(), false,
+					errors);
 			if (initialTarget == null) {
-				if (!initialSize.isSuccess()) {
-					errors.add(initialSize.diagnostic());
-				}
 				releaseTargets();
-				return false;
+				return ShaderSwap.Allocation.FAILED;
 			}
 		}
 		pipeline.releaseTargets();
 		reset = true;
-		return true;
+		return ShaderSwap.Allocation.MADE;
 	}
 
 	@Override
 	public boolean hasTargets(@NonNull ShaderRenderPipeline pipeline) {
 		return target != null;
+	}
+
+	@Override
+	public boolean releaseTargets(@NonNull ShaderRenderPipeline pipeline) {
+		boolean had = target != null;
+		releaseTargets();
+		return had;
 	}
 
 	// Cleared to opaque black before every draw, with its previous frame

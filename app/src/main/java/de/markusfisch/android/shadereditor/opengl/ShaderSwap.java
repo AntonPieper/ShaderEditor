@@ -27,6 +27,23 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		S apply(@NonNull S shader);
 	}
 
+	// Whether the targets of a build were made, are invalid for its
+	// plan, or could not be allocated.
+	enum Allocation {
+		MADE,
+		INVALID,
+		FAILED
+	}
+
+	interface Targets<B> {
+		// Makes the targets of build beside those of other builds.
+		@NonNull
+		Allocation make(@NonNull B build);
+
+		// Releases the targets of build; false when it held none.
+		boolean release(@NonNull B build);
+	}
+
 	record Revision<S>(@NonNull S shader, int number) {
 	}
 
@@ -101,6 +118,24 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		}
 		next = build;
 		nextRevision = revision;
+	}
+
+	// GL thread. Makes the targets of the next build beside those of the
+	// current build. When they cannot be allocated while the current
+	// build holds targets, those go and they are made once more; the
+	// current build has nothing to draw into then. Returns whether the
+	// next build has its targets.
+	boolean makeNextTargets(@NonNull Targets<B> targets) {
+		if (next == null) {
+			return false;
+		}
+		var allocation = targets.make(next);
+		if (allocation == Allocation.FAILED &&
+				current != null &&
+				targets.release(current)) {
+			allocation = targets.make(next);
+		}
+		return allocation == Allocation.MADE;
 	}
 
 	// GL thread. Swaps the next build in once it is complete and returns

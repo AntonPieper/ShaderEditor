@@ -187,7 +187,8 @@ final class ShaderBuild implements EngineBuild {
 
 	// The pipeline's two targets, which it draws into in turn.
 	@Override
-	public boolean createTargets(
+	@NonNull
+	public ShaderSwap.Allocation createTargets(
 			@NonNull ShaderRenderPipeline pipeline,
 			int width,
 			int height,
@@ -196,15 +197,22 @@ final class ShaderBuild implements EngineBuild {
 		var targets = pipeline.createTargets(width, height,
 				source.getBackBufferSampling(), seed, errors);
 		if (targets == null) {
-			return false;
+			return ShaderSwap.Allocation.FAILED;
 		}
 		pipeline.useTargets(targets);
-		return true;
+		return ShaderSwap.Allocation.MADE;
 	}
 
 	@Override
 	public boolean hasTargets(@NonNull ShaderRenderPipeline pipeline) {
 		return pipeline.hasTargets();
+	}
+
+	@Override
+	public boolean releaseTargets(@NonNull ShaderRenderPipeline pipeline) {
+		boolean had = pipeline.hasTargets();
+		pipeline.releaseTargets();
+		return had;
 	}
 
 	// Into the front target, with the back one bound as backbuffer.

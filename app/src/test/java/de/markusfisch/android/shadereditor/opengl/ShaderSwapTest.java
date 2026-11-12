@@ -8,8 +8,15 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.junit.Test;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class ShaderSwapTest {
 	static final class FakeBuild implements ShaderSwap.Build {
@@ -414,6 +421,120 @@ public class ShaderSwapTest {
 		swap.offer("c");
 		assertFalse(swap.canDraw(3));
 		assertTrue(swap.canDraw(4));
+	}
+
+	// R12
+	@Test
+	public void targetsAreMadeBesideTheCurrentBuildsWhenTheyFit() {
+		var a = buildAndSwap("a");
+		var targets = new FakeTargets(a, ShaderSwap.Allocation.MADE);
+		build("b", true);
+		assertTrue(swap.makeNextTargets(targets));
+		assertEquals(List.of("b"), targets.made);
+		assertTrue(targets.released.isEmpty());
+		assertTrue(targets.holds.contains(a));
+	}
+
+	// R12
+	@Test
+	public void targetsThatDoNotFitBesideTheCurrentBuildsAreMadeAfterThoseGo() {
+		var a = buildAndSwap("a");
+		var targets = new FakeTargets(a, ShaderSwap.Allocation.FAILED,
+				ShaderSwap.Allocation.MADE);
+		build("b", true);
+		assertTrue(swap.makeNextTargets(targets));
+		assertEquals(List.of("b", "b"), targets.made);
+		assertEquals(List.of("a"), targets.released);
+		assertSame(a, swap.current());
+	}
+
+	// R12
+	@Test
+	public void targetsThatDoNotFitEvenAloneLeaveNothingToDraw() {
+		var a = buildAndSwap("a");
+		var targets = new FakeTargets(a, ShaderSwap.Allocation.FAILED,
+				ShaderSwap.Allocation.FAILED);
+		build("b", true);
+		assertFalse(swap.makeNextTargets(targets));
+		assertEquals(List.of("b", "b"), targets.made);
+		assertEquals(List.of("a"), targets.released);
+		assertFalse(targets.holds.contains(a));
+	}
+
+	// R12
+	@Test
+	public void invalidTargetsLeaveTheCurrentBuildDrawing() {
+		var a = buildAndSwap("a");
+		var targets = new FakeTargets(a, ShaderSwap.Allocation.INVALID);
+		build("b", true);
+		assertFalse(swap.makeNextTargets(targets));
+		assertEquals(List.of("b"), targets.made);
+		assertTrue(targets.released.isEmpty());
+		assertTrue(targets.holds.contains(a));
+	}
+
+	// R12
+	@Test
+	public void targetsAreMadeOnceWhenNoBuildHoldsAny() {
+		var targets = new FakeTargets(null, ShaderSwap.Allocation.FAILED,
+				ShaderSwap.Allocation.MADE);
+		build("a", true);
+		assertFalse(swap.makeNextTargets(targets));
+		assertEquals(List.of("a"), targets.made);
+
+		var b = buildAndSwap("b");
+		targets = new FakeTargets(null, ShaderSwap.Allocation.FAILED,
+				ShaderSwap.Allocation.MADE);
+		build("c", true);
+		assertFalse(swap.makeNextTargets(targets));
+		assertEquals(List.of("c"), targets.made);
+		assertEquals(List.of("b"), targets.released);
+		assertSame(b, swap.current());
+	}
+
+	@Test
+	public void withoutANextBuildNoTargetsAreMade() {
+		buildAndSwap("a");
+		var targets = new FakeTargets(null, ShaderSwap.Allocation.MADE);
+		assertFalse(swap.makeNextTargets(targets));
+		assertTrue(targets.made.isEmpty());
+	}
+
+	// Answers make() with the outcomes in order, then with FAILED; holds
+	// the targets of the builds it made them for.
+	private static final class FakeTargets
+			implements ShaderSwap.Targets<FakeBuild> {
+		final List<String> made = new ArrayList<>();
+		final List<String> released = new ArrayList<>();
+		final Set<FakeBuild> holds = new HashSet<>();
+		private final ArrayDeque<ShaderSwap.Allocation> outcomes;
+
+		FakeTargets(@Nullable FakeBuild holding,
+				@NonNull ShaderSwap.Allocation... outcomes) {
+			if (holding != null) {
+				holds.add(holding);
+			}
+			this.outcomes = new ArrayDeque<>(List.of(outcomes));
+		}
+
+		@NonNull
+		@Override
+		public ShaderSwap.Allocation make(@NonNull FakeBuild build) {
+			made.add(build.shader);
+			var outcome = outcomes.isEmpty()
+					? ShaderSwap.Allocation.FAILED
+					: outcomes.poll();
+			if (outcome == ShaderSwap.Allocation.MADE) {
+				holds.add(build);
+			}
+			return outcome;
+		}
+
+		@Override
+		public boolean release(@NonNull FakeBuild build) {
+			released.add(build.shader);
+			return holds.remove(build);
+		}
 	}
 
 	@NonNull
