@@ -17,6 +17,7 @@ import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.LineHeightSpan;
 import android.text.style.ReplacementSpan;
+import android.text.style.TabStopSpan;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
@@ -122,6 +123,8 @@ public class ShaderEditor extends LineNumberEditText {
 	private int textColor;
 	private int tabWidthInCharacters = 0;
 	private int tabWidth = 0;
+	@NonNull
+	private IndentTabStop[] tabStops = new IndentTabStop[0];
 	private Tokens tokens = NO_TOKENS;
 	private final EditedRange editedRange = new EditedRange();
 	private boolean isApplyingEdit = false;
@@ -201,6 +204,16 @@ public class ShaderEditor extends LineNumberEditText {
 
 		tabWidthInCharacters = characters;
 		tabWidth = Math.round(getPaint().measureText("m") * characters);
+
+		int[] stops = IndentTabs.stops(tabWidth);
+		tabStops = new IndentTabStop[stops.length];
+		for (int i = 0; i < stops.length; ++i) {
+			tabStops[i] = new IndentTabStop(stops[i]);
+		}
+		Editable e = getText();
+		if (e != null) {
+			convertTabs(e, 0, e.length());
+		}
 	}
 
 	public boolean hasErrors() {
@@ -731,22 +744,64 @@ public class ShaderEditor extends LineNumberEditText {
 		return source + indent;
 	}
 
+	/**
+	 * Makes every tab in the lines of {@code [start, start + count]} one
+	 * tab width wide.
+	 * <p>
+	 * Tab stops over the whole text place the tabs of the leading
+	 * indentation. Only a tab after other characters gets a
+	 * {@link TabWidthSpan}: that span is a ReplacementSpan, which makes
+	 * the layout re-measure its line on every draw and reflow on every
+	 * edit above it, so the editor keeps as few of them as it can.
+	 */
 	private void convertTabs(Editable e, int start, int count) {
-		clearSpans(e, start, count, TabWidthSpan.class);
+		int length = e.length();
+		int from = IndentTabs.lineStart(e, Math.min(start, length));
+		int to = IndentTabs.lineEnd(e, Math.min(start + count, length));
+		applyTabStops(e, from, to);
+		for (TabWidthSpan span : e.getSpans(from, to, TabWidthSpan.class)) {
+			if (e.getSpanStart(span) >= from && e.getSpanEnd(span) <= to) {
+				e.removeSpan(span);
+			}
+		}
 		if (tabWidth < 1) {
 			return;
 		}
+		IndentTabs.forEachTabWithoutStop(e, from, to, tabStops.length,
+				tab -> e.setSpan(
+						new TabWidthSpan(tabWidth),
+						tab,
+						tab + 1,
+						Spannable.SPAN_EXCLUSIVE_EXCLUSIVE));
+	}
 
-		String s = e.toString();
-
-		for (int stop = start + count;
-				(start = s.indexOf("\t", start)) > -1 && start < stop;
-				++start) {
-			e.setSpan(
-					new TabWidthSpan(tabWidth),
-					start,
-					start + 1,
-					Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+	/**
+	 * Makes the current tab stops, and only those, cover the whole text.
+	 * They need to be set again after new text, a new tab width, or an
+	 * edit that moved them or put back other stops, such as an undo that
+	 * inserts a copy of the text it replaced, spans included. Such an
+	 * edit is inside {@code [start, end]}.
+	 */
+	private void applyTabStops(Editable e, int start, int end) {
+		int length = e.length();
+		boolean current = true;
+		for (IndentTabStop stop : tabStops) {
+			if (e.getSpanStart(stop) != 0 || e.getSpanEnd(stop) != length) {
+				current = false;
+				break;
+			}
+		}
+		// The current stops cover every range, so any other stop in the
+		// edited range makes the count differ.
+		if (current && e.getSpans(start, end, IndentTabStop.class).length ==
+				tabStops.length) {
+			return;
+		}
+		for (IndentTabStop stop : e.getSpans(0, length, IndentTabStop.class)) {
+			e.removeSpan(stop);
+		}
+		for (IndentTabStop stop : tabStops) {
+			e.setSpan(stop, 0, length, Spanned.SPAN_INCLUSIVE_INCLUSIVE);
 		}
 	}
 
@@ -771,6 +826,22 @@ public class ShaderEditor extends LineNumberEditText {
 	}
 
 	record Analysis(@NonNull Tokens tokens, @NonNull Outline outline) {
+	}
+
+	/**
+	 * One tab stop of the editor's tab width, set over the whole text.
+	 */
+	private static final class IndentTabStop implements TabStopSpan {
+		private final int offset;
+
+		private IndentTabStop(int offset) {
+			this.offset = offset;
+		}
+
+		@Override
+		public int getTabStop() {
+			return offset;
+		}
 	}
 
 	private static class TabWidthSpan
