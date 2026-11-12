@@ -20,7 +20,7 @@ public final class GlslWords {
 	// The keywords, built-in variables, constants, types and functions of
 	// GLSL ES 1.00 and 3.00 that a fragment shader can use.
 	static {
-		add(Style.PRIMITIVE, "const", "bool", "float", "int", "uint");
+		add(Style.PRIMITIVE, "void", "bool", "float", "int", "uint");
 		add(Style.BOOL, "true", "false");
 		add(Style.TYPE_VECTOR, "bvec2", "bvec3", "bvec4", "ivec2", "ivec3",
 				"ivec4", "uvec2", "uvec3", "uvec4", "vec2", "vec3", "vec4");
@@ -29,14 +29,14 @@ public final class GlslWords {
 				"mat4x4");
 		add(Style.TYPE_QUALIFIER, "attribute", "varying", "centroid", "in",
 				"out", "inout", "uniform", "flat", "smooth", "layout",
-				"invariant");
+				"invariant", "const");
 		add(Style.TYPE_SAMPLER, "sampler2D", "sampler3D", "samplerCube",
 				"sampler2DShadow", "samplerCubeShadow", "sampler2DArray",
 				"sampler2DArrayShadow", "isampler2D", "isampler3D",
 				"isamplerCube", "isampler2DArray", "usampler2D", "usampler3D",
 				"usamplerCube", "usampler2DArray", "samplerExternalOES");
 		add(Style.TYPE, "gl_DepthRangeParameters");
-		add(Style.KEYWORD, "struct", "void");
+		add(Style.KEYWORD, "struct");
 		add(Style.CONTROL_FLOW, "while", "break", "continue", "do", "else",
 				"for", "if", "discard", "return", "switch", "case", "default");
 		add(Style.PRECISION, "highp", "mediump", "lowp", "precision");
