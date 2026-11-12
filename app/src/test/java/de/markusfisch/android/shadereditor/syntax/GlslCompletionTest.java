@@ -114,6 +114,31 @@ public class GlslCompletionTest {
 	}
 
 	@Test
+	public void completeBuiltinUniformsAfterLanguageWords() {
+		List<String> table = Arrays.asList("mouse", "resolution", "time",
+				"touch", "touchStart");
+		assertEquals(Arrays.asList("resolution"),
+				completeAt("gl_FragCoord.xy / res;", 21, table));
+		assertEquals(Arrays.asList("time"),
+				completeAt("float t = tim", 13, table));
+		assertEquals(Arrays.asList("mat2", "mat2x2", "mat2x3", "mat2x4",
+						"mat3", "mat3x2", "mat3x3", "mat3x4", "mat4", "mat4x2",
+						"mat4x3", "mat4x4", "matrixCompMult", "max", "mediump",
+						"min", "mix", "mod", "modf", "mouse"),
+				completeAt("m", 1, table));
+		assertEquals(Arrays.asList("touch", "touchStart"),
+				completeAt("to", 2, table));
+	}
+
+	@Test
+	public void completeADeclaredBuiltinUniformOnce() {
+		String text = "uniform vec2 touchStart;\nvoid main() { tou";
+		assertEquals(Arrays.asList("touchStart", "touch"),
+				completeAt(text, text.length(),
+						Arrays.asList("touch", "touchStart")));
+	}
+
+	@Test
 	public void completeNotTheNameBeingDeclared() {
 		String text = "float noi() {}";
 		assertEquals(Collections.emptyList(), completeAt(text, 9));
@@ -207,7 +232,7 @@ public class GlslCompletionTest {
 	private static List<String> words(@NonNull String prefix,
 			boolean inDirective) {
 		return GlslCompletion.words(prefix, inDirective,
-				Outline.of(GlslLexer.lex(""), ""), -1);
+				Outline.of(GlslLexer.lex(""), ""), -1, Collections.emptyList());
 	}
 
 	/**
@@ -215,13 +240,20 @@ public class GlslCompletionTest {
 	 */
 	@NonNull
 	private static List<String> completeAt(@NonNull String text, int cursor) {
+		return completeAt(text, cursor, Collections.emptyList());
+	}
+
+	@NonNull
+	private static List<String> completeAt(@NonNull String text, int cursor,
+			@NonNull List<String> uniforms) {
 		Tokens tokens = GlslLexer.lex(text);
 		int index = GlslCompletion.tokenBefore(tokens, cursor);
 		return GlslCompletion.words(
 				text.substring(tokens.start(index), cursor),
 				tokens.inDirective(index),
 				Outline.of(tokens, text),
-				tokens.start(index));
+				tokens.start(index),
+				uniforms);
 	}
 
 	/**
