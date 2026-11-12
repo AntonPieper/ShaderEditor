@@ -73,6 +73,29 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 		}
 	}
 
+	/**
+	 * Return what the file system lets this process change: writing a
+	 * file or creating in a folder it may write, renaming, moving and
+	 * deleting what is in a folder it may write.
+	 */
+	@Override
+	public Offers offers(ProjectPath path) {
+		try {
+			File file = path != null ? find(path) : root();
+			if (file == null) {
+				return Offers.NONE;
+			}
+			boolean folder = file.isDirectory();
+			boolean writable = file.canWrite();
+			boolean movable = path != null &&
+					file.getParentFile().canWrite();
+			return new Offers(!folder && writable, folder && writable,
+					movable, movable, movable);
+		} catch (IOException e) {
+			return Offers.NONE;
+		}
+	}
+
 	@Override
 	public Change write(ProjectPath path, byte[] bytes,
 			String expectedRevision) {

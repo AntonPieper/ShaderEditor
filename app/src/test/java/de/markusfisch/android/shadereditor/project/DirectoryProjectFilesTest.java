@@ -26,6 +26,7 @@ import de.markusfisch.android.shadereditor.project.ProjectFiles.Done;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Entries;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Entry;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Failed;
+import de.markusfisch.android.shadereditor.project.ProjectFiles.Offers;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Refusal;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Refused;
 
@@ -119,6 +120,26 @@ public class DirectoryProjectFilesTest {
 				new Entry("lib", true, ProjectFiles.UNKNOWN,
 						new File(root, "lib").lastModified())),
 				Set.copyOf(entries.entries()));
+	}
+
+	@Test
+	public void offersWhatTheFileSystemAllows() throws IOException {
+		put("main.glsl", "");
+		File locked = put("locked/a.glsl", "").getParentFile();
+		assertTrue(locked.setWritable(false));
+		try {
+			assertEquals(new Offers(true, false, true, true, true),
+					files.offers(path("main.glsl")));
+			assertEquals(new Offers(false, true, false, false, false),
+					files.offers(null));
+			assertEquals(new Offers(true, false, false, false, false),
+					files.offers(path("locked/a.glsl")));
+			assertEquals(new Offers(false, false, true, true, true),
+					files.offers(path("locked")));
+			assertEquals(Offers.NONE, files.offers(path("missing.glsl")));
+		} finally {
+			assertTrue(locked.setWritable(true));
+		}
 	}
 
 	@Test

@@ -18,9 +18,9 @@ import de.markusfisch.android.shadereditor.project.DocumentResolver.Document;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Change;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Content;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Done;
+import de.markusfisch.android.shadereditor.project.ProjectFiles.Offers;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Refusal;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Refused;
-import de.markusfisch.android.shadereditor.project.SafProjectFiles.Offers;
 
 public class SafProjectFilesChangeTest {
 	// An e with acute accent, composed and decomposed.
@@ -35,15 +35,15 @@ public class SafProjectFilesChangeTest {
 	public void flagsDecideTheOffers() {
 		int all = FakeDocuments.FILE_FLAGS | FakeDocuments.FOLDER_FLAGS;
 		assertEquals(new Offers(true, false, true, true, true),
-				Offers.of(new Document("f", "f", false, all), true));
+				SafProjectFiles.offers(new Document("f", "f", false, all), true));
 		assertEquals(new Offers(false, true, true, true, true),
-				Offers.of(new Document("d", "d", true, all), true));
+				SafProjectFiles.offers(new Document("d", "d", true, all), true));
 		assertEquals(Offers.NONE,
-				Offers.of(new Document("f", "f", false, all), false));
-		assertEquals(Offers.NONE, Offers.of(new Document("f", "f", false,
+				SafProjectFiles.offers(new Document("f", "f", false, all), false));
+		assertEquals(Offers.NONE, SafProjectFiles.offers(new Document("f", "f", false,
 				DocumentsContract.Document.FLAG_SUPPORTS_THUMBNAIL), true));
 		assertEquals(new Offers(true, false, false, false, false),
-				Offers.of(new Document("f", "f", false,
+				SafProjectFiles.offers(new Document("f", "f", false,
 						DocumentsContract.Document.FLAG_SUPPORTS_WRITE), true));
 		assertFalse(Offers.NONE.any());
 	}
@@ -56,6 +56,9 @@ public class SafProjectFilesChangeTest {
 				files.offers(path("main.glsl")));
 		assertTrue(files.offers(null).create());
 		assertEquals(Offers.NONE, files.offers(path("missing.glsl")));
+		documents.calls.clear();
+		assertTrue(files.offers(path("main.glsl")).delete());
+		assertEquals(List.of(), documents.calls);
 		assertEquals(Offers.NONE, new SafProjectFiles(documents,
 				documents.root.id).offers(null));
 		documents.failure = new SecurityException("revoked");

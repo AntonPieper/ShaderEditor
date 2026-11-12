@@ -447,6 +447,15 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void tellsWhatTheStorageOffers() throws IOException {
+		write("main.glsl", SHADER);
+
+		assertTrue(open().offers(path("main.glsl")).write());
+		assertEquals(ProjectFiles.Offers.NONE, open(new MemoryProjectFiles()
+				.put("main.glsl", SHADER)).offers(path("main.glsl")));
+	}
+
+	@Test
 	public void groupsDiagnosticsByFile() throws IOException {
 		OpenProject project = open();
 		ProjectDiagnostic inMain = new ProjectDiagnostic(Severity.WARNING,
