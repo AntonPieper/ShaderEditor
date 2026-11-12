@@ -71,8 +71,8 @@ final class GlDevice {
 
 	// Gives every element of every active sampler an opaque black texture,
 	// so a unit nothing else binds never samples a leftover texture.
-	void bindEmptyTextures(@NonNull GlProgram program) {
-		for (var sampler : program.getSamplers()) {
+	void bindEmptyTextures(@NonNull List<GlUniform> samplers) {
+		for (var sampler : samplers) {
 			GlTexture texture = switch (sampler.textureTarget()) {
 				case GLES20.GL_TEXTURE_2D -> emptyTexture2D;
 				case GLES20.GL_TEXTURE_CUBE_MAP -> emptyCubemap;
@@ -369,7 +369,14 @@ final class GlDevice {
 		useProgram(program);
 		for (GlUniform sampler : program.getSamplers()) {
 			int[] units = sampler.units();
-			GLES20.glUniform1iv(sampler.location(), units.length, units, 0);
+			// Drivers that emulate a samplerExternalOES as a sampler2D,
+			// the emulator's among them, see its unit only through
+			// glUniform1i.
+			if (units.length == 1) {
+				GLES20.glUniform1i(sampler.location(), units[0]);
+			} else {
+				GLES20.glUniform1iv(sampler.location(), units.length, units, 0);
+			}
 		}
 		return GlProgramBuildResult.success(program);
 	}

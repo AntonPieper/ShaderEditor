@@ -215,6 +215,58 @@ public class PlanBindingsTest {
 				"uniform samplerExternalOES other;\n" + MAIN).camera);
 	}
 
+	// The old renderer gave the camera to the first one declared.
+	@Test
+	public void ofTwoCamerasTheOneDeclaredFirstGetsTheCamera() {
+		var pass = plan("main.glsl", MAIN).passes().get(0);
+		var samplers = new GlProgram(1, List.of(
+				sampler("cameraBack", GLES11Ext.GL_SAMPLER_EXTERNAL_OES),
+				sampler("cameraFront", GLES11Ext.GL_SAMPLER_EXTERNAL_OES)))
+				.getSamplers();
+		assertEquals("cameraFront", PlanBindings.of(pass, 0, samplers,
+				"uniform samplerExternalOES cameraFront;\n" +
+						"uniform samplerExternalOES cameraBack;\n" + MAIN)
+				.camera.name());
+		assertEquals("cameraBack", PlanBindings.of(pass, 0, samplers,
+				"// uniform samplerExternalOES cameraFront;\n" +
+						"uniform samplerExternalOES cameraBack;\n" +
+						"uniform samplerExternalOES cameraFront;\n" + MAIN)
+				.camera.name());
+	}
+
+	// The driver reports the camera as sampler2D: the sources it needs and
+	// the warnings about it see the declared type.
+	@Test
+	public void aCameraReportedAsSampler2DIsDeclaredAsTheCamera() {
+		var reported = sampler("cameraBack", GLES20.GL_SAMPLER_2D).withUnit(0);
+		var bindings = PlanBindings.of(plan("main.glsl", MAIN).passes().get(0),
+				0, List.of(reported),
+				"uniform samplerExternalOES cameraBack;\n" + MAIN);
+		var declared = bindings.declared(Map.of("cameraBack", reported));
+		assertEquals(GLES11Ext.GL_SAMPLER_EXTERNAL_OES,
+				declared.get("cameraBack").type());
+		assertEquals(GLES11Ext.GL_SAMPLER_EXTERNAL_OES,
+				bindings.samplers.get(0).type());
+		assertEquals(1, UniformWarnings.find(List.of(reported),
+				UniformTable.BUILTINS, Set.of()).size());
+		assertTrue(UniformWarnings.find(declared.values(),
+				UniformTable.BUILTINS, Set.of()).isEmpty());
+	}
+
+	// The running shader reads cameraBack, its initial shader cameraFront.
+	@Test
+	public void theRunningShadersCameraOpens() {
+		var pass = plan("main.glsl", MAIN).passes().get(0);
+		var back = PlanBindings.of(pass, 0, List.of(sampler("cameraBack",
+				GLES11Ext.GL_SAMPLER_EXTERNAL_OES).withUnit(0)), MAIN);
+		var front = PlanBindings.of(pass, 0, List.of(sampler("cameraFront",
+				GLES11Ext.GL_SAMPLER_EXTERNAL_OES).withUnit(0)), MAIN);
+		var none = PlanBindings.of(pass, 0, List.of(), MAIN);
+		assertEquals("cameraBack", PlanBindings.openCamera(List.of(back, front)));
+		assertEquals("cameraFront", PlanBindings.openCamera(List.of(none, front)));
+		assertNull(PlanBindings.openCamera(List.of(none)));
+	}
+
 	@Test
 	public void generatesMipmapsWhenOneInputOfTheImageAsks() {
 		var bindings = bindings(lines(

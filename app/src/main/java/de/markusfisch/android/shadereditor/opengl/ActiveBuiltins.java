@@ -108,10 +108,10 @@ final class ActiveBuiltins {
 
 	ActiveBuiltins(
 			@NonNull GlDevice device,
-			@NonNull List<GlProgram> programs,
+			@NonNull List<PlanPass> passes,
 			@NonNull UniformSources sources) {
-		this(UniformTable.BUILTINS, uniforms(programs), sources,
-				outputs(device, programs));
+		this(UniformTable.BUILTINS, uniforms(passes), sources,
+				outputs(device, passes));
 	}
 
 	ActiveBuiltins(
@@ -181,10 +181,10 @@ final class ActiveBuiltins {
 
 	@NonNull
 	private static List<Map<String, GlUniform>> uniforms(
-			@NonNull List<GlProgram> programs) {
+			@NonNull List<PlanPass> passes) {
 		var uniforms = new ArrayList<Map<String, GlUniform>>();
-		for (var program : programs) {
-			uniforms.add(program.getUniforms());
+		for (var pass : passes) {
+			uniforms.add(pass.uniforms);
 		}
 		return uniforms;
 	}
@@ -192,10 +192,10 @@ final class ActiveBuiltins {
 	@NonNull
 	private static List<Output> outputs(
 			@NonNull GlDevice device,
-			@NonNull List<GlProgram> programs) {
+			@NonNull List<PlanPass> passes) {
 		var outputs = new ArrayList<Output>();
-		for (var program : programs) {
-			outputs.add(new GlOutput(device, program));
+		for (var pass : passes) {
+			outputs.add(new GlOutput(device, pass.program));
 		}
 		return outputs;
 	}

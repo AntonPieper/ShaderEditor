@@ -64,12 +64,15 @@ final class PlanBindings {
 			@Nullable RenderPlan.Input input) {
 	}
 
+	// The active samplers as the text declares them, in unit order.
+	@NonNull
+	final List<GlUniform> samplers;
 	@NonNull
 	final List<ImageBinding> images;
 	// The unannotated backbuffer first.
 	@NonNull
 	final List<HistoryBinding> history;
-	// The first active camera sampler, or null.
+	// The active camera sampler declared first, or null.
 	@Nullable
 	final GlUniform camera;
 	@NonNull
@@ -77,13 +80,20 @@ final class PlanBindings {
 	// Annotated inputs the compiler optimized away.
 	@NonNull
 	final List<ProjectDiagnostic> warnings;
+	// What the text declares as samplerExternalOES, in order.
+	@NonNull
+	private final Set<String> external;
 
 	private PlanBindings(
+			@NonNull List<GlUniform> samplers,
+			@NonNull Set<String> external,
 			@NonNull List<ImageBinding> images,
 			@NonNull List<HistoryBinding> history,
 			@Nullable GlUniform camera,
 			@NonNull Sampling cameraSampling,
 			@NonNull List<ProjectDiagnostic> warnings) {
+		this.samplers = List.copyOf(samplers);
+		this.external = external;
 		this.images = List.copyOf(images);
 		this.history = List.copyOf(history);
 		this.camera = camera;
@@ -97,17 +107,17 @@ final class PlanBindings {
 	static PlanBindings of(
 			@NonNull RenderPlan.Pass pass,
 			int self,
-			@NonNull List<GlUniform> samplers,
+			@NonNull List<GlUniform> reflected,
 			@NonNull String text) {
 		var active = new HashMap<String, GlUniform>();
 		var external = externalSamplers(text);
-		GlUniform camera = null;
-		for (var sampler : samplers) {
-			active.put(sampler.name(), sampler);
-			if (camera == null && isCamera(sampler, external)) {
-				camera = sampler;
-			}
+		var samplers = new ArrayList<GlUniform>();
+		for (var sampler : reflected) {
+			var declared = declared(sampler, external);
+			samplers.add(declared);
+			active.put(declared.name(), declared);
 		}
+		var camera = camera(external, samplers, active);
 		var images = new ArrayList<ImageBinding>();
 		var history = new ArrayList<HistoryBinding>();
 		var declared = new HashSet<String>();
@@ -137,8 +147,33 @@ final class PlanBindings {
 				backbuffer.textureTarget() == GLES20.GL_TEXTURE_2D) {
 			history.add(0, new HistoryBinding(backbuffer, Sampling.PASS, null));
 		}
-		return new PlanBindings(images, history, camera, cameraSampling,
-				warnings);
+		return new PlanBindings(samplers, external, images, history, camera,
+				cameraSampling, warnings);
+	}
+
+	// The uniforms of the program as the text declares them, so a camera
+	// the driver reports as sampler2D is still the camera for the
+	// sources it needs and for the warnings about it.
+	@NonNull
+	Map<String, GlUniform> declared(@NonNull Map<String, GlUniform> uniforms) {
+		var declared = new HashMap<String, GlUniform>();
+		for (var entry : uniforms.entrySet()) {
+			declared.put(entry.getKey(), declared(entry.getValue(), external));
+		}
+		return declared;
+	}
+
+	// The camera that opens for passes that read different ones: that of
+	// the first pass, the running one, that reads one. Only one camera can
+	// be open.
+	@Nullable
+	static String openCamera(@NonNull List<PlanBindings> passes) {
+		for (var bindings : passes) {
+			if (bindings.camera != null) {
+				return bindings.camera.name();
+			}
+		}
+		return null;
 	}
 
 	// The images that active samplers read, each once.
@@ -252,21 +287,50 @@ final class PlanBindings {
 
 	// Some drivers, the emulator's among them, report a samplerExternalOES
 	// as a sampler2D; its declaration tells the two apart then.
-	private static boolean isCamera(
-			@NonNull GlUniform sampler,
+	@NonNull
+	private static GlUniform declared(
+			@NonNull GlUniform uniform,
 			@NonNull Set<String> external) {
-		int target = sampler.textureTarget();
-		return (UniformTable.CAMERA_BACK.equals(sampler.name()) ||
-				UniformTable.CAMERA_FRONT.equals(sampler.name())) &&
-				(target == GLES11Ext.GL_TEXTURE_EXTERNAL_OES ||
-						(target == GLES20.GL_TEXTURE_2D &&
-								external.contains(sampler.name())));
+		return uniform.type() == GLES20.GL_SAMPLER_2D &&
+				external.contains(uniform.name())
+				? new GlUniform(uniform.name(),
+						GLES11Ext.GL_SAMPLER_EXTERNAL_OES, uniform.size(),
+						uniform.location(), uniform.unit())
+				: uniform;
 	}
 
-	// The names text declares as samplerExternalOES outside of comments.
+	// The camera the text declares first, as the old renderer chose
+	// between two, or else the first one reflected.
+	@Nullable
+	private static GlUniform camera(
+			@NonNull Set<String> external,
+			@NonNull List<GlUniform> samplers,
+			@NonNull Map<String, GlUniform> active) {
+		for (var name : external) {
+			var sampler = active.get(name);
+			if (sampler != null && isCamera(sampler)) {
+				return sampler;
+			}
+		}
+		for (var sampler : samplers) {
+			if (isCamera(sampler)) {
+				return sampler;
+			}
+		}
+		return null;
+	}
+
+	private static boolean isCamera(@NonNull GlUniform sampler) {
+		return (UniformTable.CAMERA_BACK.equals(sampler.name()) ||
+				UniformTable.CAMERA_FRONT.equals(sampler.name())) &&
+				sampler.textureTarget() == GLES11Ext.GL_TEXTURE_EXTERNAL_OES;
+	}
+
+	// The names text declares as samplerExternalOES outside of comments,
+	// in the order declared.
 	@NonNull
 	static Set<String> externalSamplers(@NonNull String text) {
-		var names = new HashSet<String>();
+		var names = new LinkedHashSet<String>();
 		Matcher m = EXTERNAL.matcher(COMMENT.matcher(text).replaceAll(" "));
 		while (m.find()) {
 			names.add(m.group(1));
