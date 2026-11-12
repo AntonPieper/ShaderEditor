@@ -24,11 +24,20 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
 // from the pass's inputs and the samplers the program reflects. A sampler
 // without an input or an engine provider keeps the empty texture.
 final class PlanBindings {
+	// The texture made from an image: 2D, or a cubemap cut from a strip.
+	record Texture(@NonNull ProjectPath image, boolean cubemap) {
+	}
+
 	// An image input and the active sampler it was declared for.
 	record ImageBinding(@NonNull GlUniform sampler, @NonNull RenderPlan.Input input) {
 		@NonNull
 		ProjectPath image() {
 			return input.source().image();
+		}
+
+		@NonNull
+		Texture texture() {
+			return new Texture(image(), "samplerCube".equals(input.samplerType()));
 		}
 
 		@NonNull
@@ -102,9 +111,9 @@ final class PlanBindings {
 	}
 
 	// Mipmaps are generated once at upload when one input asks for them.
-	boolean needsMipmaps(@NonNull ProjectPath image) {
+	boolean needsMipmaps(@NonNull Texture texture) {
 		for (var binding : images) {
-			if (binding.image().equals(image) &&
+			if (binding.texture().equals(texture) &&
 					binding.sampling().mipmap() != Mipmap.NONE) {
 				return true;
 			}
@@ -113,32 +122,47 @@ final class PlanBindings {
 	}
 
 	// Why these images cannot be sampled as the inputs ask on a context
-	// of this version and texture size limit; empty when they can.
+	// of this version and these texture size limits; empty when they can.
 	@NonNull
 	List<ProjectDiagnostic> check(
 			@NonNull Map<ProjectPath, RenderPlan.Size> sizes,
 			int glesVersion,
-			int maxTextureSize) {
+			int maxTextureSize,
+			int maxCubemapSize) {
 		var errors = new ArrayList<ProjectDiagnostic>();
-		var first = new HashMap<ProjectPath, ImageBinding>();
+		var first = new HashMap<Texture, ImageBinding>();
 		for (var binding : images) {
 			var image = binding.image();
 			var size = sizes.get(image);
 			if (size == null) {
 				continue;
 			}
-			boolean tooLarge = size.width() > maxTextureSize ||
-					size.height() > maxTextureSize;
-			var earlier = first.get(image);
+			var texture = binding.texture();
+			// A cubemap is as large as one of its faces.
+			var side = texture.cubemap()
+					? new RenderPlan.Size(size.height(), size.height())
+					: size;
+			int max = texture.cubemap() ? maxCubemapSize : maxTextureSize;
+			String invalid = null;
+			if (texture.cubemap() &&
+					!CubemapStrip.isStrip(size.width(), size.height())) {
+				invalid = image + " is " + describe(size) + ", but a " +
+						"samplerCube reads a strip of six square faces, six " +
+						"times as wide as high";
+			} else if (side.width() > max || side.height() > max) {
+				invalid = describe(binding, side) + ", larger than " + max +
+						", the largest " + (texture.cubemap()
+						? "cubemap face"
+						: "texture") + " this device supports";
+			}
+			var earlier = first.get(texture);
 			if (earlier == null) {
-				first.put(image, binding);
-				if (tooLarge) {
-					errors.add(error(binding, image + " is " + describe(size) +
-							", larger than " + maxTextureSize + ", the largest " +
-							"texture this device supports"));
+				first.put(texture, binding);
+				if (invalid != null) {
+					errors.add(error(binding, invalid));
 				}
 			}
-			if (tooLarge || glesVersion >= 3) {
+			if (invalid != null || glesVersion >= 3) {
 				continue;
 			}
 			if (earlier != null && !earlier.sampling().equals(binding.sampling())) {
@@ -149,11 +173,11 @@ final class PlanBindings {
 						"this device only has OpenGL ES 2.0"));
 			}
 			var sampling = binding.sampling();
-			if (!(isPowerOfTwo(size.width()) && isPowerOfTwo(size.height())) &&
+			if (!(isPowerOfTwo(side.width()) && isPowerOfTwo(side.height())) &&
 					(sampling.wrapS() != Wrap.CLAMP ||
 							sampling.wrapT() != Wrap.CLAMP ||
 							sampling.mipmap() != Mipmap.NONE)) {
-				errors.add(error(binding, image + " is " + describe(size) +
+				errors.add(error(binding, describe(binding, side) +
 						", not a power of two, so OpenGL ES 2.0 reads it only " +
 						"with wrap=clamp and mipmap=none, and this device has " +
 						"no OpenGL ES 3.0; resize the image or change the " +
@@ -187,6 +211,15 @@ final class PlanBindings {
 	@NonNull
 	private static String describe(@NonNull RenderPlan.Size size) {
 		return size.width() + "x" + size.height();
+	}
+
+	@NonNull
+	private static String describe(
+			@NonNull ImageBinding binding,
+			@NonNull RenderPlan.Size texture) {
+		return binding.image() + (binding.texture().cubemap()
+				? " has faces of "
+				: " is ") + describe(texture);
 	}
 
 	@NonNull
