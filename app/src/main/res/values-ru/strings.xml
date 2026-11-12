@@ -315,4 +315,5 @@
 		<item quantity="many">%d shaders</item>
 		<item quantity="other">%d shaders</item>
 	</plurals>
+	<string name="nav_running">Running</string>
 </resources>
