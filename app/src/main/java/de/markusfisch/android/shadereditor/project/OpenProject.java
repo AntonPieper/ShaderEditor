@@ -51,6 +51,16 @@ public final class OpenProject {
 	public record Copy(ProjectPath path, String problem) {
 	}
 
+	/**
+	 * What a file or the files under a folder have: how many files have
+	 * unsaved text, how many errors and warnings the last build found in
+	 * them, and how many files changed elsewhere while they have unsaved
+	 * text.
+	 */
+	public record Marks(int unsaved, int errors, int warnings,
+			int conflicts) {
+	}
+
 	/** A file the last build read, and whether it is an image. */
 	public record Used(ProjectPath path, boolean image) {
 	}
@@ -522,6 +532,36 @@ public final class OpenProject {
 		return inFile;
 	}
 
+	/**
+	 * Return the marks of path, a file or a folder with everything under
+	 * it, or of the whole project with diagnostics of no file when null.
+	 * Memory only.
+	 */
+	public synchronized Marks marks(ProjectPath path) {
+		int unsaved = 0;
+		for (ProjectPath file : unsaved()) {
+			unsaved += under(file, path) ? 1 : 0;
+		}
+		int conflicts = 0;
+		for (ProjectPath file : conflicts().keySet()) {
+			conflicts += under(file, path) ? 1 : 0;
+		}
+		int errors = 0;
+		int warnings = 0;
+		for (ProjectDiagnostic diagnostic : diagnostics) {
+			ProjectPath file = diagnostic.file();
+			if (file == null ? path != null : !under(file, path)) {
+				continue;
+			} else if (diagnostic.severity() ==
+					ProjectDiagnostic.Severity.ERROR) {
+				++errors;
+			} else {
+				++warnings;
+			}
+		}
+		return new Marks(unsaved, errors, warnings, conflicts);
+	}
+
 	/** Return how many diagnostics of the last build are errors. */
 	public synchronized int errors() {
 		int errors = 0;
@@ -531,6 +571,11 @@ public final class OpenProject {
 			}
 		}
 		return errors;
+	}
+
+	private static boolean under(ProjectPath file, ProjectPath path) {
+		return path == null || file.equals(path) ||
+				file.toString().startsWith(path + "/");
 	}
 
 	private ProjectPath freeCopyPath(ProjectPath path) {
