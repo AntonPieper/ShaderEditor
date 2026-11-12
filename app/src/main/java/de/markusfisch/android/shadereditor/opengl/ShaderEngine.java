@@ -45,7 +45,7 @@ public final class ShaderEngine {
 	private final ShaderRenderPipeline renderPipeline =
 			new ShaderRenderPipeline(device);
 	private final EngineInputs inputs = new EngineInputs();
-	private final ShaderSwap<ShaderProjectSession, ShaderBuild> shaders =
+	private final ShaderSwap<EngineShader, EngineBuild> shaders =
 			new ShaderSwap<>();
 	private final UniformSources sources;
 	private final Context context;
@@ -78,7 +78,7 @@ public final class ShaderEngine {
 	// it links and its textures are uploaded.
 	public void setShader(@NonNull ShaderProjectSession session) {
 		inputs.setRuntimeNanos(0);
-		shaders.offer(session);
+		shaders.offer(new SessionShader(session));
 	}
 
 	public long getRuntimeNanos() {
@@ -91,9 +91,9 @@ public final class ShaderEngine {
 
 	// Any thread. Builds the shader set last again with this quality.
 	public void setQuality(float quality) {
-		var session = shaders.latest();
-		if (session != null) {
-			shaders.offer(session.withQuality(quality));
+		var shader = shaders.latest();
+		if (shader != null) {
+			shaders.offer(shader.withQuality(quality));
 		}
 	}
 
@@ -138,10 +138,8 @@ public final class ShaderEngine {
 		if (renderSizeChanged) {
 			renderPipeline.releaseTargets();
 			thumbnails.onFramesLost();
-			// The backbuffer preset is tiled to the render size.
 			var build = shaders.current();
-			if (build != null &&
-					build.source.getBackBufferParameters().hasPreset()) {
+			if (build != null && build.isSizedToRender()) {
 				shaders.rebuildCurrent();
 			}
 		}
@@ -168,7 +166,7 @@ public final class ShaderEngine {
 			var targetErrors = renderPipeline.ensureTargets(
 					inputs.getRenderWidth(),
 					inputs.getRenderHeight(),
-					build.source.getBackBufferSampling(),
+					build.backBufferSampling(),
 					null);
 			if (!targetErrors.isEmpty()) {
 				submitErrors(targetErrors);
@@ -181,11 +179,9 @@ public final class ShaderEngine {
 		long now = System.nanoTime();
 		var frame = inputs.capture(now, fTimeMax);
 		builtins.write(frame, now);
-		device.bindEmptyTextures(build.program);
+		device.bindEmptyTextures(build.program());
 		device.bindTexture(backBufferUnit, renderPipeline.getBackTexture());
-		build.textures.bind(device);
-
-		renderPipeline.renderMainPass(build.program);
+		build.draw(renderPipeline);
 		renderPipeline.renderSurfacePass(
 				frame.surfaceWidth,
 				frame.surfaceHeight);
@@ -236,9 +232,9 @@ public final class ShaderEngine {
 	}
 
 	private void swapInNewestShader() {
-		var session = shaders.take();
-		if (session != null) {
-			build(session);
+		var shader = shaders.take();
+		if (shader != null) {
+			build(shader);
 		}
 		var next = shaders.next();
 		if (next == null) {
@@ -253,7 +249,7 @@ public final class ShaderEngine {
 
 		long now = System.nanoTime();
 		lastRender = now;
-		inputs.restart(next.quality, now);
+		inputs.restart(next.quality(), now);
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
 		configure(next);
 		errors.addAll(sources.getWarnings());
@@ -261,7 +257,7 @@ public final class ShaderEngine {
 		errors.addAll(renderPipeline.ensureTargets(
 				inputs.getRenderWidth(),
 				inputs.getRenderHeight(),
-				next.source.getBackBufferSampling(),
+				next.backBufferSampling(),
 				textures != null ? textures.backBuffer() : null));
 		if (textures != null) {
 			textures.recycle();
@@ -270,17 +266,10 @@ public final class ShaderEngine {
 		submitErrors(errors);
 	}
 
-	private void build(@NonNull ShaderProjectSession session) {
+	private void build(@NonNull EngineShader shader) {
 		var errors = new ArrayList<ProjectDiagnostic>();
-		float quality = session.getQuality();
-		// Text pasted from other apps may carry non-ASCII characters
-		// that crash some shader compilers.
-		var build = ShaderBuild.link(
-				device,
-				removeNonAscii(session.getEntryPointSource()),
-				quality,
-				version,
-				errors);
+		float quality = shader.quality();
+		var build = shader.link(device, version, errors);
 		if (build == null) {
 			shaders.failed();
 			submitErrors(errors);
@@ -307,10 +296,9 @@ public final class ShaderEngine {
 		}
 	}
 
-	private void configure(@NonNull ShaderBuild build) {
-		fTimeMax = build.source.getFTimeMax();
-		backBufferUnit = build.program.getTextureUnit(UniformTable.BACKBUFFER);
-		build.textures.resolveUnits(build.program);
+	private void configure(@NonNull EngineBuild build) {
+		fTimeMax = build.fTimeMax();
+		backBufferUnit = build.program().getTextureUnit(UniformTable.BACKBUFFER);
 		runSources(build);
 	}
 
@@ -324,17 +312,15 @@ public final class ShaderEngine {
 	// The one place that decides which sources run: the ones the current
 	// shader reads, and none without one. A lost context, a detached
 	// view and a host in the background all end the current shader.
-	private void runSources(@Nullable ShaderBuild build) {
+	private void runSources(@Nullable EngineBuild build) {
 		if (build == null) {
 			activeBuiltins = null;
 			sources.stop();
 			sources.setCameraBinding(null);
 			return;
 		}
-		sources.setCameraBinding(build.textures.getFirstBinding(
-				UniformTable.CAMERA_BACK,
-				UniformTable.CAMERA_FRONT));
-		activeBuiltins = new ActiveBuiltins(device, build.program, sources);
+		sources.setCameraBinding(build.getCameraBinding());
+		activeBuiltins = new ActiveBuiltins(device, build.program(), sources);
 	}
 
 	private void discardContextResources() {
@@ -366,11 +352,6 @@ public final class ShaderEngine {
 		}
 
 		lastRender = now;
-	}
-
-	@NonNull
-	private static String removeNonAscii(@NonNull String text) {
-		return text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", "");
 	}
 
 	private static int getDeviceRotation(@NonNull Context context) {

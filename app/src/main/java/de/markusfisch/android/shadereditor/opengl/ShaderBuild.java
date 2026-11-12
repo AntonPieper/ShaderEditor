@@ -10,9 +10,10 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 // One shader linked in the current context, with its textures.
-final class ShaderBuild implements ShaderSwap.Build {
+final class ShaderBuild implements EngineBuild {
 	@NonNull
 	final GlProgram program;
 	@NonNull
@@ -37,6 +38,7 @@ final class ShaderBuild implements ShaderSwap.Build {
 		this.quality = quality;
 		textures = ShaderTextureResources.create(source.getSamplers());
 		textures.createExternalTextures(device);
+		textures.resolveUnits(program);
 	}
 
 	// GL thread. Returns null and adds the reasons to errors when the
@@ -69,7 +71,8 @@ final class ShaderBuild implements ShaderSwap.Build {
 
 	// Decodes the images it samples off the GL thread; until upload()
 	// took them, the build is not complete.
-	void loadTextures(
+	@Override
+	public void loadTextures(
 			@NonNull Context context,
 			int width,
 			int height,
@@ -108,13 +111,56 @@ final class ShaderBuild implements ShaderSwap.Build {
 	// GL thread. Uploads what was decoded, if it is ready, and returns it
 	// for its backbuffer seed; the caller recycles it.
 	@Nullable
-	DecodedTextures upload(@NonNull List<ProjectDiagnostic> errors) {
+	@Override
+	public DecodedTextures upload(@NonNull List<ProjectDiagnostic> errors) {
 		var result = decoded.take();
 		if (result != null) {
 			errors.addAll(textures.upload(device, result));
 			complete = true;
 		}
 		return result;
+	}
+
+	@NonNull
+	@Override
+	public GlProgram program() {
+		return program;
+	}
+
+	@Override
+	public float quality() {
+		return quality;
+	}
+
+	@Override
+	public float fTimeMax() {
+		return source.getFTimeMax();
+	}
+
+	@NonNull
+	@Override
+	public Sampling backBufferSampling() {
+		return source.getBackBufferSampling();
+	}
+
+	// The backbuffer preset is tiled to the render size.
+	@Override
+	public boolean isSizedToRender() {
+		return source.getBackBufferParameters().hasPreset();
+	}
+
+	@Nullable
+	@Override
+	public ShaderTextureResources.SamplerTextureBinding getCameraBinding() {
+		return textures.getFirstBinding(
+				UniformTable.CAMERA_BACK,
+				UniformTable.CAMERA_FRONT);
+	}
+
+	@Override
+	public void draw(@NonNull ShaderRenderPipeline pipeline) {
+		textures.bind(device);
+		pipeline.renderMainPass(program);
 	}
 
 	@Override
