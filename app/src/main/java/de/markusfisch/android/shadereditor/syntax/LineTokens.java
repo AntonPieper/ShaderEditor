@@ -34,6 +34,21 @@ public final class LineTokens {
 		return (kinds[index] & Tokens.IN_DIRECTIVE) != 0;
 	}
 
+	/** Index of the token that contains offset, or -1 if there is none. */
+	public int indexAt(int offset) {
+		int low = 0;
+		int high = size - 1;
+		while (low <= high) {
+			int mid = (low + high) >>> 1;
+			if (starts[mid] <= offset) {
+				low = mid + 1;
+			} else {
+				high = mid - 1;
+			}
+		}
+		return high >= 0 && offset < ends[high] ? high : -1;
+	}
+
 	void set(int[] starts, int[] ends, int[] kinds, int size) {
 		this.starts = starts;
 		this.ends = ends;

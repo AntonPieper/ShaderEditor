@@ -65,19 +65,12 @@ public class ShaderEditor extends LineNumberEditText {
 			"(#endif)\\b");
 	private static final Pattern PATTERN_NO_BREAK_SPACE = Pattern.compile(
 			"\\xA0");
-	private static final ArrayList<String> DEFAULT_COMPLETIONS = new ArrayList<>();
 	private static final Tokens NO_TOKENS = GlslLexer.lex("");
 	private static final Analysis NO_ANALYSIS = new Analysis(NO_TOKENS,
 			Outline.of(NO_TOKENS, ""));
 	private static final List<String> BUILTIN_UNIFORMS = new ArrayList<>();
 
 	static {
-		DEFAULT_COMPLETIONS.add("{");
-		DEFAULT_COMPLETIONS.add("}");
-		DEFAULT_COMPLETIONS.add("(");
-		DEFAULT_COMPLETIONS.add(")");
-		DEFAULT_COMPLETIONS.add("[");
-		DEFAULT_COMPLETIONS.add("]");
 		for (UniformDef uniform : UniformTable.BUILTINS) {
 			BUILTIN_UNIFORMS.add(uniform.getName());
 		}
@@ -644,37 +637,11 @@ public class ShaderEditor extends LineNumberEditText {
 		if (listener == null) {
 			return;
 		}
-		Tokens tokens = analysis.tokens();
-		int start = getSelectionStart();
-		int index = GlslCompletion.tokenBefore(tokens, start);
-		if (index < 0) {
-			listener.onCodeCompletions(DEFAULT_COMPLETIONS, 0);
-			return;
-		}
-		if (GlslCompletion.isInComment(tokens, text, index, start)) {
-			listener.onCodeCompletions(Collections.emptyList(), 0);
-			return;
-		}
-		int positionInToken = start - tokens.start(index);
-		List<String> completions = GlslCompletion.words(
-				text.subSequence(tokens.start(index), start).toString(),
-				tokens.inDirective(index),
-				analysis.outline(),
-				tokens.start(index),
-				BUILTIN_UNIFORMS);
-
-		if (completions.isEmpty()) {
-			completions = DEFAULT_COMPLETIONS;
-			positionInToken = 0;
-		}
-		if (completions.size() == 1 && completions.get(0).contentEquals(
-				text.subSequence(tokens.start(index), start))) {
-			completions = DEFAULT_COMPLETIONS;
-			positionInToken = 0;
-		}
-		listener.onCodeCompletions(
-				completions,
-				positionInToken);
+		GlslCompletion.Completions completions = GlslCompletion.atOffset(
+				analysis.tokens(), text, getSelectionStart(),
+				analysis.outline(), BUILTIN_UNIFORMS);
+		listener.onCodeCompletions(completions.words(),
+				completions.position());
 	}
 
 	private CharSequence autoIndent(
