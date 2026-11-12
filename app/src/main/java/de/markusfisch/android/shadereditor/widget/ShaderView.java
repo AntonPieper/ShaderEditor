@@ -6,15 +6,21 @@ import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
+import androidx.annotation.NonNull;
+
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.egl.EGLDisplay;
+import javax.microedition.khronos.opengles.GL10;
 
-import de.markusfisch.android.shadereditor.opengl.ShaderRenderer;
+import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
+import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 
 public class ShaderView extends GLSurfaceView {
-	private ShaderRenderer renderer;
+	private ShaderEngine engine;
+	// Written by the context factory on the GL thread.
+	private int contextVersion = 2;
 
 	public ShaderView(Context context, int renderMode) {
 		super(context);
@@ -34,59 +40,63 @@ public class ShaderView extends GLSurfaceView {
 	@Override
 	public void onPause() {
 		super.onPause();
-		renderer.unregisterListeners();
+		engine.onContextLost();
 	}
 
-	// Click handling is implemented in renderer.
+	// Click handling is implemented in the engine.
 	@SuppressLint("ClickableViewAccessibility")
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
-		renderer.touchAt(event);
+		engine.pointer(event);
 		return true;
 	}
 
-	public void setFragmentShader(String src, float quality) {
+	public void setShader(@NonNull ShaderProjectSession session) {
 		onPause();
-		// When pasting text from other apps, e.g. Gmail, the
-		// text is sometimes tainted with useless non-ascii
-		// characters that can raise an exception in the shader
-		// compiler. To still allow UTF-8 characters in comments,
-		// the source is cleaned up here.
-		renderer.setFragmentShader(removeNonAscii(src), quality);
+		engine.setShader(session);
 		onResume();
 	}
 
-	public ShaderRenderer getRenderer() {
-		return renderer;
+	public void setQuality(float quality) {
+		engine.setQuality(quality);
+		onPause();
+		onResume();
+	}
+
+	@NonNull
+	public ShaderEngine getEngine() {
+		return engine;
 	}
 
 	private void init(Context context, int renderMode) {
-		renderer = new ShaderRenderer(new ContextEngineHost(context));
-		renderer.setRenderRequester(this::requestRender);
+		engine = new ShaderEngine(new ContextEngineHost(context));
+		engine.setRenderRequester(this::requestRender);
 
 		// On some devices it's important to setEGLContextClientVersion()
 		// even if the docs say it's not used when setEGLContextFactory()
 		// is called. Not doing so will crash the app (e.g. on the FP1).
 		setEGLContextClientVersion(2);
-		setEGLContextFactory(new ContextFactory(renderer));
-		setRenderer(renderer);
+		setEGLContextFactory(new ContextFactory());
+		setRenderer(new Renderer() {
+			@Override
+			public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+				engine.onContextCreated(contextVersion);
+			}
+
+			@Override
+			public void onSurfaceChanged(GL10 gl, int width, int height) {
+				engine.onSurfaceChanged(width, height);
+			}
+
+			@Override
+			public void onDrawFrame(GL10 gl) {
+				engine.drawFrame();
+			}
+		});
 		setRenderMode(renderMode);
 	}
 
-	private static String removeNonAscii(String text) {
-		return text == null
-				? null
-				: text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", "");
-	}
-
-	private static class ContextFactory
-			implements GLSurfaceView.EGLContextFactory {
-		private final ShaderRenderer renderer;
-
-		private ContextFactory(ShaderRenderer renderer) {
-			this.renderer = renderer;
-		}
-
+	private class ContextFactory implements GLSurfaceView.EGLContextFactory {
 		@Override
 		public EGLContext createContext(EGL10 egl, EGLDisplay display,
 				EGLConfig eglConfig) {
@@ -99,7 +109,7 @@ public class ShaderView extends GLSurfaceView {
 					});
 			if (context != null && context != EGL10.EGL_NO_CONTEXT &&
 					context.getGL() != null) {
-				renderer.setVersion(3);
+				contextVersion = 3;
 				return context;
 			}
 			return egl.eglCreateContext(display, eglConfig,

@@ -111,7 +111,7 @@ public class ShaderWallpaperService extends WallpaperService {
 		public void onTouchEvent(MotionEvent e) {
 			super.onTouchEvent(e);
 			if (view != null) {
-				view.getRenderer().touchAt(e);
+				view.getEngine().pointer(e);
 			}
 		}
 
@@ -124,7 +124,7 @@ public class ShaderWallpaperService extends WallpaperService {
 				int xPixels,
 				int yPixels) {
 			if (view != null) {
-				view.getRenderer().setOffset(xOffset, yOffset);
+				view.getEngine().offset(xOffset, yOffset);
 			}
 		}
 
@@ -144,7 +144,7 @@ public class ShaderWallpaperService extends WallpaperService {
 		private void saveRuntime() {
 			if (view != null && hasRuntimeShader && !isPreview()) {
 				ShaderEditorApp.preferences.setWallpaperRuntimeNanos(
-						runtimeShaderId, view.getRenderer().getRuntimeNanos());
+						runtimeShaderId, view.getEngine().getRuntimeNanos());
 			}
 		}
 
@@ -155,11 +155,9 @@ public class ShaderWallpaperService extends WallpaperService {
 				saveRuntime();
 				runtimeShaderId = ShaderEditorApp.preferences.getWallpaperShader();
 				hasRuntimeShader = true;
-				view.getRenderer().setFragmentShader(
-						projectSession.getEntryPointSource(),
-						projectSession.getQuality());
+				view.getEngine().setShader(projectSession);
 				if (!isPreview()) {
-					view.getRenderer().setRuntimeNanos(
+					view.getEngine().setRuntimeNanos(
 							ShaderEditorApp.preferences.getWallpaperRuntimeNanos(runtimeShaderId));
 				}
 				if (isVisible()) {
