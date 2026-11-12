@@ -1,14 +1,18 @@
 package de.markusfisch.android.shadereditor.editor;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * One file being edited: its text, the selection and the changes made
  * to them. Every edit is a replace of a range by a text, which Text.of
  * has cleaned. Listeners hear of each change as it happens and once
  * more when an edit, or a batch of them, is complete. Positions held
- * elsewhere follow the edits through Change.map. A document is used on
- * one thread; its texts may be read on any.
+ * elsewhere follow the edits through Change.map. Undo and redo work in
+ * steps, and a run of typing is one step. A document is used on one
+ * thread; its texts may be read on any.
  */
 public final class Document {
 	/** A replace: inserted took the place of removed at start. */
@@ -59,15 +63,44 @@ public final class Document {
 		}
 	}
 
+	interface Clock {
+		long millis();
+	}
+
+	// A run of typing ends after a pause this long.
+	private static final long TYPING_PAUSE = 1000;
+	// The history keeps at most this many steps, and drops the oldest
+	// while their texts add up to more characters than MAX_CHARS. The
+	// newest step is always kept.
+	private static final int MAX_STEPS = 1000;
+	private static final int MAX_CHARS = 4_000_000;
+	// The saved text is no longer reachable by undo or redo.
+	private static final Step UNREACHABLE = new Step(null);
+
+	private final ArrayDeque<Step> undo = new ArrayDeque<>();
+	private final ArrayDeque<Step> redo = new ArrayDeque<>();
+	private final Clock clock;
 	private Listener[] listeners = new Listener[0];
 	private Text text;
 	private int revision;
 	private Selection selection = new Selection(0, 0);
 	private int batches;
 	private boolean updated;
+	// The step the changes of this batch go to.
+	private Step batchStep;
+	// The step that typing may continue.
+	private Step typing;
+	// The step the saved text is after, null for the start of history.
+	private Step saved;
+	private int historyChars;
 
 	public Document(Text text) {
+		this(text, () -> System.nanoTime() / 1_000_000);
+	}
+
+	Document(Text text, Clock clock) {
 		this.text = text;
+		this.clock = clock;
 	}
 
 	/** Return the current text. */
@@ -101,7 +134,7 @@ public final class Document {
 		}
 	}
 
-	/** Select from anchor to head. */
+	/** Select from anchor to head; another place ends a run of typing. */
 	public void select(int anchor, int head) {
 		int length = text.length();
 		if (anchor < 0 || anchor > length || head < 0 || head > length) {
@@ -112,28 +145,34 @@ public final class Document {
 			beginBatch();
 			selection = new Selection(anchor, head);
 			updated = true;
+			typing = null;
 			endBatch();
 		}
 	}
 
 	/**
-	 * Replace the range [from, to) by text. The selection follows the
-	 * change as Change.map moves it.
+	 * Replace the range [from, to) by text, as an undo step of its own
+	 * or as part of the step of the current batch. The selection
+	 * follows the change as Change.map moves it.
 	 */
 	public void replace(int from, int to, Text text) {
-		Change change = new Change(from, this.text.slice(from, to), text);
-		if (from == to && text.length() == 0) {
-			return;
-		}
-		beginBatch();
-		apply(change);
-		endBatch();
+		edit(from, to, text, false);
 	}
 
 	/**
-	 * Start a batch: until the matching endBatch, listeners hear of
-	 * each change but are told only once that the document updated.
-	 * Batches nest.
+	 * Replace as replace does, as typing: a typed change joins the
+	 * last step if that was typed less than a second ago and the
+	 * change touches the text it changed. Selecting another place,
+	 * any other edit, undo, redo and markSaved end the run.
+	 */
+	public void type(int from, int to, Text text) {
+		edit(from, to, text, true);
+	}
+
+	/**
+	 * Start a batch: until the matching endBatch, the changes are one
+	 * undo step, and listeners hear of each change but are told only
+	 * once that the document updated. Batches nest.
 	 */
 	public void beginBatch() {
 		++batches;
@@ -143,12 +182,93 @@ public final class Document {
 		if (batches == 0) {
 			throw new IllegalStateException("No batch to end");
 		}
-		if (--batches == 0 && updated) {
+		if (--batches > 0) {
+			return;
+		}
+		endStep();
+		if (updated) {
 			updated = false;
 			for (Listener listener : listeners) {
 				listener.onUpdate();
 			}
 		}
+	}
+
+	public boolean canUndo() {
+		return !undo.isEmpty();
+	}
+
+	public boolean canRedo() {
+		return !redo.isEmpty();
+	}
+
+	/** Undo the last step and select what was selected before it. */
+	public void undo() {
+		Step step = undo.peekLast();
+		if (step == null) {
+			return;
+		}
+		beginBatch();
+		endStep();
+		typing = null;
+		redo.addLast(undo.removeLast());
+		for (int i = step.changes.size(); i-- > 0; ) {
+			Change change = step.changes.get(i);
+			apply(new Change(change.start(), change.inserted(),
+					change.removed()));
+		}
+		selection = step.selectionBefore;
+		endBatch();
+	}
+
+	/** Redo the last undone step and select what it selected. */
+	public void redo() {
+		Step step = redo.peekLast();
+		if (step == null) {
+			return;
+		}
+		beginBatch();
+		endStep();
+		typing = null;
+		undo.addLast(redo.removeLast());
+		for (Change change : step.changes) {
+			apply(change);
+		}
+		selection = step.selectionAfter;
+		endBatch();
+	}
+
+	/**
+	 * Remember that the file holds text now. If that is the current
+	 * text, the document is unmodified until it changes, and again
+	 * whenever undo or redo return to it. Otherwise, as when the user
+	 * typed on while a save was running, it is modified until the next
+	 * time the file holds its text.
+	 */
+	public void markSaved(Text text) {
+		if (text == this.text) {
+			endStep();
+			typing = null;
+			saved = undo.peekLast();
+		} else {
+			saved = UNREACHABLE;
+		}
+	}
+
+	/** Return whether the text differs from the one last saved. */
+	public boolean isModified() {
+		return undo.peekLast() != saved;
+	}
+
+	private void edit(int from, int to, Text text, boolean typed) {
+		Change change = new Change(from, this.text.slice(from, to), text);
+		if (from == to && text.length() == 0) {
+			return;
+		}
+		beginBatch();
+		record(change, typed);
+		apply(change);
+		endBatch();
 	}
 
 	private void apply(Change change) {
@@ -161,6 +281,110 @@ public final class Document {
 		updated = true;
 		for (Listener listener : listeners) {
 			listener.onChange(change, before);
+		}
+	}
+
+	private void record(Change change, boolean typed) {
+		long now = clock.millis();
+		Step step = batchStep;
+		if (step == null && typed && typing != null &&
+				now - typing.time < TYPING_PAUSE &&
+				touches(typing.changes.get(0), change)) {
+			step = typing;
+		}
+		if (step == null) {
+			step = new Step(selection);
+			for (Step dropped : redo) {
+				historyChars -= dropped.chars;
+				if (dropped == saved) {
+					saved = UNREACHABLE;
+				}
+			}
+			redo.clear();
+			undo.addLast(step);
+		}
+		historyChars -= step.chars;
+		step.add(change, typed);
+		historyChars += step.chars;
+		step.time = now;
+		batchStep = step;
+		typing = step.typed ? step : null;
+		while (undo.size() > 1 && (undo.size() > MAX_STEPS ||
+				historyChars > MAX_CHARS)) {
+			Step dropped = undo.removeFirst();
+			historyChars -= dropped.chars;
+			if (saved == null) {
+				saved = UNREACHABLE;
+			} else if (saved == dropped) {
+				saved = null;
+			}
+		}
+	}
+
+	// Ends the step of the current batch; typing may continue it.
+	private void endStep() {
+		if (batchStep != null) {
+			batchStep.selectionAfter = selection;
+			batchStep = null;
+		}
+	}
+
+	// Returns whether b replaces a range that touches what a inserted.
+	private static boolean touches(Change a, Change b) {
+		return b.start() <= a.start() + a.inserted().length() &&
+				b.start() + b.removed().length() >= a.start();
+	}
+
+	// Returns the change that makes a and then b, where b touches a.
+	private static Change compose(Change a, Change b) {
+		int aEnd = a.start() + a.inserted().length();
+		int bEnd = b.start() + b.removed().length();
+		Text removed = a.removed();
+		if (b.start() < a.start()) {
+			removed = removed.replace(0, 0,
+					b.removed().slice(0, a.start() - b.start()));
+		}
+		if (bEnd > aEnd) {
+			int length = b.removed().length();
+			removed = removed.replace(removed.length(), removed.length(),
+					b.removed().slice(length - (bEnd - aEnd), length));
+		}
+		Text inserted = a.inserted().replace(
+				Math.max(a.start(), b.start()) - a.start(),
+				Math.min(aEnd, bEnd) - a.start(), b.inserted());
+		return new Change(Math.min(a.start(), b.start()), removed, inserted);
+	}
+
+	// The changes that undo and redo apply together.
+	private static final class Step {
+		private final List<Change> changes = new ArrayList<>();
+		private final Selection selectionBefore;
+		private Selection selectionAfter;
+		// Whether this step is one typed change that typing may continue.
+		private boolean typed = true;
+		private long time;
+		private int chars;
+
+		private Step(Selection selectionBefore) {
+			this.selectionBefore = selectionBefore;
+		}
+
+		private void add(Change change, boolean typed) {
+			int last = changes.size() - 1;
+			if (typed && this.typed && last == 0 &&
+					touches(changes.get(0), change)) {
+				chars -= size(changes.get(0));
+				changes.set(0, compose(changes.get(0), change));
+				chars += size(changes.get(0));
+				return;
+			}
+			changes.add(change);
+			chars += size(change);
+			this.typed = typed && last < 0;
+		}
+
+		private static int size(Change change) {
+			return change.removed().length() + change.inserted().length();
 		}
 	}
 }
