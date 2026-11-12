@@ -209,8 +209,9 @@ public class LineStylesTest {
 		Document document = new Document(Text.of("x = Light(1.0);"));
 		LineStyles styles = new LineStyles(document, 100);
 		assertEquals(Style.IDENTIFIER, styles.runs(0).style(2));
-		assertTrue(styles.setTypeNames(Set.of("Light")));
-		assertFalse(styles.setTypeNames(Set.of("Light")));
+		Set<String> names = Set.of("Light");
+		assertTrue(styles.setTypeNames(names));
+		assertFalse(styles.setTypeNames(names));
 		assertEquals(Style.TYPE, styles.runs(0).style(2));
 		assertEquals(Style.IDENTIFIER, styles.runs(0).style(0));
 	}

@@ -83,12 +83,13 @@ public final class AnalysisScheduler {
 	private void start() {
 		Text text = document.text();
 		int revision = document.revision();
+		Analysis previous = latest;
 		wanted = revision;
 		background.execute(() -> {
 			if (revision != wanted) {
 				return;
 			}
-			Analysis analysis = Analysis.of(text, revision);
+			Analysis analysis = Analysis.of(text, revision, previous);
 			main.post(() -> deliver(analysis), 0);
 		});
 	}

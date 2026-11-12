@@ -113,10 +113,12 @@ public final class LineStyles {
 
 	/**
 	 * Paint every identifier whose text is in names as a type. The set
-	 * must not change afterwards. Return whether runs may have changed.
+	 * must not change afterwards; another set, even an equal one, is
+	 * taken as a change, so pass Analysis.typeNames, which stays the same
+	 * set while the names do. Return whether runs may have changed.
 	 */
 	public boolean setTypeNames(Set<String> names) {
-		if (names.equals(typeNames)) {
+		if (names == typeNames) {
 			return false;
 		}
 		typeNames = names;
