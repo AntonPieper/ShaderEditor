@@ -317,4 +317,8 @@
 	</plurals>
 	<string name="nav_new">New</string>
 	<string name="nav_running">Running</string>
+	<string name="nav_folders">Folders</string>
+	<string name="nav_up">Up</string>
+	<string name="nav_read_only">Read-only</string>
+	<string name="nav_examples_count">%d examples, read-only</string>
 </resources>

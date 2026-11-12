@@ -35,6 +35,7 @@ import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderViewManager;
 import de.markusfisch.android.shadereditor.activity.managers.UIManager;
+import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
@@ -219,6 +220,18 @@ public class MainActivity extends AppCompatActivity {
 					@Override
 					public void onAddShader() {
 						shaderActions.onAddShader();
+					}
+
+					@Override
+					public void onOpenExample(@NonNull Samples.Sample sample) {
+						if (shaderManager.isModified()) {
+							shaderManager.saveShader();
+						}
+						shaderManager.createShaderFromResource(
+								getString(sample.nameId()),
+								sample.resId(),
+								sample.thumbId(),
+								sample.quality());
 					}
 				});
 	}
@@ -471,6 +484,10 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onLoadSample() {
+				if (shaderListManager instanceof NavigationDrawer drawer) {
+					drawer.showExamples();
+					return;
+				}
 				navigationManager.goToLoadSample(shaderManager.loadSampleLauncher);
 			}
 

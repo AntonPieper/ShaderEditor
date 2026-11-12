@@ -65,4 +65,14 @@
 		android:src="@drawable/ic_play_arrow"
 		android:visibility="gone"
 		app:tint="?attr/colorPrimary" />
+
+	<ImageView
+		android:id="@+id/navigation_enters"
+		android:layout_width="@dimen/navigation_mark_size"
+		android:layout_height="@dimen/navigation_mark_size"
+		android:layout_marginStart="@dimen/navigation_mark_spacing"
+		android:importantForAccessibility="no"
+		android:src="@drawable/ic_chevron_right"
+		android:visibility="gone"
+		app:tint="?attr/colorOutline" />
 </LinearLayout>
