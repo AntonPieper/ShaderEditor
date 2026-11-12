@@ -105,8 +105,11 @@ final class PlanPass {
 				source.sourceMap());
 	}
 
-	// GL thread, on a GLES3 context.
-	void createSamplers() {
+	// GL thread, on a GLES3 context. Returns why they could not be made,
+	// or null.
+	@Nullable
+	String createSamplers() {
+		device.clearErrors();
 		var images = bindings.images;
 		samplers = new int[images.size()];
 		for (int i = 0; i < samplers.length; ++i) {
@@ -117,6 +120,7 @@ final class PlanPass {
 		for (int i = 0; i < historySamplers.length; ++i) {
 			historySamplers[i] = createSampler(previous.get(i).sampling());
 		}
+		return device.takeError("glGenSamplers");
 	}
 
 	// Binds what each input reads, sampled as it asks: its image, the

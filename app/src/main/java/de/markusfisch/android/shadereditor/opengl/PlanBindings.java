@@ -274,6 +274,35 @@ final class PlanBindings {
 		return errors;
 	}
 
+	// Why the previous frame cannot be read as the inputs ask from a
+	// target of this size on a context of this version; empty when it
+	// can. OpenGL ES 2.0 wraps a texture that is not a power of two only
+	// by clamping.
+	@NonNull
+	List<ProjectDiagnostic> checkHistory(
+			@NonNull RenderPlan.Size size,
+			int glesVersion) {
+		var errors = new ArrayList<ProjectDiagnostic>();
+		if (glesVersion >= 3 ||
+				(isPowerOfTwo(size.width()) && isPowerOfTwo(size.height()))) {
+			return errors;
+		}
+		for (var binding : history) {
+			var input = binding.input();
+			var sampling = binding.sampling();
+			if (input != null && (sampling.wrapS() != Wrap.CLAMP ||
+					sampling.wrapT() != Wrap.CLAMP)) {
+				errors.add(error(input, input.uniform() + " reads the " +
+						"previous frame of a target of " + describe(size) +
+						", not a power of two, so OpenGL ES 2.0 reads it " +
+						"only with wrap=clamp, and this device has no " +
+						"OpenGL ES 3.0; change the settings of " +
+						input.uniform() + " or the size of the target"));
+			}
+		}
+		return errors;
+	}
+
 	// A problem with an image, located at the first input that reads it.
 	@NonNull
 	ProjectDiagnostic locate(@NonNull ProjectPath image, @NonNull String message) {

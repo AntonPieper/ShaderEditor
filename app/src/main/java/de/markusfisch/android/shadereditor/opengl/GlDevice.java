@@ -262,12 +262,30 @@ final class GlDevice {
 		return message;
 	}
 
-	void generateMipmap(@NonNull GlTexture texture) {
+	// Returns why it could not, or null.
+	@Nullable
+	String generateMipmap(@NonNull GlTexture texture) {
 		bindTexture(0, texture);
 		if (texture.getTarget() == GLES11Ext.GL_TEXTURE_EXTERNAL_OES) {
-			return;
+			return null;
 		}
+		clearGlErrors();
 		GLES20.glGenerateMipmap(texture.getTarget());
+		return takeError("glGenerateMipmap");
+	}
+
+	// Before GL calls whose own errors takeError() reports.
+	void clearErrors() {
+		clearGlErrors();
+	}
+
+	// Why the GL calls since clearErrors() failed, or null.
+	@Nullable
+	String takeError(@NonNull String call) {
+		int error = getLastGlError();
+		return error != GLES20.GL_NO_ERROR
+				? call + " failed with GL error 0x" + Integer.toHexString(error)
+				: null;
 	}
 
 	@NonNull
