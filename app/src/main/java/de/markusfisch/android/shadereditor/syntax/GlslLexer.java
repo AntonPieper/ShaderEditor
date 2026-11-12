@@ -62,8 +62,101 @@ public final class GlslLexer {
 				lineStarts, lines);
 	}
 
-	private void run() {
+	// PROTOTYPE (proto/editor-core): restart at the start of a line.
+	// The state of the lexer between two lines fits in six bits.
+	public static final int LINE_START = 0;
+	private static final int MODE_MASK = 3;
+	private static final int IN_BLOCK_COMMENT = 1;
+	private static final int IN_LINE_COMMENT = 2;
+	private static final int STATE_DIRECTIVE = 4;
+	private static final int STATE_NAME_EXPECTED = 8;
+	private static final int KIND_SHIFT = 4;
+
+	private boolean blockOpen;
+	private boolean commentRunsOn;
+
+	/**
+	 * Tokenizes one line that starts in state and returns the state the
+	 * next line starts in. The tokens lie inside the line; a comment that
+	 * goes on is cut at the end of the line.
+	 *
+	 * @param breakFollows whether a line break follows the line
+	 */
+	public static int lexLine(CharSequence line, boolean breakFollows,
+			int state, LineTokens out) {
+		int lineLength = line.length();
+		GlslLexer lexer = new GlslLexer(breakFollows
+				? new WithBreak(line)
+				: line);
+		lexer.directive = (state & STATE_DIRECTIVE) != 0;
+		lexer.nameExpected = (state & STATE_NAME_EXPECTED) != 0;
+		lexer.lastKind = (state >> KIND_SHIFT) & 3;
 		int i = 0;
+		int mode = state & MODE_MASK;
+		if (mode == IN_BLOCK_COMMENT) {
+			lexer.add(0, 0, Style.COMMENT);
+			i = lexer.ends[lexer.size - 1] = lexer.blockCommentEnd(0);
+		} else if (mode == IN_LINE_COMMENT) {
+			i = lexer.add(0, lexer.lineCommentEnd(0), Style.COMMENT);
+		}
+		lexer.run(i);
+		out.size = 0;
+		out.ensure(lexer.size);
+		for (int t = 0; t < lexer.size; ++t) {
+			int end = Math.min(lexer.ends[t], lineLength);
+			if (lexer.starts[t] < end) {
+				out.starts[out.size] = lexer.starts[t];
+				out.ends[out.size] = end;
+				out.kinds[out.size] = lexer.kinds[t];
+				++out.size;
+			}
+		}
+		if (!breakFollows) {
+			return LINE_START;
+		}
+		return (lexer.blockOpen
+				? IN_BLOCK_COMMENT
+				: lexer.commentRunsOn ? IN_LINE_COMMENT : 0) |
+				(lexer.directive ? STATE_DIRECTIVE : 0) |
+				(lexer.nameExpected ? STATE_NAME_EXPECTED : 0) |
+				(lexer.lastKind << KIND_SHIFT);
+	}
+
+	private static final class WithBreak implements CharSequence {
+		private final CharSequence line;
+		private final int length;
+
+		private WithBreak(CharSequence line) {
+			this.line = line;
+			length = line.length();
+		}
+
+		@Override
+		public int length() {
+			return length + 1;
+		}
+
+		@Override
+		public char charAt(int index) {
+			return index < length ? line.charAt(index) : '\n';
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			return toString().subSequence(start, end);
+		}
+
+		@Override
+		public String toString() {
+			return line + "\n";
+		}
+	}
+
+	private void run() {
+		run(0);
+	}
+
+	private void run(int i) {
 		while (i < length) {
 			char c = text.charAt(i);
 			if (c == '\n' || c == '\r') {
@@ -76,6 +169,7 @@ public final class GlslLexer {
 			} else if (Character.isWhitespace(c)) {
 				++i;
 			} else if (c == '/' && charAt(i + 1) == '/') {
+				commentRunsOn = false;
 				i = add(i, lineCommentEnd(i + 2), Style.COMMENT);
 			} else if (c == '/' && charAt(i + 1) == '*') {
 				add(i, i + 2, Style.COMMENT);
@@ -136,7 +230,7 @@ public final class GlslLexer {
 			} else if (lastKind == STRUCT) {
 				style = Style.TYPE;
 			} else {
-				if (lastKind == NAME) {
+				if (lastKind == NAME && last >= 0) {
 					kinds[last] = Style.TYPE.ordinal();
 				}
 				kind = NAME;
@@ -214,13 +308,16 @@ public final class GlslLexer {
 				++i;
 			}
 		}
+		commentRunsOn = true;
 		return length;
 	}
 
 	private int blockCommentEnd(int i) {
+		blockOpen = true;
 		for (; i < length; ++i) {
 			char c = text.charAt(i);
 			if (c == '*' && charAt(i + 1) == '/') {
+				blockOpen = false;
 				return i + 2;
 			} else if (c == '\n' || c == '\r') {
 				directive = false;

@@ -1,0 +1,17 @@
+ config {mode=stock, trace=1, copies=0, suggestions=1}
+ key commitText 1 edit=16542us draw=288us keyToDrawEnd=38198us lines=501
+ frame key main=3763us (input=0 anim=45 layout=490 draw=3178 sync=48) total=1801
+ key commitText 1 edit=1486us draw=92us keyToDrawEnd=16302us lines=501
+ frame key main=1960us (input=0 anim=0 layout=1587 draw=353 sync=19) total=18754
+ key commitText 1 edit=1303us draw=60us keyToDrawEnd=12863us lines=501
+ frame key main=5281us (input=0 anim=0 layout=5126 draw=112 sync=42) total=30343
+ key commitText 1 edit=1534us draw=66us keyToDrawEnd=12462us lines=501
+ frame key main=812us (input=0 anim=0 layout=641 draw=134 sync=36) total=45570us
+ key commitText 1 edit=633us draw=100us keyToDrawEnd=8785us lines=501
+ frame key main=3499us (input=17 anim=0 layout=3284 draw=159 sync=38) total=2483
+ key commitText 1 edit=744us draw=72us keyToDrawEnd=18972us lines=501
+ frame key main=1341us (input=0 anim=0 layout=906 draw=136 sync=298) total=97127
+ key commitText 1 edit=924us draw=161us keyToDrawEnd=78302us lines=501
+ frame key main=21114us (input=0 anim=0 layout=20554 draw=293 sync=266) total=13
+ key commitText 1 edit=1122us draw=60us keyToDrawEnd=5320us lines=501
+ frame key main=706us (input=0 anim=0 layout=588 draw=101 sync=16) total=91633us

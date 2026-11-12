@@ -159,5 +159,250 @@
 			android:name=".activity.CubeMapActivity"
 			android:label="@string/add_uniform"
 			android:exported="false"/>
+		<!-- THROWAWAY PROTOTYPE (proto/editor-core) -->
+		<activity
+			android:name=".editor.proto.ProtoActivity"
+			android:exported="true"
+			android:label="Editor prototype"
+			android:theme="@android:style/Theme.Material.NoActionBar"
+			android:windowSoftInputMode="adjustResize|stateHidden" />
+		<activity-alias
+			android:name=".editor.proto.View5k"
+			android:exported="true"
+			android:label="Proto View5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;copies=1;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.View50k"
+			android:exported="true"
+			android:label="Proto View50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;copies=10;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Layout5k"
+			android:exported="true"
+			android:label="Proto Layout5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=layout;copies=1;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Layout50k"
+			android:exported="true"
+			android:label="Proto Layout50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=layout;copies=10;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Stock5k"
+			android:exported="true"
+			android:label="Proto Stock5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=stock;copies=1;drive=type,big" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Stock50k"
+			android:exported="true"
+			android:label="Proto Stock50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=stock;copies=10;drive=type" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.StockSpans5k"
+			android:exported="true"
+			android:label="Proto StockSpans5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=stock;copies=1;spans=1;drive=type" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Nested5k"
+			android:exported="true"
+			android:label="Proto Nested5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=stocknested;copies=1;drive=type,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.NestedSpans5k"
+			android:exported="true"
+			android:label="Proto NestedSpans5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=stocknested;copies=1;spans=1;drive=type" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Ime5k"
+			android:exported="true"
+			android:label="Proto Ime5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;copies=1;trace=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Ime50k"
+			android:exported="true"
+			android:label="Proto Ime50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;copies=10;trace=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeSuggest5k"
+			android:exported="true"
+			android:label="Proto ImeSuggest5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;copies=1;trace=1;suggestions=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeRaw5k"
+			android:exported="true"
+			android:label="Proto ImeRaw5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;copies=1;trace=1;raw=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeLayout50k"
+			android:exported="true"
+			android:label="Proto ImeLayout50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=layout;copies=10;trace=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Nodes5k"
+			android:exported="true"
+			android:label="Proto Nodes5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=1;copies=1;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Nodes50k"
+			android:exported="true"
+			android:label="Proto Nodes50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=1;copies=10;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Nodes500"
+			android:exported="true"
+			android:label="Proto Nodes500"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=1;copies=0;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.LayoutNodes5k"
+			android:exported="true"
+			android:label="Proto LayoutNodes5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=layout;nodes=1;copies=1;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.LayoutNodes50k"
+			android:exported="true"
+			android:label="Proto LayoutNodes50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=layout;nodes=1;copies=10;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeNodes5k"
+			android:exported="true"
+			android:label="Proto ImeNodes5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=1;copies=1;trace=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeNodes50k"
+			android:exported="true"
+			android:label="Proto ImeNodes50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=1;copies=10;trace=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeNodesSuggest50k"
+			android:exported="true"
+			android:label="Proto ImeNodesSuggest50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=1;copies=10;trace=1;suggestions=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeNodesRaw5k"
+			android:exported="true"
+			android:label="Proto ImeNodesRaw5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=1;copies=1;trace=1;raw=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Stock500"
+			android:exported="true"
+			android:label="Proto Stock500"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=stock;copies=0;drive=type,big" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Ident500"
+			android:exported="true"
+			android:label="Proto Ident500"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=2;copies=0;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Ident5k"
+			android:exported="true"
+			android:label="Proto Ident5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=2;copies=1;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.Ident50k"
+			android:exported="true"
+			android:label="Proto Ident50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=2;copies=10;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.LayoutIdent5k"
+			android:exported="true"
+			android:label="Proto LayoutIdent5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=layout;nodes=2;copies=1;drive=type,big,fling" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeIdent5k"
+			android:exported="true"
+			android:label="Proto ImeIdent5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=2;copies=1;trace=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeIdent50k"
+			android:exported="true"
+			android:label="Proto ImeIdent50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=2;copies=10;trace=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeIdentSuggest50k"
+			android:exported="true"
+			android:label="Proto ImeIdentSuggest50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=2;copies=10;trace=1;suggestions=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeIdentRaw5k"
+			android:exported="true"
+			android:label="Proto ImeIdentRaw5k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=2;copies=1;trace=1;raw=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.ImeCursor50k"
+			android:exported="true"
+			android:label="Proto ImeCursor50k"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=view;nodes=2;copies=10;trace=1;suggestions=1;cursor=1" />
+		</activity-alias>
+		<activity-alias
+			android:name=".editor.proto.StockSuggest"
+			android:exported="true"
+			android:label="Proto StockSuggest"
+			android:targetActivity=".editor.proto.ProtoActivity">
+			<meta-data android:name="args" android:value="mode=stock;copies=0;trace=1;suggestions=1" />
+		</activity-alias>
 	</application>
 </manifest>

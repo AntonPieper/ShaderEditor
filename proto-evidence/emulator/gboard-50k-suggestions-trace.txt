@@ -1,0 +1,21 @@
+ ime commitText " " 1
+ ime commitText "f" 1
+ ime commitText "o" 1
+ ime commitText "o" 1
+ ime commitText " " 1
+ ime commitText "b" 1
+ ime commitText "a" 1
+ ime commitText "r" 1
+ ime sendKeyEvent 0 67
+ ime sendKeyEvent 1 67
+ ime sendKeyEvent 0 67
+ ime sendKeyEvent 1 67
+ ime getTextBeforeCursor 60 -> 60
+ ime getTextAfterCursor 60 -> 60
+ ime getSelectedText
+ ime getTextAfterCursor 339 -> 339
+ ime finishComposingText
+ ime commitText "x" 1
+ ime sendKeyEvent 0 67
+ ime sendKeyEvent 1 67
+ ime commitText "\n" 1

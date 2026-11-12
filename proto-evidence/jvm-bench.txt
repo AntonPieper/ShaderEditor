@@ -1,0 +1,83 @@
+check: Text, Document, undo and incremental line states agree with a StringBuilder over 16,000 random edits
+check: per-line tokens differ from whole-text tokens in 0 of 234890 characters, on 0 of 5003 lines
+
+=== 5003 lines, 234890 chars ===
+memory of Text: 233 KB (1,02 bytes per char; the String alone is 229 KB as Latin-1)
+load  Text.of(String):           0,185 ms
+snapshot Text.toString():        0,189 ms
+type at the caret (1 in 40 is Enter): 2,96 us
+backspace at the caret:           3,42 us
+type 1 char at a random place:    1,79 us
+offset to line (lineOf):          0,21 us
+line to offset (lineStart):       0,17 us
+read one line (line):             0,08 us
+paste 5,002 lines (235 KB): build 0,136 ms, insert 23,50 us
+paste 20,008 lines (940 KB): build 0,652 ms, insert 16,71 us
+select all + delete:              1,75 us
+cut the middle half (slice kept): 6,71 us
+paste 5,002 lines, undo, redo:    7,29 us per step
+gap buffer: type 1 char, caret in the middle: 5,58 us
+gap buffer: type 1 char at a random place:    3,29 us
+gap buffer: copy for another thread:          1,138 ms
+lex whole text (GlslLexer.lex):   3,908 ms
+outline of whole text:            0,620 ms
+lex every line once (LineStates): 2,694 ms
+type + re-lex (1 in 40 is Enter): 1,33 us
+after typing /* on line 11: 200 lines now 38,21 us (201 lines)
+  then the rest, off the main thread:      0,941 ms (4792 lines, cold, one run)
+
+=== 50021 lines, 2348900 chars ===
+memory of Text: 4374 KB (1,91 bytes per char; the String alone is 2293 KB as Latin-1)
+load  Text.of(String):           0,762 ms
+snapshot Text.toString():        0,573 ms
+type at the caret (1 in 40 is Enter): 0,96 us
+backspace at the caret:           0,71 us
+type 1 char at a random place:    0,88 us
+offset to line (lineOf):          0,13 us
+line to offset (lineStart):       0,08 us
+read one line (line):             0,04 us
+paste 5,002 lines (235 KB): build 0,124 ms, insert 7,79 us
+paste 20,008 lines (940 KB): build 0,443 ms, insert 12,92 us
+select all + delete:              0,25 us
+cut the middle half (slice kept): 4,58 us
+paste 5,002 lines, undo, redo:    7,82 us per step
+gap buffer: type 1 char, caret in the middle: 1,46 us
+gap buffer: type 1 char at a random place:    35,00 us
+gap buffer: copy for another thread:          1,227 ms
+lex whole text (GlslLexer.lex):   36,768 ms
+outline of whole text:            2,457 ms
+lex every line once (LineStates): 31,161 ms
+type + re-lex (1 in 40 is Enter): 1,04 us
+after typing /* on line 11: 200 lines now 25,83 us (201 lines)
+  then the rest, off the main thread:      12,981 ms (49810 lines, cold, one run)
+
+=== 500201 lines, 23489000 chars ===
+memory of Text: 43757 KB (1,91 bytes per char; the String alone is 22938 KB as Latin-1)
+load  Text.of(String):           17,646 ms
+snapshot Text.toString():        7,261 ms
+type at the caret (1 in 40 is Enter): 0,58 us
+backspace at the caret:           0,29 us
+type 1 char at a random place:    1,83 us
+offset to line (lineOf):          0,38 us
+line to offset (lineStart):       0,29 us
+read one line (line):             0,08 us
+paste 5,002 lines (235 KB): build 0,073 ms, insert 4,96 us
+paste 20,008 lines (940 KB): build 0,287 ms, insert 14,08 us
+select all + delete:              0,42 us
+cut the middle half (slice kept): 15,08 us
+paste 5,002 lines, undo, redo:    6,28 us per step
+gap buffer: type 1 char, caret in the middle: 18,92 us
+gap buffer: type 1 char at a random place:    383,88 us
+gap buffer: copy for another thread:          10,514 ms
+lex whole text (GlslLexer.lex):   437,281 ms
+outline of whole text:            43,283 ms
+lex every line once (LineStates): 453,354 ms
+type + re-lex (1 in 40 is Enter): 0,79 us
+after typing /* on line 11: 200 lines now 44,67 us (201 lines)
+  then the rest, off the main thread:      209,641 ms (499990 lines, cold, one run)
+
+=== one long line ===
+type 1 char in a line of 1000 chars: 3,54 us
+type 1 char in a line of 10000 chars: 8,42 us
+type 1 char in a line of 100000 chars: 30,29 us
+type 1 char in a line of 1000000 chars: 102,83 us

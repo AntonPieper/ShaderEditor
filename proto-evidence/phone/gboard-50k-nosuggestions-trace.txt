@@ -1,0 +1,48 @@
+ ime commitText "f" 1
+ key commitText 1 edit=503us draw=193us keyToDrawEnd=11663us lines=50021
+ frame key main=342us (input=4 anim=0 layout=40 draw=261 sync=35) total=2024us
+ ime commitText "o" 1
+ key commitText 1 edit=35us draw=225us keyToDrawEnd=5028us lines=50021
+ frame key main=351us (input=2 anim=0 layout=31 draw=277 sync=40) total=7443us
+ ime commitText "o" 1
+ key commitText 1 edit=67us draw=235us keyToDrawEnd=11193us lines=50021
+ frame key main=402us (input=2 anim=0 layout=25 draw=332 sync=41) total=3119us
+ ime commitText " " 1
+ key commitText 1 edit=34us draw=311us keyToDrawEnd=1985us lines=50021
+ frame key main=492us (input=2 anim=0 layout=44 draw=393 sync=51) total=8170us
+ ime commitText "b" 1
+ key commitText 1 edit=35us draw=217us keyToDrawEnd=16087us lines=50021
+ frame key main=345us (input=3 anim=0 layout=35 draw=267 sync=38) total=2175us
+ ime commitText "a" 1
+ key commitText 1 edit=37us draw=267us keyToDrawEnd=11960us lines=50021
+ frame key main=496us (input=28 anim=0 layout=75 draw=354 sync=37) total=2652us
+ ime commitText "r" 1
+ key commitText 1 edit=64us draw=194us keyToDrawEnd=14114us lines=50021
+ frame key main=305us (input=3 anim=0 layout=24 draw=243 sync=33) total=2792us
+ ime commitText "\n" 1
+ key commitText 1 edit=49us draw=130us keyToDrawEnd=3338us lines=50022
+ ime getTextBeforeCursor 4096 -> 660
+ ime getTextAfterCursor 4096 -> 4096
+ ime getSelectedText
+ frame key main=261us (input=3 anim=0 layout=37 draw=181 sync=40) total=2086us
+ ime commitText "x" 1
+ key commitText 1 edit=57us draw=191us keyToDrawEnd=959us lines=50022
+ frame key main=297us (input=2 anim=0 layout=29 draw=225 sync=40) total=2245us
+ ime commitText "x" 1
+ key commitText 1 edit=66us draw=385us keyToDrawEnd=11967us lines=50022
+ frame key main=528us (input=3 anim=0 layout=35 draw=442 sync=46) total=2521us
+ ime sendKeyEvent 0 67
+ ime sendKeyEvent 1 67
+ key key DEL +3ms edit=47us draw=238us keyToDrawEnd=6130us lines=50022
+ frame key main=339us (input=1 anim=0 layout=18 draw=277 sync=41) total=2357us
+ ime getTextBeforeCursor 4096 -> 661
+ ime getTextAfterCursor 4096 -> 4096
+ ime getSelectedText
+ ime sendKeyEvent 0 67
+ ime sendKeyEvent 1 67
+ key key DEL +1ms edit=39us draw=280us keyToDrawEnd=7826us lines=50022
+ frame key main=479us (input=10 anim=0 layout=53 draw=349 sync=65) total=3033us
+ ime sendKeyEvent 0 67
+ ime sendKeyEvent 1 67
+ key key DEL +1ms edit=50us draw=315us keyToDrawEnd=12618us lines=50021
+ frame key main=532us (input=5 anim=0 layout=60 draw=399 sync=67) total=3377us

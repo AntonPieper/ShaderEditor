@@ -1,0 +1,6 @@
+ config {mode=stocknested, spans=1, copies=1, drive=type}
+ open stocknested lines=5003 read=2126us build(bg)=7206994us setText(main)=78271us measure(main)=273236us setTextToFirstDrawEnd(main)=1147410us createToFirstDrawEnd=8367279us
+ summary stocknested type keys=7 edit p50=1336932us p90=2135378us max=2135378us | onDraw p50=779534us p90=788900us max=788900us | keyToDrawEnd p50=2369392us p90=3160138us max=3160138us
+ summary stocknested type keyFrames=7 mainThread p50=1042398us p90=1058896us max=1058896us | total p50=3180245us p90=3980926us max=3980926us
+ summary stocknested type otherFrames=3 mainThread p50=1111us p90=1079527us max=1079527us | total p50=835139us p90=1128175us max=1128175us
+ summary stocknested type onDraw calls=8 p50=779534us p90=788900us max=788900us

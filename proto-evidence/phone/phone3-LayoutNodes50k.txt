@@ -1,0 +1,15 @@
+ config {mode=layout, nodes=1, copies=10, drive=type,big,fling}
+ open layout lines=50021 read=5280us build(bg)=88392us setDocument(main)=88us firstDraw(main)=4203us createToFirstDrawEnd=110262us
+ summary layout type keys=80 edit p50=109us p90=141us max=194us | onDraw p50=673us p90=949us max=1381us | keyToDrawEnd p50=10313us p90=16388us max=18474us
+ summary layout type keyFrames=80 mainThread p50=1056us p90=1459us max=1816us | total p50=5474us p90=6171us max=7352us
+ summary layout type otherFrames=25 mainThread p50=850us p90=1077us max=1177us | total p50=5113us p90=6035us max=8072us
+ summary layout type onDraw calls=105 p50=654us p90=881us max=1381us
+ big layout paste235k=7362us undoPaste=1848us selectAll=998us replaceAllByOneChar=1175us length=1
+ summary layout big keys=4 edit p50=402us p90=6527us max=6527us | onDraw p50=12765us p90=19923us max=19923us | keyToDrawEnd p50=23117us p90=27058us max=27058us
+ summary layout big keyFrames=4 mainThread p50=13240us p90=20359us max=20359us | total p50=20207us p90=23282us max=23282us
+ summary layout big otherFrames=36 mainThread p50=602us p90=7837us max=8923us | total p50=4992us p90=13987us max=17698us
+ summary layout big onDraw calls=40 p50=590us p90=7869us max=19923us
+ summary layout fling keys=0 edit n/a | onDraw n/a | keyToDrawEnd n/a
+ summary layout fling keyFrames=0 mainThread n/a | total n/a
+ summary layout fling otherFrames=162 mainThread p50=1326us p90=2556us max=4201us | total p50=5271us p90=7323us max=14554us
+ summary layout fling onDraw calls=162 p50=910us p90=2021us max=3577us

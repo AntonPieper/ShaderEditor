@@ -1,0 +1,2 @@
+ config {mode=stock, spans=1, copies=1, drive=type}
+ open stock lines=5003 read=2542us build(bg)=6034071us setText(main)=153021us measure(main)=68612us setTextToFirstDrawEnd(main)=231380us createToFirstDrawEnd=6276560us

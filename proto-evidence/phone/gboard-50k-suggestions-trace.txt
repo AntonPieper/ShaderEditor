@@ -1,0 +1,47 @@
+ ime commitText " " 1
+ key commitText 1 edit=33us draw=148us keyToDrawEnd=492us lines=50021
+ frame key main=258us (input=2 anim=0 layout=35 draw=183 sync=37) total=2154us
+ ime commitText "hi" 1
+ key commitText 2 edit=31us draw=164us keyToDrawEnd=10002us lines=50021
+ frame key main=304us (input=3 anim=0 layout=38 draw=220 sync=42) total=2811us
+ ime commitText " " 1
+ key commitText 1 edit=40us draw=232us keyToDrawEnd=2068us lines=50021
+ frame key main=388us (input=3 anim=0 layout=42 draw=281 sync=60) total=2621us
+ ime commitText "x" 1
+ key commitText 1 edit=38us draw=259us keyToDrawEnd=2828us lines=50021
+ frame key main=441us (input=2 anim=0 layout=41 draw=311 sync=85) total=3237us
+ ime getTextBeforeCursor 600 -> 320
+ ime getTextAfterCursor 600 -> 600
+ ime getSelectedText
+ ime finishComposingText
+ ime commitText "x" 1
+ key commitText 1 edit=41us draw=338us keyToDrawEnd=2642us lines=50021
+ frame key main=482us (input=4 anim=0 layout=35 draw=392 sync=49) total=3602us
+ ime sendKeyEvent 0 67
+ ime sendKeyEvent 1 67
+ key key DEL +1ms edit=57us draw=272us keyToDrawEnd=2153us lines=50021
+ frame key main=407us (input=2 anim=0 layout=30 draw=316 sync=56) total=3237us
+ ime commitText "v" 1
+ key commitText 1 edit=36us draw=249us keyToDrawEnd=15508us lines=50021
+ ime sendKeyEvent 1 50
+ ime commitText "e" 1
+ ime sendKeyEvent 1 33
+ ime commitText "c" 1
+ ime sendKeyEvent 1 31
+ ime commitText "3" 1
+ ime sendKeyEvent 1 10
+ frame key main=385us (input=3 anim=0 layout=42 draw=291 sync=47) total=2269us
+ key commitText 1 edit=151us draw=212us keyToDrawEnd=16996us lines=50021
+ frame key main=334us (input=2 anim=0 layout=34 draw=257 sync=39) total=2206us
+ ime commitText " " 1
+ key commitText 1 edit=74us draw=294us keyToDrawEnd=13270us lines=50021
+ ime sendKeyEvent 1 62
+ ime commitText "q" 1
+ ime sendKeyEvent 1 45
+ frame key main=471us (input=2 anim=0 layout=57 draw=362 sync=49) total=2783us
+ key commitText 1 edit=26us draw=336us keyToDrawEnd=17082us lines=50021
+ frame key main=509us (input=4 anim=0 layout=44 draw=404 sync=55) total=3106us
+ ime commitText ";" 1
+ key commitText 1 edit=68us draw=668us keyToDrawEnd=7558us lines=50021
+ ime sendKeyEvent 1 74
+ frame key main=967us (input=4 anim=1 layout=69 draw=777 sync=115) total=3679us

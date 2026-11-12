@@ -1,0 +1,6 @@
+ config {mode=stock, spans=1, copies=1, drive=type}
+ open stock lines=5003 read=2893us build(bg)=6189675us setText(main)=142538us measure(main)=68799us setTextToFirstDrawEnd(main)=220994us createToFirstDrawEnd=6428414us
+ summary stock type keys=80 edit p50=63971us p90=65626us max=86254us | onDraw p50=1452us p90=1577us max=2178us | keyToDrawEnd p50=65617us p90=67108us max=88632us
+ summary stock type keyFrames=80 mainThread p50=1608us p90=1802us max=2483us | total p50=59695us p90=65431us max=84131us
+ summary stock type otherFrames=2 mainThread p50=5804us p90=5804us max=5804us | total p50=9478us p90=9478us max=9478us
+ summary stock type onDraw calls=81 p50=1449us p90=1573us max=2178us
