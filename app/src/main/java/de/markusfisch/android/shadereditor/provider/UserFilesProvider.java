@@ -38,7 +38,7 @@ public class UserFilesProvider extends DocumentsProvider {
 			".documents";
 
 	private static final String ROOT_ID = "shadereditor";
-	private static final String TITLE = "ShaderEditor";
+	public static final String TITLE = "ShaderEditor";
 	private static final String[] ROOT_COLUMNS = {
 			Root.COLUMN_ROOT_ID,
 			Root.COLUMN_DOCUMENT_ID,
