@@ -8,7 +8,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
@@ -75,6 +77,21 @@ final class ShaderTextureResources {
 			samplers.add(binding.sampler());
 		}
 		return samplers;
+	}
+
+	// The 2D and cubemap samplers that have a texture.
+	@NonNull
+	Set<String> getTexturedNames() {
+		var names = new HashSet<String>();
+		for (var binding : bindings) {
+			int target = binding.sampler().target();
+			if (binding.texture() != null &&
+					(target == GLES20.GL_TEXTURE_2D ||
+							target == GLES20.GL_TEXTURE_CUBE_MAP)) {
+				names.add(binding.sampler().name());
+			}
+		}
+		return names;
 	}
 
 	void createExternalTextures(@NonNull GlDevice device) {

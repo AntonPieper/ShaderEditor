@@ -124,7 +124,7 @@ final class ShaderBuild implements EngineBuild {
 	// GL thread. Uploads what was decoded, if it is ready, and returns it
 	// for its backbuffer seed; the caller recycles it. The build is
 	// complete when everything uploaded, and cannot draw when it adds
-	// errors.
+	// errors. Once complete, it adds what it reads that nothing sets.
 	@Nullable
 	@Override
 	public DecodedTextures upload(@NonNull List<ProjectDiagnostic> errors) {
@@ -137,6 +137,12 @@ final class ShaderBuild implements EngineBuild {
 			errors.addAll(uploadErrors);
 			complete = uploadErrors.isEmpty();
 			failed = !complete;
+		}
+		var fragmentShader = source.getFragmentShader();
+		if (complete && fragmentShader != null) {
+			errors.addAll(UniformWarnings.check(program.getUniforms().values(),
+					textures.getTexturedNames(), UniformWarnings.ADD_LIBRARY_TEXTURE,
+					fragmentShader.getSource(), fragmentShader.getLineMapping()));
 		}
 		return result;
 	}

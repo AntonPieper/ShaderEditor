@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -105,15 +106,24 @@ final class PlanRuntime implements EngineBuild {
 			errors.addAll(reasons);
 			return null;
 		}
+		var lineMapping = ShaderLineMapping.withSourceMap(source.sourceMap());
 		var result = device.createProgram(source.vertex(), source.fragment(),
-				ShaderLineMapping.withSourceMap(source.sourceMap()));
+				lineMapping);
 		if (!result.succeeded() || result.getProgram() == null) {
 			errors.addAll(reasons);
 			errors.addAll(result.getInfoLog());
 			return null;
 		}
-		return new PlanRuntime(device, shader, result.getProgram(),
+		var runtime = new PlanRuntime(device, shader, result.getProgram(),
 				source.fTimeMax(), glesVersion);
+		var inputs = new HashSet<String>();
+		for (var input : pass.inputs()) {
+			inputs.add(input.uniform());
+		}
+		runtime.warnings.addAll(UniformWarnings.check(
+				result.getProgram().getUniforms().values(), inputs,
+				UniformWarnings.ADD_INPUT, source.fragment(), lineMapping));
+		return runtime;
 	}
 
 	@NonNull
