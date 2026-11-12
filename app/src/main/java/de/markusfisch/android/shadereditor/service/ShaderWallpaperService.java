@@ -23,8 +23,6 @@ import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
-import de.markusfisch.android.shadereditor.project.LegacyShaderProjectSource;
-import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 import de.markusfisch.android.shadereditor.receiver.BatteryLevelReceiver;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
@@ -70,8 +68,6 @@ public class ShaderWallpaperService extends WallpaperService {
 		private final Handler mainHandler = new Handler(Looper.getMainLooper());
 		private ShaderWallpaperView view;
 		private long runtimeShaderId;
-		@Nullable
-		private ShaderProjectSession runtimeSession;
 		// GL thread only.
 		private String shownWarnings = "";
 
@@ -168,10 +164,10 @@ public class ShaderWallpaperService extends WallpaperService {
 
 		// Saves the runtime of the shader set last while it is shown.
 		private void saveRuntime() {
-			if (view == null || runtimeSession == null || isPreview()) {
+			if (view == null || isPreview()) {
 				return;
 			}
-			long nanos = view.getEngine().getRuntimeNanos(runtimeSession);
+			long nanos = view.getRuntimeNanos();
 			if (nanos >= 0) {
 				ShaderEditorApp.preferences.setWallpaperRuntimeNanos(
 						runtimeShaderId, nanos);
@@ -179,12 +175,12 @@ public class ShaderWallpaperService extends WallpaperService {
 		}
 
 		private void setShader() {
-			ShaderProjectSession projectSession = openWallpaperProjectSession();
-			if (view != null && projectSession != null) {
+			DataRecords.Shader shader = getWallpaperShader();
+			if (view != null && shader != null) {
 				saveRuntime();
 				runtimeShaderId = ShaderEditorApp.preferences.getWallpaperShader();
-				runtimeSession = projectSession;
-				view.setShader(projectSession, isPreview()
+				view.setShader(shader.fragmentShader(), shader.quality(),
+						isPreview()
 						? 0
 						: ShaderEditorApp.preferences.getWallpaperRuntimeNanos(
 								runtimeShaderId));
@@ -215,7 +211,7 @@ public class ShaderWallpaperService extends WallpaperService {
 		}
 
 		@Nullable
-		private ShaderProjectSession openWallpaperProjectSession() {
+		private DataRecords.Shader getWallpaperShader() {
 			DataSource dataSource = Database.getInstance(
 					ShaderWallpaperService.this).getDataSource();
 
@@ -235,7 +231,7 @@ public class ShaderWallpaperService extends WallpaperService {
 				ShaderEditorApp.preferences.setWallpaperShader(shader.id());
 			}
 
-			return new LegacyShaderProjectSource(shader).openSession();
+			return shader;
 		}
 
 		private class ShaderWallpaperView extends ShaderView {

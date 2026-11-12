@@ -14,7 +14,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.SensorSources.Gravity;
@@ -170,6 +172,16 @@ public final class UniformTable {
 					R.string.camera_front, CameraSource.KEY));
 
 	private UniformTable() {
+	}
+
+	// The names of the builtins, which preparing a project reserves.
+	@NonNull
+	public static Set<String> names() {
+		var names = new HashSet<String>();
+		for (var builtin : BUILTINS) {
+			names.add(builtin.getName());
+		}
+		return names;
 	}
 
 	@NonNull

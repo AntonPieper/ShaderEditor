@@ -41,14 +41,43 @@ public final class ShaderEngine {
 		void onThumbnail(@Nullable byte[] png);
 	}
 
-	// What a host set: the shader to build, what setShader() or setPlan()
-	// got, which the runtime belongs to, and the runtime it starts at. A
-	// quality change keeps the latter two.
+	// How a host shows what the engine reports about a plan it set.
+	public interface Reporting {
+		// The diagnostics where the user edits what they are about.
+		@NonNull
+		List<ProjectDiagnostic> locate(@NonNull List<ProjectDiagnostic> diagnostics);
+
+		// How a sampler that reads no image gets one, formatted with its
+		// name.
+		@NonNull
+		String textureFix();
+	}
+
+	// What a host set: the shader to build, what the runtime belongs to,
+	// the runtime it starts at, and how its diagnostics are shown. A
+	// quality change keeps the latter three.
 	private record Offer(
 			@NonNull EngineShader shader,
 			@NonNull Object origin,
-			long runtimeNanos) {
+			long runtimeNanos,
+			@NonNull Reporting reporting) {
 	}
+
+	// Diagnostics in the project files, with the fix for project files.
+	private static final Reporting AS_PREPARED = new Reporting() {
+		@NonNull
+		@Override
+		public List<ProjectDiagnostic> locate(
+				@NonNull List<ProjectDiagnostic> diagnostics) {
+			return diagnostics;
+		}
+
+		@NonNull
+		@Override
+		public String textureFix() {
+			return UniformWarnings.ADD_INPUT;
+		}
+	};
 
 	private static final long FPS_UPDATE_FREQUENCY_NS = 200000000L;
 	private static final float NS_PER_SECOND = 1000000000f;
@@ -98,20 +127,33 @@ public final class ShaderEngine {
 			@NonNull ShaderProjectSession session,
 			long runtimeNanos) {
 		shaders.offer(new Offer(new SessionShader(session), session,
-				runtimeNanos));
+				runtimeNanos, AS_PREPARED));
 	}
 
 	// Any thread. Like setShader(), for a prepared project at a quality;
 	// the diagnostics of its preparation come with those of its build.
 	public void setPlan(@NonNull Preparation preparation, float quality) {
-		shaders.offer(new Offer(new PlanShader(preparation, quality),
-				preparation, 0));
+		setPlan(preparation, quality, AS_PREPARED, preparation, 0);
 	}
 
-	// Any thread. The runtime of the shader set with this session while
-	// it is shown, or -1.
-	public long getRuntimeNanos(@NonNull ShaderProjectSession session) {
-		return inputs.getRuntimeNanos(session);
+	// Any thread. Like setPlan(preparation, quality), with diagnostics
+	// shown as reporting says, and the runtime of owner, which starts at
+	// runtimeNanos once the plan replaces the one shown.
+	public void setPlan(
+			@NonNull Preparation preparation,
+			float quality,
+			@NonNull Reporting reporting,
+			@NonNull Object owner,
+			long runtimeNanos) {
+		shaders.offer(new Offer(
+				new PlanShader(preparation, quality, reporting.textureFix()),
+				owner, runtimeNanos, reporting));
+	}
+
+	// Any thread. The runtime of the shader set with this session or
+	// owner while it is shown, or -1.
+	public long getRuntimeNanos(@NonNull Object owner) {
+		return inputs.getRuntimeNanos(owner);
 	}
 
 	// Any thread. Builds the shader set last again with this quality.
@@ -119,7 +161,8 @@ public final class ShaderEngine {
 		shaders.offerChanged(offer -> new Offer(
 				offer.shader().withQuality(quality),
 				offer.origin(),
-				offer.runtimeNanos()));
+				offer.runtimeNanos(),
+				offer.reporting()));
 	}
 
 	public void setListener(@Nullable Listener listener) {
@@ -365,7 +408,7 @@ public final class ShaderEngine {
 			@Nullable ShaderSwap.Revision<Offer> revision,
 			@NonNull List<ProjectDiagnostic> errors) {
 		if (revision != null && shaders.report(revision)) {
-			submitErrors(errors);
+			submitErrors(revision.shader().reporting().locate(errors));
 		}
 	}
 

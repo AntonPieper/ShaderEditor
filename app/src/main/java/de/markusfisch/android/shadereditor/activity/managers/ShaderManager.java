@@ -22,11 +22,9 @@ import de.markusfisch.android.shadereditor.activity.AddUniformActivity;
 import de.markusfisch.android.shadereditor.activity.LoadSampleActivity;
 import de.markusfisch.android.shadereditor.activity.PreviewActivity;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
-import de.markusfisch.android.shadereditor.project.LegacyShaderProjectSource;
-import de.markusfisch.android.shadereditor.project.LooseShaderFileProjectSource;
-import de.markusfisch.android.shadereditor.project.ShaderProjectSession;
 
 public class ShaderManager {
 	public final ActivityResultLauncher<Intent> addUniformLauncher;
@@ -34,6 +32,7 @@ public class ShaderManager {
 	public final ActivityResultLauncher<Intent> previewShaderLauncher;
 
 	private static final String SELECTED_SHADER_ID = "selected_shader_id";
+	private static final String DEFAULT_TITLE = "main.glsl";
 	private static final long NO_SHADER = 0;
 
 	private final AppCompatActivity activity;
@@ -46,8 +45,6 @@ public class ShaderManager {
 	private long selectedShaderId = NO_SHADER;
 	private float quality = 1f;
 	private boolean isModified = false;
-	@Nullable
-	private ShaderProjectSession currentProjectSession;
 
 	public ShaderManager(@NonNull AppCompatActivity activity,
 			EditorFragment editorFragment,
@@ -124,9 +121,6 @@ public class ShaderManager {
 
 	public void setQuality(float quality) {
 		this.quality = quality;
-		if (currentProjectSession != null) {
-			currentProjectSession = currentProjectSession.withQuality(quality);
-		}
 		setModified(true);
 	}
 
@@ -152,19 +146,6 @@ public class ShaderManager {
 				SELECTED_SHADER_ID, NO_SHADER);
 	}
 
-	@NonNull
-	public ShaderProjectSession getEditedProjectSession() {
-		return getEditedProjectSession(editorFragment.getText());
-	}
-
-	@NonNull
-	public ShaderProjectSession getEditedProjectSession(
-			@NonNull String entryPointSource) {
-		return getCurrentProjectSession()
-				.withEntryPointSource(entryPointSource)
-				.withQuality(quality);
-	}
-
 	public void selectShader(long id) {
 		if (isModified()) {
 			saveShader();
@@ -173,21 +154,19 @@ public class ShaderManager {
 		PreviewActivity.renderStatus.reset();
 		var shader = dataSource.shader.getShader(id);
 		if (shader == null) {
-			applyProjectSession(
+			applyShader(
 					NO_SHADER,
-					createScratchProjectSession(
-							activity.getString(R.string.new_shader_template),
-							1f),
+					activity.getString(R.string.new_shader_template),
+					1f,
 					activity.getString(R.string.add_shader));
 			return;
 		}
 
-		ShaderProjectSession projectSession =
-				new LegacyShaderProjectSource(shader).openSession();
 		ShaderEditorApp.preferences.setLastOpenedShader(id);
-		applyProjectSession(id,
-				projectSession,
-				projectSession.getProject().getTitle());
+		applyShader(id,
+				shader.fragmentShader(),
+				shader.quality(),
+				getTitle(shader));
 	}
 
 	public void saveShader() {
@@ -222,7 +201,6 @@ public class ShaderManager {
 			saveThumbnailLater(selectedShaderId);
 		}
 
-		currentProjectSession = loadSavedProjectSession(selectedShaderId, src);
 		updatePendingCrashShaderId();
 		setModified(false);
 		shaderListManager.loadShadersAsync();
@@ -265,14 +243,9 @@ public class ShaderManager {
 			return false;
 		}
 
-		ShaderProjectSession projectSession =
-				new LooseShaderFileProjectSource(uri, text, 1f)
-						.openSession();
 		PreviewActivity.renderStatus.reset();
 		intent.setAction(null);
-		applyProjectSession(NO_SHADER,
-				projectSession,
-				projectSession.getProject().getTitle());
+		applyShader(NO_SHADER, text, 1f, getDisplayName(uri));
 		setModified(true);
 		return true;
 	}
@@ -314,47 +287,51 @@ public class ShaderManager {
 		dataSource.shader.removeShader(shaderId);
 		if (shaderId == selectedShaderId) {
 			selectedShaderId = NO_SHADER;
-			currentProjectSession = null;
 			updatePendingCrashShaderId();
 		}
 	}
 
-	@NonNull
-	private ShaderProjectSession getCurrentProjectSession() {
-		return currentProjectSession != null
-				? currentProjectSession
-				: createScratchProjectSession(editorFragment.getText(), quality);
-	}
-
-	@NonNull
-	private ShaderProjectSession createScratchProjectSession(
-			@NonNull String source,
-			float quality) {
-		return new LooseShaderFileProjectSource(null, source, quality)
-				.openSession();
-	}
-
-	@NonNull
-	private ShaderProjectSession loadSavedProjectSession(long shaderId,
-			@NonNull String fallbackSource) {
-		var shader = dataSource.shader.getShader(shaderId);
-		return shader != null
-				? new LegacyShaderProjectSource(shader).openSession()
-				: createScratchProjectSession(fallbackSource, quality);
-	}
-
-	private void applyProjectSession(long shaderId,
-			@NonNull ShaderProjectSession projectSession,
+	private void applyShader(long shaderId,
+			@NonNull String text,
+			float quality,
 			@NonNull String toolbarTitle) {
 		selectedShaderId = shaderId;
-		currentProjectSession = projectSession;
-		quality = projectSession.getQuality();
-		editorFragment.setText(projectSession.getEntryPointSource());
+		this.quality = quality;
+		editorFragment.setText(text);
 		uiManager.setToolbarTitle(toolbarTitle);
 		shaderListManager.setSelectedShaderId(selectedShaderId);
-		shaderViewManager.setProjectSession(projectSession);
+		shaderViewManager.setShader(text, quality);
 		updatePendingCrashShaderId();
 		setModified(false);
+	}
+
+	@NonNull
+	private static String getTitle(@NonNull DataRecords.Shader shader) {
+		String title = shader.getTitle();
+		if (title == null || title.trim().isEmpty()) {
+			return "Shader " + shader.id();
+		}
+		return title;
+	}
+
+	// The name of the shared file, without what comes before its last
+	// slash or colon.
+	@NonNull
+	private static String getDisplayName(@Nullable Uri uri) {
+		String name = uri != null ? uri.getLastPathSegment() : null;
+		if (name == null) {
+			return DEFAULT_TITLE;
+		}
+		int slash = name.lastIndexOf('/');
+		if (slash >= 0 && slash + 1 < name.length()) {
+			name = name.substring(slash + 1);
+		}
+		int colon = name.lastIndexOf(':');
+		if (colon >= 0 && colon + 1 < name.length()) {
+			name = name.substring(colon + 1);
+		}
+		name = name.trim();
+		return name.isEmpty() ? DEFAULT_TITLE : name;
 	}
 
 	static long getPendingCrashShaderId(boolean runInBackground,

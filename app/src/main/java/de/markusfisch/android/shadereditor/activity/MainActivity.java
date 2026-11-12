@@ -122,8 +122,7 @@ public class MainActivity extends AppCompatActivity {
 					editorFragment.clearError();
 					editorFragment.highlightErrors();
 				}
-				shaderViewManager.setProjectSession(
-						shaderManager.getEditedProjectSession(text));
+				shaderViewManager.setShader(text, shaderManager.getQuality());
 			}
 		});
 		editorFragment.setOnTextModifiedListener(() -> shaderManager.setModified(true));
@@ -509,17 +508,15 @@ public class MainActivity extends AppCompatActivity {
 
 	private void runShader() {
 		String src = editorFragment.getText();
-		var projectSession = shaderManager.getEditedProjectSession(src);
 		editorFragment.clearError();
 		if (ShaderEditorApp.preferences.doesSaveOnRun()) {
 			PreviewActivity.renderStatus.reset();
 			shaderManager.saveShader();
-			projectSession = shaderManager.getEditedProjectSession(src);
 		}
 		if (ShaderEditorApp.preferences.doesRunInBackground()) {
-			shaderViewManager.setProjectSession(projectSession);
+			shaderViewManager.setShader(src, shaderManager.getQuality());
 		} else {
-			navigationManager.showPreview(projectSession,
+			navigationManager.showPreview(src, shaderManager.getQuality(),
 					shaderManager.previewShaderLauncher);
 		}
 	}

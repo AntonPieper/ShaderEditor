@@ -611,6 +611,62 @@ public class LegacyShaderConverterTest {
 		assertEquals(0, result.originalLine(8));
 	}
 
+	// L01
+	@Test
+	public void diagnosticsOfTheConvertedFilesPointAtTheStoredLines() {
+		Result result = convert(lines("uniform sampler2D noise;",
+				"#include \"missing.glsl\"",
+				"void main() {",
+				"\tif (gl_FragCoord.x < 1.0) discard;",
+				"}"));
+		ProjectPath presets = path("presets/x.glsl");
+		ProjectDiagnostic unlocated = ProjectDiagnostic.error("no line");
+		List<ProjectDiagnostic> original = result.toOriginal(List.of(
+				diagnostic(ProjectDiagnostic.Severity.ERROR, "include",
+						LegacyShaderConverter.SHADER, 3),
+				diagnostic(ProjectDiagnostic.Severity.WARNING, "unused",
+						LegacyShaderConverter.SHADER, 1),
+				diagnostic(ProjectDiagnostic.Severity.ERROR, "decode",
+						LegacyShaderConverter.SHADER, 1),
+				diagnostic(ProjectDiagnostic.Severity.WARNING, "preset",
+						presets, 4),
+				diagnostic(ProjectDiagnostic.Severity.ERROR, "seed",
+						presets, 4),
+				unlocated));
+		assertEquals(List.of(
+				diagnostic(ProjectDiagnostic.Severity.ERROR, "include",
+						null, 2),
+				diagnostic(ProjectDiagnostic.Severity.ERROR, "decode",
+						null, 0),
+				diagnostic(ProjectDiagnostic.Severity.ERROR, "seed",
+						null, 0),
+				unlocated,
+				diagnostic(ProjectDiagnostic.Severity.WARNING,
+						"Discarded pixels are now opaque black, where they " +
+								"used to keep older content of the output",
+						null, 4)), original);
+		assertEquals("raw", result.toOriginal(List.of(new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.ERROR, "message",
+				LegacyShaderConverter.SHADER, 5, "raw"))).get(0).raw());
+	}
+
+	// L01
+	@Test
+	public void preparationDiagnosticsPointAtTheStoredLines() {
+		Result result = convert(lines("#version 300 es",
+				"uniform sampler2D noise;",
+				"#pragma once",
+				"out vec4 color;",
+				"void main() {}"));
+		List<ProjectDiagnostic> original = result.toOriginal(
+				prepare(result).diagnostics());
+		assertEquals(1, original.size());
+		assertEquals(3, original.get(0).line());
+		assertEquals(null, original.get(0).file());
+		assertTrue(original.get(0).message(),
+				original.get(0).message().contains("#pragma once"));
+	}
+
 	@Test
 	public void discardWarnsOnceAtItsFirstUseInCode() {
 		String text = lines("uniform sampler2D noise;",
@@ -672,6 +728,50 @@ public class LegacyShaderConverterTest {
 		}
 	}
 
+	// L02, L04
+	@Test
+	public void everySpecRowConvertsAndPreparesWithoutErrors() {
+		Map<String, LibraryTexture> library = new HashMap<>(LIBRARY);
+		library.put("preset", new LibraryTexture(false, 32, 32));
+		library.put("wide", new LibraryTexture(false, 4096, 1));
+		String head = "precision mediump float;\nuniform vec2 resolution;\n";
+		String main = "void main(){gl_FragColor=vec4(0.0);}\n";
+		String[] rows = {
+				"uniform sampler2D noise;\n",
+				"uniform sampler2D noise;///min:l;mag:l;s:r;t:r;\n",
+				"uniform sampler2D noise;///min:ll;mag:n;s:m;t:c;\n",
+				"uniform samplerCube sky;\n",
+				"uniform sampler2D backbuffer;///min:l;mag:l;s:c;t:c;\n",
+				"uniform sampler2D backbuffer;///p:preset;\n",
+				"uniform samplerExternalOES cameraBack;\n" +
+						"uniform float time;\n#define FTIME_PERIOD 2.0\n",
+				"// uniform sampler2D noise;///min:n;mag:n;s:r;t:r;\n" +
+						"uniform highp sampler2D noise;\n",
+				"uniform sampler2D backbuffer;///min:ln;mag:l;s:c;t:c;\n",
+				"uniform sampler2D backbuffer;///min:l;mag:n;s:c;t:c;\n",
+				"uniform sampler2D backbuffer;///min:l;mag:l;s:r;t:r;\n",
+				"#ifdef GL_ES\nuniform sampler2D noise;\n#endif\n",
+				"uniform sampler2D cameraBack;\n",
+				"#define DECL uniform sampler2D noise;\nDECL\n",
+				"uniform sampler2D backbuffer;///p:wide;\n",
+				"uniform sampler2D missing;\n",
+		};
+		for (String row : rows) {
+			Result result = LegacyShaderConverter.convert(head + row + main,
+					library::get);
+			assertTrue(row, errors(result.diagnostics()).isEmpty());
+			Preparation preparation = prepare(result);
+			assertTrue(row + preparation.diagnostics(),
+					errors(preparation.diagnostics()).isEmpty());
+			assertNotNull(row, preparation.plan());
+		}
+		Result discard = LegacyShaderConverter.convert(head +
+				"void main(){if(gl_FragCoord.x<1.0)discard;" +
+				"gl_FragColor=vec4(1.0);}\n", library::get);
+		assertNotNull(prepare(discard).plan());
+		assertEquals(1, discard.diagnostics().size());
+	}
+
 	private static Preparation prepare(Result result) {
 		Map<ProjectPath, byte[]> files = new HashMap<>();
 		for (Map.Entry<ProjectPath, String> file : result.files().entrySet()) {
@@ -697,6 +797,12 @@ public class LegacyShaderConverterTest {
 			}
 		}
 		return errors;
+	}
+
+	private static ProjectDiagnostic diagnostic(
+			ProjectDiagnostic.Severity severity, String message,
+			ProjectPath file, int line) {
+		return new ProjectDiagnostic(severity, message, file, line);
 	}
 
 	private static List<Integer> lines(List<ProjectDiagnostic> diagnostics) {

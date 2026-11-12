@@ -153,13 +153,13 @@ final class PlanRuntime implements EngineBuild {
 			return null;
 		}
 		var running = PlanPass.link(device, plan, plan.output(), glesVersion,
-				reasons);
+				shader.textureFix(), reasons);
 		var initial = plan.passes().get(plan.output()).initial();
 		PlanPass initialPass = null;
 		if (running != null && initial != null &&
 				initial.kind() == RenderPlan.Source.Kind.PASS) {
 			initialPass = PlanPass.link(device, plan, initial.pass(),
-					glesVersion, reasons);
+					glesVersion, shader.textureFix(), reasons);
 			if (initialPass == null) {
 				running.release();
 				running = null;
