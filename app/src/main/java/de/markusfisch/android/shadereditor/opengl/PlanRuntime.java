@@ -351,8 +351,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 	void draw(
 			@NonNull ShaderRenderPipeline pipeline,
 			@NonNull ActiveBuiltins builtins,
-			@NonNull FrameInputs frame,
-			long now) {
+			@NonNull FrameInputs frame) {
 		var target = this.target;
 		if (target == null) {
 			return;
@@ -363,10 +362,9 @@ final class PlanRuntime implements ShaderSwap.Build {
 		for (int i = 0, n = steps.size(); i < n; ++i) {
 			switch (steps.get(i)) {
 				case CLEAR_HISTORY -> target.clearHistory();
-				case INITIAL -> drawInitial(pipeline, target, builtins, frame,
-						now);
+				case INITIAL -> drawInitial(pipeline, target, builtins, frame);
 				case CLEAR -> target.clear();
-				case DRAW -> drawPass(target, builtins, frame, now);
+				case DRAW -> drawPass(target, builtins, frame);
 				case SWAP -> target.swap();
 				case PRESENT -> {
 					var output = target.completed();
@@ -440,10 +438,9 @@ final class PlanRuntime implements ShaderSwap.Build {
 	private void drawPass(
 			@NonNull PassTarget target,
 			@NonNull ActiveBuiltins builtins,
-			@NonNull FrameInputs frame,
-			long now) {
+			@NonNull FrameInputs frame) {
 		passFrame.scale(frame, target.size().width(), target.size().height());
-		builtins.write(passFrame, now);
+		builtins.write(passFrame);
 		running.bind(textures, camera, target.completed());
 		quad.draw();
 		running.unbind();
@@ -455,8 +452,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 			@NonNull ShaderRenderPipeline pipeline,
 			@NonNull PassTarget target,
 			@NonNull ActiveBuiltins builtins,
-			@NonNull FrameInputs frame,
-			long now) {
+			@NonNull FrameInputs frame) {
 		var picture = initialTexture;
 		var shader = initialPass;
 		var drawn = initialTarget;
@@ -466,7 +462,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 			initialFrame.scale(frame, size.width(), size.height());
 			initialFrame.time = 0;
 			initialFrame.frame = 0;
-			builtins.write(1, initialFrame, now);
+			builtins.write(1, initialFrame);
 			shader.bind(textures, camera, null);
 			quad.draw();
 			shader.unbind();

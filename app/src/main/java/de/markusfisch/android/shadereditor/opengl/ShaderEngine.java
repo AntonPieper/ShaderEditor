@@ -233,7 +233,9 @@ public final class ShaderEngine {
 
 		long now = System.nanoTime();
 		var frame = inputs.capture(now, fTimeMax);
-		build.draw(renderPipeline, builtins, frame, now);
+		// Once for every program the frame draws.
+		sources.update(now);
+		build.draw(renderPipeline, builtins, frame);
 		// A source that failed after it started, such as a camera that
 		// did not open.
 		if (sources.takeWarned()) {

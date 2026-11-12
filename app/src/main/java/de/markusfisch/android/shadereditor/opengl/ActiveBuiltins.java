@@ -164,13 +164,12 @@ final class ActiveBuiltins {
 		}
 	}
 
-	// Of the first program.
-	void write(@NonNull FrameInputs inputs, long now) {
-		write(0, inputs, now);
+	// Of the first program. The sources update once per frame before.
+	void write(@NonNull FrameInputs inputs) {
+		write(0, inputs);
 	}
 
-	void write(int program, @NonNull FrameInputs inputs, long now) {
-		sources.update(now);
+	void write(int program, @NonNull FrameInputs inputs) {
 		var output = outputs.get(program);
 		output.begin();
 		for (var slot : slots[program]) {

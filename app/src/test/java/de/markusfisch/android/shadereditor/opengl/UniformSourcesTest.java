@@ -116,7 +116,8 @@ public class UniformSourcesTest {
 				program("first", 3, "second", 5), sources, output);
 		assertEquals(List.of("start"), events);
 
-		builtins.write(new FrameInputs(), 42L);
+		sources.update(42L);
+		builtins.write(new FrameInputs());
 		assertEquals(List.of(3, 5), output.locations);
 		assertEquals(List.of("float", "int"), output.calls);
 		assertEquals(42f, output.values.get(0)[0], 0f);
@@ -126,6 +127,22 @@ public class UniformSourcesTest {
 		assertEquals(
 				List.of("start", "update", "begin", "write", "write", "stop"),
 				events);
+	}
+
+	// A running shader and its initial shader draw in one frame.
+	@Test
+	public void sourcesUpdateOncePerFrameHoweverManyProgramsDraw() {
+		events.clear();
+		var sources = new UniformSources(HOST);
+		var builtins = new ActiveBuiltins(TABLE,
+				List.of(program("first", 3), program("second", 5)), sources,
+				List.of(new LocatedOutput(), new LocatedOutput()));
+		sources.update(1L);
+		builtins.write(1, new FrameInputs());
+		builtins.write(0, new FrameInputs());
+		assertEquals(List.of("start", "update", "begin", "write", "begin",
+				"write"), events);
+		sources.stop();
 	}
 
 	@Test
@@ -149,7 +166,8 @@ public class UniformSourcesTest {
 		var output = new LocatedOutput();
 		var builtins = new ActiveBuiltins(TABLE,
 				program("plain", 1, "other", 2), sources, output);
-		builtins.write(new FrameInputs(), 7L);
+		sources.update(7L);
+		builtins.write(new FrameInputs());
 		sources.stop();
 		assertEquals(List.of("begin", "write"), events);
 		assertEquals(List.of(1), output.locations);
@@ -171,7 +189,8 @@ public class UniformSourcesTest {
 		var builtins = new ActiveBuiltins(TABLE,
 				program("declared", 4), sources, output);
 		assertEquals(List.of("start"), events);
-		builtins.write(new FrameInputs(), 9L);
+		sources.update(9L);
+		builtins.write(new FrameInputs());
 		assertEquals(List.of("start", "update", "begin"), events);
 		assertEquals(List.of(), output.locations);
 	}
@@ -185,7 +204,8 @@ public class UniformSourcesTest {
 		var camera = sources.get(CameraSource.KEY);
 		assertNotNull(camera);
 		assertFalse(camera.open);
-		builtins.write(new FrameInputs(), 1L);
+		sources.update(1L);
+		builtins.write(new FrameInputs());
 		assertEquals(List.of(), output.locations);
 		assertEquals(List.of(), output.calls);
 		sources.stop();
