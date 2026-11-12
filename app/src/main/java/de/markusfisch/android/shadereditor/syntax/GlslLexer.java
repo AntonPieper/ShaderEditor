@@ -12,8 +12,20 @@ import java.util.Arrays;
  * does not remove the line ends inside it. In a directive, a quote starts a
  * string that ends at the next quote or the end of the line. A token
  * never spans a line continuation, except a comment.
+ *
+ * A name followed by another name is guessed to be a type name, but only
+ * on the same line, so that a text can also be tokenized line by line.
  */
 public final class GlslLexer {
+	/** The state the first line of a text starts in. */
+	public static final int TEXT_START = 0;
+
+	// What a line passes on to the next line, as bits of a state.
+	private static final int BLOCK_COMMENT = 1;
+	private static final int LINE_COMMENT = 2;
+	private static final int DIRECTIVE = 4;
+	private static final int DIRECTIVE_NAME = 8;
+	private static final int KIND_SHIFT = 4;
 	private static final String OPERATORS = "<>+-*/%&|^=!,~;:?(){}[].";
 	// What the last token outside directives and comments was, for the
 	// guess of type names and field selections.
@@ -24,6 +36,8 @@ public final class GlslLexer {
 
 	private final CharSequence text;
 	private final int length;
+	// What follows the end: a line end or nothing.
+	private final char after;
 	private int[] starts;
 	private int[] ends;
 	private int[] kinds;
@@ -33,19 +47,24 @@ public final class GlslLexer {
 	private boolean nameExpected;
 	private int last = -1;
 	private int lastKind = OTHER;
+	// The comment that the end of the text leaves open, or 0.
+	private int open;
 
-	private GlslLexer(CharSequence text) {
+	private GlslLexer(CharSequence text, char after, int[] starts, int[] ends,
+			int[] kinds) {
 		this.text = text;
+		this.after = after;
 		length = text.length();
-		int capacity = length / 3 + 16;
-		starts = new int[capacity];
-		ends = new int[capacity];
-		kinds = new int[capacity];
+		this.starts = starts;
+		this.ends = ends;
+		this.kinds = kinds;
 	}
 
 	public static Tokens lex(CharSequence text) {
-		GlslLexer lexer = new GlslLexer(text);
-		lexer.run();
+		int capacity = text.length() / 3 + 16;
+		GlslLexer lexer = new GlslLexer(text, (char) 0, new int[capacity],
+				new int[capacity], new int[capacity]);
+		lexer.run(0);
 		int[] lineStarts = new int[16];
 		int lines = 1;
 		for (int i = 0, n = lexer.length; i < n; ++i) {
@@ -62,17 +81,66 @@ public final class GlslLexer {
 				lineStarts, lines);
 	}
 
-	private void run() {
+	/**
+	 * Tokenizes one line that starts in state and returns the state the
+	 * next line starts in, or {@link #TEXT_START} if no line break follows.
+	 * Tokenizing a text line by line gives the tokens of {@link #lex}, cut
+	 * at line ends. Two states are equal exactly when the rest of the text
+	 * would be tokenized the same.
+	 *
+	 * @param line         a line without its line end
+	 * @param breakFollows whether a line break follows the line
+	 * @param state        {@link #TEXT_START} or what the previous line returned
+	 * @param out          receives the tokens, with offsets into the line
+	 */
+	public static int lexLine(CharSequence line, boolean breakFollows,
+			int state, LineTokens out) {
+		GlslLexer lexer = new GlslLexer(line, breakFollows ? '\n' : 0,
+				out.starts, out.ends, out.kinds);
+		lexer.directive = (state & DIRECTIVE) != 0;
+		lexer.nameExpected = (state & DIRECTIVE_NAME) != 0;
+		lexer.lastKind = state >> KIND_SHIFT;
 		int i = 0;
+		if ((state & BLOCK_COMMENT) != 0) {
+			lexer.add(0, 0, Style.COMMENT);
+			lexer.directive = false;
+			i = lexer.ends[0] = lexer.blockCommentEnd(0);
+		} else if ((state & LINE_COMMENT) != 0) {
+			i = lexer.add(0, lexer.lineCommentEnd(0), Style.COMMENT);
+		}
+		boolean continued = lexer.run(i) > lexer.length;
+		// A comment that goes on over an empty line leaves an empty piece.
+		out.set(lexer.starts, lexer.ends, lexer.kinds,
+				line.length() == 0 ? 0 : lexer.size);
+		if (!breakFollows) {
+			return TEXT_START;
+		}
+		int next = (lexer.lastKind == NAME ? OTHER : lexer.lastKind)
+				<< KIND_SHIFT;
+		if (lexer.open == BLOCK_COMMENT) {
+			// The comment keeps the directive it started in.
+			return next | BLOCK_COMMENT | ((lexer.kinds[lexer.size - 1] &
+					Tokens.IN_DIRECTIVE) != 0 ? DIRECTIVE : 0);
+		} else if (lexer.open == LINE_COMMENT) {
+			return next | LINE_COMMENT | (lexer.directive ? DIRECTIVE : 0);
+		} else if (continued && lexer.directive) {
+			return next | DIRECTIVE |
+					(lexer.nameExpected ? DIRECTIVE_NAME : 0);
+		}
+		return next;
+	}
+
+	// Returns where it stopped: past the end if a backslash continues the
+	// last line.
+	private int run(int i) {
 		while (i < length) {
 			char c = text.charAt(i);
 			if (c == '\n' || c == '\r') {
 				i = afterLineEnd(i);
-				directive = false;
-				lineStart = true;
+				startLine(false);
 			} else if (c == '\\' && isLineEnd(i + 1)) {
 				i = afterLineEnd(i + 1);
-				lineStart = true;
+				startLine(true);
 			} else if (Character.isWhitespace(c)) {
 				++i;
 			} else if (c == '/' && charAt(i + 1) == '/') {
@@ -83,6 +151,17 @@ public final class GlslLexer {
 			} else {
 				i = token(i, c);
 			}
+		}
+		return i;
+	}
+
+	private void startLine(boolean continued) {
+		if (!continued) {
+			directive = false;
+		}
+		lineStart = true;
+		if (lastKind == NAME) {
+			lastKind = OTHER;
 		}
 	}
 
@@ -214,6 +293,9 @@ public final class GlslLexer {
 				++i;
 			}
 		}
+		if (i > length) {
+			open = LINE_COMMENT;
+		}
 		return length;
 	}
 
@@ -223,10 +305,10 @@ public final class GlslLexer {
 			if (c == '*' && charAt(i + 1) == '/') {
 				return i + 2;
 			} else if (c == '\n' || c == '\r') {
-				directive = false;
-				lineStart = true;
+				startLine(false);
 			}
 		}
+		open = BLOCK_COMMENT;
 		return length;
 	}
 
@@ -271,10 +353,10 @@ public final class GlslLexer {
 	}
 
 	private int afterLineEnd(int i) {
-		return text.charAt(i) == '\r' && charAt(i + 1) == '\n' ? i + 2 : i + 1;
+		return charAt(i) == '\r' && charAt(i + 1) == '\n' ? i + 2 : i + 1;
 	}
 
 	private char charAt(int i) {
-		return i < length ? text.charAt(i) : 0;
+		return i < length ? text.charAt(i) : i == length ? after : 0;
 	}
 }
