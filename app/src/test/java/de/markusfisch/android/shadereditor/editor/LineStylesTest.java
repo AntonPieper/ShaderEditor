@@ -43,7 +43,15 @@ public class LineStylesTest {
 				}
 			}
 			if (!late.isEmpty() && random.nextInt(3) == 0) {
-				styles.apply(late.remove(random.nextInt(late.size())));
+				LineStyles.Result result =
+						late.get(random.nextInt(late.size()));
+				if (!styles.apply(result)) {
+					late.remove(result);
+				}
+			}
+			if (random.nextInt(50) == 0) {
+				int first = random.nextInt(document.text().lineCount());
+				styles.show(first, first + random.nextInt(60));
 			}
 			if (i % 25 == 0) {
 				int[] expected = startStates(document.text());
@@ -70,11 +78,40 @@ public class LineStylesTest {
 		assertEquals(200, styles.staleFrom());
 		LineStyles.Continuation continuation = styles.continuation();
 		assertNotNull(continuation);
-		assertTrue(styles.apply(continuation.run(4096)));
+		assertFalse(styles.apply(continuation.run(4096)));
 		assertEquals(4296, styles.staleFrom());
 		drain(styles, 4096);
 		assertCurrent(styles, document.text());
 		assertEquals(Style.COMMENT, styles.runs(40_000).style(0));
+	}
+
+	@Test
+	public void anEditedShownLineInTheStaleRangeIsCurrent() {
+		Document document = new Document(Text.of("x\n".repeat(30)));
+		LineStyles styles = new LineStyles(document, 2);
+		drain(styles, 100);
+		styles.show(15, 25);
+		document.replace(0, 0, Text.of("/*"));
+		// The budget and the shown lines, no more.
+		assertEquals(12, styles.staleFrom());
+		type(document, 20, "z");
+		assertEquals(Style.COMMENT, styles.runs(20).style(0));
+	}
+
+	@Test
+	public void applyStoresABoundedPartOfAResultPerCall() {
+		Document document = new Document(Text.of(lines(10_000)));
+		LineStyles styles = new LineStyles(document, 10);
+		drain(styles, Integer.MAX_VALUE);
+		document.replace(0, 0, Text.of("/*"));
+		LineStyles.Result result =
+				styles.continuation().run(Integer.MAX_VALUE);
+		assertTrue(styles.apply(result));
+		assertEquals(10 + 4096, styles.staleFrom());
+		while (styles.apply(result)) {
+			assertTrue(styles.staleFrom() < 10_001);
+		}
+		assertCurrent(styles, document.text());
 	}
 
 	@Test
@@ -101,7 +138,7 @@ public class LineStylesTest {
 		LineStyles.Result result = styles.continuation().run(5000);
 		// A key typed in the stale part: the result holds above it.
 		type(document, 1500, "x");
-		assertTrue(styles.apply(result));
+		assertFalse(styles.apply(result));
 		assertEquals(1500, styles.staleFrom());
 		drain(styles, 100);
 		assertCurrent(styles, document.text());
@@ -116,7 +153,9 @@ public class LineStylesTest {
 		LineStyles.Result result = styles.continuation().run(5000);
 		// Closing the comment changes what the result started from.
 		type(document, 5, "*/");
+		int staleFrom = styles.staleFrom();
 		assertFalse(styles.apply(result));
+		assertEquals(staleFrom, styles.staleFrom());
 		drain(styles, 100);
 		assertCurrent(styles, document.text());
 	}
@@ -131,6 +170,7 @@ public class LineStylesTest {
 			type(document, 1999, "x");
 		}
 		assertFalse(styles.apply(result));
+		assertEquals(10, styles.staleFrom());
 		drain(styles, 100);
 		assertCurrent(styles, document.text());
 	}
@@ -223,7 +263,11 @@ public class LineStylesTest {
 			if (continuation == null) {
 				return;
 			}
-			assertTrue(styles.apply(continuation.run(chunk)));
+			int staleFrom = styles.staleFrom();
+			LineStyles.Result result = continuation.run(chunk);
+			while (styles.apply(result)) {
+				assertTrue(styles.staleFrom() > staleFrom);
+			}
 		}
 		throw new AssertionError("Continuations do not end");
 	}

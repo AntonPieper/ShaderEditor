@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Set;
 
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
 import de.markusfisch.android.shadereditor.syntax.Style;
 
@@ -15,13 +16,19 @@ import de.markusfisch.android.shadereditor.syntax.Style;
  * kept for every line, one byte each. After an edit the changed lines
  * are tokenized again, and the lines below them for as long as a line
  * ends in another state than before, but no more than budget lines in
- * all. The lines below that are stale: they keep the states they had
+ * all, or the shown lines and budget lines when that reaches the shown
+ * ones. The lines below that are stale: they keep the states they had
  * until a continuation, which may run on any thread, delivers theirs.
- * Made once per document and used on its thread.
+ * The view calls show with the lines it draws, runs for each of them,
+ * and, while continuation gives work, runs it off the main thread and
+ * hands the result to apply until apply returns false. Made once per
+ * document and used on its thread.
  */
 public final class LineStyles {
 	// How many changes a continuation may lag behind and still be used.
 	private static final int HISTORY = 64;
+	// How many states apply stores per call.
+	private static final int ADOPT = 4096;
 	private static final int CACHE = 256;
 	private static final int BREAK_FOLLOWS = 0x100;
 	private static final Style[] STYLES = Style.values();
@@ -43,6 +50,8 @@ public final class LineStyles {
 	private int staleFrom;
 	private int consistentFrom;
 	private boolean walkPending;
+	private int shownFrom;
+	private int shownTo;
 
 	/**
 	 * Keep the colours of document, tokenizing at most budget lines per
@@ -74,13 +83,28 @@ public final class LineStyles {
 		});
 	}
 
-	/** Return the colour runs of line n of the current text. */
+	/**
+	 * Tell which lines the view shows, [from, to), before it draws them.
+	 * Stale lines among them are tokenized now, from the first stale
+	 * line on, as far as the shown lines and budget lines more reach.
+	 * Return whether a state changed, so lines may need drawing again.
+	 */
+	public boolean show(int from, int to) {
+		shownFrom = from;
+		shownTo = to;
+		return Math.min(to, lines) > staleFrom && walk();
+	}
+
+	/**
+	 * Return the colour runs of line n of the current text. A stale line
+	 * has the colours of its old start state.
+	 */
 	public Runs runs(int n) {
 		String line = document.text().line(n);
 		int key = startState(n) | (n < lines - 1 ? BREAK_FOLLOWS : 0);
 		int slot = (System.identityHashCode(line) * 31 + key) & (CACHE - 1);
 		Runs runs = cache[slot];
-		if (runs == null || runs.line != line || runs.key != key) {
+		if (runs == null || runs.line.text() != line || runs.key != key) {
 			runs = lex(line, key);
 			cache[slot] = runs;
 		}
@@ -114,9 +138,11 @@ public final class LineStyles {
 	/**
 	 * Store the states of result, as far as they hold for the current
 	 * text: those of the lines above the first line changed since the
-	 * continuation was made. A result made more than 64 changes ago, or
-	 * from a line that has become stale again, is dropped. Return whether
-	 * a state was stored, so lines may need drawing again.
+	 * continuation was made, at most 4096 per call. A result made more
+	 * than 64 changes ago, or from a line that has become stale again, is
+	 * dropped. Lines may need drawing again after a call. Return whether
+	 * more of result remains to be stored by another call; once none
+	 * does, continuation tells whether lines are still stale.
 	 */
 	public boolean apply(Result result) {
 		int revision = document.revision();
@@ -129,12 +155,10 @@ public final class LineStyles {
 		for (int r = result.revision; r < revision; ) {
 			end = Math.min(end, changedLines[++r % HISTORY]);
 		}
-		boolean stored = false;
-		while (staleFrom < end) {
+		for (int stop = Math.min(end, staleFrom + ADOPT); staleFrom < stop; ) {
 			settle(result.states[staleFrom - result.from] & 0xff);
-			stored = true;
 		}
-		return stored;
+		return staleFrom < end;
 	}
 
 	// The first line whose state may not be current, or the line count.
@@ -165,17 +189,30 @@ public final class LineStyles {
 		if (first <= staleFrom) {
 			staleFrom = first;
 			walkPending = true;
+		} else if (Math.min(shownTo, lines) > staleFrom) {
+			walkPending = true;
 		}
 	}
 
-	private void walk() {
+	// Tokenizes budget lines from staleFrom on, or as many more as reach
+	// the end of the shown lines, but no more than budget and the shown
+	// lines. Returns whether a state was stored.
+	private boolean walk() {
+		int limit = budget;
+		int to = Math.min(shownTo, lines);
+		if (to > staleFrom) {
+			limit = Math.max(limit, Math.min(to - staleFrom,
+					budget + Math.max(0, to - shownFrom)));
+		}
 		Text text = document.text();
+		int from = staleFrom;
 		int state = startState(staleFrom);
-		for (int n = budget; staleFrom < lines && n-- > 0; ) {
+		for (int n = limit; staleFrom < lines && n-- > 0; ) {
 			state = GlslLexer.lexLine(text.line(staleFrom),
 					staleFrom < lines - 1, state, tokens);
 			settle(state);
 		}
+		return staleFrom != from;
 	}
 
 	// Stores the state of line staleFrom, whose start state is current.
@@ -192,14 +229,14 @@ public final class LineStyles {
 	}
 
 	private Runs lex(String line, int key) {
-		GlslLexer.lexLine(line, (key & BREAK_FOLLOWS) != 0, key & 0xff,
-				tokens);
-		int[] runs = new int[tokens.size() * 3];
+		LexedLine lexed = LexedLine.of(line, (key & BREAK_FOLLOWS) != 0,
+				key & 0xff, tokens);
+		int[] runs = new int[lexed.size() * 3];
 		int size = 0;
-		for (int i = 0, n = tokens.size(); i < n; ++i) {
-			int start = tokens.start(i);
-			int end = tokens.end(i);
-			Style style = tokens.style(i);
+		for (int i = 0, n = lexed.size(); i < n; ++i) {
+			int start = lexed.start(i);
+			int end = lexed.end(i);
+			Style style = lexed.style(i);
 			if (style == Style.IDENTIFIER && !typeNames.isEmpty() &&
 					typeNames.contains(line.substring(start, end))) {
 				style = Style.TYPE;
@@ -213,7 +250,7 @@ public final class LineStyles {
 				runs[size++] = style.ordinal();
 			}
 		}
-		return new Runs(line, key, Arrays.copyOf(runs, size));
+		return new Runs(lexed, key, Arrays.copyOf(runs, size));
 	}
 
 	private int get(int line) {
@@ -261,14 +298,19 @@ public final class LineStyles {
 	 * What lies between two runs is white space.
 	 */
 	public static final class Runs {
-		private final String line;
+		private final LexedLine line;
 		private final int key;
 		private final int[] runs;
 
-		private Runs(String line, int key, int[] runs) {
+		private Runs(LexedLine line, int key, int[] runs) {
 			this.line = line;
 			this.key = key;
 			this.runs = runs;
+		}
+
+		/** Return the line and its tokens, as completion needs them. */
+		public LexedLine line() {
+			return line;
 		}
 
 		public int size() {

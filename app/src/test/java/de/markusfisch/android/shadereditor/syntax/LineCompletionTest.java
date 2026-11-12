@@ -8,6 +8,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.LineStyles;
+import de.markusfisch.android.shadereditor.editor.Text;
+
 /**
  * {@link GlslCompletion#atColumn} against {@link GlslCompletion#atOffset}:
  * the line of the cursor and its start state complete as the whole text
@@ -52,8 +56,23 @@ public class LineCompletionTest {
 		String text = "float tim";
 		Outline outline = Outline.of(GlslLexer.lex(text), text);
 		assertEquals(new GlslCompletion.Completions(List.of("time"), 3),
-				GlslCompletion.atColumn(text, 9, false,
-						GlslLexer.TEXT_START, 0, outline, EXTRA));
+				GlslCompletion.atColumn(LexedLine.of(text, false,
+						GlslLexer.TEXT_START, new LineTokens()), 9, 0, outline,
+						EXTRA));
+	}
+
+	@Test
+	public void completesFromTheLinesOfADocument() {
+		String text = "/* a\nb */ fl";
+		Tokens tokens = GlslLexer.lex(text);
+		Outline outline = Outline.of(tokens, text);
+		LexedLine line = new LineStyles(new Document(Text.of(text)), 10)
+				.runs(1).line();
+		assertEquals(GlslLexer.BLOCK_COMMENT,
+				line.state() & GlslLexer.BLOCK_COMMENT);
+		assertEquals(GlslCompletion.atOffset(tokens, text, 12, outline,
+						EXTRA),
+				GlslCompletion.atColumn(line, 7, 5, outline, EXTRA));
 	}
 
 	private static void assertEveryOffset(String name, String source) {
@@ -67,15 +86,17 @@ public class LineCompletionTest {
 		for (int n = 0; n < lines.length; ++n) {
 			String line = lines[n];
 			boolean breakFollows = n + 1 < lines.length;
+			LexedLine lexed = LexedLine.of(line, breakFollows, state,
+					lineTokens);
 			for (int column = 0; column <= line.length(); ++column) {
 				int offset = lineStart + column;
 				assertEquals(name + " at " + offset,
 						GlslCompletion.atOffset(tokens, text, offset, outline,
 								EXTRA),
-						GlslCompletion.atColumn(line, column, breakFollows,
-								state, lineStart, outline, EXTRA));
+						GlslCompletion.atColumn(lexed, column, lineStart,
+								outline, EXTRA));
 			}
-			state = GlslLexer.lexLine(line, breakFollows, state, lineTokens);
+			state = lexed.endState();
 			lineStart += line.length() + 1;
 		}
 	}
