@@ -16,8 +16,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.Set;
 
+import de.markusfisch.android.shadereditor.project.EditingSession.Conflict;
+import de.markusfisch.android.shadereditor.project.EditingSession.Failed;
+import de.markusfisch.android.shadereditor.project.EditingSession.Outcome;
+import de.markusfisch.android.shadereditor.project.EditingSession.Saved;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 
@@ -136,14 +141,14 @@ public class OpenProjectTest {
 	}
 
 	@Test
-	public void findsWhatRunsAfterTheManifestChangedU10() throws IOException {
+	public void refreshFindsAChangedManifestU10() throws IOException {
 		write("main.glsl", SHADER);
 		write("b.glsl", SHADER);
 		OpenProject project = open();
 		assertEquals(path("main.glsl"), project.running());
 
 		write("shader-project.json", "{\"entry\": \"b.glsl\"}");
-		project.findRunning();
+		project.refresh();
 
 		assertEquals(path("b.glsl"), project.running());
 	}
@@ -193,6 +198,109 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void savesEachFileInPlaceAndKeepsFailuresForRetry()
+			throws IOException {
+		write("a.glsl", "a");
+		write("b.glsl", "b");
+		FailingFiles store = new FailingFiles(new DirectoryProjectFiles(root));
+		store.failing = path("b.glsl");
+		OpenProject project = open(store);
+		project.load(path("a.glsl"));
+		project.load(path("b.glsl"));
+		project.edit(path("a.glsl"), "a!");
+		project.edit(path("b.glsl"), "b!");
+
+		Map<ProjectPath, Outcome> outcomes = project.save(true);
+
+		assertTrue(outcomes.get(path("a.glsl")) instanceof Saved);
+		assertEquals(new Failed("the card was removed"),
+				outcomes.get(path("b.glsl")));
+		assertEquals("a!", read("a.glsl"));
+		assertEquals("b", read("b.glsl"));
+		assertEquals(Set.of(path("b.glsl")), project.unsaved());
+		assertEquals(Set.of(path("b.glsl")), open().unsaved());
+
+		store.failing = null;
+		outcomes = project.save(true);
+
+		assertEquals(Set.of(path("b.glsl")), outcomes.keySet());
+		assertEquals("b!", read("b.glsl"));
+		assertTrue(project.unsaved().isEmpty());
+		assertTrue(open().unsaved().isEmpty());
+		project.edit(path("a.glsl"), "a!!");
+		assertEquals(Set.of(path("a.glsl")), project.unsaved());
+		project.edit(path("a.glsl"), "a!");
+		assertTrue(project.unsaved().isEmpty());
+	}
+
+	@Test
+	public void reloadsFromFileOnRequest() throws IOException {
+		OpenProject project = editedElsewhere();
+
+		assertNull(project.reload(path("a.glsl")));
+
+		assertEquals("theirs", project.text(path("a.glsl")));
+		assertNull(project.editorState(path("a.glsl")));
+		assertTrue(project.unsaved().isEmpty());
+		assertTrue(project.conflicts().isEmpty());
+	}
+
+	@Test
+	public void keepsEditsUntilAnExplicitSave() throws IOException {
+		OpenProject project = editedElsewhere();
+
+		project.keepEdits(path("a.glsl"));
+
+		assertTrue(project.conflicts().isEmpty());
+		assertTrue(project.save(false).get(path("a.glsl")) instanceof Conflict);
+		assertEquals("theirs", read("a.glsl"));
+		assertTrue(project.save(true).get(path("a.glsl")) instanceof Saved);
+		assertEquals("mine", read("a.glsl"));
+		assertTrue(project.unsaved().isEmpty());
+	}
+
+	@Test
+	public void savesACopyBesideTheChangedFile() throws IOException {
+		OpenProject project = editedElsewhere();
+
+		OpenProject.Copy copy = project.saveCopy(path("a.glsl"));
+
+		assertNull(copy.problem());
+		assertEquals(path("a copy.glsl"), copy.path());
+		assertEquals("mine", read("a copy.glsl"));
+		assertEquals("theirs", read("a.glsl"));
+		assertEquals("mine", project.text(path("a copy.glsl")));
+		assertEquals("theirs", project.text(path("a.glsl")));
+		assertTrue(project.unsaved().isEmpty());
+		assertTrue(project.conflicts().isEmpty());
+		write("b.txt", "b");
+		project.load(path("b.txt"));
+		project.edit(path("b.txt"), "b!");
+		write("b copy.txt", "taken");
+		assertEquals(path("b copy 2.txt"),
+				project.saveCopy(path("b.txt")).path());
+	}
+
+	@Test
+	public void refreshReadsUneditedFilesAgain() throws IOException {
+		write("a.glsl", "a");
+		write("b.glsl", "b");
+		OpenProject project = open();
+		project.load(path("a.glsl"));
+		project.load(path("b.glsl"));
+		project.setEditorState(path("a.glsl"), new Object());
+		project.edit(path("b.glsl"), "b!");
+		write("a.glsl", "a2");
+
+		assertEquals(Set.of(path("a.glsl")), project.refresh());
+
+		assertEquals("a2", project.text(path("a.glsl")));
+		assertNull(project.editorState(path("a.glsl")));
+		assertEquals("b!", project.text(path("b.glsl")));
+		assertTrue(project.conflicts().isEmpty());
+	}
+
+	@Test
 	public void opensOnlyTextInTheEditor() throws IOException {
 		write("image.png", "not really");
 		Files.write(new File(root, "data.bin").toPath(), new byte[]{0, 1, 2});
@@ -215,10 +323,23 @@ public class OpenProjectTest {
 		OpenProject project = open();
 		project.load(path("main.glsl"));
 		project.persist();
+		project.refresh();
 
 		assertArrayEquals(before, Files.readAllBytes(
 				new File(root, "main.glsl").toPath()));
 		assertEquals(Set.of("main.glsl"), Set.of(root.list()));
+	}
+
+	private OpenProject editedElsewhere() throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open();
+		project.load(path("a.glsl"));
+		project.setEditorState(path("a.glsl"), new Object());
+		project.edit(path("a.glsl"), "mine");
+		write("a.glsl", "theirs");
+		project.refresh();
+		assertEquals(Set.of(path("a.glsl")), project.conflicts().keySet());
+		return project;
 	}
 
 	private OpenProject open() {
@@ -243,5 +364,32 @@ public class OpenProjectTest {
 
 	private static ProjectPath path(String path) {
 		return ProjectPath.parse(path).value();
+	}
+
+	private static final class FailingFiles implements ProjectFiles {
+		private final ProjectFiles files;
+		private ProjectPath failing;
+
+		private FailingFiles(ProjectFiles files) {
+			this.files = files;
+		}
+
+		@Override
+		public Read read(ProjectPath path) {
+			return files.read(path);
+		}
+
+		@Override
+		public Listing list(ProjectPath folder) {
+			return files.list(folder);
+		}
+
+		@Override
+		public Change write(ProjectPath path, byte[] bytes,
+				String expectedRevision) {
+			return path.equals(failing)
+					? new Refused(Refusal.FAILED, "the card was removed")
+					: files.write(path, bytes, expectedRevision);
+		}
 	}
 }
