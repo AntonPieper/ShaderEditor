@@ -27,8 +27,10 @@ import java.util.List;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.managers.ExtraKeysManager;
 import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
+import de.markusfisch.android.shadereditor.activity.managers.NavigationDrawer;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationManager;
 import de.markusfisch.android.shadereditor.activity.managers.OpenItem;
+import de.markusfisch.android.shadereditor.activity.managers.ShaderList;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderViewManager;
@@ -56,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
 	// What the editor has open. shaderManager is only used directly to
 	// open and create database shaders.
 	private OpenItem open;
-	private ShaderListManager shaderListManager;
+	private ShaderList shaderListManager;
 	private ShaderViewManager shaderViewManager;
 	private NavigationManager navigationManager;
 	private DataSource dataSource;
@@ -92,10 +94,9 @@ public class MainActivity extends AppCompatActivity {
 				editorFragment,
 				extraKeysManager,
 				shaderViewManager);
-		shaderListManager = new ShaderListManager(this,
-				findViewById(R.id.shaders),
-				dataSource,
-				createShaderListListener());
+		MainMenuManager.ShaderActions shaderActions =
+				createShaderActions(extraKeysManager);
+		shaderListManager = createShaderList(shaderActions);
 		shaderManager = new ShaderManager(this,
 				editorFragment,
 				shaderViewManager,
@@ -109,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
 		MainMenuManager mainMenuManager = new MainMenuManager(
 				this,
 				createEditorActions(),
-				createShaderActions(extraKeysManager),
+				shaderActions,
 				createNavigationActions());
 
 		uiManager.setupToolbar(mainMenuManager::show,
@@ -200,6 +201,26 @@ public class MainActivity extends AppCompatActivity {
 		if (uiManager.drawerToggle != null) {
 			uiManager.drawerToggle.syncState();
 		}
+	}
+
+	// The one place that chooses between the old and the new drawer.
+	@NonNull
+	private ShaderList createShaderList(
+			@NonNull MainMenuManager.ShaderActions shaderActions) {
+		if (!getResources().getBoolean(R.bool.project_mode)) {
+			return new ShaderListManager(this,
+					findViewById(R.id.shaders),
+					dataSource,
+					createShaderListListener());
+		}
+		return new NavigationDrawer(this, dataSource,
+				createShaderListListener(),
+				new NavigationDrawer.Host() {
+					@Override
+					public void onAddShader() {
+						shaderActions.onAddShader();
+					}
+				});
 	}
 
 	@NonNull

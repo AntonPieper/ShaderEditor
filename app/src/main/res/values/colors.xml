@@ -16,4 +16,6 @@
 	<color name="crop_bound">#8fff</color>
 	<color name="cube_face_selected">#ffff</color>
 	<color name="cube_face_text">#fff</color>
+	<color name="background_navigation">#f70f1014</color>
+	<color name="navigation_scrim">#73000000</color>
 </resources>

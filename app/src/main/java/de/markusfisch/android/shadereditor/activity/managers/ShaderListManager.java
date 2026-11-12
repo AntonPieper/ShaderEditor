@@ -24,7 +24,7 @@ import de.markusfisch.android.shadereditor.database.DataRecords.ShaderInfo;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 
-public class ShaderListManager {
+public class ShaderListManager implements ShaderList {
 	public interface Listener {
 		void onShaderSelected(long id);
 

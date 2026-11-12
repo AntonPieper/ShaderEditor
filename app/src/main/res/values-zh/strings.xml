@@ -285,5 +285,6 @@
 	<plurals name="nav_shaders_count">
 		<item quantity="other">%d shaders</item>
 	</plurals>
+	<string name="nav_new">New</string>
 	<string name="nav_running">Running</string>
 </resources>
