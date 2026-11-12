@@ -414,6 +414,39 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void marksAFileAndEverythingUnderAFolder() throws IOException {
+		for (String file : List.of("lib/x.glsl", "lib/deep/y.glsl",
+				"library.glsl", "a.glsl")) {
+			write(file, "stored");
+		}
+		OpenProject project = open();
+		for (String file : List.of("lib/x.glsl", "lib/deep/y.glsl",
+				"library.glsl", "a.glsl")) {
+			project.load(path(file));
+		}
+		project.edit(path("lib/x.glsl"), "mine");
+		project.edit(path("lib/deep/y.glsl"), "mine");
+		project.edit(path("library.glsl"), "mine");
+		write("lib/x.glsl", "theirs");
+		project.refresh();
+		project.setDiagnostics(List.of(
+				new ProjectDiagnostic(Severity.ERROR, "e", path("lib/x.glsl"), 1),
+				new ProjectDiagnostic(Severity.WARNING, "w",
+						path("lib/deep/y.glsl"), 1),
+				new ProjectDiagnostic(Severity.ERROR, "e",
+						path("library.glsl"), 1),
+				ProjectDiagnostic.error("driver crashed")));
+
+		assertEquals(new OpenProject.Marks(2, 1, 1, 1),
+				project.marks(path("lib")));
+		assertEquals(new OpenProject.Marks(1, 1, 0, 1),
+				project.marks(path("lib/x.glsl")));
+		assertEquals(new OpenProject.Marks(0, 0, 0, 0),
+				project.marks(path("a.glsl")));
+		assertEquals(new OpenProject.Marks(3, 3, 1, 1), project.marks(null));
+	}
+
+	@Test
 	public void groupsDiagnosticsByFile() throws IOException {
 		OpenProject project = open();
 		ProjectDiagnostic inMain = new ProjectDiagnostic(Severity.WARNING,
