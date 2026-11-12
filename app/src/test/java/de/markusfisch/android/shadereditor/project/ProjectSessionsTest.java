@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -122,6 +123,57 @@ public class ProjectSessionsTest {
 
 		assertFalse(new File(root, id).exists());
 		assertEquals("stored", read(new File(project, "main.glsl")));
+	}
+
+	@Test
+	public void listsRecentProjectsAcrossRestartsUntilRemoved()
+			throws IOException {
+		write(new File(project, "main.glsl"), "stored");
+		File other = temp.newFolder("other");
+		String first = sessions.open(new Locator(Kind.DIRECTORY,
+				project.getPath()));
+		String second = sessions.open(new Locator(Kind.TREE,
+				"content://provider/tree/other"));
+		String unlisted = sessions.open(new Locator(Kind.DIRECTORY,
+				other.getPath()));
+		assertTrue(sessions.remember(first, "project",
+				"ShaderEditor / Shaders", 10));
+		assertTrue(sessions.remember(second, "other", "Downloads", 20));
+		assertFalse(sessions.touch(unlisted, 30));
+
+		ProjectSessions restarted = new ProjectSessions(root);
+
+		assertEquals(List.of(second, first), ids(restarted.recent()));
+		assertEquals(new ProjectSessions.Recent(first,
+						new Locator(Kind.DIRECTORY, project.getPath()), "project",
+						"ShaderEditor / Shaders", 10, false),
+				restarted.recent(first));
+		restarted.drafts(second).put(path("main.glsl"),
+				new DraftFiles.Draft("edited", null));
+		assertTrue(restarted.recent(second).unsaved());
+		assertNull(restarted.recent(unlisted));
+
+		assertTrue(restarted.touch(first, 40));
+
+		assertEquals(List.of(first, second), ids(restarted.recent()));
+		assertEquals("ShaderEditor / Shaders",
+				restarted.recent(first).location());
+
+		assertTrue(restarted.remove(first));
+
+		assertEquals(List.of(second), ids(new ProjectSessions(root).recent()));
+		assertEquals("stored", read(new File(project, "main.glsl")));
+		String again = restarted.open(new Locator(Kind.DIRECTORY,
+				project.getPath()));
+		assertNull(restarted.recent(again));
+	}
+
+	private static List<String> ids(List<ProjectSessions.Recent> recent) {
+		List<String> ids = new ArrayList<>();
+		for (ProjectSessions.Recent session : recent) {
+			ids.add(session.id());
+		}
+		return ids;
 	}
 
 	private static String revision(ProjectFiles store, String path) {
