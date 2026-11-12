@@ -274,6 +274,53 @@ public class TextInputTest {
 	}
 
 	@Test
+	public void appEditFromAnUpdateFinishesComposing() {
+		open("|");
+		document.addListener(new Document.Listener() {
+			private boolean once;
+
+			@Override
+			public void onUpdate() {
+				if (!once) {
+					once = true;
+					document.replace(0, 1, Text.of("X"));
+				}
+			}
+		});
+		input.setComposingText("ab", 1);
+		assertMarked("Xb|");
+		assertEquals(List.of("2 2 -1 -1"), told.subList(told.size() - 1,
+				told.size()));
+	}
+
+	@Test
+	public void callWhileTheKeyboardIsToldIsToldAfter() {
+		Document document = new Document(Text.of("abc"));
+		List<String> selections = new ArrayList<>();
+		TextInput[] input = new TextInput[1];
+		input[0] = new TextInput(document, new TextInput.Listener() {
+			private boolean once;
+
+			@Override
+			public void onUpdateSelection(int selStart, int selEnd,
+					int composingStart, int composingEnd) {
+				selections.add(selStart + " " + selEnd);
+			}
+
+			@Override
+			public void onUpdateExtractedText(int token, Window window) {
+				if (!once) {
+					once = true;
+					input[0].setSelection(2, 2);
+				}
+			}
+		});
+		input[0].getExtractedText(1, true);
+		input[0].setSelection(1, 1);
+		assertEquals(List.of("1 1", "2 2"), selections);
+	}
+
+	@Test
 	public void appChangeDuringABatchIsToldAtItsEnd() {
 		open("[ab]|");
 		input.beginBatchEdit();
@@ -299,7 +346,7 @@ public class TextInputTest {
 		assertEquals(1, updates[0]);
 		assertEquals(-1, input.composingStart());
 		assertFalse(input.commitText("c", 1));
-		assertFalse(input.finishComposingText());
+		assertTrue(input.finishComposingText());
 		assertNull(input.getTextBeforeCursor(1));
 		document.select(0, 0);
 		assertMarked("|ab");
@@ -359,6 +406,19 @@ public class TextInputTest {
 		assertMarked("teh|");
 		document.undo();
 		assertMarked("|");
+	}
+
+	@Test
+	public void keyboardPasteIsTypingButAPasteOfTheViewIsNot() {
+		open("|");
+		input.commitText("a", 1);
+		input.commitText("pasted", 1);
+		document.undo();
+		assertMarked("|");
+		input.commitText("a", 1);
+		document.replace(1, 1, Text.of("pasted"));
+		document.undo();
+		assertMarked("a|");
 	}
 
 	@Test

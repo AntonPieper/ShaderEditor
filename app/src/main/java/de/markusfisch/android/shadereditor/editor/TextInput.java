@@ -12,18 +12,25 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
  * The keyboard is told the selection, as anchor and head, and the
  * composing region whenever either changed: after each of its calls
  * outside a batch edit, at the end of its outermost batch edit, and
- * after each change the app made while no batch edit was open. A text
- * change the keyboard did not make (a key the view handled, undo, a
- * completion) finishes composing; a selection the app made keeps it, so
+ * after each change the app made while no batch edit was open. It is
+ * told one update at a time: a call it makes while it is told, from a
+ * listener, is told after, so the last update holds the selection. A
+ * change is the keyboard's if one of its calls made it. Any other text
+ * change (a key the view handled, undo, a completion, an edit from a
+ * listener) finishes composing; a selection the app made keeps it, so
  * the keyboard decides. Key events, editor actions and context menu
  * actions are the view's commands and arrive here as such changes.
  * <p>
  * Committed text without line breaks, composing text and the deletion
  * of one character join the document's run of typing; text with line
- * breaks, as a paste, and longer deletions, as an autocorrection makes,
- * are undo steps of their own. A read returns at most MAX_READ
- * characters on either side of the selection and of the selection
- * itself, so it costs what it returns.
+ * breaks and longer deletions, as an autocorrection makes, are undo
+ * steps of their own. A keyboard commits text from its own clipboard
+ * as it commits glide typing, so a paste from there joins the run if it
+ * is one line. Text the view pastes itself, from its context menu or a
+ * key, goes to Document.replace, which ends the run.
+ * <p>
+ * A read returns at most MAX_READ characters on either side of the
+ * selection and of the selection itself, so it costs what it returns.
  * <p>
  * Given a KeyboardSession, it writes every call with its answer, what
  * the keyboard was told, and every change and selection of the app.
@@ -58,7 +65,7 @@ public final class TextInput {
 	private final Document.Listener changes = new Document.Listener() {
 		@Override
 		public void onChange(Change change, Text before) {
-			if (!applying) {
+			if (!own) {
 				composingStart = composingEnd = -1;
 				recorded = new Selection(change.map(recorded.anchor()),
 						change.map(recorded.head()));
@@ -73,19 +80,18 @@ public final class TextInput {
 
 		@Override
 		public void onUpdate() {
-			if (!applying) {
-				noteSelection();
-				if (batches == 0) {
-					report();
-				}
+			noteSelection();
+			if (batches == 0) {
+				report();
 			}
 		}
 	};
 	private int composingStart = -1;
 	private int composingEnd = -1;
 	private int batches;
-	// Whether the keyboard is changing the document now.
-	private boolean applying;
+	// Whether the change being made is the keyboard's.
+	private boolean own;
+	private boolean reporting;
 	private boolean closed;
 	private boolean monitored;
 	private int token;
@@ -96,9 +102,6 @@ public final class TextInput {
 	private int toldRevision;
 	// The selection as the session has it.
 	private Selection recorded;
-	// The call that is changing the document, and its arguments.
-	private String call;
-	private Object[] args;
 
 	/**
 	 * Start a connection to document; the keyboard knows its selection
@@ -137,25 +140,25 @@ public final class TextInput {
 	 * characters before its start.
 	 */
 	public boolean commitText(CharSequence text, int position) {
-		if (!begin("commitText", text, position)) {
+		if (!begin()) {
 			return false;
 		}
 		Text committed = Text.of(text != null ? text : "");
 		replace(committed, position, composingStart > -1 ||
 				committed.lineCount() == 1 || committed.length() == 1);
 		composingStart = composingEnd = -1;
-		return done();
+		return done("commitText", text, position);
 	}
 
 	/** Replace as commitText does, and compose the new text. */
 	public boolean setComposingText(CharSequence text, int position) {
-		if (!begin("setComposingText", text, position)) {
+		if (!begin()) {
 			return false;
 		}
 		Text composed = Text.of(text != null ? text : "");
 		int start = replace(composed, position, true);
 		setComposing(start, start + composed.length());
-		return done();
+		return done("setComposingText", text, position);
 	}
 
 	/**
@@ -163,22 +166,25 @@ public final class TextInput {
 	 * may come in either order and are clamped to the text.
 	 */
 	public boolean setComposingRegion(int start, int end) {
-		if (!begin("setComposingRegion", start, end)) {
+		if (!begin()) {
 			return false;
 		}
 		int length = document.text().length();
 		setComposing(clamp(Math.min(start, end), length),
 				clamp(Math.max(start, end), length));
-		return done();
+		return done("setComposingRegion", start, end);
 	}
 
-	/** Keep the composing text and forget the region. */
+	/**
+	 * Keep the composing text and forget the region. On a closed
+	 * connection, there is nothing to finish.
+	 */
 	public boolean finishComposingText() {
-		if (!begin("finishComposingText")) {
-			return false;
+		if (begin()) {
+			composingStart = composingEnd = -1;
+			done("finishComposingText");
 		}
-		composingStart = composingEnd = -1;
-		return done();
+		return true;
 	}
 
 	/**
@@ -200,14 +206,14 @@ public final class TextInput {
 	 * ignored; the keyboard will be told the real one.
 	 */
 	public boolean setSelection(int start, int end) {
-		if (!begin("setSelection", start, end)) {
+		if (!begin()) {
 			return false;
 		}
 		int length = document.text().length();
 		if (start >= 0 && end >= 0 && start <= length && end <= length) {
 			document.select(start, end);
 		}
-		return done();
+		return done("setSelection", start, end);
 	}
 
 	/** Return up to n characters before the selection. */
@@ -315,7 +321,8 @@ public final class TextInput {
 
 	/**
 	 * End open batch edits and finish composing. Every later call is
-	 * ignored and answered with false or null.
+	 * ignored and answered with false or null, finishComposingText with
+	 * true.
 	 */
 	public void closeConnection() {
 		if (closed) {
@@ -331,27 +338,39 @@ public final class TextInput {
 		session.end(document.text(), document.selection());
 	}
 
-	private boolean begin(String name, Object... args) {
+	private boolean begin() {
 		if (closed) {
 			return false;
 		}
 		noteSelection();
-		call = name;
-		this.args = args;
-		applying = true;
 		document.beginBatch();
 		return true;
 	}
 
-	private boolean done() {
-		document.endBatch();
-		applying = false;
+	// Writes the call, which listeners may answer with changes of their
+	// own when the document updates, and tells the keyboard.
+	private boolean done(String name, Object... args) {
 		recorded = document.selection();
-		session.call(call, args, true);
+		session.call(name, args, true);
+		document.endBatch();
 		if (batches == 0) {
 			report();
 		}
 		return true;
+	}
+
+	// Makes a change of the keyboard's.
+	private void edit(int from, int to, Text text, boolean typed) {
+		own = true;
+		try {
+			if (typed) {
+				document.type(from, to, text);
+			} else {
+				document.replace(from, to, text);
+			}
+		} finally {
+			own = false;
+		}
 	}
 
 	// Replaces the composing region or else the selection by text, places
@@ -361,11 +380,7 @@ public final class TextInput {
 		boolean composing = composingStart > -1;
 		int from = composing ? composingStart : selection.start();
 		int to = composing ? composingEnd : selection.end();
-		if (typed) {
-			document.type(from, to, text);
-		} else {
-			document.replace(from, to, text);
-		}
+		edit(from, to, text, typed);
 		long caret = position > 0
 				? (long) from + text.length() + position - 1
 				: (long) from + position;
@@ -382,7 +397,7 @@ public final class TextInput {
 
 	private boolean delete(String name, int before, int after,
 			boolean codePoints) {
-		if (!begin(name, before, after)) {
+		if (!begin()) {
 			return false;
 		}
 		Selection selection = document.selection();
@@ -394,17 +409,16 @@ public final class TextInput {
 		}
 		erase(end, ahead(end, after, codePoints));
 		erase(back(start, before, codePoints), start);
-		return done();
+		return done(name, before, after);
 	}
 
 	// Deletes the range [from, to); one character, as Backspace deletes
 	// it, is typing.
 	private void erase(int from, int to) {
 		int length = to - from;
-		if (length == 1 || (length == 2 && splits(from + 1))) {
-			document.type(from, to, Text.EMPTY);
-		} else if (length > 0) {
-			document.replace(from, to, Text.EMPTY);
+		if (length > 0) {
+			edit(from, to, Text.EMPTY,
+					length == 1 || (length == 2 && splits(from + 1)));
 		}
 	}
 
@@ -457,27 +471,53 @@ public final class TextInput {
 				text.substring(from, to));
 	}
 
-	// Tells the keyboard what changed since it was told last.
+	// Tells the keyboard what changed since it was told last, until
+	// nothing did; a report from a listener is left to the loop.
 	private void report() {
+		if (reporting) {
+			return;
+		}
+		reporting = true;
+		try {
+			boolean told;
+			do {
+				told = tell();
+			} while (told && !closed);
+		} finally {
+			reporting = false;
+		}
+	}
+
+	// Tells the keyboard one update, stored and written before any
+	// listener hears of it; returns whether there was one.
+	private boolean tell() {
 		Selection selection = document.selection();
+		int start = composingStart;
+		int end = composingEnd;
 		boolean moved = !selection.equals(toldSelection) ||
-				composingStart != toldComposingStart ||
-				composingEnd != toldComposingEnd;
-		if (monitored && (moved || document.revision() != toldRevision)) {
-			Window window = window(MAX_READ, MAX_READ);
+				start != toldComposingStart || end != toldComposingEnd;
+		boolean extract = monitored &&
+				(moved || document.revision() != toldRevision);
+		toldRevision = document.revision();
+		toldSelection = selection;
+		toldComposingStart = start;
+		toldComposingEnd = end;
+		Window window = extract ? window(MAX_READ, MAX_READ) : null;
+		if (extract) {
 			session.updateExtractedText(token, window);
+		}
+		if (moved) {
+			session.updateSelection(selection.anchor(), selection.head(),
+					start, end);
+		}
+		if (extract) {
 			listener.onUpdateExtractedText(token, window);
 		}
-		toldRevision = document.revision();
 		if (moved) {
-			toldSelection = selection;
-			toldComposingStart = composingStart;
-			toldComposingEnd = composingEnd;
-			session.updateSelection(selection.anchor(), selection.head(),
-					composingStart, composingEnd);
 			listener.onUpdateSelection(selection.anchor(), selection.head(),
-					composingStart, composingEnd);
+					start, end);
 		}
+		return moved || extract;
 	}
 
 	private <T> T read(T answer, String name, Object... args) {
