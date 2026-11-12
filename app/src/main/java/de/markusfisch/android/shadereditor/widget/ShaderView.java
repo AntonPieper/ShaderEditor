@@ -49,7 +49,7 @@ public class ShaderView extends GLSurfaceView {
 	@Override
 	protected void onDetachedFromWindow() {
 		super.onDetachedFromWindow();
-		engine.onContextLost();
+		engine.onDetached();
 	}
 
 	// Click handling is implemented in the engine.
@@ -62,6 +62,13 @@ public class ShaderView extends GLSurfaceView {
 
 	public void setShader(@NonNull ShaderProjectSession session) {
 		engine.setShader(session);
+		requestRender();
+	}
+
+	public void setShader(
+			@NonNull ShaderProjectSession session,
+			long runtimeNanos) {
+		engine.setShader(session, runtimeNanos);
 		requestRender();
 	}
 

@@ -138,9 +138,10 @@ final class PlanRuntime implements EngineBuild {
 		return Sampling.PASS;
 	}
 
+	// Its images do not depend on the render size.
 	@Override
-	public boolean isSizedToRender() {
-		return false;
+	public boolean fits(int width, int height) {
+		return true;
 	}
 
 	// Decodes its images from the bytes the preparation captured; their

@@ -3,14 +3,17 @@ package de.markusfisch.android.shadereditor.opengl;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-// Hands the shaders hosts set on any thread to the GL thread. Only the
-// newest one waiting is built. Its build waits as next while the current
-// build keeps drawing, and replaces it once it is complete. Shaders are
-// numbered in the order they were offered.
+// Hands the shaders hosts set on any thread to the GL thread. Every offer
+// is a revision, numbered in the order offered, and only the newest one
+// waiting is built. Its build waits as next while the current build keeps
+// drawing, and replaces it once it is complete.
 final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	interface Build {
 		// Whether everything it draws with is uploaded.
 		boolean isComplete();
+
+		// Whether what it decoded was made for a surface of this size.
+		boolean fits(int width, int height);
 
 		// Deletes its GL objects and stops its texture loads.
 		void release();
@@ -19,72 +22,71 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		void discard();
 	}
 
-	private record Offer<S>(@NonNull S shader, int number) {
+	interface Change<S> {
+		@NonNull
+		S apply(@NonNull S shader);
+	}
+
+	record Revision<S>(@NonNull S shader, int number) {
 	}
 
 	// Guarded by this.
 	@Nullable
-	private Offer<S> pending;
+	private Revision<S> pending;
 	@Nullable
-	private Offer<S> taken;
+	private Revision<S> latest;
+	// The newest revision taken.
 	@Nullable
-	private S latest;
-	private int offered;
+	private Revision<S> taken;
 	// GL thread only.
 	@Nullable
-	private Offer<S> nextShader;
+	private Revision<S> nextRevision;
 	@Nullable
-	private Offer<S> currentShader;
+	private Revision<S> currentRevision;
 	@Nullable
 	private B next;
 	@Nullable
 	private B current;
-	private int shown;
+	private int reported;
 
-	// Any thread. Replaces a shader that was not taken yet.
+	// Any thread. Replaces a revision that was not taken yet.
 	synchronized void offer(@NonNull S shader) {
-		pending = new Offer<>(shader, ++offered);
-		latest = shader;
+		latest = new Revision<>(shader, offered() + 1);
+		pending = latest;
 	}
 
-	// Any thread. The number of the shader offered last.
+	// Any thread. Offers a change of the shader offered last, if any.
+	synchronized void offerChanged(@NonNull Change<S> change) {
+		if (latest != null) {
+			offer(change.apply(latest.shader()));
+		}
+	}
+
+	// Any thread. The number of the revision offered last, or 0.
 	synchronized int offered() {
-		return offered;
+		return latest != null ? latest.number() : 0;
 	}
 
-	// Any thread. The shader offered last.
+	// GL thread, at a frame boundary: the revision to build, or null.
 	@Nullable
-	synchronized S latest() {
-		return latest;
-	}
-
-	// GL thread, at a frame boundary: the newest shader to build, or null.
-	@Nullable
-	synchronized S take() {
-		if (pending == null) {
-			return null;
-		}
-		taken = pending;
+	synchronized Revision<S> take() {
+		var revision = pending;
 		pending = null;
-		return taken.shader();
-	}
-
-	// GL thread. The shader taken last did not build; the current build
-	// keeps drawing and shows its outcome.
-	synchronized void failed() {
-		if (taken != null) {
-			shown = Math.max(shown, taken.number());
+		if (revision != null &&
+				(taken == null || revision.number() > taken.number())) {
+			taken = revision;
 		}
+		return revision;
 	}
 
-	// GL thread. The build of the shader taken last supersedes a next
-	// build that is still waiting.
-	synchronized void built(@NonNull B build) {
+	// GL thread. The build of this revision supersedes a next build that
+	// is still waiting.
+	void built(@NonNull Revision<S> revision, @NonNull B build) {
 		if (next != null) {
 			next.release();
 		}
 		next = build;
-		nextShader = taken;
+		nextRevision = revision;
 	}
 
 	// GL thread. Swaps the next build in once it is complete and returns
@@ -98,27 +100,24 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 			current.release();
 		}
 		current = next;
-		currentShader = nextShader;
-		if (currentShader != null) {
-			shown = Math.max(shown, currentShader.number());
-		}
+		currentRevision = nextRevision;
 		next = null;
-		nextShader = null;
+		nextRevision = null;
 		return current;
 	}
 
-	// GL thread. The next build can never complete: it is released, and
-	// the current build keeps drawing and shows its outcome.
-	synchronized void nextFailed() {
-		if (next == null) {
-			return;
-		}
-		next.release();
-		if (nextShader != null) {
-			shown = Math.max(shown, nextShader.number());
+	// GL thread. The next build can never complete: it is released, the
+	// current build keeps drawing, and its revision is returned, or null
+	// without one.
+	@Nullable
+	Revision<S> nextFailed() {
+		var revision = nextRevision;
+		if (next != null) {
+			next.release();
 		}
 		next = null;
-		nextShader = null;
+		nextRevision = null;
+		return revision;
 	}
 
 	@Nullable
@@ -127,26 +126,55 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	}
 
 	@Nullable
+	Revision<S> currentRevision() {
+		return currentRevision;
+	}
+
+	@Nullable
 	B next() {
 		return next;
 	}
 
-	// GL thread. The number of the newest shader whose outcome is on
-	// screen: it draws, or it failed and an older one draws.
-	int shown() {
-		return shown;
+	// GL thread. Whether to report the outcome of this revision. An older
+	// build that replaces the picture after a newer revision failed does
+	// not take that failure off the screen.
+	boolean report(@NonNull Revision<S> revision) {
+		if (revision.number() < reported) {
+			return false;
+		}
+		reported = revision.number();
+		return true;
 	}
 
-	// GL thread. Builds the shader of the current build again, unless a
-	// newer one waits.
-	synchronized void rebuildCurrent() {
-		if (pending == null) {
-			pending = currentShader;
+	// GL thread. Whether this revision may still draw: it waits to be
+	// built, waits for its textures, or draws.
+	synchronized boolean canDraw(int number) {
+		return is(pending, number) ||
+				is(nextRevision, number) ||
+				is(currentRevision, number);
+	}
+
+	// GL thread, after the surface changed. Returns the next build when
+	// it decoded for another size, so it decodes again. Without one, the
+	// current build is built again when it decoded for another size,
+	// unless a newer revision waits.
+	@Nullable
+	B resized(int width, int height) {
+		if (next != null) {
+			return next.fits(width, height) ? null : next;
 		}
+		if (current != null && !current.fits(width, height)) {
+			synchronized (this) {
+				if (pending == null) {
+					pending = currentRevision;
+				}
+			}
+		}
+		return null;
 	}
 
 	// After the context was lost. Its builds go with it, and the newest
-	// shader taken is built again, unless a newer one waits.
+	// revision taken is built again, unless a newer one waits.
 	synchronized void contextLost() {
 		if (next != null) {
 			next.discard();
@@ -156,10 +184,14 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		}
 		next = null;
 		current = null;
-		nextShader = null;
-		currentShader = null;
+		nextRevision = null;
+		currentRevision = null;
 		if (pending == null) {
 			pending = taken;
 		}
+	}
+
+	private static boolean is(@Nullable Revision<?> revision, int number) {
+		return revision != null && revision.number() == number;
 	}
 }

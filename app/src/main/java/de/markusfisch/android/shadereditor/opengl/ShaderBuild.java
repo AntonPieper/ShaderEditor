@@ -26,6 +26,9 @@ final class ShaderBuild implements EngineBuild {
 	private final TextureHandOver<DecodedTextures> decoded =
 			new TextureHandOver<>();
 	private boolean complete;
+	// The render size its backbuffer seed decodes for.
+	private int seedWidth;
+	private int seedHeight;
 
 	private ShaderBuild(
 			@NonNull GlDevice device,
@@ -80,6 +83,8 @@ final class ShaderBuild implements EngineBuild {
 		int generation = decoded.begin();
 		var samplers = textures.getSamplers();
 		var backBuffer = source.getBackBufferParameters();
+		seedWidth = width;
+		seedHeight = height;
 		complete = !DecodedTextures.isNeeded(samplers, backBuffer);
 		if (complete) {
 			return;
@@ -145,8 +150,10 @@ final class ShaderBuild implements EngineBuild {
 
 	// The backbuffer preset is tiled to the render size.
 	@Override
-	public boolean isSizedToRender() {
-		return source.getBackBufferParameters().hasPreset();
+	public boolean fits(int width, int height) {
+		return !source.getBackBufferParameters().hasPreset() ||
+				(seedWidth == EngineInputs.renderSize(width, quality) &&
+						seedHeight == EngineInputs.renderSize(height, quality));
 	}
 
 	@Override

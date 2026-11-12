@@ -58,6 +58,32 @@ public class EngineInputsTest {
 		assertEquals(.1f, in.runtime, EPSILON);
 	}
 
+	// A drawing, B set: A keeps its clock while B decodes or when B
+	// fails, and B's restored runtime starts when B is shown.
+	@Test
+	public void runtimeBelongsToTheShaderShown() {
+		var inputs = new EngineInputs();
+		var a = new Object();
+		var b = new Object();
+		assertEquals(-1L, inputs.getRuntimeNanos(a));
+		inputs.showRuntime(a, 0L);
+		inputs.capture(1000000000L, 3f);
+		inputs.capture(3000000000L, 3f);
+		assertEquals(2000000000L, inputs.getRuntimeNanos(a));
+		assertEquals(-1L, inputs.getRuntimeNanos(b));
+
+		inputs.capture(4000000000L, 3f);
+		inputs.showRuntime(a, 0L);
+		inputs.capture(5000000000L, 3f);
+		assertEquals(4000000000L, inputs.getRuntimeNanos(a));
+
+		inputs.showRuntime(b, 7000000000L);
+		assertEquals(-1L, inputs.getRuntimeNanos(a));
+		inputs.capture(6000000000L, 3f);
+		assertEquals(7000000000L, inputs.getRuntimeNanos(b));
+		assertEquals(7.5f, inputs.capture(6500000000L, 3f).runtime, EPSILON);
+	}
+
 	@Test
 	public void touchIsScaledToTheRenderTarget() {
 		var inputs = new EngineInputs();
