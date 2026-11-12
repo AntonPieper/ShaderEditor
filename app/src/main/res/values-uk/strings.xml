@@ -57,6 +57,10 @@
 	<string name="font">Шрифт</string>
 	<string name="use_ligatures">Використовувати лігатури</string>
 	<string name="use_ligatures_summary">З\'єднати деякі символи, як &lt;= у ≤</string>
+	<string name="picture_behind_code">Picture behind code</string>
+	<string name="picture_dim">Dim</string>
+	<string name="picture_balanced">Balanced</string>
+	<string name="picture_bright">Bright</string>
 	<string name="tab_width">Ширина табуляції</string>
 	<string name="use_tab_for_indent">Використовувати клавішу табуляції</string>
 	<string name="use_tab_for_indent_summary">Використовувати клавішу табуляції для створення відступу замість навігації по фокусу.</string>

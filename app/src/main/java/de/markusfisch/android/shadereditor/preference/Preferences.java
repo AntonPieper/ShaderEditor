@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.opengl.PictureLimit;
 
 public class Preferences {
 	public static final String WALLPAPER_SHADER = "shader";
@@ -26,6 +27,7 @@ public class Preferences {
 	public static final String TEXT_SIZE = "text_size";
 	public static final String FONT = "font";
 	public static final String USE_LIGATURES = "use_ligatures";
+	public static final String PICTURE_BEHIND_CODE = "picture_behind_code";
 	public static final String TAB_WIDTH = "tab_width";
 	public static final String SHOW_INSERT_TAB = "show_insert_tab";
 	public static final String USE_TAB_FOR_INDENT = "use_tab_for_indent";
@@ -71,6 +73,7 @@ public class Preferences {
 	private int textSize = 12;
 	private @NonNull Typeface font = Typeface.MONOSPACE;
 	private boolean useLigatures = false;
+	private int pictureCeiling = PictureLimit.BALANCED;
 	private int tabWidth = 4;
 	private boolean exportTabs = false;
 	private boolean showInsertTab = true;
@@ -139,6 +142,9 @@ public class Preferences {
 		useLigatures = preferences.getBoolean(
 				USE_LIGATURES,
 				useLigatures);
+		pictureCeiling = parsePictureCeiling(
+				preferences.getString(PICTURE_BEHIND_CODE, null),
+				pictureCeiling);
 		tabWidth = parseInt(
 				preferences.getString(TAB_WIDTH, null),
 				tabWidth);
@@ -286,6 +292,11 @@ public class Preferences {
 		return useLigatures;
 	}
 
+	// The brightest the picture may be behind code, of 255.
+	public int getPictureCeiling() {
+		return pictureCeiling;
+	}
+
 	public int getTabWidth() {
 		return tabWidth;
 	}
@@ -429,5 +440,18 @@ public class Preferences {
 			default -> preset;
 		};
 
+	}
+
+	private static int parsePictureCeiling(String s, int preset) {
+		if (s == null) {
+			return preset;
+		}
+
+		return switch (s) {
+			case "dim" -> PictureLimit.DIM;
+			case "balanced" -> PictureLimit.BALANCED;
+			case "bright" -> PictureLimit.BRIGHT;
+			default -> preset;
+		};
 	}
 }

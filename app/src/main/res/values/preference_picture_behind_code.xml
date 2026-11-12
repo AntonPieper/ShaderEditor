@@ -1,0 +1,12 @@
+<resources>
+	<string-array name="picture_behind_code_names">
+		<item>@string/picture_dim</item>
+		<item>@string/picture_balanced</item>
+		<item>@string/picture_bright</item>
+	</string-array>
+	<string-array name="picture_behind_code_values">
+		<item>dim</item>
+		<item>balanced</item>
+		<item>bright</item>
+	</string-array>
+</resources>

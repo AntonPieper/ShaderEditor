@@ -57,6 +57,10 @@
 	<string name="font">Шрифт</string>
 	<string name="use_ligatures">Использовать лигатуры</string>
 	<string name="use_ligatures_summary">Преобразовывает комбинации символов по типу &lt;= в ≤</string>
+	<string name="picture_behind_code">Picture behind code</string>
+	<string name="picture_dim">Dim</string>
+	<string name="picture_balanced">Balanced</string>
+	<string name="picture_bright">Bright</string>
 	<string name="tab_width">Ширина табуляции</string>
 	<string name="use_tab_for_indent">Использовать табуляцию</string>
 	<string name="use_tab_for_indent_summary">Использовать клавишу таб для отступов вместо переключения фокуса.</string>
