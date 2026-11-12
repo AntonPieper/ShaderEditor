@@ -138,7 +138,11 @@ public class PreviewActivity extends AppCompatActivity {
 		shaderView.onPause();
 	}
 
-	private boolean setShaderFromIntent(Intent intent) {
+	protected ShaderView getShaderView() {
+		return shaderView;
+	}
+
+	protected boolean setShaderFromIntent(Intent intent) {
 		ShaderProjectSession projectSession = getProjectSession(intent);
 		if (shaderView == null || projectSession == null) {
 			return false;
