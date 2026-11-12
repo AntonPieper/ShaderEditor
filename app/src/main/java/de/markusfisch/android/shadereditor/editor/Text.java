@@ -1,21 +1,29 @@
 package de.markusfisch.android.shadereditor.editor;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
  * An immutable text, kept as a balanced tree of lines: a leaf holds up
  * to 32 lines, a node about 32 children and the length and line count
  * of its subtree. A text has at least one line; n lines are joined by
- * n - 1 line breaks of one character each. Since a text never
- * changes, it can be read on another thread as it is. Finding a line,
- * or the line of an offset, is one walk from the root to a leaf. This
- * is the document tree of CodeMirror 6.
+ * n - 1 line breaks of one character each. An edit returns a new text
+ * that shares every part it did not touch with the old one, so a text
+ * can be kept for undo or read on another thread as it is. Every
+ * operation costs the size of what it changes or returns, the length
+ * of the lines it touches and the logarithm of the line count. This is
+ * the document tree of CodeMirror 6.
  */
 public abstract class Text {
 	public static final Text EMPTY = new Leaf(new String[]{""});
 
-	private static final int BRANCH = 32;
+	private static final int SHIFT = 5;
+	private static final int BRANCH = 1 << SHIFT;
+	// The first part continues the last line of the parts before it.
+	private static final int OPEN_START = 1;
+	// The last line of the last part continues in the parts after it.
+	private static final int OPEN_END = 2;
 
 	private final int length;
 	private final int lines;
@@ -77,6 +85,25 @@ public abstract class Text {
 		return indexAt(offset);
 	}
 
+	/** Return this text with the range [from, to) replaced by text. */
+	public final Text replace(int from, int to, Text text) {
+		checkRange(from, to);
+		return from == to && text.length == 0
+				? this
+				: splice(from, to, text);
+	}
+
+	/** Return the range [from, to) as a text. */
+	public final Text slice(int from, int to) {
+		checkRange(from, to);
+		if (from == to) {
+			return EMPTY;
+		}
+		List<Text> parts = new ArrayList<>();
+		decompose(from, to, parts, 0);
+		return join(parts);
+	}
+
 	/** Return the range [from, to) as a string. */
 	public final String substring(int from, int to) {
 		checkRange(from, to);
@@ -96,7 +123,23 @@ public abstract class Text {
 
 	abstract int indexAt(int offset);
 
+	// Adds the parts of the range [from, to] to target; the range may
+	// reach beyond this text.
+	abstract void decompose(int from, int to, List<Text> target, int open);
+
 	abstract void appendTo(StringBuilder sb, int from, int to);
+
+	abstract void addLines(List<String> target);
+
+	Text splice(int from, int to, Text text) {
+		List<Text> parts = new ArrayList<>();
+		decompose(0, from, parts, OPEN_END);
+		if (text.length > 0) {
+			text.decompose(0, text.length, parts, OPEN_START | OPEN_END);
+		}
+		decompose(to, length, parts, OPEN_START);
+		return join(parts);
+	}
 
 	private void checkRange(int from, int to) {
 		checkIndex(to, length);
@@ -111,19 +154,114 @@ public abstract class Text {
 	}
 
 	private static Text ofLines(List<String> lines) {
-		List<Text> level = new ArrayList<>();
+		List<Text> leaves = new ArrayList<>();
 		for (int i = 0, size = lines.size(); i < size; i += BRANCH) {
-			level.add(new Leaf(lines.subList(i, Math.min(size, i + BRANCH))));
+			leaves.add(new Leaf(lines.subList(i, Math.min(size, i + BRANCH))));
 		}
-		while (level.size() > 1) {
-			List<Text> parents = new ArrayList<>();
-			for (int i = 0, size = level.size(); i < size; i += BRANCH) {
-				parents.add(Node.of(level.subList(i,
-						Math.min(size, i + BRANCH))));
+		return join(leaves);
+	}
+
+	// Returns the text of parts, each separated from the next by a line
+	// break, as a balanced tree.
+	private static Text join(List<Text> parts) {
+		if (parts.size() == 1) {
+			return parts.get(0);
+		}
+		int lines = 0;
+		for (Text part : parts) {
+			lines += part.lines;
+		}
+		if (lines < BRANCH) {
+			List<String> flat = new ArrayList<>(lines);
+			for (Text part : parts) {
+				part.addLines(flat);
 			}
-			level = parents;
+			return new Leaf(flat);
 		}
-		return level.get(0);
+		Joiner joiner = new Joiner(lines);
+		for (Text part : parts) {
+			joiner.add(part);
+		}
+		joiner.flush();
+		List<Text> chunks = joiner.chunks;
+		return chunks.size() == 1 ? chunks.get(0) : Node.of(chunks);
+	}
+
+	// Groups parts into chunks of about a 32nd of all lines, and keeps
+	// parts of about that size whole.
+	private static final class Joiner {
+		private final List<Text> chunks = new ArrayList<>();
+		private final List<Text> current = new ArrayList<>();
+		private final int chunk;
+		private int currentLines;
+
+		private Joiner(int lines) {
+			chunk = Math.max(BRANCH, lines >> SHIFT);
+		}
+
+		private void add(Text part) {
+			int last = current.size() - 1;
+			if (part.lines > chunk << 1 && part instanceof Node) {
+				for (Text child : ((Node) part).children) {
+					add(child);
+				}
+			} else if (part.lines > chunk >> 1 &&
+					(currentLines > chunk >> 1 || currentLines == 0)) {
+				flush();
+				chunks.add(part);
+			} else if (part instanceof Leaf && last > -1 &&
+					current.get(last) instanceof Leaf &&
+					current.get(last).lines + part.lines <= BRANCH) {
+				List<String> lines = new ArrayList<>();
+				current.get(last).addLines(lines);
+				part.addLines(lines);
+				current.set(last, new Leaf(lines));
+				currentLines += part.lines;
+			} else {
+				if (currentLines + part.lines > chunk) {
+					flush();
+				}
+				current.add(part);
+				currentLines += part.lines;
+			}
+		}
+
+		private void flush() {
+			if (!current.isEmpty()) {
+				chunks.add(join(new ArrayList<>(current)));
+				current.clear();
+				currentLines = 0;
+			}
+		}
+	}
+
+	// Adds the range [from, to] of lines to target; the first piece
+	// continues the last line of target.
+	private static void appendLines(String[] lines, List<String> target,
+			int from, int to) {
+		boolean first = true;
+		for (int pos = 0, i = 0; i < lines.length && pos <= to; ++i) {
+			String line = lines[i];
+			int end = pos + line.length();
+			if (end >= from) {
+				if (end > to) {
+					line = line.substring(0, to - pos);
+				}
+				if (pos < from) {
+					line = line.substring(from - pos);
+				}
+				if (first) {
+					int last = target.size() - 1;
+					String head = target.get(last);
+					// Keep the very string of a line that did not change.
+					target.set(last, head.isEmpty() ? line : head.concat(line));
+					first = false;
+				} else {
+					target.add(line);
+				}
+			}
+			pos = end + 1;
+		}
 	}
 
 	private static final class Leaf extends Text {
@@ -171,6 +309,42 @@ public abstract class Text {
 		}
 
 		@Override
+		Text splice(int from, int to, Text insert) {
+			if (!(insert instanceof Leaf)) {
+				return super.splice(from, to, insert);
+			}
+			List<String> lines = new ArrayList<>(text.length + insert.lines);
+			lines.add("");
+			appendLines(text, lines, 0, from);
+			appendLines(((Leaf) insert).text, lines, 0, insert.length);
+			appendLines(text, lines, to, length());
+			return ofLines(lines);
+		}
+
+		@Override
+		void decompose(int from, int to, List<Text> target, int open) {
+			boolean continues = (open & OPEN_START) != 0;
+			if (!continues && from <= 0 && to >= length()) {
+				target.add(this);
+				return;
+			}
+			List<String> lines = new ArrayList<>();
+			if (continues) {
+				Leaf last = (Leaf) target.remove(target.size() - 1);
+				Collections.addAll(lines, last.text);
+			} else {
+				lines.add("");
+			}
+			appendLines(text, lines, from, to);
+			int size = lines.size();
+			int mid = size > BRANCH ? size >> 1 : 0;
+			if (mid > 0) {
+				target.add(new Leaf(lines.subList(0, mid)));
+			}
+			target.add(new Leaf(lines.subList(mid, size)));
+		}
+
+		@Override
 		void appendTo(StringBuilder sb, int from, int to) {
 			for (int pos = 0, i = 0; i < text.length && pos <= to; ++i) {
 				String line = text[i];
@@ -184,6 +358,11 @@ public abstract class Text {
 				}
 				pos = end + 1;
 			}
+		}
+
+		@Override
+		void addLines(List<String> target) {
+			Collections.addAll(target, text);
 		}
 	}
 
@@ -237,6 +416,53 @@ public abstract class Text {
 		}
 
 		@Override
+		Text splice(int from, int to, Text text) {
+			if (text.lines >= lineCount()) {
+				return super.splice(from, to, text);
+			}
+			int i = 0;
+			int pos = 0;
+			for (; from > pos + children[i].length; ++i) {
+				pos += children[i].length + 1;
+			}
+			Text child = children[i];
+			int end = pos + child.length;
+			if (to > end) {
+				return super.splice(from, to, text);
+			}
+			// The range lies in one child: replace that child alone
+			// while its size stays in proportion.
+			Text updated = child.splice(from - pos, to - pos, text);
+			int lines = lineCount() - child.lines + updated.lines;
+			if (updated.lines >= lines >> (SHIFT - 1) ||
+					updated.lines <= lines >> (SHIFT + 1)) {
+				return super.splice(pos, end, updated);
+			}
+			Text[] copy = children.clone();
+			copy[i] = updated;
+			return new Node(copy, length() - (to - from) + text.length, lines);
+		}
+
+		@Override
+		void decompose(int from, int to, List<Text> target, int open) {
+			for (int i = 0, pos = 0; i < children.length && pos <= to; ++i) {
+				Text child = children[i];
+				int end = pos + child.length;
+				if (from <= end) {
+					int childOpen = open & ((pos <= from ? OPEN_START : 0) |
+							(end >= to ? OPEN_END : 0));
+					if (pos >= from && end <= to && childOpen == 0) {
+						target.add(child);
+					} else {
+						child.decompose(from - pos, to - pos, target,
+								childOpen);
+					}
+				}
+				pos = end + 1;
+			}
+		}
+
+		@Override
 		void appendTo(StringBuilder sb, int from, int to) {
 			for (int i = 0, pos = 0; i < children.length && pos <= to; ++i) {
 				Text child = children[i];
@@ -248,6 +474,13 @@ public abstract class Text {
 					child.appendTo(sb, from - pos, to - pos);
 				}
 				pos = end + 1;
+			}
+		}
+
+		@Override
+		void addLines(List<String> target) {
+			for (Text child : children) {
+				child.addLines(target);
 			}
 		}
 	}

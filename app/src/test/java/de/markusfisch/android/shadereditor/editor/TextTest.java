@@ -3,13 +3,17 @@ package de.markusfisch.android.shadereditor.editor;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 public class TextTest {
 	@Test
@@ -124,6 +128,157 @@ public class TextTest {
 				() -> text.substring(2, 1));
 	}
 
+	@Test
+	public void slices() {
+		Random random = new Random(4);
+		String string = randomLines(random, 2000);
+		Text text = Text.of(string);
+		List<Integer> breaks = lineBreaks(string);
+		for (int i = 0; i < 2000; ++i) {
+			int a = pick(random, string, breaks);
+			int b = pick(random, string, breaks);
+			String expected = string.substring(Math.min(a, b), Math.max(a, b));
+			Text slice = text.slice(Math.min(a, b), Math.max(a, b));
+			assertText(expected, slice);
+			if (i % 20 == 0) {
+				assertBoundaries(expected, slice);
+			}
+		}
+		assertSame(Text.EMPTY, text.slice(5, 5));
+	}
+
+	@Test
+	public void lineEndsOfTwoTextsStayApart() {
+		Text text = Text.of("a\r").replace(2, 2, Text.of("\nb"));
+		assertText("a\n\nb", text);
+	}
+
+	@Test
+	public void editInAMegabyteLine() {
+		String line = "abcdefgh".repeat(1 << 17);
+		int middle = 1 << 19;
+		Text text = Text.of(line).replace(middle, middle + 1, Text.of("X\nY"));
+		assertEquals(2, text.lineCount());
+		assertEquals(middle + 1, text.line(0).length());
+		assertEquals(middle + 2, text.lineStart(1));
+		assertEquals("hX\nYb", text.substring(middle - 1, middle + 4));
+		assertEquals(line.substring(0, middle) + "X\nY" +
+				line.substring(middle + 1), text.toString());
+	}
+
+	@Test
+	public void offsetsAndLinesAtEveryBoundaryAfterEdits() {
+		String string = randomLines(new Random(5), 3000);
+		String[] lines = string.split("\n", -1);
+		Text appended = Text.of(lines[0]);
+		for (int i = 1; i < lines.length; ++i) {
+			appended = appended.replace(appended.length(), appended.length(),
+					Text.of("\n" + lines[i]));
+		}
+		assertBoundaries(string, appended);
+		Text prepended = Text.of(lines[lines.length - 1]);
+		for (int i = lines.length - 1; i-- > 0; ) {
+			prepended = prepended.replace(0, 0, Text.of(lines[i] + "\n"));
+		}
+		assertBoundaries(string, prepended);
+	}
+
+	@Test
+	public void randomEditsAgreeWithStringBuilder() {
+		Random random = new Random(6);
+		StringBuilder expected = new StringBuilder();
+		Text text = Text.EMPTY;
+		for (int i = 0; i < 40_000; ++i) {
+			int length = expected.length();
+			int from = random.nextInt(length + 1);
+			int to = Math.min(length, from + removal(random, length));
+			Text insert;
+			if (random.nextInt(20) == 0 && length > 0) {
+				int a = random.nextInt(length + 1);
+				insert = text.slice(a, Math.min(length, a + random.nextInt(4000)));
+			} else {
+				insert = Text.of(randomString(random,
+						length > 40_000 ? 4 : insertion(random)));
+			}
+			String inserted = insert.toString();
+			text = text.replace(from, to, insert);
+			expected.replace(from, to, inserted);
+			assertEquals(expected.length(), text.length());
+			int around = Math.max(0, from - 20);
+			int after = Math.min(expected.length(), from + inserted.length() + 20);
+			assertEquals(expected.substring(around, after),
+					text.substring(around, after));
+			if (i % 500 == 0) {
+				assertBoundaries(expected.toString(), text);
+			}
+			if (i % 50 == 0) {
+				assertText(expected.toString(), text);
+			}
+		}
+		assertText(expected.toString(), text);
+	}
+
+	@Test
+	public void editOfOneLineSharesTheRest() throws Exception {
+		Random random = new Random(7);
+		Text text = Text.of(randomLines(random, 500_000));
+		String[] edits = {"x", "\n", "", "ab\ncd", "\n".repeat(40)};
+		for (int i = 0; i < 300; ++i) {
+			int line = random.nextInt(text.lineCount());
+			int start = text.lineStart(line);
+			int from = start + random.nextInt(text.line(line).length() + 1);
+			// Removing a line break joins this line and the next.
+			int to = Math.min(text.length(), from + random.nextInt(2));
+			Text edited = text.replace(from, to,
+					Text.of(edits[random.nextInt(edits.length)]));
+			int created = countNewNodes(edited, nodesOf(text));
+			// A leaf or two and a copy of each node above them, of the
+			// more than 15,000 leaves and nodes of the text.
+			assertTrue("an edit of one line made " + created + " nodes",
+					created <= 12);
+			if (line > 0) {
+				assertSame(text.line(line - 1), edited.line(line - 1));
+			}
+			int last = text.lineCount() - 1;
+			assertSame(text.line(last),
+					edited.line(last + edited.lineCount() - text.lineCount()));
+			text = edited;
+		}
+		assertTrue(depth(text) <= 5);
+	}
+
+	@Test
+	public void staysShallowWhenGrownAtOnePlace() throws Exception {
+		Text atEnd = Text.EMPTY;
+		Text atStart = Text.EMPTY;
+		Text inMiddle = Text.of("\n");
+		Text line = Text.of("line\n");
+		for (int i = 0; i < 100_000; ++i) {
+			atEnd = atEnd.replace(atEnd.length(), atEnd.length(), line);
+			atStart = atStart.replace(0, 0, line);
+			int middle = inMiddle.lineStart(inMiddle.lineCount() / 2);
+			inMiddle = inMiddle.replace(middle, middle, line);
+		}
+		assertEquals(100_001, atEnd.lineCount());
+		assertEquals(100_001, atStart.lineCount());
+		assertEquals(100_002, inMiddle.lineCount());
+		// The fewest levels for 100,000 lines are 4; a list would be
+		// thousands deep.
+		assertTrue(depth(atEnd) <= 7);
+		assertTrue(depth(atStart) <= 7);
+		assertTrue(depth(inMiddle) <= 7);
+	}
+
+	@Test
+	public void rejectsRangesOutside() {
+		Text text = Text.of("ab\ncd");
+		assertThrows(IndexOutOfBoundsException.class,
+				() -> text.replace(3, 2, Text.EMPTY));
+		assertThrows(IndexOutOfBoundsException.class,
+				() -> text.replace(0, 6, Text.EMPTY));
+		assertThrows(IndexOutOfBoundsException.class, () -> text.slice(-1, 1));
+	}
+
 	static void assertText(String expected, Text text) {
 		assertEquals(expected, text.toString());
 		assertEquals(expected.length(), text.length());
@@ -181,6 +336,52 @@ public class TextTest {
 			default:
 				return random.nextInt(string.length() + 1);
 		}
+	}
+
+	private static String randomString(Random random, int length) {
+		StringBuilder sb = new StringBuilder(length);
+		for (int i = 0; i < length; ++i) {
+			sb.append(random.nextInt(4) == 0 ? '\n' : 'x');
+		}
+		return sb.toString();
+	}
+
+	private static int insertion(Random random) {
+		int kind = random.nextInt(100);
+		return kind < 70 ? random.nextInt(3) : kind < 95
+				? random.nextInt(100)
+				: random.nextInt(5000);
+	}
+
+	private static int removal(Random random, int length) {
+		int kind = random.nextInt(100);
+		return kind < 50 ? 0 : kind < 85
+				? random.nextInt(3)
+				: kind < 99 ? random.nextInt(2000) : length;
+	}
+
+	private static Set<Text> nodesOf(Text text) throws Exception {
+		Set<Text> nodes = Collections.newSetFromMap(new IdentityHashMap<>());
+		List<Text> pending = new ArrayList<>();
+		pending.add(text);
+		while (!pending.isEmpty()) {
+			Text node = pending.remove(pending.size() - 1);
+			nodes.add(node);
+			Collections.addAll(pending, children(node));
+		}
+		return nodes;
+	}
+
+	private static int countNewNodes(Text text, Set<Text> old)
+			throws Exception {
+		if (old.contains(text)) {
+			return 0;
+		}
+		int count = 1;
+		for (Text child : children(text)) {
+			count += countNewNodes(child, old);
+		}
+		return count;
 	}
 
 	static Text[] children(Text text) throws Exception {
