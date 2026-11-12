@@ -56,16 +56,13 @@ public final class GlslCompletion {
 	 * line alone. The outline may be of an older text; its declarations
 	 * then complete what they declared then.
 	 *
-	 * @param line         the line, without its line end
-	 * @param column       the cursor's offset in line
-	 * @param breakFollows whether a line break follows the line
-	 * @param state        the state the line starts in, see
-	 *                     {@link GlslLexer#lexLine}
-	 * @param lineStart    the offset of the line in the text
+	 * @param line      the cursor's line as it was tokenized
+	 * @param column    the cursor's offset in line
+	 * @param lineStart the offset of the line in the text
 	 */
-	public static Completions atColumn(CharSequence line, int column,
-			boolean breakFollows, int state, int lineStart, Outline outline,
-			List<String> extraWords) {
+	public static Completions atColumn(LexedLine line, int column,
+			int lineStart, Outline outline, List<String> extraWords) {
+		int state = line.state();
 		boolean continued = (state & (GlslLexer.BLOCK_COMMENT |
 				GlslLexer.LINE_COMMENT)) != 0;
 		if (column == 0) {
@@ -73,29 +70,27 @@ public final class GlslCompletion {
 			// comment can hold.
 			return continued ? IN_COMMENT : NO_WORD;
 		}
-		LineTokens tokens = new LineTokens();
-		GlslLexer.lexLine(line, breakFollows, state, tokens);
-		int index = tokens.indexAt(column - 1);
+		int index = line.indexAt(column - 1);
 		if (index < 0) {
 			return NO_WORD;
 		}
-		int start = tokens.start(index);
-		if (tokens.style(index) == Style.COMMENT) {
+		String text = line.text();
+		int start = line.start(index);
+		if (line.style(index) == Style.COMMENT) {
 			// The first token continues a comment from the line before.
 			continued &= index == 0 && start == 0;
-			int end = tokens.end(index);
+			int end = line.end(index);
 			if ((continued
 					? (state & GlslLexer.LINE_COMMENT) != 0
-					: line.charAt(start + 1) == '/') ||
+					: text.charAt(start + 1) == '/') ||
 					column < end || end - start < (continued ? 2 : 4) ||
-					line.charAt(end - 2) != '*' ||
-					line.charAt(end - 1) != '/') {
+					text.charAt(end - 2) != '*' ||
+					text.charAt(end - 1) != '/') {
 				return IN_COMMENT;
 			}
 		}
-		return of(line.subSequence(start, column).toString(),
-				tokens.inDirective(index), outline, lineStart + start,
-				extraWords);
+		return of(text.substring(start, column), line.inDirective(index),
+				outline, lineStart + start, extraWords);
 	}
 
 	/**
