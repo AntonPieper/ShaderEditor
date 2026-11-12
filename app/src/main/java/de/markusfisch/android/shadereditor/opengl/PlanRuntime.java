@@ -54,9 +54,11 @@ final class PlanRuntime implements EngineBuild {
 			new TextureHandOver<>();
 	@Nullable
 	private final ShaderTextureResources.SamplerTextureBinding camera;
-	// Per image binding on a GLES3 context, else null.
+	// Per image and per history binding on a GLES3 context, else null.
 	@Nullable
 	private int[] samplers;
+	@Nullable
+	private int[] historySamplers;
 	@Nullable
 	private PassTarget target;
 	// Whether the target was made since the last frame.
@@ -78,7 +80,7 @@ final class PlanRuntime implements EngineBuild {
 		this.glesVersion = glesVersion;
 		var plan = preparation.plan();
 		pass = plan.passes().get(plan.output());
-		bindings = PlanBindings.of(pass, program.getSamplers());
+		bindings = PlanBindings.of(pass, plan.output(), program.getSamplers());
 		history = pass.history() || !bindings.history.isEmpty();
 		warnings.addAll(preparation.diagnostics());
 		warnings.addAll(bindings.warnings);
@@ -346,10 +348,12 @@ final class PlanRuntime implements EngineBuild {
 			device.deleteTexture(camera.texture());
 			camera.setTexture(null);
 		}
-		if (samplers != null) {
+		if (samplers != null && historySamplers != null) {
 			GLES30.glDeleteSamplers(samplers.length, samplers, 0);
-			samplers = null;
+			GLES30.glDeleteSamplers(historySamplers.length, historySamplers, 0);
 		}
+		samplers = null;
+		historySamplers = null;
 		if (target != null) {
 			target.release();
 			target = null;
@@ -368,6 +372,7 @@ final class PlanRuntime implements EngineBuild {
 			camera.setTexture(null);
 		}
 		samplers = null;
+		historySamplers = null;
 		if (target != null) {
 			target.discard();
 			target = null;
@@ -397,9 +402,17 @@ final class PlanRuntime implements EngineBuild {
 				device.applySampling(unit, texture, binding.sampling());
 			}
 		}
-		for (var binding : bindings.history) {
-			device.applySampling(binding.sampler().unit(), target.completed(),
-					binding.sampling());
+		var previous = bindings.history;
+		for (int i = 0; i < previous.size(); ++i) {
+			var binding = previous.get(i);
+			int unit = binding.sampler().unit();
+			if (historySamplers != null) {
+				device.bindTexture(unit, target.completed());
+				GLES30.glBindSampler(unit, historySamplers[i]);
+			} else {
+				device.applySampling(unit, target.completed(),
+						binding.sampling());
+			}
 		}
 		if (camera != null && bindings.camera != null) {
 			device.bindTexture(bindings.camera.unit(), camera.texture());
@@ -408,6 +421,9 @@ final class PlanRuntime implements EngineBuild {
 		quad.draw();
 		if (samplers != null) {
 			for (var binding : images) {
+				GLES30.glBindSampler(binding.sampler().unit(), 0);
+			}
+			for (var binding : previous) {
 				GLES30.glBindSampler(binding.sampler().unit(), 0);
 			}
 		}
@@ -435,21 +451,27 @@ final class PlanRuntime implements EngineBuild {
 	private void createSamplers() {
 		var images = bindings.images;
 		samplers = new int[images.size()];
-		if (samplers.length == 0) {
-			return;
-		}
-		GLES30.glGenSamplers(samplers.length, samplers, 0);
 		for (int i = 0; i < samplers.length; ++i) {
-			var sampling = images.get(i).sampling();
-			int sampler = samplers[i];
-			GLES30.glSamplerParameteri(sampler, GLES30.GL_TEXTURE_MIN_FILTER,
-					GlSampling.minFilter(sampling));
-			GLES30.glSamplerParameteri(sampler, GLES30.GL_TEXTURE_MAG_FILTER,
-					GlSampling.magFilter(sampling));
-			GLES30.glSamplerParameteri(sampler, GLES30.GL_TEXTURE_WRAP_S,
-					GlSampling.wrap(sampling.wrapS()));
-			GLES30.glSamplerParameteri(sampler, GLES30.GL_TEXTURE_WRAP_T,
-					GlSampling.wrap(sampling.wrapT()));
+			samplers[i] = createSampler(images.get(i).sampling());
 		}
+		var previous = bindings.history;
+		historySamplers = new int[previous.size()];
+		for (int i = 0; i < historySamplers.length; ++i) {
+			historySamplers[i] = createSampler(previous.get(i).sampling());
+		}
+	}
+
+	private static int createSampler(@NonNull Sampling sampling) {
+		int[] sampler = new int[1];
+		GLES30.glGenSamplers(1, sampler, 0);
+		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MIN_FILTER,
+				GlSampling.minFilter(sampling));
+		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MAG_FILTER,
+				GlSampling.magFilter(sampling));
+		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_WRAP_S,
+				GlSampling.wrap(sampling.wrapS()));
+		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_WRAP_T,
+				GlSampling.wrap(sampling.wrapT()));
+		return sampler[0];
 	}
 }

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
@@ -48,13 +49,17 @@ final class PlanBindings {
 		}
 	}
 
-	// A sampler that reads the previous frame of its own pass: the active
-	// backbuffer that no input annotates.
-	record HistoryBinding(@NonNull GlUniform sampler, @NonNull Sampling sampling) {
+	// An input that reads the previous frame of its own pass, or with a
+	// null input the active backbuffer that no input annotates.
+	record HistoryBinding(
+			@NonNull GlUniform sampler,
+			@NonNull Sampling sampling,
+			@Nullable RenderPlan.Input input) {
 	}
 
 	@NonNull
 	final List<ImageBinding> images;
+	// The unannotated backbuffer first.
 	@NonNull
 	final List<HistoryBinding> history;
 	// The first active camera sampler, or null.
@@ -79,9 +84,11 @@ final class PlanBindings {
 		this.warnings = List.copyOf(warnings);
 	}
 
+	// self is the index of the pass in its plan.
 	@NonNull
 	static PlanBindings of(
 			@NonNull RenderPlan.Pass pass,
+			int self,
 			@NonNull List<GlUniform> samplers) {
 		var active = new HashMap<String, GlUniform>();
 		GlUniform camera = null;
@@ -98,6 +105,7 @@ final class PlanBindings {
 		var cameraSampling = Sampling.CAMERA;
 		for (var input : pass.inputs()) {
 			declared.add(input.uniform());
+			var source = input.source();
 			var sampler = active.get(input.uniform());
 			if (sampler == null) {
 				warnings.add(new ProjectDiagnostic(
@@ -105,8 +113,11 @@ final class PlanBindings {
 						input.uniform() + " has an input but the shader does " +
 								"not use it, so nothing is bound to it",
 						input.file(), input.line()));
-			} else if (input.source().kind() == Source.Kind.IMAGE) {
+			} else if (source.kind() == Source.Kind.IMAGE) {
 				images.add(new ImageBinding(sampler, input));
+			} else if (source.kind() == Source.Kind.PASS &&
+					source.pass() == self && input.frame() == Frame.PREVIOUS) {
+				history.add(new HistoryBinding(sampler, input.sampling(), input));
 			} else if (sampler == camera) {
 				cameraSampling = input.sampling();
 			}
@@ -114,7 +125,7 @@ final class PlanBindings {
 		var backbuffer = active.get(UniformTable.BACKBUFFER);
 		if (backbuffer != null && !declared.contains(backbuffer.name()) &&
 				backbuffer.textureTarget() == GLES20.GL_TEXTURE_2D) {
-			history.add(new HistoryBinding(backbuffer, Sampling.PASS));
+			history.add(0, new HistoryBinding(backbuffer, Sampling.PASS, null));
 		}
 		return new PlanBindings(images, history, camera, cameraSampling,
 				warnings);
@@ -204,6 +215,17 @@ final class PlanBindings {
 						"settings of " + binding.input().uniform()));
 			}
 		}
+		for (int i = 1; glesVersion < 3 && i < history.size(); ++i) {
+			var earlier = history.get(0);
+			var input = history.get(i).input();
+			if (input != null &&
+					!earlier.sampling().equals(history.get(i).sampling())) {
+				errors.add(error(input, describe(earlier) + " and " +
+						input.uniform() + " read the previous frame with " +
+						"different settings, which needs OpenGL ES 3.0; this " +
+						"device only has OpenGL ES 2.0"));
+			}
+		}
 		return errors;
 	}
 
@@ -243,10 +265,25 @@ final class PlanBindings {
 	}
 
 	@NonNull
+	private static String describe(@NonNull HistoryBinding binding) {
+		var input = binding.input();
+		return input == null
+				? binding.sampler().name()
+				: input.uniform() + " (" + input.file() + ":" + input.line() + ")";
+	}
+
+	@NonNull
 	private static ProjectDiagnostic error(
 			@NonNull ImageBinding binding,
 			@NonNull String message) {
+		return error(binding.input(), message);
+	}
+
+	@NonNull
+	private static ProjectDiagnostic error(
+			@NonNull RenderPlan.Input input,
+			@NonNull String message) {
 		return new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR, message,
-				binding.input().file(), binding.input().line());
+				input.file(), input.line());
 	}
 }

@@ -104,7 +104,7 @@ public class PlanBindingsTest {
 				camera,
 				sampler("backbuffer", GLES20.GL_SAMPLER_2D),
 				sampler("nothingProvides", GLES20.GL_SAMPLER_2D)));
-		var bindings = PlanBindings.of(plan.passes().get(0),
+		var bindings = PlanBindings.of(plan.passes().get(0), 0,
 				program.getSamplers());
 		assertEquals(1, bindings.images.size());
 		assertEquals("a", bindings.images.get(0).sampler().name());
@@ -120,7 +120,7 @@ public class PlanBindingsTest {
 		var plan = plan("main.glsl", lines(
 				"uniform sampler2D backbuffer;",
 				MAIN));
-		var bindings = PlanBindings.of(plan.passes().get(0),
+		var bindings = PlanBindings.of(plan.passes().get(0), 0,
 				List.of(sampler("backbuffer", GLES20.GL_SAMPLER_2D).withUnit(2)));
 		assertEquals(1, bindings.history.size());
 		assertEquals(2, bindings.history.get(0).sampler().unit());
@@ -133,21 +133,65 @@ public class PlanBindingsTest {
 		var plan = plan("main.glsl", lines(
 				"uniform samplerCube backbuffer;",
 				MAIN));
-		assertTrue(PlanBindings.of(plan.passes().get(0), List.of(
+		assertTrue(PlanBindings.of(plan.passes().get(0), 0, List.of(
 				sampler("backbuffer", GLES20.GL_SAMPLER_CUBE).withUnit(0)))
 				.history.isEmpty());
-		assertTrue(PlanBindings.of(plan.passes().get(0), List.of())
+		assertTrue(PlanBindings.of(plan.passes().get(0), 0, List.of())
 				.history.isEmpty());
 	}
 
 	@Test
+	public void annotatedInputsReadThePreviousFrameAsTheyAsk() {
+		var plan = plan("main.glsl", lines(
+				"#pragma se input filter=linear",
+				"uniform sampler2D backbuffer;",
+				"#pragma se input \"main.glsl\" frame=previous wrap=repeat",
+				"uniform sampler2D self;",
+				MAIN));
+		var bindings = PlanBindings.of(plan.passes().get(0), 0, List.of(
+				sampler("backbuffer", GLES20.GL_SAMPLER_2D).withUnit(0),
+				sampler("self", GLES20.GL_SAMPLER_2D).withUnit(1)));
+		assertEquals(2, bindings.history.size());
+		var backbuffer = bindings.history.get(0);
+		assertEquals("backbuffer", backbuffer.sampler().name());
+		assertEquals(Filter.LINEAR, backbuffer.sampling().mag());
+		assertEquals(1, backbuffer.input().line());
+		var self = bindings.history.get(1);
+		assertEquals("self", self.sampler().name());
+		assertEquals(Wrap.REPEAT, self.sampling().wrapS());
+		assertEquals(Filter.NEAREST, self.sampling().mag());
+	}
+
+	@Test
+	public void gles2CannotReadThePreviousFrameWithDifferentSettings() {
+		var plan = plan("main.glsl", lines(
+				"uniform sampler2D backbuffer;",
+				"#pragma se input \"main.glsl\" frame=previous filter=linear",
+				"uniform sampler2D smooth;",
+				"#pragma se input \"main.glsl\" frame=previous",
+				"uniform sampler2D crisp;",
+				MAIN));
+		var bindings = PlanBindings.of(plan.passes().get(0), 0, List.of(
+				sampler("backbuffer", GLES20.GL_SAMPLER_2D).withUnit(0),
+				sampler("smooth", GLES20.GL_SAMPLER_2D).withUnit(1),
+				sampler("crisp", GLES20.GL_SAMPLER_2D).withUnit(2)));
+		assertEquals("backbuffer", bindings.history.get(0).sampler().name());
+		assertNull(bindings.history.get(0).input());
+		assertEquals(List.of(error("backbuffer and smooth read the previous " +
+						"frame with different settings, which needs OpenGL ES " +
+						"3.0; this device only has OpenGL ES 2.0", 2)),
+				bindings.check(Map.of(), 2, MAX_SIZE, MAX_SIZE));
+		assertTrue(bindings.check(Map.of(), 3, MAX_SIZE, MAX_SIZE).isEmpty());
+	}
+
+	@Test
 	public void anUnannotatedCameraKeepsItsDefaultSampling() {
-		var bindings = PlanBindings.of(plan("main.glsl", MAIN).passes().get(0),
+		var bindings = PlanBindings.of(plan("main.glsl", MAIN).passes().get(0), 0,
 				List.of(sampler("cameraBack", GLES11Ext.GL_SAMPLER_EXTERNAL_OES)
 						.withUnit(0)));
 		assertEquals("cameraBack", bindings.camera.name());
 		assertSame(Sampling.CAMERA, bindings.cameraSampling);
-		var plain = PlanBindings.of(plan("main.glsl", MAIN).passes().get(0),
+		var plain = PlanBindings.of(plan("main.glsl", MAIN).passes().get(0), 0,
 				List.of(sampler("cameraBack", GLES20.GL_SAMPLER_2D).withUnit(0)));
 		assertNull(plain.camera);
 	}
@@ -338,7 +382,7 @@ public class PlanBindingsTest {
 					? GLES20.GL_SAMPLER_CUBE
 					: GLES20.GL_SAMPLER_2D, 1, i));
 		}
-		return PlanBindings.of(plan.passes().get(0),
+		return PlanBindings.of(plan.passes().get(0), 0,
 				new GlProgram(1, uniforms).getSamplers());
 	}
 
@@ -370,7 +414,7 @@ public class PlanBindingsTest {
 		for (int i = 0; i < active.length; ++i) {
 			uniforms.add(new GlUniform(active[i], GLES20.GL_SAMPLER_2D, 1, i));
 		}
-		return PlanBindings.of(plan.passes().get(0),
+		return PlanBindings.of(plan.passes().get(0), 0,
 				new GlProgram(1, uniforms).getSamplers());
 	}
 
