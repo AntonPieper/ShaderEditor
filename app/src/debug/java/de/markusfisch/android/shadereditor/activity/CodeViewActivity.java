@@ -4,23 +4,30 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.FrameMetrics;
+import android.view.Window;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.EditCommands;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -29,8 +36,9 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
 
 /**
  * Development harness, debug builds only: shows a CodeView over a text
- * chosen by the extras of the intent that starts it, and logs what
- * opening cost with the tag "CodeViewBench". Extras:
+ * chosen by the extras of the intent that starts it, and drives itself
+ * without any input events, logging with the tag "CodeViewBench" what
+ * opening, each frame and each scripted edit cost. Extras:
  * <ul>
  * <li>"shader", the name of a raw resource, "file", a path, or "sample",
  * "unicode" for lines of accented, CJK, emoji and Arabic text and a line
@@ -39,18 +47,32 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
  * <li>"tab", the tab width; "size", the text size in sp;</li>
  * <li>"select", "anchor,head", or "caret", an offset; "line", a line to
  * put the caret at; "composing", "start,end"; "marks",
- * "line:error,line:warning" with lines from 1; "scrollx", pixels.</li>
+ * "line:error,line:warning" with lines from 1; "scrollx", pixels;</li>
+ * <li>"drive", phases run in order: "idle" (5 s of nothing), "type" (60
+ * characters, every 20th a line break, then 20 deletes, one every
+ * 150 ms), "fling" (down and up, "velocity" px/s), "paste" (5,000
+ * lines, then undo).</li>
  * </ul>
  */
 public class CodeViewActivity extends Activity {
 	private static final String TAG = "CodeViewBench";
+	private static final String TYPED = "float v = fract(t * 2.0) + 1.0;";
 
 	private final Handler main = new Handler(Looper.getMainLooper());
+	// Vsync, total and main-thread time of each frame.
+	private final List<long[]> frames = new ArrayList<>();
+	// Start and end of each onDraw.
+	private final List<long[]> draws = new ArrayList<>();
+	// Change, onDraw and onDraw end of each scripted edit.
+	private final List<long[]> edits = new ArrayList<>();
+	private HandlerThread metricsThread;
 	private CodeView view;
 	private Document document;
 	private long created;
 	private long firstDrawEnd;
 	private long firstDraw;
+	private long[] pendingEdit;
+	private String phase = "open";
 
 	@Override
 	protected void onCreate(Bundle state) {
@@ -66,12 +88,21 @@ public class CodeViewActivity extends Activity {
 				getIntent().getFloatExtra("size", 12));
 		setContentView(view);
 		getWindow().getDecorView().setBackgroundColor(0xff000000);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			metricsThread = new HandlerThread("metrics");
+			metricsThread.start();
+			getWindow().addOnFrameMetricsAvailableListener(
+					this::frame, new Handler(metricsThread.getLooper()));
+		}
 		new Thread(this::load, "load").start();
 	}
 
 	@Override
 	protected void onDestroy() {
 		main.removeCallbacksAndMessages(null);
+		if (metricsThread != null) {
+			metricsThread.quitSafely();
+		}
 		super.onDestroy();
 	}
 
@@ -110,6 +141,11 @@ public class CodeViewActivity extends Activity {
 				"us main=" + (shown - start) / 1000 + "us firstDraw=" +
 				firstDraw / 1000 + "us createToFirstDraw=" +
 				(firstDrawEnd - created) / 1000 + "us"));
+		String drive = getIntent().getStringExtra("drive");
+		if (drive != null) {
+			main.postDelayed(() -> drive(new ArrayList<>(
+					Arrays.asList(drive.split(",")))), 3000);
+		}
 	}
 
 	private void apply(Bundle extras, LineMarks marks) {
@@ -150,10 +186,174 @@ public class CodeViewActivity extends Activity {
 		}
 	}
 
+	private void drive(List<String> phases) {
+		if (phases.isEmpty()) {
+			Log.i(TAG, "done");
+			return;
+		}
+		String next = phases.remove(0);
+		Runnable then = () -> {
+			summary();
+			main.postDelayed(() -> drive(phases), 1000);
+		};
+		start(next);
+		switch (next) {
+			case "type":
+				type(then);
+				break;
+			case "fling":
+				fling(then);
+				break;
+			case "paste":
+				paste(then);
+				break;
+			default:
+				main.postDelayed(then, 5000);
+				break;
+		}
+	}
+
+	private void start(String name) {
+		synchronized (frames) {
+			frames.clear();
+		}
+		draws.clear();
+		edits.clear();
+		phase = name;
+	}
+
+	private void type(Runnable then) {
+		Text text = document.text();
+		int middle = text.lineCount() / 2;
+		int offset = text.lineStart(middle) + text.line(middle).length();
+		document.select(offset, offset);
+		view.bringCaretIntoView();
+		EditCommands commands = new EditCommands(document);
+		main.postDelayed(() -> start("type"), 400);
+		for (int i = 0; i < 80; ++i) {
+			int n = i;
+			main.postDelayed(() -> edit(() -> {
+				if (n >= 60) {
+					commands.deleteBackward();
+				} else if (n % 20 == 19) {
+					commands.enter();
+				} else {
+					Document.Selection s = document.selection();
+					document.type(s.start(), s.end(), Text.of(
+							String.valueOf(TYPED.charAt(n % TYPED.length()))));
+				}
+			}), 500 + i * 150L);
+		}
+		main.postDelayed(then, 500 + 80 * 150L + 500);
+	}
+
+	private void fling(Runnable then) {
+		int velocity = getIntent().getIntExtra("velocity", 24000);
+		view.fling(0, velocity);
+		main.postDelayed(() -> view.fling(0, -velocity), 3000);
+		main.postDelayed(then, 6000);
+	}
+
+	private void paste(Runnable then) {
+		new Thread(() -> {
+			Text pasted = Text.of(repeat(document.text().toString(), 5000));
+			main.post(() -> {
+				edit(() -> {
+					Document.Selection s = document.selection();
+					document.replace(s.start(), s.end(), pasted);
+				});
+				main.postDelayed(() -> edit(document::undo), 1500);
+				main.postDelayed(then, 3000);
+			});
+		}, "paste").start();
+	}
+
+	private void edit(Runnable change) {
+		long start = System.nanoTime();
+		change.run();
+		view.bringCaretIntoView();
+		pendingEdit = new long[]{System.nanoTime() - start, 0, 0};
+		edits.add(pendingEdit);
+	}
+
 	private void drawn(long start, long end) {
 		if (firstDrawEnd == 0 && document != null) {
 			firstDrawEnd = end;
 			firstDraw = end - start;
+		}
+		draws.add(new long[]{start, end - start});
+		if (pendingEdit != null) {
+			pendingEdit[1] = end - start;
+			pendingEdit[2] = end;
+			pendingEdit = null;
+		}
+	}
+
+	@RequiresApi(Build.VERSION_CODES.O)
+	private void frame(Window window, FrameMetrics metrics, int dropped) {
+		long main = 0;
+		for (int id : new int[]{FrameMetrics.INPUT_HANDLING_DURATION,
+				FrameMetrics.ANIMATION_DURATION,
+				FrameMetrics.LAYOUT_MEASURE_DURATION,
+				FrameMetrics.DRAW_DURATION, FrameMetrics.SYNC_DURATION}) {
+			main += metrics.getMetric(id);
+		}
+		synchronized (frames) {
+			frames.add(new long[]{
+					metrics.getMetric(FrameMetrics.INTENDED_VSYNC_TIMESTAMP),
+					metrics.getMetric(FrameMetrics.TOTAL_DURATION), main});
+		}
+	}
+
+	private void summary() {
+		List<long[]> copy;
+		synchronized (frames) {
+			copy = new ArrayList<>(frames);
+		}
+		long[] change = new long[edits.size()];
+		long[] onDraw = new long[edits.size()];
+		long[] frame = new long[edits.size()];
+		long[] sum = new long[edits.size()];
+		for (int i = 0; i < edits.size(); ++i) {
+			long[] edit = edits.get(i);
+			change[i] = edit[0];
+			onDraw[i] = edit[1];
+			for (long[] f : copy) {
+				if (edit[2] >= f[0] && edit[2] <= f[0] + f[1]) {
+					frame[i] = f[2];
+				}
+			}
+			sum[i] = change[i] + frame[i];
+			Log.i(TAG, "edit phase=" + phase + " i=" + i + " change=" +
+					change[i] / 1000 + "us onDraw=" + onDraw[i] / 1000 +
+					"us frame=" + frame[i] / 1000 + "us");
+		}
+		long[] drawTimes = new long[draws.size()];
+		for (int i = 0; i < drawTimes.length; ++i) {
+			drawTimes[i] = draws.get(i)[1];
+		}
+		long[] frameMain = new long[copy.size()];
+		long[] frameTotal = new long[copy.size()];
+		for (int i = 0; i < frameMain.length; ++i) {
+			frameMain[i] = copy.get(i)[2];
+			frameTotal[i] = copy.get(i)[1];
+		}
+		if ("idle".equals(phase)) {
+			StringBuilder at = new StringBuilder();
+			for (long[] draw : draws) {
+				at.append(' ').append((draw[0] - draws.get(0)[0]) / 1_000_000);
+			}
+			Log.i(TAG, "draws phase=idle at(ms)=" + at);
+		}
+		Log.i(TAG, "summary phase=" + phase + " frames=" + copy.size() +
+				" onDraws=" + drawTimes.length + " onDraw " +
+				stats(drawTimes) + " | frameMain " + stats(frameMain) +
+				" | frameTotal " + stats(frameTotal));
+		if (change.length > 0) {
+			Log.i(TAG, "summary phase=" + phase + " edits=" + change.length +
+					" change " + stats(change) + " | onDraw " +
+					stats(onDraw) + " | frame " + stats(frame) +
+					" | change+frame " + stats(sum));
 		}
 	}
 
@@ -219,6 +419,19 @@ public class CodeViewActivity extends Activity {
 		String[] parts = value.split(",");
 		return new int[]{Integer.parseInt(parts[0]),
 				Integer.parseInt(parts[1])};
+	}
+
+	private static String stats(long[] values) {
+		if (values.length == 0) {
+			return "n/a";
+		}
+		long[] sorted = values.clone();
+		Arrays.sort(sorted);
+		int n = sorted.length;
+		return "p50=" + sorted[n / 2] / 1000 + "us p90=" +
+				sorted[Math.min(n - 1, n * 9 / 10)] / 1000 + "us p99=" +
+				sorted[Math.min(n - 1, n * 99 / 100)] / 1000 + "us max=" +
+				sorted[n - 1] / 1000 + "us";
 	}
 
 	private final class TimedCodeView extends CodeView {
