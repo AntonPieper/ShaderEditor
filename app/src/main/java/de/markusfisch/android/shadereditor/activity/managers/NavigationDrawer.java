@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.content.res.Resources;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -14,13 +15,16 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.NavigationAdapter;
+import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords.ShaderInfo;
 import de.markusfisch.android.shadereditor.database.DataSource;
@@ -38,25 +42,37 @@ import de.markusfisch.android.shadereditor.navigation.Tap;
 public class NavigationDrawer implements ShaderList {
 	public interface Host {
 		void onAddShader();
+
+		void onOpenExample(@NonNull Samples.Sample sample);
 	}
+
+	private static final String STATE = "navigation_drawer";
+	private static final String LEVEL = "level";
+	private static final long SLIDE_MILLIS = 200;
 
 	private final AppCompatActivity activity;
 	private final DataSource dataSource;
 	private final ShaderListManager.Listener listener;
-	private final Host host;
 	private final DrawerLayout drawerLayout;
 	private final View drawer;
+	private final View up;
+	private final View upSpace;
 	private final TextView title;
+	private final View readOnly;
 	private final TextView subtitle;
-	private final RecyclerView list;
-	private final NavigationAdapter adapter;
+	private final View lists;
 	private final View bar;
+	private final TextView newButton;
 	private final LibrarySource library;
+	private final Map<Level, Source> sources = new HashMap<>();
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final CoalescingReloadGate reloadGate = new CoalescingReloadGate();
 
-	private final Level level = Level.LIBRARY;
+	// The list in view and the one the next level slides in with.
+	private RecyclerView list;
+	private RecyclerView nextList;
+	private Level level = Level.LIBRARY;
 	private Listing listing;
 	private Item.Place open;
 
@@ -67,8 +83,10 @@ public class NavigationDrawer implements ShaderList {
 		this.activity = activity;
 		this.dataSource = dataSource;
 		this.listener = listener;
-		this.host = host;
 		library = new LibrarySource(activity, listener);
+		sources.put(Level.LIBRARY, library);
+		sources.put(Level.EXAMPLES, new ExamplesSource(activity, host));
+		sources.put(Level.FOLDERS, new FoldersSource(activity, library));
 
 		// Takes the place of the old drawer.
 		View old = activity.findViewById(R.id.menu_frame);
@@ -81,26 +99,21 @@ public class NavigationDrawer implements ShaderList {
 		drawerLayout.setScrimColor(ContextCompat.getColor(activity,
 				R.color.navigation_scrim));
 
+		up = drawer.findViewById(R.id.navigation_up);
+		up.setOnClickListener(v -> go(level.up()));
+		upSpace = drawer.findViewById(R.id.navigation_up_space);
 		title = drawer.findViewById(R.id.navigation_title);
+		readOnly = drawer.findViewById(R.id.navigation_read_only);
 		subtitle = drawer.findViewById(R.id.navigation_subtitle);
+		lists = drawer.findViewById(R.id.navigation_lists);
 		bar = drawer.findViewById(R.id.navigation_bar);
-		drawer.findViewById(R.id.navigation_new).setOnClickListener(v -> {
+		newButton = drawer.findViewById(R.id.navigation_new);
+		newButton.setOnClickListener(v -> {
 			host.onAddShader();
 			close();
 		});
-		adapter = new NavigationAdapter(new NavigationAdapter.Listener() {
-			@Override
-			public void onTap(@NonNull Item item) {
-				tap(item);
-			}
-
-			@Override
-			public void onLongPress(@NonNull Item item, @NonNull View view) {
-			}
-		});
-		list = drawer.findViewById(R.id.navigation_list);
-		list.setLayoutManager(new LinearLayoutManager(activity));
-		list.setAdapter(adapter);
+		list = initList(R.id.navigation_list);
+		nextList = initList(R.id.navigation_list_next);
 
 		activity.findViewById(R.id.toolbar).setOnClickListener(v ->
 				drawerLayout.openDrawer(drawer));
@@ -128,11 +141,35 @@ public class NavigationDrawer implements ShaderList {
 			@Override
 			public void onDrawerClosed(@NonNull View view) {
 				back.setEnabled(false);
+				// It opens again where the file in the editor is.
+				go(home());
 			}
 		});
 		// A drawer left open before a rotation is opened again without
 		// telling the listener, once the layout has restored its state.
 		drawer.post(() -> back.setEnabled(drawerLayout.isDrawerOpen(drawer)));
+
+		Bundle state = activity.getSavedStateRegistry()
+				.consumeRestoredStateForKey(STATE);
+		if (state != null) {
+			for (Level known : sources.keySet()) {
+				if (known.name().equals(state.getString(LEVEL))) {
+					level = known;
+				}
+			}
+		}
+		activity.getSavedStateRegistry().registerSavedStateProvider(STATE,
+				() -> {
+					Bundle bundle = new Bundle();
+					bundle.putString(LEVEL, level.name());
+					return bundle;
+				});
+	}
+
+	/** Opens the drawer on the examples. */
+	public void showExamples() {
+		go(Level.EXAMPLES);
+		drawerLayout.openDrawer(drawer);
 	}
 
 	@Override
@@ -147,7 +184,7 @@ public class NavigationDrawer implements ShaderList {
 	public void setSelectedShaderId(long id) {
 		open = id > 0 ? LibrarySource.place(id) : null;
 		if (listing != null) {
-			show();
+			refresh();
 		}
 	}
 
@@ -155,6 +192,25 @@ public class NavigationDrawer implements ShaderList {
 	public void destroy() {
 		executor.shutdownNow();
 		handler.removeCallbacksAndMessages(null);
+	}
+
+	@NonNull
+	private RecyclerView initList(int id) {
+		RecyclerView recyclerView = drawer.findViewById(id);
+		recyclerView.setLayoutManager(new LinearLayoutManager(activity));
+		recyclerView.setAdapter(new NavigationAdapter(
+				new NavigationAdapter.Listener() {
+					@Override
+					public void onTap(@NonNull Item item) {
+						tap(item);
+					}
+
+					@Override
+					public void onLongPress(@NonNull Item item,
+							@NonNull View view) {
+					}
+				}));
+		return recyclerView;
 	}
 
 	private void submitLoad() {
@@ -192,34 +248,92 @@ public class NavigationDrawer implements ShaderList {
 		return !activity.isFinishing() && !activity.isDestroyed();
 	}
 
+	@NonNull
+	private Level home() {
+		return open != null ? open.level() : Level.LIBRARY;
+	}
+
 	private void refresh() {
-		listing = source(level).list(
+		listing = list(level);
+		showHeader();
+		adapter(list).setItems(items());
+	}
+
+	// Slides the next level in from the side it lies on; a level
+	// beside this one, or one shown while the drawer is closed, just
+	// replaces it.
+	private void go(@NonNull Level to) {
+		int direction = to.isBelow(level) ? 1 : level.isBelow(to) ? -1 : 0;
+		level = to;
+		listing = list(to);
+		showHeader();
+		list.animate().cancel();
+		nextList.animate().cancel();
+		list.setTranslationX(0);
+		nextList.setTranslationX(0);
+		nextList.setVisibility(View.GONE);
+		if (direction == 0 || !drawerLayout.isDrawerVisible(drawer)) {
+			adapter(list).setItems(items());
+			list.scrollToPosition(0);
+			return;
+		}
+		RecyclerView out = list;
+		list = nextList;
+		nextList = out;
+		adapter(list).setItems(items());
+		list.scrollToPosition(0);
+		int width = lists.getWidth();
+		list.setTranslationX(direction * width);
+		list.setVisibility(View.VISIBLE);
+		list.animate().translationX(0).setDuration(SLIDE_MILLIS);
+		out.animate().translationX(-direction * width)
+				.setDuration(SLIDE_MILLIS)
+				.withEndAction(() -> {
+					out.setVisibility(View.GONE);
+					out.setTranslationX(0);
+				});
+	}
+
+	@NonNull
+	private Listing list(@NonNull Level level) {
+		return source(level).list(
 				ShaderEditorApp.preferences.sortByLastModification()
 						? Order.CHANGED
 						: Order.BY_NAME);
-		show();
 	}
 
-	private void show() {
+	@NonNull
+	private List<Item> items() {
+		// What runs is what is open while shaders come from the database.
+		return Item.of(listing, level, open, open);
+	}
+
+	private void showHeader() {
+		boolean canGoUp = level.up() != null;
+		up.setVisibility(canGoUp ? View.VISIBLE : View.GONE);
+		upSpace.setVisibility(canGoUp ? View.GONE : View.VISIBLE);
 		title.setText(listing.title());
+		readOnly.setVisibility(listing.readOnly() ? View.VISIBLE : View.GONE);
 		subtitle.setText(listing.subtitle());
-		subtitle.setVisibility(listing.subtitle() == null
-				? View.GONE
-				: View.VISIBLE);
+		((View) subtitle.getParent()).setVisibility(
+				listing.subtitle() == null ? View.GONE : View.VISIBLE);
 		bar.setVisibility(listing.bar() == Listing.Bar.NONE
 				? View.GONE
 				: View.VISIBLE);
-		// What runs is what is open while shaders come from the database.
-		adapter.setItems(Item.of(listing, level, open, open));
+		newButton.setText(listing.bar() == Listing.Bar.NEW_SHADER
+				? R.string.add_shader
+				: R.string.nav_new);
 	}
 
 	@NonNull
 	private Source source(@NonNull Level level) {
-		return library;
+		Source source = sources.get(level);
+		return source != null ? source : library;
 	}
 
 	private void tap(@NonNull Item item) {
 		switch (item.tap()) {
+			case ENTER -> go(item.row().enters());
 			case OPEN, OPEN_AND_RUN -> {
 				source(level).open(item.row(), item.tap() == Tap.OPEN_AND_RUN);
 				close();
@@ -230,7 +344,7 @@ public class NavigationDrawer implements ShaderList {
 	}
 
 	private void scrollToSelected() {
-		int position = adapter.getSelectedPosition();
+		int position = adapter(list).getSelectedPosition();
 		if (position > -1) {
 			((LinearLayoutManager) list.getLayoutManager())
 					.scrollToPositionWithOffset(position, list.getHeight() / 3);
@@ -239,6 +353,11 @@ public class NavigationDrawer implements ShaderList {
 
 	private void close() {
 		drawerLayout.closeDrawer(drawer);
+	}
+
+	@NonNull
+	private static NavigationAdapter adapter(@NonNull RecyclerView list) {
+		return (NavigationAdapter) list.getAdapter();
 	}
 
 	// The standard drawer, but never closer to the screen's edge.

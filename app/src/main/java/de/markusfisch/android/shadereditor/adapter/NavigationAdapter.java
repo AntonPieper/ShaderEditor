@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.adapter;
 
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.view.LayoutInflater;
@@ -9,6 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.widget.ImageViewCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -96,6 +98,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 		private final TextView detail;
 		private final View wallpaper;
 		private final View running;
+		private final View enters;
 		private Item item;
 
 		private RowHolder(@NonNull View view) {
@@ -106,6 +109,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			detail = view.findViewById(R.id.navigation_detail);
 			wallpaper = view.findViewById(R.id.navigation_wallpaper);
 			running = view.findViewById(R.id.navigation_running);
+			enters = view.findViewById(R.id.navigation_enters);
 			view.setOnClickListener(v -> listener.onTap(item));
 			view.setOnLongClickListener(v -> {
 				listener.onLongPress(item, v);
@@ -133,17 +137,36 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			detail.setVisibility(row.detail() == null ? View.GONE : View.VISIBLE);
 			wallpaper.setVisibility(visibleIf(item, Row.Mark.WALLPAPER));
 			running.setVisibility(visibleIf(item, Row.Mark.RUNNING));
+			enters.setVisibility(row.kind() == Row.Kind.FOLDER
+					? View.VISIBLE
+					: View.GONE);
 		}
 
 		private void bindPicture(@NonNull Row.Picture picture) {
-			this.picture.setBackgroundResource(R.drawable.navigation_thumbnail);
-			this.picture.setScaleType(ImageView.ScaleType.CENTER_CROP);
 			byte[] png = picture.png();
 			Bitmap bitmap = png != null && png.length > 0 ? decode(png) : null;
+			int icon = switch (picture.icon()) {
+				case LIBRARY -> R.drawable.ic_grid_view;
+				case EXAMPLES -> R.drawable.ic_book;
+				default -> 0;
+			};
+			boolean isIcon = bitmap == null && picture.resource() == 0 && icon != 0;
+			this.picture.setBackgroundResource(isIcon
+					? 0
+					: R.drawable.navigation_thumbnail);
+			this.picture.setScaleType(isIcon
+					? ImageView.ScaleType.CENTER
+					: ImageView.ScaleType.CENTER_CROP);
+			ImageViewCompat.setImageTintList(this.picture, isIcon
+					? ColorStateList.valueOf(MaterialColors.getColor(
+					itemView, com.google.android.material.R.attr.colorOnSurfaceVariant))
+					: null);
 			if (bitmap != null) {
 				this.picture.setImageBitmap(bitmap);
 			} else if (picture.resource() != 0) {
 				this.picture.setImageResource(picture.resource());
+			} else if (isIcon) {
+				this.picture.setImageResource(icon);
 			} else {
 				this.picture.setImageResource(R.drawable.thumbnail_new_shader);
 			}

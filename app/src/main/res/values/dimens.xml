@@ -28,6 +28,8 @@
 	<dimen name="navigation_mark_size">20dp</dimen>
 	<dimen name="navigation_mark_small_size">16dp</dimen>
 	<dimen name="navigation_mark_spacing">8dp</dimen>
+	<dimen name="navigation_header_button_size">44dp</dimen>
+	<dimen name="navigation_header_lock_size">14dp</dimen>
 	<dimen name="navigation_button_height">40dp</dimen>
 	<dimen name="navigation_heading_height">36dp</dimen>
 </resources>
