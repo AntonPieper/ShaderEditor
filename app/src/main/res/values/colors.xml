@@ -9,8 +9,8 @@
 	<color name="background_editor">#8000</color>
 	<color name="background_item_pressed">#8222</color>
 	<color name="background_progress">#8000</color>
-	<color name="editor_text">#fff</color>
-	<color name="editor_line_numbers">#8888</color>
+	<color name="editor_text">@color/code_text</color>
+	<color name="editor_line_numbers">@color/code_line_number</color>
 	<color name="editor_caret">@color/editor_text</color>
 	<color name="syntax_error">#8800</color>
 	<color name="syntax_warning">#8a60</color>
