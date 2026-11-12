@@ -229,7 +229,7 @@ final class UniformWarnings {
 	}
 
 	@NonNull
-	private static ProjectDiagnostic locate(
+	static ProjectDiagnostic locate(
 			@NonNull String message,
 			int preparedLine,
 			@Nullable SourceMap sourceMap) {

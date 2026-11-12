@@ -191,6 +191,22 @@ public class UniformSourcesTest {
 		sources.stop();
 	}
 
+	// The driver reports the camera as sampler2D, and the shader reads
+	// no cameraOrientation or cameraAddent.
+	@Test
+	public void cameraReportedAsSampler2DStartsCameraSource() {
+		var reported = new GlUniform("cameraBack", GLES20.GL_SAMPLER_2D, 1, 0, 0);
+		var bindings = PlanBindings.of(TestProjects.plan("main.glsl",
+						"void main() {}").passes().get(0), 0, List.of(reported),
+				"uniform samplerExternalOES cameraBack;");
+		var sources = new UniformSources(HOST);
+		new ActiveBuiltins(UniformTable.BUILTINS,
+				bindings.declared(Map.of("cameraBack", reported)), sources,
+				new LocatedOutput());
+		assertNotNull(sources.get(CameraSource.KEY));
+		sources.stop();
+	}
+
 	@Test
 	public void cameraOnAHostWithoutOwnerWarnsUntilItStops() {
 		var sources = new UniformSources(HOST);

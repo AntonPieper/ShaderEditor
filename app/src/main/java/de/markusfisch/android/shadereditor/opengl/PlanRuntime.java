@@ -44,8 +44,6 @@ final class PlanRuntime implements ShaderSwap.Build {
 	@NonNull
 	private final List<PlanPass> passes;
 	@NonNull
-	private final List<GlProgram> programs;
-	@NonNull
 	private final RenderPlan.Pass pass;
 	@NonNull
 	private final PlanBindings bindings;
@@ -100,29 +98,27 @@ final class PlanRuntime implements ShaderSwap.Build {
 		passes = initialPass != null
 				? List.of(running, initialPass)
 				: List.of(running);
-		programs = initialPass != null
-				? List.of(running.program, initialPass.program)
-				: List.of(running.program);
 		history = pass.history() || !bindings.history.isEmpty();
 		var present = pass.target().present();
 		presentSampling = new Sampling(present, present, Mipmap.NONE,
 				Wrap.CLAMP, Wrap.CLAMP);
 		warnings.addAll(preparation.diagnostics());
-		// The camera of the running pass, or else of the initial shader.
-		PlanBindings cameraBindings = null;
+		var bindings = new ArrayList<PlanBindings>();
 		for (var linked : passes) {
 			warnings.addAll(linked.warnings);
-			if (cameraBindings == null && linked.bindings.camera != null) {
-				cameraBindings = linked.bindings;
-			}
+			bindings.add(linked.bindings);
 		}
-		if (cameraBindings != null && cameraBindings.camera != null) {
-			var texture = device.createExternalTexture();
-			device.applySampling(texture, cameraBindings.cameraSampling);
-			camera = new CameraSource.Binding(cameraBindings.camera.name(),
-					texture);
-		} else {
-			camera = null;
+		var open = PlanBindings.openCamera(bindings);
+		camera = open != null
+				? new CameraSource.Binding(open, device.createExternalTexture())
+				: null;
+		for (var linked : passes) {
+			var other = linked.bindings.camera;
+			if (open != null && other != null && !other.name().equals(open)) {
+				warnings.add(linked.warning(other.name(), other.name() +
+						" reads black, because only one camera can be open " +
+						"and the running shader reads " + open));
+			}
 		}
 	}
 
@@ -166,11 +162,11 @@ final class PlanRuntime implements ShaderSwap.Build {
 				glesVersion);
 	}
 
-	// The programs whose builtins it reads, the one drawn every frame
+	// The passes whose builtins it reads, the one drawn every frame
 	// first.
 	@NonNull
-	List<GlProgram> programs() {
-		return programs;
+	List<PlanPass> passes() {
+		return passes;
 	}
 
 	float quality() {
@@ -448,8 +444,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 			long now) {
 		passFrame.scale(frame, target.size().width(), target.size().height());
 		builtins.write(passFrame, now);
-		running.bind(textures, camera != null ? camera.texture() : null,
-				target.completed());
+		running.bind(textures, camera, target.completed());
 		quad.draw();
 		running.unbind();
 	}
@@ -472,8 +467,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 			initialFrame.time = 0;
 			initialFrame.frame = 0;
 			builtins.write(1, initialFrame, now);
-			shader.bind(textures, camera != null ? camera.texture() : null,
-					null);
+			shader.bind(textures, camera, null);
 			quad.draw();
 			shader.unbind();
 			picture = drawn.completed();

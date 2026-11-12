@@ -24,12 +24,17 @@ final class PlanPass {
 	final GlProgram program;
 	@NonNull
 	final PlanBindings bindings;
+	// The active uniforms as the text declares them.
+	@NonNull
+	final Map<String, GlUniform> uniforms;
 	// Inputs the compiler removed, and uniforms nothing provides.
 	@NonNull
 	final List<ProjectDiagnostic> warnings;
 	final float fTimeMax;
 	@NonNull
 	private final GlDevice device;
+	@NonNull
+	private final PlanSource source;
 	// Per image and per history binding on a GLES3 context, else null.
 	@Nullable
 	private int[] samplers;
@@ -41,14 +46,17 @@ final class PlanPass {
 			@NonNull RenderPlan.Pass pass,
 			@NonNull GlProgram program,
 			@NonNull PlanBindings bindings,
+			@NonNull Map<String, GlUniform> uniforms,
 			@NonNull List<ProjectDiagnostic> warnings,
-			float fTimeMax) {
+			@NonNull PlanSource source) {
 		this.device = device;
 		this.pass = pass;
 		this.program = program;
 		this.bindings = bindings;
+		this.uniforms = uniforms;
 		this.warnings = warnings;
-		this.fTimeMax = fTimeMax;
+		this.source = source;
+		fTimeMax = source.fTimeMax();
 	}
 
 	// GL thread. Returns null and adds why when it does not link.
@@ -77,16 +85,24 @@ final class PlanPass {
 		}
 		var bindings = PlanBindings.of(pass, index, program.getSamplers(),
 				source.fragment());
+		var uniforms = bindings.declared(program.getUniforms());
 		var warnings = new ArrayList<>(bindings.warnings);
 		var inputs = new HashSet<String>();
 		for (var input : pass.inputs()) {
 			inputs.add(input.uniform());
 		}
-		warnings.addAll(UniformWarnings.check(
-				program.getUniforms().values(), inputs,
+		warnings.addAll(UniformWarnings.check(uniforms.values(), inputs,
 				textureFix, source.fragment(), source.sourceMap()));
-		return new PlanPass(device, pass, program, bindings, warnings,
-				source.fTimeMax());
+		return new PlanPass(device, pass, program, bindings, uniforms,
+				warnings, source);
+	}
+
+	// A warning at the declaration of the uniform name.
+	@NonNull
+	ProjectDiagnostic warning(@NonNull String name, @NonNull String message) {
+		return UniformWarnings.locate(message,
+				UniformWarnings.declarationLine(source.fragment(), name),
+				source.sourceMap());
 	}
 
 	// GL thread, on a GLES3 context.
@@ -104,12 +120,13 @@ final class PlanPass {
 	}
 
 	// Binds what each input reads, sampled as it asks: its image, the
-	// camera, and the previous frame. Unbound samplers read black.
+	// camera that is open when it is the one it reads, and the previous
+	// frame. Unbound samplers read black.
 	void bind(
 			@NonNull Map<PlanBindings.Texture, GlTexture> textures,
-			@Nullable GlTexture camera,
+			@Nullable CameraSource.Binding camera,
 			@Nullable GlTexture2D previous) {
-		device.bindEmptyTextures(program);
+		device.bindEmptyTextures(bindings.samplers);
 		var images = bindings.images;
 		for (int i = 0; i < images.size(); ++i) {
 			var binding = images.get(i);
@@ -135,8 +152,12 @@ final class PlanPass {
 				device.applySampling(unit, previous, binding.sampling());
 			}
 		}
-		if (camera != null && bindings.camera != null) {
-			device.bindTexture(bindings.camera.unit(), camera);
+		// Another program may read the camera with other settings.
+		var sampler = bindings.camera;
+		if (camera != null && sampler != null &&
+				sampler.name().equals(camera.sampler())) {
+			device.applySampling(sampler.unit(), camera.texture(),
+					bindings.cameraSampling);
 		}
 		device.useProgram(program);
 	}
