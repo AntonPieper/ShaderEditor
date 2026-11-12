@@ -456,6 +456,63 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void tellsTheListenerOnceThroughItsExecutor() throws IOException {
+		write("a.glsl", "a");
+		OpenProject project = open();
+		project.load(path("a.glsl"));
+		List<Runnable> posted = new ArrayList<>();
+		int[] heard = {0};
+		project.setListener(posted::add, () -> ++heard[0]);
+
+		project.edit(path("a.glsl"), "a!");
+		project.edit(path("a.glsl"), "a!!");
+		project.setDiagnostics(List.of(ProjectDiagnostic.error("e")));
+
+		assertEquals(0, heard[0]);
+		assertEquals(1, posted.size());
+		posted.remove(0).run();
+		assertEquals(1, heard[0]);
+		project.edit(path("a.glsl"), "a!!!");
+		project.setDiagnostics(List.of(ProjectDiagnostic.error("e")));
+		assertTrue(posted.isEmpty());
+	}
+
+	@Test
+	public void tellsTheListenerWhatTheScreensMark() throws IOException {
+		write("main.glsl", "#include \"lib.glsl\"\n" + SHADER);
+		write("lib.glsl", "// lib\n");
+		write("b.glsl", SHADER);
+		OpenProject project = open();
+		project.load(path("lib.glsl"));
+		List<Runnable> posted = new ArrayList<>();
+		project.setListener(posted::add, () -> {
+		});
+
+		project.edit(path("lib.glsl"), "// edited\n");
+		assertEquals(1, drain(posted));
+		project.save(true);
+		assertEquals(1, drain(posted));
+		project.prepare(BuiltinNames.ALL);
+		assertEquals(1, drain(posted));
+		project.setDiagnostics(List.of(ProjectDiagnostic.error("e")));
+		assertEquals(1, drain(posted));
+		project.runThisFile(path("b.glsl"));
+		assertEquals(1, drain(posted));
+		project.edit(path("lib.glsl"), "// mine\n");
+		drain(posted);
+		write("lib.glsl", "// theirs\n");
+		project.refresh();
+		assertEquals(Set.of(path("lib.glsl")), project.conflicts().keySet());
+		assertEquals(1, drain(posted));
+		project.refresh();
+		assertEquals(0, drain(posted));
+
+		project.setListener(null, null);
+		project.keepEdits(path("lib.glsl"));
+		assertEquals(0, drain(posted));
+	}
+
+	@Test
 	public void groupsDiagnosticsByFile() throws IOException {
 		OpenProject project = open();
 		ProjectDiagnostic inMain = new ProjectDiagnostic(Severity.WARNING,
@@ -535,6 +592,15 @@ public class OpenProjectTest {
 	private String read(String name) throws IOException {
 		return new String(Files.readAllBytes(new File(root, name).toPath()),
 				StandardCharsets.UTF_8);
+	}
+
+	private static int drain(List<Runnable> posted) {
+		int count = posted.size();
+		for (Runnable runnable : posted) {
+			runnable.run();
+		}
+		posted.clear();
+		return count;
 	}
 
 	private static List<String> names(OpenProject.Folder folder) {
