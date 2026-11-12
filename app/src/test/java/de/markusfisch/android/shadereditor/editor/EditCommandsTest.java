@@ -124,6 +124,138 @@ public class EditCommandsTest {
 		assertEquals(new Selection(9, 17), document.selection());
 	}
 
+	@Test
+	public void deleteBackwardRemovesOneChar() {
+		Document document = documentOf("ab😀|c\nd");
+		EditCommands commands = new EditCommands(document);
+		commands.deleteBackward();
+		assertEquals("ab|c\nd", stateOf(document));
+		document.select(4, 4);
+		commands.deleteBackward();
+		assertEquals("abc|d", stateOf(document));
+		commands.moveToStart(false);
+		commands.deleteBackward();
+		assertEquals("|abcd", stateOf(document));
+	}
+
+	@Test
+	public void deleteForwardRemovesOneChar() {
+		Document document = documentOf("a|é\nb");
+		EditCommands commands = new EditCommands(document);
+		commands.deleteForward();
+		assertEquals("a|\nb", stateOf(document));
+		commands.deleteForward();
+		assertEquals("a|b", stateOf(document));
+		commands.moveToEnd(false);
+		commands.deleteForward();
+		assertEquals("ab|", stateOf(document));
+	}
+
+	@Test
+	public void deleteRemovesTheSelection() {
+		Document document = documentOf("a^bc|d");
+		new EditCommands(document).deleteBackward();
+		assertEquals("a|d", stateOf(document));
+		document = documentOf("a|bc^d");
+		new EditCommands(document).deleteWordForward();
+		assertEquals("a|d", stateOf(document));
+	}
+
+	@Test
+	public void deletesAWord() {
+		Document document = documentOf("vec2 uv|");
+		new EditCommands(document).deleteWordBackward();
+		assertEquals("vec2 |", stateOf(document));
+		document = documentOf("|vec2 uv");
+		new EditCommands(document).deleteWordForward();
+		assertEquals("| uv", stateOf(document));
+	}
+
+	@Test
+	public void deletedCharsAreTyping() {
+		Document document = documentOf("abc|");
+		EditCommands commands = new EditCommands(document);
+		commands.deleteBackward();
+		commands.deleteBackward();
+		document.undo();
+		assertEquals("abc|", stateOf(document));
+	}
+
+	@Test
+	public void enterIndentsTheNewLine() {
+		Document document = documentOf("x\n\tf() {|\n}");
+		new EditCommands(document).enter();
+		assertEquals("x\n\tf() {\n\t\t|\n}", stateOf(document));
+	}
+
+	@Test
+	public void enterIndentsWithSpacesIfSet() {
+		Document document = documentOf("x\n  f(^a|\n");
+		EditCommands commands = new EditCommands(document);
+		commands.setTabWidth(2);
+		commands.setIndentWithSpaces(true);
+		commands.enter();
+		assertEquals("x\n  f(\n    |\n", stateOf(document));
+	}
+
+	@Test
+	public void tabInsertsALevelAtTheCaret() {
+		Document document = documentOf("a|b");
+		EditCommands commands = new EditCommands(document);
+		commands.indent();
+		assertEquals("a\t|b", stateOf(document));
+		document = documentOf("ab|c");
+		commands = new EditCommands(document);
+		commands.setIndentWithSpaces(true);
+		commands.indent();
+		assertEquals("ab  |c", stateOf(document));
+	}
+
+	@Test
+	public void tabReplacesASelectionWithinALine() {
+		Document document = documentOf("a^bc|d\ne");
+		new EditCommands(document).indent();
+		assertEquals("a\t|d\ne", stateOf(document));
+	}
+
+	@Test
+	public void tabIndentsTheLinesOfASelection() {
+		Document document = documentOf("a^b\n\nc|d\ne");
+		new EditCommands(document).indent();
+		assertEquals("\ta^b\n\n\tc|d\ne", stateOf(document));
+	}
+
+	@Test
+	public void aSelectionEndingAtALineStartLeavesThatLine() {
+		Document document = documentOf("^ab\ncd\n|ef");
+		EditCommands commands = new EditCommands(document);
+		commands.setIndentWithSpaces(true);
+		commands.setTabWidth(2);
+		commands.indent();
+		assertEquals("^  ab\n  cd\n|ef", stateOf(document));
+	}
+
+	@Test
+	public void unindentRemovesTheSpaceBeforeTheFirstTabStop() {
+		Document document = documentOf("^\t\tab\n  \tcd\n  ef\ngh|");
+		new EditCommands(document).unindent();
+		assertEquals("^\tab\ncd\nef\ngh|", stateOf(document));
+		document = documentOf("\t\ta|b");
+		new EditCommands(document).unindent();
+		assertEquals("\ta|b", stateOf(document));
+		document = documentOf("\t|\tab");
+		new EditCommands(document).unindent();
+		assertEquals("|\tab", stateOf(document));
+	}
+
+	@Test
+	public void indentingLinesIsOneUndoStep() {
+		Document document = documentOf("a^b\ncd|");
+		new EditCommands(document).indent();
+		document.undo();
+		assertEquals("a^b\ncd|", stateOf(document));
+	}
+
 	// Returns a document of state: '|' marks the head of the selection
 	// and '^' its anchor, if that is elsewhere.
 	static Document documentOf(String state) {
