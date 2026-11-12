@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES30;
 
@@ -38,6 +39,7 @@ final class PlanRuntime implements EngineBuild {
 	@NonNull
 	private final PlanBindings bindings;
 	private final int glesVersion;
+	private final int backBufferUnit;
 	// Told with the outcome, whatever it is.
 	@NonNull
 	private final List<ProjectDiagnostic> warnings = new ArrayList<>();
@@ -67,6 +69,7 @@ final class PlanRuntime implements EngineBuild {
 		this.glesVersion = glesVersion;
 		var pass = preparation.plan().passes().get(preparation.plan().output());
 		bindings = PlanBindings.of(pass, program.getSamplers());
+		backBufferUnit = program.getTextureUnit(UniformTable.BACKBUFFER);
 		warnings.addAll(preparation.diagnostics());
 		warnings.addAll(bindings.warnings);
 		var sampler = bindings.camera;
@@ -143,12 +146,6 @@ final class PlanRuntime implements EngineBuild {
 	@Override
 	public float fTimeMax() {
 		return fTimeMax;
-	}
-
-	@NonNull
-	@Override
-	public Sampling backBufferSampling() {
-		return Sampling.PASS;
 	}
 
 	// Its images do not depend on the render size.
@@ -257,9 +254,39 @@ final class PlanRuntime implements EngineBuild {
 		return camera;
 	}
 
-	// Binds what each input reads, sampled as it asks.
+	// The pipeline's two targets, which it draws into in turn.
 	@Override
-	public void draw(@NonNull ShaderRenderPipeline pipeline) {
+	public boolean createTargets(
+			@NonNull ShaderRenderPipeline pipeline,
+			int width,
+			int height,
+			@Nullable Bitmap seed,
+			@NonNull List<ProjectDiagnostic> errors) {
+		var targets = pipeline.createTargets(width, height, Sampling.PASS,
+				seed, errors);
+		if (targets == null) {
+			return false;
+		}
+		pipeline.useTargets(targets);
+		return true;
+	}
+
+	@Override
+	public boolean hasTargets(@NonNull ShaderRenderPipeline pipeline) {
+		return pipeline.hasTargets();
+	}
+
+	// Binds what each input reads, sampled as it asks, and draws into the
+	// front target, with the back one bound as backbuffer.
+	@Override
+	public void draw(
+			@NonNull ShaderRenderPipeline pipeline,
+			@NonNull ActiveBuiltins builtins,
+			@NonNull FrameInputs frame,
+			long now) {
+		builtins.write(frame, now);
+		device.bindEmptyTextures(program);
+		device.bindTexture(backBufferUnit, pipeline.getBackTexture());
 		var images = bindings.images;
 		for (int i = 0; i < images.size(); ++i) {
 			var binding = images.get(i);
@@ -283,6 +310,8 @@ final class PlanRuntime implements EngineBuild {
 				GLES30.glBindSampler(binding.sampler().unit(), 0);
 			}
 		}
+		pipeline.renderSurfacePass(frame.surfaceWidth, frame.surfaceHeight);
+		pipeline.swapTargets();
 	}
 
 	@Override

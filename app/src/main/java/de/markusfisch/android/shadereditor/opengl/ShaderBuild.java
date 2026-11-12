@@ -10,7 +10,6 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
-import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 // One shader linked in the current context, with its textures.
 final class ShaderBuild implements EngineBuild {
@@ -23,6 +22,7 @@ final class ShaderBuild implements EngineBuild {
 	final float quality;
 	@NonNull
 	private final GlDevice device;
+	private final int backBufferUnit;
 	private final TextureHandOver<DecodedTextures> decoded =
 			new TextureHandOver<>();
 	private boolean complete;
@@ -43,6 +43,7 @@ final class ShaderBuild implements EngineBuild {
 		textures = ShaderTextureResources.create(source.getSamplers());
 		textures.createExternalTextures(device);
 		textures.resolveUnits(program);
+		backBufferUnit = program.getTextureUnit(UniformTable.BACKBUFFER);
 	}
 
 	// GL thread. Returns null and adds the reasons to errors when the
@@ -163,12 +164,6 @@ final class ShaderBuild implements EngineBuild {
 		return source.getFTimeMax();
 	}
 
-	@NonNull
-	@Override
-	public Sampling backBufferSampling() {
-		return source.getBackBufferSampling();
-	}
-
 	// The backbuffer preset is tiled to the render size.
 	@Override
 	public boolean fits(int width, int height) {
@@ -190,10 +185,42 @@ final class ShaderBuild implements EngineBuild {
 				UniformTable.CAMERA_FRONT);
 	}
 
+	// The pipeline's two targets, which it draws into in turn.
 	@Override
-	public void draw(@NonNull ShaderRenderPipeline pipeline) {
+	public boolean createTargets(
+			@NonNull ShaderRenderPipeline pipeline,
+			int width,
+			int height,
+			@Nullable Bitmap seed,
+			@NonNull List<ProjectDiagnostic> errors) {
+		var targets = pipeline.createTargets(width, height,
+				source.getBackBufferSampling(), seed, errors);
+		if (targets == null) {
+			return false;
+		}
+		pipeline.useTargets(targets);
+		return true;
+	}
+
+	@Override
+	public boolean hasTargets(@NonNull ShaderRenderPipeline pipeline) {
+		return pipeline.hasTargets();
+	}
+
+	// Into the front target, with the back one bound as backbuffer.
+	@Override
+	public void draw(
+			@NonNull ShaderRenderPipeline pipeline,
+			@NonNull ActiveBuiltins builtins,
+			@NonNull FrameInputs frame,
+			long now) {
+		builtins.write(frame, now);
+		device.bindEmptyTextures(program);
+		device.bindTexture(backBufferUnit, pipeline.getBackTexture());
 		textures.bind(device);
 		pipeline.renderMainPass(program);
+		pipeline.renderSurfacePass(frame.surfaceWidth, frame.surfaceHeight);
+		pipeline.swapTargets();
 	}
 
 	@Override

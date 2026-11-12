@@ -72,7 +72,6 @@ public final class ShaderEngine {
 	@Nullable
 	private ActiveBuiltins activeBuiltins;
 	private int version = 2;
-	private int backBufferUnit = GlUniform.NO_UNIT;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
 	private volatile long nextFpsUpdate;
@@ -188,7 +187,7 @@ public final class ShaderEngine {
 				revision == null ||
 				builtins == null ||
 				!renderPipeline.hasSurfaceProgram() ||
-				!renderPipeline.hasTargets()) {
+				!build.hasTargets(renderPipeline)) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
 			return;
@@ -196,19 +195,12 @@ public final class ShaderEngine {
 
 		long now = System.nanoTime();
 		var frame = inputs.capture(now, fTimeMax);
-		builtins.write(frame, now);
+		build.draw(renderPipeline, builtins, frame, now);
 		// A source that failed after it started, such as a camera that
 		// did not open.
 		if (sources.takeWarned()) {
 			report(revision, new ArrayList<>(sources.getWarnings()));
 		}
-		device.bindEmptyTextures(build.program());
-		device.bindTexture(backBufferUnit, renderPipeline.getBackTexture());
-		build.draw(renderPipeline);
-		renderPipeline.renderSurfacePass(
-				frame.surfaceWidth,
-				frame.surfaceHeight);
-		renderPipeline.swapTargets();
 		thumbnails.onFrame(revision.number());
 		answerThumbnails();
 
@@ -277,28 +269,25 @@ public final class ShaderEngine {
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
 		var textures = next.upload(errors);
-		ShaderRenderPipeline.Targets targets = null;
 		// Its targets come before the current build goes, so a build
 		// that cannot draw leaves the current one drawing.
-		if (!next.hasFailed() && next.isComplete()) {
-			targets = renderPipeline.createTargets(
-					EngineInputs.renderSize(inputs.getSurfaceWidth(), next.quality()),
-					EngineInputs.renderSize(inputs.getSurfaceHeight(), next.quality()),
-					next.backBufferSampling(),
-					textures != null ? textures.backBuffer() : null,
-					errors);
-		}
+		boolean ready = !next.hasFailed() && next.isComplete() &&
+				next.createTargets(
+						renderPipeline,
+						EngineInputs.renderSize(inputs.getSurfaceWidth(), next.quality()),
+						EngineInputs.renderSize(inputs.getSurfaceHeight(), next.quality()),
+						textures != null ? textures.backBuffer() : null,
+						errors);
 		if (textures != null) {
 			textures.recycle();
 		}
-		if (targets == null) {
+		if (!ready) {
 			if (next.hasFailed() || next.isComplete()) {
 				report(shaders.nextFailed(), errors);
 			}
 			return;
 		}
 		shaders.swapIfComplete();
-		renderPipeline.useTargets(targets);
 		thumbnails.onFramesLost();
 		var shown = Objects.requireNonNull(shaders.currentRevision());
 		inputs.showRuntime(
@@ -323,15 +312,12 @@ public final class ShaderEngine {
 			return;
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
-		var targets = renderPipeline.createTargets(
+		if (!build.createTargets(
+				renderPipeline,
 				inputs.getRenderWidth(),
 				inputs.getRenderHeight(),
-				build.backBufferSampling(),
 				null,
-				errors);
-		if (targets != null) {
-			renderPipeline.useTargets(targets);
-		} else {
+				errors)) {
 			report(shaders.currentRevision(), errors);
 		}
 	}
@@ -382,14 +368,12 @@ public final class ShaderEngine {
 
 	private void configure(@NonNull EngineBuild build) {
 		fTimeMax = build.fTimeMax();
-		backBufferUnit = build.program().getTextureUnit(UniformTable.BACKBUFFER);
 		runSources(build);
 	}
 
 	private void clearConfiguration() {
 		inputs.pauseRuntime();
 		fTimeMax = DEFAULT_FTIME_MAX;
-		backBufferUnit = GlUniform.NO_UNIT;
 		runSources(null);
 	}
 
