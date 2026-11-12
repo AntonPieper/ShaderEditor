@@ -67,6 +67,11 @@ public class ShaderViewManager {
 		shaderView.setVisibility(visible ? View.VISIBLE : View.GONE);
 	}
 
+	// The brightest the picture may be, of 255 (PictureLimit).
+	public void limitPicture(int ceiling, boolean fade) {
+		shaderView.getEngine().limitPicture(ceiling, fade);
+	}
+
 	public void requestThumbnail(@NonNull ShaderEngine.ThumbnailCallback callback) {
 		shaderView.getEngine().requestThumbnail(callback);
 	}

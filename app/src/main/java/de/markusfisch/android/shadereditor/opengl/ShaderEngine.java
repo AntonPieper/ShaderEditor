@@ -62,6 +62,11 @@ public final class ShaderEngine {
 			@NonNull Reporting reporting) {
 	}
 
+	// The ceiling of PictureLimit a host asked for, of 1, and whether the
+	// picture eases there.
+	private record Limit(float ceiling, boolean fade) {
+	}
+
 	// Diagnostics in the project files, with the fix for project files.
 	private static final Reporting AS_PREPARED = new Reporting() {
 		@NonNull
@@ -111,6 +116,15 @@ public final class ShaderEngine {
 	private volatile float samples;
 	private volatile int lastFps;
 	private volatile float refreshRate = DEFAULT_REFRESH_RATE;
+	@NonNull
+	private volatile Limit limit = new Limit(1f, false);
+	// The limit the frames drawn last ease to, the ceiling they eased
+	// from, the one they are at, and since when.
+	@Nullable
+	private Limit limitShown;
+	private float limitFrom;
+	private float limitCeiling = 1f;
+	private long limitSince;
 
 	public ShaderEngine(@NonNull EngineHost host) {
 		context = host.context();
@@ -164,6 +178,13 @@ public final class ShaderEngine {
 				offer.origin(),
 				offer.runtimeNanos(),
 				offer.reporting()));
+	}
+
+	// Any thread. The brightest a pixel of the picture may be on the
+	// surface, of 255 (PictureLimit), reached at once or in the frames
+	// drawn over PictureLimit.FADE_NANOS. Thumbnails are never limited.
+	public void limitPicture(int ceiling, boolean fade) {
+		limit = new Limit(ceiling / 255f, fade);
 	}
 
 	public void setListener(@Nullable Listener listener) {
@@ -235,6 +256,7 @@ public final class ShaderEngine {
 		var frame = inputs.capture(now, fTimeMax);
 		// Once for every program the frame draws.
 		sources.update(now);
+		renderPipeline.setLimit(limitAt(now));
 		build.draw(renderPipeline, builtins, frame);
 		// A source that failed after it started, such as a camera that
 		// did not open.
@@ -420,6 +442,21 @@ public final class ShaderEngine {
 		if (revision != null && shaders.report(revision)) {
 			submitErrors(revision.shader().reporting().locate(errors));
 		}
+	}
+
+	private float limitAt(long now) {
+		var limit = this.limit;
+		if (limit != limitShown) {
+			limitShown = limit;
+			limitFrom = limitCeiling;
+			limitSince = now;
+		}
+		float t = limit.fade()
+				? Math.min(1f, (now - limitSince) /
+						(float) PictureLimit.FADE_NANOS)
+				: 1f;
+		limitCeiling = limitFrom + (limit.ceiling() - limitFrom) * t;
+		return PictureLimit.strength(limitCeiling);
 	}
 
 	private void resetFps() {
