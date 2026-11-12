@@ -448,6 +448,11 @@ public class ShaderEditor extends LineNumberEditText {
 	private void init(@NonNull Context context) {
 		// Setting this through XML does not work
 		setHorizontallyScrolling(true);
+		// AppCompat's emoji2 support reports the whole text as changed
+		// after every edit it processes, which lays out every line again
+		// on each keystroke. Without it, emoji are drawn by the system
+		// font. The editor is for GLSL, which only allows ASCII.
+		setEmojiCompatEnabled(false);
 
 		setFilters(new InputFilter[]{(source,
 				start, end,
