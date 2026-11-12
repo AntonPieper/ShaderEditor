@@ -21,8 +21,8 @@ public final class GlslLexer {
 	public static final int TEXT_START = 0;
 
 	// What a line passes on to the next line, as bits of a state.
-	private static final int BLOCK_COMMENT = 1;
-	private static final int LINE_COMMENT = 2;
+	static final int BLOCK_COMMENT = 1;
+	static final int LINE_COMMENT = 2;
 	private static final int DIRECTIVE = 4;
 	private static final int DIRECTIVE_NAME = 8;
 	private static final int KIND_SHIFT = 4;
