@@ -5,9 +5,10 @@ import androidx.annotation.NonNull;
 import java.util.ArrayList;
 import java.util.List;
 
-// Thumbnails asked for on any thread, each of the revision offered last.
-// The GL thread answers a request from a complete frame of that revision,
-// or with nothing once that revision can no longer draw.
+// Thumbnails asked for on any thread, each of the revision requested
+// last. The GL thread answers a request from a complete frame of that
+// revision, or with nothing once that revision can no longer draw or the
+// requests are closed.
 final class ThumbnailRequests<C> {
 	interface Revisions {
 		boolean canDraw(int revision);
@@ -18,12 +19,18 @@ final class ThumbnailRequests<C> {
 
 	// Guarded by this.
 	private final ArrayList<Request<C>> requests = new ArrayList<>();
+	private boolean closed;
 	// GL thread only. The revision of the last complete frame, or 0.
 	private int framed;
 
-	// Any thread, with the number of the revision offered last.
-	synchronized void add(int revision, @NonNull C callback) {
+	// Any thread, with the number of the revision requested last. False
+	// when the requests are closed, so the caller answers it with nothing.
+	synchronized boolean add(int revision, @NonNull C callback) {
+		if (closed) {
+			return false;
+		}
 		requests.add(new Request<>(revision, callback));
+		return true;
 	}
 
 	// GL thread, after a frame of this revision was drawn completely.
@@ -70,14 +77,20 @@ final class ThumbnailRequests<C> {
 		return dropped;
 	}
 
-	// Removes and returns every request, when nothing will draw anymore.
+	// Removes and returns every request, when nothing will draw anymore,
+	// and refuses new ones until open() is called.
 	@NonNull
-	synchronized List<C> takeAll() {
+	synchronized List<C> close() {
+		closed = true;
 		var all = new ArrayList<C>();
 		for (var request : requests) {
 			all.add(request.callback());
 		}
 		requests.clear();
 		return all;
+	}
+
+	synchronized void open() {
+		closed = false;
 	}
 }

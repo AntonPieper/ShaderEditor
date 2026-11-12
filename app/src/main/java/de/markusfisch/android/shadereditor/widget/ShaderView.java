@@ -59,7 +59,7 @@ public class ShaderView extends GLSurfaceView {
 				return thread;
 			});
 
-	// The newest shader set that waits to be prepared.
+	// The newest shader request that waits to be prepared.
 	private final AtomicReference<Runnable> waiting = new AtomicReference<>();
 	private ShaderEngine engine;
 	// What the runtime of the shader set last belongs to.
@@ -93,8 +93,15 @@ public class ShaderView extends GLSurfaceView {
 	}
 
 	@Override
+	protected void onAttachedToWindow() {
+		super.onAttachedToWindow();
+		engine.onAttached();
+	}
+
+	@Override
 	protected void onDetachedFromWindow() {
 		super.onDetachedFromWindow();
+		waiting.set(null);
 		engine.onDetached();
 	}
 
@@ -120,8 +127,10 @@ public class ShaderView extends GLSurfaceView {
 			long runtimeNanos) {
 		var owner = new Object();
 		runtimeOwner = owner;
+		// Thumbnails and quality changes from now on are of this shader.
+		int request = engine.request();
 		// Converting reads the textures it names from the database.
-		if (waiting.getAndSet(() -> prepare(text, quality, owner,
+		if (waiting.getAndSet(() -> prepare(request, text, quality, owner,
 				runtimeNanos)) == null) {
 			PREPARER.execute(() -> {
 				var preparation = waiting.getAndSet(null);
@@ -132,24 +141,16 @@ public class ShaderView extends GLSurfaceView {
 		}
 	}
 
-	// Any thread. Answered after a complete frame of the shader set last,
-	// once it was prepared, or with null once that shader will not draw.
-	public void requestThumbnail(@NonNull ShaderEngine.ThumbnailCallback callback) {
-		PREPARER.execute(() -> engine.requestThumbnail(callback));
-	}
-
 	// The runtime of the shader set last while it is shown, or -1.
 	public long getRuntimeNanos() {
 		var owner = runtimeOwner;
 		return owner != null ? engine.getRuntimeNanos(owner) : -1;
 	}
 
-	// After the shader set before it is prepared, so it applies to that.
+	// Applies to the shader set last, also while it is prepared.
 	public void setQuality(float quality) {
-		PREPARER.execute(() -> {
-			engine.setQuality(quality);
-			requestRender();
-		});
+		engine.setQuality(quality);
+		requestRender();
 	}
 
 	@NonNull
@@ -158,6 +159,7 @@ public class ShaderView extends GLSurfaceView {
 	}
 
 	private void prepare(
+			int request,
 			@NonNull String text,
 			float quality,
 			@NonNull Object owner,
@@ -176,9 +178,10 @@ public class ShaderView extends GLSurfaceView {
 					"Cannot load the textures: " + e.getMessage())),
 					List.of(), Map.of());
 		}
-		engine.setPlan(preparation, quality, new Stored(conversion), owner,
-				runtimeNanos);
-		requestRender();
+		if (engine.setPlan(request, preparation, quality,
+				new Stored(conversion), owner, runtimeNanos)) {
+			requestRender();
+		}
 	}
 
 	private void init(Context context, int renderMode) {

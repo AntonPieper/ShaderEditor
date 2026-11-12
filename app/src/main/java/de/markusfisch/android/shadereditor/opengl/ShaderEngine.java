@@ -32,11 +32,11 @@ public final class ShaderEngine {
 	}
 
 	public interface ThumbnailCallback {
-		// Called on the GL thread with a PNG of the shader set last when
-		// it was asked for. Called with null when that frame could not be
-		// encoded or that shader will not draw: it failed, a newer one
-		// replaced it before it drew, or the view was detached, which
-		// calls it on the detaching thread.
+		// Called on the GL thread with a PNG of the shader requested last
+		// when it was asked for. Called with null when that frame could
+		// not be encoded or that shader will not draw: it failed or lost
+		// its targets, a newer one replaced it before it drew, or the view
+		// was detached, which calls it on the detaching or asking thread.
 		void onThumbnail(@Nullable byte[] png);
 	}
 
@@ -118,19 +118,30 @@ public final class ShaderEngine {
 	// GL thread builds the newest plan while the current one keeps
 	// drawing, and swaps it in once it links and its images are uploaded.
 	public void setPlan(@NonNull Preparation preparation, float quality) {
-		setPlan(preparation, quality, AS_PREPARED, preparation, 0);
+		setPlan(request(), preparation, quality, AS_PREPARED, preparation, 0);
 	}
 
-	// Any thread. Like setPlan(preparation, quality), with diagnostics
-	// shown as reporting says, and the runtime of owner, which starts at
-	// runtimeNanos once the plan replaces the one shown.
-	public void setPlan(
+	// Any thread. Starts a revision whose plan is still being prepared,
+	// before the host prepares it, and returns its number. From now on,
+	// thumbnails are of this revision, quality changes apply to it, and
+	// plans of older revisions are not built anymore.
+	public int request() {
+		return shaders.request();
+	}
+
+	// Any thread. Like setPlan(preparation, quality), for the revision
+	// request() returned, with diagnostics shown as reporting says, and
+	// the runtime of owner, which starts at runtimeNanos once the plan
+	// replaces the one shown. Returns false and drops the plan when a
+	// newer revision was requested meanwhile.
+	public boolean setPlan(
+			int request,
 			@NonNull Preparation preparation,
 			float quality,
 			@NonNull Reporting reporting,
 			@NonNull Object owner,
 			long runtimeNanos) {
-		shaders.offer(new Offer(
+		return shaders.offer(request, new Offer(
 				new PlanShader(preparation, quality, reporting.textureFix()),
 				owner, runtimeNanos, reporting));
 	}
@@ -141,7 +152,8 @@ public final class ShaderEngine {
 		return inputs.getRuntimeNanos(owner);
 	}
 
-	// Any thread. Builds the shader set last again with this quality.
+	// Any thread. Builds the shader requested last again with this
+	// quality, or with it once it is prepared.
 	public void setQuality(float quality) {
 		shaders.offerChanged(offer -> new Offer(
 				offer.shader().withQuality(quality),
@@ -192,11 +204,6 @@ public final class ShaderEngine {
 			thumbnails.onFramesLost();
 			createCurrentTargets();
 		}
-		// What a build decoded may depend on the render size.
-		var stale = shaders.resized(width, height);
-		if (stale != null) {
-			loadTextures(stale);
-		}
 
 		resetFps();
 	}
@@ -242,11 +249,18 @@ public final class ShaderEngine {
 		discardContextResources();
 	}
 
-	// After the host's view was detached. Like onContextLost(), and the
-	// thumbnail requests still waiting are answered with null.
+	// After the host's view was detached. Like onContextLost(), and a plan
+	// still being prepared is dropped once it is set; thumbnail requests
+	// are answered with null, now and until onAttached().
 	public void onDetached() {
 		discardContextResources();
-		answerThumbnails(thumbnails.takeAll(), null);
+		shaders.cancel();
+		answerThumbnails(thumbnails.close(), null);
+	}
+
+	// When the host's view is attached to its window.
+	public void onAttached() {
+		thumbnails.open();
 	}
 
 	public void pointer(@NonNull MotionEvent e) {
@@ -257,10 +271,13 @@ public final class ShaderEngine {
 		inputs.postOffset(x, y);
 	}
 
-	// Any thread. Answered after a complete frame of the shader set last,
-	// or with null once that shader will not draw.
+	// Any thread. Answered after a complete frame of the shader requested
+	// last, or with null once that shader will not draw.
 	public void requestThumbnail(@NonNull ThumbnailCallback callback) {
-		thumbnails.add(shaders.offered(), callback);
+		if (!thumbnails.add(shaders.requested(), callback)) {
+			callback.onThumbnail(null);
+			return;
+		}
 		var requester = renderRequester;
 		if (requester != null) {
 			requester.run();
@@ -290,6 +307,7 @@ public final class ShaderEngine {
 				revision = shaders.take()) {
 			build(revision);
 		}
+		// A next build that a newer request superseded is gone.
 		var next = shaders.next();
 		if (next == null) {
 			return;
@@ -323,9 +341,14 @@ public final class ShaderEngine {
 			if (next.hasFailed() || next.isComplete()) {
 				report(shaders.nextFailed(), errors);
 			}
+			endCurrentWithoutTargets();
 			return;
 		}
-		shaders.swapIfComplete();
+		// Unless a newer request superseded it while it uploaded.
+		if (shaders.swapIfComplete() == null) {
+			endCurrentWithoutTargets();
+			return;
+		}
 		thumbnails.onFramesLost();
 		var shown = Objects.requireNonNull(shaders.currentRevision());
 		inputs.showRuntime(
@@ -336,7 +359,8 @@ public final class ShaderEngine {
 		lastRender = now;
 		inputs.restart(next.quality(), now);
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
-		configure(next);
+		fTimeMax = next.fTimeMax();
+		runSources(next);
 		errors.addAll(sources.getWarnings());
 		sources.takeWarned();
 		resetFps();
@@ -355,22 +379,31 @@ public final class ShaderEngine {
 				inputs.getRenderHeight(),
 				errors) != ShaderSwap.Allocation.MADE) {
 			report(shaders.currentRevision(), errors);
+			endCurrentWithoutTargets();
+		}
+	}
+
+	// The error state: a current build without targets can no longer
+	// draw, so it goes with its sources, and its thumbnail requests are
+	// answered with null.
+	private void endCurrentWithoutTargets() {
+		var build = shaders.current();
+		if (build != null && !build.hasTargets()) {
+			shaders.currentFailed();
+			clearConfiguration();
 		}
 	}
 
 	private void build(@NonNull ShaderSwap.Revision<Offer> revision) {
 		var errors = new ArrayList<ProjectDiagnostic>();
-		var build = revision.shader().shader().link(device, version, errors);
+		var build = PlanRuntime.link(device, revision.shader().shader(),
+				version, errors);
 		if (build == null) {
 			shaders.failed(revision);
 			report(revision, errors);
 			return;
 		}
 		shaders.built(revision, build);
-		loadTextures(build);
-	}
-
-	private void loadTextures(@NonNull PlanRuntime build) {
 		build.loadTextures(renderRequester);
 	}
 
@@ -395,11 +428,6 @@ public final class ShaderEngine {
 		if (listener != null) {
 			listener.onDiagnostics(errors);
 		}
-	}
-
-	private void configure(@NonNull PlanRuntime build) {
-		fTimeMax = build.fTimeMax();
-		runSources(build);
 	}
 
 	private void clearConfiguration() {

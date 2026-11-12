@@ -68,7 +68,7 @@ public class ShaderViewManager {
 	}
 
 	public void requestThumbnail(@NonNull ShaderEngine.ThumbnailCallback callback) {
-		shaderView.requestThumbnail(callback);
+		shaderView.getEngine().requestThumbnail(callback);
 	}
 
 	public void setQuality(float quality) {

@@ -22,7 +22,6 @@ public class ShaderSwapTest {
 	static final class FakeBuild implements ShaderSwap.Build {
 		final String shader;
 		boolean complete;
-		boolean fits = true;
 		boolean released;
 		boolean discarded;
 
@@ -34,11 +33,6 @@ public class ShaderSwapTest {
 		@Override
 		public boolean isComplete() {
 			return complete;
-		}
-
-		@Override
-		public boolean fits(int width, int height) {
-			return fits;
 		}
 
 		@Override
@@ -111,15 +105,117 @@ public class ShaderSwapTest {
 		assertFalse(c.released);
 	}
 
+	// R02: B waits for its images when a newer C fails to compile.
 	@Test
-	public void waitingBuildSurvivesANewerShaderThatFails() {
-		buildAndSwap("a");
+	public void waitingBuildDoesNotSurviveANewerShaderThatFails() {
+		var a = buildAndSwap("a");
 		var b = build("b", false);
 		swap.offer("broken");
-		swap.take();
+		swap.failed(swap.take());
 		b.complete = true;
-		assertSame(b, swap.swapIfComplete());
-		assertFalse(b.released);
+		assertNull(swap.swapIfComplete());
+		assertTrue(b.released);
+		assertSame(a, swap.current());
+		assertFalse(a.released);
+	}
+
+	// R02: a request made while B uploads supersedes B before it swaps.
+	@Test
+	public void requestWhileTheNextBuildUploadsKeepsItFromSwapping() {
+		var a = buildAndSwap("a");
+		var b = build("b", true);
+		int c = swap.request();
+		assertNull(swap.swapIfComplete());
+		assertTrue(b.released);
+		assertSame(a, swap.current());
+		assertTrue(swap.offer(c, "c"));
+		assertEquals("c", swap.take().shader());
+	}
+
+	// R02: A is still being prepared when B is requested.
+	@Test
+	public void preparationThatFinishesAfterANewerRequestIsDropped() {
+		buildAndSwap("shown");
+		int a = swap.request();
+		int b = swap.request();
+		assertFalse(swap.offer(a, "a"));
+		assertNull(swap.take());
+		assertFalse(swap.canDraw(a));
+		assertTrue(swap.canDraw(b));
+		assertTrue(swap.offer(b, "b"));
+		assertEquals("b", swap.take().shader());
+	}
+
+	@Test
+	public void olderBuildDoesNotReportWhileANewerOneIsPrepared() {
+		buildAndSwap("a");
+		swap.offer("b");
+		var b = swap.take();
+		swap.request();
+		assertFalse(swap.report(b));
+	}
+
+	// Quality changes while A is prepared apply to A, but not to B
+	// requested after them.
+	@Test
+	public void changeWhileTheNewestShaderIsPreparedAppliesOnceItIsOffered() {
+		int a = swap.request();
+		swap.offerChanged(shader -> shader + " at q2");
+		assertTrue(swap.offer(a, "a"));
+		assertEquals("a at q2", swap.take().shader());
+
+		int c = swap.request();
+		swap.offerChanged(shader -> shader + " at q2");
+		int d = swap.request();
+		assertFalse(swap.offer(c, "c"));
+		assertTrue(swap.offer(d, "d"));
+		var revision = swap.take();
+		assertEquals("d", revision.shader());
+		assertEquals(d, revision.number());
+	}
+
+	// The view is detached while A is still prepared.
+	@Test
+	public void cancelDropsTheShaderStillBeingPrepared() {
+		var shown = buildAndSwap("shown");
+		int a = swap.request();
+		swap.cancel();
+		assertFalse(swap.offer(a, "a"));
+		assertFalse(swap.canDraw(a));
+		assertSame(shown, swap.current());
+	}
+
+	@Test
+	public void cancelKeepsTheNewestShaderOncePrepared() {
+		swap.offer("a");
+		swap.cancel();
+		assertEquals("a", swap.take().shader());
+	}
+
+	@Test
+	public void currentThatLostItsTargetsCannotDraw() {
+		var a = buildAndSwap("a");
+		int number = swap.currentRevision().number();
+		swap.currentFailed();
+		assertTrue(a.released);
+		assertNull(swap.current());
+		assertFalse(swap.canDraw(number));
+		assertNull(swap.take());
+	}
+
+	// Context loss while the newest shader is still being prepared.
+	@Test
+	public void contextLossBuildsTheShownShaderWhileANewerOneIsPrepared() {
+		buildAndSwap("a");
+		int b = swap.request();
+		swap.contextLost();
+		var again = swap.take();
+		assertEquals("a", again.shader());
+		var a = new FakeBuild("a", true);
+		swap.built(again, a);
+		assertSame(a, swap.swapIfComplete());
+		assertTrue(swap.offer(b, "b"));
+		assertEquals("b", swap.take().shader());
 	}
 
 	// A plan fails as a whole when one of its images cannot be uploaded.
@@ -159,78 +255,13 @@ public class ShaderSwapTest {
 		assertTrue(swap.report(c));
 
 		b.complete = true;
-		assertSame(b, swap.swapIfComplete());
-		assertTrue(a.released);
+		assertNull(swap.swapIfComplete());
+		assertTrue(b.released);
+		assertSame(a, swap.current());
 		assertFalse(swap.report(swap.currentRevision()));
 
 		buildAndSwap("d");
 		assertTrue(swap.report(swap.currentRevision()));
-	}
-
-	@Test
-	public void resizeKeepsTheNewerShaderThatDecodes() {
-		var a = buildAndSwap("preset");
-		a.fits = false;
-		var b = build("b", false);
-		assertNull(swap.resized(1, 2));
-		assertNull(swap.take());
-		assertSame(b, swap.next());
-		assertFalse(b.released);
-		b.complete = true;
-		assertSame(b, swap.swapIfComplete());
-	}
-
-	// A plan's images do not depend on the render size.
-	@Test
-	public void resizeKeepsAPlanThatDecodesItsImages() {
-		buildAndSwap("plan");
-		var plan = build("plan, edited", false);
-		assertNull(swap.resized(1, 2));
-		assertNull(swap.take());
-		assertSame(plan, swap.next());
-	}
-
-	@Test
-	public void resizeDecodesTheNextBuildAgainForTheNewSize() {
-		buildAndSwap("a");
-		var b = build("preset", false);
-		b.fits = false;
-		assertSame(b, swap.resized(1, 2));
-		assertNull(swap.take());
-		assertFalse(b.released);
-	}
-
-	@Test
-	public void resizeBuildsTheCurrentShaderAgainUnlessANewerOneWaits() {
-		var a = buildAndSwap("preset");
-		swap.offer("broken");
-		swap.take();
-		assertNull(swap.resized(1, 2));
-		assertNull(swap.take());
-
-		a.fits = false;
-		assertNull(swap.resized(1, 2));
-		var again = swap.take();
-		assertNotNull(again);
-		assertEquals("preset", again.shader());
-		assertEquals(1, again.number());
-
-		swap.offer("b");
-		swap.resized(1, 2);
-		assertEquals("b", swap.take().shader());
-	}
-
-	@Test
-	public void rebuildingAnOlderShaderDoesNotReportOverANewerFailure() {
-		var a = buildAndSwap("preset");
-		swap.offer("broken");
-		assertTrue(swap.report(swap.take()));
-		a.fits = false;
-		swap.resized(1, 2);
-		var again = swap.take();
-		swap.built(again, new FakeBuild("preset", true));
-		swap.swapIfComplete();
-		assertFalse(swap.report(swap.currentRevision()));
 	}
 
 	@Test
@@ -380,17 +411,17 @@ public class ShaderSwapTest {
 	}
 
 	@Test
-	public void numbersShadersInTheOrderTheyWereOffered() {
-		assertEquals(0, swap.offered());
+	public void numbersShadersInTheOrderTheyWereRequested() {
+		assertEquals(0, swap.requested());
 		swap.offer("a");
 		swap.offer("b");
-		assertEquals(2, swap.offered());
+		assertEquals(2, swap.requested());
 	}
 
 	@Test
 	public void offersAChangeOfTheNewestShader() {
 		swap.offerChanged(shader -> shader + "!");
-		assertEquals(0, swap.offered());
+		assertEquals(0, swap.requested());
 		swap.offer("a");
 		swap.offer("b");
 		swap.offerChanged(shader -> shader + "!");
@@ -405,7 +436,7 @@ public class ShaderSwapTest {
 		swap.offer("a");
 		assertTrue(swap.canDraw(1));
 		var a = swap.take();
-		assertFalse(swap.canDraw(1));
+		assertTrue(swap.canDraw(1));
 		swap.built(a, new FakeBuild("a", false));
 		assertTrue(swap.canDraw(1));
 		swap.next().complete = true;
@@ -413,7 +444,7 @@ public class ShaderSwapTest {
 		assertTrue(swap.canDraw(1));
 
 		swap.offer("broken");
-		swap.take();
+		swap.failed(swap.take());
 		assertFalse(swap.canDraw(2));
 		assertTrue(swap.canDraw(1));
 

@@ -3,17 +3,16 @@ package de.markusfisch.android.shadereditor.opengl;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-// Hands the shaders hosts set on any thread to the GL thread. Every offer
-// is a revision, numbered in the order offered, and only the newest one
-// waiting is built. Its build waits as next while the current build keeps
-// drawing, and replaces it once it is complete.
+// Hands the shaders hosts set on any thread to the GL thread. Every
+// request is a revision, numbered in the order requested, even while its
+// shader is still being made; a revision that a newer request supersedes
+// is not built and never replaces the current build. The newest one
+// builds as next while the current build keeps drawing, and replaces it
+// once it is complete.
 final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	interface Build {
 		// Whether everything it draws with is uploaded.
 		boolean isComplete();
-
-		// Whether what it decoded was made for a surface of this size.
-		boolean fits(int width, int height);
 
 		// Deletes its GL objects and stops its texture loads.
 		void release();
@@ -48,6 +47,14 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	}
 
 	// Guarded by this.
+	// The number of the newest request.
+	private int requested;
+	// The newest request that will not draw: it failed or lost its
+	// targets.
+	private int ended;
+	// What changes the shader of the newest request once it is offered.
+	@Nullable
+	private Change<S> change;
 	@Nullable
 	private Revision<S> pending;
 	@Nullable
@@ -71,22 +78,58 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	private B current;
 	private int reported;
 
-	// Any thread. Replaces a revision that was not taken yet.
-	synchronized void offer(@NonNull S shader) {
-		latest = new Revision<>(shader, offered() + 1);
-		pending = latest;
+	// Any thread. Starts a revision whose shader is still being made and
+	// returns its number. Revisions requested before it are superseded.
+	synchronized int request() {
+		change = null;
+		return ++requested;
 	}
 
-	// Any thread. Offers a change of the shader offered last, if any.
+	// Any thread. The shader of a request; false when a newer request
+	// superseded it, which drops it.
+	synchronized boolean offer(int number, @NonNull S shader) {
+		if (number != requested) {
+			return false;
+		}
+		if (change != null) {
+			shader = change.apply(shader);
+			change = null;
+		}
+		latest = new Revision<>(shader, number);
+		pending = latest;
+		return true;
+	}
+
+	// Any thread. Requests a revision with this shader.
+	synchronized void offer(@NonNull S shader) {
+		offer(request(), shader);
+	}
+
+	// Any thread. Offers a change of the shader requested last, if any;
+	// one that is still being made changes once it is offered.
 	synchronized void offerChanged(@NonNull Change<S> change) {
-		if (latest != null) {
+		if (latest != null && latest.number() == requested) {
 			offer(change.apply(latest.shader()));
+		} else if (requested > 0) {
+			var first = this.change;
+			this.change = first == null
+					? change
+					: shader -> change.apply(first.apply(shader));
 		}
 	}
 
-	// Any thread. The number of the revision offered last, or 0.
-	synchronized int offered() {
-		return latest != null ? latest.number() : 0;
+	// Any thread, when the host goes away: the shader of a request that
+	// is still being made is dropped once it is offered.
+	synchronized void cancel() {
+		change = null;
+		if (requested > 0 && (latest == null || latest.number() != requested)) {
+			++requested;
+		}
+	}
+
+	// Any thread. The number of the newest request, or 0.
+	synchronized int requested() {
+		return requested;
 	}
 
 	// GL thread, at a frame boundary: the revision to build, or null.
@@ -94,6 +137,9 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	synchronized Revision<S> take() {
 		var revision = pending;
 		pending = null;
+		if (revision != null && superseded(revision)) {
+			revision = null;
+		}
 		if (revision == null) {
 			return current == null && next == null ? fallback : null;
 		}
@@ -108,6 +154,7 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		if (is(fallback, revision.number())) {
 			fallback = null;
 		}
+		end(revision.number());
 	}
 
 	// GL thread. The build of this revision supersedes a next build that
@@ -138,11 +185,11 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		return allocation == Allocation.MADE;
 	}
 
-	// GL thread. Swaps the next build in once it is complete and returns
-	// it, or returns null.
+	// GL thread. Swaps the next build in once it is complete and still
+	// the newest request, and returns it, or returns null.
 	@Nullable
 	B swapIfComplete() {
-		if (next == null || !next.isComplete()) {
+		if (next() == null || !next.isComplete()) {
 			return null;
 		}
 		if (current != null) {
@@ -175,6 +222,21 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		return revision;
 	}
 
+	// GL thread. The current build lost its targets for good: it is
+	// released and nothing draws until a newer revision does.
+	void currentFailed() {
+		if (currentRevision != null) {
+			synchronized (this) {
+				end(currentRevision.number());
+			}
+		}
+		if (current != null) {
+			current.release();
+		}
+		current = null;
+		currentRevision = null;
+	}
+
 	@Nullable
 	B current() {
 		return current;
@@ -185,48 +247,37 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		return currentRevision;
 	}
 
+	// GL thread. The next build, or null; one that a newer request
+	// superseded is released.
 	@Nullable
 	B next() {
+		if (nextRevision != null && isSuperseded(nextRevision)) {
+			next.release();
+			next = null;
+			nextRevision = null;
+		}
 		return next;
 	}
 
 	// GL thread. Whether to report the outcome of this revision. An older
-	// build that replaces the picture after a newer revision failed does
-	// not take that failure off the screen.
-	boolean report(@NonNull Revision<S> revision) {
-		if (revision.number() < reported) {
+	// build that replaces the picture after a newer revision failed, or
+	// one that a newer request superseded, does not take that newer
+	// outcome off the screen.
+	synchronized boolean report(@NonNull Revision<S> revision) {
+		if (revision.number() < reported || superseded(revision)) {
 			return false;
 		}
 		reported = revision.number();
 		return true;
 	}
 
-	// GL thread. Whether this revision may still draw: it waits to be
-	// built, waits for its textures, or draws.
+	// GL thread. Whether this revision may still draw: it is the newest
+	// request and has not failed, or it draws, or it is built again
+	// after the context was lost.
 	synchronized boolean canDraw(int number) {
-		return is(pending, number) ||
-				is(nextRevision, number) ||
+		return (number == requested && number != ended) ||
 				is(currentRevision, number) ||
 				is(fallback, number);
-	}
-
-	// GL thread, after the surface changed. Returns the next build when
-	// it decoded for another size, so it decodes again. Without one, the
-	// current build is built again when it decoded for another size,
-	// unless a newer revision waits.
-	@Nullable
-	B resized(int width, int height) {
-		if (next != null) {
-			return next.fits(width, height) ? null : next;
-		}
-		if (current != null && !current.fits(width, height)) {
-			synchronized (this) {
-				if (pending == null) {
-					pending = currentRevision;
-				}
-			}
-		}
-		return null;
 	}
 
 	// After the context was lost. Its builds go with it, and the newest
@@ -248,6 +299,24 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		currentRevision = null;
 		if (pending == null) {
 			pending = taken;
+		}
+	}
+
+	private synchronized boolean isSuperseded(@NonNull Revision<S> revision) {
+		return superseded(revision);
+	}
+
+	// Guarded by this. The revision that drew last stays the one to
+	// build again until something newer draws.
+	private boolean superseded(@NonNull Revision<S> revision) {
+		return revision.number() < requested &&
+				!is(fallback, revision.number());
+	}
+
+	// Guarded by this.
+	private void end(int number) {
+		if (number == requested) {
+			ended = number;
 		}
 	}
 
