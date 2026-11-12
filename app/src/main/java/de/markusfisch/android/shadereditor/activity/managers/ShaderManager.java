@@ -244,23 +244,23 @@ public class ShaderManager {
 		});
 	}
 
-	public void handleSendText(@Nullable Intent intent) {
+	public boolean handleSendText(@Nullable Intent intent) {
 		if (intent == null || intent.getAction() == null) {
-			return;
+			return false;
 		}
 		if (!Intent.ACTION_SEND.equals(intent.getAction()) &&
 				!Intent.ACTION_VIEW.equals(intent.getAction())) {
-			return;
+			return false;
 		}
 
 		Uri uri = intent.getData();
 		if (uri == null) {
-			return;
+			return false;
 		}
 
 		try (InputStream in = activity.getContentResolver().openInputStream(uri)) {
 			if (in == null) {
-				return;
+				return false;
 			}
 			byte[] buffer = new byte[4096];
 			int len;
@@ -277,9 +277,11 @@ public class ShaderManager {
 					projectSession,
 					projectSession.getProject().getTitle());
 			setModified(true);
+			return true;
 		} catch (IOException e) {
 			Toast.makeText(activity, R.string.unsuitable_text,
 					Toast.LENGTH_SHORT).show();
+			return false;
 		}
 	}
 

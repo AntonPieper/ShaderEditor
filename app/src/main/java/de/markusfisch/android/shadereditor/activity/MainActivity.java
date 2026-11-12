@@ -110,16 +110,10 @@ public class MainActivity extends AppCompatActivity {
 				v -> uiManager.toggleCodeVisibility(),
 				v -> editorFragment.showErrors());
 
-		shaderManager.handleSendText(getIntent());
-
-		if (state == null) {
-			Intent intent = getIntent();
-			String action = intent != null ? intent.getAction() : null;
-			if (!Intent.ACTION_SEND.equals(action) &&
-					!Intent.ACTION_VIEW.equals(action)) {
-				isInitialLoad = true;
-			}
-		}
+		// Only load the last shader when no incoming text was opened,
+		// or it would replace that text.
+		boolean openedText = shaderManager.handleSendText(getIntent());
+		isInitialLoad = state == null && !openedText;
 
 		editorFragment.setOnEditPausedListener(text -> {
 			if (ShaderEditorApp.preferences.doesRunOnChange()) {
