@@ -177,6 +177,44 @@ public class TextInputTest {
 	}
 
 	@Test
+	public void deleteOfNothingInsideAPairDeletesNothing() {
+		open(PAIR);
+		input.setSelection(1, 1);
+		assertTrue(input.deleteSurroundingText(0, 0));
+		assertEquals(PAIR, document.text().toString());
+	}
+
+	@Test
+	public void deleteFromInsideAPairDeletesNothing() {
+		open("a" + PAIR + "b");
+		input.setSelection(2, 2);
+		input.deleteSurroundingText(1, 0);
+		input.deleteSurroundingText(0, 1);
+		input.setComposingRegion(2, 4);
+		input.setSelection(4, 4);
+		input.deleteSurroundingText(1, 1);
+		assertEquals("a" + PAIR + "b", document.text().toString());
+	}
+
+	@Test
+	public void deleteInCodePointsOfHalfAPairDeletesNothing() {
+		open("a\uD800|b");
+		assertTrue(input.deleteSurroundingTextInCodePoints(1, 1));
+		assertMarked("a\uD800|b");
+		open("a|\uDC00b");
+		input.deleteSurroundingTextInCodePoints(1, 1);
+		assertMarked("a|\uDC00b");
+	}
+
+	@Test
+	public void longDeleteInCodePointsCountsPairsAcrossItsReads() {
+		String pairs = PAIR.repeat(3000);
+		open("x" + pairs + "a|b" + pairs + "y");
+		input.deleteSurroundingTextInCodePoints(3000, 3000);
+		assertMarked("x" + PAIR + "|" + PAIR + "y");
+	}
+
+	@Test
 	public void deleteInCodePointsCountsAPairAsOne() {
 		open("a" + PAIR + PAIR + "|" + PAIR + "b");
 		assertTrue(input.deleteSurroundingTextInCodePoints(2, 1));

@@ -38,6 +38,9 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
 public final class TextInput {
 	public static final int MAX_READ = 4096;
 
+	// A delete counting code points reads the text in pieces this long.
+	private static final int PIECE = 1024;
+
 	public interface Listener {
 		/**
 		 * Pass on to InputMethodManager.updateSelection; -1 means there
@@ -189,13 +192,18 @@ public final class TextInput {
 
 	/**
 	 * Delete before characters before and after characters behind the
-	 * selection and the composing region, never half a surrogate pair.
+	 * selection and the composing region, never half a surrogate pair:
+	 * a range that ends inside a pair takes all of it, and if one would
+	 * start inside a pair, nothing is deleted.
 	 */
 	public boolean deleteSurroundingText(int before, int after) {
 		return delete("deleteSurroundingText", before, after, false);
 	}
 
-	/** Delete as deleteSurroundingText does, counting code points. */
+	/**
+	 * Delete as deleteSurroundingText does, counting code points. As on
+	 * Android, nothing is deleted if either range holds half a pair.
+	 */
 	public boolean deleteSurroundingTextInCodePoints(int before, int after) {
 		return delete("deleteSurroundingTextInCodePoints", before, after,
 				true);
@@ -407,8 +415,16 @@ public final class TextInput {
 			start = Math.min(start, composingStart);
 			end = Math.max(end, composingEnd);
 		}
-		erase(end, ahead(end, after, codePoints));
-		erase(back(start, before, codePoints), start);
+		int from = codePoints
+				? backInCodePoints(start, before)
+				: back(start, before);
+		int to = codePoints
+				? aheadInCodePoints(end, after)
+				: ahead(end, after);
+		if (from > -1 && to > -1) {
+			erase(end, to);
+			erase(from, start);
+		}
 		return done(name, before, after);
 	}
 
@@ -422,30 +438,93 @@ public final class TextInput {
 		}
 	}
 
-	// Returns the offset count characters, or code points, before offset.
-	private int back(int offset, int count, boolean codePoints) {
-		int n = clamp(count, offset);
-		if (codePoints && n > 0) {
-			int max = (int) Math.min(2L * n, offset);
-			String s = document.text().substring(offset - max, offset);
-			n = max - s.offsetByCodePoints(max,
-					-Math.min(n, s.codePointCount(0, max)));
+	// Returns the offset count characters before offset, taking a whole
+	// pair at the far end, or -1 if offset splits one.
+	private int back(int offset, int count) {
+		if (count <= 0) {
+			return offset;
 		}
-		int from = offset - n;
+		if (splits(offset)) {
+			return -1;
+		}
+		int from = offset - Math.min(count, offset);
 		return splits(from) ? from - 1 : from;
 	}
 
-	// Returns the offset count characters, or code points, behind offset.
-	private int ahead(int offset, int count, boolean codePoints) {
-		int length = document.text().length();
-		int n = clamp(count, length - offset);
-		if (codePoints && n > 0) {
-			int max = (int) Math.min(2L * n, length - offset);
-			String s = document.text().substring(offset, offset + max);
-			n = s.offsetByCodePoints(0, Math.min(n, s.codePointCount(0, max)));
+	// Returns the offset count characters behind offset, taking a whole
+	// pair at the far end, or -1 if offset splits one.
+	private int ahead(int offset, int count) {
+		if (count <= 0) {
+			return offset;
 		}
-		int to = offset + n;
+		if (splits(offset)) {
+			return -1;
+		}
+		int to = offset + Math.min(count, document.text().length() - offset);
 		return splits(to) ? to + 1 : to;
+	}
+
+	// Returns the offset count code points before offset, or -1 if the
+	// range holds half a surrogate pair, as Android's findIndexBackward.
+	private int backInCodePoints(int offset, int count) {
+		Text text = document.text();
+		boolean low = false;
+		int i = offset;
+		while (count > 0) {
+			if (i == 0) {
+				return low ? -1 : 0;
+			}
+			String piece = text.substring(Math.max(0, i - PIECE), i);
+			for (int j = piece.length(); j-- > 0 && count > 0; --i) {
+				char c = piece.charAt(j);
+				if (low) {
+					if (!Character.isHighSurrogate(c)) {
+						return -1;
+					}
+					low = false;
+					--count;
+				} else if (Character.isHighSurrogate(c)) {
+					return -1;
+				} else if (Character.isLowSurrogate(c)) {
+					low = true;
+				} else {
+					--count;
+				}
+			}
+		}
+		return i;
+	}
+
+	// Returns the offset count code points behind offset, or -1 if the
+	// range holds half a surrogate pair, as Android's findIndexForward.
+	private int aheadInCodePoints(int offset, int count) {
+		Text text = document.text();
+		int length = text.length();
+		boolean high = false;
+		int i = offset;
+		while (count > 0) {
+			if (i == length) {
+				return high ? -1 : length;
+			}
+			String piece = text.substring(i, i + Math.min(PIECE, length - i));
+			for (int j = 0; j < piece.length() && count > 0; ++j, ++i) {
+				char c = piece.charAt(j);
+				if (high) {
+					if (!Character.isLowSurrogate(c)) {
+						return -1;
+					}
+					high = false;
+					--count;
+				} else if (Character.isLowSurrogate(c)) {
+					return -1;
+				} else if (Character.isHighSurrogate(c)) {
+					high = true;
+				} else {
+					--count;
+				}
+			}
+		}
+		return i;
 	}
 
 	// Returns whether offset is between the halves of a surrogate pair.
