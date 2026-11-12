@@ -259,7 +259,7 @@ public class DocumentHistoryTest {
 		assertFalse(document.isModified());
 		type(document, "ab");
 		assertTrue(document.isModified());
-		document.markSaved(document.text());
+		document.markSaved(document.state());
 		assertFalse(document.isModified());
 		type(document, "c");
 		assertTrue(document.isModified());
@@ -278,7 +278,7 @@ public class DocumentHistoryTest {
 	public void savedPointLostWithTheRedoSteps() {
 		Document document = document("");
 		type(document, "a");
-		document.markSaved(document.text());
+		document.markSaved(document.state());
 		document.undo();
 		type(document, "b");
 		assertTrue(document.isModified());
@@ -290,21 +290,34 @@ public class DocumentHistoryTest {
 	public void savingAnOlderTextLeavesTheDocumentModified() {
 		Document document = document("");
 		type(document, "a");
-		Text saving = document.text();
+		int saving = document.state();
 		type(document, "b");
 		document.markSaved(saving);
 		assertTrue(document.isModified());
 		document.undo();
 		assertTrue(document.isModified());
 		document.redo();
-		document.markSaved(document.text());
+		document.markSaved(document.state());
+		assertFalse(document.isModified());
+	}
+
+	@Test
+	public void undoToATextSavedWhileEditingIsUnmodified() {
+		Document document = document("a");
+		document.select(1, 1);
+		type(document, "b");
+		int saving = document.state();
+		document.replace(2, 2, Text.of("c"));
+		document.markSaved(saving);
+		document.undo();
+		assertEquals("ab", document.text().toString());
 		assertFalse(document.isModified());
 	}
 
 	@Test
 	public void restoredDraftIsModified() {
 		Document document = document("draft");
-		document.markSaved(Text.of("stored"));
+		document.markSaved(-1);
 		assertTrue(document.isModified());
 	}
 
@@ -353,7 +366,7 @@ public class DocumentHistoryTest {
 	@Test
 	public void savedPointDroppedFromTheStartOfHistory() {
 		Document document = document("");
-		document.markSaved(document.text());
+		document.markSaved(document.state());
 		for (int i = 0; i < 1001; ++i) {
 			document.replace(i, i, Text.of("x"));
 		}
@@ -368,7 +381,7 @@ public class DocumentHistoryTest {
 	public void savedStepBecomesTheStartOfHistory() {
 		Document document = document("");
 		document.replace(0, 0, Text.of("x"));
-		document.markSaved(document.text());
+		document.markSaved(document.state());
 		for (int i = 1; i <= 1000; ++i) {
 			document.replace(i, i, Text.of("x"));
 		}
