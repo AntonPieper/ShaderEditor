@@ -228,8 +228,8 @@ About forty such cases cover ordinary code and every input of section 1, with th
 | L11 | `Outline`, and declared type names coloured everywhere | User types are coloured consistently (defect 10) | JVM | After L8 |
 | L12 ★ | Completion offers the file's own functions, globals, macros and types | As stated | JVM | After L11 |
 | L13 | Measure typing, scrolling and deleting with a 5,000-line shader on the emulator and a real device, before and after L5 | Nothing | A written measurement | After L5 |
-| L14 ★ | Colour only the visible lines; draw only visible line numbers | Large shaders stay responsive | Measurement repeated | After L13, if it confirms the cause |
-| L15 ★ | Colours update as tokens arrive; the update delay no longer applies to highlighting | Colours follow typing | Real device, several keyboards | After L14 |
+| L14 | Superseded by EDITOR.md: colouring only visible lines is a property of the new editor view, not built on the old widget | — | — | — |
+| L15 | Superseded by EDITOR.md: colours follow typing in the new editor view | — | — | — |
 
 Notes:
 
