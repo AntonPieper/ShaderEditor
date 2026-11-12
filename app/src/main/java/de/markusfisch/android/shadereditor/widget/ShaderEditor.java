@@ -67,7 +67,7 @@ public class ShaderEditor extends LineNumberEditText {
 	private static final ArrayList<String> DEFAULT_COMPLETIONS = new ArrayList<>();
 	private static final Tokens NO_TOKENS = GlslLexer.lex("");
 	private static final Analysis NO_ANALYSIS = new Analysis(NO_TOKENS,
-			Outline.of(NO_TOKENS, ""));
+			Outline.of(NO_TOKENS, ""), null);
 	private static final List<String> BUILTIN_UNIFORMS = new ArrayList<>();
 
 	static {
@@ -87,9 +87,15 @@ public class ShaderEditor extends LineNumberEditText {
 	private final int[] colors = new int[Style.values().length];
 	private final TokenListUpdater tokenListUpdater = new TokenListUpdater(
 			(tokenRevision, analysis, text) -> post(() -> {
-				if (tokenRevision == revision) {
-					provideCompletions(analysis, text);
+				if (tokenRevision != revision) {
+					return;
 				}
+				if (analysis.shaderToyConversion() != null) {
+					// An edit made this a ShaderToy shader.
+					setTextHighlighted(analysis.shaderToyConversion());
+					return;
+				}
+				provideCompletions(analysis, text);
 			}));
 	private final Runnable updateRunnable = new Runnable() {
 		@Override
@@ -280,6 +286,11 @@ public class ShaderEditor extends LineNumberEditText {
 		cancelUpdate();
 
 		shaderErrors = Collections.emptyList();
+
+		String converted = convertShaderToySource(text.toString());
+		if (converted != null) {
+			text = converted;
+		}
 
 		isUserInteraction = false;
 
@@ -494,15 +505,8 @@ public class ShaderEditor extends LineNumberEditText {
 				cancelUpdate();
 				convertTabs(e, start, count);
 
-				String converted = convertShaderToySource(e.toString());
-				if (converted != null) {
-					// This replaces the text: e is stale from here on,
-					// and the new text is already tokenized and announced.
-					setTextHighlighted(converted);
-					isApplyingEdit = false;
-					return;
-				}
-
+				// Whether an edit made this a ShaderToy shader is checked
+				// on the tokenizer thread, which has a copy of the text.
 				if (!isUserInteraction) {
 					isApplyingEdit = false;
 					return;
@@ -615,9 +619,16 @@ public class ShaderEditor extends LineNumberEditText {
 
 		// When pasting text from other apps, e.g. Github Mobile code
 		// viewer, the text can be tainted with No-Break Space (U+00A0)
-		// characters.
-		for (Matcher m = PATTERN_NO_BREAK_SPACE.matcher(e); m.find(); ) {
-			e.replace(m.start(), m.end(), " ");
+		// characters. A new text is clean (colourAll()), so only what
+		// was edited since can hold one. The replacement keeps the
+		// length, so the edited range stays where it is.
+		if (!editedRange.isEmpty()) {
+			Matcher m = PATTERN_NO_BREAK_SPACE.matcher(e);
+			m.region(Math.max(0, editedRange.start()),
+					Math.min(length, editedRange.end()));
+			while (m.find()) {
+				e.replace(m.start(), m.end(), " ");
+			}
 		}
 
 		if (ShaderEditorApp.preferences.disableHighlighting() &&
@@ -845,7 +856,12 @@ public class ShaderEditor extends LineNumberEditText {
 		void onTokens(int revision, @NonNull Analysis analysis, @NonNull CharSequence text);
 	}
 
-	record Analysis(@NonNull Tokens tokens, @NonNull Outline outline) {
+	/**
+	 * @param shaderToyConversion the text converted from ShaderToy, or
+	 *                            null if it needs no conversion
+	 */
+	record Analysis(@NonNull Tokens tokens, @NonNull Outline outline,
+			@Nullable String shaderToyConversion) {
 	}
 
 	/**
@@ -929,7 +945,8 @@ public class ShaderEditor extends LineNumberEditText {
 			Tokens tokens = GlslLexer.lex(text);
 			Outline outline = Outline.of(tokens, text);
 			Analysis analysis = new Analysis(
-					outline.colourTypes(tokens, text), outline);
+					outline.colourTypes(tokens, text), outline,
+					convertShaderToySource(text));
 			onTokenized.onTokens(revision, analysis, text);
 			return analysis;
 		}
