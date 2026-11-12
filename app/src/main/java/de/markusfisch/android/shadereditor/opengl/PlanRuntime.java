@@ -3,7 +3,6 @@ package de.markusfisch.android.shadereditor.opengl;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.opengl.GLES11Ext;
-import android.opengl.GLES30;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -12,7 +11,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -31,14 +29,13 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 // one cannot be; it owns its GL objects, its target among them, and is
 // built again from the plan in a new context.
 final class PlanRuntime implements EngineBuild {
-	@NonNull
-	private final GlProgram program;
-	private final float fTimeMax;
 	private final float quality;
 	@NonNull
 	private final GlDevice device;
 	@NonNull
 	private final Preparation preparation;
+	@NonNull
+	private final PlanPass running;
 	@NonNull
 	private final RenderPlan.Pass pass;
 	@NonNull
@@ -59,11 +56,6 @@ final class PlanRuntime implements EngineBuild {
 			new TextureHandOver<>();
 	@Nullable
 	private final ShaderTextureResources.SamplerTextureBinding camera;
-	// Per image and per history binding on a GLES3 context, else null.
-	@Nullable
-	private int[] samplers;
-	@Nullable
-	private int[] historySamplers;
 	@Nullable
 	private PassTarget target;
 	// Whether the target was made since the last frame.
@@ -74,24 +66,21 @@ final class PlanRuntime implements EngineBuild {
 	private PlanRuntime(
 			@NonNull GlDevice device,
 			@NonNull PlanShader shader,
-			@NonNull GlProgram program,
-			float fTimeMax,
+			@NonNull PlanPass running,
 			int glesVersion) {
 		this.device = device;
 		this.preparation = shader.preparation();
 		this.quality = shader.quality();
-		this.program = program;
-		this.fTimeMax = fTimeMax;
+		this.running = running;
 		this.glesVersion = glesVersion;
-		var plan = preparation.plan();
-		pass = plan.passes().get(plan.output());
-		bindings = PlanBindings.of(pass, plan.output(), program.getSamplers());
+		pass = running.pass;
+		bindings = running.bindings;
 		history = pass.history() || !bindings.history.isEmpty();
 		var present = pass.target().present();
 		presentSampling = new Sampling(present, present, Mipmap.NONE,
 				Wrap.CLAMP, Wrap.CLAMP);
 		warnings.addAll(preparation.diagnostics());
-		warnings.addAll(bindings.warnings);
+		warnings.addAll(running.warnings);
 		var sampler = bindings.camera;
 		if (sampler != null) {
 			var texture = device.createExternalTexture();
@@ -125,37 +114,19 @@ final class PlanRuntime implements EngineBuild {
 			errors.addAll(refusals);
 			return null;
 		}
-		var pass = plan.passes().get(plan.output());
-		var source = PlanSource.of(plan.programs().get(pass.program()),
-				glesVersion, reasons);
-		if (source == null) {
+		var running = PlanPass.link(device, plan, plan.output(), glesVersion,
+				reasons);
+		if (running == null) {
 			errors.addAll(reasons);
 			return null;
 		}
-		var lineMapping = ShaderLineMapping.withSourceMap(source.sourceMap());
-		var result = device.createProgram(source.vertex(), source.fragment(),
-				lineMapping);
-		if (!result.succeeded() || result.getProgram() == null) {
-			errors.addAll(reasons);
-			errors.addAll(result.getInfoLog());
-			return null;
-		}
-		var runtime = new PlanRuntime(device, shader, result.getProgram(),
-				source.fTimeMax(), glesVersion);
-		var inputs = new HashSet<String>();
-		for (var input : pass.inputs()) {
-			inputs.add(input.uniform());
-		}
-		runtime.warnings.addAll(UniformWarnings.check(
-				result.getProgram().getUniforms().values(), inputs,
-				UniformWarnings.ADD_INPUT, source.fragment(), lineMapping));
-		return runtime;
+		return new PlanRuntime(device, shader, running, glesVersion);
 	}
 
 	@NonNull
 	@Override
 	public GlProgram program() {
-		return program;
+		return running.program;
 	}
 
 	@Override
@@ -165,7 +136,7 @@ final class PlanRuntime implements EngineBuild {
 
 	@Override
 	public float fTimeMax() {
-		return fTimeMax;
+		return running.fTimeMax;
 	}
 
 	// Its images do not depend on the render size.
@@ -257,7 +228,7 @@ final class PlanRuntime implements EngineBuild {
 			return null;
 		}
 		if (glesVersion >= 3) {
-			createSamplers();
+			running.createSamplers();
 		}
 		complete = true;
 		return null;
@@ -352,7 +323,7 @@ final class PlanRuntime implements EngineBuild {
 	@Override
 	public void release() {
 		decoded.cancel();
-		device.deleteProgram(program);
+		running.release();
 		for (var texture : textures.values()) {
 			device.deleteTexture(texture);
 		}
@@ -361,12 +332,6 @@ final class PlanRuntime implements EngineBuild {
 			device.deleteTexture(camera.texture());
 			camera.setTexture(null);
 		}
-		if (samplers != null && historySamplers != null) {
-			GLES30.glDeleteSamplers(samplers.length, samplers, 0);
-			GLES30.glDeleteSamplers(historySamplers.length, historySamplers, 0);
-		}
-		samplers = null;
-		historySamplers = null;
 		if (target != null) {
 			target.release();
 			target = null;
@@ -376,7 +341,7 @@ final class PlanRuntime implements EngineBuild {
 	@Override
 	public void discard() {
 		decoded.cancel();
-		program.invalidate();
+		running.discard();
 		for (var texture : textures.values()) {
 			texture.invalidate();
 		}
@@ -384,16 +349,13 @@ final class PlanRuntime implements EngineBuild {
 		if (camera != null) {
 			camera.setTexture(null);
 		}
-		samplers = null;
-		historySamplers = null;
 		if (target != null) {
 			target.discard();
 			target = null;
 		}
 	}
 
-	// Binds what each input reads, sampled as it asks, and the previous
-	// frame, with resolution and pixel positions in the target's size.
+	// With resolution and pixel positions in the target's size.
 	private void drawPass(
 			@NonNull PassTarget target,
 			@NonNull ActiveBuiltins builtins,
@@ -401,46 +363,10 @@ final class PlanRuntime implements EngineBuild {
 			long now) {
 		passFrame.scale(frame, target.size().width(), target.size().height());
 		builtins.write(passFrame, now);
-		device.bindEmptyTextures(program);
-		var images = bindings.images;
-		for (int i = 0; i < images.size(); ++i) {
-			var binding = images.get(i);
-			var texture = textures.get(binding.texture());
-			int unit = binding.sampler().unit();
-			if (texture == null) {
-				continue;
-			} else if (samplers != null) {
-				device.bindTexture(unit, texture);
-				GLES30.glBindSampler(unit, samplers[i]);
-			} else {
-				device.applySampling(unit, texture, binding.sampling());
-			}
-		}
-		var previous = bindings.history;
-		for (int i = 0; i < previous.size(); ++i) {
-			var binding = previous.get(i);
-			int unit = binding.sampler().unit();
-			if (historySamplers != null) {
-				device.bindTexture(unit, target.completed());
-				GLES30.glBindSampler(unit, historySamplers[i]);
-			} else {
-				device.applySampling(unit, target.completed(),
-						binding.sampling());
-			}
-		}
-		if (camera != null && bindings.camera != null) {
-			device.bindTexture(bindings.camera.unit(), camera.texture());
-		}
-		device.useProgram(program);
+		running.bind(textures, camera != null ? camera.texture() : null,
+				target.completed());
 		quad.draw();
-		if (samplers != null) {
-			for (var binding : images) {
-				GLES30.glBindSampler(binding.sampler().unit(), 0);
-			}
-			for (var binding : previous) {
-				GLES30.glBindSampler(binding.sampler().unit(), 0);
-			}
-		}
+		running.unbind();
 	}
 
 	// Cuts the faces out of the strip one at a time, so only one face is
@@ -460,32 +386,5 @@ final class PlanRuntime implements EngineBuild {
 			}
 		}
 		return null;
-	}
-
-	private void createSamplers() {
-		var images = bindings.images;
-		samplers = new int[images.size()];
-		for (int i = 0; i < samplers.length; ++i) {
-			samplers[i] = createSampler(images.get(i).sampling());
-		}
-		var previous = bindings.history;
-		historySamplers = new int[previous.size()];
-		for (int i = 0; i < historySamplers.length; ++i) {
-			historySamplers[i] = createSampler(previous.get(i).sampling());
-		}
-	}
-
-	private static int createSampler(@NonNull Sampling sampling) {
-		int[] sampler = new int[1];
-		GLES30.glGenSamplers(1, sampler, 0);
-		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MIN_FILTER,
-				GlSampling.minFilter(sampling));
-		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MAG_FILTER,
-				GlSampling.magFilter(sampling));
-		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_WRAP_S,
-				GlSampling.wrap(sampling.wrapS()));
-		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_WRAP_T,
-				GlSampling.wrap(sampling.wrapT()));
-		return sampler[0];
 	}
 }
