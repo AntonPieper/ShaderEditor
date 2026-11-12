@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -47,16 +48,24 @@ public class ErrorAdapter extends ListAdapter<ProjectDiagnostic, ErrorAdapter.Vi
 	}
 
 	public static class ViewHolder extends RecyclerView.ViewHolder {
+		ImageView errorSeverity;
 		TextView errorLine;
 		TextView errorMessage;
 
 		public ViewHolder(@NonNull View itemView) {
 			super(itemView);
+			errorSeverity = itemView.findViewById(R.id.error_severity);
 			errorLine = itemView.findViewById(R.id.error_line);
 			errorMessage = itemView.findViewById(R.id.error_message);
 		}
 
 		public void update(@NonNull ProjectDiagnostic error, ErrorAdapter.OnItemClickListener listener) {
+			boolean warning = error.severity() == ProjectDiagnostic.Severity.WARNING;
+			errorSeverity.setImageResource(warning
+					? R.drawable.ic_warning
+					: R.drawable.ic_error);
+			errorSeverity.setContentDescription(itemView.getContext().getString(
+					warning ? R.string.warning : R.string.error));
 			String location = error.location();
 			if (!location.isEmpty()) {
 				errorLine.setText(String.format(Locale.getDefault(), "%s: ", location));

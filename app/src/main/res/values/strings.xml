@@ -30,6 +30,9 @@
 	<string name="pick_live_wallpaper_manually">You need to pick this app as Live Wallpaper first</string>
 	<string name="menu_btn">More options</string>
 	<string name="show_errors">Show errors</string>
+	<string name="error">Error</string>
+	<string name="warning">Warning</string>
+	<string name="warning_message">Warning: %1$s</string>
 	<string name="shader_saved">Shader saved</string>
 	<string name="shader_disabled_after_crash">The previous shader crashed Shader Editor and was commented out.</string>
 

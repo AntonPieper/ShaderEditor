@@ -118,6 +118,7 @@ public class ShaderEditor extends LineNumberEditText {
 	private List<ProjectDiagnostic> shaderErrors = Collections.emptyList();
 	private boolean isUserInteraction = true;
 	private int colorError;
+	private int colorWarning;
 	private int textColor;
 	private int tabWidthInCharacters = 0;
 	private int tabWidth = 0;
@@ -203,7 +204,7 @@ public class ShaderEditor extends LineNumberEditText {
 	}
 
 	public boolean hasErrors() {
-		return !shaderErrors.isEmpty();
+		return ProjectDiagnostic.anyError(shaderErrors);
 	}
 
 	public List<ProjectDiagnostic> getErrors() {
@@ -241,7 +242,10 @@ public class ShaderEditor extends LineNumberEditText {
 				continue;
 			}
 			e.setSpan(
-					new BackgroundColorSpan(colorError),
+					new BackgroundColorSpan(shaderError.severity() ==
+							ProjectDiagnostic.Severity.WARNING
+							? colorWarning
+							: colorError),
 					layout.getLineStart(line),
 					layout.getLineEnd(line),
 					Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -528,6 +532,9 @@ public class ShaderEditor extends LineNumberEditText {
 		colorError = ContextCompat.getColor(
 				context,
 				R.color.syntax_error);
+		colorWarning = ContextCompat.getColor(
+				context,
+				R.color.syntax_warning);
 	}
 
 	private void cancelUpdate() {

@@ -94,7 +94,7 @@ public class PreviewActivity extends AppCompatActivity {
 					public void onDiagnostics(@NonNull List<ProjectDiagnostic> infoLog) {
 						// Invoked from the GL thread.
 						renderStatus.infoLog = infoLog;
-						if (!infoLog.isEmpty()) {
+						if (ProjectDiagnostic.anyError(infoLog)) {
 							runOnUiThread(finishRunnable);
 						}
 					}
