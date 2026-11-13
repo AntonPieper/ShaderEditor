@@ -16,8 +16,7 @@
 	<color name="crop_bound">#8fff</color>
 	<color name="cube_face_selected">#ffff</color>
 	<color name="cube_face_text">#fff</color>
-	<!-- The fixed scheme of the project-mode UI; read through the
-	theme overlay, never by name. -->
+	<!-- The fixed scheme; read through the theme, never by name. -->
 	<color name="se_surface">#121316</color>
 	<color name="se_surface_1">#1a1b20</color>
 	<color name="se_surface_2">#1f2126</color>

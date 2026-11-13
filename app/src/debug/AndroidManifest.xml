@@ -8,13 +8,13 @@
 			android:exported="true"
 			android:launchMode="singleTask"
 			android:label="@string/preview"
-			android:theme="@style/PreviewTheme"/>
+			android:theme="@style/Theme.ShaderEditor.Preview"/>
 		<!-- Development harness for the new editor view. -->
 		<activity
 			android:name=".activity.CodeViewActivity"
 			android:exported="true"
 			android:launchMode="singleTask"
-			android:theme="@style/AppTheme"
+			android:theme="@style/Theme.ShaderEditor"
 			android:windowSoftInputMode="adjustResize"/>
 	</application>
 </manifest>
