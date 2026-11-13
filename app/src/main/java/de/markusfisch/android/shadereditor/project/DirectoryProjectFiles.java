@@ -1,11 +1,16 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.security.DigestOutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
@@ -99,6 +104,12 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 	@Override
 	public Change write(ProjectPath path, byte[] bytes,
 			String expectedRevision) {
+		return write(path, out -> out.write(bytes), expectedRevision);
+	}
+
+	@Override
+	public Change write(ProjectPath path, Source source,
+			String expectedRevision) {
 		try {
 			String[] segments = segments(path);
 			File file = find(segments, segments.length);
@@ -118,8 +129,7 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 			String name = file != null
 					? file.getName()
 					: newName(folder, segments[segments.length - 1]);
-			replace(folder, name, bytes);
-			return new Done(revision(bytes));
+			return new Done(replace(folder, name, source));
 		} catch (IOException e) {
 			return refused(e);
 		}
@@ -267,17 +277,29 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 		return name;
 	}
 
-	private static void replace(File folder, String name, byte[] bytes)
+	// Replace name in folder with what source writes and return the
+	// revision of it.
+	private static String replace(File folder, String name, Source source)
 			throws IOException {
+		MessageDigest digest;
+		try {
+			digest = MessageDigest.getInstance("SHA-256");
+		} catch (NoSuchAlgorithmException e) {
+			throw new IOException("SHA-256 is not available");
+		}
 		File temp = File.createTempFile(".shadereditor-", ".tmp", folder);
 		try {
-			try (FileOutputStream out = new FileOutputStream(temp)) {
-				out.write(bytes);
-				out.getFD().sync();
+			try (FileOutputStream file = new FileOutputStream(temp)) {
+				OutputStream out = new DigestOutputStream(
+						new BufferedOutputStream(file), digest);
+				source.writeTo(out);
+				out.flush();
+				file.getFD().sync();
 			}
 			if (!temp.renameTo(new File(folder, name))) {
 				throw new Problem(Refusal.FAILED, "cannot replace " + name);
 			}
+			return StoredFiles.revision(digest);
 		} finally {
 			if (temp.exists()) {
 				//noinspection ResultOfMethodCallIgnored

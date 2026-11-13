@@ -158,6 +158,25 @@ public class DirectoryProjectFilesTest {
 	}
 
 	@Test
+	public void streamsWhatASourceWrites() throws IOException {
+		put("main.glsl", "old");
+		Change change = files.write(path("main.glsl"), out -> {
+			for (int i = 0; i < 3; ++i) {
+				out.write(bytes("line " + i + "\n"));
+			}
+		}, revision("main.glsl"));
+		assertEquals(new Done(revision("main.glsl")), change);
+		assertEquals("line 0\nline 1\nline 2\n", read("main.glsl"));
+
+		assertRefused(Refusal.FAILED, files.write(path("main.glsl"), out -> {
+			out.write(bytes("half"));
+			throw new IOException("the text is gone");
+		}, revision("main.glsl")));
+		assertEquals("line 0\nline 1\nline 2\n", read("main.glsl"));
+		assertEquals(Set.of("main.glsl"), onDisk(""));
+	}
+
+	@Test
 	public void staleRevisionIsAConflictThatChangesNothing()
 			throws IOException {
 		put("main.glsl", "old");

@@ -1,5 +1,8 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 
 /**
@@ -95,6 +98,14 @@ public interface ProjectFiles {
 	record Refused(Refusal refusal, String reason) implements Change {
 	}
 
+	/**
+	 * Bytes to write, produced into a stream, so that a store that can
+	 * stream never holds all of them at once.
+	 */
+	interface Source {
+		void writeTo(OutputStream out) throws IOException;
+	}
+
 	enum Refusal {
 		/** The file is not at the revision the caller expected. */
 		CONFLICT,
@@ -148,6 +159,23 @@ public interface ProjectFiles {
 	default Change write(ProjectPath path, byte[] bytes,
 			String expectedRevision) {
 		return unsupported();
+	}
+
+	/**
+	 * Write the bytes source produces as
+	 * {@link #write(ProjectPath, byte[], String)} writes bytes. A store
+	 * that cannot stream collects them first; a source that throws
+	 * writes nothing and is refused as {@link Refusal#FAILED}.
+	 */
+	default Change write(ProjectPath path, Source source,
+			String expectedRevision) {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		try {
+			source.writeTo(out);
+		} catch (IOException e) {
+			return new Refused(Refusal.FAILED, e.getMessage());
+		}
+		return write(path, out.toByteArray(), expectedRevision);
 	}
 
 	/**
