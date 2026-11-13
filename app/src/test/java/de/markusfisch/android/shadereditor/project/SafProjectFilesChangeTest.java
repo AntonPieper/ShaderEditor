@@ -211,10 +211,31 @@ public class SafProjectFilesChangeTest {
 		String revision = revision("main.glsl");
 		documents.calls.clear();
 		assertEveryChangeUnsupported(revision);
+		assertRefused(Refusal.ABSENT, files.delete(path("absent")));
 		assertEquals("main", documents.text(main));
 		for (String call : documents.calls) {
-			assertEquals("document " + documents.root.id, call);
+			assertTrue(call, call.startsWith("document ") ||
+					call.startsWith("children ") || call.startsWith("read "));
 		}
+	}
+
+	@Test
+	public void aFileChangesAsItsFlagsOfferBelowARootThatOffersNothing() {
+		documents.root.flags = 0;
+		FakeDocuments.Node main = documents.put("main.glsl", "main");
+		documents.put("gone.glsl", "gone");
+		String revision = revision("main.glsl");
+
+		assertTrue(files.offers(path("main.glsl")).write());
+		assertTrue(files.write(path("main.glsl"), bytes("new"), revision)
+				instanceof Done);
+		assertEquals("new", documents.text(main));
+		assertTrue(files.rename(path("main.glsl"), path("renamed.glsl"))
+				instanceof Done);
+		assertTrue(files.delete(path("gone.glsl")) instanceof Done);
+		assertRefused(Refusal.UNSUPPORTED, files.write(path("new.glsl"),
+				bytes("x"), null));
+		assertRefused(Refusal.UNSUPPORTED, files.createFolder(path("a")));
 	}
 
 	@Test
@@ -224,6 +245,7 @@ public class SafProjectFilesChangeTest {
 		files = new SafProjectFiles(documents, documents.root.id, false);
 		documents.calls.clear();
 		assertEveryChangeUnsupported(revision);
+		assertRefused(Refusal.UNSUPPORTED, files.delete(path("absent")));
 		assertEquals(List.of(), documents.calls);
 		assertEquals("main", documents.text(main));
 		assertEquals("main", read("main.glsl"));
@@ -301,7 +323,6 @@ public class SafProjectFilesChangeTest {
 		assertRefused(Refusal.UNSUPPORTED, files.rename(main,
 				path("b.glsl")));
 		assertRefused(Refusal.UNSUPPORTED, files.delete(main));
-		assertRefused(Refusal.UNSUPPORTED, files.delete(path("absent")));
 	}
 
 	private String read(String path) {
