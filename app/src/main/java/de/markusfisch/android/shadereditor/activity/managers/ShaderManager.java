@@ -199,6 +199,7 @@ public class ShaderManager implements OpenItem {
 		selectedShaderId = savedInstanceState.getLong(
 				SELECTED_SHADER_ID, NO_SHADER);
 		title = savedInstanceState.getString(SELECTED_SHADER_TITLE, "");
+		shaderListManager.setSelectedShaderId(selectedShaderId);
 	}
 
 	public void selectShader(long id) {
