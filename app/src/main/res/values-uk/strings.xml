@@ -44,13 +44,12 @@
 	<string name="save_battery">Економія батареї</string>
 	<string name="save_battery_summary">Зупинити візуалізацію, коли заряд акумулятора низький</string>
 	<string name="sort_by_last_modification">Сортувати за датою останньої зміни</string>
-	<string name="sensors">Датчики</string>
 	<string name="sensor_delay">Затримка датчика</string>
 	<string name="no_shader_selected">Шейдер не вибрано</string>
 	<string name="shader">Шейдер</string>
-	<string name="editor">Редактор</string>
 	<string name="keyboard">Keyboard</string>
-	<string name="running_and_saving">Running and saving</string>
+	<string name="running">Запуск</string>
+	<string name="shaders">Шейдери</string>
 	<string name="run_mode">Режим запуску</string>
 	<string name="update_delay">Затримка оновлення</string>
 	<string name="text_size">Розмір тексту</string>
