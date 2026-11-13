@@ -32,6 +32,7 @@ public class UniformPresetPageFragment extends AddUniformPageFragment {
 
 		Activity activity = requireActivity();
 		listView = view.findViewById(R.id.uniforms);
+		layoutOnAttach(listView);
 		initListView(activity);
 
 		return view;
