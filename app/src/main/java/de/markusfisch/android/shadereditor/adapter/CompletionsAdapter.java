@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 
 public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.ViewHolder> {
 	@FunctionalInterface
@@ -57,6 +58,7 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 		public ViewHolder(@NonNull View itemView) {
 			super(itemView);
 			btn = itemView.findViewById(R.id.btn);
+			btn.setTypeface(ShaderEditorApp.preferences.getFont());
 			btn.setOnClickListener((v) -> {
 				CharSequence text = btn.getText();
 				onInsertListener.onInsert(text.subSequence(position, text.length()));
