@@ -30,4 +30,6 @@
 	<color name="se_accent_container">#244c72</color>
 	<color name="se_on_accent_container">#d6eaff</color>
 	<color name="se_error">#ff7b8a</color>
+	<!-- The bars over the picture: se_surface at 80 % -->
+	<color name="se_level_bar">#cc121316</color>
 </resources>

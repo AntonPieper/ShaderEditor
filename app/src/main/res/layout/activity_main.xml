@@ -54,7 +54,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="0dp"
 			android:layout_gravity="bottom"
-			android:background="@color/primary_translucent" />
+			android:background="@color/se_level_bar" />
 
 	</androidx.coordinatorlayout.widget.CoordinatorLayout>
 </merge>

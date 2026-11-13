@@ -4,7 +4,7 @@
 	android:id="@+id/extra_keys"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
-	android:background="@color/primary_translucent"
+	android:background="@color/se_level_bar"
 	android:clickable="true"
 	android:focusable="true"
 	android:orientation="horizontal"
