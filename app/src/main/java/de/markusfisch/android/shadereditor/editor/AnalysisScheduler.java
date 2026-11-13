@@ -8,6 +8,13 @@ import java.util.concurrent.Executor;
  * hands the result to the main thread, where it is delivered only if the
  * document is still at that revision. Everything but the analysis
  * itself runs on the main thread.
+ *
+ * One pass runs at a time, and after a pass that took d milliseconds
+ * the next one starts no sooner than {@link #SPACING} d after it ended,
+ * so analysis keeps the background thread busy for at most a ninth of
+ * the time while the user types, however long the text. A pass gives up
+ * at the next line once the document changes, since its result would be
+ * dropped. Once the changes stop, one more pass runs to the end.
  */
 public final class AnalysisScheduler {
 	/** The main thread: a Handler on Android. */
@@ -22,24 +29,38 @@ public final class AnalysisScheduler {
 		void onAnalysis(Analysis analysis);
 	}
 
+	/** Makes the analysis; Analysis::of but in tests. */
+	interface Pass {
+		Analysis run(Text text, int revision, Analysis previous,
+				Analysis.Cancel cancel);
+	}
+
+	static final int SPACING = 8;
+
 	private final Document document;
 	private final long delayMillis;
 	private final Executor background;
 	private final MainThread main;
 	private final Callback callback;
+	private final Document.Clock clock;
+	private final Pass pass;
 	private final Runnable start = this::start;
 	private final Document.Listener listener = new Document.Listener() {
 		@Override
 		public void onUpdate() {
 			if (document.revision() != scheduled) {
-				schedule(delayMillis);
+				wanted = -1;
+				changedAt = clock.millis();
+				schedule();
 			}
 		}
 	};
-	// The revision a background task should still analyse; a task
-	// queued behind a newer one skips its work.
+	// The revision the running pass should still analyse.
 	private volatile int wanted = -1;
 	private int scheduled;
+	private long changedAt;
+	private long idleUntil;
+	private boolean running;
 	private boolean closed;
 	private Analysis latest = Analysis.NONE;
 
@@ -49,13 +70,23 @@ public final class AnalysisScheduler {
 	 */
 	public AnalysisScheduler(Document document, long delayMillis,
 			Executor background, MainThread main, Callback callback) {
+		this(document, delayMillis, background, main, callback,
+				() -> System.nanoTime() / 1_000_000, Analysis::of);
+	}
+
+	AnalysisScheduler(Document document, long delayMillis,
+			Executor background, MainThread main, Callback callback,
+			Document.Clock clock, Pass pass) {
 		this.document = document;
 		this.delayMillis = delayMillis;
 		this.background = background;
 		this.main = main;
 		this.callback = callback;
+		this.clock = clock;
+		this.pass = pass;
 		document.addListener(listener);
-		schedule(0);
+		changedAt = clock.millis() - delayMillis;
+		schedule();
 	}
 
 	/**
@@ -74,10 +105,15 @@ public final class AnalysisScheduler {
 		document.removeListener(listener);
 	}
 
-	private void schedule(long delay) {
+	// Starts the next pass when the rule allows, or, while one runs,
+	// leaves that to finish.
+	private void schedule() {
 		scheduled = document.revision();
 		main.cancel(start);
-		main.post(start, delay);
+		if (!running) {
+			main.post(start, Math.max(0, Math.max(changedAt + delayMillis,
+					idleUntil) - clock.millis()));
+		}
 	}
 
 	private void start() {
@@ -85,19 +121,27 @@ public final class AnalysisScheduler {
 		int revision = document.revision();
 		Analysis previous = latest;
 		wanted = revision;
+		running = true;
 		background.execute(() -> {
-			if (revision != wanted) {
-				return;
-			}
-			Analysis analysis = Analysis.of(text, revision, previous);
-			main.post(() -> deliver(analysis), 0);
+			long begin = clock.millis();
+			Analysis analysis = pass.run(text, revision, previous,
+					() -> revision != wanted);
+			long took = clock.millis() - begin;
+			main.post(() -> finish(analysis, took), 0);
 		});
 	}
 
-	private void deliver(Analysis analysis) {
-		if (!closed && analysis.revision() == document.revision()) {
+	private void finish(Analysis analysis, long took) {
+		running = false;
+		if (closed) {
+			return;
+		}
+		idleUntil = clock.millis() + SPACING * took;
+		if (analysis != null && analysis.revision() == document.revision()) {
 			latest = analysis;
 			callback.onAnalysis(analysis);
+		} else {
+			schedule();
 		}
 	}
 }
