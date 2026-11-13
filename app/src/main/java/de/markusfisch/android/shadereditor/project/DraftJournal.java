@@ -1,7 +1,7 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,21 +37,30 @@ public final class DraftJournal {
 		this.dir = dir;
 	}
 
-	/** Keep the draft of path; return whether it was written. */
+	/**
+	 * Keep the draft of path, writing its text line by line; return
+	 * whether it was written.
+	 */
 	public boolean put(ProjectPath path, Draft draft) {
-		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-		try (DataOutputStream out = new DataOutputStream(bytes)) {
+		long length;
+		try {
+			length = TextBytes.length(draft.text());
+		} catch (IOException e) {
+			return false;
+		}
+		if (length > Integer.MAX_VALUE) {
+			return false;
+		}
+		return replace(dir, name(path), file -> {
+			DataOutputStream out = new DataOutputStream(file);
 			out.writeInt(MAGIC);
 			out.writeUTF(path.toString());
 			out.writeBoolean(draft.base() != null);
 			out.writeUTF(draft.base() != null ? draft.base() : "");
-			byte[] text = draft.bytes();
-			out.writeInt(text.length);
-			out.write(text);
-		} catch (IOException e) {
-			return false;
-		}
-		return replace(dir, name(path), bytes.toByteArray());
+			out.writeInt((int) length);
+			out.flush();
+			draft.writeTo(file);
+		});
 	}
 
 	/** Forget the draft of path; return whether none is kept now. */
@@ -117,15 +127,26 @@ public final class DraftJournal {
 	 * dir when it is missing. Return whether it was written.
 	 */
 	static boolean replace(File dir, String name, byte[] bytes) {
+		return replace(dir, name, out -> out.write(bytes));
+	}
+
+	/**
+	 * Replace the file name in dir with what source writes, as
+	 * {@link #replace(File, String, byte[])} does.
+	 */
+	static boolean replace(File dir, String name,
+			ProjectFiles.Source source) {
 		if (!dir.isDirectory() && !dir.mkdirs()) {
 			return false;
 		}
 		File temp = null;
 		try {
 			temp = File.createTempFile(".journal-", TEMP, dir);
-			try (FileOutputStream out = new FileOutputStream(temp)) {
-				out.write(bytes);
-				out.getFD().sync();
+			try (FileOutputStream file = new FileOutputStream(temp)) {
+				OutputStream out = new BufferedOutputStream(file);
+				source.writeTo(out);
+				out.flush();
+				file.getFD().sync();
 			}
 			return temp.renameTo(new File(dir, name));
 		} catch (IOException e) {

@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.DraftFiles.Draft;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Change;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Content;
@@ -96,7 +97,15 @@ public final class EditingSession {
 	 * when path has no draft yet. Return whether the draft was kept
 	 * durably; it is kept in memory either way.
 	 */
-	public synchronized boolean setDraft(ProjectPath path, String text,
+	public boolean setDraft(ProjectPath path, String text, String base) {
+		return setDraft(path, Text.of(text), base);
+	}
+
+	/**
+	 * Set the unsaved text of path as {@link #setDraft(ProjectPath,
+	 * String, String)} does; the journal writes it line by line.
+	 */
+	public synchronized boolean setDraft(ProjectPath path, Text text,
 			String base) {
 		Draft old = files.get(path);
 		return keep(path, new Draft(text, old != null ? old.base() : base));
@@ -134,7 +143,7 @@ public final class EditingSession {
 		for (Map.Entry<ProjectPath, Draft> entry : pending.entrySet()) {
 			Draft draft = entry.getValue();
 			outcomes.put(entry.getKey(), saved(entry.getKey(), draft,
-					files.store().write(entry.getKey(), draft.bytes(),
+					files.store().write(entry.getKey(), draft::writeTo,
 							draft.base())));
 		}
 		return outcomes;
@@ -205,7 +214,7 @@ public final class EditingSession {
 		if (draft == null) {
 			return new Failed("there are no edits of " + path);
 		}
-		Change change = files.store().write(to, draft.bytes(), null);
+		Change change = files.store().write(to, draft::writeTo, null);
 		if (!(change instanceof Done done)) {
 			return new Failed(((Refused) change).reason());
 		}

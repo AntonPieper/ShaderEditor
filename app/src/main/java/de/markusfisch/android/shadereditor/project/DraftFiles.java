@@ -1,11 +1,14 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 
 /**
@@ -17,17 +20,41 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 public final class DraftFiles implements ProjectFiles {
 	/**
 	 * Unsaved text of a file and the revision of the stored file it was
-	 * based on, null when the file is new.
+	 * based on, null when the file is new. Two drafts are equal when
+	 * their text reads the same and their base is the same.
 	 */
-	public record Draft(String text, String base) {
+	public record Draft(Text text, String base) {
 		public Draft {
 			if (text == null) {
 				throw new IllegalArgumentException("a draft needs text");
 			}
 		}
 
+		public Draft(String text, String base) {
+			this(text != null ? Text.of(text) : null, base);
+		}
+
 		public byte[] bytes() {
-			return text.getBytes(StandardCharsets.UTF_8);
+			return text.toString().getBytes(StandardCharsets.UTF_8);
+		}
+
+		/** Write the bytes of the text to out without making them all. */
+		public void writeTo(OutputStream out) throws IOException {
+			TextBytes.write(text, out);
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o instanceof Draft draft &&
+					text.toString().equals(draft.text.toString()) &&
+					(base == null ? draft.base == null
+							: base.equals(draft.base));
+		}
+
+		@Override
+		public int hashCode() {
+			return text.toString().hashCode() * 31 +
+					(base != null ? base.hashCode() : 0);
 		}
 	}
 

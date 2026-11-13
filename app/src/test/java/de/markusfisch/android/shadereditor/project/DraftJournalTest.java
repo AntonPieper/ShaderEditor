@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.DraftFiles.Draft;
 
 public class DraftJournalTest {
@@ -41,6 +42,23 @@ public class DraftJournalTest {
 						path("main.glsl"), new Draft(TEXT, "r1"),
 						path("lib/new.glsl"), new Draft("", null)),
 				new DraftJournal(dir).drafts());
+	}
+
+	@Test
+	public void writesTheTextOfADraftAndReadsItBack() {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 2000; ++i) {
+			sb.append("float caf\u00e9").append(i)
+					.append(" = 1.; // \ud83c\udf08\n");
+		}
+		sb.append("x".repeat(20000));
+		Text text = Text.of(sb);
+		assertTrue(journal.put(path("main.glsl"), new Draft(text, "r1")));
+
+		Draft draft = new DraftJournal(dir).drafts().get(path("main.glsl"));
+		assertEquals(sb.toString(), draft.text().toString());
+		assertEquals(text.lineCount(), draft.text().lineCount());
+		assertEquals("r1", draft.base());
 	}
 
 	@Test

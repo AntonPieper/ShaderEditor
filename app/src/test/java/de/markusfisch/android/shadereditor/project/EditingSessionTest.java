@@ -114,7 +114,8 @@ public class EditingSessionTest {
 
 		assertEquals(new Conflict("the file has changed"), outcome);
 		assertEquals("theirs", read("main.glsl"));
-		assertEquals("mine", session.draft(path("main.glsl")).text());
+		assertEquals("mine",
+				session.draft(path("main.glsl")).text().toString());
 		assertEquals(Set.of(path("main.glsl")),
 				session.conflicts().keySet());
 	}
@@ -235,7 +236,8 @@ public class EditingSessionTest {
 
 		assertTrue(session.saveCopy(path("main.glsl"),
 				path("taken.glsl")) instanceof Failed);
-		assertEquals("mine", session.draft(path("main.glsl")).text());
+		assertEquals("mine",
+				session.draft(path("main.glsl")).text().toString());
 		assertEquals("taken", read("taken.glsl"));
 
 		Outcome outcome = session.saveCopy(path("main.glsl"),
@@ -345,7 +347,7 @@ public class EditingSessionTest {
 				after.conflicts());
 		assertTrue(after.save().get(path("main.glsl")) instanceof Conflict);
 		assertEquals("theirs", read("main.glsl"));
-		assertEquals("mine", after.draft(path("main.glsl")).text());
+		assertEquals("mine", after.draft(path("main.glsl")).text().toString());
 	}
 
 	@Test
@@ -360,7 +362,7 @@ public class EditingSessionTest {
 		EditingSession after = open(store);
 
 		assertEquals(Set.of(path("main.glsl")), after.unsaved());
-		assertEquals("mine", after.draft(path("main.glsl")).text());
+		assertEquals("mine", after.draft(path("main.glsl")).text().toString());
 	}
 
 	private EditingSession conflicted(MemoryFiles store) {
