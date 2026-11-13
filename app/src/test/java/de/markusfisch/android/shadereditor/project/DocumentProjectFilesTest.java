@@ -96,6 +96,26 @@ public class DocumentProjectFilesTest {
 	}
 
 	@Test
+	public void aWriteThatFailsMidwayMayHaveChangedTheDocument() {
+		FakeDocuments failing = new FakeDocuments() {
+			@Override
+			public void write(String id, byte[] bytes)
+					throws java.io.IOException {
+				super.write(id, java.util.Arrays.copyOf(bytes, 2));
+				throw new java.io.IOException("full");
+			}
+		};
+		FakeDocuments.Node node = failing.put("wave.glsl", "ORIGINAL");
+		files = new DocumentProjectFiles(failing, node.id, node.name, true);
+		ProjectPath wave = files.getPath();
+		String seen = ((Content) files.read(wave)).revision();
+
+		assertRefused(Refusal.PARTIAL, files.write(wave, bytes("NEW TEXT"),
+				seen));
+		assertEquals("NE", failing.text(node));
+	}
+
+	@Test
 	public void changesBesideTheDocumentAreUnsupported() {
 		int count = documents.nodes.size();
 		assertRefused(Refusal.UNSUPPORTED, files.write(path("common.glsl"),

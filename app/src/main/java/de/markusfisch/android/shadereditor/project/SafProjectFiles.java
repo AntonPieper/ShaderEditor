@@ -201,7 +201,7 @@ public final class SafProjectFiles implements ProjectFiles {
 									? "the file exists"
 									: "the file has changed");
 				}
-				resolver.write(file.id(), bytes);
+				write(resolver, file.id(), bytes, LOST_FOLDER);
 			} else if (expectedRevision != null) {
 				throw new Problem(Refusal.CONFLICT, "the file was deleted");
 			} else {
@@ -211,7 +211,9 @@ public final class SafProjectFiles implements ProjectFiles {
 				try {
 					resolver.write(id, bytes);
 				} catch (IOException | RuntimeException e) {
-					deleteQuietly(id);
+					if (!deleteQuietly(id)) {
+						throw partial(e, LOST_FOLDER);
+					}
 					throw e;
 				}
 			}
@@ -317,6 +319,24 @@ public final class SafProjectFiles implements ProjectFiles {
 		}
 		return (e instanceof IOException ? "I/O error" : "the storage failed") +
 				(message != null ? ": " + message : "");
+	}
+
+	/**
+	 * Write bytes to document id; when that fails, the document may
+	 * hold part of them, which the problem thrown tells.
+	 */
+	static void write(DocumentResolver resolver, String id, byte[] bytes,
+			String lostAccess) throws Problem {
+		try {
+			resolver.write(id, bytes);
+		} catch (IOException | RuntimeException e) {
+			throw partial(e, lostAccess);
+		}
+	}
+
+	static Problem partial(Exception e, String lostAccess) {
+		return new Problem(Refusal.PARTIAL, "the file may be incomplete, " +
+				reason(e, lostAccess));
 	}
 
 	static Change refused(Exception e, String lostAccess) {
@@ -518,7 +538,9 @@ public final class SafProjectFiles implements ProjectFiles {
 		try {
 			expectName(created, name);
 		} catch (Problem e) {
-			deleteQuietly(created.id());
+			if (!deleteQuietly(created.id())) {
+				throw partial(e, LOST_FOLDER);
+			}
 			throw e;
 		}
 		return created;
@@ -534,11 +556,14 @@ public final class SafProjectFiles implements ProjectFiles {
 		}
 	}
 
-	private void deleteQuietly(String id) {
+	// Return whether the document is gone; the change is refused
+	// either way.
+	private boolean deleteQuietly(String id) {
 		try {
 			resolver.delete(id);
+			return true;
 		} catch (IOException | RuntimeException e) {
-			// Leave it; the change is refused either way.
+			return false;
 		}
 	}
 

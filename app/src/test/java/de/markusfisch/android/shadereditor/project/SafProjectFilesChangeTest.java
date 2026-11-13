@@ -300,6 +300,33 @@ public class SafProjectFilesChangeTest {
 	}
 
 	@Test
+	public void aWriteThatFailsMidwayMayHaveChangedTheFile() {
+		FakeDocuments failing = new FakeDocuments() {
+			@Override
+			public void write(String id, byte[] bytes)
+					throws java.io.IOException {
+				super.write(id, java.util.Arrays.copyOf(bytes, 2));
+				throw new java.io.IOException("full");
+			}
+
+			@Override
+			public void delete(String id) throws java.io.IOException {
+				throw new java.io.IOException("busy");
+			}
+		};
+		FakeDocuments.Node main = failing.put("main.glsl", "ORIGINAL");
+		files = new SafProjectFiles(failing, failing.root.id, true);
+		String revision = ((Content) files.read(path("main.glsl")))
+				.revision();
+
+		assertRefused(Refusal.PARTIAL, files.write(path("main.glsl"),
+				bytes("NEW TEXT"), revision));
+		assertEquals("NE", failing.text(main));
+		assertRefused(Refusal.PARTIAL, files.write(path("new.glsl"),
+				bytes("NEW TEXT"), null));
+	}
+
+	@Test
 	public void failedWriteOfANewFileLeavesNothing() {
 		FakeDocuments failing = new FakeDocuments() {
 			@Override

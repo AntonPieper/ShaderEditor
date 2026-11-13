@@ -122,7 +122,7 @@ public final class DocumentProjectFiles implements ProjectFiles {
 						? "the file exists"
 						: "the file has changed");
 			}
-			resolver.write(id, bytes);
+			SafProjectFiles.write(resolver, id, bytes, LOST_FILE);
 			return new Done(SafProjectFiles.revision(bytes));
 		} catch (IOException | RuntimeException e) {
 			return SafProjectFiles.refused(e, LOST_FILE);
