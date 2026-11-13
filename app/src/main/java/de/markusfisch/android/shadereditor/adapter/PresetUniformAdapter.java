@@ -1,6 +1,9 @@
 package de.markusfisch.android.shadereditor.adapter;
 
 import android.content.Context;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +14,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
+
+import com.google.android.material.color.MaterialColors;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,6 +51,7 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 	}
 
 	private final String uniformFormat;
+	private final int typeColor;
 	private final List<Uniform> uniforms;
 	private final UniformFilter filter = new UniformFilter();
 
@@ -53,6 +59,8 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 
 	public PresetUniformAdapter(Context context) {
 		uniformFormat = context.getString(R.string.uniform_format);
+		typeColor = MaterialColors.getColor(context,
+				com.google.android.material.R.attr.colorOnSurfaceVariant, 0);
 		uniforms = createUniforms(context::getString);
 		filteredUniforms = uniforms;
 	}
@@ -102,11 +110,17 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 		ViewHolder holder = getViewHolder(convertView);
 		Uniform uniform = filteredUniforms.get(position);
 
-		holder.name.setText(String.format(
+		// The name is what the row is about; the type is second.
+		SpannableString name = new SpannableString(String.format(
 				Locale.US,
 				uniformFormat,
 				uniform.name,
 				uniform.type));
+		int nameEnd = name.toString().indexOf(uniform.name) +
+				uniform.name.length();
+		name.setSpan(new ForegroundColorSpan(typeColor), nameEnd,
+				name.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+		holder.name.setText(name);
 		holder.rationale.setText(uniform.rationale);
 
 		return convertView;

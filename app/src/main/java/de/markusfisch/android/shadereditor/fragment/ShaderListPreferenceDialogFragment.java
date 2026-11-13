@@ -63,13 +63,14 @@ public class ShaderListPreferenceDialogFragment
 		}
 
 		// 3. Create the adapter and set its data.
-		adapter = new ShaderAdapter(context);
+		adapter = new ShaderAdapter(context, R.layout.row_shader_choice);
 		adapter.setData(shaders);
 
 		// 4. Find the index of the currently selected shader.
 		long currentId = Preferences.WALLPAPER_SHADER.equals(key)
 				? ShaderEditorApp.preferences.getWallpaperShader()
 				: ShaderEditorApp.preferences.getDefaultNewShader();
+		adapter.setSelectedId(currentId);
 		int selectedIndex = 0;
 		for (int i = 0; i < shaders.size(); ++i) {
 			if (shaders.get(i).id() == currentId) {
