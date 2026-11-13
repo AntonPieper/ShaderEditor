@@ -39,6 +39,7 @@ import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 
 /** The database shaders as the level Shaders. */
 final class LibrarySource implements Source {
+	private static final long MINUTE = 60_000L;
 	private static final long DAY = 86_400_000L;
 
 	// Dialogs take the look of the drawer they are opened from.
@@ -74,16 +75,16 @@ final class LibrarySource implements Source {
 	public Listing list(Order order) {
 		long now = System.currentTimeMillis();
 		long wallpaper = ShaderEditorApp.preferences.getWallpaperShader();
+		String untitled = context.getString(R.string.nav_untitled);
 		List<Row> rows = new ArrayList<>();
 		for (ShaderInfo shader : shaders) {
 			long changed = parse(shader.modified());
-			String title = shader.getTitle();
 			rows.add(new Row(String.valueOf(shader.id()),
 					Row.Kind.SHADER,
 					Row.Picture.png(isPlaceholder(shader.thumb())
 							? null
 							: shader.thumb()),
-					title != null ? title : "",
+					name(shader, untitled),
 					describe(changed, now),
 					changed,
 					null,
@@ -157,8 +158,15 @@ final class LibrarySource implements Source {
 		return thumb != null && Arrays.equals(thumb, placeholder);
 	}
 
-	// Today with the time, yesterday, or the date; the year only when
-	// it is not this one.
+	/** The shader's name, or the word for one without a name. */
+	@NonNull
+	static String name(@NonNull ShaderInfo shader, @NonNull String untitled) {
+		String name = shader.name();
+		return name == null || name.isEmpty() ? untitled : name;
+	}
+
+	// Today how long ago, at least a minute; yesterday; or the date,
+	// with the year only when it is not this one.
 	@Nullable
 	private String describe(long changed, long now) {
 		if (changed <= 0) {
@@ -166,12 +174,14 @@ final class LibrarySource implements Source {
 		}
 		TimeZone zone = TimeZone.getDefault();
 		long days = daysBetween(changed, now, zone);
-		if (days == 0 || days == 1) {
-			CharSequence day = DateUtils.getRelativeTimeSpanString(
-					changed, now, DateUtils.DAY_IN_MILLIS);
-			return days == 1 ? day.toString() : day + ", " +
-					DateUtils.formatDateTime(context, changed,
-							DateUtils.FORMAT_SHOW_TIME);
+		if (days == 0) {
+			return DateUtils.getRelativeTimeSpanString(
+					Math.min(changed, now - MINUTE), now,
+					DateUtils.MINUTE_IN_MILLIS).toString();
+		}
+		if (days == 1) {
+			return DateUtils.getRelativeTimeSpanString(
+					changed, now, DateUtils.DAY_IN_MILLIS).toString();
 		}
 		Calendar then = Calendar.getInstance(zone);
 		then.setTimeInMillis(changed);
