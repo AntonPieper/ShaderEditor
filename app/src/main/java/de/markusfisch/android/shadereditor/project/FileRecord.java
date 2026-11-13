@@ -64,6 +64,8 @@ final class FileRecord {
 	// Whether the user chose to keep the unsaved text over the base,
 	// so only an explicit save writes it.
 	boolean kept;
+	// The revision of the document its history was kept at.
+	int historyAt;
 	// Whether the file has a journal, as the writes sent tell; why the
 	// journal it has could not be read, else null.
 	boolean journaled;

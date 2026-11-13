@@ -31,13 +31,15 @@ public final class FileTexts {
 	 * The text of a file for the editor: its journal's when unsaved,
 	 * else the stored text; the revision of the stored text it is based
 	 * on, null for none; the revision of the journal it came from, -1
-	 * for none; its bytes, as {@link Document#bytes} counts them; and
-	 * why its journal could not be read, so the stored text was opened
-	 * instead, else null. A document of unsaved text starts modified,
-	 * with {@code markSaved(-1)}.
+	 * for none; its bytes, as {@link Document#bytes} counts them; why
+	 * its journal could not be read, so the stored text was opened
+	 * instead, else null; and the undo history kept for this text, else
+	 * null. A document of unsaved text starts modified, with
+	 * {@code markSaved(-1)}, unless its history says better.
 	 */
 	public record Opened(Text text, boolean unsaved, String revision,
-			int journal, long bytes, String unreadable) implements Opening {
+			int journal, long bytes, String unreadable,
+			Histories.Kept history) implements Opening {
 	}
 
 	/** A file that cannot be edited; reason tells the user why. */
@@ -67,13 +69,15 @@ public final class FileTexts {
 
 	private final ProjectFiles store;
 	private final Journal journal;
+	private final Histories histories;
 	private final Executor worker;
 	private final Executor main;
 
-	FileTexts(ProjectFiles store, Journal journal, Executor worker,
-			Executor main) {
+	FileTexts(ProjectFiles store, Journal journal, Histories histories,
+			Executor worker, Executor main) {
 		this.store = store;
 		this.journal = journal;
+		this.histories = histories;
 		this.worker = worker;
 		this.main = main;
 	}
@@ -91,11 +95,12 @@ public final class FileTexts {
 			Journal.Recovered recovered = journaled
 					? journal.read(path)
 					: null;
-			Opening opening = recovered != null && recovered.text() != null
-					? recovered(path, recovered)
-					: read(path, size, recovered != null
-							? recovered.problem()
-							: null);
+			Opening opening = withHistory(path,
+					recovered != null && recovered.text() != null
+							? recovered(path, recovered)
+							: read(path, size, recovered != null
+									? recovered.problem()
+									: null));
 			main.execute(() -> done.done(opening));
 		});
 	}
@@ -131,6 +136,25 @@ public final class FileTexts {
 			Journal.Appended appended = write(path, flush);
 			main.execute(() -> done.done(appended));
 		});
+	}
+
+	/**
+	 * Keep history, of text based on the stored revision base, for path;
+	 * nothing depends on it being written.
+	 */
+	void keepHistory(ProjectPath path, Text text, String base,
+			Document.History history) {
+		worker.execute(() -> {
+			String hash = Histories.hash(text);
+			if (hash != null) {
+				histories.write(path, hash, base, history);
+			}
+		});
+	}
+
+	/** Forget the history of path. */
+	void forgetHistory(ProjectPath path) {
+		worker.execute(() -> histories.remove(path));
 	}
 
 	/**
@@ -269,6 +293,18 @@ public final class FileTexts {
 		return journal.append(path, flush.from(), flush.to(), changes);
 	}
 
+	// Return opened with the history kept for its text, if there is one.
+	private Opening withHistory(ProjectPath path, Opening opening) {
+		if (!(opening instanceof Opened opened) || !histories.has(path)) {
+			return opening;
+		}
+		String hash = Histories.hash(opened.text());
+		Histories.Kept kept = hash != null ? histories.read(path, hash) : null;
+		return kept == null ? opened : new Opened(opened.text(),
+				opened.unsaved(), opened.revision(), opened.journal(),
+				opened.bytes(), opened.unreadable(), kept);
+	}
+
 	// Return the text recovered from the journal of path.
 	private static Opening recovered(ProjectPath path,
 			Journal.Recovered recovered) {
@@ -276,7 +312,8 @@ public final class FileTexts {
 			return tooLarge(path);
 		}
 		return new Opened(recovered.text(), true, recovered.header().base(),
-				recovered.revision(), Document.bytes(recovered.text()), null);
+				recovered.revision(), Document.bytes(recovered.text()), null,
+				null);
 	}
 
 	// Return the stored text of path, telling unreadable, why its
@@ -305,7 +342,7 @@ public final class FileTexts {
 			return new Unopened(path + " is not a text file");
 		}
 		return new Opened(text, false, content.revision(), -1,
-				Document.bytes(text), unreadable);
+				Document.bytes(text), unreadable, null);
 	}
 
 	// Return the text of bytes, or null when they are not text the

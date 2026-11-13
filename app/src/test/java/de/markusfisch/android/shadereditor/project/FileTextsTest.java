@@ -164,7 +164,8 @@ public class FileTextsTest {
 		}
 		Text text = Text.of(sb);
 		assertEquals(500_001, text.lineCount());
-		texts = new FileTexts(store, new Journal(drafts), worker, main);
+		texts = new FileTexts(store, new Journal(drafts), histories(),
+				worker, main);
 		texts.save(MAIN, text, 0, null, this::saved);
 		worker.run();
 		main.run();
@@ -213,7 +214,8 @@ public class FileTextsTest {
 				return new ProjectFiles.Failed(ProjectFiles.TOO_LARGE);
 			}
 		};
-		texts = new FileTexts(huge, new Journal(drafts), worker, main);
+		texts = new FileTexts(huge, new Journal(drafts), histories(),
+				worker, main);
 
 		assertTrue(open(MAIN, ProjectFiles.UNKNOWN) instanceof Unopened);
 		assertEquals(FileTexts.Found.TOO_LARGE, reread(MAIN).found());
@@ -244,6 +246,10 @@ public class FileTextsTest {
 		assertEquals("two", store.text("main.glsl"));
 	}
 
+	private Histories histories() {
+		return new Histories(new File(temp.getRoot(), "history"));
+	}
+
 	private FileTexts.Checked reread(ProjectPath path) {
 		FileTexts.Checked[] changed = {null};
 		texts.reread(path, base, result -> changed[0] = result);
@@ -264,7 +270,8 @@ public class FileTextsTest {
 
 	private Opening open(ProjectPath path, long size, boolean journaled) {
 		if (texts == null) {
-			texts = new FileTexts(store, new Journal(drafts), worker, main);
+			texts = new FileTexts(store, new Journal(drafts), histories(),
+				worker, main);
 		}
 		Opening[] opening = new Opening[1];
 		texts.open(path, size, journaled, result -> opening[0] = result);

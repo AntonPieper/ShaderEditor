@@ -61,6 +61,7 @@ public final class ProjectSessions {
 	private static final int MAGIC = 0x5345534c;
 	private static final String LOCATOR = "locator";
 	private static final String DRAFTS = "drafts";
+	private static final String HISTORY = "history";
 	private static final String RUNNING = "running";
 	private static final String SHOWN = "shown";
 	private static final String RECENT = "recent";
@@ -142,6 +143,16 @@ public final class ProjectSessions {
 	 */
 	Journal journal(String id) {
 		return locator(id) != null ? new Journal(file(id, DRAFTS)) : null;
+	}
+
+	/**
+	 * Return the undo histories of the files of session id, or null when
+	 * there is no such session.
+	 */
+	Histories histories(String id) {
+		return locator(id) != null
+				? new Histories(file(id, HISTORY))
+				: null;
 	}
 
 	/**

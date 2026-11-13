@@ -183,6 +183,7 @@ public final class OpenProject {
 	private final ProjectSessions sessions;
 	// Used on the worker only.
 	private final Journal journal;
+	private final Histories histories;
 	private final FileTexts texts;
 	private final Executor worker;
 	private final Executor main;
@@ -211,7 +212,7 @@ public final class OpenProject {
 	private int choice;
 
 	private OpenProject(String id, ProjectFiles store,
-			ProjectSessions sessions, Journal journal,
+			ProjectSessions sessions, Journal journal, Histories histories,
 			ProjectSessions.Recent recent, Executor worker, Executor main,
 			Later later, ProjectPath lone, Storage storage, long budget) {
 		this.id = id;
@@ -223,6 +224,7 @@ public final class OpenProject {
 		this.store = store;
 		this.sessions = sessions;
 		this.journal = journal;
+		this.histories = histories;
 		this.worker = worker;
 		// Once closed, what arrives late does nothing.
 		this.main = task -> main.execute(() -> {
@@ -235,7 +237,7 @@ public final class OpenProject {
 				task.run();
 			}
 		}, millis);
-		texts = new FileTexts(store, journal, worker, this.main);
+		texts = new FileTexts(store, journal, histories, worker, this.main);
 	}
 
 	/**
@@ -280,8 +282,8 @@ public final class OpenProject {
 					: Access.READ_ONLY, null);
 		}
 		OpenProject project = new OpenProject(id, store, sessions, journal,
-				sessions.recent(id), worker, main, later, lone, storage,
-				budget);
+				sessions.histories(id), sessions.recent(id), worker, main,
+				later, lone, storage, budget);
 		journal.removeLeftovers();
 		for (Journal.Header header : journal.headers().values()) {
 			FileRecord record = project.record(header.path());
@@ -325,6 +327,7 @@ public final class OpenProject {
 			return;
 		}
 		persist();
+		keepHistories();
 		texts.sync(synced -> {
 		});
 		closed = true;
@@ -515,6 +518,7 @@ public final class OpenProject {
 	 */
 	public void flush(Runnable done) {
 		persist();
+		keepHistories();
 		texts.sync(synced -> {
 			unsynced = synced ? null : "the journal cannot be synced";
 			changed();
@@ -988,7 +992,13 @@ public final class OpenProject {
 	private boolean take(FileRecord record, FileRecord.Request request,
 			FileTexts.Opened opened) {
 		Document document = new Document(opened.text(), opened.bytes());
-		if (opened.unsaved()) {
+		Histories.Kept kept = opened.history();
+		boolean restored = kept != null && document.restore(kept.history());
+		if (!opened.unsaved()) {
+			document.markSaved(document.state());
+		} else if (!restored ||
+				!Objects.equals(kept.base(), opened.revision())) {
+			// Which state was saved holds only on the same base.
 			document.markSaved(-1);
 		}
 		if (records.get(record.path) != record ||
@@ -996,6 +1006,7 @@ public final class OpenProject {
 						opened.journal())) {
 			return false;
 		}
+		record.historyAt = document.revision();
 		record.listener = new Document.Listener() {
 			private int revision = document.revision();
 
@@ -1172,6 +1183,7 @@ public final class OpenProject {
 	// Drop the document of record; a file with unsaved text keeps its
 	// record, which opens it again from the journal.
 	private void drop(FileRecord record) {
+		keepHistory(record);
 		recent.remove(record.path);
 		record.state = null;
 		record.runs = Runs.UNKNOWN;
@@ -1179,6 +1191,30 @@ public final class OpenProject {
 		record.drop().removeListener(record.listener);
 		if (!record.needed()) {
 			records.remove(record.path);
+		}
+	}
+
+	// Keep the history of every document that changed since it was kept.
+	private void keepHistories() {
+		for (FileRecord record : records.values()) {
+			keepHistory(record);
+		}
+	}
+
+	// Keep the undo history of the document of record, with what it
+	// selects, when it changed since it was kept, so it is there when
+	// the file is opened again, also by another process.
+	private void keepHistory(FileRecord record) {
+		Document document = record.document();
+		if (document == null || document.revision() == record.historyAt) {
+			return;
+		}
+		record.historyAt = document.revision();
+		if (document.historyChars() > Histories.MAX_CHARS) {
+			texts.forgetHistory(record.path);
+		} else if (document.canUndo() || document.canRedo()) {
+			texts.keepHistory(record.path, document.text(), record.base(),
+					document.history());
 		}
 	}
 
