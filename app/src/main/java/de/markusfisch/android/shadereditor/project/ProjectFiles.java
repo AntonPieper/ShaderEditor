@@ -125,11 +125,27 @@ public interface ProjectFiles {
 		PARTIAL
 	}
 
+	/** Why a file was not read: it is larger than the limit asked. */
+	String TOO_LARGE = "it is too large";
+
 	/**
 	 * Read a file: its content, why it could not be read, or null when
 	 * there is no file at path.
 	 */
 	Read read(ProjectPath path);
+
+	/**
+	 * Read a file as {@link #read(ProjectPath)} does, unless it has more
+	 * than limit bytes: then fail with {@link #TOO_LARGE}. A store that
+	 * reads a stream stops after limit bytes and a buffer.
+	 */
+	default Read read(ProjectPath path, long limit) {
+		Read read = read(path);
+		return read instanceof Content content &&
+				content.bytes().length > limit
+				? new Failed(TOO_LARGE)
+				: read;
+	}
 
 	/**
 	 * List a folder, the project root when folder is null: its entries,

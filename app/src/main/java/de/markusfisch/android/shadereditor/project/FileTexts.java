@@ -151,9 +151,13 @@ public final class FileTexts {
 		if (session.draft(path) != null) {
 			return new Checked(Found.SAME, null, base);
 		}
-		Read read = session.store().read(path);
+		Read read = session.store().read(path, MAX_BYTES);
 		if (read == null) {
 			return new Checked(Found.MISSING, null, null);
+		}
+		if (read instanceof ProjectFiles.Failed failed &&
+				ProjectFiles.TOO_LARGE.equals(failed.reason())) {
+			return new Checked(Found.TOO_LARGE, null, null);
 		}
 		if (!(read instanceof Content content)) {
 			return new Checked(Found.UNAVAILABLE, null, null);
@@ -180,7 +184,11 @@ public final class FileTexts {
 		if (size > MAX_BYTES) {
 			return tooLarge(path);
 		}
-		Read read = session.store().read(path);
+		Read read = session.store().read(path, MAX_BYTES);
+		if (read instanceof ProjectFiles.Failed failed &&
+				ProjectFiles.TOO_LARGE.equals(failed.reason())) {
+			return tooLarge(path);
+		}
 		if (!(read instanceof Content content)) {
 			return new Unopened(CapturedFiles.problem(path, read));
 		}
