@@ -136,6 +136,14 @@ public final class OpenProject {
 		return project;
 	}
 
+	/**
+	 * Return the session that keeps the unsaved text, for editing files
+	 * as {@link FileTexts}.
+	 */
+	public EditingSession session() {
+		return session;
+	}
+
 	public String id() {
 		return id;
 	}

@@ -76,6 +76,11 @@ public final class EditingSession {
 		return files;
 	}
 
+	/** Return the store the drafts lie over. */
+	public ProjectFiles store() {
+		return files.store();
+	}
+
 	/** Return the draft of path, or null when it has none. */
 	public Draft draft(ProjectPath path) {
 		return files.get(path);
@@ -142,11 +147,39 @@ public final class EditingSession {
 		}
 		for (Map.Entry<ProjectPath, Draft> entry : pending.entrySet()) {
 			Draft draft = entry.getValue();
-			outcomes.put(entry.getKey(), saved(entry.getKey(), draft,
+			outcomes.put(entry.getKey(), saved(entry.getKey(), draft.text(),
 					files.store().write(entry.getKey(), draft::writeTo,
 							draft.base())));
 		}
 		return outcomes;
+	}
+
+	/**
+	 * Write text, as the editor has it, to path against the base of its
+	 * draft, or against base, the revision the text came from, when it
+	 * has none; the text is written line by line. A draft of exactly
+	 * this text is dropped, a newer one is based on what was written. A
+	 * file in conflict is not written. A conflict keeps text as a draft
+	 * when there is none, so it can be resolved like any other.
+	 */
+	public Outcome save(ProjectPath path, Text text, String base) {
+		String expected;
+		synchronized (this) {
+			String conflict = conflicts.get(path);
+			if (conflict != null) {
+				return new Conflict(conflict);
+			}
+			Draft draft = files.get(path);
+			expected = draft != null ? draft.base() : base;
+		}
+		Outcome outcome = saved(path, text, files.store().write(path,
+				out -> TextBytes.write(text, out), expected));
+		synchronized (this) {
+			if (outcome instanceof Conflict && files.get(path) == null) {
+				keep(path, new Draft(text, expected));
+			}
+		}
+		return outcome;
 	}
 
 	/**
@@ -226,11 +259,11 @@ public final class EditingSession {
 		return new Saved(done.revision());
 	}
 
-	private synchronized Outcome saved(ProjectPath path, Draft draft,
+	private synchronized Outcome saved(ProjectPath path, Text text,
 			Change change) {
 		if (change instanceof Done done) {
 			Draft current = files.get(path);
-			if (current == draft) {
+			if (current != null && current.text() == text) {
 				clearDraft(path);
 			} else if (current != null) {
 				// Edited while saving: the newer text is based on what

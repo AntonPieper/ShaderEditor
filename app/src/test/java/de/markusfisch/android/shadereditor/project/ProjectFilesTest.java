@@ -16,6 +16,8 @@ public class ProjectFilesTest {
 		assertUnsupported(files.write(main, new byte[0],
 				files.read(main).revision()));
 		assertUnsupported(files.write(path("new.glsl"), new byte[0], null));
+		assertUnsupported(files.write(main, out -> out.write(1),
+				files.read(main).revision()));
 		assertUnsupported(files.createFolder(path("passes")));
 		assertUnsupported(files.rename(main, path("other.glsl")));
 		assertUnsupported(files.delete(main));
