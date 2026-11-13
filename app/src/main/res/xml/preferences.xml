@@ -51,6 +51,12 @@
 				android:title="@string/use_ligatures"
 				app:summary="@string/use_ligatures_summary" />
 		<ListPreference
+			android:key="picture_behind_code"
+			android:title="@string/picture_behind_code"
+			android:entries="@array/picture_behind_code_names"
+			android:entryValues="@array/picture_behind_code_values"
+			android:defaultValue="balanced"/>
+		<ListPreference
 			android:key="tab_width"
 			android:title="@string/tab_width"
 			android:entries="@array/tab_width_names"

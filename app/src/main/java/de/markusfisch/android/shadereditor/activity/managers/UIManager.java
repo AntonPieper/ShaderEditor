@@ -117,7 +117,7 @@ public class UIManager {
 	// code can be read.
 	private void limitPicture(boolean fade) {
 		shaderViewManager.limitPicture(editorFragment.isCodeVisible()
-				? PictureLimit.BALANCED
+				? ShaderEditorApp.preferences.getPictureCeiling()
 				: PictureLimit.NONE, fade);
 	}
 }

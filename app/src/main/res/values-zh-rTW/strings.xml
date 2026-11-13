@@ -54,6 +54,10 @@
 	<string name="font">字型</string>
 	<string name="use_ligatures">啟用連字 (Ligatures)</string>
 	<string name="use_ligatures_summary">將 &lt;= 等字元組合轉換為單一符號 ≤</string>
+	<string name="picture_behind_code">Picture behind code</string>
+	<string name="picture_dim">Dim</string>
+	<string name="picture_balanced">Balanced</string>
+	<string name="picture_bright">Bright</string>
 	<string name="tab_width">製表符寬度</string>
 	<string name="use_tab_for_indent">使用 Tab 鍵縮排</string>
 	<string name="use_tab_for_indent_summary">使用 Tab 鍵進行程式碼縮排，而非切換焦點</string>
