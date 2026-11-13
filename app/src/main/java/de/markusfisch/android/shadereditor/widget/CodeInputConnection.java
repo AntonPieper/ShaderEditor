@@ -4,6 +4,8 @@ import android.os.Build;
 import android.text.Editable;
 import android.view.KeyEvent;
 import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.CompletionInfo;
+import android.view.inputmethod.CorrectionInfo;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.SurroundingText;
@@ -15,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.KeyboardSession;
 import de.markusfisch.android.shadereditor.editor.TextInput;
 
 /**
@@ -34,7 +37,8 @@ final class CodeInputConnection extends BaseInputConnection {
 	private final TextInput input;
 	private boolean closed;
 
-	CodeInputConnection(CodeView view, Document document) {
+	CodeInputConnection(CodeView view, Document document,
+			KeyboardSession session) {
 		super(view, true);
 		this.view = view;
 		this.document = document;
@@ -52,7 +56,7 @@ final class CodeInputConnection extends BaseInputConnection {
 				view.updateExtractedText(CodeInputConnection.this, token,
 						window);
 			}
-		});
+		}, session);
 	}
 
 	static ExtractedText extracted(TextInput.Window window) {
@@ -85,6 +89,7 @@ final class CodeInputConnection extends BaseInputConnection {
 	public boolean commitText(CharSequence text, int newCursorPosition) {
 		if (!closed && input().composingStart() < 0 && text != null &&
 				text.length() == 1 && text.charAt(0) == '\n') {
+			view.note("commitText", true, text, newCursorPosition);
 			view.enter();
 			return true;
 		}
@@ -216,6 +221,24 @@ final class CodeInputConnection extends BaseInputConnection {
 
 	int composingEnd() {
 		return input.composingEnd();
+	}
+
+	@Override
+	public boolean commitCompletion(CompletionInfo text) {
+		view.note("commitCompletion", false, text);
+		return false;
+	}
+
+	@Override
+	public boolean commitCorrection(CorrectionInfo correctionInfo) {
+		view.note("commitCorrection", false, correctionInfo);
+		return false;
+	}
+
+	@Override
+	public boolean requestCursorUpdates(int cursorUpdateMode) {
+		view.note("requestCursorUpdates", false, cursorUpdateMode);
+		return false;
 	}
 
 	@Override

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -12,14 +13,36 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import de.markusfisch.android.shadereditor.editor.Document.Selection;
+import de.markusfisch.android.shadereditor.editor.KeyCommands.Command;
 
 public class KeyboardSessionTest {
 	private static final int KEYCODE_A = 29;
 	private static final int KEYCODE_ENTER = 66;
 	private static final int KEYCODE_DEL = 67;
 	private static final int SELECT_ALL = 0x0102001f;
+
+	// Page Up and Down are not recorded with the height of the view.
+	private static final int PAGE_LINES = 20;
+	private static final Map<Document, KeyCommands> KEYS =
+			new WeakHashMap<>();
+	private static String clip;
+	private static final KeyCommands.Clipboard CLIPBOARD =
+			new KeyCommands.Clipboard() {
+				@Override
+				public CharSequence get() {
+					return clip;
+				}
+
+				@Override
+				public boolean set(String text) {
+					clip = text;
+					return true;
+				}
+			};
 
 	private final long[] now = {0};
 
@@ -160,19 +183,41 @@ public class KeyboardSessionTest {
 
 	// What the view does for the keys and context menu actions the
 	// sessions use: letters, Enter, Backspace and select all.
+	// Does what the view does for an action of the app. A key with the
+	// text it typed, as the view records it, and the other actions the
+	// view records go to the view's commands; a key written without
+	// that text, as in the sessions written by hand, types the letter of
+	// its key code.
 	private static void view(Document document, String name,
 			List<String> args) {
+		KeyCommands keys = KEYS.computeIfAbsent(document, d ->
+				new KeyCommands(d, new EditCommands(d), CLIPBOARD));
+		switch (name) {
+			case "clip" -> clip = args.get(0);
+			case "command" -> {
+				assertEquals("enter", args.get(0));
+				keys.run(Command.ENTER, false, PAGE_LINES);
+			}
+			case "contextMenu" -> keys.run(KeyCommands.contextMenuCommand(
+					Integer.parseInt(args.get(0))), false, PAGE_LINES);
+			case "key" -> {
+				if ("1".equals(args.get(0))) {
+					return;
+				}
+				int keyCode = Integer.parseInt(args.get(1));
+				if (args.size() > 3) {
+					keys.keyDown(keyCode, Integer.parseInt(args.get(2)),
+							args.get(3), PAGE_LINES);
+				} else {
+					handWritten(document, keyCode);
+				}
+			}
+			default -> fail("unknown action " + name);
+		}
+	}
+
+	private static void handWritten(Document document, int keyCode) {
 		Selection selection = document.selection();
-		if ("contextMenu".equals(name)) {
-			assertEquals(SELECT_ALL, Integer.parseInt(args.get(0)));
-			document.select(0, document.text().length());
-			return;
-		}
-		assertEquals("key", name);
-		int keyCode = Integer.parseInt(args.get(1));
-		if (!"0".equals(args.get(0))) {
-			return;
-		}
 		if (keyCode == KEYCODE_DEL) {
 			int head = selection.head();
 			document.type(head - 1, head, Text.EMPTY);

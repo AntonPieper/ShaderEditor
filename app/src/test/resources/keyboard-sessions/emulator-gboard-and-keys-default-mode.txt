@@ -1,0 +1,350 @@
+# Google sdk_gphone64_arm64, Android 36
+# keyboard com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME, inputType 0x0
+223 1 open 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+272 2 open 0 0 null
+# 422 requestCursorUpdates 2 -> false
+940 1 finishComposingText -> true
+941 3 open 0 0 null
+941 1 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+945 3 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+949 4 open 0 0 null
+1080 5 open 0 0 null
+1985 2 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+1985 4 finishComposingText -> true
+1989 4 finishComposingText -> true
+1989 6 open 0 0 null
+1990 4 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+1991 6 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+1992 7 open 0 0 null
+2100 8 open 0 0 null
+# 2155 requestCursorUpdates 2 -> false
+4102 app select 139 139
+4105 5 selected 139 139
+4105 5 updateSelection 139 139 -1 -1
+4109 7 selected 139 139
+4109 7 updateSelection 139 139 -1 -1
+4109 8 selected 139 139
+4109 8 updateSelection 139 139 -1 -1
+4130 5 close -> 139 139 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+4132 7 getSurroundingText 60 60 -> 79 60 60 "p float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+4144 7 getTextBeforeCursor 139 -> "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {"
+5607 app key 0 66 0 "\n"
+5608 7 changed 139 139 "\n\t"
+5608 8 changed 139 139 "\n\t"
+5608 7 updateSelection 141 141 -1 -1
+5609 8 updateSelection 141 141 -1 -1
+5609 app key 1 66 0 null
+5627 7 getSurroundingText 60 60 -> 81 60 60 "float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+5996 app key 0 29 0 "a"
+5997 7 changed 141 141 "a"
+5997 8 changed 141 141 "a"
+5997 7 updateSelection 142 142 -1 -1
+5997 8 updateSelection 142 142 -1 -1
+6010 7 getSurroundingText 60 60 -> 82 60 60 "loat;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\ta\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+6013 app key 1 29 0 null
+6381 app key 0 30 0 "b"
+6381 7 changed 142 142 "b"
+6381 8 changed 142 142 "b"
+6382 7 updateSelection 143 143 -1 -1
+6382 8 updateSelection 143 143 -1 -1
+6382 app key 1 30 0 null
+6392 7 getSurroundingText 60 60 -> 83 60 60 "oat;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tab\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+6776 app key 0 67 0 null
+6777 7 changed 142 143 ""
+6777 8 changed 142 143 ""
+6777 7 updateSelection 142 142 -1 -1
+6777 8 updateSelection 142 142 -1 -1
+6777 app key 1 67 0 null
+7149 app key 0 67 0 null
+7150 7 changed 141 142 ""
+7150 8 changed 141 142 ""
+7150 7 updateSelection 141 141 -1 -1
+7150 8 updateSelection 141 141 -1 -1
+7150 app key 1 67 0 null
+7515 app key 0 67 0 null
+7515 7 changed 140 141 ""
+7515 8 changed 140 141 ""
+7515 7 updateSelection 140 140 -1 -1
+7515 8 updateSelection 140 140 -1 -1
+7515 app key 1 67 0 null
+7663 app key 0 19 0 null
+7664 7 selected 122 122
+7664 7 updateSelection 122 122 -1 -1
+7664 8 selected 122 122
+7664 8 updateSelection 122 122 -1 -1
+7675 7 getSurroundingText 60 60 -> 62 60 60 "\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.x"
+7677 app key 1 19 0 null
+7681 app key 0 123 0 null
+7682 7 selected 139 139
+7682 7 updateSelection 139 139 -1 -1
+7682 8 selected 139 139
+7682 8 updateSelection 139 139 -1 -1
+7692 7 getSurroundingText 60 60 -> 79 60 60 "p float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor"
+7693 app key 1 123 0 null
+7777 app key 0 59 0 null
+7778 app key 0 21 65 null
+7779 7 selected 139 138
+7779 7 updateSelection 139 138 -1 -1
+7780 8 selected 139 138
+7780 8 updateSelection 139 138 -1 -1
+7792 7 getSurroundingText 60 60 -> 78 60 61 "mp float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor"
+7803 app key 1 59 65 null
+7804 app key 1 21 0 null
+7873 app key 0 113 0 null
+7894 app key 0 21 12288 null
+7894 7 selected 136 136
+7894 7 updateSelection 136 136 -1 -1
+7894 8 selected 136 136
+7894 8 updateSelection 136 136 -1 -1
+7897 app key 1 113 12288 null
+7928 7 getSurroundingText 60 60 -> 76 60 60 "iump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragCo"
+7932 app key 1 21 0 null
+7971 app key 0 122 0 null
+7971 7 selected 122 122
+7971 7 updateSelection 122 122 -1 -1
+7972 8 selected 122 122
+7972 8 updateSelection 122 122 -1 -1
+7972 app key 1 122 0 null
+7975 7 getSurroundingText 60 60 -> 62 60 60 "\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.x"
+8044 app key 0 113 0 null
+8045 app key 0 123 12288 null
+8045 7 selected 224 224
+8045 7 updateSelection 224 224 -1 -1
+8045 8 selected 224 224
+8045 8 updateSelection 224 224 -1 -1
+8058 7 getSurroundingText 60 60 -> 164 60 60 ".xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+8060 app key 1 113 12288 null
+8064 7 getTextBeforeCursor 102 -> "void main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+8065 app key 1 123 0 null
+8124 app key 0 113 0 null
+8126 app key 0 122 12288 null
+8127 7 selected 0 0
+8127 7 updateSelection 0 0 -1 -1
+8127 8 selected 0 0
+8127 8 updateSelection 0 0 -1 -1
+8141 7 getSurroundingText 60 60 -> 0 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#el"
+8145 app key 1 113 12288 null
+8149 7 getTextAfterCursor 224 -> "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+8150 app key 1 122 0 null
+8203 app key 0 93 0 null
+8203 7 selected 224 224
+8203 7 updateSelection 224 224 -1 -1
+8203 8 selected 224 224
+8203 8 updateSelection 224 224 -1 -1
+8208 7 getSurroundingText 60 60 -> 164 60 60 ".xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+8209 app key 1 93 0 null
+8210 7 getTextBeforeCursor 224 -> "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+8212 app key 0 92 0 null
+8212 7 selected 0 0
+8212 7 updateSelection 0 0 -1 -1
+8212 8 selected 0 0
+8212 8 updateSelection 0 0 -1 -1
+8214 app key 1 92 0 null
+8225 7 getSurroundingText 60 60 -> 0 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#el"
+8242 7 getTextAfterCursor 224 -> "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+8300 app key 0 20 0 null
+8300 7 selected 34 34
+8300 7 updateSelection 34 34 -1 -1
+8301 8 selected 34 34
+8301 8 updateSelection 34 34 -1 -1
+8308 7 getSurroundingText 60 60 -> 0 34 34 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif"
+8310 app key 1 20 0 null
+8313 app key 0 20 0 null
+8313 7 selected 57 57
+8313 7 updateSelection 57 57 -1 -1
+8313 8 selected 57 57
+8313 8 updateSelection 57 57 -1 -1
+8325 7 getSurroundingText 60 60 -> 0 57 57 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resoluti"
+8339 app key 1 20 0 null
+8342 app key 0 20 0 null
+8342 7 selected 63 63
+8342 7 updateSelection 63 63 -1 -1
+8343 8 selected 63 63
+8343 8 updateSelection 63 63 -1 -1
+8359 7 getSurroundingText 60 60 -> 3 60 60 "def GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nv"
+8372 app key 1 20 0 null
+8377 app key 0 20 0 null
+8377 7 selected 88 88
+8377 7 updateSelection 88 88 -1 -1
+8377 8 selected 88 88
+8377 8 updateSelection 88 88 -1 -1
+8392 7 getSurroundingText 60 60 -> 28 60 60 "_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 u"
+8408 app key 1 20 0 null
+8412 app key 0 20 0 null
+8414 7 selected 95 95
+8414 7 updateSelection 95 95 -1 -1
+8414 8 selected 95 95
+8414 8 updateSelection 95 95 -1 -1
+8425 7 getSurroundingText 60 60 -> 35 60 60 "recision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_"
+8439 app key 1 20 0 null
+8441 app key 0 20 0 null
+8442 7 selected 96 96
+8442 7 updateSelection 96 96 -1 -1
+8442 8 selected 96 96
+8442 8 updateSelection 96 96 -1 -1
+8459 7 getSurroundingText 60 60 -> 36 60 60 "ecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_F"
+8473 app key 1 20 0 null
+8475 app key 0 20 0 null
+8475 7 selected 121 121
+8475 7 updateSelection 121 121 -1 -1
+8476 8 selected 121 121
+8476 8 updateSelection 121 121 -1 -1
+8494 7 getSurroundingText 60 60 -> 61 60 60 "e\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution."
+8498 app key 1 20 0 null
+8501 app key 0 20 0 null
+8507 7 selected 122 122
+8507 7 updateSelection 122 122 -1 -1
+8507 8 selected 122 122
+8507 8 updateSelection 122 122 -1 -1
+8517 7 getSurroundingText 60 60 -> 62 60 60 "\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.x"
+8520 app key 1 20 0 null
+8522 app key 0 20 0 null
+8522 7 selected 140 140
+8522 7 updateSelection 140 140 -1 -1
+8522 8 selected 140 140
+8522 8 updateSelection 140 140 -1 -1
+8528 7 getSurroundingText 60 60 -> 80 60 60 " float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+8532 app key 1 20 0 null
+8535 app key 0 123 0 null
+8538 app key 1 123 0 null
+8653 app key 0 52 0 "x"
+8653 7 changed 140 140 "x"
+8653 8 changed 140 140 "x"
+8653 7 updateSelection 141 141 -1 -1
+8653 8 updateSelection 141 141 -1 -1
+8654 app key 1 52 0 null
+8659 7 getSurroundingText 60 60 -> 81 60 60 "float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\nx\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+8661 app key 0 74 0 ";"
+8661 7 changed 141 141 ";"
+8661 8 changed 141 141 ";"
+8662 7 updateSelection 142 142 -1 -1
+8662 8 updateSelection 142 142 -1 -1
+8696 7 getSurroundingText 60 60 -> 82 60 60 "loat;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\nx;\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+8700 app key 1 74 0 null
+8806 app key 0 61 0 "\t"
+8807 7 changed 142 142 "\t"
+8807 8 changed 142 142 "\t"
+8807 7 updateSelection 143 143 -1 -1
+8807 8 updateSelection 143 143 -1 -1
+8829 7 getSurroundingText 60 60 -> 83 60 60 "oat;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\nx;\t\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+8831 app key 1 61 0 null
+8935 app key 0 59 0 null
+8938 app key 0 61 65 "\t"
+8948 app key 1 59 65 null
+8951 app key 1 61 0 null
+9049 app key 0 113 0 null
+9052 app key 0 67 12288 null
+9053 7 changed 141 143 ""
+9053 8 changed 141 143 ""
+9053 7 updateSelection 141 141 -1 -1
+9053 8 updateSelection 141 141 -1 -1
+9062 app key 1 113 12288 null
+9065 7 getSurroundingText 60 60 -> 81 60 60 "float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\nx\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+9068 app key 1 67 0 null
+9285 app key 0 67 0 null
+9286 7 changed 140 141 ""
+9286 8 changed 140 141 ""
+9286 7 updateSelection 140 140 -1 -1
+9286 8 updateSelection 140 140 -1 -1
+9407 app key 1 67 0 null
+9419 7 getSurroundingText 60 60 -> 80 60 60 " float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+9535 app key 0 113 0 null
+9538 app key 0 21 12288 null
+9538 7 selected 139 139
+9538 7 updateSelection 139 139 -1 -1
+9538 8 selected 139 139
+9538 8 updateSelection 139 139 -1 -1
+9542 7 getSurroundingText 60 60 -> 79 60 60 "p float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor"
+9544 app key 1 113 12288 null
+9545 app key 1 21 0 null
+9625 app key 0 112 0 null
+9632 7 changed 139 140 ""
+9632 8 changed 139 140 ""
+9638 app key 1 112 0 null
+9745 app key 0 113 0 null
+9746 app key 0 112 12288 null
+9746 7 changed 139 140 ""
+9746 8 changed 139 140 ""
+9749 app key 1 113 12288 null
+9750 app key 1 112 0 null
+9833 app key 0 66 0 "\n"
+9833 7 changed 139 139 "\n\t"
+9833 8 changed 139 139 "\n\t"
+9834 7 updateSelection 141 141 -1 -1
+9834 8 updateSelection 141 141 -1 -1
+9842 7 getSurroundingText 60 60 -> 81 60 60 "float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor ="
+9843 app key 1 66 0 null
+9918 app key 0 113 0 null
+9920 7 beginBatchEdit -> true
+9920 7 finishComposingText -> true
+9921 7 setSelection 139 139 -> true
+9921 app key 1 113 12288 null
+9921 7 beginBatchEdit -> true
+9921 7 finishComposingText -> true
+9921 7 setSelection 79 199 -> true
+9922 8 changed 79 199 "p float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor"
+9922 7 commitText "p float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor" 1 -> true
+9922 7 endBatchEdit -> true
+9923 7 setSelection 139 139 -> true
+9923 8 selected 139 139
+9923 8 updateSelection 139 139 -1 -1
+9923 7 endBatchEdit -> false
+9923 7 updateSelection 139 139 -1 -1
+9924 app key 1 54 0 null
+10008 app key 0 113 0 null
+10010 app key 0 59 12288 null
+10011 7 beginBatchEdit -> true
+10011 7 finishComposingText -> true
+10012 7 setSelection 141 141 -> true
+10012 7 beginBatchEdit -> true
+10012 7 finishComposingText -> true
+10012 7 setSelection 81 201 -> true
+10013 8 changed 81 201 "float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor ="
+10013 7 commitText "float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor =" 1 -> true
+10013 7 endBatchEdit -> true
+10013 7 setSelection 141 141 -> true
+10013 8 selected 141 141
+10013 8 updateSelection 141 141 -1 -1
+10013 7 endBatchEdit -> false
+10013 7 updateSelection 141 141 -1 -1
+10018 app key 1 113 12353 null
+10020 app key 1 59 65 null
+10021 app key 1 54 0 null
+10138 app key 0 113 0 null
+10140 app key 0 53 12288 null
+10147 app key 1 113 12288 null
+10149 app key 1 53 0 null
+10275 app key 0 113 0 null
+10276 app key 0 29 12288 null
+10276 7 selected 0 224
+10276 7 updateSelection 0 224 -1 -1
+10277 8 selected 0 224
+10277 8 updateSelection 0 224 -1 -1
+10278 app key 1 113 12288 null
+10292 7 getSurroundingText 60 60 -> 0 0 224 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+10293 app key 1 29 0 null
+10358 app key 0 113 0 null
+10360 app key 0 52 12288 null
+10364 7 changed 0 224 ""
+10364 8 changed 0 224 ""
+10364 7 updateSelection 0 0 -1 -1
+10365 8 updateSelection 0 0 -1 -1
+10367 app key 1 113 12288 null
+10375 7 getSurroundingText 60 60 -> 0 0 0 ""
+10377 app key 1 52 0 null
+10483 app key 0 113 0 null
+10490 app clip "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+10490 app key 0 50 12288 null
+10490 7 changed 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+10490 8 changed 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+10516 7 updateSelection 224 224 -1 -1
+10516 8 updateSelection 224 224 -1 -1
+10528 app key 1 113 12288 null
+10529 7 getSurroundingText 60 60 -> 164 60 60 ".xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+10552 app key 1 50 0 null
+10557 7 getTextBeforeCursor 224 -> "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+10669 app key 0 113 0 null
+10671 app key 0 31 12288 null
+10672 app key 1 113 12288 null
+10674 app key 1 31 0 null
+36017 7 close -> 224 224 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"

@@ -1,0 +1,65 @@
+# Google sdk_gphone64_arm64, Android 36
+# keyboard com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME, inputType 0xa0001
+391 1 open 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+617 2 open 0 0 null
+757 1 finishComposingText -> true
+# 757 requestCursorUpdates 2 -> false
+1853 1 finishComposingText -> true
+1853 3 open 0 0 null
+1854 1 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+1854 3 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+2107 4 open 0 0 null
+2417 5 open 0 0 null
+3234 2 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+3234 4 finishComposingText -> true
+3235 4 finishComposingText -> true
+3236 6 open 0 0 null
+3236 4 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+3239 6 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+3239 7 open 0 0 null
+3393 8 open 0 0 null
+3460 5 close -> 0 0 "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor = vec4(uv, 1.0, 1.0);\n}\n"
+3460 7 finishComposingText -> true
+# 3460 requestCursorUpdates 2 -> false
+5771 app select 139 139
+5771 7 selected 139 139
+5771 7 updateSelection 139 139 -1 -1
+5772 8 selected 139 139
+5772 8 updateSelection 139 139 -1 -1
+5783 7 getSurroundingText 60 60 -> 79 60 60 "p float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+5812 7 getTextBeforeCursor 139 -> "#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {"
+6015 7 finishComposingText -> true
+# 7444 commitText "\n" 1 -> true
+7444 app command "enter"
+7444 7 changed 139 139 "\n\t"
+7444 8 changed 139 139 "\n\t"
+7445 7 updateSelection 141 141 -1 -1
+7445 8 updateSelection 141 141 -1 -1
+7466 7 getSurroundingText 60 60 -> 81 60 60 "float;\n#endif\n\nuniform vec2 resolution;\n\nvoid main(void) {\n\t\n\tvec2 uv = gl_FragCoord.xy / resolution.xy;\n\n\tgl_FragColor "
+7670 7 finishComposingText -> true
+8076 8 changed 141 141 "a"
+8076 7 commitText "a" 1 -> true
+8077 7 updateSelection 142 142 -1 -1
+8077 8 updateSelection 142 142 -1 -1
+8758 8 changed 142 142 "b"
+8758 7 commitText "b" 1 -> true
+8758 7 updateSelection 143 143 -1 -1
+8759 8 updateSelection 143 143 -1 -1
+9450 app key 0 67 0 null
+9452 7 changed 142 143 ""
+9452 8 changed 142 143 ""
+9458 7 updateSelection 142 142 -1 -1
+9458 8 updateSelection 142 142 -1 -1
+9458 app key 1 67 0 null
+10136 app key 0 67 0 null
+10139 7 changed 141 142 ""
+10139 8 changed 141 142 ""
+10140 7 updateSelection 141 141 -1 -1
+10140 8 updateSelection 141 141 -1 -1
+10185 app key 1 67 0 null
+10797 app key 0 67 0 null
+10797 7 changed 140 141 ""
+10797 8 changed 140 141 ""
+10797 7 updateSelection 140 140 -1 -1
+10797 8 updateSelection 140 140 -1 -1
+10798 app key 1 67 0 null
