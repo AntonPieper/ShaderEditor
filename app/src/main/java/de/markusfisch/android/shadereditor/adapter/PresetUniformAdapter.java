@@ -11,7 +11,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
-import androidx.core.content.ContextCompat;
+
+import com.google.android.material.color.MaterialColors;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -102,9 +103,8 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 		ViewHolder holder = getViewHolder(convertView);
 		Uniform uniform = filteredUniforms.get(position);
 
-		holder.name.setTextColor(ContextCompat.getColor(
-				parent.getContext(),
-				android.R.color.primary_text_dark));
+		holder.name.setTextColor(MaterialColors.getColor(holder.name,
+				com.google.android.material.R.attr.colorOnSurface));
 		holder.name.setText(String.format(
 				Locale.US,
 				uniformFormat,
