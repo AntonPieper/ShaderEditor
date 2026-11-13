@@ -31,6 +31,7 @@ public final class Projects {
 	// The one queue every project of the process works on storage on.
 	private static final Executor QUEUE =
 			Executors.newSingleThreadExecutor();
+	private static LiveProjects live;
 
 	private final Context context;
 	private final ProjectSessions sessions;
@@ -66,6 +67,17 @@ public final class Projects {
 	}
 
 	/**
+	 * Open a document from ACTION_OPEN_DOCUMENT or an intent with the
+	 * flags of its grant as a project of that one file, which runs
+	 * whatever its name.
+	 */
+	public Opened openDocument(Uri uri, int resultFlags) {
+		SafProjects.keepGrant(context.getContentResolver(), uri,
+				resultFlags);
+		return openNew(new Locator(Kind.DOCUMENT, uri.toString()));
+	}
+
+	/**
 	 * Open a folder of the app's own files like a folder the picker
 	 * granted.
 	 */
@@ -81,26 +93,30 @@ public final class Projects {
 
 	/**
 	 * Open the project of session id again, with the drafts it kept, and
-	 * remember it as the one open last.
+	 * remember it as the one open last; return the project when it is
+	 * open already. A project whose files cannot be reached opens with
+	 * its drafts, and problem tells why. It stays open until
+	 * {@link OpenProject#close}.
 	 */
 	public Opened open(String id) {
-		Locator locator = sessions.locator(id);
-		SafProjects.Opened opened = locator != null
-				? SafProjects.open(context, locator)
-				: null;
-		OpenProject project = opened != null && opened.files() != null
-				? OpenProject.open(id, opened.files(), sessions, QUEUE,
-						main::post, main::postDelayed)
-				: null;
+		OpenProject project = live().open(id,
+				locator -> SafProjects.open(context, locator));
 		if (project == null) {
-			return new Opened(id, null,
-					opened != null && opened.problem() != null
-							? opened.problem()
-							: "it is not a known project");
+			return new Opened(id, null, "it is not a known project");
 		}
 		sessions.touch(id, System.currentTimeMillis());
 		sessions.setLast(id);
-		return new Opened(id, project, null);
+		return new Opened(id, project, project.storage().reason());
+	}
+
+	private LiveProjects live() {
+		synchronized (Projects.class) {
+			if (live == null) {
+				live = new LiveProjects(sessions, QUEUE, main::post,
+						main::postDelayed);
+			}
+			return live;
+		}
 	}
 
 	/**

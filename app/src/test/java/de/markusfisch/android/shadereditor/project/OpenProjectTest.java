@@ -524,6 +524,47 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void opensASessionOnceUntilItIsClosed() {
+		LiveProjects live = live();
+		OpenProject project = live.open(id, this::folder);
+
+		assertSame(project, live.open(id, this::folder));
+		assertEquals(OpenProject.Access.AVAILABLE,
+				project.storage().access());
+		project.close();
+		assertNotSame(project, live.open(id, this::folder));
+	}
+
+	@Test
+	public void sessionWhoseFilesAreGoneOpensWithItsDrafts()
+			throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+
+		OpenProject gone = live().open(id, locator ->
+				new SafProjects.Opened(null, null, "the folder is gone"));
+
+		assertEquals(new OpenProject.Storage(OpenProject.Access.UNAVAILABLE,
+				"the folder is gone"), gone.storage());
+		assertEquals(Set.of(path("a.glsl")), gone.unsaved());
+		assertEquals("mine", text(gone, "a.glsl"));
+	}
+
+	@Test
+	public void loneDocumentRunsAsItsOwnEntry() {
+		MemoryProjectFiles store = new MemoryProjectFiles();
+		store.put("standalone.frag", SHADER);
+
+		OpenProject project = OpenProject.open(id, store,
+				path("standalone.frag"), null,
+				new ProjectSessions(sessionsDir), worker, main, steps.timers);
+
+		assertEquals(path("standalone.frag"), project.running());
+		assertNotNull(prepare(project).plan());
+	}
+
+	@Test
 	public void keepsEditsUntilAnExplicitSave() throws IOException {
 		OpenProject project = editedElsewhere();
 
@@ -954,8 +995,18 @@ public class OpenProjectTest {
 	}
 
 	private OpenProject open(ProjectFiles store) {
-		return OpenProject.open(id, store, new ProjectSessions(sessionsDir),
-				worker, main, steps.timers);
+		return OpenProject.open(id, store, null, null,
+				new ProjectSessions(sessionsDir), worker, main, steps.timers);
+	}
+
+	private LiveProjects live() {
+		return new LiveProjects(new ProjectSessions(sessionsDir), worker,
+				main, steps.timers);
+	}
+
+	private SafProjects.Opened folder(Locator locator) {
+		return new SafProjects.Opened(new DirectoryProjectFiles(
+				new File(locator.value())), null, null);
 	}
 
 	private void settle() {
