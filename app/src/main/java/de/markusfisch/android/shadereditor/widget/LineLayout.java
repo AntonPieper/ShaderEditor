@@ -9,7 +9,7 @@ import android.graphics.Paint;
  * Offsets count UTF-16 units into the line; x is measured from the
  * start of the line and y from its top.
  */
-interface LineLayout {
+interface LineLayout extends TouchSelection.Line {
 	/**
 	 * Lines longer than this are drawn without colours, one column per
 	 * character, and only where they are visible.
