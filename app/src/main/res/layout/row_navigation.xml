@@ -9,7 +9,7 @@
 	android:minHeight="@dimen/se_row_height_two_line"
 	android:orientation="horizontal"
 	android:paddingHorizontal="@dimen/navigation_row_inset"
-	android:paddingVertical="@dimen/navigation_row_padding_vertical">
+	android:paddingVertical="@dimen/se_row_padding_vertical">
 
 	<!-- At the top, so that it stays beside the name when the second
 	line wraps; centred in a two-line row by its margin -->
@@ -18,7 +18,7 @@
 		android:layout_width="@dimen/se_thumbnail"
 		android:layout_height="@dimen/se_thumbnail"
 		android:layout_gravity="top"
-		android:layout_marginTop="@dimen/navigation_row_padding_vertical"
+		android:layout_marginTop="@dimen/se_row_padding_vertical"
 		android:layout_marginEnd="@dimen/se_margin_screen"
 		android:importantForAccessibility="no" />
 

@@ -2,12 +2,21 @@
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
+	android:gravity="center_vertical"
+	android:minHeight="@dimen/se_row_height_two_line"
 	android:orientation="vertical"
-	android:padding="16dp">
+	android:paddingHorizontal="@dimen/se_margin_screen"
+	android:paddingVertical="@dimen/se_row_padding_vertical">
 	<TextView
-		style="@style/ListItem"
-		android:id="@+id/name"/>
+		android:id="@+id/name"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:textAppearance="?attr/textAppearanceBodyLarge"
+		android:textColor="?attr/colorOnSurface"/>
 	<TextView
-		style="@style/ListItemSecondary"
-		android:id="@+id/rationale"/>
+		android:id="@+id/rationale"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:textAppearance="?attr/textAppearanceBodyMedium"
+		android:textColor="?attr/colorOnSurfaceVariant"/>
 </LinearLayout>

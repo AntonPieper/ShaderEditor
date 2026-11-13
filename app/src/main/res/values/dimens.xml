@@ -16,10 +16,13 @@
 	<dimen name="se_margin_screen">16dp</dimen>
 	<dimen name="se_row_height">48dp</dimen>
 	<dimen name="se_row_height_two_line">56dp</dimen>
+	<dimen name="se_row_height_picture">72dp</dimen>
+	<dimen name="se_row_padding_vertical">4dp</dimen>
 	<dimen name="se_tap_target">48dp</dimen>
 	<dimen name="se_icon">24dp</dimen>
 	<dimen name="se_mark">18dp</dimen>
 	<dimen name="se_thumbnail">40dp</dimen>
+	<dimen name="se_thumbnail_large">56dp</dimen>
 	<dimen name="se_drawer_max_width">328dp</dimen>
 	<dimen name="se_hairline">1dp</dimen>
 	<dimen name="se_corner">8dp</dimen>
@@ -28,7 +31,6 @@
 	<dimen name="navigation_drawer_screen_margin">56dp</dimen>
 	<dimen name="navigation_bar_height">60dp</dimen>
 	<dimen name="navigation_bar_padding">12dp</dimen>
-	<dimen name="navigation_row_padding_vertical">4dp</dimen>
 	<!-- The selected row is inset by this, its content by twice this -->
 	<dimen name="navigation_row_inset">8dp</dimen>
 	<dimen name="navigation_state_mark">16dp</dimen>
