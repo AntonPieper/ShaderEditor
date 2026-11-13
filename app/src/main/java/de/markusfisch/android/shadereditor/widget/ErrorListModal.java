@@ -12,6 +12,8 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import java.util.List;
@@ -36,6 +38,18 @@ public class ErrorListModal extends BottomSheetDialogFragment {
 			onItemClickListener.onItemClick(file, lineNumber);
 			dismiss();
 		};
+	}
+
+	// Open fully: collapsed, a landscape screen leaves the first row
+	// behind the navigation bar.
+	@Override
+	public void onStart() {
+		super.onStart();
+		if (getDialog() instanceof BottomSheetDialog dialog) {
+			BottomSheetBehavior<?> behavior = dialog.getBehavior();
+			behavior.setSkipCollapsed(true);
+			behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+		}
 	}
 
 	@Nullable
