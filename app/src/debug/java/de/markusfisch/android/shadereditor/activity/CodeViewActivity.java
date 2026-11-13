@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.EditCommands;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
@@ -49,6 +50,8 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
  * of 20,000 characters: the text; "lines" repeats its lines up to that
  * many;</li>
  * <li>"tab", the tab width; "size", the text size in sp;</li>
+ * <li>"inputType", the input type keyboards are given, by default the
+ * one the setting for native suggestions selects in the editor;</li>
  * <li>"select", "anchor,head", or "caret", an offset; "line", a line to
  * put the caret at; "composing", "start,end"; "marks",
  * "line:error,line:warning" with lines from 1; "scrollx", pixels;</li>
@@ -113,6 +116,10 @@ public class CodeViewActivity extends Activity {
 		view.setTabWidth(getIntent().getIntExtra("tab", 4));
 		view.setTextSize(TypedValue.COMPLEX_UNIT_SP,
 				getIntent().getFloatExtra("size", 12));
+		view.setInputType(getIntent().getIntExtra("inputType",
+				ShaderEditorApp.preferences.hideNativeSuggestions()
+						? CodeView.INPUT_TYPE_NO_SUGGESTIONS
+						: CodeView.INPUT_TYPE_TEXT));
 		setContentView(view);
 		getWindow().getDecorView().setBackgroundColor(0xff000000);
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

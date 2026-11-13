@@ -8,8 +8,10 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.GestureDetector;
@@ -18,6 +20,9 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EdgeEffect;
 import android.widget.OverScroller;
 
@@ -26,6 +31,8 @@ import androidx.annotation.Nullable;
 import androidx.core.graphics.Insets;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.util.ArrayList;
+
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.EditCommands;
@@ -33,6 +40,7 @@ import de.markusfisch.android.shadereditor.editor.KeyCommands;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
+import de.markusfisch.android.shadereditor.editor.TextInput;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 /**
@@ -40,7 +48,9 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * LineStyles, their numbers in a gutter that stays in place when the
  * text scrolls sideways, the lines its LineMarks mark, the selection,
  * the composing region and a blinking caret. It owns no text. Keys
- * become KeyCommands, and the caret is kept in view after each. It
+ * become KeyCommands, and the caret is kept in view after each and
+ * above the soft keyboard when that opens. The soft keyboard edits the
+ * document through one TextInput per connection; a tap shows it. It
  * redraws when the document changes, and when a line on screen changes
  * colour because the continuations of the line styles or the document's
  * analysis, which it runs on one background thread, made it current.
@@ -59,6 +69,13 @@ public class CodeView extends View {
 		void draw(Canvas canvas, int line, float left, float top,
 				float right, float bottom);
 	}
+
+	/** The input type of today's editor with native suggestions hidden. */
+	public static final int INPUT_TYPE_NO_SUGGESTIONS = InputType.TYPE_NULL;
+	/** The input type of today's editor with native suggestions shown. */
+	public static final int INPUT_TYPE_TEXT = InputType.TYPE_CLASS_TEXT |
+			InputType.TYPE_TEXT_FLAG_MULTI_LINE |
+			InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
 
 	private static final long BLINK = 500;
 	private static final int HORIZONTAL = 1;
@@ -125,6 +142,13 @@ public class CodeView extends View {
 	private KeyCommands keys;
 	// The accent of a dead key, for the next key to combine with.
 	private int deadChar;
+	private int inputType = INPUT_TYPE_NO_SUGGESTIONS;
+	// The keyboard's open connections. It may go on using one after it
+	// was given a newer one.
+	private final ArrayList<CodeInputConnection> connections =
+			new ArrayList<>();
+	// The connection the keyboard used last; only its updates reach it.
+	private CodeInputConnection active;
 	private LineStyles styles;
 	private LineMarks marks;
 	private boolean connected;
@@ -199,6 +223,7 @@ public class CodeView extends View {
 	public void setDocument(@NonNull Document document,
 			@NonNull LineStyles styles, @Nullable LineMarks marks) {
 		disconnect();
+		closeInput();
 		this.document = document;
 		this.styles = styles;
 		this.marks = marks;
@@ -211,8 +236,18 @@ public class CodeView extends View {
 		scrollTo(0, 0);
 		if (isAttachedToWindow()) {
 			connect();
+			restartInput();
 		}
 		invalidate();
+	}
+
+	/**
+	 * Set the input type keyboards are given, INPUT_TYPE_NO_SUGGESTIONS
+	 * by default.
+	 */
+	public void setInputType(int inputType) {
+		this.inputType = inputType;
+		restartInput();
 	}
 
 	@Nullable
@@ -325,7 +360,7 @@ public class CodeView extends View {
 	@Override
 	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
-		if (caretIntoViewWhenLaidOut) {
+		if (caretIntoViewWhenLaidOut || (h < oldh && isFocused())) {
 			bringCaretIntoView();
 		} else {
 			scrollInside(getScrollX(), getScrollY());
@@ -363,6 +398,45 @@ public class CodeView extends View {
 			postInvalidateOnAnimation();
 		}
 		return handled || super.onTouchEvent(event);
+	}
+
+	@Override
+	public boolean onCheckIsTextEditor() {
+		return true;
+	}
+
+	@Override
+	public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+		if (document == null) {
+			return null;
+		}
+		outAttrs.inputType = inputType;
+		outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI |
+				EditorInfo.IME_FLAG_NO_FULLSCREEN |
+				EditorInfo.IME_FLAG_NO_ENTER_ACTION;
+		Document.Selection selection = document.selection();
+		outAttrs.initialSelStart = selection.anchor();
+		outAttrs.initialSelEnd = selection.head();
+		outAttrs.initialCapsMode = 0;
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+				selection.end() - selection.start() <= TextInput.MAX_READ) {
+			Text text = document.text();
+			int from = Math.max(0, selection.start() - TextInput.MAX_READ / 4);
+			outAttrs.setInitialSurroundingSubText(text.substring(from,
+					Math.min(text.length(),
+							selection.end() + TextInput.MAX_READ / 4)), from);
+		}
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+			// Android 6 never calls closeConnection.
+			closeInput();
+		}
+		CodeInputConnection connection = new CodeInputConnection(this,
+				document);
+		connections.add(connection);
+		if (active == null) {
+			active = connection;
+		}
+		return connection;
 	}
 
 	@Override
@@ -405,11 +479,16 @@ public class CodeView extends View {
 
 	@Override
 	public WindowInsets onApplyWindowInsets(WindowInsets windowInsets) {
+		int bottom = insets.bottom;
 		insets = WindowInsetsCompat.toWindowInsetsCompat(windowInsets, this)
 				.getInsets(WindowInsetsCompat.Type.systemBars() |
 						WindowInsetsCompat.Type.displayCutout() |
 						WindowInsetsCompat.Type.ime());
-		scrollInside(getScrollX(), getScrollY());
+		if (insets.bottom > bottom && isFocused()) {
+			bringCaretIntoView();
+		} else {
+			scrollInside(getScrollX(), getScrollY());
+		}
 		invalidate();
 		return windowInsets;
 	}
@@ -449,6 +528,7 @@ public class CodeView extends View {
 	@Override
 	protected void onDetachedFromWindow() {
 		disconnect();
+		closeInput();
 		super.onDetachedFromWindow();
 	}
 
@@ -647,6 +727,92 @@ public class CodeView extends View {
 		postInvalidateOnAnimation();
 	}
 
+	/** Run the Enter command, for a line break the keyboard commits. */
+	void enter() {
+		if (keys != null) {
+			commands.enter();
+			bringCaretIntoView();
+		}
+	}
+
+	/** Do a context menu action of the keyboard; return if it is known. */
+	boolean contextMenuAction(int id) {
+		KeyCommands.Command command = KeyCommands.contextMenuCommand(id);
+		if (command == null) {
+			return false;
+		}
+		if (keys != null) {
+			keys.run(command, false, 0);
+			bringCaretIntoView();
+		}
+		return true;
+	}
+
+	private void restartInput() {
+		InputMethodManager imm = inputMethodManager();
+		if (imm != null) {
+			imm.restartInput(this);
+		}
+	}
+
+	/**
+	 * Make connection the one whose updates reach the keyboard, and close
+	 * the older ones: the keyboard does not go back to them.
+	 */
+	void use(CodeInputConnection connection) {
+		if (active != connection) {
+			active = connection;
+			for (int i = connections.indexOf(connection); i-- > 0; ) {
+				connections.get(i).closeConnection();
+			}
+			setComposingRegion(connection.composingStart(),
+					connection.composingEnd());
+		}
+	}
+
+	/** Pass an update of connection on, if the keyboard uses it. */
+	void updateSelection(CodeInputConnection connection, int selStart,
+			int selEnd, int composingStart, int composingEnd) {
+		InputMethodManager imm = inputMethodManager();
+		if (connection == active && imm != null) {
+			setComposingRegion(composingStart, composingEnd);
+			imm.updateSelection(this, selStart, selEnd, composingStart,
+					composingEnd);
+		}
+	}
+
+	/** Pass extracted text of connection on, if the keyboard uses it. */
+	void updateExtractedText(CodeInputConnection connection, int token,
+			TextInput.Window window) {
+		InputMethodManager imm = inputMethodManager();
+		if (connection == active && imm != null) {
+			imm.updateExtractedText(this, token,
+					CodeInputConnection.extracted(window));
+		}
+	}
+
+	/** Forget connection, which closed. */
+	void closed(CodeInputConnection connection) {
+		connections.remove(connection);
+		if (connection == active) {
+			active = connections.isEmpty()
+					? null
+					: connections.get(connections.size() - 1);
+			setComposingRegion(-1, -1);
+		}
+	}
+
+	private void closeInput() {
+		for (int i = connections.size(); i-- > 0; ) {
+			connections.get(i).closeConnection();
+		}
+	}
+
+	private InputMethodManager inputMethodManager() {
+		return (InputMethodManager) getContext().getSystemService(
+				Context.INPUT_METHOD_SERVICE);
+	}
+
 	private boolean key(int keyCode, int meta, String typed) {
 		if (!keys.keyDown(keyCode, meta, typed, Math.max(1,
 				(getHeight() - insets.top - insets.bottom) /
@@ -687,6 +853,10 @@ public class CodeView extends View {
 				x + getScrollX() - textLeft(text.lineCount()));
 		document.select(offset, offset);
 		requestFocus();
+		InputMethodManager imm = inputMethodManager();
+		if (imm != null) {
+			imm.showSoftInput(this, 0);
+		}
 		performClick();
 	}
 
