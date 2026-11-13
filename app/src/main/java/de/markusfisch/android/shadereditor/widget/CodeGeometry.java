@@ -6,6 +6,8 @@ package de.markusfisch.android.shadereditor.widget;
  * place is a division.
  */
 final class CodeGeometry {
+	static final int GUTTER_BLOCK = 32;
+
 	private CodeGeometry() {
 	}
 
@@ -26,6 +28,22 @@ final class CodeGeometry {
 			++digits;
 		}
 		return digits;
+	}
+
+	/**
+	 * Return the first of the lines whose numbers are recorded together
+	 * with that of line: those of a block of GUTTER_BLOCK lines.
+	 */
+	static int numbersFrom(int line) {
+		return line - line % GUTTER_BLOCK;
+	}
+
+	/**
+	 * Return the last of the lines whose numbers are recorded together
+	 * with that of line, at most the last of lineCount lines.
+	 */
+	static int numbersTo(int line, int lineCount) {
+		return Math.min(lineCount - 1, numbersFrom(line) + GUTTER_BLOCK - 1);
 	}
 
 	/**
