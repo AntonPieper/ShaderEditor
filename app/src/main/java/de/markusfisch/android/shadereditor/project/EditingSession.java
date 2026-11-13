@@ -238,9 +238,8 @@ public final class EditingSession {
 	}
 
 	/**
-	 * Write the draft of path to the new file to, then drop the draft,
-	 * leaving the stored file of path as it is. Nothing is dropped when
-	 * the copy is not written.
+	 * Write the draft of path to the new file to, leaving the draft and
+	 * the stored file of path as they are.
 	 */
 	public Outcome saveCopy(ProjectPath path, ProjectPath to) {
 		Draft draft = draft(path);
@@ -250,11 +249,6 @@ public final class EditingSession {
 		Change change = files.store().write(to, draft::writeTo, null);
 		if (!(change instanceof Done done)) {
 			return new Failed(((Refused) change).reason());
-		}
-		synchronized (this) {
-			if (files.get(path) == draft) {
-				clearDraft(path);
-			}
 		}
 		return new Saved(done.revision());
 	}

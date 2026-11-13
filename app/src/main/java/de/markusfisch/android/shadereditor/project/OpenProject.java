@@ -424,9 +424,10 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Drop the unsaved text of path and read it again from storage, into
-	 * its document as one change that can be undone. done gets null
-	 * when done, or why it cannot be read.
+	 * Read path again from storage into its document, as one change that
+	 * can be undone, and drop its unsaved text once the document took
+	 * the stored text; text typed after the call is kept instead. done
+	 * gets null when done, or why it cannot be read.
 	 */
 	public void reload(ProjectPath path, Callback<String> done) {
 		keptEdits.remove(path);
@@ -444,8 +445,8 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Write the unsaved text of path to a new file next to it, read path
-	 * again from storage and open the copy. done gets where the copy
+	 * Write the unsaved text of path to a new file next to it and open
+	 * the copy; path keeps its unsaved text. done gets where the copy
 	 * is, or why it was not written.
 	 */
 	public void saveCopy(ProjectPath path, Callback<Copy> done) {
@@ -469,9 +470,7 @@ public final class OpenProject {
 					done.done(copy);
 					return;
 				}
-				keptEdits.remove(path);
-				reload(path, problem -> load(to, ProjectFiles.UNKNOWN,
-						opened -> done.done(copy)));
+				load(to, ProjectFiles.UNKNOWN, opened -> done.done(copy));
 			});
 		});
 	}
@@ -665,19 +664,22 @@ public final class OpenProject {
 		});
 	}
 
-	// Give record a document of opened, unless it has one.
-	private void take(FileRecord record, FileRecord.Request request,
+	// Give record a document of opened, unless it has one; return
+	// whether it took it.
+	private boolean take(FileRecord record, FileRecord.Request request,
 			FileTexts.Opened opened) {
 		Document document = new Document(opened.text());
 		if (opened.unsaved()) {
 			document.markSaved(-1);
 		}
-		if (records.get(record.path) == record &&
-				record.adoptOpened(request, document, opened.revision())) {
-			record.draftModified = opened.unsaved();
-			document.addListener(updates);
-			use(record.path);
+		if (records.get(record.path) != record ||
+				!record.adoptOpened(request, document, opened.revision())) {
+			return false;
 		}
+		record.draftModified = opened.unsaved();
+		document.addListener(updates);
+		use(record.path);
+		return true;
 	}
 
 	// Save the text the document of record or its draft has now; done
@@ -727,27 +729,33 @@ public final class OpenProject {
 	private void reload(FileRecord record, Callback<String> done) {
 		FileRecord.Request request = record.start(FileRecord.Kind.RELOAD);
 		ProjectPath path = record.path;
-		if (record.document() != null) {
-			record.drafted = record.document().revision();
-			record.draftModified = false;
-		}
-		texts.draft(path, Text.EMPTY, false, null);
-		texts.open(path, ProjectFiles.UNKNOWN, opening -> {
+		texts.openStored(path, opening -> {
+			boolean took = false;
 			String problem = null;
 			if (opening instanceof FileTexts.Opened opened) {
-				if (record.document() == null) {
-					take(record, request, opened);
-				} else if (records.get(path) == record) {
-					// Typing that came after the request stays.
-					record.adoptStored(request, opened.text(),
-							opened.revision());
-				}
+				// Typing that came after the request stays, with its
+				// draft.
+				took = record.document() == null
+						? take(record, request, opened)
+						: records.get(path) == record &&
+								record.adoptStored(request, opened.text(),
+										opened.revision());
 			} else {
 				problem = ((FileTexts.Unopened) opening).reason();
 			}
-			end(record, request);
-			changed();
-			done.done(problem);
+			String reason = problem;
+			Runnable finish = () -> {
+				end(record, request);
+				changed();
+				done.done(reason);
+			};
+			if (took) {
+				// The draft goes only now that the stored text is taken.
+				texts.draft(path, Text.EMPTY, false, null);
+				worker.execute(() -> main.execute(finish));
+			} else {
+				finish.run();
+			}
 		});
 	}
 

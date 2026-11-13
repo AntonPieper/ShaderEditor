@@ -73,7 +73,18 @@ public final class FileTexts {
 	 */
 	public void open(ProjectPath path, long size, Callback<Opening> done) {
 		worker.execute(() -> {
-			Opening opening = read(path, size);
+			Opening opening = read(path, size, true);
+			main.execute(() -> done.done(opening));
+		});
+	}
+
+	/**
+	 * Open path for the editor as storage has it, also when it has a
+	 * draft.
+	 */
+	public void openStored(ProjectPath path, Callback<Opening> done) {
+		worker.execute(() -> {
+			Opening opening = read(path, ProjectFiles.UNKNOWN, false);
 			main.execute(() -> done.done(opening));
 		});
 	}
@@ -132,11 +143,11 @@ public final class FileTexts {
 		});
 	}
 
-	private Opening read(ProjectPath path, long size) {
+	private Opening read(ProjectPath path, long size, boolean drafted) {
 		if (path.getKind() == ProjectPath.Kind.IMAGE) {
 			return new Unopened(path + " is an image, not text");
 		}
-		Draft draft = session.draft(path);
+		Draft draft = drafted ? session.draft(path) : null;
 		if (draft != null) {
 			return new Opened(draft.text(), true, draft.base());
 		}
