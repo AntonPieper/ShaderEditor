@@ -939,7 +939,8 @@ public final class OpenProject {
 			document.markSaved(-1);
 		}
 		if (records.get(record.path) != record ||
-				!record.adoptOpened(request, document, opened.revision())) {
+				!record.adoptOpened(request, document, opened.revision(),
+						-1)) {
 			return false;
 		}
 		record.draftModified = record.sentModified = opened.unsaved();

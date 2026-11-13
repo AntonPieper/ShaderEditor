@@ -26,10 +26,10 @@ public class FileRecordTest {
 		Request again = record.start(Kind.OPEN);
 
 		assertFalse(record.adoptOpened(open, new Document(Text.of("old")),
-				"r1"));
+				"r1", -1));
 		assertNull(record.document());
 		assertTrue(record.adoptOpened(again, new Document(Text.of("new")),
-				"r2"));
+				"r2", -1));
 		assertEquals("r2", record.base());
 	}
 
@@ -76,10 +76,49 @@ public class FileRecordTest {
 		assertEquals(started.get(0), record.pending());
 	}
 
+	@Test
+	public void flushesASnapshotThenChangesAndASnapshotWhenAsked() {
+		open("stored", "r1");
+		Document document = record.document();
+		document.addListener(new Document.Listener() {
+			@Override
+			public void onChange(Document.Change change, Text before) {
+				record.collect(change);
+			}
+		});
+		assertNull(record.flush());
+
+		document.replace(6, 6, Text.of("!"));
+		FileRecord.Flush snapshot = record.flush();
+		assertEquals(FileRecord.Write.SNAPSHOT, snapshot.write());
+		assertEquals("stored!", snapshot.text().toString());
+		assertEquals("r1", snapshot.header().base());
+		document.replace(7, 7, Text.of("?"));
+		FileRecord.Flush append = record.flush();
+		assertEquals(FileRecord.Write.APPEND, append.write());
+		assertEquals(snapshot.to(), append.from());
+		assertEquals(1, append.changes().size());
+		assertNull(record.flush());
+
+		assertFalse(record.acknowledge(snapshot, Journal.Appended.DONE));
+		assertFalse(record.settled());
+		assertTrue(record.acknowledge(append, Journal.Appended.SNAPSHOT));
+		FileRecord.Flush again = record.flush();
+		assertEquals(FileRecord.Write.SNAPSHOT, again.write());
+		assertEquals("stored!?", again.text().toString());
+		assertFalse(record.acknowledge(again, Journal.Appended.DONE));
+		assertTrue(record.settled());
+
+		document.undo();
+		document.undo();
+		assertEquals(FileRecord.Write.REMOVE, record.flush().write());
+		assertFalse(record.journaled);
+	}
+
 	private void open(String text, String revision) {
 		Request open = record.start(Kind.OPEN);
 		assertTrue(record.adoptOpened(open, new Document(Text.of(text)),
-				revision));
+				revision, -1));
 		record.end(open);
 	}
 }
