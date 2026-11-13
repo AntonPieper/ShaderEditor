@@ -126,7 +126,7 @@ public class ShaderListManager implements ShaderList {
 		}
 
 		View progressBar = activity.findViewById(R.id.progress_bar);
-		View noShadersMessage = activity.findViewById(R.id.no_shaders);
+		View noShadersMessage = activity.findViewById(R.id.no_shaders_message);
 
 		if (progressBar != null) {
 			progressBar.setVisibility(View.GONE);

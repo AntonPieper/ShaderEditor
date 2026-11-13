@@ -129,6 +129,9 @@ public class UniformSampler2dPageFragment extends AddUniformPageFragment {
 
 	private void updateAdapter(List<DataRecords.TextureInfo> textures) {
 		progressBar.setVisibility(View.GONE);
+		noTexturesMessage.setVisibility(textures.isEmpty()
+				? View.VISIBLE
+				: View.GONE);
 		if (texturesAdapter != null) {
 			texturesAdapter.setData(textures);
 		}

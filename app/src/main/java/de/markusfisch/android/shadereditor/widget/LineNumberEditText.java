@@ -13,6 +13,8 @@ import android.view.ViewTreeObserver;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatEditText;
 
+import com.google.android.material.color.MaterialColors;
+
 import de.markusfisch.android.shadereditor.R;
 
 public class LineNumberEditText extends AppCompatEditText {
@@ -54,7 +56,8 @@ public class LineNumberEditText extends AppCompatEditText {
 					true);
 			lineColor = a.getColor(
 					R.styleable.LineNumberEditText_lineNumberColor,
-					0x88888888);
+					MaterialColors.getColor(this, com.google.android.material
+							.R.attr.colorOnSurfaceVariant));
 			lineNumberSpacing = a.getDimension(
 					R.styleable.LineNumberEditText_lineNumberSpacing,
 					16);
