@@ -301,4 +301,5 @@
 	<string name="nav_delete">Delete</string>
 	<string name="nav_no_shaders">No shaders yet</string>
 	<string name="nav_no_shaders_text">A new shader is saved here.</string>
+	<string name="nav_untitled">Untitled</string>
 </resources>
