@@ -884,6 +884,11 @@ public final class OpenProject {
 				if (document.revision() != revision) {
 					revision = document.revision();
 					++generation;
+					// Clean again, it counts among the clean ones; not
+					// dropped while its listeners are called.
+					if (!document.isModified()) {
+						main.execute(OpenProject.this::trim);
+					}
 				}
 				changed();
 				schedule(record);
@@ -1053,6 +1058,9 @@ public final class OpenProject {
 						record.drafted = revision;
 						record.draftModified = modified;
 						record.failure = null;
+						if (!modified) {
+							trim();
+						}
 					} else if (!kept) {
 						record.failure = "the journal cannot be written";
 						record.sent = -1;
