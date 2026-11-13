@@ -37,6 +37,8 @@ public class FileTextsTest {
 	private final List<Save> saves = new ArrayList<>();
 	private File drafts;
 	private Document document;
+	// The revision the document's text came from.
+	private String base;
 	private MemoryProjectFiles store;
 	private FileTexts texts;
 
@@ -78,7 +80,8 @@ public class FileTextsTest {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of(" two"));
-		texts.save(MAIN, document.text(), document.state(), this::saved);
+		texts.save(MAIN, document.text(), document.state(), base,
+				this::saved);
 		document.replace(7, 7, Text.of(" three"));
 		worker.run();
 		main.run();
@@ -92,7 +95,8 @@ public class FileTextsTest {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of(" two"));
-		texts.save(MAIN, document.text(), document.state(), this::saved);
+		texts.save(MAIN, document.text(), document.state(), base,
+				this::saved);
 		document.replace(7, 7, Text.of(" three"));
 		worker.run();
 		main.run();
@@ -136,7 +140,7 @@ public class FileTextsTest {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of("\r\ntwo"));
-		texts.draft(MAIN, document.text(), document.isModified());
+		texts.draft(MAIN, document.text(), document.isModified(), base);
 		worker.run();
 
 		texts = new FileTexts(EditingSession.restore(store,
@@ -157,7 +161,7 @@ public class FileTextsTest {
 		assertEquals(500_001, text.lineCount());
 		texts = new FileTexts(EditingSession.restore(store,
 				new DraftJournal(drafts)), worker, main);
-		texts.save(MAIN, text, 0, this::saved);
+		texts.save(MAIN, text, 0, null, this::saved);
 		worker.run();
 		main.run();
 
@@ -168,7 +172,7 @@ public class FileTextsTest {
 	}
 
 	@Test
-	public void rereadGivesAChangedFileAndRebaseSavesOverIt() {
+	public void rereadGivesAChangedFileThatSavesOverItsRevision() {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));
 		assertNull(reread(MAIN));
@@ -177,7 +181,7 @@ public class FileTextsTest {
 		FileTexts.Changed changed = reread(MAIN);
 
 		assertEquals("two", changed.text().toString());
-		texts.rebase(MAIN, changed.revision());
+		base = changed.revision();
 		assertNull(reread(MAIN));
 		document.replace(0, 3, Text.of("three"));
 		save(document);
@@ -186,7 +190,7 @@ public class FileTextsTest {
 	}
 
 	@Test
-	public void rereadWithoutRebaseKeepsTheConflict() {
+	public void rereadWithoutTakingItsRevisionKeepsTheConflict() {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));
 		store.put("main.glsl", "two");
@@ -201,14 +205,16 @@ public class FileTextsTest {
 
 	private FileTexts.Changed reread(ProjectPath path) {
 		FileTexts.Changed[] changed = {null};
-		texts.reread(path, result -> changed[0] = result);
+		texts.reread(path, base, result -> changed[0] = result);
 		worker.run();
 		main.run();
 		return changed[0];
 	}
 
 	private Text opened(ProjectPath path, long size) {
-		return ((Opened) open(path, size)).text();
+		Opened opened = (Opened) open(path, size);
+		base = opened.revision();
+		return opened.text();
 	}
 
 	private Opening open(ProjectPath path, long size) {
@@ -225,7 +231,8 @@ public class FileTextsTest {
 	}
 
 	private void save(Document document) {
-		texts.save(MAIN, document.text(), document.state(), this::saved);
+		texts.save(MAIN, document.text(), document.state(), base,
+				this::saved);
 		worker.run();
 		main.run();
 	}
