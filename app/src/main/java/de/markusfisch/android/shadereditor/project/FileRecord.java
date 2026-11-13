@@ -64,8 +64,10 @@ final class FileRecord {
 	// Whether the user chose to keep the unsaved text over the base,
 	// so only an explicit save writes it.
 	boolean kept;
-	// Whether the file has a journal, as the writes sent tell.
+	// Whether the file has a journal, as the writes sent tell; why the
+	// journal it has could not be read, else null.
 	boolean journaled;
+	String unreadable;
 
 	private final List<Runnable> waiting = new ArrayList<>();
 	private Document document;
@@ -104,11 +106,28 @@ final class FileRecord {
 	}
 
 	/**
-	 * Return whether the file has unsaved text: its document is
+	 * Return whether the file has unsaved text to save: its document is
 	 * modified, or, when not in memory, it has a journal.
 	 */
-	boolean unsaved() {
+	boolean edited() {
 		return document != null ? document.isModified() : journaled;
+	}
+
+	/**
+	 * Return whether the file counts as unsaved: it is edited, or it had
+	 * unsaved text that could not be read.
+	 */
+	boolean unsaved() {
+		return unreadable != null || edited();
+	}
+
+	/**
+	 * Return whether the record holds anything to keep: a document, an
+	 * operation, a journal or why one could not be read.
+	 */
+	boolean needed() {
+		return document != null || op != null || journaled ||
+				unreadable != null;
 	}
 
 	/**
@@ -329,6 +348,10 @@ final class FileRecord {
 		} else if (appended == Journal.Appended.DONE) {
 			acked = writes;
 			failure = null;
+			// A new snapshot took the place of one that was damaged.
+			if (flush.write() == Write.SNAPSHOT) {
+				unreadable = null;
+			}
 			return false;
 		}
 		journal = -1;

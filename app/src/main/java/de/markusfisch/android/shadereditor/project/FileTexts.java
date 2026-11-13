@@ -31,12 +31,13 @@ public final class FileTexts {
 	 * The text of a file for the editor: its journal's when unsaved,
 	 * else the stored text; the revision of the stored text it is based
 	 * on, null for none; the revision of the journal it came from, -1
-	 * for none; and its bytes, as {@link Document#bytes} counts them. A
-	 * document of unsaved text starts modified, with
-	 * {@code markSaved(-1)}.
+	 * for none; its bytes, as {@link Document#bytes} counts them; and
+	 * why its journal could not be read, so the stored text was opened
+	 * instead, else null. A document of unsaved text starts modified,
+	 * with {@code markSaved(-1)}.
 	 */
 	public record Opened(Text text, boolean unsaved, String revision,
-			int journal, long bytes) implements Opening {
+			int journal, long bytes, String unreadable) implements Opening {
 	}
 
 	/** A file that cannot be edited; reason tells the user why. */
@@ -87,16 +88,22 @@ public final class FileTexts {
 	public void open(ProjectPath path, long size, boolean journaled,
 			Callback<Opening> done) {
 		worker.execute(() -> {
-			Opening opening = journaled ? recover(path) : null;
-			Opening opened = opening != null ? opening : read(path, size);
-			main.execute(() -> done.done(opened));
+			Journal.Recovered recovered = journaled
+					? journal.read(path)
+					: null;
+			Opening opening = recovered != null && recovered.text() != null
+					? recovered(path, recovered)
+					: read(path, size, recovered != null
+							? recovered.problem()
+							: null);
+			main.execute(() -> done.done(opening));
 		});
 	}
 
 	/** Open path for the editor as storage has it. */
 	public void openStored(ProjectPath path, Callback<Opening> done) {
 		worker.execute(() -> {
-			Opening opening = read(path, ProjectFiles.UNKNOWN);
+			Opening opening = read(path, ProjectFiles.UNKNOWN, null);
 			main.execute(() -> done.done(opening));
 		});
 	}
@@ -105,7 +112,8 @@ public final class FileTexts {
 	 * Save text, taken from the document at state, to path, expecting
 	 * base, the revision the text came from. Call with null for the
 	 * text the journal of path holds, which goes once it is written;
-	 * the outcome is null when there is none. The text is immutable,
+	 * the outcome is null when there is none, and failed when it cannot
+	 * be read. The text is immutable,
 	 * so editing on meanwhile changes nothing of what is written.
 	 */
 	public void save(ProjectPath path, Text text, int state, String base,
@@ -122,6 +130,16 @@ public final class FileTexts {
 		worker.execute(() -> {
 			Journal.Appended appended = write(path, flush);
 			main.execute(() -> done.done(appended));
+		});
+	}
+
+	/**
+	 * Delete the journal of path; done gets whether none is kept now.
+	 */
+	void forget(ProjectPath path, Callback<Boolean> done) {
+		worker.execute(() -> {
+			boolean removed = journal.remove(path);
+			main.execute(() -> done.done(removed));
 		});
 	}
 
@@ -204,6 +222,10 @@ public final class FileTexts {
 		Text written = text;
 		if (written == null) {
 			Journal.Recovered recovered = journal.read(path);
+			if (recovered != null && recovered.text() == null) {
+				return new Save(state, new OpenProject.Failed(
+						recovered.problem()), null);
+			}
 			written = recovered != null ? recovered.text() : null;
 		}
 		if (written == null) {
@@ -247,20 +269,19 @@ public final class FileTexts {
 		return journal.append(path, flush.from(), flush.to(), changes);
 	}
 
-	// Return the text the journal of path holds, or null when there is
-	// none or it cannot be read; the stored file is opened then.
-	private Opening recover(ProjectPath path) {
-		Journal.Recovered recovered = journal.read(path);
-		if (recovered == null || recovered.text() == null) {
-			return null;
-		} else if (recovered.tooLarge()) {
+	// Return the text recovered from the journal of path.
+	private static Opening recovered(ProjectPath path,
+			Journal.Recovered recovered) {
+		if (recovered.tooLarge()) {
 			return tooLarge(path);
 		}
 		return new Opened(recovered.text(), true, recovered.header().base(),
-				recovered.revision(), Document.bytes(recovered.text()));
+				recovered.revision(), Document.bytes(recovered.text()), null);
 	}
 
-	private Opening read(ProjectPath path, long size) {
+	// Return the stored text of path, telling unreadable, why its
+	// journal could not be read, or null.
+	private Opening read(ProjectPath path, long size, String unreadable) {
 		if (path.getKind() == ProjectPath.Kind.IMAGE) {
 			return new Unopened(path + " is an image, not text");
 		}
@@ -284,7 +305,7 @@ public final class FileTexts {
 			return new Unopened(path + " is not a text file");
 		}
 		return new Opened(text, false, content.revision(), -1,
-				Document.bytes(text));
+				Document.bytes(text), unreadable);
 	}
 
 	// Return the text of bytes, or null when they are not text the

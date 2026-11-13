@@ -166,7 +166,7 @@ public final class OpenProject {
 			ProjectPath running, List<Used> used,
 			List<ProjectDiagnostic> diagnostics, String unprotected,
 			Map<ProjectPath, FileTexts.Found> found,
-			Map<ProjectPath, Runs> runs) {
+			Map<ProjectPath, Runs> runs, Map<ProjectPath, String> unreadable) {
 	}
 
 	// The files opened, being opened or worked on in storage.
@@ -555,7 +555,7 @@ public final class OpenProject {
 		};
 		for (FileRecord record : new ArrayList<>(records.values())) {
 			ProjectPath path = record.path;
-			if (!record.unsaved()) {
+			if (!record.edited()) {
 				continue;
 			} else if (record.conflict != null) {
 				outcomes.put(path, new Conflict(record.conflict));
@@ -659,6 +659,38 @@ public final class OpenProject {
 					});
 		}
 		changed();
+	}
+
+	/**
+	 * Return why the unsaved text of path could not be read when it was
+	 * opened, or null. The file then counts among those with unsaved
+	 * text, its document has the stored text, and the journal that
+	 * could not be read stays until {@link #dismiss} or until the text
+	 * is edited and kept again.
+	 */
+	public String unreadable(ProjectPath path) {
+		FileRecord record = records.get(path);
+		return record != null ? record.unreadable : null;
+	}
+
+	/**
+	 * Give up the unsaved text of path that could not be read: its
+	 * journal is deleted, and the file no longer counts as unsaved.
+	 */
+	public void dismiss(ProjectPath path) {
+		FileRecord record = records.get(path);
+		if (record == null || record.unreadable == null) {
+			return;
+		}
+		texts.forget(path, removed -> {
+			if (removed && record.unreadable != null) {
+				record.unreadable = null;
+				if (!record.needed() && records.get(path) == record) {
+					records.remove(path);
+				}
+			}
+			changed();
+		});
 	}
 
 	/**
@@ -920,8 +952,7 @@ public final class OpenProject {
 	// left to keep.
 	private void end(FileRecord record, FileRecord.Request request) {
 		record.end(request);
-		if (record.document() == null && record.pending() == null &&
-				!record.journaled && records.get(record.path) == record) {
+		if (!record.needed() && records.get(record.path) == record) {
 			records.remove(record.path);
 		}
 	}
@@ -936,8 +967,10 @@ public final class OpenProject {
 			} else if (take(record, request, (FileTexts.Opened) opened) &&
 					((FileTexts.Opened) opened).journal() < 0) {
 				// The journal is gone, or cannot be read and is left as
-				// it is until the next snapshot replaces it.
+				// it is until it is dismissed or the next snapshot
+				// replaces it.
 				record.journaled = false;
+				record.unreadable = ((FileTexts.Opened) opened).unreadable();
 			}
 			List<Callback<String>> joined = opening.remove(path);
 			end(record, request);
@@ -1022,7 +1055,7 @@ public final class OpenProject {
 			Runnable then) {
 		FileRecord.Request request = record.start(FileRecord.Kind.CHECK);
 		Document document = record.document();
-		if (record.unsaved() && record.conflict == null) {
+		if (record.edited() && record.conflict == null) {
 			texts.compare(record.path, request.base(), checked -> {
 				if (records.get(record.path) == record) {
 					record.adoptConflict(request,
@@ -1144,7 +1177,7 @@ public final class OpenProject {
 		record.runs = Runs.UNKNOWN;
 		record.runsRevision = record.runsAsked = -1;
 		record.drop().removeListener(record.listener);
-		if (!record.journaled) {
+		if (!record.needed()) {
 			records.remove(record.path);
 		}
 	}
@@ -1312,14 +1345,18 @@ public final class OpenProject {
 			}
 		}
 		Map<ProjectPath, Runs> runs = new HashMap<>();
+		Map<ProjectPath, String> unreadable = new HashMap<>();
 		for (FileRecord record : records.values()) {
 			if (record.document() != null &&
 					record.runsRevision == record.document().revision()) {
 				runs.put(record.path, record.runs);
 			}
+			if (record.unreadable != null) {
+				unreadable.put(record.path, record.unreadable);
+			}
 		}
 		return new State(unsaved(), conflicts().keySet(), running, used,
-				diagnostics, unprotected(), found, runs);
+				diagnostics, unprotected(), found, runs, unreadable);
 	}
 
 	// Call the listener, unless nothing it hears about changed or a call
