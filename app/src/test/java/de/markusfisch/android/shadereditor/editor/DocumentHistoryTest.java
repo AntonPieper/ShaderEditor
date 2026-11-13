@@ -46,6 +46,60 @@ public class DocumentHistoryTest {
 	}
 
 	@Test
+	public void restoredHistoryUndoesAndRedoesAsTheOriginal() {
+		Random random = new Random(7);
+		Document original = document("start\nof the text\n");
+		for (int i = 0; i < 300; ++i) {
+			now[0] += random.nextInt(5) == 0 ? 1000 : random.nextInt(300);
+			step(random, original);
+		}
+		original.markSaved(original.state());
+		original.undo();
+		Document restored = document(original.text().toString());
+
+		assertTrue(restored.restore(original.history()));
+		assertFalse(restored.restore(original.history()));
+
+		assertEquals(original.selection(), restored.selection());
+		assertEquals(original.historyChars(), restored.historyChars());
+		while (original.canUndo()) {
+			assertTrue(restored.canUndo());
+			original.undo();
+			restored.undo();
+			assertSame(original, restored);
+		}
+		assertFalse(restored.canUndo());
+		while (original.canRedo()) {
+			original.redo();
+			restored.redo();
+			assertSame(original, restored);
+		}
+		assertFalse(restored.canRedo());
+		original.replace(0, 0, Text.of("x"));
+		restored.replace(0, 0, Text.of("x"));
+		original.undo();
+		restored.undo();
+		assertSame(original, restored);
+	}
+
+	@Test
+	public void historyIsNotTakenWhereItsSelectionCannotBe() {
+		Document original = document("a longer text");
+		original.select(10, 10);
+		original.replace(10, 10, Text.of("!"));
+
+		assertFalse(document("short").restore(original.history()));
+	}
+
+	// Asserts that b holds what a holds.
+	private static void assertSame(Document a, Document b) {
+		assertEquals(a.text().toString(), b.text().toString());
+		assertEquals(a.selection(), b.selection());
+		assertEquals(a.isModified(), b.isModified());
+		assertEquals(a.state(), b.state());
+	}
+
+	@Test
 	public void redoReturnsWhatUndoTook() {
 		Document document = document("ab");
 		document.select(2, 2);
