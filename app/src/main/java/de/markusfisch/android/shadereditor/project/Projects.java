@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.project;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.net.Uri;
 
@@ -112,8 +113,11 @@ public final class Projects {
 	private LiveProjects live() {
 		synchronized (Projects.class) {
 			if (live == null) {
+				ActivityManager manager = (ActivityManager)
+						context.getSystemService(Context.ACTIVITY_SERVICE);
 				live = new LiveProjects(sessions, QUEUE, main::post,
-						main::postDelayed);
+						main::postDelayed, OpenProject.budget(
+								manager.getMemoryClass() * 1024L * 1024));
 			}
 			return live;
 		}
