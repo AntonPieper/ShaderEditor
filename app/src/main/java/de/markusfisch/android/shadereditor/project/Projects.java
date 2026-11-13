@@ -9,6 +9,7 @@ import android.os.Looper;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -93,15 +94,28 @@ public final class Projects {
 	}
 
 	/**
-	 * Open the project of session id again, with the drafts it kept, and
-	 * remember it as the one open last; return the project when it is
-	 * open already. A project whose files cannot be reached opens with
-	 * its drafts, and problem tells why. It stays open until
-	 * {@link OpenProject#close}.
+	 * Open the project of session id again, with the unsaved text it
+	 * kept, and remember it as the one open last; return the project
+	 * when it is open already. A project whose files cannot be reached
+	 * opens with its unsaved text, and problem tells why. It stays open
+	 * until {@link OpenProject#close}. Waits for the queue the projects
+	 * work on, so it is never called from there.
 	 */
 	public Opened open(String id) {
-		OpenProject project = live().open(id,
-				locator -> SafProjects.open(context, locator));
+		OpenProject[] opened = {null};
+		CountDownLatch done = new CountDownLatch(1);
+		live().open(id, locator -> SafProjects.open(context, locator),
+				project -> {
+					opened[0] = project;
+					done.countDown();
+				});
+		try {
+			done.await();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return new Opened(id, null, "opening was interrupted");
+		}
+		OpenProject project = opened[0];
 		if (project == null) {
 			return new Opened(id, null, "it is not a known project");
 		}
