@@ -57,13 +57,27 @@ public record Preparation(
 			ProjectPath entry,
 			ProjectLimits limits,
 			Map<String, String> reserved) {
+		return prepare(files, entry, limits, reserved, false);
+	}
+
+	/**
+	 * Prepare entry as {@link #prepare(ProjectFiles, ProjectPath,
+	 * ProjectLimits, Map)} does; lone tells that entry is the only file
+	 * of the project, which runs whatever its name.
+	 */
+	static Preparation prepare(
+			ProjectFiles files,
+			ProjectPath entry,
+			ProjectLimits limits,
+			Map<String, String> reserved,
+			boolean lone) {
 		CapturedFiles captured = new CapturedFiles(files, limits);
 		List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		ProjectParseResult<ProjectManifest> manifest = readManifest(captured);
 		if (manifest != null && !manifest.isSuccess()) {
 			diagnostics.add(manifest.diagnostic());
 		}
-		if (entry.getKind() != ProjectPath.Kind.SHADER) {
+		if (!lone && entry.getKind() != ProjectPath.Kind.SHADER) {
 			diagnostics.add(error("The running shader must be a .glsl " +
 					"file: " + entry, entry));
 			return new Preparation(null, diagnostics,

@@ -108,13 +108,16 @@ public final class SafProjects {
 	}
 
 	/**
-	 * Open the folder of locator, telling whether it is still there.
+	 * Open the folder or document of locator, telling whether it is
+	 * still there.
 	 */
 	public static Opened open(Context context, Locator locator) {
 		if (locator.kind() == Kind.TREE) {
 			return openFolder(context, Uri.parse(locator.value()));
+		} else if (locator.kind() == Kind.DOCUMENT) {
+			return openDocument(context, Uri.parse(locator.value()));
 		} else if (locator.kind() != Kind.DIRECTORY) {
-			return closed("only folders open here");
+			return closed("only folders and documents open here");
 		}
 		File dir = new File(locator.value());
 		return dir.isDirectory()
@@ -127,7 +130,14 @@ public final class SafProjects {
 	 * it apart in lists; null when it cannot be reached.
 	 */
 	public static String[] describe(Context context, Locator locator) {
-		if (locator.kind() == Kind.DIRECTORY) {
+		if (locator.kind() == Kind.DOCUMENT) {
+			Uri uri = Uri.parse(locator.value());
+			Opened opened = openDocument(context, uri);
+			return opened.file() != null
+					? new String[]{opened.file().getFileName(),
+							uri.getAuthority()}
+					: null;
+		} else if (locator.kind() == Kind.DIRECTORY) {
 			File dir;
 			File root;
 			try {

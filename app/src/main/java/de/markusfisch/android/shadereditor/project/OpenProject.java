@@ -60,6 +60,18 @@ public final class OpenProject {
 	static final long FLUSH_DELAY = 2000;
 	static final long FLUSH_LIMIT = 5000;
 
+	/** Whether the project's files can be read and changed. */
+	public enum Access {
+		AVAILABLE, READ_ONLY, UNAVAILABLE
+	}
+
+	/**
+	 * The state of the project's storage, and why it is not available,
+	 * else null.
+	 */
+	public record Storage(Access access, String reason) {
+	}
+
 	/** How the user resolves a conflict. */
 	public enum Choice {
 		RELOAD, KEEP
@@ -128,6 +140,10 @@ public final class OpenProject {
 	private final Executor worker;
 	private final Executor main;
 	private final Later later;
+	// The only file of a project of one document, else null.
+	private final ProjectPath lone;
+	private final Storage storage;
+	private Runnable release;
 	// The files with drafts and those in conflict with the revision
 	// they were seen at, as the session on the worker last told them.
 	private Set<ProjectPath> drafts;
@@ -147,8 +163,10 @@ public final class OpenProject {
 	private OpenProject(String id, ProjectFiles store,
 			ProjectSessions sessions, EditingSession session,
 			ProjectSessions.Recent recent, Executor worker, Executor main,
-			Later later) {
+			Later later, ProjectPath lone, Storage storage) {
 		this.id = id;
+		this.lone = lone;
+		this.storage = storage;
 		name = recent != null ? recent.name() : null;
 		location = recent != null ? recent.location() : null;
 		this.store = store;
@@ -169,18 +187,40 @@ public final class OpenProject {
 	 * projects, and find what runs; return null when there is no such
 	 * session. Storage work runs on worker, one task at a time, results
 	 * are posted to main, and later runs the timers that keep unsaved
-	 * text in the journal; call it on worker.
+	 * text in the journal; call it on worker. lone is the only file of
+	 * a project of one document, which runs, else null. A store of null
+	 * cannot be reached for problem: the project opens with its drafts
+	 * and tells that through {@link #storage}.
 	 */
-	static OpenProject open(String id, ProjectFiles store,
-			ProjectSessions sessions, Executor worker, Executor main,
-			Later later) {
+	static OpenProject open(String id, ProjectFiles store, ProjectPath lone,
+			String problem, ProjectSessions sessions, Executor worker,
+			Executor main, Later later) {
 		DraftJournal journal = sessions.drafts(id);
 		if (journal == null) {
 			return null;
 		}
+		Storage storage;
+		if (store == null) {
+			storage = new Storage(Access.UNAVAILABLE, problem);
+			store = new ProjectFiles() {
+				@Override
+				public Read read(ProjectPath path) {
+					return new Failed(problem);
+				}
+
+				@Override
+				public Listing list(ProjectPath folder) {
+					return new Failed(problem);
+				}
+			};
+		} else {
+			storage = new Storage(store.offers(lone).any()
+					? Access.AVAILABLE
+					: Access.READ_ONLY, null);
+		}
 		OpenProject project = new OpenProject(id, store, sessions,
 				EditingSession.restore(store, journal), sessions.recent(id),
-				worker, main, later);
+				worker, main, later, lone, storage);
 		project.shown = project.keptShown = sessions.shown(id);
 		project.running = project.findRunning(Map.of());
 		return project;
@@ -188,6 +228,28 @@ public final class OpenProject {
 
 	public String id() {
 		return id;
+	}
+
+	/** Return whether the project's files can be read and changed. */
+	public Storage storage() {
+		return storage;
+	}
+
+	/**
+	 * Keep everything typed in the journal and let the project go; the
+	 * next opening of its session makes a new one.
+	 */
+	public void close() {
+		persist();
+		if (release != null) {
+			release.run();
+			release = null;
+		}
+	}
+
+	// Call release when the project is closed.
+	void onClose(Runnable release) {
+		this.release = release;
 	}
 
 	/**
@@ -580,7 +642,7 @@ public final class OpenProject {
 		worker.execute(() -> {
 			Preparation preparation = entry != null
 					? Preparation.prepare(new Edited(snapshot), entry,
-							ProjectLimits.DEFAULT, reserved)
+							ProjectLimits.DEFAULT, reserved, lone != null)
 					: null;
 			List<Used> read = new ArrayList<>();
 			if (preparation != null) {
@@ -975,6 +1037,9 @@ public final class OpenProject {
 	// file if it still exists, else the entry of a valid manifest, else
 	// main.glsl when present, else nothing. On the worker.
 	private ProjectPath findRunning(Map<ProjectPath, Text> snapshot) {
+		if (lone != null) {
+			return lone;
+		}
 		ProjectFiles files = new Edited(snapshot);
 		ProjectPath found = sessions.running(id);
 		if (found == null || !(files.read(found) instanceof Content)) {
