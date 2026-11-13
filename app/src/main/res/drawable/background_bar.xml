@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A bar on a screen without a picture: the surface, a hairline below -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+	<item>
+		<shape>
+			<solid android:color="?attr/colorSurface" />
+		</shape>
+	</item>
+	<item
+		android:height="@dimen/se_hairline"
+		android:gravity="bottom">
+		<shape>
+			<solid android:color="?attr/colorOutlineVariant" />
+		</shape>
+	</item>
+</layer-list>

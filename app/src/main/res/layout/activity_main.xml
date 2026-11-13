@@ -48,8 +48,13 @@
 
 		</LinearLayout>
 
-		<!-- Nav bar background for SDK35+ -->
-		<include layout="@layout/navbar"/>
+		<!-- The strip behind the navigation bar -->
+		<View
+			android:id="@+id/navbar"
+			android:layout_width="match_parent"
+			android:layout_height="0dp"
+			android:layout_gravity="bottom"
+			android:background="@color/primary_translucent" />
 
 	</androidx.coordinatorlayout.widget.CoordinatorLayout>
 </merge>

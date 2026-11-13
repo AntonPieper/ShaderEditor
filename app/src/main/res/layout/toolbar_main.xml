@@ -3,9 +3,11 @@
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:id="@+id/toolbar"
 	android:layout_width="match_parent"
-	android:layout_height="?attr/actionBarSize"
+	android:layout_height="wrap_content"
+	android:minHeight="?attr/actionBarSize"
 	android:background="@color/primary_translucent"
 	android:theme="@style/ThemeOverlay.Material3.ActionBar"
+	app:maxButtonHeight="?attr/actionBarSize"
 	app:popupTheme="@style/ThemeOverlay.Material3"
 	app:subtitleTextAppearance="@style/Subtitle"
 	app:titleTextAppearance="@style/Title">

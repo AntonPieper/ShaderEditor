@@ -7,7 +7,6 @@ import android.hardware.SensorManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.preference.PreferenceManager;
 
@@ -84,7 +83,6 @@ public class Preferences {
 	private boolean batteryLow = false;
 	// Written by the battery receiver, read by shaders on the GL thread.
 	private volatile boolean powerConnected = false;
-	private int systemBarColor;
 	private long defaultNewShaderId = 0;
 	private long lastOpenedShaderId = 0;
 	private boolean disableHighlighting = false;
@@ -97,10 +95,6 @@ public class Preferences {
 	private long pendingCrashShaderId = 0;
 
 	public void init(Context context) {
-		systemBarColor = ContextCompat.getColor(
-				context,
-				R.color.primary_translucent);
-
 		PreferenceManager.setDefaultValues(
 				context,
 				R.xml.preferences,
@@ -387,10 +381,6 @@ public class Preferences {
 
 	public boolean autoSave() {
 		return autoSave;
-	}
-
-	public int getSystemBarColor() {
-		return systemBarColor;
 	}
 
 	public boolean showLineNumbers() {
