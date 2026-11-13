@@ -18,13 +18,15 @@ public record Item(String heading, Row row, boolean selected,
 	/**
 	 * The lines of a listing of the level: the file in the editor, or
 	 * the folder it is in, is selected, the running file is marked,
-	 * and a tap on it only opens.
+	 * and a tap on it or a file it uses only opens.
 	 *
 	 * @param open    the file in the editor, or null
 	 * @param running the file that runs, or null
+	 * @param used    the files the running file uses, like its passes
+	 *                and includes; a tap on them only opens too
 	 */
 	public static List<Item> of(Listing listing, Level level, Place open,
-			Place running) {
+			Place running, Set<Place> used) {
 		List<Item> items = new ArrayList<>();
 		for (Listing.Section section : listing.sections()) {
 			if (section.heading() != null) {
@@ -41,7 +43,8 @@ public record Item(String heading, Row row, boolean selected,
 					marks.add(Row.Mark.RUNNING);
 				}
 				items.add(new Item(null, row, place.equals(open) ||
-						holds(row, open), marks, Tap.of(row.kind(), runs)));
+						holds(row, open), marks,
+						Tap.of(row.kind(), runs || used.contains(place))));
 			}
 		}
 		return items;

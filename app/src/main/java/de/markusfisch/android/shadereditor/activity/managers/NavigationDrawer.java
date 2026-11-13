@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.color.MaterialColors;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -347,7 +348,8 @@ public class NavigationDrawer implements ShaderList {
 
 	private void show(@NonNull RecyclerView list) {
 		// What runs is what is open while shaders come from the database.
-		adapter(list).setItems(Item.of(listing, level, open, open), loaded);
+		adapter(list).setItems(Item.of(listing, level, open, open,
+				Collections.emptySet()), loaded);
 	}
 
 	private void showHeader() {
