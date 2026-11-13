@@ -44,11 +44,11 @@ import de.markusfisch.android.shadereditor.widget.ErrorListModal;
  * <li>"remove", a session id, forgets that project, never its files;</li>
  * <li>"run_this", a path, runs that file from now on;</li>
  * <li>"edit", a path, with "text" sets that file's text as the editor
- * would and keeps it as a draft;</li>
+ * would and keeps it in the journal;</li>
  * <li>"save", true, saves explicitly; "refresh", true, looks for changes
  * made elsewhere;</li>
- * <li>"resolve", reload, keep or copy, resolves the conflict of the path
- * in "file".</li>
+ * <li>"resolve", reload or keep, resolves the conflict of the path in
+ * "file".</li>
  * </ul>
  */
 public class ProjectPreviewActivity extends PreviewActivity {
@@ -198,8 +198,6 @@ public class ProjectPreviewActivity extends PreviewActivity {
 		} else if (file != null && "keep".equals(resolve)) {
 			current.resolve(file, OpenProject.Choice.KEEP,
 					current.seen(file));
-		} else if (file != null && "copy".equals(resolve)) {
-			current.saveCopy(file, copy -> log("copy " + copy));
 		}
 	}
 

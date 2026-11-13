@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -18,10 +19,10 @@ import java.util.regex.Pattern;
 /**
  * Short ids of opened projects, kept as app metadata in an app-private
  * folder: each id has a folder with the locator of its store, the
- * journal of its drafts, the file chosen to run, the file shown last
- * and how it is listed among the recent projects, so screens can pass
- * the id instead of project content and tell about a project without
- * opening it. The folder also keeps which session was open last.
+ * journal of its unsaved text, the file chosen to run, the file shown
+ * last and how it is listed among the recent projects, so screens can
+ * pass the id instead of project content and tell about a project
+ * without opening it. The folder also keeps which session was open last.
  * Removing or discarding a session never touches the project's files.
  * Use it off the main thread.
  */
@@ -41,8 +42,8 @@ public final class ProjectSessions {
 	/**
 	 * A session listed among the recent projects: its id, locator, the
 	 * name and place of its files to show, when it was last opened, in
-	 * milliseconds since the epoch, and whether its journal holds a
-	 * draft with a valid header.
+	 * milliseconds since the epoch, and whether its journal holds the
+	 * unsaved text of a file under a valid header.
 	 */
 	public record Recent(String id, Locator locator, String name,
 			String location, long opened, boolean unsaved) {
@@ -96,7 +97,7 @@ public final class ProjectSessions {
 		} catch (IOException e) {
 			return null;
 		}
-		return DraftJournal.replace(new File(root, id), LOCATOR,
+		return Journal.replace(new File(root, id), LOCATOR,
 				bytes.toByteArray()) ? id : null;
 	}
 
@@ -136,13 +137,11 @@ public final class ProjectSessions {
 	}
 
 	/**
-	 * Return the journal of the drafts of session id, or null when
-	 * there is no such session.
+	 * Return the journal of the unsaved text of session id, or null
+	 * when there is no such session.
 	 */
-	public DraftJournal drafts(String id) {
-		return locator(id) != null
-				? new DraftJournal(file(id, DRAFTS))
-				: null;
+	Journal journal(String id) {
+		return locator(id) != null ? new Journal(file(id, DRAFTS)) : null;
 	}
 
 	/**
@@ -164,7 +163,7 @@ public final class ProjectSessions {
 		} catch (IOException e) {
 			return false;
 		}
-		return DraftJournal.replace(dir, RECENT, bytes.toByteArray());
+		return Journal.replace(dir, RECENT, bytes.toByteArray());
 	}
 
 	/**
@@ -260,8 +259,10 @@ public final class ProjectSessions {
 	 * session.
 	 */
 	public Set<ProjectPath> unsaved(String id) {
-		DraftJournal journal = drafts(id);
-		return journal != null ? journal.paths() : Set.of();
+		Journal journal = journal(id);
+		return journal != null
+				? new LinkedHashSet<>(journal.headers().keySet())
+				: Set.of();
 	}
 
 	/**
@@ -299,15 +300,15 @@ public final class ProjectSessions {
 			return false;
 		}
 		return locator(id) != null &&
-				DraftJournal.replace(root, LAST, bytes.toByteArray());
+				Journal.replace(root, LAST, bytes.toByteArray());
 	}
 
 	/**
 	 * Remove session id from the recent projects. A session without
-	 * drafts is forgotten; one with drafts keeps its locator and drafts,
-	 * unlisted, until they are saved or discarded, and opening its
-	 * project again finds it by its locator. Return whether it is no
-	 * longer listed.
+	 * unsaved text is forgotten; one with unsaved text keeps its locator
+	 * and journal, unlisted, until the text is saved or discarded, and
+	 * opening its project again finds it by its locator. Return whether
+	 * it is no longer listed.
 	 */
 	public synchronized boolean remove(String id) {
 		File dir = file(id, null);
@@ -321,13 +322,13 @@ public final class ProjectSessions {
 		if (recent.exists() && !recent.delete()) {
 			return false;
 		}
-		// Deleting the drafts folder fails while it holds any file.
+		// Deleting the journal's folder fails while it holds any file.
 		File drafts = new File(dir, DRAFTS);
 		return drafts.exists() && !drafts.delete() || discard(id);
 	}
 
 	/**
-	 * Forget session id with its drafts; the project's files stay as
+	 * Forget session id with its journal; the project's files stay as
 	 * they are. Return whether nothing of it is left.
 	 */
 	public synchronized boolean discard(String id) {
@@ -382,7 +383,7 @@ public final class ProjectSessions {
 		} catch (IOException e) {
 			return false;
 		}
-		return DraftJournal.replace(dir, name, bytes.toByteArray());
+		return Journal.replace(dir, name, bytes.toByteArray());
 	}
 
 	private String newId() {
