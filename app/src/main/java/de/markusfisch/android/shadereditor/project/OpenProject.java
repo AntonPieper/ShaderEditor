@@ -236,7 +236,7 @@ public final class OpenProject {
 			return CapturedFiles.problem(path, read);
 		}
 		if (draft != null) {
-			doc.text = draft.text();
+			doc.text = draft.text().toString();
 			doc.base = draft.base();
 		} else {
 			doc.text = doc.stored;
@@ -487,7 +487,7 @@ public final class OpenProject {
 			return new Copy(null, ((EditingSession.Failed) outcome).reason());
 		}
 		Doc copy = new Doc();
-		copy.text = copy.stored = copy.journaled = draft.text();
+		copy.text = copy.stored = copy.journaled = draft.text().toString();
 		copy.base = saved.revision();
 		synchronized (this) {
 			docs.remove(path);
