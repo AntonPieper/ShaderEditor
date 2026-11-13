@@ -3,7 +3,6 @@ package de.markusfisch.android.shadereditor.activity.managers;
 import android.app.Activity;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -155,24 +154,43 @@ public class MainMenuManager {
 	}
 
 	private void resizeAndShow(@NonNull View anchor) {
-		Rect screenRect = new Rect();
-		anchor.getWindowVisibleDisplayFrame(screenRect);
-		int screenHeight = screenRect.height();
-
-		DisplayMetrics displayMetrics =
-				activity.getResources().getDisplayMetrics();
-		int padding = (int) (100 * displayMetrics.density);
-		int maxHeight = screenHeight - padding;
+		Rect visibleFrame = new Rect();
+		anchor.getWindowVisibleDisplayFrame(visibleFrame);
+		int[] anchorLocation = new int[2];
+		anchor.getLocationInWindow(anchorLocation);
+		int maxHeight = visibleFrame.bottom - anchorLocation[1];
 
 		View contentView = popupWindow.getContentView();
 		contentView.measure(View.MeasureSpec.UNSPECIFIED,
 				View.MeasureSpec.UNSPECIFIED);
+		int height = contentView.getMeasuredHeight();
+		if (height > maxHeight) {
+			height = heightToLastWholeRow(
+					(ViewGroup) ((ViewGroup) contentView).getChildAt(0),
+					maxHeight);
+		}
 		popupWindow.setWidth(contentView.getMeasuredWidth());
-		popupWindow.setHeight(Math.min(maxHeight,
-				contentView.getMeasuredHeight()));
+		popupWindow.setHeight(height);
 		popupWindow.showAsDropDown(anchor,
 				anchor.getWidth() - contentView.getMeasuredWidth(),
 				-anchor.getHeight());
+	}
+
+	private static int heightToLastWholeRow(@NonNull ViewGroup rows,
+			int maxHeight) {
+		int height = rows.getPaddingTop();
+		for (int i = 0, count = rows.getChildCount(); i < count; ++i) {
+			View row = rows.getChildAt(i);
+			ViewGroup.MarginLayoutParams lp =
+					(ViewGroup.MarginLayoutParams) row.getLayoutParams();
+			int bottom = height + lp.topMargin + row.getMeasuredHeight() +
+					lp.bottomMargin;
+			if (bottom > maxHeight) {
+				break;
+			}
+			height = bottom;
+		}
+		return height;
 	}
 
 	private void setClickListener(int id, @NonNull Runnable action,
