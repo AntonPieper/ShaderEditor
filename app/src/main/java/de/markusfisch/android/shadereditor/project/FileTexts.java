@@ -92,14 +92,19 @@ public final class FileTexts {
 	/**
 	 * Save text, taken from the document at state, to path, expecting
 	 * base, the revision the text came from, when there is no draft.
-	 * Call with the document's current text and state; the text is
-	 * immutable, so editing on meanwhile changes nothing of what is
-	 * written.
+	 * Call with the document's current text and state, or with null
+	 * for the text of the draft of path; the outcome is null when there
+	 * is none. The text is immutable, so editing on meanwhile changes
+	 * nothing of what is written.
 	 */
 	public void save(ProjectPath path, Text text, int state, String base,
 			Callback<Save> done) {
 		worker.execute(() -> {
-			Outcome outcome = session.save(path, text, base);
+			Draft draft = text == null ? session.draft(path) : null;
+			Outcome outcome = text != null || draft != null
+					? session.save(path, text != null ? text : draft.text(),
+							base)
+					: null;
 			Save save = new Save(state, outcome);
 			main.execute(() -> done.done(save));
 		});
@@ -108,16 +113,16 @@ public final class FileTexts {
 	/**
 	 * Keep text as the draft of path when it is modified, else drop the
 	 * draft, so the text survives the process. base is the revision the
-	 * text came from, kept with a new draft.
+	 * text came from, kept with a new draft. done gets whether the
+	 * journal took it.
 	 */
 	public void draft(ProjectPath path, Text text, boolean modified,
-			String base) {
+			String base, Callback<Boolean> done) {
 		worker.execute(() -> {
-			if (modified) {
-				session.setDraft(path, text, base);
-			} else {
-				session.clearDraft(path);
-			}
+			boolean kept = modified
+					? session.setDraft(path, text, base)
+					: session.clearDraft(path);
+			main.execute(() -> done.done(kept));
 		});
 	}
 

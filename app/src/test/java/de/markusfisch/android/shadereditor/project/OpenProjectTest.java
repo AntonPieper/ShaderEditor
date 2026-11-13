@@ -435,6 +435,59 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void typingWithinTheDelayWritesTheJournalOnce()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		edit(project, a, "0");
+		steps.later.run();
+		int once = worker.size();
+		settle();
+
+		for (int i = 1; i <= 10; ++i) {
+			edit(project, a, "" + i);
+		}
+		steps.later.run();
+
+		assertEquals(once, worker.size());
+		settle();
+		assertEquals("10", journaled("a.glsl"));
+	}
+
+	@Test
+	public void flushCompletesOnlyAfterTheJournalTookTheText()
+			throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		List<String> flushed = new ArrayList<>();
+
+		project.flush(() -> flushed.add(journaled("a.glsl")));
+		main.run();
+
+		assertTrue(flushed.isEmpty());
+		settle();
+		assertEquals(List.of("mine"), flushed);
+	}
+
+	@Test
+	public void failedJournalWriteIsReportedAndRetriedOnTheNextFlush()
+			throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		File drafts = new File(new File(sessionsDir, id), "drafts");
+		assertTrue(!drafts.exists() || drafts.delete());
+		Files.write(drafts.toPath(), new byte[]{1});
+
+		flush(project);
+
+		assertNotNull(project.unprotected());
+		assertTrue(drafts.delete());
+		flush(project);
+		assertNull(project.unprotected());
+		assertEquals("mine", journaled("a.glsl"));
+	}
+
+	@Test
 	public void keepsEditsUntilAnExplicitSave() throws IOException {
 		OpenProject project = editedElsewhere();
 
@@ -864,7 +917,7 @@ public class OpenProjectTest {
 
 	private OpenProject open(ProjectFiles store) {
 		return OpenProject.open(id, store, new ProjectSessions(sessionsDir),
-				worker, main);
+				worker, main, steps.timers);
 	}
 
 	private void settle() {
@@ -917,6 +970,20 @@ public class OpenProjectTest {
 	private Map<ProjectPath, Outcome> save(OpenProject project,
 			boolean explicit) {
 		return await(done -> project.save(explicit, done));
+	}
+
+	private void flush(OpenProject project) {
+		boolean[] flushed = {false};
+		project.flush(() -> flushed[0] = true);
+		settle();
+		assertTrue(flushed[0]);
+	}
+
+	// Return the text the journal keeps for path, or null.
+	private String journaled(String path) {
+		DraftFiles.Draft draft = new ProjectSessions(sessionsDir).drafts(id)
+				.drafts().get(path(path));
+		return draft != null ? draft.text().toString() : null;
 	}
 
 	private Set<ProjectPath> refresh(OpenProject project) {

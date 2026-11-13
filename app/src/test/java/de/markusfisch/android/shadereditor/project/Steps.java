@@ -4,13 +4,16 @@ import java.util.ArrayDeque;
 import java.util.concurrent.Executor;
 
 /**
- * A worker and a main thread as queues a test steps by hand, each by
- * itself, to deliver a result of the worker, act, and only then run
- * what it posted to main.
+ * A worker, a main thread and the timers of the main thread as queues
+ * a test steps by hand, each by itself, to deliver a result of the
+ * worker, act, and only then run what it posted to main.
  */
 final class Steps {
 	final Queue worker = new Queue();
 	final Queue main = new Queue();
+	// Timers run when the test says, whatever their delay.
+	final Queue later = new Queue();
+	final OpenProject.Later timers = (task, millis) -> later.execute(task);
 
 	// Run what the worker and the main thread were given until both are
 	// idle.
@@ -36,6 +39,10 @@ final class Steps {
 				ran = true;
 			}
 			return ran;
+		}
+
+		int size() {
+			return tasks.size();
 		}
 
 		// Run the task given first; return whether there was one.

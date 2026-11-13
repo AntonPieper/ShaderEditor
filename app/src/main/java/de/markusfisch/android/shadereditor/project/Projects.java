@@ -3,9 +3,13 @@ package de.markusfisch.android.shadereditor.project;
 import android.content.Context;
 import android.net.Uri;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
@@ -24,19 +28,21 @@ public final class Projects {
 	public record Opened(String id, OpenProject project, String problem) {
 	}
 
+	// The one queue every project of the process works on storage on.
+	private static final Executor QUEUE =
+			Executors.newSingleThreadExecutor();
+
 	private final Context context;
 	private final ProjectSessions sessions;
-	private final Executor worker;
-	private final Executor main;
+	private final Handler main = new Handler(Looper.getMainLooper());
 
 	/**
-	 * Open projects on the calling worker; they work on storage on
-	 * worker and post results to main.
+	 * Open projects on the calling worker; they work on storage on one
+	 * queue of the process, a task at a time, and post results to the
+	 * main thread.
 	 */
-	public Projects(Context context, Executor worker, Executor main) {
+	public Projects(Context context) {
 		this.context = context.getApplicationContext();
-		this.worker = worker;
-		this.main = main;
 		sessions = new ProjectSessions(new File(
 				this.context.getNoBackupFilesDir(), "projects"));
 	}
@@ -83,8 +89,8 @@ public final class Projects {
 				? SafProjects.open(context, locator)
 				: null;
 		OpenProject project = opened != null && opened.files() != null
-				? OpenProject.open(id, opened.files(), sessions,
-						worker, main)
+				? OpenProject.open(id, opened.files(), sessions, QUEUE,
+						main::post, main::postDelayed)
 				: null;
 		if (project == null) {
 			return new Opened(id, null,

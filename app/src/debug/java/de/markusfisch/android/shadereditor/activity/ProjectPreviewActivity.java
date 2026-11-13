@@ -8,7 +8,6 @@ import android.util.Log;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 
 import java.io.File;
@@ -251,8 +250,7 @@ public class ProjectPreviewActivity extends PreviewActivity {
 
 	private Projects projects() {
 		if (projects == null) {
-			projects = new Projects(this, worker,
-					ContextCompat.getMainExecutor(this));
+			projects = new Projects(this);
 		}
 		return projects;
 	}
