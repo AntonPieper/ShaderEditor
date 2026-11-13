@@ -167,6 +167,46 @@ public class FileTextsTest {
 		assertEquals(sb.toString(), store.text("main.glsl"));
 	}
 
+	@Test
+	public void rereadGivesAChangedFileAndRebaseSavesOverIt() {
+		store.put("main.glsl", "one");
+		document = new Document(opened(MAIN, 3));
+		assertNull(reread(MAIN));
+		store.put("main.glsl", "two");
+
+		FileTexts.Changed changed = reread(MAIN);
+
+		assertEquals("two", changed.text().toString());
+		texts.rebase(MAIN, changed.revision());
+		assertNull(reread(MAIN));
+		document.replace(0, 3, Text.of("three"));
+		save(document);
+		assertTrue(saves.get(0).outcome() instanceof Saved);
+		assertEquals("three", store.text("main.glsl"));
+	}
+
+	@Test
+	public void rereadWithoutRebaseKeepsTheConflict() {
+		store.put("main.glsl", "one");
+		document = new Document(opened(MAIN, 3));
+		store.put("main.glsl", "two");
+		assertEquals("two", reread(MAIN).text().toString());
+
+		document.replace(0, 3, Text.of("mine"));
+		save(document);
+
+		assertTrue(saves.get(0).outcome() instanceof Conflict);
+		assertEquals("two", store.text("main.glsl"));
+	}
+
+	private FileTexts.Changed reread(ProjectPath path) {
+		FileTexts.Changed[] changed = {null};
+		texts.reread(path, result -> changed[0] = result);
+		worker.run();
+		main.run();
+		return changed[0];
+	}
+
 	private Text opened(ProjectPath path, long size) {
 		return ((Opened) open(path, size)).text();
 	}

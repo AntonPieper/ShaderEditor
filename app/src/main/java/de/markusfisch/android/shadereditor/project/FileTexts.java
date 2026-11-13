@@ -50,6 +50,13 @@ public final class FileTexts {
 	public record Save(int state, Outcome outcome) {
 	}
 
+	/**
+	 * The text of a file that changed elsewhere and the revision it was
+	 * read at, for {@link #rebase} once a document took the text.
+	 */
+	public record Changed(Text text, String revision) {
+	}
+
 	// The revision each opened file was read or saved at; worker only.
 	private final Map<ProjectPath, String> bases = new HashMap<>();
 	private final EditingSession session;
@@ -107,6 +114,35 @@ public final class FileTexts {
 		});
 	}
 
+	/**
+	 * Read path again for a document without unsaved text. done gets
+	 * the stored text when the file changed since it was opened or
+	 * saved, or null when it did not, has a draft or cannot be opened.
+	 * Saves stay based on what was opened until {@link #rebase}, so a
+	 * document edited meanwhile meets a conflict instead of
+	 * overwriting the change.
+	 */
+	public void reread(ProjectPath path, Callback<Changed> done) {
+		worker.execute(() -> {
+			Changed changed = null;
+			if (session.draft(path) == null &&
+					session.store().read(path) instanceof Content content &&
+					!content.revision().equals(bases.get(path))) {
+				Text text = decode(content.bytes());
+				changed = text != null
+						? new Changed(text, content.revision())
+						: null;
+			}
+			Changed result = changed;
+			main.execute(() -> done.done(result));
+		});
+	}
+
+	/** Base the next save of path on revision, as reread gave it. */
+	public void rebase(ProjectPath path, String revision) {
+		worker.execute(() -> bases.put(path, revision));
+	}
+
 	private Opening read(ProjectPath path, long size) {
 		if (path.getKind() == ProjectPath.Kind.IMAGE) {
 			return new Unopened(path + " is an image, not text");
@@ -126,12 +162,21 @@ public final class FileTexts {
 		if (bytes.length > MAX_BYTES) {
 			return tooLarge(path);
 		}
-		String text = SourceText.decode(bytes);
-		if (text == null || text.indexOf('\0') > -1) {
+		Text text = decode(bytes);
+		if (text == null) {
 			return new Unopened(path + " is not a text file");
 		}
 		bases.put(path, content.revision());
-		return new Opened(Text.of(text), false);
+		return new Opened(text, false);
+	}
+
+	// Return the text of bytes, or null when they are not text the
+	// editor opens.
+	private static Text decode(byte[] bytes) {
+		String text = bytes.length <= MAX_BYTES
+				? SourceText.decode(bytes)
+				: null;
+		return text != null && text.indexOf('\0') < 0 ? Text.of(text) : null;
 	}
 
 	private static Unopened tooLarge(ProjectPath path) {
