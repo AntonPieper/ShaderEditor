@@ -5,7 +5,7 @@
 	never the se_ colours. -->
 	<style name="Theme.ShaderEditor" parent="Theme.Material3.Dark.NoActionBar">
 		<item name="background">@android:color/transparent</item>
-		<item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+		<item name="preferenceTheme">@style/PreferenceTheme</item>
 		<item name="buttonStyle">@style/ButtonTheme</item>
 		<item name="colorPrimary">@color/se_accent</item>
 		<item name="colorOnPrimary">@color/se_on_accent</item>
@@ -108,6 +108,14 @@
 	<style name="FABRight" parent="FAB">
 		<item name="android:layout_alignParentEnd">true</item>
 		<item name="android:layout_alignParentRight">true</item>
+	</style>
+
+	<style name="PreferenceTheme" parent="PreferenceThemeOverlay">
+		<item name="switchPreferenceCompatStyle">@style/SwitchPreferenceTheme</item>
+	</style>
+
+	<style name="SwitchPreferenceTheme" parent="Preference.SwitchPreferenceCompat.Material">
+		<item name="widgetLayout">@layout/preference_material_switch</item>
 	</style>
 
 	<style name="ButtonTheme" parent="Widget.Material3.Button">

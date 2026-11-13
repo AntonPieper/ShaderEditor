@@ -44,12 +44,13 @@
 	<string name="save_battery">Економія батареї</string>
 	<string name="save_battery_summary">Зупинити візуалізацію, коли заряд акумулятора низький</string>
 	<string name="sort_by_last_modification">Сортувати за датою останньої зміни</string>
-	<string name="sort_by_last_modification_summary">Сортувати шейдери за датою останньої зміни</string>
 	<string name="sensors">Датчики</string>
 	<string name="sensor_delay">Затримка датчика</string>
 	<string name="no_shader_selected">Шейдер не вибрано</string>
 	<string name="shader">Шейдер</string>
 	<string name="editor">Редактор</string>
+	<string name="keyboard">Keyboard</string>
+	<string name="running_and_saving">Running and saving</string>
 	<string name="run_mode">Режим запуску</string>
 	<string name="update_delay">Затримка оновлення</string>
 	<string name="text_size">Розмір тексту</string>
@@ -69,13 +70,11 @@
 	<string name="export_tabs">Експортувати табуляції</string>
 	<string name="export_tabs_summary">Експортувати табуляції замість перетворення на пробіли при поширенні</string>
 	<string name="show_insert_tab">Показувати вставити табуляцію</string>
-	<string name="show_insert_tab_summary">Показувати пункт меню «Вставити табуляцію».</string>
 	<string name="save_on_run">Зберегти при запуску</string>
 	<string name="save_on_run_summary">Зберегти зміни під час ручного запуску</string>
 	<string name="disable_highlighting">Вимкнути підсвічування</string>
 	<string name="disable_highlighting_summary">Вимкнути підсвічування для великих шейдерів</string>
 	<string name="auto_save">Автоматичне збереження</string>
-	<string name="auto_save_summary">Зберігати шейдер автоматично</string>
 	<string name="auto_hide_extra_keys">Автоматично приховувати додаткові клавіші</string>
 	<string name="auto_hide_extra_keys_summary">Автоматично приховувати рядок додаткових клавіш над програмною клавіатурою</string>
 	<string name="default_new_shader">Стандартний новий шейдер</string>
@@ -89,7 +88,6 @@
 	<string name="export_database">Експорт бази даних</string>
 	<string name="export_database_summary">Експорт усіх шейдерів у базу даних SQLite</string>
 	<string name="show_line_numbers">Показувати номери рядків</string>
-	<string name="show_line_numbers_summary">Показувати номери рядків на початку кожного рядка.</string>
 	<string name="enable_notification_listener">Щоб використати форму NotificationCount або LastNotificationTime, увімкніть прослуховувач сповіщень у налаштуваннях.</string>
 	<string name="go_to_settings">Перейти до Налаштувань</string>
 	<string name="enable_notification_listener_title">Увімкнути прослуховувач сповіщень</string>
