@@ -119,11 +119,25 @@ final class LineCache {
 			return this.text == text && sameRuns(this.runs, runs);
 		}
 
-		/** Draw the text, at least the part from left to right. */
-		void draw(Canvas canvas, float left, float right, int height) {
-			if (kept && layout.isWhole() &&
-					Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-					canvas.isHardwareAccelerated()) {
+		/**
+		 * Return whether draw on canvas would record the line before it
+		 * replays it.
+		 */
+		boolean needsRecording(Canvas canvas) {
+			return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+					recordable(canvas) && (recording == null ||
+					!((Recording) recording).isCurrent());
+		}
+
+		/**
+		 * Draw the text, at least the part from left to right; record it
+		 * first if it needs recording and record is true, or else draw it
+		 * directly.
+		 */
+		void draw(Canvas canvas, float left, float right, int height,
+				boolean record) {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+					recordable(canvas) && (record || !needsRecording(canvas))) {
 				if (recording == null) {
 					recording = new Recording();
 				}
@@ -131,6 +145,10 @@ final class LineCache {
 			} else {
 				layout.draw(canvas, left, right);
 			}
+		}
+
+		private boolean recordable(Canvas canvas) {
+			return kept && layout.isWhole() && canvas.isHardwareAccelerated();
 		}
 
 		private void set(String text, LineStyles.Runs runs,
@@ -157,8 +175,12 @@ final class LineCache {
 		private final RenderNode node = new RenderNode("line");
 		private boolean valid;
 
+		private boolean isCurrent() {
+			return valid && node.hasDisplayList();
+		}
+
 		private void draw(Canvas canvas, LineLayout layout, int height) {
-			if (!valid || !node.hasDisplayList()) {
+			if (!isCurrent()) {
 				node.setPosition(0, 0, (int) Math.ceil(layout.width()) + 1,
 						height);
 				node.setClipToBounds(false);
