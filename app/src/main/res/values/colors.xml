@@ -1,9 +1,6 @@
 <resources>
 	<color name="primary">#222</color>
-	<color name="accent">#fff</color>
 	<color name="drawer_text">#fff</color>
-	<color name="drawer_text_unselected">#8affffff</color>
-	<color name="background_drawer">#8000</color>
 	<color name="background_editor">#0000</color>
 	<color name="background_item_pressed">#8222</color>
 	<color name="background_progress">#8000</color>

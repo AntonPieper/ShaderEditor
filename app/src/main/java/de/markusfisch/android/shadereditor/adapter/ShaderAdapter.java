@@ -10,7 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
+import com.google.android.material.color.MaterialColors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +26,10 @@ public class ShaderAdapter extends BaseAdapter {
 	private long selectedShaderId = 0;
 
 	public ShaderAdapter(Context context) {
-		this.textColorSelected = ContextCompat.getColor(context, R.color.accent);
-		this.textColorUnselected = ContextCompat.getColor(context, R.color.drawer_text_unselected);
+		this.textColorSelected = MaterialColors.getColor(context,
+				com.google.android.material.R.attr.colorOnSurface, 0);
+		this.textColorUnselected = MaterialColors.getColor(context,
+				com.google.android.material.R.attr.colorOnSurfaceVariant, 0);
 	}
 
 	@Override
