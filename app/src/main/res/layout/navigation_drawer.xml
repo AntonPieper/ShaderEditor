@@ -17,8 +17,7 @@
 		android:layout_height="?attr/actionBarSize"
 		android:gravity="center_vertical"
 		android:orientation="horizontal"
-		android:paddingStart="4dp"
-		android:paddingEnd="2dp">
+		android:paddingHorizontal="4dp">
 
 		<ImageButton
 			android:id="@+id/navigation_up"
@@ -29,9 +28,10 @@
 			android:src="@drawable/ic_arrow_upward"
 			app:tint="?attr/colorOnSurface" />
 
+		<!-- Without the arrow, the title is in line with the rows -->
 		<Space
 			android:id="@+id/navigation_up_space"
-			android:layout_width="@dimen/se_margin_screen"
+			android:layout_width="8dp"
 			android:layout_height="0dp"
 			android:visibility="gone" />
 
@@ -104,6 +104,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:clipToPadding="false"
+			android:paddingTop="4dp"
 			android:paddingBottom="8dp"
 			android:scrollbars="vertical" />
 
@@ -112,21 +113,18 @@
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:clipToPadding="false"
+			android:paddingTop="4dp"
 			android:paddingBottom="8dp"
 			android:scrollbars="vertical"
 			android:visibility="gone" />
 	</FrameLayout>
 
-	<View
-		android:id="@+id/navigation_bar_divider"
-		android:layout_width="match_parent"
-		android:layout_height="@dimen/se_hairline"
-		android:background="?attr/colorOutlineVariant" />
-
+	<!-- The hairline on top goes with the bar -->
 	<LinearLayout
 		android:id="@+id/navigation_bar"
 		android:layout_width="match_parent"
 		android:layout_height="@dimen/navigation_bar_height"
+		android:background="@drawable/navigation_bar"
 		android:gravity="center_vertical"
 		android:orientation="horizontal"
 		android:paddingHorizontal="@dimen/navigation_bar_padding">

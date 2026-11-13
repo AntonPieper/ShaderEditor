@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.Samples;
@@ -35,11 +36,13 @@ final class FoldersSource implements Source {
 				Listing.Bar.NONE,
 				List.of(new Listing.Section(null, List.of(
 						folder(Level.LIBRARY, Row.Picture.Icon.LIBRARY,
-								shaders.title(), shaders.subtitle()),
+								shaders.title(), shaders.subtitle(),
+								EnumSet.noneOf(Row.Mark.class)),
 						folder(Level.EXAMPLES, Row.Picture.Icon.EXAMPLES,
 								context.getString(R.string.load_sample),
 								context.getString(R.string.nav_examples_count,
-										Samples.ALL.size()))))));
+										Samples.ALL.size()),
+								EnumSet.of(Row.Mark.READ_ONLY))))));
 	}
 
 	@Override
@@ -54,9 +57,10 @@ final class FoldersSource implements Source {
 	private static Row folder(@NonNull Level level,
 			@NonNull Row.Picture.Icon icon,
 			@NonNull String name,
-			String detail) {
+			String detail,
+			@NonNull Set<Row.Mark> marks) {
 		return new Row(level.name(), Row.Kind.FOLDER, Row.Picture.of(icon),
-				name, detail, 0, level, EnumSet.noneOf(Row.Mark.class),
+				name, detail, 0, level, marks,
 				EnumSet.noneOf(Row.Action.class));
 	}
 }

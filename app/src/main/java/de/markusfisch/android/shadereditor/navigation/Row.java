@@ -29,6 +29,7 @@ public record Row(String key, Kind kind, Picture picture, String name,
 	/** Marks at the end of a row, in the order they are shown. */
 	public enum Mark {
 		WALLPAPER,
+		READ_ONLY,
 		RUNNING
 	}
 

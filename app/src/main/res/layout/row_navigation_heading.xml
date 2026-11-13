@@ -1,13 +1,28 @@
-<TextView
+<LinearLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
-	android:accessibilityHeading="true"
-	android:minHeight="@dimen/navigation_heading_height"
-	android:paddingStart="@dimen/se_margin_screen"
-	android:paddingTop="12dp"
-	android:paddingEnd="@dimen/se_margin_screen"
-	android:textAppearance="?attr/textAppearanceTitleSmall"
-	android:textColor="?attr/colorPrimary"
-	tools:targetApi="p" />
+	android:orientation="vertical">
+
+	<!-- Between groups, not above the first -->
+	<View
+		android:id="@+id/navigation_heading_line"
+		android:layout_width="match_parent"
+		android:layout_height="@dimen/se_hairline"
+		android:layout_marginTop="8dp"
+		android:background="?attr/colorOutlineVariant" />
+
+	<TextView
+		android:id="@+id/navigation_heading"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:accessibilityHeading="true"
+		android:minHeight="@dimen/navigation_heading_height"
+		android:paddingStart="@dimen/se_margin_screen"
+		android:paddingTop="12dp"
+		android:paddingEnd="@dimen/se_margin_screen"
+		android:textAppearance="?attr/textAppearanceTitleSmall"
+		android:textColor="?attr/colorPrimary"
+		tools:targetApi="p" />
+</LinearLayout>
