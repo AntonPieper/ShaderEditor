@@ -52,8 +52,17 @@ public final class StoredFiles {
 		} catch (NoSuchAlgorithmException e) {
 			return null;
 		}
+		digest.update(bytes);
+		return revision(digest);
+	}
+
+	/**
+	 * Return the revision of the bytes digest, a SHA-256 digest, was
+	 * updated with, as {@link #revision(byte[])} returns it.
+	 */
+	public static String revision(MessageDigest digest) {
 		StringBuilder sb = new StringBuilder("sha256:");
-		for (byte b : digest.digest(bytes)) {
+		for (byte b : digest.digest()) {
 			sb.append(HEX[(b >> 4) & 15]).append(HEX[b & 15]);
 		}
 		return sb.toString();
