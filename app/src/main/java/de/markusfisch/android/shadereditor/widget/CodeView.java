@@ -17,6 +17,7 @@ import android.text.InputType;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.GestureDetector;
+import android.view.HapticFeedbackConstants;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -43,6 +44,7 @@ import de.markusfisch.android.shadereditor.editor.KeyCommands;
 import de.markusfisch.android.shadereditor.editor.KeyboardSession;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
+import de.markusfisch.android.shadereditor.editor.Motion;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.editor.TextInput;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
@@ -55,6 +57,9 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * become KeyCommands, and the caret is kept in view after each and
  * above the soft keyboard when that opens. The soft keyboard edits the
  * document through one TextInput per connection; a tap shows it.
+ * A tap places the caret; a double tap selects a word; a long press
+ * selects one and a drag after it extends the selection by words,
+ * scrolling while the finger is near an edge.
  * Given a KeyboardSession, it records the connections and, as actions,
  * every key event (action, key code, meta state, the text it types),
  * the text on the clipboard before a paste, a tap's selection, the
@@ -79,6 +84,16 @@ public class CodeView extends View {
 				float right, float bottom);
 	}
 
+	/**
+	 * Hears when a selection made by touch comes to rest, where the
+	 * floating toolbar shows, and when it moves or goes.
+	 */
+	public interface SelectionListener {
+		void onSelectionShown();
+
+		void onSelectionHidden();
+	}
+
 	/** The input type of today's editor with native suggestions hidden. */
 	public static final int INPUT_TYPE_NO_SUGGESTIONS = InputType.TYPE_NULL;
 	/** The input type of today's editor with native suggestions shown. */
@@ -89,6 +104,7 @@ public class CodeView extends View {
 	private static final long BLINK = 500;
 	private static final int HORIZONTAL = 1;
 	private static final int VERTICAL = 2;
+	private static final int DRAG_WORDS = 1;
 
 	private final CodeAppearance appearance;
 	private final Paint fill = new Paint();
@@ -104,12 +120,19 @@ public class CodeView extends View {
 
 		@Override
 		public void onUpdate() {
+			if (!selecting && touched != null &&
+					touched != document.selection()) {
+				touched = null;
+				hideSelection();
+			}
 			restartBlink();
 			scrollInside(getScrollX(), getScrollY());
 			invalidate();
 		}
 	};
 	private final Runnable blink = this::blink;
+	private final Runnable edgeScroll = this::edgeScroll;
+	private final TouchSelection touch = new TouchSelection(new Motion());
 	private final KeyCommands.Clipboard clipboard =
 			new KeyCommands.Clipboard() {
 				@Override
@@ -143,6 +166,15 @@ public class CodeView extends View {
 	private final EdgeEffect edgeLeft;
 	private final EdgeEffect edgeRight;
 	private Insets insets = Insets.NONE;
+	private SelectionListener selectionListener;
+	// What a touch drags, and where the finger is.
+	private int dragging;
+	private float dragX;
+	private float dragY;
+	private boolean edgeScrolling;
+	// The selection the last touch made, while it is the document's.
+	private Document.Selection touched;
+	private boolean selecting;
 	private boolean caretIntoViewWhenLaidOut;
 	// The axis a drag is locked to.
 	private int axis;
@@ -219,6 +251,17 @@ public class CodeView extends View {
 					}
 
 					@Override
+					public boolean onDoubleTap(@NonNull MotionEvent e) {
+						selectWord(e.getX(), e.getY());
+						return true;
+					}
+
+					@Override
+					public void onLongPress(@NonNull MotionEvent e) {
+						dragWords(e.getX(), e.getY());
+					}
+
+					@Override
 					public boolean onScroll(@Nullable MotionEvent down,
 							@NonNull MotionEvent e, float dx, float dy) {
 						if (axis == 0) {
@@ -258,6 +301,8 @@ public class CodeView extends View {
 		keys = new KeyCommands(document, commands, clipboard);
 		deadChar = 0;
 		composingStart = composingEnd = -1;
+		touched = null;
+		dragging = 0;
 		forgetLines();
 		scrollTo(0, 0);
 		if (isAttachedToWindow()) {
@@ -284,6 +329,11 @@ public class CodeView extends View {
 	public void setInputType(int inputType) {
 		this.inputType = inputType;
 		restartInput();
+	}
+
+	/** Hear of selections made by touch, or nothing if null. */
+	public void setSelectionListener(@Nullable SelectionListener listener) {
+		selectionListener = listener;
 	}
 
 	@Nullable
@@ -425,6 +475,18 @@ public class CodeView extends View {
 	public boolean onTouchEvent(MotionEvent event) {
 		boolean handled = gestures.onTouchEvent(event);
 		int action = event.getActionMasked();
+		if (dragging != 0 && document != null) {
+			dragX = event.getX();
+			dragY = event.getY();
+			if (action == MotionEvent.ACTION_MOVE) {
+				dragSelection();
+			} else if (action == MotionEvent.ACTION_UP ||
+					action == MotionEvent.ACTION_CANCEL) {
+				dragging = 0;
+				selectionShown();
+			}
+			return true;
+		}
 		if (action == MotionEvent.ACTION_UP ||
 				action == MotionEvent.ACTION_CANCEL) {
 			edgeTop.onRelease();
@@ -976,19 +1038,129 @@ public class CodeView extends View {
 		if (document == null) {
 			return;
 		}
-		Text text = document.text();
-		int n = CodeGeometry.lineAt(y + getScrollY(), textTop(),
-				appearance.lineHeight, text.lineCount());
-		int offset = text.lineStart(n) + layoutOf(n).offsetAt(
-				x + getScrollX() - textLeft(text.lineCount()));
-		action("select", offset, offset);
-		document.select(offset, offset);
+		int offset = offsetAt(x, y);
+		select(offset, offset);
 		requestFocus();
 		InputMethodManager imm = inputMethodManager();
 		if (imm != null) {
 			imm.showSoftInput(this, 0);
 		}
 		performClick();
+	}
+
+	private void selectWord(float x, float y) {
+		if (document == null) {
+			return;
+		}
+		Document.Selection word = touch.wordAt(document.text(),
+				offsetAt(x, y));
+		select(word.anchor(), word.head());
+		requestFocus();
+		selectionShown();
+	}
+
+	private void dragWords(float x, float y) {
+		if (document == null) {
+			return;
+		}
+		touch.dragWords(document.text(), offsetAt(x, y));
+		select(touch.anchor(), touch.head());
+		requestFocus();
+		performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+		startDrag(DRAG_WORDS, x, y);
+	}
+
+	private void startDrag(int what, float x, float y) {
+		dragging = what;
+		dragX = x;
+		dragY = y;
+		scroller.forceFinished(true);
+		if (getParent() != null) {
+			getParent().requestDisallowInterceptTouchEvent(true);
+		}
+		if (selectionListener != null) {
+			selectionListener.onSelectionHidden();
+		}
+	}
+
+	// Selects up to the place of the finger, and scrolls while it is
+	// near an edge.
+	private void dragSelection() {
+		Text text = document.text();
+		if (touch.dragTo(text, offsetAt(dragX, dragY))) {
+			select(touch.anchor(), touch.head());
+		}
+		if (!edgeScrolling && (edgeStepX() != 0 || edgeStepY() != 0)) {
+			edgeScrolling = true;
+			postOnAnimation(edgeScroll);
+		}
+	}
+
+	private void edgeScroll() {
+		edgeScrolling = false;
+		if (dragging == 0 || document == null) {
+			return;
+		}
+		int x = getScrollX();
+		int y = getScrollY();
+		scrollInside(x + edgeStepX(), y + edgeStepY());
+		if (x != getScrollX() || y != getScrollY()) {
+			dragSelection();
+		}
+	}
+
+	private int edgeStepX() {
+		return edgeStep(dragX, textLeft(document.text().lineCount()),
+				getWidth() - insets.right);
+	}
+
+	private int edgeStepY() {
+		return edgeStep(dragY, insets.top, getHeight() - insets.bottom);
+	}
+
+	// Returns how far to scroll in a frame for a finger at, from 0 when it
+	// is two lines from the edge low or high to a line beyond it.
+	private int edgeStep(float at, float low, float high) {
+		float zone = appearance.lineHeight * 2f;
+		float depth = at < low + zone
+				? at - low - zone
+				: at > high - zone ? at - high + zone : 0;
+		return Math.round(Math.max(-1, Math.min(1, depth / zone)) *
+				appearance.lineHeight);
+	}
+
+	// Returns the offset nearest x and y of the view.
+	private int offsetAt(float x, float y) {
+		Text text = document.text();
+		int n = CodeGeometry.lineAt(y + getScrollY(), textTop(),
+				appearance.lineHeight, text.lineCount());
+		return touch.offsetAt(text, n,
+				x + getScrollX() - textLeft(text.lineCount()), layoutOf(n));
+	}
+
+	private void select(int anchor, int head) {
+		action("select", anchor, head);
+		selecting = true;
+		try {
+			document.select(anchor, head);
+		} finally {
+			selecting = false;
+		}
+		touched = document.selection();
+	}
+
+	private void selectionShown() {
+		if (selectionListener != null && touched != null &&
+				!touched.isEmpty()) {
+			selectionListener.onSelectionShown();
+		}
+	}
+
+	// The selection changed by other means than touch.
+	private void hideSelection() {
+		if (selectionListener != null) {
+			selectionListener.onSelectionHidden();
+		}
 	}
 
 	private void scrollInside(int x, int y) {
