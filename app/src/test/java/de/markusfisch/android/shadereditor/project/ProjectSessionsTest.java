@@ -98,7 +98,7 @@ public class ProjectSessionsTest {
 				"lib.glsl"));
 		assertFalse(sessions.drafts(id).drafts().isEmpty());
 
-		assertTrue(sessions.remove(id));
+		assertTrue(sessions.discard(id));
 
 		assertNull(sessions.locator(id));
 		assertNull(sessions.find(locator));
@@ -119,10 +119,32 @@ public class ProjectSessionsTest {
 		Files.createSymbolicLink(new File(drafts, "link").toPath(),
 				project.toPath());
 
-		assertTrue(sessions.remove(id));
+		assertTrue(sessions.discard(id));
 
 		assertFalse(new File(root, id).exists());
 		assertEquals("stored", read(new File(project, "main.glsl")));
+	}
+
+	@Test
+	public void removingARecentProjectKeepsItsDrafts() {
+		Locator locator = new Locator(Kind.DIRECTORY, project.getPath());
+		String id = sessions.open(locator);
+		assertTrue(sessions.remember(id, "project", "Shaders", 10));
+		assertTrue(sessions.setLast(id));
+		sessions.drafts(id).put(path("main.glsl"),
+				new DraftFiles.Draft("unsaved", "r0"));
+
+		assertTrue(sessions.remove(id));
+
+		assertNull(sessions.recent(id));
+		assertEquals(List.of(), sessions.recent());
+		assertNull(sessions.last());
+		assertEquals(id, sessions.find(locator));
+		assertEquals(Set.of(path("main.glsl")), sessions.unsaved(id));
+		assertEquals("unsaved", sessions.drafts(id).drafts()
+				.get(path("main.glsl")).text().toString());
+		assertTrue(sessions.remember(id, "project", "Shaders", 20));
+		assertEquals(List.of(id), ids(sessions.recent()));
 	}
 
 	@Test

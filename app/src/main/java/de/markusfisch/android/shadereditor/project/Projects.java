@@ -15,7 +15,8 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
  * picker and folders of its own files. Each is a session with its
  * drafts, listed among the recent projects, so screens pass only its
  * id and a project reopens with its drafts also after the process
- * died. Removing one releases its grant and drafts, never its files.
+ * died. Removing one releases its grant and keeps unsaved drafts,
+ * never touching its files.
  * Use it off the main thread.
  */
 public final class Projects {
@@ -97,8 +98,10 @@ public final class Projects {
 	}
 
 	/**
-	 * Forget project id with its drafts and release its grant; its files
-	 * stay where they are. Return whether nothing of it is left.
+	 * Remove project id from the recent projects and release its grant;
+	 * its files stay where they are, and so do its drafts until the
+	 * project is opened again and they are saved or discarded. Return
+	 * whether it is no longer listed.
 	 */
 	public boolean remove(String id) {
 		Locator locator = sessions.locator(id);
