@@ -131,7 +131,7 @@
 			android:exported="false"/>
 		<activity
 			android:name=".activity.PreferencesActivity"
-			android:label="@string/preferences"
+			android:label="@string/settings"
 			android:exported="true"/>
 		<activity
 			android:name=".activity.AddUniformActivity"

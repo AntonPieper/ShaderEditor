@@ -22,7 +22,7 @@
 	<string name="faq">ЧаВо</string>
 	<string name="show_extra_keys">Дополнительные клавиши</string>
 	<string name="settings">Настройки</string>
-	<string name="sure_remove_shader">Вы уверены, что хотите удалить этот шейдер?</string>
+	<string name="delete_shader_title">Delete %1$s?</string>
 	<string name="rename_shader">Переименовать шейдер</string>
 	<string name="enter_name">Введите имя</string>
 	<string name="wallpaper_set">Обоя обновлена</string>
@@ -40,7 +40,6 @@
 	<string name="details">Детали</string>
 
 	<!-- PreferencesFragment -->
-	<string name="preferences">Настройки</string>
 	<string name="wallpaper">Обоя</string>
 	<string name="save_battery">Экономить батарею</string>
 	<string name="save_battery_summary">Прекратить отрисовку при низком заряде аккамулятора</string>
@@ -159,10 +158,10 @@
 	<string name="power_connected">1 при вставленном кабеле питание, иначе 0</string>
 	<string name="wallpaper_offset">Смещение обой с 0.0 до 1.0</string>
 	<string name="previous_frame">Предыдущий отрисованный кадр</string>
-	<string name="camera_back">Задняя камера (работает с Android Ice Cream Sandwich и новее)</string>
-	<string name="camera_front">Передняя камера (работает с Android Ice Cream Sandwich и новее)</string>
-	<string name="camera_addent">Addent to camera texture coordinate, see also cameraOrientation (only on Ice Cream Sandwich or better)</string>
-	<string name="camera_orientation">Multiply with texture coordinate with this matrix to rotate camera frame to device orientation (cameraAddent + uv * cameraOrientation; only on Ice Cream Sandwich or better)</string>
+	<string name="camera_back">Задняя камера</string>
+	<string name="camera_front">Передняя камера</string>
+	<string name="camera_addent">Addent to camera texture coordinate, see also cameraOrientation</string>
+	<string name="camera_orientation">Multiply with texture coordinate with this matrix to rotate camera frame to device orientation (cameraAddent + uv * cameraOrientation)</string>
 	<string name="date_time">Год, месяц, день и время в секундах</string>
 	<string name="daytime">Часы, минуты и секунды</string>
 	<string name="start_random">Random value from 0.0 to 1.0, initialized at load</string>
@@ -201,7 +200,7 @@
 	<string name="face_size">Размер грани в пикселях</string>
 	<string name="texture_name">Unique texture name</string>
 	<string name="input_texture_name">Дайте название текстуре</string>
-	<string name="should_add_uniform">Add uniform sampler2D statement to source?</string>
+	<string name="should_add_uniform">Add uniform to source</string>
 	<string name="save_texture">Сохранить текстуру</string>
 	<string name="missing_name">You need to give a name</string>
 	<string name="invalid_texture_name">Invalid name, please choose a name you can use in a GLSL source</string>

@@ -13,6 +13,7 @@
 	<Button
 		android:id="@+id/menu_btn"
 		style="@style/IconButton"
+		android:contentDescription="@string/menu_btn"
 		android:layout_width="48dp"
 		android:layout_height="48dp"
 		android:layout_gravity="end"
@@ -23,6 +24,7 @@
 	<Button
 		android:id="@+id/toggle_code"
 		style="@style/IconButton"
+		android:contentDescription="@string/toggle_code"
 		android:layout_width="48dp"
 		android:layout_height="48dp"
 		android:layout_gravity="end"
@@ -33,6 +35,7 @@
 	<Button
 		android:id="@+id/run_code"
 		style="@style/IconButton"
+		android:contentDescription="@string/run_code"
 		android:layout_width="48dp"
 		android:layout_height="48dp"
 		android:layout_gravity="end"
@@ -43,6 +46,7 @@
 	<com.google.android.material.button.MaterialButton
 		android:id="@+id/show_errors"
 		style="@style/IconButton"
+		android:contentDescription="@string/show_errors"
 		android:layout_width="48dp"
 		android:layout_height="48dp"
 		android:layout_gravity="end"

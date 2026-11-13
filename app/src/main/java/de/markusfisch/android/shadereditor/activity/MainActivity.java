@@ -468,8 +468,9 @@ public class MainActivity extends AppCompatActivity {
 					return;
 				}
 				new MaterialAlertDialogBuilder(MainActivity.this)
-						.setMessage(R.string.sure_remove_shader)
-						.setPositiveButton(android.R.string.ok,
+						.setTitle(getString(R.string.delete_shader_title,
+								open.getTitle()))
+						.setPositiveButton(R.string.delete_shader,
 								(dialog, which) -> open.delete())
 						.setNegativeButton(android.R.string.cancel, null)
 						.show();

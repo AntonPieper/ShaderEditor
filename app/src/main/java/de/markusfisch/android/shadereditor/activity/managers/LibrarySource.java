@@ -106,8 +106,9 @@ final class LibrarySource implements Source {
 			case RENAME -> rename(id, row.name());
 			case DUPLICATE -> host.onDuplicateShader(id);
 			case DELETE -> new MaterialAlertDialogBuilder(context)
-					.setMessage(R.string.sure_remove_shader)
-					.setPositiveButton(android.R.string.ok,
+					.setTitle(context.getString(R.string.delete_shader_title,
+							row.name()))
+					.setPositiveButton(R.string.delete_shader,
 							(dialog, which) -> host.onDeleteShader(id))
 					.setNegativeButton(android.R.string.cancel, null)
 					.show();
