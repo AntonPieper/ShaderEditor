@@ -106,6 +106,7 @@ public class SamplesAdapter extends BaseAdapter {
 		if ((holder = (ViewHolder) view.getTag()) == null) {
 			holder = new ViewHolder();
 			holder.thumbnail = view.findViewById(R.id.thumbnail);
+			holder.thumbnail.setClipToOutline(true);
 			holder.name = view.findViewById(R.id.name);
 			holder.rationale = view.findViewById(R.id.rationale);
 			view.setTag(holder);

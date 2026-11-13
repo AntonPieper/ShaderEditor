@@ -12,14 +12,13 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 
-import com.google.android.material.color.MaterialColors;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 
@@ -103,8 +102,6 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 		ViewHolder holder = getViewHolder(convertView);
 		Uniform uniform = filteredUniforms.get(position);
 
-		holder.name.setTextColor(MaterialColors.getColor(holder.name,
-				com.google.android.material.R.attr.colorOnSurface));
 		holder.name.setText(String.format(
 				Locale.US,
 				uniformFormat,
@@ -120,6 +117,7 @@ public class PresetUniformAdapter extends BaseAdapter implements Filterable {
 		if ((holder = (ViewHolder) view.getTag()) == null) {
 			holder = new ViewHolder();
 			holder.name = view.findViewById(R.id.name);
+			holder.name.setTypeface(ShaderEditorApp.preferences.getFont());
 			holder.rationale = view.findViewById(R.id.rationale);
 			view.setTag(holder);
 		}

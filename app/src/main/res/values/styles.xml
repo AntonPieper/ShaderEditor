@@ -92,18 +92,6 @@
 		<item name="titleTextAppearance">?attr/textAppearanceTitleMedium</item>
 	</style>
 
-	<style name="ListItem" parent="@android:style/TextAppearance.Medium">
-		<item name="android:layout_width">match_parent</item>
-		<item name="android:layout_height">wrap_content</item>
-		<item name="android:textColor">@drawable/drawer_item_selector</item>
-	</style>
-
-	<style name="ListItemSecondary" parent="@android:style/TextAppearance.Small">
-		<item name="android:layout_width">match_parent</item>
-		<item name="android:layout_height">wrap_content</item>
-		<item name="android:textColor">@drawable/drawer_item_selector</item>
-	</style>
-
 	<style name="FAB" parent="Widget.Material3.FloatingActionButton.Primary">
 		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
 		<item name="android:layout_width">wrap_content</item>

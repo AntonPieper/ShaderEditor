@@ -4,10 +4,9 @@
 	tools:targetApi="p"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
-	android:paddingLeft="16dp"
+	android:paddingHorizontal="@dimen/se_margin_screen"
 	android:paddingTop="24dp"
-	android:paddingRight="16dp"
 	android:paddingBottom="8dp"
 	android:accessibilityHeading="true"
-	android:textAppearance="@style/TextAppearance.AppCompat.Body2"
+	android:textAppearance="?attr/textAppearanceTitleSmall"
 	android:textColor="?attr/colorPrimary"/>

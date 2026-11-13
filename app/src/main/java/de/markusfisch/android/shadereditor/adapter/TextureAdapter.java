@@ -70,6 +70,7 @@ public class TextureAdapter extends BaseAdapter {
 
 		ViewHolder(View itemView) {
 			preview = itemView.findViewById(R.id.texture_preview);
+			preview.setClipToOutline(true);
 			name = itemView.findViewById(R.id.texture_name);
 			size = itemView.findViewById(R.id.texture_size);
 		}

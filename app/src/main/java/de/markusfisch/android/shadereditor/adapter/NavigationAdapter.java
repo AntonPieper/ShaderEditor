@@ -195,7 +195,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			boolean isIcon = bitmap == null && picture.resource() == 0;
 			this.picture.setBackgroundResource(isIcon
 					? 0
-					: R.drawable.navigation_thumbnail);
+					: R.drawable.picture_placeholder);
 			this.picture.setScaleType(isIcon
 					? ImageView.ScaleType.CENTER
 					: ImageView.ScaleType.CENTER_CROP);
