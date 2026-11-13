@@ -197,6 +197,28 @@ public class DirectoryProjectFilesTest {
 	}
 
 	@Test
+	public void changeMadeWhileWritingIsAConflictThatChangesNothing()
+			throws IOException {
+		put("main.glsl", "old");
+		String seen = revision("main.glsl");
+
+		assertRefused(Refusal.CONFLICT, files.write(path("main.glsl"),
+				out -> {
+					put("main.glsl", "external");
+					out.write(bytes("mine"));
+				}, seen));
+
+		assertEquals("external", read("main.glsl"));
+		assertEquals(Set.of("main.glsl"), onDisk(""));
+		assertRefused(Refusal.CONFLICT, files.write(path("new.glsl"),
+				out -> {
+					put("new.glsl", "external");
+					out.write(bytes("mine"));
+				}, null));
+		assertEquals("external", read("new.glsl"));
+	}
+
+	@Test
 	public void refusesWritesOverAndBelowNonFolders() throws IOException {
 		put("folder/a.glsl", "");
 		put("file.glsl", "keep");

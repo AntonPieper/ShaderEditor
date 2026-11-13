@@ -129,7 +129,7 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 			String name = file != null
 					? file.getName()
 					: newName(folder, segments[segments.length - 1]);
-			return new Done(replace(folder, name, source));
+			return new Done(replace(folder, name, source, expectedRevision));
 		} catch (IOException e) {
 			return refused(e);
 		}
@@ -279,8 +279,8 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 
 	// Replace name in folder with what source writes and return the
 	// revision of it.
-	private static String replace(File folder, String name, Source source)
-			throws IOException {
+	private static String replace(File folder, String name, Source source,
+			String expectedRevision) throws IOException {
 		MessageDigest digest;
 		try {
 			digest = MessageDigest.getInstance("SHA-256");
@@ -296,7 +296,20 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 				out.flush();
 				file.getFD().sync();
 			}
-			if (!temp.renameTo(new File(folder, name))) {
+			// Check again right before publishing, so a change made while
+			// the text was written is a conflict. This narrows the window
+			// to the rename; it cannot make other writers transactional.
+			File target = new File(folder, name);
+			String revision = target.exists()
+					? revision(readBytes(target))
+					: null;
+			if (revision == null ? expectedRevision != null
+					: !revision.equals(expectedRevision)) {
+				throw new Problem(Refusal.CONFLICT, revision == null
+						? "the file was deleted"
+						: "the file changed while it was written");
+			}
+			if (!temp.renameTo(target)) {
 				throw new Problem(Refusal.FAILED, "cannot replace " + name);
 			}
 			return StoredFiles.revision(digest);
