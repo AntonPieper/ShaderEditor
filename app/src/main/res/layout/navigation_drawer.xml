@@ -2,10 +2,11 @@
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:id="@+id/navigation_drawer"
-	android:layout_width="@dimen/navigation_drawer_width"
+	android:layout_width="@dimen/se_drawer_max_width"
 	android:layout_height="match_parent"
 	android:layout_gravity="start"
-	android:background="@color/background_navigation"
+	android:background="?attr/colorSurfaceContainerLow"
+	android:theme="@style/ThemeOverlay.ShaderEditor"
 	android:clickable="true"
 	android:focusable="true"
 	android:orientation="vertical">
@@ -20,8 +21,8 @@
 
 		<ImageButton
 			android:id="@+id/navigation_up"
-			android:layout_width="@dimen/navigation_header_button_size"
-			android:layout_height="@dimen/navigation_header_button_size"
+			android:layout_width="@dimen/se_tap_target"
+			android:layout_height="@dimen/se_tap_target"
 			android:background="?attr/selectableItemBackgroundBorderless"
 			android:contentDescription="@string/nav_up"
 			android:src="@drawable/ic_arrow_upward"
@@ -29,7 +30,7 @@
 
 		<Space
 			android:id="@+id/navigation_up_space"
-			android:layout_width="@dimen/navigation_gutter"
+			android:layout_width="@dimen/se_margin_screen"
 			android:layout_height="0dp"
 			android:visibility="gone" />
 
@@ -57,8 +58,8 @@
 
 				<ImageView
 					android:id="@+id/navigation_read_only"
-					android:layout_width="@dimen/navigation_header_lock_size"
-					android:layout_height="@dimen/navigation_header_lock_size"
+					android:layout_width="@dimen/navigation_state_mark"
+					android:layout_height="@dimen/navigation_state_mark"
 					android:layout_marginEnd="4dp"
 					android:importantForAccessibility="no"
 					android:src="@drawable/ic_lock"
@@ -77,8 +78,8 @@
 
 		<ImageButton
 			android:id="@+id/navigation_menu"
-			android:layout_width="@dimen/navigation_header_button_size"
-			android:layout_height="@dimen/navigation_header_button_size"
+			android:layout_width="@dimen/se_tap_target"
+			android:layout_height="@dimen/se_tap_target"
 			android:background="?attr/selectableItemBackgroundBorderless"
 			android:contentDescription="@string/menu_btn"
 			android:src="@drawable/ic_more_vert"
@@ -87,7 +88,7 @@
 
 	<View
 		android:layout_width="match_parent"
-		android:layout_height="1dp"
+		android:layout_height="@dimen/se_hairline"
 		android:background="?attr/colorOutlineVariant" />
 
 	<FrameLayout
@@ -118,7 +119,7 @@
 	<View
 		android:id="@+id/navigation_bar_divider"
 		android:layout_width="match_parent"
-		android:layout_height="1dp"
+		android:layout_height="@dimen/se_hairline"
 		android:background="?attr/colorOutlineVariant" />
 
 	<LinearLayout
@@ -127,17 +128,14 @@
 		android:layout_height="@dimen/navigation_bar_height"
 		android:gravity="center_vertical"
 		android:orientation="horizontal"
-		android:paddingHorizontal="@dimen/navigation_row_padding_end">
+		android:paddingHorizontal="@dimen/navigation_bar_padding">
 
 		<com.google.android.material.button.MaterialButton
 			android:id="@+id/navigation_new"
-			style="@style/Widget.Material3.Button.TonalButton.Icon"
+			style="@style/Widget.ShaderEditor.Button.Icon"
 			android:layout_width="wrap_content"
-			android:layout_height="@dimen/navigation_button_height"
-			android:insetTop="0dp"
-			android:insetBottom="0dp"
+			android:layout_height="wrap_content"
 			android:text="@string/nav_new"
-			app:icon="@drawable/ic_add"
-			app:iconSize="18dp" />
+			app:icon="@drawable/ic_add" />
 	</LinearLayout>
 </LinearLayout>

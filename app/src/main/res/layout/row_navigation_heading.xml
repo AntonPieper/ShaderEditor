@@ -5,9 +5,9 @@
 	android:layout_height="wrap_content"
 	android:accessibilityHeading="true"
 	android:minHeight="@dimen/navigation_heading_height"
-	android:paddingStart="@dimen/navigation_gutter"
+	android:paddingStart="@dimen/se_margin_screen"
 	android:paddingTop="12dp"
-	android:paddingEnd="@dimen/navigation_gutter"
+	android:paddingEnd="@dimen/se_margin_screen"
 	android:textAppearance="?attr/textAppearanceTitleSmall"
 	android:textColor="?attr/colorPrimary"
 	tools:targetApi="p" />

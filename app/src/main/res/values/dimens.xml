@@ -12,27 +12,27 @@
 	<dimen name="extra_key_width">64dp</dimen>
 	<dimen name="extra_key_divider_padding">13dp</dimen>
 	<dimen name="error_list_divider_padding">16dp</dimen>
+	<!-- Sizes and the one radius of the project-mode UI -->
+	<dimen name="se_margin_screen">16dp</dimen>
+	<dimen name="se_row_height">48dp</dimen>
+	<dimen name="se_row_height_two_line">56dp</dimen>
+	<dimen name="se_tap_target">48dp</dimen>
+	<dimen name="se_icon">24dp</dimen>
+	<dimen name="se_mark">18dp</dimen>
+	<dimen name="se_thumbnail">40dp</dimen>
+	<dimen name="se_drawer_max_width">328dp</dimen>
+	<dimen name="se_hairline">1dp</dimen>
+	<dimen name="se_corner">8dp</dimen>
+	<dimen name="se_corner_container">16dp</dimen>
 	<!-- The navigation drawer -->
-	<dimen name="navigation_drawer_width">328dp</dimen>
 	<dimen name="navigation_drawer_screen_margin">56dp</dimen>
 	<dimen name="navigation_header_height">60dp</dimen>
 	<dimen name="navigation_bar_height">60dp</dimen>
-	<dimen name="navigation_gutter">16dp</dimen>
-	<dimen name="navigation_row_height">48dp</dimen>
-	<dimen name="navigation_row_height_two_lines">56dp</dimen>
-	<dimen name="navigation_row_height_small">44dp</dimen>
+	<dimen name="navigation_bar_padding">12dp</dimen>
 	<dimen name="navigation_row_padding_vertical">8dp</dimen>
-	<dimen name="navigation_row_padding_end">12dp</dimen>
-	<dimen name="navigation_row_margin_end">8dp</dimen>
-	<dimen name="navigation_row_corner">24dp</dimen>
-	<dimen name="navigation_picture_size">40dp</dimen>
-	<dimen name="navigation_picture_margin">14dp</dimen>
-	<dimen name="navigation_picture_corner">6dp</dimen>
-	<dimen name="navigation_mark_size">20dp</dimen>
-	<dimen name="navigation_mark_small_size">16dp</dimen>
+	<!-- The selected row is inset by this, its content by twice this -->
+	<dimen name="navigation_row_inset">8dp</dimen>
+	<dimen name="navigation_state_mark">16dp</dimen>
 	<dimen name="navigation_mark_spacing">8dp</dimen>
-	<dimen name="navigation_header_button_size">44dp</dimen>
-	<dimen name="navigation_header_lock_size">14dp</dimen>
-	<dimen name="navigation_button_height">40dp</dimen>
 	<dimen name="navigation_heading_height">36dp</dimen>
 </resources>

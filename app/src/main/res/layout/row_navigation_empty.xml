@@ -32,21 +32,17 @@
 
 		<com.google.android.material.button.MaterialButton
 			android:id="@+id/navigation_empty_new"
-			style="@style/Widget.Material3.Button"
+			style="@style/Widget.ShaderEditor.Button"
 			android:layout_width="wrap_content"
-			android:layout_height="@dimen/navigation_button_height"
+			android:layout_height="wrap_content"
 			android:layout_marginEnd="8dp"
-			android:insetTop="0dp"
-			android:insetBottom="0dp"
 			android:text="@string/add_shader" />
 
 		<com.google.android.material.button.MaterialButton
 			android:id="@+id/navigation_empty_examples"
-			style="@style/Widget.Material3.Button.OutlinedButton"
+			style="@style/Widget.ShaderEditor.Button.TonalButton"
 			android:layout_width="wrap_content"
-			android:layout_height="@dimen/navigation_button_height"
-			android:insetTop="0dp"
-			android:insetBottom="0dp"
+			android:layout_height="wrap_content"
 			android:text="@string/load_sample" />
 	</LinearLayout>
 </LinearLayout>

@@ -1,6 +1,5 @@
 package de.markusfisch.android.shadereditor.adapter;
 
-import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.view.LayoutInflater;
@@ -10,11 +9,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.widget.ImageViewCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.material.color.MaterialColors;
 
 import java.util.List;
 import java.util.WeakHashMap;
@@ -146,16 +144,16 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			itemView.setSelected(item.selected());
 			itemView.setMinimumHeight(itemView.getResources()
 					.getDimensionPixelSize(row.detail() == null
-							? R.dimen.navigation_row_height
-							: R.dimen.navigation_row_height_two_lines));
+							? R.dimen.se_row_height
+							: R.dimen.se_row_height_two_line));
 			bindPicture(row.picture());
 			name.setText(row.name());
 			// The scale's medium weight for the selected row.
 			TextViewCompat.setTextAppearance(name, item.selected()
 					? com.google.android.material.R.style.TextAppearance_Material3_TitleMedium
 					: com.google.android.material.R.style.TextAppearance_Material3_BodyLarge);
-			name.setTextColor(MaterialColors.getColor(name,
-					com.google.android.material.R.attr.colorOnSurface));
+			name.setTextColor(AppCompatResources.getColorStateList(
+					name.getContext(), R.color.navigation_row_text));
 			detail.setText(row.detail());
 			detail.setVisibility(row.detail() == null ? View.GONE : View.VISIBLE);
 			wallpaper.setVisibility(visibleIf(item, Row.Mark.WALLPAPER));
@@ -181,8 +179,8 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 					? ImageView.ScaleType.CENTER
 					: ImageView.ScaleType.CENTER_CROP);
 			ImageViewCompat.setImageTintList(this.picture, isIcon
-					? ColorStateList.valueOf(MaterialColors.getColor(
-					itemView, com.google.android.material.R.attr.colorOnSurfaceVariant))
+					? AppCompatResources.getColorStateList(
+					itemView.getContext(), R.color.navigation_row_mark)
 					: null);
 			if (bitmap != null) {
 				this.picture.setImageBitmap(bitmap);

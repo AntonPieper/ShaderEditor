@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+	<solid android:color="?attr/colorSurfaceContainerHigh" />
+	<corners android:radius="@dimen/se_corner_container" />
+	<stroke
+		android:width="@dimen/se_hairline"
+		android:color="?attr/colorOutlineVariant" />
+	<padding
+		android:bottom="8dp"
+		android:top="8dp" />
+</shape>
