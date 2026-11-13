@@ -463,8 +463,13 @@ public class CodeView extends View {
 							selection.end() + TextInput.MAX_READ / 4)), from);
 		}
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-			// Android 6 never calls closeConnection.
-			closeInput();
+			// Android 6 never calls closeConnection, and its keyboard may
+			// keep using the connection it used last; close the others.
+			for (int i = connections.size(); i-- > 0; ) {
+				if (connections.get(i) != active) {
+					connections.get(i).closeConnection();
+				}
+			}
 		}
 		CodeInputConnection connection = new CodeInputConnection(this,
 				document, session);
