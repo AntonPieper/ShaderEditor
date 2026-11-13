@@ -887,9 +887,36 @@ public class OpenProjectTest {
 		assertFalse(canRun(project, "disabled.glsl"));
 		assertFalse(canRun(project, "commented.glsl"));
 		assertFalse(canRun(project, "notes.txt"));
-		assertFalse(project.canRun(path("other.glsl")));
+		assertEquals(OpenProject.Runs.NO, project.runs(path("other.glsl")));
 		edit(project, document(project, "lib/common.glsl"), "void main() {}");
-		assertTrue(project.canRun(path("lib/common.glsl")));
+		assertTrue(canRun(project, "lib/common.glsl"));
+	}
+
+	@Test
+	public void findsWhetherALargeFileRunsOnTheWorkerOncePerText()
+			throws IOException {
+		StringBuilder text = new StringBuilder();
+		for (int i = 0; i < 500_000; ++i) {
+			text.append("float x;\n");
+		}
+		write("big.glsl", text.append("void main() {}\n").toString());
+		OpenProject project = open();
+		Document big = document(project, "big.glsl");
+		List<Runnable> posted = new ArrayList<>();
+		project.setListener(posted::add, () -> {
+		});
+
+		assertEquals(OpenProject.Runs.UNKNOWN, project.runs(path("big.glsl")));
+		assertEquals(OpenProject.Runs.UNKNOWN, project.runs(path("big.glsl")));
+		assertEquals(1, worker.size());
+		settle();
+		assertEquals(1, drain(posted));
+		assertEquals(OpenProject.Runs.YES, project.runs(path("big.glsl")));
+
+		edit(project, big, "void f() {}");
+		assertEquals(OpenProject.Runs.UNKNOWN, project.runs(path("big.glsl")));
+		settle();
+		assertEquals(OpenProject.Runs.NO, project.runs(path("big.glsl")));
 	}
 
 	@Test
@@ -1137,7 +1164,9 @@ public class OpenProjectTest {
 
 	private boolean canRun(OpenProject project, String path) {
 		document(project, path);
-		return project.canRun(path(path));
+		project.runs(path(path));
+		settle();
+		return project.runs(path(path)) == OpenProject.Runs.YES;
 	}
 
 	private String text(OpenProject project, String path) {

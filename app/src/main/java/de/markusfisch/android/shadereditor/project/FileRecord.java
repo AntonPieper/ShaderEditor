@@ -42,6 +42,10 @@ final class FileRecord {
 	int limit;
 	// What the last check found in storage.
 	FileTexts.Found found = FileTexts.Found.SAME;
+	// Whether the text at revision runs, and the revision asked for.
+	OpenProject.Runs runs = OpenProject.Runs.UNKNOWN;
+	int runsRevision = -1;
+	int runsAsked = -1;
 
 	private final List<Runnable> waiting = new ArrayList<>();
 	private Document document;
