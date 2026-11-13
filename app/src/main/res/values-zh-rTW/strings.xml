@@ -21,7 +21,7 @@
 	<string name="faq">常見問題 (FAQ)</string>
 	<string name="show_extra_keys">顯示擴展按鍵</string>
 	<string name="settings">設定</string>
-	<string name="sure_remove_shader">確定要刪除這個著色器嗎？</string>
+	<string name="delete_shader_title">Delete %1$s?</string>
 	<string name="rename_shader">重新命名著色器</string>
 	<string name="enter_name">請輸入名稱</string>
 	<string name="wallpaper_set">桌布已設置</string>
@@ -37,7 +37,6 @@
 
 	<string name="details">詳情</string>
 
-	<string name="preferences">偏好設定</string>
 	<string name="wallpaper">桌布</string>
 	<string name="save_battery">省电模式</string>
 	<string name="save_battery_summary">電池電量低時停止渲染</string>
@@ -151,8 +150,8 @@
 	<string name="power_connected">電源連接狀態（充電中為 1，否則為 0）</string>
 	<string name="wallpaper_offset">桌布偏移量 (0.0 到 1.0)</string>
 	<string name="previous_frame">上一幀渲染的畫面</string>
-	<string name="camera_back">後置鏡頭（支援 Android 4.0+）</string>
-	<string name="camera_front">前置鏡頭（支援 Android 4.0+）</string>
+	<string name="camera_back">後置鏡頭</string>
+	<string name="camera_front">前置鏡頭</string>
 	<string name="camera_addent">鏡頭紋理座標增量</string>
 	<string name="camera_orientation">用於將鏡頭幀旋轉至設備方向的矩陣（cameraAddent + uv * cameraOrientation）</string>
 	<string name="date_time">年、月、日和目前秒數</string>

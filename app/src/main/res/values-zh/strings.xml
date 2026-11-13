@@ -21,7 +21,7 @@
 	<string name="faq">常见问题</string>
 	<string name="show_extra_keys">显示扩展按键</string>
 	<string name="settings">设置</string>
-	<string name="sure_remove_shader">确定要删除这个着色器吗？</string>
+	<string name="delete_shader_title">Delete %1$s?</string>
 	<string name="rename_shader">重命名</string>
 	<string name="enter_name">请输入名称</string>
 	<string name="wallpaper_set">壁纸已更新</string>
@@ -37,7 +37,6 @@
 
 	<string name="details">详情</string>
 
-	<string name="preferences">偏好设置</string>
 	<string name="wallpaper">壁纸</string>
 	<string name="save_battery">省电模式</string>
 	<string name="save_battery_summary">电池电量低时停止渲染</string>
@@ -151,8 +150,8 @@
 	<string name="power_connected">电源连接状态（充电为 1，否则为 0）</string>
 	<string name="wallpaper_offset">壁纸偏移量 (0.0 到 1.0)</string>
 	<string name="previous_frame">上一帧渲染的画面</string>
-	<string name="camera_back">后置摄像头（支持 Android 4.0+）</string>
-	<string name="camera_front">前置摄像头（支持 Android 4.0+）</string>
+	<string name="camera_back">后置摄像头</string>
+	<string name="camera_front">前置摄像头</string>
 	<string name="camera_addent">摄像头纹理坐标增量</string>
 	<string name="camera_orientation">用于将摄像头帧旋转至设备方向的矩阵（cameraAddent + uv * cameraOrientation）</string>
 	<string name="date_time">年、月、日和当前秒数</string>
