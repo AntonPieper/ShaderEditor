@@ -123,8 +123,7 @@ public final class DocumentProjectFiles implements ProjectFiles {
 			if (!SafProjectFiles.offers(document, writable).write()) {
 				return new Refused(Refusal.UNSUPPORTED,
 						"this file is read-only");
-			} else if (!SafProjectFiles.revision(resolver.read(id)).equals(
-					expectedRevision)) {
+			} else if (!SafProjectFiles.isAt(resolver, id, expectedRevision)) {
 				return new Refused(Refusal.CONFLICT, expectedRevision == null
 						? "the file exists"
 						: "the file has changed");

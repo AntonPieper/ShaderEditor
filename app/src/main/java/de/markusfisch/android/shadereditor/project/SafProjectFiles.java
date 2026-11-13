@@ -122,6 +122,18 @@ public final class SafProjectFiles implements ProjectFiles {
 		return read(path, Long.MAX_VALUE);
 	}
 
+	/**
+	 * Return whether the file id holds the bytes of revision. It is read
+	 * only up to the largest text a document may have: a larger file was
+	 * never read whole, so no revision a caller expects can be its own.
+	 */
+	static boolean isAt(DocumentResolver resolver, String id,
+			String revision) throws IOException {
+		byte[] bytes = resolver.read(id,
+				de.markusfisch.android.shadereditor.editor.Document.MAX_BYTES);
+		return bytes != null && revision(bytes).equals(revision);
+	}
+
 	@Override
 	public Read read(ProjectPath path, long limit) {
 		// A kept listing may name a document that is gone.
@@ -201,8 +213,7 @@ public final class SafProjectFiles implements ProjectFiles {
 				} else if (!offers(file, writable).write()) {
 					throw new Problem(Refusal.UNSUPPORTED,
 							"the storage cannot change " + path);
-				} else if (!revision(resolver.read(file.id())).equals(
-						expectedRevision)) {
+				} else if (!isAt(resolver, file.id(), expectedRevision)) {
 					throw new Problem(Refusal.CONFLICT,
 							expectedRevision == null
 									? "the file exists"
