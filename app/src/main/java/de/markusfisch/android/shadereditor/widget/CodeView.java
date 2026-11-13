@@ -22,6 +22,7 @@ import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
@@ -62,12 +63,17 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * selects one and a drag after it extends the selection by words,
  * scrolling while the finger is near an edge. A selection made by touch
  * has the platform's handles, which drag its ends; a tap shows the
- * caret's handle until a while has passed or the text changes.
+ * caret's handle until a while has passed or the text changes. When the
+ * finger lifts, the platform's floating toolbar offers the clipboard
+ * for the selection; a tap inside the selection hides or shows it
+ * again. Cut, copy and paste of the toolbar, the
+ * keyboard's context menu and the keys are the same KeyCommands; a copy
+ * the clipboard refuses says so.
  * Given a KeyboardSession, it records the connections and, as actions,
  * every key event (action, key code, meta state, the text it types),
  * the text on the clipboard before a paste, a tap's selection, the
  * keyboard's context menu actions and the Enter command it runs for a
- * committed line break. A copy the clipboard refuses says so. It
+ * committed line break. It
  * redraws when the document changes, and when a line on screen changes
  * colour because the continuations of the line styles or the document's
  * analysis, which it runs on one background thread, made it current.
@@ -85,16 +91,6 @@ public class CodeView extends View {
 		 */
 		void draw(Canvas canvas, int line, float left, float top,
 				float right, float bottom);
-	}
-
-	/**
-	 * Hears when a selection made by touch comes to rest, where the
-	 * floating toolbar shows, and when it moves or goes.
-	 */
-	public interface SelectionListener {
-		void onSelectionShown();
-
-		void onSelectionHidden();
 	}
 
 	/** The input type of today's editor with native suggestions hidden. */
@@ -133,8 +129,9 @@ public class CodeView extends View {
 			if (!selecting && touched != null &&
 					touched != document.selection()) {
 				touched = null;
-				hideSelection();
+				toolbar.close();
 			}
+			toolbar.moved();
 			restartBlink();
 			scrollInside(getScrollX(), getScrollY());
 			invalidate();
@@ -178,16 +175,42 @@ public class CodeView extends View {
 					return false;
 				}
 			};
+	private final SelectionToolbar toolbar = new SelectionToolbar(this,
+			new SelectionToolbar.Host() {
+				@Override
+				public void contentRect(Rect out) {
+					selectionRect(out);
+				}
+
+				@Override
+				public int[] actions() {
+					return offered();
+				}
+
+				@Override
+				public boolean act(int id) {
+					return toolbarAction(id);
+				}
+
+				@Override
+				public void closed(boolean dismissed) {
+					toolbarClosed(dismissed);
+				}
+			});
 	private final OverScroller scroller;
 	private final GestureDetector gestures;
+	private final int touchSlop;
 	private final EdgeEffect edgeTop;
 	private final EdgeEffect edgeBottom;
 	private final EdgeEffect edgeLeft;
 	private final EdgeEffect edgeRight;
 	private Insets insets = Insets.NONE;
-	private SelectionListener selectionListener;
-	// What a touch drags, and where the finger is.
+	// What a touch drags, where it went down, whether it moved since,
+	// and where the finger is.
 	private int dragging;
+	private float downX;
+	private float downY;
+	private boolean moved;
 	private float dragX;
 	private float dragY;
 	private boolean edgeScrolling;
@@ -260,6 +283,7 @@ public class CodeView extends View {
 		edgeBottom = new EdgeEffect(context);
 		edgeLeft = new EdgeEffect(context);
 		edgeRight = new EdgeEffect(context);
+		touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
 		gestures = new GestureDetector(context,
 				new GestureDetector.SimpleOnGestureListener() {
 					@Override
@@ -271,7 +295,11 @@ public class CodeView extends View {
 
 					@Override
 					public boolean onSingleTapUp(@NonNull MotionEvent e) {
-						placeCaret(e.getX(), e.getY());
+						if (inSelection(e.getX(), e.getY())) {
+							toggleToolbar();
+						} else {
+							placeCaret(e.getX(), e.getY());
+						}
 						return true;
 					}
 
@@ -318,6 +346,7 @@ public class CodeView extends View {
 			@NonNull LineStyles styles, @Nullable LineMarks marks) {
 		disconnect();
 		closeInput();
+		toolbar.close();
 		this.document = document;
 		this.styles = styles;
 		this.marks = marks;
@@ -354,11 +383,6 @@ public class CodeView extends View {
 	public void setInputType(int inputType) {
 		this.inputType = inputType;
 		restartInput();
-	}
-
-	/** Hear of selections made by touch, or nothing if null. */
-	public void setSelectionListener(@Nullable SelectionListener listener) {
-		selectionListener = listener;
 	}
 
 	@Nullable
@@ -501,7 +525,10 @@ public class CodeView extends View {
 		int action = event.getActionMasked();
 		if (action == MotionEvent.ACTION_DOWN) {
 			dragging = 0;
-			grabHandle(event.getX(), event.getY());
+			moved = false;
+			downX = event.getX();
+			downY = event.getY();
+			grabHandle(downX, downY);
 		}
 		boolean handled = dragging == DRAG_HANDLE ||
 				gestures.onTouchEvent(event);
@@ -509,12 +536,15 @@ public class CodeView extends View {
 			dragX = event.getX();
 			dragY = event.getY();
 			if (action == MotionEvent.ACTION_MOVE) {
+				if (moved || Math.abs(dragX - downX) > touchSlop ||
+						Math.abs(dragY - downY) > touchSlop) {
+					moved = true;
+					toolbar.hide();
+				}
 				dragSelection();
 			} else if (action == MotionEvent.ACTION_UP ||
 					action == MotionEvent.ACTION_CANCEL) {
-				dragging = 0;
-				showCaretHandle();
-				selectionShown();
+				drop();
 			}
 			return true;
 		}
@@ -600,6 +630,18 @@ public class CodeView extends View {
 		return key(keyCode, meta, typed) || super.onKeyDown(keyCode, event);
 	}
 
+	// Back closes the toolbar first, before Android 13.
+	@Override
+	public boolean onKeyPreIme(int keyCode, KeyEvent event) {
+		if (keyCode == KeyEvent.KEYCODE_BACK && toolbar.isShown()) {
+			if (event.getAction() == KeyEvent.ACTION_UP) {
+				toolbar.dismiss();
+			}
+			return true;
+		}
+		return super.onKeyPreIme(keyCode, event);
+	}
+
 	@Override
 	public boolean onKeyMultiple(int keyCode, int count, KeyEvent event) {
 		String characters = event.getCharacters();
@@ -670,7 +712,14 @@ public class CodeView extends View {
 	protected void onDetachedFromWindow() {
 		disconnect();
 		closeInput();
+		toolbar.close();
 		super.onDetachedFromWindow();
+	}
+
+	@Override
+	protected void onScrollChanged(int l, int t, int oldl, int oldt) {
+		super.onScrollChanged(l, t, oldl, oldt);
+		toolbar.moved();
 	}
 
 	@Override
@@ -679,6 +728,7 @@ public class CodeView extends View {
 		super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
 		if (!gainFocus) {
 			touched = null;
+			toolbar.close();
 		}
 		restartBlink();
 		invalidate();
@@ -942,18 +992,120 @@ public class CodeView extends View {
 	/** Do a context menu action of the keyboard; return if it is known. */
 	boolean contextMenuAction(int id) {
 		KeyCommands.Command command = KeyCommands.contextMenuCommand(id);
-		if (command == null) {
+		if (command != null) {
+			menuCommand(id, command);
+		}
+		return command != null;
+	}
+
+	// Runs the command of context menu action id; returns whether it did
+	// what it was asked.
+	private boolean menuCommand(int id, KeyCommands.Command command) {
+		if (keys == null) {
 			return false;
 		}
-		if (keys != null) {
-			if (command == KeyCommands.Command.PASTE) {
-				recordClip();
-			}
-			action("contextMenu", id);
-			keys.run(command, false, 0);
-			bringCaretIntoView();
+		if (command == KeyCommands.Command.PASTE) {
+			recordClip();
 		}
-		return true;
+		action("contextMenu", id);
+		boolean done = keys.run(command, false, 0);
+		bringCaretIntoView();
+		return done;
+	}
+
+	// Does action id of the toolbar; returns whether the toolbar is done.
+	// Select all keeps it, and a copy leaves the caret behind the text,
+	// as the platform's do; an action that did nothing changes nothing.
+	private boolean toolbarAction(int id) {
+		KeyCommands.Command command = KeyCommands.contextMenuCommand(id);
+		boolean done;
+		selecting = true;
+		try {
+			done = command != null && menuCommand(id, command);
+		} finally {
+			selecting = false;
+		}
+		Document.Selection selection = document.selection();
+		if (command == KeyCommands.Command.SELECT_ALL) {
+			touched = selection;
+			invalidate();
+			toolbar.show();
+			return false;
+		}
+		if (done) {
+			select(selection.end(), selection.end());
+			touched = null;
+			invalidate();
+		}
+		return done;
+	}
+
+	// The user closed the toolbar, which then drops a selection as the
+	// platform's does, or something else closed it.
+	private void toolbarClosed(boolean dismissed) {
+		if (dismissed && touched != null) {
+			select(touched.end(), touched.end());
+			touched = null;
+			invalidate();
+		} else {
+			showCaretHandle();
+		}
+	}
+
+	private int[] offered() {
+		Document.Selection selection = document.selection();
+		ClipboardManager manager = clipboardManager();
+		return TextActions.offered(selection.start(), selection.end(),
+				document.text().length(),
+				manager != null && manager.hasPrimaryClip());
+	}
+
+	private void toggleToolbar() {
+		if (toolbar.isShown()) {
+			toolbar.close();
+		} else {
+			showToolbar();
+		}
+	}
+
+	private void showToolbar() {
+		handler.removeCallbacks(hideCaretHandle);
+		toolbar.show();
+	}
+
+	// Puts the part of the selection on screen, and the handles under
+	// it, into out, in the view's coordinates; above the view if none is.
+	private void selectionRect(Rect out) {
+		Text text = document.text();
+		Document.Selection selection = document.selection();
+		int lineCount = text.lineCount();
+		int first = text.lineOf(selection.start());
+		int last = text.lineOf(selection.end());
+		int scrollX = getScrollX();
+		int scrollY = getScrollY();
+		float visibleLeft = textLeft(lineCount);
+		float left = visibleLeft;
+		float right = getWidth() - insets.right;
+		if (first == last) {
+			LineLayout layout = layoutOf(first);
+			int start = text.lineStart(first);
+			left += layout.xOf(selection.start() - start) - scrollX;
+			right = visibleLeft + layout.xOf(selection.end() - start) -
+					scrollX;
+		}
+		float top = textTop() + first * appearance.lineHeight - scrollY;
+		float bottom = textTop() + (last + 1) * appearance.lineHeight -
+				scrollY + handles.height();
+		left = Math.max(left, visibleLeft);
+		right = Math.min(right, getWidth() - insets.right);
+		top = Math.max(top, insets.top);
+		bottom = Math.min(bottom, getHeight() - insets.bottom);
+		if (left > right || top >= bottom) {
+			out.set(0, -2, 0, -1);
+		} else {
+			out.set((int) left, (int) top, (int) Math.ceil(right),
+					(int) Math.ceil(bottom));
+		}
 	}
 
 	/** Record a call the connection does not pass on. */
@@ -1073,6 +1225,7 @@ public class CodeView extends View {
 		if (document == null) {
 			return;
 		}
+		toolbar.close();
 		int offset = offsetAt(x, y);
 		select(offset, offset);
 		showCaretHandle();
@@ -1088,17 +1241,21 @@ public class CodeView extends View {
 		if (document == null) {
 			return;
 		}
+		toolbar.close();
 		Document.Selection word = touch.wordAt(document.text(),
 				offsetAt(x, y));
 		select(word.anchor(), word.head());
 		requestFocus();
-		selectionShown();
+		if (!word.isEmpty()) {
+			showToolbar();
+		}
 	}
 
 	private void dragWords(float x, float y) {
 		if (document == null) {
 			return;
 		}
+		toolbar.close();
 		touch.dragWords(document.text(), offsetAt(x, y));
 		select(touch.anchor(), touch.head());
 		requestFocus();
@@ -1137,8 +1294,18 @@ public class CodeView extends View {
 		if (getParent() != null) {
 			getParent().requestDisallowInterceptTouchEvent(true);
 		}
-		if (selectionListener != null) {
-			selectionListener.onSelectionHidden();
+	}
+
+	// The finger lifted from a drag. The toolbar shows for a selection,
+	// and again if it showed before.
+	private void drop() {
+		dragging = 0;
+		if (touched == null) {
+			return;
+		}
+		showCaretHandle();
+		if (!touched.isEmpty() || toolbar.isShown()) {
+			showToolbar();
 		}
 	}
 
@@ -1186,6 +1353,16 @@ public class CodeView extends View {
 				: at > high - zone ? at - high + zone : 0;
 		return Math.round(Math.max(-1, Math.min(1, depth / zone)) *
 				appearance.lineHeight);
+	}
+
+	// Returns whether x and y of the view are inside the selection the
+	// last touch made.
+	private boolean inSelection(float x, float y) {
+		if (document == null || touched == null || touched.isEmpty()) {
+			return false;
+		}
+		int offset = offsetAt(x, y);
+		return offset >= touched.start() && offset <= touched.end();
 	}
 
 	// Returns the offset nearest x and y of the view.
@@ -1255,20 +1432,6 @@ public class CodeView extends View {
 			handles.caret(x, bottom);
 		} else {
 			handles.end(which, x, bottom);
-		}
-	}
-
-	private void selectionShown() {
-		if (selectionListener != null && touched != null &&
-				!touched.isEmpty()) {
-			selectionListener.onSelectionShown();
-		}
-	}
-
-	// The selection changed by other means than touch.
-	private void hideSelection() {
-		if (selectionListener != null) {
-			selectionListener.onSelectionHidden();
 		}
 	}
 

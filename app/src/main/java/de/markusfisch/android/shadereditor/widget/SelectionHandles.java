@@ -56,6 +56,11 @@ final class SelectionHandles {
 		place(which, which == START ? left : right, x, y);
 	}
 
+	/** Return how far a handle hangs below the place it points at. */
+	int height() {
+		return middle.getIntrinsicHeight();
+	}
+
 	float x(int which) {
 		return x[which];
 	}
