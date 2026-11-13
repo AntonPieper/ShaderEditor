@@ -502,6 +502,23 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void theEntryOnlyCheckedToExistIsNotUsed() throws IOException {
+		write("a.glsl", SHADER);
+		write("b.glsl", SHADER);
+		write("shader-project.json", "{\"entry\": \"a.glsl\"}");
+		OpenProject project = open();
+		project.runThisFile(path("b.glsl"));
+		settle();
+
+		Preparation preparation = prepare(project);
+
+		assertTrue(preparation.files().containsKey(path("a.glsl")));
+		assertEquals(List.of(new OpenProject.Used(path("b.glsl"), false)),
+				project.used());
+		assertFalse(project.uses(path("a.glsl")));
+	}
+
+	@Test
 	public void leavesOutFilesTheBuildCouldNotRead() throws IOException {
 		write("main.glsl", "#include \"missing.glsl\"\n" + SHADER);
 		OpenProject project = open();

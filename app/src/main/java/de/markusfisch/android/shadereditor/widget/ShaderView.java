@@ -178,7 +178,7 @@ public class ShaderView extends GLSurfaceView {
 		} catch (RuntimeException e) {
 			preparation = new Preparation(null, List.of(ProjectDiagnostic.error(
 					"Cannot load the textures: " + e.getMessage())),
-					List.of(), Map.of());
+					List.of(), List.of(), Map.of());
 		}
 		if (engine.setPlan(request, preparation, quality,
 				new Stored(conversion), owner, runtimeNanos)) {
