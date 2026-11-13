@@ -34,9 +34,12 @@ public final class Outline {
 	}
 
 	public static Outline of(Tokens tokens, CharSequence text) {
-		Scan scan = new Scan(tokens, text);
-		scan.run();
-		return new Outline(scan.declarations);
+		Scan scan = new Scan(Integer.MAX_VALUE, Integer.MAX_VALUE);
+		for (int i = 0, size = tokens.size(); i < size; ++i) {
+			scan.token(text, 0, tokens.start(i), tokens.end(i),
+					tokens.style(i), tokens.inDirective(i));
+		}
+		return scan.outline();
 	}
 
 	public List<Declaration> declarations() {
@@ -78,10 +81,48 @@ public final class Outline {
 				: tokens.withStyle(indices, retyped, Style.TYPE);
 	}
 
+	/**
+	 * Builds the outline of a text line by line, from the tokens
+	 * {@link GlslLexer#lexLine} gives for each line, without the whole text
+	 * or all of its tokens. It keeps the declarations in the order they
+	 * appear until there are maxDeclarations of them or the next name would
+	 * make their names longer than maxNameChars together; the
+	 * declarations after that are left out.
+	 */
+	public static final class Builder {
+		private final Scan scan;
+
+		public Builder(int maxDeclarations, int maxNameChars) {
+			scan = new Scan(maxDeclarations, maxNameChars);
+		}
+
+		/** Add the next line, which starts at offset lineStart. */
+		public void addLine(CharSequence line, int lineStart,
+				LineTokens tokens) {
+			for (int i = 0, size = tokens.size(); i < size; ++i) {
+				scan.token(line, lineStart, tokens.start(i), tokens.end(i),
+						tokens.style(i), tokens.inDirective(i));
+			}
+		}
+
+		/** Return the outline of the lines added; call it once, last. */
+		public Outline build() {
+			return scan.outline();
+		}
+	}
+
+	// Reads one token after the other; a token is the range [start, end)
+	// of text, which starts at offset in the whole text.
 	private static final class Scan {
+		private static final int OTHER = 0;
+		private static final int DEFINE = 1;
+		private static final int IF = 2;
+
 		private final List<Declaration> declarations = new ArrayList<>();
-		private final Tokens tokens;
-		private final CharSequence text;
+		private final int maxDeclarations;
+		private final int maxNameChars;
+		private int nameChars;
+		private boolean full;
 		// Nesting of conditionals, and the level of the "#if 0" that
 		// disables code, or -1.
 		private int level;
@@ -89,8 +130,19 @@ public final class Outline {
 		private int braces;
 		private int parens;
 		private int brackets;
-		// State of the current top-level statement.
-		private int name = -1;
+		// The directive being read: how many of its tokens after "#" were
+		// no comment, what its command was, and whether it is "#if 0" so
+		// far.
+		private boolean directive;
+		private int directiveWords;
+		private int command;
+		private boolean ifZero;
+		// State of the current top-level statement; nameText is null if
+		// there is no name.
+		private CharSequence nameText;
+		private int nameOffset;
+		private int nameStart;
+		private int nameEnd;
 		private boolean typed;
 		private boolean uniform;
 		private boolean initializer;
@@ -98,63 +150,82 @@ public final class Outline {
 		private boolean function;
 		private boolean body;
 
-		private Scan(Tokens tokens, CharSequence text) {
-			this.tokens = tokens;
-			this.text = text;
+		private Scan(int maxDeclarations, int maxNameChars) {
+			this.maxDeclarations = maxDeclarations;
+			this.maxNameChars = maxNameChars;
 		}
 
-		private void run() {
-			for (int i = 0, size = tokens.size(); i < size; ) {
-				if (tokens.inDirective(i)) {
-					i = directive(i);
-					continue;
+		private Outline outline() {
+			endDirective();
+			return new Outline(declarations);
+		}
+
+		private void token(CharSequence text, int offset, int start, int end,
+				Style style, boolean inDirective) {
+			if (inDirective) {
+				if (!directive || (style == Style.DIRECTIVE &&
+						text.charAt(start) == '#')) {
+					endDirective();
+					directive = true;
+					directiveWords = 0;
+					command = OTHER;
+				} else if (style != Style.COMMENT) {
+					directiveWord(text, offset, start, end, style);
 				}
-				if (disabled < 0 && tokens.style(i) != Style.COMMENT) {
-					code(i);
-				}
-				++i;
+				return;
+			}
+			endDirective();
+			if (disabled < 0 && style != Style.COMMENT) {
+				code(text, offset, start, end, style);
 			}
 		}
 
-		// Reads the directive that starts at i and returns the index after
-		// it.
-		private int directive(int i) {
-			int end = i + 1;
-			while (end < tokens.size() && tokens.inDirective(end) &&
-					!isDirectiveStart(end)) {
-				++end;
-			}
-			int command = next(i, end);
-			int argument = next(command, end);
-			if (command >= end) {
-				return end;
-			}
-			if (is(command, "define")) {
-				if (disabled < 0 && argument < end && isWord(argument)) {
-					add(argument, Kind.MACRO);
+		private void directiveWord(CharSequence text, int offset, int start,
+				int end, Style style) {
+			if (++directiveWords == 1) {
+				if (is(text, start, end, "define")) {
+					command = DEFINE;
+				} else if (is(text, start, end, "if") ||
+						is(text, start, end, "ifdef") ||
+						is(text, start, end, "ifndef")) {
+					++level;
+					command = is(text, start, end, "if") ? IF : OTHER;
+				} else if (is(text, start, end, "elif") ||
+						is(text, start, end, "else")) {
+					if (disabled == level) {
+						disabled = -1;
+					}
+				} else if (is(text, start, end, "endif")) {
+					if (disabled == level) {
+						disabled = -1;
+					}
+					level = Math.max(0, level - 1);
 				}
-			} else if (is(command, "if") || is(command, "ifdef") ||
-					is(command, "ifndef")) {
-				++level;
-				if (disabled < 0 && is(command, "if") && argument < end &&
-						is(argument, "0") && next(argument, end) == end) {
+			} else if (directiveWords == 2) {
+				if (command == DEFINE && disabled < 0 &&
+						isWord(text, start, style)) {
+					add(text, offset, start, end, Kind.MACRO);
+				}
+				ifZero = command == IF && disabled < 0 &&
+						is(text, start, end, "0");
+			} else {
+				ifZero = false;
+			}
+		}
+
+		private void endDirective() {
+			if (directive) {
+				directive = false;
+				if (ifZero) {
 					disabled = level;
+					ifZero = false;
 				}
-			} else if (is(command, "elif") || is(command, "else")) {
-				if (disabled == level) {
-					disabled = -1;
-				}
-			} else if (is(command, "endif")) {
-				if (disabled == level) {
-					disabled = -1;
-				}
-				level = Math.max(0, level - 1);
 			}
-			return end;
 		}
 
-		private void code(int i) {
-			char c = text.charAt(tokens.start(i));
+		private void code(CharSequence text, int offset, int start, int end,
+				Style style) {
+			char c = text.charAt(start);
 			if (braces > 0) {
 				if (c == '{') {
 					++braces;
@@ -173,33 +244,36 @@ public final class Outline {
 				} else if (c == ']') {
 					--brackets;
 				}
-			} else if (isWord(i)) {
-				word(i);
+			} else if (isWord(text, start, style)) {
+				word(text, offset, start, end, style);
 			} else {
 				punctuation(c);
 			}
 		}
 
-		private void word(int i) {
+		private void word(CharSequence text, int offset, int start, int end,
+				Style style) {
 			if (initializer) {
 				return;
 			}
-			Style style = tokens.style(i);
 			boolean isName = style == Style.IDENTIFIER || style == Style.TYPE;
 			if (struct) {
 				struct = false;
 				typed = true;
 				if (isName) {
-					add(i, Kind.TYPE);
+					add(text, offset, start, end, Kind.TYPE);
 				}
 			} else if (isName) {
-				typed |= name > -1;
-				name = i;
+				typed |= nameText != null;
+				nameText = text;
+				nameOffset = offset;
+				nameStart = start;
+				nameEnd = end;
 			} else {
-				struct = is(i, "struct");
-				uniform |= is(i, "uniform");
+				struct = is(text, start, end, "struct");
+				uniform |= is(text, start, end, "uniform");
 				typed = true;
-				name = -1;
+				nameText = null;
 			}
 		}
 
@@ -207,11 +281,11 @@ public final class Outline {
 			struct = false;
 			switch (c) {
 				case '(':
-					if (name > -1 && typed && !initializer) {
-						add(name, Kind.FUNCTION);
+					if (nameText != null && typed && !initializer) {
+						addName(Kind.FUNCTION);
 						function = true;
 					}
-					name = -1;
+					nameText = null;
 					parens = 1;
 					break;
 				case '[':
@@ -221,7 +295,7 @@ public final class Outline {
 				case '{':
 					braces = 1;
 					body = function;
-					name = -1;
+					nameText = null;
 					break;
 				case '=':
 					declare();
@@ -237,20 +311,20 @@ public final class Outline {
 					endStatement();
 					break;
 				default:
-					name = -1;
+					nameText = null;
 					break;
 			}
 		}
 
 		private void declare() {
-			if (name > -1 && typed && !initializer) {
-				add(name, uniform ? Kind.UNIFORM : Kind.VARIABLE);
+			if (nameText != null && typed && !initializer) {
+				addName(uniform ? Kind.UNIFORM : Kind.VARIABLE);
 			}
-			name = -1;
+			nameText = null;
 		}
 
 		private void endStatement() {
-			name = -1;
+			nameText = null;
 			typed = false;
 			uniform = false;
 			initializer = false;
@@ -259,38 +333,36 @@ public final class Outline {
 			body = false;
 		}
 
-		private void add(int i, Kind kind) {
-			int start = tokens.start(i);
-			int end = tokens.end(i);
+		private void addName(Kind kind) {
+			add(nameText, nameOffset, nameStart, nameEnd, kind);
+		}
+
+		private void add(CharSequence text, int offset, int start, int end,
+				Kind kind) {
+			int length = end - start;
+			if (full || declarations.size() == maxDeclarations ||
+					length > maxNameChars - nameChars) {
+				full = true;
+				return;
+			}
+			nameChars += length;
 			declarations.add(new Declaration(
-					text.subSequence(start, end).toString(), kind, start, end));
+					text.subSequence(start, end).toString(), kind,
+					offset + start, offset + end));
 		}
 
-		// Index of the first token after i and before end that is no
-		// comment, or end.
-		private int next(int i, int end) {
-			do {
-				++i;
-			} while (i < end && tokens.style(i) == Style.COMMENT);
-			return Math.min(i, end);
-		}
-
-		private boolean isDirectiveStart(int i) {
-			return tokens.style(i) == Style.DIRECTIVE &&
-					text.charAt(tokens.start(i)) == '#';
-		}
-
-		private boolean isWord(int i) {
-			char c = text.charAt(tokens.start(i));
+		private static boolean isWord(CharSequence text, int start,
+				Style style) {
+			char c = text.charAt(start);
 			return (Character.isLetter(c) || c == '_') &&
-					tokens.style(i) != Style.COMMENT &&
-					tokens.style(i) != Style.STRING;
+					style != Style.COMMENT &&
+					style != Style.STRING;
 		}
 
-		private boolean is(int i, String word) {
-			int start = tokens.start(i);
+		private static boolean is(CharSequence text, int start, int end,
+				String word) {
 			int length = word.length();
-			if (tokens.end(i) - start != length) {
+			if (end - start != length) {
 				return false;
 			}
 			for (int k = 0; k < length; ++k) {

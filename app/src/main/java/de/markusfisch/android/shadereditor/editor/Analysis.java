@@ -8,14 +8,25 @@ import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.LineTokens;
 import de.markusfisch.android.shadereditor.syntax.Outline;
-import de.markusfisch.android.shadereditor.syntax.Tokens;
 
 /**
  * What needs the whole text of a document, made for one revision of it.
  * It is immutable, so it can be made on any thread.
+ *
+ * It reads the text line by line and keeps neither the text nor its
+ * tokens, so its memory does not grow with the text: it keeps at most
+ * {@link #MAX_DECLARATIONS} declarations whose names have at most
+ * {@link #MAX_NAME_CHARS} characters together, the first in the text,
+ * and it leaves the outline empty if a line is longer than
+ * {@link #MAX_LINE_LENGTH}, since tokenizing a line takes memory in
+ * proportion to its length.
  */
 public final class Analysis {
+	static final int MAX_DECLARATIONS = 10000;
+	static final int MAX_NAME_CHARS = 1 << 17;
+	static final int MAX_LINE_LENGTH = 1 << 16;
 	private static final Pattern UNIFORM_LINE = Pattern.compile(
 			"^([ \t]*uniform.+)$",
 			Pattern.MULTILINE);
@@ -24,17 +35,15 @@ public final class Analysis {
 	public static final Analysis NONE = of(Text.EMPTY, -1, null);
 
 	private final int revision;
-	private final Tokens tokens;
 	private final Outline outline;
 	private final GlslCompletion.Names names;
 	private final Set<String> typeNames;
 	private final int uniformLineEnd;
 	private final int endifEnd;
 
-	private Analysis(int revision, Tokens tokens, Outline outline,
-			Set<String> typeNames, int uniformLineEnd, int endifEnd) {
+	private Analysis(int revision, Outline outline, Set<String> typeNames,
+			int uniformLineEnd, int endifEnd) {
 		this.revision = revision;
-		this.tokens = tokens;
 		this.outline = outline;
 		this.names = GlslCompletion.Names.of(outline);
 		this.typeNames = typeNames;
@@ -48,9 +57,31 @@ public final class Analysis {
 	 * or null, if the names are the same.
 	 */
 	public static Analysis of(Text text, int revision, Analysis previous) {
-		String string = text.toString();
-		Tokens tokens = GlslLexer.lex(string);
-		Outline outline = Outline.of(tokens, string);
+		Outline.Builder builder = new Outline.Builder(MAX_DECLARATIONS,
+				MAX_NAME_CHARS);
+		boolean outlined = text.longestLineLength() <= MAX_LINE_LENGTH;
+		LineTokens tokens = new LineTokens();
+		Matcher uniformLine = UNIFORM_LINE.matcher("");
+		Matcher endif = ENDIF.matcher("");
+		int uniformLineEnd = -1;
+		int endifEnd = -1;
+		int state = GlslLexer.TEXT_START;
+		for (int n = 0, lines = text.lineCount(); n < lines; ++n) {
+			String line = text.line(n);
+			int lineStart = text.lineStart(n);
+			if (outlined) {
+				state = GlslLexer.lexLine(line, n < lines - 1, state, tokens);
+				builder.addLine(line, lineStart, tokens);
+			}
+			if (line.contains("uniform")) {
+				uniformLineEnd = lastEnd(uniformLine.reset(line), lineStart,
+						uniformLineEnd);
+			}
+			if (line.contains("#endif")) {
+				endifEnd = lastEnd(endif.reset(line), lineStart, endifEnd);
+			}
+		}
+		Outline outline = builder.build();
 		Set<String> typeNames = new HashSet<>();
 		for (Outline.Declaration declaration : outline.declarations()) {
 			if (declaration.kind() == Outline.Kind.TYPE) {
@@ -59,11 +90,10 @@ public final class Analysis {
 		}
 		boolean same = previous != null &&
 				previous.typeNames.equals(typeNames);
-		return new Analysis(revision, outline.colourTypes(tokens, string),
-				outline, same
-						? previous.typeNames
-						: Collections.unmodifiableSet(typeNames),
-				lastEnd(UNIFORM_LINE, string), lastEnd(ENDIF, string));
+		return new Analysis(revision, outline, same
+				? previous.typeNames
+				: Collections.unmodifiableSet(typeNames),
+				uniformLineEnd, endifEnd);
 	}
 
 	/**
@@ -71,7 +101,7 @@ public final class Analysis {
 	 * blanks, before its line break, or -1. Add uniform inserts there.
 	 */
 	public static int uniformLineEnd(CharSequence text) {
-		return lastEnd(UNIFORM_LINE, text);
+		return lastEnd(UNIFORM_LINE.matcher(text), 0, -1);
 	}
 
 	/**
@@ -79,16 +109,11 @@ public final class Analysis {
 	 * inserts behind it when there is no uniform line.
 	 */
 	public static int endifEnd(CharSequence text) {
-		return lastEnd(ENDIF, text);
+		return lastEnd(ENDIF.matcher(text), 0, -1);
 	}
 
 	public int revision() {
 		return revision;
-	}
-
-	/** Return the tokens, with declared type names styled as types. */
-	public Tokens tokens() {
-		return tokens;
 	}
 
 	/** Return the declarations; their names are what completion offers. */
@@ -119,10 +144,11 @@ public final class Analysis {
 		return endifEnd;
 	}
 
-	private static int lastEnd(Pattern pattern, CharSequence text) {
-		int end = -1;
-		for (Matcher m = pattern.matcher(text); m.find(); ) {
-			end = m.end();
+	// Return offset plus the end of the last match of m, or end if there
+	// is none.
+	private static int lastEnd(Matcher m, int offset, int end) {
+		while (m.find()) {
+			end = offset + m.end();
 		}
 		return end;
 	}
