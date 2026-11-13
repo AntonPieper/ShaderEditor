@@ -3,7 +3,6 @@ package de.markusfisch.android.shadereditor.activity.managers;
 import android.app.Activity;
 import android.content.Context;
 import android.text.format.DateUtils;
-import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
@@ -42,7 +41,6 @@ final class LibrarySource implements Source {
 	private static final long MINUTE = 60_000L;
 	private static final long DAY = 86_400_000L;
 
-	// Dialogs take the look of the drawer they are opened from.
 	private final Context context;
 	private final DataSource dataSource;
 	private final ShaderListManager.Listener listener;
@@ -55,8 +53,7 @@ final class LibrarySource implements Source {
 			@NonNull DataSource dataSource,
 			@NonNull ShaderListManager.Listener listener,
 			@NonNull NavigationDrawer.Host host) {
-		context = new ContextThemeWrapper(activity,
-				R.style.ThemeOverlay_ShaderEditor);
+		context = activity;
 		this.dataSource = dataSource;
 		this.listener = listener;
 		this.host = host;

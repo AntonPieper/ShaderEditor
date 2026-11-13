@@ -1,15 +1,73 @@
-<resources>
-	<style name="AppTheme" parent="Theme.Material3.DynamicColors.Dark.NoActionBar">
+<resources xmlns:tools="http://schemas.android.com/tools">
+	<!-- A fixed near-neutral dark scheme with one accent and one radius.
+	ThemeOverlay.ShaderEditor.DeviceAccent changes the accent and its
+	container only, so layouts and code read the Material attributes,
+	never the se_ colours. -->
+	<style name="Theme.ShaderEditor" parent="Theme.Material3.Dark.NoActionBar">
 		<item name="background">@android:color/transparent</item>
 		<item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
 		<item name="buttonStyle">@style/ButtonTheme</item>
+		<item name="colorPrimary">@color/se_accent</item>
+		<item name="colorOnPrimary">@color/se_on_accent</item>
+		<item name="colorPrimaryContainer">@color/se_accent_container</item>
+		<item name="colorOnPrimaryContainer">@color/se_on_accent_container</item>
+		<item name="colorPrimaryInverse">?attr/colorPrimary</item>
+		<item name="colorControlActivated">?attr/colorPrimary</item>
+		<item name="colorAccent">?attr/colorPrimary</item>
+		<item name="colorSecondary">@color/se_on_surface_dim</item>
+		<item name="colorOnSecondary">@color/se_surface</item>
+		<item name="colorSecondaryContainer">?attr/colorPrimaryContainer</item>
+		<item name="colorOnSecondaryContainer">?attr/colorOnPrimaryContainer</item>
+		<item name="colorTertiary">@color/se_on_surface_dim</item>
+		<item name="colorOnTertiary">@color/se_surface</item>
+		<item name="colorTertiaryContainer">@color/se_surface_3</item>
+		<item name="colorOnTertiaryContainer">@color/se_on_surface</item>
+		<item name="android:colorBackground">@color/se_surface</item>
+		<item name="colorOnBackground">@color/se_on_surface</item>
+		<item name="colorSurface">@color/se_surface</item>
+		<item name="colorSurfaceDim">@color/se_surface</item>
+		<item name="colorSurfaceBright">@color/se_surface_3</item>
+		<item name="colorSurfaceContainerLowest">@color/se_surface</item>
+		<item name="colorSurfaceContainerLow">@color/se_surface_1</item>
+		<item name="colorSurfaceContainer">@color/se_surface_1</item>
+		<item name="colorSurfaceContainerHigh">@color/se_surface_2</item>
+		<item name="colorSurfaceContainerHighest">@color/se_surface_3</item>
+		<item name="colorSurfaceVariant">@color/se_surface_3</item>
+		<item name="colorSurfaceInverse">@color/se_surface_3</item>
+		<item name="android:colorBackgroundFloating">@color/se_surface_2</item>
+		<item name="colorOnSurface">@color/se_on_surface</item>
+		<item name="colorOnSurfaceVariant">@color/se_on_surface_dim</item>
+		<item name="colorOnSurfaceInverse">@color/se_on_surface</item>
+		<item name="colorOutline">@color/se_outline</item>
+		<item name="colorOutlineVariant">@color/se_line</item>
+		<item name="colorError">@color/se_error</item>
+		<item name="colorOnError">@color/se_surface</item>
+		<!-- What the platform draws for the app, like the text selection
+		toolbar, is dark too -->
+		<item name="android:isLightTheme" tools:targetApi="q">false</item>
+		<!-- Up to 56 dp tall: se_corner; larger and floating: se_corner_container -->
+		<item name="shapeCornerSizeExtraSmall">@dimen/se_corner</item>
+		<item name="shapeCornerSizeSmall">@dimen/se_corner</item>
+		<item name="shapeCornerSizeMedium">@dimen/se_corner</item>
+		<item name="shapeCornerSizeLarge">@dimen/se_corner_container</item>
+		<item name="shapeCornerSizeLargeIncreased">@dimen/se_corner_container</item>
+		<item name="shapeCornerSizeExtraLarge">@dimen/se_corner_container</item>
+		<item name="shapeCornerSizeExtraLargeIncreased">@dimen/se_corner_container</item>
+		<item name="shapeCornerSizeExtraExtraLarge">@dimen/se_corner_container</item>
+		<item name="popupMenuBackground">@drawable/background_popup</item>
+		<item name="materialButtonStyle">@style/Widget.ShaderEditor.Button</item>
+		<item name="materialButtonTonalStyle">@style/Widget.ShaderEditor.Button.TonalButton</item>
+		<item name="materialButtonOutlinedStyle">@style/Widget.ShaderEditor.Button.OutlinedButton</item>
+		<item name="borderlessButtonStyle">@style/Widget.ShaderEditor.Button.TextButton</item>
+		<item name="materialAlertDialogTheme">@style/ThemeOverlay.ShaderEditor.MaterialAlertDialog</item>
+		<item name="alertDialogTheme">@style/ThemeOverlay.ShaderEditor.Dialog.Alert</item>
 	</style>
 
-	<style name="SplashTheme" parent="@style/AppTheme">
+	<style name="Theme.ShaderEditor.Splash">
 		<item name="android:windowBackground">@drawable/background_splash</item>
 	</style>
 
-	<style name="PreviewTheme" parent="Theme.Material3.DynamicColors.Dark.NoActionBar">
+	<style name="Theme.ShaderEditor.Preview">
 		<item name="android:windowFullscreen">true</item>
 		<item name="android:windowContentOverlay">@null</item>
 	</style>
@@ -33,6 +91,7 @@
 	</style>
 
 	<style name="FAB" parent="Widget.Material3.FloatingActionButton.Primary">
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
 		<item name="android:layout_width">wrap_content</item>
 		<item name="android:layout_height">wrap_content</item>
 		<item name="android:layout_margin">20dp</item>
@@ -127,44 +186,6 @@
 		<item name="android:scrollbars">vertical|horizontal</item>
 	</style>
 
-	<!-- The fixed scheme and the one radius of the project-mode UI, for
-	the views it is set on and what they open. -->
-	<style name="ThemeOverlay.ShaderEditor" parent="">
-		<item name="colorPrimary">@color/se_accent</item>
-		<item name="colorOnPrimary">@color/se_on_accent</item>
-		<item name="colorControlActivated">@color/se_accent</item>
-		<item name="colorPrimaryContainer">@color/se_accent_container</item>
-		<item name="colorOnPrimaryContainer">@color/se_on_accent_container</item>
-		<item name="colorSecondary">@color/se_on_surface_dim</item>
-		<item name="colorSecondaryContainer">@color/se_accent_container</item>
-		<item name="colorOnSecondaryContainer">@color/se_on_accent_container</item>
-		<item name="colorTertiary">@color/se_on_surface_dim</item>
-		<item name="colorTertiaryContainer">@color/se_surface_3</item>
-		<item name="colorOnTertiaryContainer">@color/se_on_surface</item>
-		<item name="android:colorBackground">@color/se_surface</item>
-		<item name="colorSurface">@color/se_surface</item>
-		<item name="colorSurfaceContainerLowest">@color/se_surface</item>
-		<item name="colorSurfaceContainerLow">@color/se_surface_1</item>
-		<item name="colorSurfaceContainer">@color/se_surface_1</item>
-		<item name="colorSurfaceContainerHigh">@color/se_surface_2</item>
-		<item name="colorSurfaceContainerHighest">@color/se_surface_3</item>
-		<item name="colorOnSurface">@color/se_on_surface</item>
-		<item name="colorOnSurfaceVariant">@color/se_on_surface_dim</item>
-		<item name="colorOutline">@color/se_outline</item>
-		<item name="colorOutlineVariant">@color/se_line</item>
-		<item name="colorError">@color/se_error</item>
-		<!-- Up to 56 dp tall: se_corner; larger and floating: se_corner_container -->
-		<item name="shapeCornerSizeExtraSmall">@dimen/se_corner</item>
-		<item name="shapeCornerSizeSmall">@dimen/se_corner</item>
-		<item name="shapeCornerSizeMedium">@dimen/se_corner</item>
-		<item name="shapeCornerSizeLarge">@dimen/se_corner_container</item>
-		<item name="shapeCornerSizeLargeIncreased">@dimen/se_corner_container</item>
-		<item name="shapeCornerSizeExtraLarge">@dimen/se_corner_container</item>
-		<item name="shapeCornerSizeExtraLargeIncreased">@dimen/se_corner_container</item>
-		<item name="shapeCornerSizeExtraExtraLarge">@dimen/se_corner_container</item>
-		<item name="popupMenuBackground">@drawable/background_popup</item>
-	</style>
-
 	<!-- Buttons are pills by default; here they take the one radius. -->
 	<style name="Widget.ShaderEditor.Button" parent="Widget.Material3.Button">
 		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
@@ -176,5 +197,34 @@
 
 	<style name="Widget.ShaderEditor.Button.TonalButton" parent="Widget.Material3.Button.TonalButton">
 		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+	</style>
+
+	<style name="Widget.ShaderEditor.Button.OutlinedButton" parent="Widget.Material3.Button.OutlinedButton">
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+	</style>
+
+	<style name="Widget.ShaderEditor.Button.TextButton" parent="Widget.Material3.Button.TextButton">
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+	</style>
+
+	<style name="Widget.ShaderEditor.Button.TextButton.Dialog" parent="Widget.Material3.Button.TextButton.Dialog">
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+	</style>
+
+	<style name="Widget.ShaderEditor.Button.TextButton.Dialog.Flush" parent="Widget.Material3.Button.TextButton.Dialog.Flush">
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+	</style>
+
+	<!-- The library's dialogs that are not built by MaterialAlertDialogBuilder -->
+	<style name="ThemeOverlay.ShaderEditor.Dialog.Alert" parent="ThemeOverlay.Material3.Dialog.Alert">
+		<item name="android:windowBackground">@drawable/background_dialog</item>
+		<item name="buttonBarButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog.Flush</item>
+	</style>
+
+	<style name="ThemeOverlay.ShaderEditor.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+		<item name="buttonBarButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog</item>
+		<item name="buttonBarPositiveButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog</item>
+		<item name="buttonBarNegativeButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog</item>
+		<item name="buttonBarNeutralButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog.Flush</item>
 	</style>
 </resources>

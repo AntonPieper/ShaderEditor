@@ -39,7 +39,7 @@
 		android:resizeableActivity="true"
 		android:label="@string/app_name"
 		android:icon="@mipmap/ic_launcher"
-		android:theme="@style/AppTheme">
+		android:theme="@style/Theme.ShaderEditor">
 		<receiver
 			android:name=".receiver.BatteryLevelReceiver"
 			android:enabled="false"
@@ -86,7 +86,7 @@
 
 		<activity
 			android:name=".activity.SplashActivity"
-			android:theme="@style/SplashTheme"
+			android:theme="@style/Theme.ShaderEditor.Splash"
 			android:exported="true">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN"/>
@@ -125,7 +125,7 @@
 		<activity
 			android:name=".activity.PreviewActivity"
 			android:label="@string/preview"
-			android:theme="@style/PreviewTheme"
+			android:theme="@style/Theme.ShaderEditor.Preview"
 			android:launchMode="singleInstance"
 			android:documentLaunchMode="intoExisting"
 			android:exported="false"/>
