@@ -13,9 +13,10 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.IntentCompat;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -40,6 +41,8 @@ public class ShaderManager implements OpenItem {
 	private static final String SELECTED_SHADER_ID = "selected_shader_id";
 	private static final String SELECTED_SHADER_TITLE = "selected_shader_title";
 	private static final String DEFAULT_TITLE = "main.glsl";
+	private static final String QUALITY = "quality";
+	private static final String MODIFIED = "modified";
 	private static final long NO_SHADER = 0;
 
 	private final AppCompatActivity activity;
@@ -193,13 +196,20 @@ public class ShaderManager implements OpenItem {
 	public void saveState(@NonNull Bundle outState) {
 		outState.putLong(SELECTED_SHADER_ID, selectedShaderId);
 		outState.putString(SELECTED_SHADER_TITLE, title);
+		outState.putFloat(QUALITY, quality);
+		outState.putBoolean(MODIFIED, isModified);
 	}
 
+	// The editor restores its text itself, keeping the undo history.
 	public void restoreState(@NonNull Bundle savedInstanceState) {
 		selectedShaderId = savedInstanceState.getLong(
 				SELECTED_SHADER_ID, NO_SHADER);
 		title = savedInstanceState.getString(SELECTED_SHADER_TITLE, "");
+		quality = savedInstanceState.getFloat(QUALITY, 1f);
 		shaderListManager.setSelectedShaderId(selectedShaderId);
+		shaderViewManager.setShader(editorFragment.getText(), quality);
+		updatePendingCrashShaderId();
+		setModified(savedInstanceState.getBoolean(MODIFIED));
 	}
 
 	public void selectShader(long id) {
@@ -235,18 +245,18 @@ public class ShaderManager implements OpenItem {
 		saveShader(explicit);
 	}
 
-	public void saveShader() {
-		saveShader(false);
+	public boolean saveShader() {
+		return saveShader(false);
 	}
 
-	public void saveShader(boolean force) {
+	public boolean saveShader(boolean force) {
 		if (!force && !isModified()) {
-			return;
+			return true;
 		}
 
 		String src = editorFragment.getText();
 		if (src.trim().isEmpty() && selectedShaderId <= 0) {
-			return;
+			return true;
 		}
 
 		boolean runInBackground =
@@ -258,8 +268,14 @@ public class ShaderManager implements OpenItem {
 			dataSource.shader.updateShader(
 					selectedShaderId, src, thumbnail, quality);
 		} else {
-			selectedShaderId = dataSource.shader.insertShader(
+			long newId = dataSource.shader.insertShader(
 					src, null, thumbnail, quality);
+			if (newId <= 0) {
+				Toast.makeText(activity, R.string.storage_not_writeable,
+						Toast.LENGTH_LONG).show();
+				return false;
+			}
+			selectedShaderId = newId;
 			shaderListManager.setSelectedShaderId(selectedShaderId);
 		}
 
@@ -272,6 +288,7 @@ public class ShaderManager implements OpenItem {
 		shaderListManager.loadShadersAsync();
 		Toast.makeText(activity, R.string.shader_saved,
 				Toast.LENGTH_SHORT).show();
+		return true;
 	}
 
 	// The preview answers after its next complete frame, possibly when
@@ -298,14 +315,23 @@ public class ShaderManager implements OpenItem {
 		}
 
 		Uri uri = intent.getData();
+		if (uri == null && Intent.ACTION_SEND.equals(intent.getAction())) {
+			uri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri.class);
+		}
 		String text;
 		if (uri != null) {
 			text = readText(uri);
-		} else {
+		} else if (Intent.ACTION_SEND.equals(intent.getAction())) {
 			// Text shared from another app comes as an extra.
-			text = intent.getStringExtra(Intent.EXTRA_TEXT);
+			CharSequence extra = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+			text = extra != null ? extra.toString() : null;
+		} else {
+			text = null;
 		}
 		if (text == null) {
+			return false;
+		}
+		if (isModified() && !saveShader()) {
 			return false;
 		}
 
@@ -318,18 +344,21 @@ public class ShaderManager implements OpenItem {
 
 	@Nullable
 	private String readText(@NonNull Uri uri) {
-		try (InputStream in = activity.getContentResolver().openInputStream(uri)) {
+		try (var in = activity.getContentResolver().openInputStream(uri)) {
 			if (in == null) {
 				return null;
 			}
-			byte[] buffer = new byte[4096];
-			int len;
-			var sb = new StringBuilder();
-			while ((len = in.read(buffer)) != -1) {
-				sb.append(new String(buffer, 0, len, StandardCharsets.UTF_8));
+			// A reader keeps characters that span two buffers intact.
+			try (var reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+				char[] buffer = new char[4096];
+				int len;
+				var sb = new StringBuilder();
+				while ((len = reader.read(buffer)) != -1) {
+					sb.append(buffer, 0, len);
+				}
+				return sb.toString();
 			}
-			return sb.toString();
-		} catch (IOException e) {
+		} catch (IOException | SecurityException e) {
 			Toast.makeText(activity, R.string.unsuitable_text,
 					Toast.LENGTH_SHORT).show();
 			return null;

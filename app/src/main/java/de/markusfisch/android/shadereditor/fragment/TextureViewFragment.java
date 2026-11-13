@@ -80,8 +80,9 @@ public class TextureViewFragment extends Fragment {
 		TextureInfo textureInfo = dataSource.texture.getTextureInfo(textureId);
 
 		if (nonPremultipliedBitmap == null || textureInfo == null) {
-			// Automatically remove defective textures.
-			dataSource.texture.removeTexture(textureId);
+			if (nonPremultipliedBitmap != null) {
+				nonPremultipliedBitmap.recycle();
+			}
 			Toast.makeText(activity, R.string.removed_invalid_texture,
 					Toast.LENGTH_LONG).show();
 			activity.finish();
@@ -167,17 +168,22 @@ public class TextureViewFragment extends Fragment {
 		// Use application context for safety in background tasks.
 		Context appContext = context.getApplicationContext();
 		Handler handler = new Handler(Looper.getMainLooper());
+		View deletingView = getView();
 
-		try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		try {
 			executor.execute(() -> {
 				Database.getInstance(appContext).getDataSource().texture.removeTexture(id);
 				handler.post(() -> {
 					Activity activity = getActivity();
-					if (activity != null) {
+					if (activity == context && getView() == deletingView &&
+							deletingView != null && !activity.isDestroyed()) {
 						activity.finish();
 					}
 				});
 			});
+		} finally {
+			executor.shutdown();
 		}
 	}
 
