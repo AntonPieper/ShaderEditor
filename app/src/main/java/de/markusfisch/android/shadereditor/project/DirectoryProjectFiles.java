@@ -36,6 +36,11 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 
 	@Override
 	public Read read(ProjectPath path) {
+		return read(path, Long.MAX_VALUE);
+	}
+
+	@Override
+	public Read read(ProjectPath path, long limit) {
 		try {
 			File file = find(path);
 			if (file == null) {
@@ -43,8 +48,10 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 			} else if (file.isDirectory()) {
 				return new Failed("it is a folder");
 			}
-			byte[] bytes = readBytes(file);
-			return new Content(bytes, revision(bytes));
+			byte[] bytes = readBytes(file, limit);
+			return bytes != null
+					? new Content(bytes, revision(bytes))
+					: new Failed(TOO_LARGE);
 		} catch (IOException e) {
 			return new Failed(reason(e));
 		} catch (OutOfMemoryError e) {
@@ -338,11 +345,23 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 	}
 
 	private static byte[] readBytes(File file) throws IOException {
+		return readBytes(file, Long.MAX_VALUE);
+	}
+
+	// Return the bytes of file, or null as soon as there are more than
+	// limit, whatever its length said.
+	private static byte[] readBytes(File file, long limit)
+			throws IOException {
 		try (InputStream in = new FileInputStream(file)) {
 			ByteArrayOutputStream out = new ByteArrayOutputStream(
-					(int) Math.min(file.length(), 1 << 20));
+					(int) Math.min(Math.min(file.length(), limit), 1 << 20));
 			byte[] buffer = new byte[8192];
+			long total = 0;
 			for (int n; (n = in.read(buffer)) > -1; ) {
+				total += n;
+				if (total > limit) {
+					return null;
+				}
 				out.write(buffer, 0, n);
 			}
 			return out.toByteArray();

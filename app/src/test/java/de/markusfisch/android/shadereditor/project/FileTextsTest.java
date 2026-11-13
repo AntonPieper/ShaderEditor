@@ -192,6 +192,34 @@ public class FileTextsTest {
 	}
 
 	@Test
+	public void opensAndChecksAFileOfUnknownSizeWithinTheLimit() {
+		// A file of 64 MiB that a store reads as a stream.
+		long size = 64L * 1024 * 1024;
+		long[] handed = {0};
+		ProjectFiles huge = new ProjectFiles() {
+			@Override
+			public Read read(ProjectPath path) {
+				throw new AssertionError("read all " + size + " bytes");
+			}
+
+			@Override
+			public Read read(ProjectPath path, long limit) {
+				// It stops after limit bytes and one buffer.
+				handed[0] += Math.min(size, limit + 8192);
+				assertTrue(limit < size);
+				return new ProjectFiles.Failed(ProjectFiles.TOO_LARGE);
+			}
+		};
+		texts = new FileTexts(EditingSession.restore(huge,
+				new DraftJournal(drafts)), worker, main);
+
+		assertTrue(open(MAIN, ProjectFiles.UNKNOWN) instanceof Unopened);
+		assertEquals(FileTexts.Found.TOO_LARGE, reread(MAIN).found());
+		assertTrue("handed out " + handed[0],
+				handed[0] <= 2 * (FileTexts.MAX_BYTES + 8192));
+	}
+
+	@Test
 	public void rereadTellsAFileThatIsNotTextAnymore() {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));

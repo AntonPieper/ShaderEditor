@@ -84,6 +84,16 @@ public class DirectoryProjectFilesTest {
 	}
 
 	@Test
+	public void boundedReadStopsAtTheLimit() throws IOException {
+		put("main.glsl", "x".repeat(100_000));
+
+		assertEquals(new Failed(ProjectFiles.TOO_LARGE),
+				files.read(path("main.glsl"), 1000));
+		assertEquals(100_000, ((Content) files.read(path("main.glsl"),
+				100_000)).bytes().length);
+	}
+
+	@Test
 	public void revisionChangesWithTheBytes() throws IOException {
 		put("a.glsl", "same");
 		put("b.glsl", "same");
