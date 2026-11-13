@@ -64,7 +64,7 @@ public class NavigationTest {
 		List<Item> items = Item.of(listing(
 				new Listing.Section(null, List.of(shader("a", "One", 0))),
 				new Listing.Section("Recent", List.of(shader("b", "Two", 0)))),
-				Level.LIBRARY, null, null);
+				Level.LIBRARY, null, null, Set.of());
 		assertEquals(3, items.size());
 		assertNull(items.get(0).heading());
 		assertEquals("Recent", items.get(1).heading());
@@ -76,7 +76,7 @@ public class NavigationTest {
 		Item.Place open = new Item.Place(Level.LIBRARY, "b");
 		List<Item> items = Item.of(listing(new Listing.Section(null, List.of(
 						shader("a", "One", 0), shader("b", "Two", 0)))),
-				Level.LIBRARY, open, open);
+				Level.LIBRARY, open, open, Set.of());
 		assertFalse(items.get(0).selected());
 		assertEquals(Tap.OPEN_AND_RUN, items.get(0).tap());
 		assertTrue(items.get(1).selected());
@@ -85,11 +85,23 @@ public class NavigationTest {
 	}
 
 	@Test
+	public void aShaderTheRunningOneUsesOnlyOpens() {
+		Item.Place running = new Item.Place(Level.LIBRARY, "main");
+		Item.Place pass = new Item.Place(Level.LIBRARY, "pass");
+		List<Item> items = Item.of(listing(new Listing.Section(null, List.of(
+						shader("pass", "Pass", 0), shader("other", "Other", 0)))),
+				Level.LIBRARY, running, running, Set.of(pass));
+		assertEquals(Tap.OPEN, items.get(0).tap());
+		assertEquals(Set.of(), items.get(0).marks());
+		assertEquals(Tap.OPEN_AND_RUN, items.get(1).tap());
+	}
+
+	@Test
 	public void theSameKeyInAnotherLevelIsAnotherFile() {
 		Item.Place open = new Item.Place(Level.LIBRARY, "a");
 		List<Item> items = Item.of(listing(new Listing.Section(null,
 						List.of(shader("a", "One", 0)))),
-				Level.EXAMPLES, open, open);
+				Level.EXAMPLES, open, open, Set.of());
 		assertFalse(items.get(0).selected());
 		assertEquals(Tap.OPEN_AND_RUN, items.get(0).tap());
 	}
@@ -99,7 +111,7 @@ public class NavigationTest {
 		Item.Place open = new Item.Place(Level.LIBRARY, "a");
 		List<Item> items = Item.of(listing(new Listing.Section(null,
 						List.of(folder("library", "Shaders")))),
-				Level.FOLDERS, open, open);
+				Level.FOLDERS, open, open, Set.of());
 		assertTrue(items.get(0).selected());
 		assertEquals(Tap.ENTER, items.get(0).tap());
 	}
