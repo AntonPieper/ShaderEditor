@@ -687,8 +687,9 @@ public final class OpenProject {
 	/**
 	 * Write the current text of each of paths, as its document, else its
 	 * journal, else storage has it, to the same path in destination,
-	 * where it must not exist yet; nothing of this project changes. done
-	 * gets by path null when it was written, else why not.
+	 * where it must not exist yet; nothing of this project changes. A
+	 * stored file larger than a document may be is not read. done gets
+	 * by path null when it was written, else why not.
 	 */
 	public void copyTo(ProjectFiles destination, Collection<ProjectPath> paths,
 			Callback<Map<ProjectPath, String>> done) {
@@ -742,6 +743,7 @@ public final class OpenProject {
 
 	/**
 	 * Prepare what runs from the text of the documents and the journal,
+	 * reading no file beyond the largest text a document may have,
 	 * and keep the files it is made of as those of the last build. done
 	 * gets the preparation, or null when nothing runs.
 	 */
@@ -1419,8 +1421,9 @@ public final class OpenProject {
 
 	// The project as the editor had it when the snapshot was taken:
 	// files in memory with the text of their documents, the journaled
-	// ones with the text of their journal, the others as stored. Read
-	// on the worker.
+	// ones with the text of their journal, the others as stored, none
+	// read beyond the largest text a document may have. Read on the
+	// worker.
 	private final class Edited implements ProjectFiles {
 		private final Map<ProjectPath, Text> snapshot;
 		private final Set<ProjectPath> journaled;
@@ -1433,7 +1436,7 @@ public final class OpenProject {
 
 		@Override
 		public Read read(ProjectPath path) {
-			return read(path, Long.MAX_VALUE);
+			return read(path, Document.MAX_BYTES);
 		}
 
 		@Override

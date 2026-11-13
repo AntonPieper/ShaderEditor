@@ -53,6 +53,20 @@ public class SafProjectFilesTest {
 	}
 
 	@Test
+	public void doesNotOverwriteAFileTooLargeToHaveBeenRead() {
+		documents.put("big.glsl", new String(new char[(int) de.markusfisch
+				.android.shadereditor.editor.Document.MAX_BYTES + 1]));
+		SafProjectFiles writable = new SafProjectFiles(documents,
+				documents.root.id, true);
+
+		ProjectFiles.Change change = writable.write(path("big.glsl"),
+				new byte[]{'x'}, "sha256:any");
+
+		assertEquals(ProjectFiles.Refusal.CONFLICT,
+				((ProjectFiles.Refused) change).refusal());
+	}
+
+	@Test
 	public void openingReadsNothingAndAPathReadsOnlyItsWay() {
 		for (int i = 0; i < 100; ++i) {
 			documents.put("big/file" + i + ".glsl", "");

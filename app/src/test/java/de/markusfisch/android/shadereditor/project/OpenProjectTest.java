@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.project;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -161,6 +162,43 @@ public class OpenProjectTest {
 
 		assertEquals(List.of(Document.MAX_BYTES, Document.MAX_BYTES),
 				limits);
+	}
+
+	@Test
+	public void buildAndCopyReportAFileOverTheLimitWithoutReadingIt()
+			throws IOException {
+		write("main.glsl", "#include \"big.glsl\"\n" + SHADER);
+		ProjectPath big = path("big.glsl");
+		DirectoryProjectFiles files = new DirectoryProjectFiles(root);
+		OpenProject project = open(new ProjectFiles() {
+			@Override
+			public Read read(ProjectPath path) {
+				assertNotEquals(big, path);
+				return files.read(path);
+			}
+
+			@Override
+			public Read read(ProjectPath path, long limit) {
+				return big.equals(path)
+						? new Failed(ProjectFiles.TOO_LARGE)
+						: files.read(path, limit);
+			}
+		});
+		MemoryProjectFiles destination = new MemoryProjectFiles();
+		destination.writable = true;
+
+		Preparation preparation = prepare(project);
+		Map<ProjectPath, String> problems = await(done -> project.copyTo(
+				destination, List.of(big, path("main.glsl")), done));
+
+		assertNull(preparation.plan());
+		assertTrue(preparation.diagnostics().get(0).message(),
+				preparation.diagnostics().get(0).message().contains(
+						"big.glsl: it is too large"));
+		assertEquals("Could not read big.glsl: it is too large",
+				problems.get(big));
+		assertNull(problems.get(path("main.glsl")));
+		assertNull(destination.text("big.glsl"));
 	}
 
 	@Test
