@@ -19,12 +19,14 @@ final class ShaderRenderPipeline {
 	record SurfaceProgram(
 			@NonNull GlProgram program,
 			int resolutionLocation,
+			int limitLocation,
 			int frameUnit) {
 		@NonNull
 		static SurfaceProgram of(@NonNull GlDevice device, @NonNull GlProgram program) {
 			return new SurfaceProgram(
 					program,
 					device.getUniformLocation(program, SURFACE_RESOLUTION),
+					device.getUniformLocation(program, SURFACE_LIMIT),
 					program.getTextureUnit(SURFACE_FRAME));
 		}
 	}
@@ -32,6 +34,7 @@ final class ShaderRenderPipeline {
 	private static final int THUMBNAIL_WIDTH = 144;
 	private static final int THUMBNAIL_HEIGHT = 144;
 	private static final String SURFACE_RESOLUTION = "resolution";
+	private static final String SURFACE_LIMIT = "limit";
 	private static final String SURFACE_FRAME = "frame";
 	private static final String SURFACE_FRAGMENT_SHADER = """
 			#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -41,9 +44,13 @@ final class ShaderRenderPipeline {
 			#endif
 			
 			uniform vec2 resolution;
+			uniform float limit;
 			uniform sampler2D frame;
 			void main(void) {
-				gl_FragColor = texture2D(frame,gl_FragCoord.xy / resolution.xy).rgba;
+				vec4 c = texture2D(frame, gl_FragCoord.xy / resolution.xy);
+				// PictureLimit.apply
+				c.rgb /= 1.0 + limit * max(c.r, max(c.g, c.b));
+				gl_FragColor = c;
 			}
 			""";
 
@@ -60,6 +67,7 @@ final class ShaderRenderPipeline {
 	// What the surface shows, for thumbnails.
 	@Nullable
 	private GlTexture2D presented;
+	private float limit;
 
 	ShaderRenderPipeline(@NonNull GlDevice device) {
 		this.device = device;
@@ -105,22 +113,28 @@ final class ShaderRenderPipeline {
 		return surfaceProgram != null;
 	}
 
-	// Stretches the texture over the surface, sampled as it is set up.
+	// The strength of PictureLimit for what present() draws from now on.
+	void setLimit(float strength) {
+		limit = strength;
+	}
+
+	// Stretches the texture over the surface, sampled as it is set up,
+	// limited by setLimit().
 	void present(
 			@Nullable GlTexture2D texture,
 			int surfaceWidth,
 			int surfaceHeight) {
 		presented = texture;
-		drawSurface(texture, surfaceWidth, surfaceHeight, null);
+		drawSurface(texture, surfaceWidth, surfaceHeight, null, limit);
 	}
 
 	// Stretches the texture over the framebuffer, sampled as it is set up.
 	void stretch(@NonNull GlTexture2D texture, @NonNull GlFramebuffer framebuffer) {
 		drawSurface(texture, framebuffer.getWidth(), framebuffer.getHeight(),
-				framebuffer);
+				framebuffer, 0f);
 	}
 
-	// Of the frame presented last.
+	// Of the frame presented last, without the limit.
 	@Nullable
 	byte[] captureThumbnail() {
 		if (thumbnailFramebuffer == null || presented == null ||
@@ -132,7 +146,8 @@ final class ShaderRenderPipeline {
 				presented,
 				THUMBNAIL_WIDTH,
 				THUMBNAIL_HEIGHT,
-				thumbnailFramebuffer);
+				thumbnailFramebuffer,
+				0f);
 
 		final int pixels = THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT;
 		final int[] rgba = new int[pixels];
@@ -180,7 +195,8 @@ final class ShaderRenderPipeline {
 			@Nullable GlTexture2D sourceTexture,
 			int drawWidth,
 			int drawHeight,
-			@Nullable GlFramebuffer targetFramebuffer) {
+			@Nullable GlFramebuffer targetFramebuffer,
+			float limit) {
 		if (sourceTexture == null || surfaceProgram == null) {
 			return;
 		}
@@ -192,6 +208,7 @@ final class ShaderRenderPipeline {
 		GlProgram program = surfaceProgram.program();
 		device.useProgram(program);
 		device.uniform2fv(surfaceProgram.resolutionLocation(), 1, drawResolution);
+		device.uniform1f(surfaceProgram.limitLocation(), limit);
 		device.bindTexture(surfaceProgram.frameUnit(), sourceTexture);
 		device.clear(GLES20.GL_COLOR_BUFFER_BIT);
 		quad.draw();

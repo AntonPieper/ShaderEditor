@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
+import android.provider.Settings;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -11,6 +12,7 @@ import androidx.core.view.ViewCompat;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.opengl.PictureLimit;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
 
 public class UIManager {
@@ -81,6 +83,7 @@ public class UIManager {
 		editorFragment.setShowLineNumbers(
 				ShaderEditorApp.preferences.showLineNumbers());
 		editorFragment.updateHighlighting();
+		limitPicture(false);
 		activity.invalidateOptionsMenu();
 	}
 
@@ -89,6 +92,8 @@ public class UIManager {
 		drawerLayout.setTouchThru(isVisible);
 		extraKeysManager.setVisible(!isVisible &&
 				ShaderEditorApp.preferences.showExtraKeys());
+		limitPicture(Settings.Global.getFloat(activity.getContentResolver(),
+				Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f);
 	}
 
 	public CharSequence getToolbarTitle() {
@@ -106,5 +111,13 @@ public class UIManager {
 
 	public void setToolbarSubtitle(String subtitle) {
 		toolbar.post(() -> toolbar.setSubtitle(subtitle));
+	}
+
+	// Code in front of the picture limits its brightness, so that the
+	// code can be read.
+	private void limitPicture(boolean fade) {
+		shaderViewManager.limitPicture(editorFragment.isCodeVisible()
+				? PictureLimit.BALANCED
+				: PictureLimit.NONE, fade);
 	}
 }
