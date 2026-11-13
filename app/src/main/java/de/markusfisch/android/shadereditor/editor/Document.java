@@ -77,6 +77,31 @@ public final class Document {
 		}
 	}
 
+	/**
+	 * What a document keeps besides its text, to be taken by a document
+	 * of the same text: the steps undo and redo take, oldest first, the
+	 * revision and state the text is at, the state last saved, and the
+	 * selection.
+	 */
+	public record History(List<Step> undo, List<Step> redo, int revision,
+			int state, int saved, Selection selection) {
+		public History {
+			undo = List.copyOf(undo);
+			redo = List.copyOf(redo);
+		}
+
+		/**
+		 * The changes of one step of the history, in the order they were
+		 * made, and the selection and the state before and after them.
+		 */
+		public record Step(List<Change> changes, Selection selectionBefore,
+				Selection selectionAfter, int stateBefore, int stateAfter) {
+			public Step {
+				changes = List.copyOf(changes);
+			}
+		}
+	}
+
 	interface Clock {
 		long millis();
 	}
@@ -151,6 +176,52 @@ public final class Document {
 			}
 		}
 		return bytes;
+	}
+
+	/**
+	 * Return the history of the document, to give a document of the
+	 * same text later; see {@link #restore}. Its texts are shared, so it
+	 * costs a list of the steps. Call it outside a batch.
+	 */
+	public History history() {
+		return new History(export(undo), export(redo), revision, state, saved,
+				selection);
+	}
+
+	/**
+	 * Take history, of a document whose text was this one's, so undo and
+	 * redo take the steps they took there, and select as it was. A
+	 * document that has a history of its own, or is in a batch, keeps
+	 * it; so does one whose text cannot be at the selection history has.
+	 * Listeners are not told. Return whether it was taken.
+	 */
+	public boolean restore(History history) {
+		Selection selected = history.selection();
+		int length = text.length();
+		if (batches > 0 || !undo.isEmpty() || !redo.isEmpty() ||
+				selected.anchor() < 0 || selected.anchor() > length ||
+				selected.head() < 0 || selected.head() > length) {
+			return false;
+		}
+		for (History.Step step : history.undo()) {
+			undo.addLast(restore(step));
+		}
+		for (History.Step step : history.redo()) {
+			redo.addLast(restore(step));
+		}
+		historyChars = 0;
+		for (Step step : undo) {
+			historyChars += step.chars;
+		}
+		for (Step step : redo) {
+			historyChars += step.chars;
+		}
+		revision = Math.max(revision, history.revision());
+		state = history.state();
+		saved = history.saved();
+		selection = selected;
+		typing = null;
+		return true;
 	}
 
 	/**
@@ -420,6 +491,28 @@ public final class Document {
 				historyChars > MAX_CHARS)) {
 			historyChars -= undo.removeFirst().chars;
 		}
+	}
+
+	private static List<History.Step> export(ArrayDeque<Step> steps) {
+		List<History.Step> exported = new ArrayList<>(steps.size());
+		for (Step step : steps) {
+			exported.add(new History.Step(step.changes, step.selectionBefore,
+					step.selectionAfter, step.stateBefore, step.stateAfter));
+		}
+		return exported;
+	}
+
+	private static Step restore(History.Step exported) {
+		Step step = new Step(exported.selectionBefore(),
+				exported.stateBefore());
+		step.selectionAfter = exported.selectionAfter();
+		step.stateAfter = exported.stateAfter();
+		step.typed = false;
+		for (Change change : exported.changes()) {
+			step.changes.add(change);
+			step.chars += Step.size(change);
+		}
+		return step;
 	}
 
 	// Returns whether a and b hold the same characters.
