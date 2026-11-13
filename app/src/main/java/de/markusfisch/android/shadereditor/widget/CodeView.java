@@ -1,6 +1,8 @@
 package de.markusfisch.android.shadereditor.widget;
 
 import android.annotation.SuppressLint;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -11,6 +13,8 @@ import android.os.Looper;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.GestureDetector;
+import android.view.KeyCharacterMap;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
@@ -24,6 +28,8 @@ import androidx.core.view.WindowInsetsCompat;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.EditCommands;
+import de.markusfisch.android.shadereditor.editor.KeyCommands;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -33,7 +39,8 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * Shows a Document: the lines on screen in the colours of its
  * LineStyles, their numbers in a gutter that stays in place when the
  * text scrolls sideways, the lines its LineMarks mark, the selection,
- * the composing region and a blinking caret. It owns no text. It
+ * the composing region and a blinking caret. It owns no text. Keys
+ * become KeyCommands, and the caret is kept in view after each. It
  * redraws when the document changes, and when a line on screen changes
  * colour because the continuations of the line styles or the document's
  * analysis, which it runs on one background thread, made it current.
@@ -77,6 +84,32 @@ public class CodeView extends View {
 		}
 	};
 	private final Runnable blink = this::blink;
+	private final KeyCommands.Clipboard clipboard =
+			new KeyCommands.Clipboard() {
+				@Override
+				public CharSequence get() {
+					ClipboardManager manager = clipboardManager();
+					ClipData clip = manager != null
+							? manager.getPrimaryClip()
+							: null;
+					return clip != null && clip.getItemCount() > 0
+							? clip.getItemAt(0).coerceToText(getContext())
+							: null;
+				}
+
+				@Override
+				public boolean set(String text) {
+					ClipboardManager manager = clipboardManager();
+					try {
+						// Fails for more than about 1 MB.
+						manager.setPrimaryClip(
+								ClipData.newPlainText(null, text));
+						return true;
+					} catch (RuntimeException e) {
+						return false;
+					}
+				}
+			};
 	private final OverScroller scroller;
 	private final GestureDetector gestures;
 	private final EdgeEffect edgeTop;
@@ -88,6 +121,10 @@ public class CodeView extends View {
 	// The axis a drag is locked to.
 	private int axis;
 	private Document document;
+	private EditCommands commands;
+	private KeyCommands keys;
+	// The accent of a dead key, for the next key to combine with.
+	private int deadChar;
 	private LineStyles styles;
 	private LineMarks marks;
 	private boolean connected;
@@ -165,6 +202,10 @@ public class CodeView extends View {
 		this.document = document;
 		this.styles = styles;
 		this.marks = marks;
+		commands = new EditCommands(document);
+		commands.setTabWidth(appearance.tabWidth);
+		keys = new KeyCommands(document, commands, clipboard);
+		deadChar = 0;
 		composingStart = composingEnd = -1;
 		forgetLines();
 		scrollTo(0, 0);
@@ -210,6 +251,9 @@ public class CodeView extends View {
 	/** Set the number of columns between two tab stops. */
 	public void setTabWidth(int tabWidth) {
 		appearance.tabWidth = tabWidth;
+		if (commands != null) {
+			commands.setTabWidth(tabWidth);
+		}
 		appearanceChanged();
 	}
 
@@ -319,6 +363,44 @@ public class CodeView extends View {
 			postInvalidateOnAnimation();
 		}
 		return handled || super.onTouchEvent(event);
+	}
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if (keys == null) {
+			return super.onKeyDown(keyCode, event);
+		}
+		int meta = event.getMetaState();
+		int c = event.getUnicodeChar(meta);
+		if ((c & KeyCharacterMap.COMBINING_ACCENT) != 0 &&
+				KeyCommands.types(meta)) {
+			deadChar = c & KeyCharacterMap.COMBINING_ACCENT_MASK;
+			return true;
+		}
+		if (deadChar != 0 && c != 0) {
+			int combined = KeyEvent.getDeadChar(deadChar, c);
+			c = combined != 0 ? combined : c;
+			deadChar = 0;
+		}
+		return key(keyCode, meta, c != 0
+				? new String(Character.toChars(c))
+				: null) || super.onKeyDown(keyCode, event);
+	}
+
+	@Override
+	public boolean onKeyMultiple(int keyCode, int count, KeyEvent event) {
+		String characters = event.getCharacters();
+		return keyCode == KeyEvent.KEYCODE_UNKNOWN && characters != null &&
+				keys != null && key(keyCode, 0, characters) ||
+				super.onKeyMultiple(keyCode, count, event);
+	}
+
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event) {
+		int meta = event.getMetaState();
+		return keys != null && (KeyCommands.command(keyCode, meta) != null ||
+				KeyCommands.types(meta) && event.getUnicodeChar(meta) != 0) ||
+				super.onKeyUp(keyCode, event);
 	}
 
 	@Override
@@ -563,6 +645,21 @@ public class CodeView extends View {
 		}
 		scrollTo(Math.round(x), Math.round(y));
 		postInvalidateOnAnimation();
+	}
+
+	private boolean key(int keyCode, int meta, String typed) {
+		if (!keys.keyDown(keyCode, meta, typed, Math.max(1,
+				(getHeight() - insets.top - insets.bottom) /
+						appearance.lineHeight - 1))) {
+			return false;
+		}
+		bringCaretIntoView();
+		return true;
+	}
+
+	private ClipboardManager clipboardManager() {
+		return (ClipboardManager) getContext().getSystemService(
+				Context.CLIPBOARD_SERVICE);
 	}
 
 	private boolean drawEdge(Canvas canvas, EdgeEffect edge, int x, int y,
