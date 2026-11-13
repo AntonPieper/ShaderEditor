@@ -332,21 +332,26 @@ public class ShaderDao {
 			boolean success = true;
 			if (cursor.moveToFirst()) {
 				do {
+					String source = cursor.getString(shaderIndex);
+					String name = nameIndex >= 0 ? cursor.getString(nameIndex) : null;
+					float quality = qualityIndex >= 0 && !cursor.isNull(qualityIndex)
+							? cursor.getFloat(qualityIndex) : 1f;
 					String createdDate = CursorHelpers.getString(cursor,
 							DatabaseContract.ShaderColumns.CREATED);
 					String modifiedDate = CursorHelpers.getString(cursor,
 							DatabaseContract.ShaderColumns.MODIFIED);
 					if (createdDate == null || modifiedDate == null ||
-							shaderExists(dst, createdDate, modifiedDate)) {
+							shaderExists(dst, createdDate, modifiedDate,
+								source, name, quality)) {
 						continue;
 					}
 					long shaderId = insertShader(dst,
-							cursor.getString(shaderIndex),
-							cursor.getString(nameIndex),
+							source,
+							name,
 							createdDate,
 							modifiedDate,
 							cursor.getBlob(thumbIndex),
-							cursor.getFloat(qualityIndex));
+							quality);
 					if (shaderId < 1) {
 						success = false;
 						break;
@@ -360,13 +365,20 @@ public class ShaderDao {
 	private static boolean shaderExists(
 			SQLiteDatabase db,
 			String createdDate,
-			String modifiedDate) {
+			String modifiedDate,
+			String source,
+			String name,
+			float quality) {
 		try (Cursor cursor = db.rawQuery(
 				"SELECT " + DatabaseContract.ShaderColumns._ID +
 						" FROM " + DatabaseContract.ShaderColumns.TABLE_NAME +
 						" WHERE " + DatabaseContract.ShaderColumns.CREATED + " = ?" +
-						" AND " + DatabaseContract.ShaderColumns.MODIFIED + " = ?",
-				new String[]{createdDate, modifiedDate})) {
+						" AND " + DatabaseContract.ShaderColumns.MODIFIED + " = ?" +
+						" AND " + DatabaseContract.ShaderColumns.FRAGMENT_SHADER + " = ?" +
+						" AND " + DatabaseContract.ShaderColumns.NAME + " IS ?" +
+						" AND " + DatabaseContract.ShaderColumns.QUALITY + " = ?",
+				new String[]{createdDate, modifiedDate, source, name,
+						Float.toString(quality)})) {
 			return cursor != null && cursor.moveToFirst() && cursor.getCount() > 0;
 		}
 	}
