@@ -219,10 +219,12 @@
 	<!-- The library's dialogs that are not built by MaterialAlertDialogBuilder -->
 	<style name="ThemeOverlay.ShaderEditor.Dialog.Alert" parent="ThemeOverlay.Material3.Dialog.Alert">
 		<item name="android:windowBackground">@drawable/background_dialog</item>
+		<item name="android:backgroundDimAmount">@dimen/se_dialog_dim</item>
 		<item name="buttonBarButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog.Flush</item>
 	</style>
 
 	<style name="ThemeOverlay.ShaderEditor.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+		<item name="android:backgroundDimAmount">@dimen/se_dialog_dim</item>
 		<item name="buttonBarButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog</item>
 		<item name="buttonBarPositiveButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog</item>
 		<item name="buttonBarNegativeButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog</item>
