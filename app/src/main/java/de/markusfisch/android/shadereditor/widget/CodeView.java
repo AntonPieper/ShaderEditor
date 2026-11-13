@@ -38,7 +38,9 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * colour because the continuations of the line styles or the document's
  * analysis, which it runs on one background thread, made it current.
  * From Android 10 on, the drawing of a line is recorded once and
- * replayed until the line's string or colours change.
+ * replayed until the line's string or colours change. A frame records
+ * at most a third of the lines on screen, draws the others directly and
+ * leaves them to the frames after it.
  */
 public class CodeView extends View {
 	/** Draws behind the text of each line on screen. */
@@ -415,6 +417,8 @@ public class CodeView extends View {
 		int save = canvas.save();
 		canvas.clipRect(clipLeft, scrollY, right, scrollY + getHeight());
 		int lineStart = text.lineStart(first);
+		int recordable = RecordBudget.lines(last - first + 1);
+		boolean unrecorded = false;
 		for (int n = first; n <= last; ++n) {
 			String s = text.line(n);
 			LineCache.Line line = cache.get(s,
@@ -451,8 +455,16 @@ public class CodeView extends View {
 				}
 			}
 			if (!s.isEmpty()) {
+				boolean record = recordable > 0;
+				if (line.needsRecording(canvas)) {
+					if (record) {
+						--recordable;
+					} else {
+						unrecorded = true;
+					}
+				}
 				line.draw(canvas, clipLeft - textLeft, right - textLeft,
-						lineHeight);
+						lineHeight, record);
 			}
 			if (composingStart < composingEnd &&
 					composingStart <= lineEnd && composingEnd > lineStart) {
@@ -479,6 +491,10 @@ public class CodeView extends View {
 		if (showLineNumbers) {
 			drawLineNumbers(canvas, first, last, scrollX + gutterLeft(),
 					textTop, lineCount);
+		}
+		if (unrecorded) {
+			// Record the lines drawn directly in the frames to come.
+			postInvalidateOnAnimation();
 		}
 	}
 
