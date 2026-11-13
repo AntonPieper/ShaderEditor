@@ -2,13 +2,15 @@ package de.markusfisch.android.shadereditor.widget;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.os.Build;
 
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 
 /**
  * A line of printable ASCII and tabs in a font whose characters all have
  * one width: positions are arithmetic, and each run of one colour is one
- * drawText. A line longer than LONG is drawn this way whatever it holds,
+ * drawText, or from Android 12 on one drawGlyphs where the font allows
+ * (see MonoGlyphs). A line longer than LONG is drawn this way whatever it holds,
  * without colours and only where it is visible.
  */
 final class MonoLineLayout implements LineLayout {
@@ -63,10 +65,18 @@ final class MonoLineLayout implements LineLayout {
 		float charWidth = appearance.charWidth;
 		float y = appearance.baseline;
 		if (pieces != null) {
+			Object glyphs = appearance.glyphs;
 			for (int i = 0; i < pieces.length; i += 4) {
 				paint.setColor(pieces[i + 3]);
-				canvas.drawText(text, pieces[i], pieces[i + 1],
-						pieces[i + 2] * charWidth, y, paint);
+				if (glyphs != null &&
+						Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+					((MonoGlyphs) glyphs).draw(canvas, text, pieces[i],
+							pieces[i + 1], pieces[i + 2] * charWidth, y,
+							charWidth, paint);
+				} else {
+					canvas.drawText(text, pieces[i], pieces[i + 1],
+							pieces[i + 2] * charWidth, y, paint);
+				}
 			}
 			return;
 		}
