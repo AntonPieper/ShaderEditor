@@ -15,7 +15,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.PopupMenu;
-import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -110,8 +109,6 @@ public class NavigationDrawer implements ShaderList {
 				R.layout.navigation_drawer, drawerLayout, false);
 		drawer.getLayoutParams().width = getDrawerWidth();
 		drawerLayout.addView(drawer);
-		drawerLayout.setScrimColor(ContextCompat.getColor(activity,
-				R.color.navigation_scrim));
 
 		up = drawer.findViewById(R.id.navigation_up);
 		up.setOnClickListener(v -> go(level.up()));
@@ -375,7 +372,7 @@ public class NavigationDrawer implements ShaderList {
 
 	private void showOrderMenu() {
 		boolean changed = ShaderEditorApp.preferences.sortByLastModification();
-		PopupMenu popup = new PopupMenu(activity, menu, Gravity.END);
+		PopupMenu popup = new PopupMenu(drawer.getContext(), menu, Gravity.END);
 		popup.setForceShowIcon(true);
 		addCheckItem(popup.getMenu(), R.string.nav_order_changed, changed);
 		addCheckItem(popup.getMenu(), R.string.nav_order_name, !changed);
@@ -404,7 +401,7 @@ public class NavigationDrawer implements ShaderList {
 		if (row.actions().isEmpty()) {
 			return;
 		}
-		PopupMenu popup = new PopupMenu(activity, view, Gravity.END);
+		PopupMenu popup = new PopupMenu(drawer.getContext(), view, Gravity.END);
 		popup.setForceShowIcon(true);
 		Menu rowMenu = popup.getMenu();
 		for (Row.Action action : row.actions()) {
@@ -447,7 +444,7 @@ public class NavigationDrawer implements ShaderList {
 	// The standard drawer, but never closer to the screen's edge.
 	private int getDrawerWidth() {
 		Resources res = activity.getResources();
-		return Math.min(res.getDimensionPixelSize(R.dimen.navigation_drawer_width),
+		return Math.min(res.getDimensionPixelSize(R.dimen.se_drawer_max_width),
 				res.getDisplayMetrics().widthPixels - res.getDimensionPixelSize(
 						R.dimen.navigation_drawer_screen_margin));
 	}

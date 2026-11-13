@@ -3,9 +3,7 @@
 	android:color="?attr/colorControlHighlight">
 	<item android:id="@android:id/mask">
 		<shape>
-			<corners
-				android:bottomRightRadius="@dimen/navigation_row_corner"
-				android:topRightRadius="@dimen/navigation_row_corner" />
+			<corners android:radius="@dimen/se_corner" />
 			<solid android:color="@android:color/white" />
 		</shape>
 	</item>
@@ -13,10 +11,8 @@
 		<selector>
 			<item android:state_selected="true">
 				<shape>
-					<corners
-						android:bottomRightRadius="@dimen/navigation_row_corner"
-						android:topRightRadius="@dimen/navigation_row_corner" />
-					<solid android:color="@color/navigation_selected" />
+					<corners android:radius="@dimen/se_corner" />
+					<solid android:color="?attr/colorSecondaryContainer" />
 				</shape>
 			</item>
 		</selector>

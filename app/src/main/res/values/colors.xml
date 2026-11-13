@@ -16,6 +16,19 @@
 	<color name="crop_bound">#8fff</color>
 	<color name="cube_face_selected">#ffff</color>
 	<color name="cube_face_text">#fff</color>
-	<color name="background_navigation">#f70f1014</color>
-	<color name="navigation_scrim">#73000000</color>
+	<!-- The fixed scheme of the project-mode UI; read through the
+	theme overlay, never by name. -->
+	<color name="se_surface">#121316</color>
+	<color name="se_surface_1">#1a1b20</color>
+	<color name="se_surface_2">#1f2126</color>
+	<color name="se_surface_3">#24262c</color>
+	<color name="se_on_surface">#ecedef</color>
+	<color name="se_on_surface_dim">#a9adb5</color>
+	<color name="se_outline">#6b7078</color>
+	<color name="se_line">#17ffffff</color>
+	<color name="se_accent">#6cb6ff</color>
+	<color name="se_on_accent">#04243d</color>
+	<color name="se_accent_container">#244c72</color>
+	<color name="se_on_accent_container">#d6eaff</color>
+	<color name="se_error">#ff7b8a</color>
 </resources>
