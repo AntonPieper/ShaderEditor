@@ -41,7 +41,8 @@ public final class ProjectSessions {
 	/**
 	 * A session listed among the recent projects: its id, locator, the
 	 * name and place of its files to show, when it was last opened, in
-	 * milliseconds since the epoch, and whether it has drafts.
+	 * milliseconds since the epoch, and whether its journal holds a
+	 * draft with a valid header.
 	 */
 	public record Recent(String id, Locator locator, String name,
 			String location, long opened, boolean unsaved) {
@@ -212,10 +213,9 @@ public final class ProjectSessions {
 			if (recent.readInt() != MAGIC) {
 				return null;
 			}
-			String[] drafts = file(id, DRAFTS).list();
 			Recent session = new Recent(id, locator, recent.readUTF(),
 					recent.readUTF(), recent.readLong(),
-					drafts != null && drafts.length > 0);
+					!unsaved(id).isEmpty());
 			return recent.read() < 0 ? session : null;
 		} catch (IOException e) {
 			return null;

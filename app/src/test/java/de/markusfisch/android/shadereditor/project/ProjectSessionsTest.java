@@ -191,6 +191,20 @@ public class ProjectSessionsTest {
 	}
 
 	@Test
+	public void leftoversOfAJournalAreNotUnsaved() throws IOException {
+		String id = sessions.open(new Locator(Kind.DIRECTORY,
+				project.getPath()));
+		assertTrue(sessions.remember(id, "project", "Shaders", 10));
+		File drafts = new File(root, id + "/drafts");
+		assertTrue(drafts.mkdirs());
+		write(new File(drafts, ".journal-123.tmp"), "half");
+		write(new File(drafts, "broken.draft"), "no header");
+
+		assertFalse(sessions.recent(id).unsaved());
+		assertFalse(sessions.recent().get(0).unsaved());
+	}
+
+	@Test
 	public void tellsAboutAProjectWithoutOpeningIt() {
 		String id = sessions.open(new Locator(Kind.DIRECTORY,
 				project.getPath()));
