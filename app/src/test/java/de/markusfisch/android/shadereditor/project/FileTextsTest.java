@@ -176,18 +176,28 @@ public class FileTextsTest {
 	public void rereadGivesAChangedFileThatSavesOverItsRevision() {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));
-		assertNull(reread(MAIN));
+		assertEquals(FileTexts.Found.SAME, reread(MAIN).found());
 		store.put("main.glsl", "two");
 
-		FileTexts.Changed changed = reread(MAIN);
+		FileTexts.Checked changed = reread(MAIN);
 
+		assertEquals(FileTexts.Found.CHANGED, changed.found());
 		assertEquals("two", changed.text().toString());
 		base = changed.revision();
-		assertNull(reread(MAIN));
+		assertEquals(FileTexts.Found.SAME, reread(MAIN).found());
 		document.replace(0, 3, Text.of("three"));
 		save(document);
 		assertTrue(saves.get(0).outcome() instanceof Saved);
 		assertEquals("three", store.text("main.glsl"));
+	}
+
+	@Test
+	public void rereadTellsAFileThatIsNotTextAnymore() {
+		store.put("main.glsl", "one");
+		document = new Document(opened(MAIN, 3));
+		store.put("main.glsl", new byte[]{0});
+
+		assertEquals(FileTexts.Found.NOT_TEXT, reread(MAIN).found());
 	}
 
 	@Test
@@ -204,8 +214,8 @@ public class FileTextsTest {
 		assertEquals("two", store.text("main.glsl"));
 	}
 
-	private FileTexts.Changed reread(ProjectPath path) {
-		FileTexts.Changed[] changed = {null};
+	private FileTexts.Checked reread(ProjectPath path) {
+		FileTexts.Checked[] changed = {null};
 		texts.reread(path, base, result -> changed[0] = result);
 		worker.run();
 		main.run();

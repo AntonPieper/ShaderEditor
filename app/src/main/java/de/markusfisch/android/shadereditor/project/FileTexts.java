@@ -50,8 +50,16 @@ public final class FileTexts {
 	public record Save(int state, Outcome outcome) {
 	}
 
-	/** The text of a file that changed elsewhere and its revision. */
-	public record Changed(Text text, String revision) {
+	/** What storage holds of a file, compared with what it was. */
+	public enum Found {
+		SAME, CHANGED, MISSING, UNAVAILABLE, TOO_LARGE, NOT_TEXT
+	}
+
+	/**
+	 * What a check of a file found, with the stored text and its
+	 * revision when it changed.
+	 */
+	public record Checked(Found found, Text text, String revision) {
 	}
 
 	private final EditingSession session;
@@ -128,24 +136,37 @@ public final class FileTexts {
 
 	/**
 	 * Read path again for a document without unsaved text. done gets
-	 * the stored text when it is not at base anymore, or null when it
-	 * is, path has a draft or cannot be opened.
+	 * what storage holds compared with base, with the stored text when
+	 * it changed; a file with a draft counts as the same.
 	 */
 	public void reread(ProjectPath path, String base,
-			Callback<Changed> done) {
+			Callback<Checked> done) {
 		worker.execute(() -> {
-			Changed changed = null;
-			if (session.draft(path) == null &&
-					session.store().read(path) instanceof Content content &&
-					!content.revision().equals(base)) {
-				Text text = decode(content.bytes());
-				changed = text != null
-						? new Changed(text, content.revision())
-						: null;
-			}
-			Changed result = changed;
-			main.execute(() -> done.done(result));
+			Checked checked = check(path, base);
+			main.execute(() -> done.done(checked));
 		});
+	}
+
+	private Checked check(ProjectPath path, String base) {
+		if (session.draft(path) != null) {
+			return new Checked(Found.SAME, null, base);
+		}
+		Read read = session.store().read(path);
+		if (read == null) {
+			return new Checked(Found.MISSING, null, null);
+		}
+		if (!(read instanceof Content content)) {
+			return new Checked(Found.UNAVAILABLE, null, null);
+		}
+		if (content.revision().equals(base)) {
+			return new Checked(Found.SAME, null, base);
+		} else if (content.bytes().length > MAX_BYTES) {
+			return new Checked(Found.TOO_LARGE, null, content.revision());
+		}
+		Text text = decode(content.bytes());
+		return text != null
+				? new Checked(Found.CHANGED, text, content.revision())
+				: new Checked(Found.NOT_TEXT, null, content.revision());
 	}
 
 	private Opening read(ProjectPath path, long size, boolean drafted) {

@@ -40,6 +40,8 @@ final class FileRecord {
 	String failure;
 	int timer;
 	int limit;
+	// What the last check found in storage.
+	FileTexts.Found found = FileTexts.Found.SAME;
 
 	private final List<Runnable> waiting = new ArrayList<>();
 	private Document document;
@@ -139,10 +141,31 @@ final class FileRecord {
 				Math.min(selection.head(), text.length()));
 		document.markSaved(document.state());
 		base = revision;
+		found = FileTexts.Found.SAME;
 		drafted = sent = document.revision();
 		draftModified = sentModified = false;
 		document.endBatch();
 		return true;
+	}
+
+	/**
+	 * Take what a check for request found in storage; return whether it
+	 * was current.
+	 */
+	boolean adoptFound(Request request, FileTexts.Found found) {
+		if (request != op) {
+			return false;
+		}
+		this.found = found;
+		return true;
+	}
+
+	/**
+	 * Base the text on revision, null for none, as the user consented
+	 * to overwrite it.
+	 */
+	void consent(String revision) {
+		base = revision;
 	}
 
 	/**
@@ -154,6 +177,7 @@ final class FileRecord {
 			return false;
 		}
 		base = revision;
+		found = FileTexts.Found.SAME;
 		if (document != null) {
 			document.markSaved(state);
 		}

@@ -48,6 +48,8 @@ public final class EditingSession {
 	}
 
 	private final Map<ProjectPath, String> conflicts = new LinkedHashMap<>();
+	// The revision each file in conflict was seen at, null when absent.
+	private final Map<ProjectPath, String> seen = new LinkedHashMap<>();
 	private final DraftFiles files;
 	private final DraftJournal journal;
 
@@ -97,6 +99,14 @@ public final class EditingSession {
 	}
 
 	/**
+	 * Return the revision each file in conflict was found at, null when
+	 * it was absent or not read, by path.
+	 */
+	public synchronized Map<ProjectPath, String> seen() {
+		return new LinkedHashMap<>(seen);
+	}
+
+	/**
 	 * Set the unsaved text of path. base is the revision of the stored
 	 * file the text came from, null for a new file; it is used only
 	 * when path has no draft yet. Return whether the draft was kept
@@ -123,6 +133,7 @@ public final class EditingSession {
 	public synchronized boolean clearDraft(ProjectPath path) {
 		files.remove(path);
 		conflicts.remove(path);
+		seen.remove(path);
 		return journal.remove(path);
 	}
 
@@ -174,6 +185,14 @@ public final class EditingSession {
 		}
 		Outcome outcome = saved(path, text, files.store().write(path,
 				out -> TextBytes.write(text, out), expected));
+		if (outcome instanceof Conflict) {
+			Read read = files.store().read(path);
+			synchronized (this) {
+				seen.put(path, read instanceof Content content
+						? content.revision()
+						: null);
+			}
+		}
 		synchronized (this) {
 			if (outcome instanceof Conflict && files.get(path) == null) {
 				keep(path, new Draft(text, expected));
@@ -199,12 +218,16 @@ public final class EditingSession {
 		for (Map.Entry<ProjectPath, Draft> entry : pending.entrySet()) {
 			ProjectPath path = entry.getKey();
 			String base = entry.getValue().base();
-			String reason = changed(base, files.store().read(path));
+			Read read = files.store().read(path);
+			String reason = changed(base, read);
 			synchronized (this) {
 				Draft draft = files.get(path);
 				if (reason != null && draft != null &&
 						Objects.equals(base, draft.base())) {
 					conflicts.put(path, reason);
+					seen.put(path, read instanceof Content content
+							? content.revision()
+							: null);
 				}
 			}
 		}
@@ -212,28 +235,19 @@ public final class EditingSession {
 	}
 
 	/**
-	 * Keep the draft of path over the stored file as it is now, so the
-	 * next save overwrites it, or creates it again when it was deleted.
-	 * Return null when done, or why not.
+	 * Keep the draft of path over the stored file at revision seen, null
+	 * for none, so the next save overwrites that revision, or creates
+	 * the file again when it was deleted; a file changed again meets a
+	 * conflict. Return null when done, or why not.
 	 */
-	public String keepEdits(ProjectPath path) {
-		if (draft(path) == null) {
+	public synchronized String keepEdits(ProjectPath path, String seen) {
+		Draft draft = files.get(path);
+		if (draft == null) {
 			return "there are no edits of " + path;
 		}
-		Read read = files.store().read(path);
-		if (read != null && !(read instanceof Content)) {
-			return CapturedFiles.problem(path, read);
-		}
-		synchronized (this) {
-			Draft draft = files.get(path);
-			if (draft == null) {
-				return "there are no edits of " + path;
-			}
-			keep(path, new Draft(draft.text(), read != null
-					? ((Content) read).revision()
-					: null));
-			conflicts.remove(path);
-		}
+		keep(path, new Draft(draft.text(), seen));
+		conflicts.remove(path);
+		this.seen.remove(path);
 		return null;
 	}
 
