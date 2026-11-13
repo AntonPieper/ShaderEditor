@@ -42,6 +42,10 @@ public class ShaderEditorApp extends Application {
 		// Other components will get this instance via Database.getInstance().
 		Database.getInstance(this);
 
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+			registerActivityLifecycleCallbacks(new DeviceColours());
+		}
+
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
 			registerBatteryReceiver();
 		}

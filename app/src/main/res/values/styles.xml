@@ -63,6 +63,9 @@
 		<item name="alertDialogTheme">@style/ThemeOverlay.ShaderEditor.Dialog.Alert</item>
 	</style>
 
+	<!-- Only from Android 12, where the device has colours -->
+	<style name="ThemeOverlay.ShaderEditor.DeviceAccent" parent="" />
+
 	<style name="Theme.ShaderEditor.Splash">
 		<item name="android:windowBackground">@drawable/background_splash</item>
 	</style>

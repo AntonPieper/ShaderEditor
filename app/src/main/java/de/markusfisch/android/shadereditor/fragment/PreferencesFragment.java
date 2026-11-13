@@ -126,6 +126,10 @@ public class PreferencesFragment
 		ShaderEditorApp.preferences.update(getContext());
 		setSummary(preference);
 
+		if (Preferences.USE_DEVICE_COLOURS.equals(key)) {
+			requireActivity().recreate();
+		}
+
 		if (Preferences.SAVE_BATTERY.equals(key) &&
 				ShaderEditorApp.preferences.isBatteryLow()) {
 			BatteryLevelReceiver.setLowPowerMode(

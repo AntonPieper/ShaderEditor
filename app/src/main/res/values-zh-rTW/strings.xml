@@ -54,6 +54,9 @@
 	<string name="use_ligatures">啟用連字 (Ligatures)</string>
 	<string name="use_ligatures_summary">將 &lt;= 等字元組合轉換為單一符號 ≤</string>
 	<string name="picture_behind_code">Picture behind code</string>
+	<string name="appearance">Appearance</string>
+	<string name="use_device_colours">Use device colours</string>
+	<string name="use_device_colours_summary">Buttons and highlights take the colours of your wallpaper</string>
 	<string name="picture_dim">Dim</string>
 	<string name="picture_balanced">Balanced</string>
 	<string name="picture_bright">Bright</string>

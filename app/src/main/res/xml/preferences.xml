@@ -3,6 +3,20 @@
 		xmlns:app="http://schemas.android.com/apk/res-auto"
 		android:title="@string/settings"
 	android:key="preferences">
+	<PreferenceCategory android:title="@string/appearance">
+		<ListPreference
+			android:key="picture_behind_code"
+			android:title="@string/picture_behind_code"
+			android:entries="@array/picture_behind_code_names"
+			android:entryValues="@array/picture_behind_code_values"
+			android:defaultValue="balanced"/>
+		<androidx.preference.SwitchPreferenceCompat
+			android:key="use_device_colours"
+			android:title="@string/use_device_colours"
+			android:summary="@string/use_device_colours_summary"
+			android:defaultValue="false"
+			app:isPreferenceVisible="@bool/device_colours"/>
+	</PreferenceCategory>
 	<PreferenceCategory android:title="@string/wallpaper">
 		<de.markusfisch.android.shadereditor.preference.ShaderListPreference
 			android:key="shader"
@@ -50,12 +64,6 @@
 				android:key="use_ligatures"
 				android:title="@string/use_ligatures"
 				app:summary="@string/use_ligatures_summary" />
-		<ListPreference
-			android:key="picture_behind_code"
-			android:title="@string/picture_behind_code"
-			android:entries="@array/picture_behind_code_names"
-			android:entryValues="@array/picture_behind_code_values"
-			android:defaultValue="balanced"/>
 		<ListPreference
 			android:key="tab_width"
 			android:title="@string/tab_width"

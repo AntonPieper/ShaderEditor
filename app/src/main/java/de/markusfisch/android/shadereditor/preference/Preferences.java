@@ -28,6 +28,7 @@ public class Preferences {
 	public static final String FONT = "font";
 	public static final String USE_LIGATURES = "use_ligatures";
 	public static final String PICTURE_BEHIND_CODE = "picture_behind_code";
+	public static final String USE_DEVICE_COLOURS = "use_device_colours";
 	public static final String TAB_WIDTH = "tab_width";
 	public static final String SHOW_INSERT_TAB = "show_insert_tab";
 	public static final String USE_TAB_FOR_INDENT = "use_tab_for_indent";
@@ -74,6 +75,7 @@ public class Preferences {
 	private @NonNull Typeface font = Typeface.MONOSPACE;
 	private boolean useLigatures = false;
 	private int pictureCeiling = PictureLimit.BALANCED;
+	private boolean useDeviceColours = false;
 	private int tabWidth = 4;
 	private boolean exportTabs = false;
 	private boolean showInsertTab = true;
@@ -145,6 +147,9 @@ public class Preferences {
 		pictureCeiling = parsePictureCeiling(
 				preferences.getString(PICTURE_BEHIND_CODE, null),
 				pictureCeiling);
+		useDeviceColours = preferences.getBoolean(
+				USE_DEVICE_COLOURS,
+				useDeviceColours);
 		tabWidth = parseInt(
 				preferences.getString(TAB_WIDTH, null),
 				tabWidth);
@@ -295,6 +300,11 @@ public class Preferences {
 	// The brightest the picture may be behind code, of 255.
 	public int getPictureCeiling() {
 		return pictureCeiling;
+	}
+
+	// Whether the accent follows the device's colours, where it has them.
+	public boolean useDeviceColours() {
+		return useDeviceColours;
 	}
 
 	public int getTabWidth() {
