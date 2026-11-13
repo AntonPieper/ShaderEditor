@@ -176,6 +176,13 @@ public class CodeView extends View {
 	// replayed when only the caret blinked.
 	private Object content;
 	private boolean caretOnly;
+	// From Android 10 on, the numbers of the lines from gutterFirst to
+	// gutterLast, whole blocks around those on screen, recorded until a
+	// line of another block comes into view.
+	private Object gutter;
+	private int gutterFirst;
+	private int gutterLast = -1;
+	private int gutterDigits;
 	// The lines drawn by the last frame, from shownFirst on.
 	private LineCache.Line[] shown = new LineCache.Line[0];
 	private int shownFirst;
@@ -994,10 +1001,65 @@ public class CodeView extends View {
 
 	private void drawLineNumbers(Canvas canvas, int first, int last,
 			float left, float textTop, int lineCount) {
+		int digitCount = CodeGeometry.digits(lineCount);
+		boolean recorded = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+				canvas.isHardwareAccelerated();
+		if (recorded) {
+			first = CodeGeometry.numbersFrom(first);
+			last = CodeGeometry.numbersTo(last, lineCount);
+		}
+		float top = textTop + first * appearance.lineHeight;
+		int save = canvas.save();
+		if (recorded) {
+			// The lines of the blocks that are out of view.
+			int scrollX = getScrollX();
+			int scrollY = getScrollY();
+			canvas.clipRect(scrollX, scrollY, scrollX + getWidth(),
+					scrollY + getHeight());
+		}
+		canvas.translate(left, top);
+		if (recorded) {
+			drawRecordedNumbers(canvas, first, last, digitCount);
+		} else {
+			drawNumbers(canvas, first, last, digitCount);
+		}
+		canvas.restoreToCount(save);
+	}
+
+	@RequiresApi(Build.VERSION_CODES.Q)
+	private void drawRecordedNumbers(Canvas canvas, int first, int last,
+			int digitCount) {
+		if (gutter == null) {
+			gutter = new RenderNode("gutter");
+		}
+		RenderNode node = (RenderNode) gutter;
+		if (first != gutterFirst || last != gutterLast ||
+				digitCount != gutterDigits || !node.hasDisplayList()) {
+			node.setPosition(0, 0,
+					(int) Math.ceil(digitCount * appearance.digitWidth) + 1,
+					(last - first + 1) * appearance.lineHeight);
+			node.setClipToBounds(false);
+			RecordingCanvas recording = node.beginRecording();
+			try {
+				drawNumbers(recording, first, last, digitCount);
+			} finally {
+				node.endRecording();
+			}
+			gutterFirst = first;
+			gutterLast = last;
+			gutterDigits = digitCount;
+		}
+		canvas.drawRenderNode(node);
+	}
+
+	// Draws the numbers of the lines from first to last, the top of the
+	// first at 0.
+	private void drawNumbers(Canvas canvas, int first, int last,
+			int digitCount) {
 		CodeAppearance a = appearance;
 		Paint paint = a.paint;
 		paint.setColor(a.lineNumberColor);
-		float right = left + CodeGeometry.digits(lineCount) * a.digitWidth;
+		float right = digitCount * a.digitWidth;
 		for (int n = first; n <= last; ++n) {
 			int start = digits.length;
 			for (int number = n + 1; number > 0; number /= 10) {
@@ -1006,7 +1068,7 @@ public class CodeView extends View {
 			int count = digits.length - start;
 			canvas.drawText(digits, start, count,
 					right - count * a.digitWidth,
-					textTop + n * a.lineHeight + a.baseline, paint);
+					(n - first) * a.lineHeight + a.baseline, paint);
 		}
 	}
 
@@ -1042,6 +1104,7 @@ public class CodeView extends View {
 	private void appearanceChanged() {
 		appearance.measure();
 		forgetLines();
+		gutterLast = -1;
 		invalidate();
 	}
 

@@ -17,6 +17,15 @@ public class CodeGeometryTest {
 	}
 
 	@Test
+	public void recordsTheNumbersOfWholeBlocksOfLines() {
+		int block = CodeGeometry.GUTTER_BLOCK;
+		assertEquals(0, CodeGeometry.numbersFrom(block - 1));
+		assertEquals(block, CodeGeometry.numbersFrom(block));
+		assertEquals(2 * block - 1, CodeGeometry.numbersTo(block, 1000));
+		assertEquals(block + 4, CodeGeometry.numbersTo(block, block + 5));
+	}
+
+	@Test
 	public void widensTheGutterWithTheDigitsOfTheLineCount() {
 		assertEquals(1, CodeGeometry.digits(0));
 		assertEquals(1, CodeGeometry.digits(9));
