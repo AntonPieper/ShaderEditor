@@ -123,7 +123,7 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 			if (file != null && file.isDirectory()) {
 				throw new Problem(Refusal.FAILED, "it is a folder");
 			}
-			String revision = file != null ? revision(readBytes(file)) : null;
+			String revision = file != null ? revision(file) : null;
 			if (revision == null ? expectedRevision != null
 					: !revision.equals(expectedRevision)) {
 				throw new Problem(Refusal.CONFLICT, file == null
@@ -308,7 +308,7 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 			// to the rename; it cannot make other writers transactional.
 			File target = new File(folder, name);
 			String revision = target.exists()
-					? revision(readBytes(target))
+					? revision(target)
 					: null;
 			if (revision == null ? expectedRevision != null
 					: !revision.equals(expectedRevision)) {
@@ -357,8 +357,22 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 		return names;
 	}
 
-	private static byte[] readBytes(File file) throws IOException {
-		return readBytes(file, Long.MAX_VALUE);
+	// Return the revision of the bytes of file, reading them a buffer at
+	// a time.
+	private static String revision(File file) throws IOException {
+		MessageDigest digest;
+		try {
+			digest = MessageDigest.getInstance("SHA-256");
+		} catch (NoSuchAlgorithmException e) {
+			throw new IOException("SHA-256 is not available");
+		}
+		try (InputStream in = new FileInputStream(file)) {
+			byte[] buffer = new byte[8192];
+			for (int n; (n = in.read(buffer)) > -1; ) {
+				digest.update(buffer, 0, n);
+			}
+		}
+		return StoredFiles.revision(digest);
 	}
 
 	// Return the bytes of file, or null as soon as there are more than
