@@ -157,19 +157,20 @@ public class OpenProjectTest {
 	}
 
 	@Test
-	public void preparesTheTextTheDocumentsHadWhenAsked() throws IOException {
+	public void doesNotDeliverABuildOfAnOlderText() throws IOException {
 		write("main.glsl", SHADER);
 		OpenProject project = open();
 		document(project, "main.glsl");
 		edit(project, "main.glsl", SHADER + "// one\n");
-		Preparation[] prepared = new Preparation[1];
+		List<OpenProject.Build> builds = new ArrayList<>();
 
-		project.prepare(BuiltinNames.ALL, preparation ->
-				prepared[0] = preparation);
+		project.prepare(BuiltinNames.ALL, builds::add);
 		edit(project, "main.glsl", SHADER + "// two\n");
 		settle();
 
-		assertEquals(SHADER + "// one\n", built(prepared[0], "main.glsl"));
+		assertTrue(builds.isEmpty());
+		assertEquals(SHADER + "// two\n",
+				built(prepare(project), "main.glsl"));
 	}
 
 	@Test
@@ -565,6 +566,99 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void refreshFindsWhatRunsFromTheManifestItTook()
+			throws IOException {
+		write(ProjectManifest.FILE.toString(), "{\"entry\":\"a.glsl\"}");
+		write("a.glsl", SHADER);
+		write("b.glsl", SHADER);
+		OpenProject project = open();
+		document(project, ProjectManifest.FILE.toString());
+		assertEquals(path("a.glsl"), project.running());
+		write(ProjectManifest.FILE.toString(), "{\"entry\":\"b.glsl\"}");
+
+		refresh(project);
+
+		assertEquals(path("b.glsl"), project.running());
+	}
+
+	@Test
+	public void refreshDoesNotUndoAChoiceMadeMeanwhile()
+			throws IOException {
+		write("main.glsl", SHADER);
+		write("b.glsl", SHADER);
+		OpenProject project = open();
+		project.refresh(reread -> {
+		});
+		// Up to the entry found waiting on main.
+		worker.run();
+		main.run();
+		worker.run();
+		assertEquals(1, main.size());
+
+		project.runThisFile(path("b.glsl"));
+		settle();
+
+		assertEquals(path("b.glsl"), project.running());
+		assertEquals(path("b.glsl"),
+				new ProjectSessions(sessionsDir).running(id));
+	}
+
+	@Test
+	public void buildAskedBeforeAnotherEntryIsNotDelivered()
+			throws IOException {
+		write("main.glsl", SHADER);
+		write("b.glsl", SHADER);
+		OpenProject project = open();
+		List<OpenProject.Build> builds = new ArrayList<>();
+		project.prepare(BuiltinNames.ALL, builds::add);
+		worker.run();
+
+		project.runThisFile(path("b.glsl"));
+		settle();
+
+		assertTrue(builds.isEmpty());
+		assertTrue(project.used().isEmpty());
+		OpenProject.Build build = build(project);
+		assertEquals(List.of(new OpenProject.Used(path("b.glsl"), false)),
+				project.used());
+		project.setDiagnostics(build, List.of(ProjectDiagnostic.error("e")));
+		assertEquals(1, project.errors());
+	}
+
+	@Test
+	public void closeKeepsTheTextAndIgnoresWhatArrivesLater()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		edit(project, a, "mine");
+		List<String> loaded = new ArrayList<>();
+		project.load(path("b.glsl"), ProjectFiles.UNKNOWN, loaded::add);
+
+		project.close();
+		settle();
+		steps.later.run();
+
+		assertTrue(loaded.isEmpty());
+		assertEquals(0, worker.size());
+		assertEquals("mine", journaled("a.glsl"));
+	}
+
+	@Test
+	public void reloadOfARevisionNoLongerStoredKeepsTheText()
+			throws IOException {
+		OpenProject project = editedElsewhere();
+		String seen = project.seen(path("a.glsl"));
+		write("a.glsl", "again");
+
+		project.resolve(path("a.glsl"), OpenProject.Choice.RELOAD, seen);
+		settle();
+
+		assertEquals("mine", project.document(path("a.glsl")).text()
+				.toString());
+		assertEquals(Set.of(path("a.glsl")), project.unsaved());
+	}
+
+	@Test
 	public void keepsEditsUntilAnExplicitSave() throws IOException {
 		OpenProject project = editedElsewhere();
 
@@ -814,7 +908,7 @@ public class OpenProjectTest {
 		edit(project, "library.glsl", "mine");
 		write("lib/x.glsl", "theirs");
 		refresh(project);
-		project.setDiagnostics(List.of(
+		project.setDiagnostics(build(project), List.of(
 				new ProjectDiagnostic(Severity.ERROR, "e", path("lib/x.glsl"), 1),
 				new ProjectDiagnostic(Severity.WARNING, "w",
 						path("lib/deep/y.glsl"), 1),
@@ -851,15 +945,17 @@ public class OpenProjectTest {
 
 		edit(project, "a.glsl", "a!");
 		edit(project, "a.glsl", "a!!");
-		project.setDiagnostics(List.of(ProjectDiagnostic.error("e")));
+		OpenProject.Build build = build(project);
+		project.setDiagnostics(build, List.of(ProjectDiagnostic.error("e")));
 
 		assertEquals(0, heard[0]);
 		assertEquals(1, posted.size());
 		posted.remove(0).run();
 		assertEquals(1, heard[0]);
 		edit(project, "a.glsl", "a!!!");
-		project.setDiagnostics(List.of(ProjectDiagnostic.error("e")));
+		project.setDiagnostics(build, List.of());
 		assertTrue(posted.isEmpty());
+		assertEquals(1, project.errors());
 	}
 
 	@Test
@@ -877,9 +973,9 @@ public class OpenProjectTest {
 		assertEquals(1, drain(posted));
 		save(project, true);
 		assertEquals(1, drain(posted));
-		prepare(project);
+		OpenProject.Build build = build(project);
 		assertEquals(1, drain(posted));
-		project.setDiagnostics(List.of(ProjectDiagnostic.error("e")));
+		project.setDiagnostics(build, List.of(ProjectDiagnostic.error("e")));
 		assertEquals(1, drain(posted));
 		project.runThisFile(path("b.glsl"));
 		assertEquals(1, drain(posted));
@@ -933,7 +1029,8 @@ public class OpenProjectTest {
 				"syntax error", path("lib/common.glsl"), 7);
 		ProjectDiagnostic nowhere = ProjectDiagnostic.error("driver crashed");
 
-		project.setDiagnostics(List.of(inMain, inLib, nowhere));
+		project.setDiagnostics(build(project),
+				List.of(inMain, inLib, nowhere));
 
 		assertEquals(List.of(inLib), project.diagnostics(
 				path("lib/common.glsl")));
@@ -1080,6 +1177,10 @@ public class OpenProjectTest {
 	}
 
 	private Preparation prepare(OpenProject project) {
+		return build(project).preparation();
+	}
+
+	private OpenProject.Build build(OpenProject project) {
 		return await(done -> project.prepare(BuiltinNames.ALL, done));
 	}
 

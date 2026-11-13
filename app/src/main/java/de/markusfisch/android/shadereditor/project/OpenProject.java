@@ -72,6 +72,25 @@ public final class OpenProject {
 	public record Storage(Access access, String reason) {
 	}
 
+	/**
+	 * What runs, prepared from the text of the documents at one moment,
+	 * see {@link #prepare}.
+	 */
+	public static final class Build {
+		private final Preparation preparation;
+		private final int generation;
+
+		private Build(Preparation preparation, int generation) {
+			this.preparation = preparation;
+			this.generation = generation;
+		}
+
+		/** Return the preparation, or null when nothing runs. */
+		public Preparation preparation() {
+			return preparation;
+		}
+	}
+
 	/** How the user resolves a conflict. */
 	public enum Choice {
 		RELOAD, KEEP
@@ -119,7 +138,8 @@ public final class OpenProject {
 	// What the listener hears about.
 	private record State(Set<ProjectPath> unsaved, Set<ProjectPath> conflicts,
 			ProjectPath running, List<Used> used,
-			List<ProjectDiagnostic> diagnostics, String unprotected) {
+			List<ProjectDiagnostic> diagnostics, String unprotected,
+			Map<ProjectPath, FileTexts.Found> found) {
 	}
 
 	// The files opened, being opened or worked on in storage.
@@ -159,6 +179,11 @@ public final class OpenProject {
 	private Executor executor;
 	private Runnable listener;
 	private boolean pending;
+	private boolean closed;
+	// Counts the changes of text and of what runs, and the choices of
+	// what runs alone; a result asked for before is stale.
+	private int generation;
+	private int choice;
 
 	private OpenProject(String id, ProjectFiles store,
 			ProjectSessions sessions, EditingSession session,
@@ -173,9 +198,18 @@ public final class OpenProject {
 		this.sessions = sessions;
 		this.session = session;
 		this.worker = worker;
-		this.main = main;
-		this.later = later;
-		texts = new FileTexts(session, worker, main);
+		// Once closed, what arrives late does nothing.
+		this.main = task -> main.execute(() -> {
+			if (!closed) {
+				task.run();
+			}
+		});
+		this.later = (task, millis) -> later.post(() -> {
+			if (!closed) {
+				task.run();
+			}
+		}, millis);
+		texts = new FileTexts(session, worker, this.main);
 		drafts = session.unsaved();
 		conflicted = session.conflicts();
 		seen = session.seen();
@@ -236,11 +270,17 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Keep everything typed in the journal and let the project go; the
-	 * next opening of its session makes a new one.
+	 * Keep everything typed in the journal and let the project go: its
+	 * timers stop, results that arrive later do nothing, and the next
+	 * opening of its session makes a new one.
 	 */
 	public void close() {
+		if (closed) {
+			return;
+		}
 		persist();
+		closed = true;
+		listener = null;
 		if (release != null) {
 			release.run();
 			release = null;
@@ -515,15 +555,22 @@ public final class OpenProject {
 			store.forgetListings();
 			session.refresh();
 		});
-		sync(null);
 		Set<ProjectPath> reread = new HashSet<>();
+		// What runs is found once every check was taken.
+		int[] left = {1};
+		Runnable checked = () -> {
+			if (--left[0] == 0) {
+				updateRunning(() -> done.done(reread));
+			}
+		};
 		for (FileRecord record : new ArrayList<>(records.values())) {
 			Document document = record.document();
 			if (document != null && !document.isModified()) {
-				record.whenIdle(() -> check(record, reread));
+				++left[0];
+				record.whenIdle(() -> check(record, reread, checked));
 			}
 		}
-		updateRunning(() -> done.done(reread));
+		sync(checked);
 	}
 
 	/**
@@ -535,7 +582,7 @@ public final class OpenProject {
 	public void reload(ProjectPath path, Callback<String> done) {
 		keptEdits.remove(path);
 		FileRecord record = record(path);
-		record.whenIdle(() -> reload(record, done));
+		record.whenIdle(() -> reload(record, false, null, done));
 	}
 
 	/**
@@ -550,8 +597,10 @@ public final class OpenProject {
 			return;
 		}
 		if (choice == Choice.RELOAD) {
-			reload(path, problem -> {
-			});
+			keptEdits.remove(path);
+			FileRecord record = record(path);
+			record.whenIdle(() -> reload(record, true, seen, problem -> {
+			}));
 			return;
 		}
 		keptEdits.add(path);
@@ -626,6 +675,8 @@ public final class OpenProject {
 	 */
 	public void runThisFile(ProjectPath path) {
 		running = path;
+		++choice;
+		++generation;
 		changed();
 		worker.execute(() -> sessions.setRunning(id, path));
 	}
@@ -635,8 +686,8 @@ public final class OpenProject {
 	 * and keep the files it is made of as those of the last build. done
 	 * gets the preparation, or null when nothing runs.
 	 */
-	public void prepare(Map<String, String> reserved,
-			Callback<Preparation> done) {
+	public void prepare(Map<String, String> reserved, Callback<Build> done) {
+		int generation = this.generation;
 		ProjectPath entry = running;
 		Map<ProjectPath, Text> snapshot = snapshot();
 		worker.execute(() -> {
@@ -656,9 +707,13 @@ public final class OpenProject {
 				}
 			}
 			main.execute(() -> {
+				// Not delivered when the text or what runs changed.
+				if (generation != this.generation) {
+					return;
+				}
 				used = Collections.unmodifiableList(read);
 				changed();
-				done.done(preparation);
+				done.done(new Build(preparation, generation));
 			});
 		});
 	}
@@ -695,7 +750,11 @@ public final class OpenProject {
 	}
 
 	/** Keep the diagnostics of the last build of what runs. */
-	public void setDiagnostics(List<ProjectDiagnostic> diagnostics) {
+	public void setDiagnostics(Build build,
+			List<ProjectDiagnostic> diagnostics) {
+		if (build.generation != generation) {
+			return;
+		}
 		this.diagnostics = List.copyOf(diagnostics);
 		changed();
 	}
@@ -818,8 +877,14 @@ public final class OpenProject {
 		}
 		record.draftModified = record.sentModified = opened.unsaved();
 		record.listener = new Document.Listener() {
+			private int revision = document.revision();
+
 			@Override
 			public void onUpdate() {
+				if (document.revision() != revision) {
+					revision = document.revision();
+					++generation;
+				}
 				changed();
 				schedule(record);
 			}
@@ -850,16 +915,19 @@ public final class OpenProject {
 
 	// Give the document of record the stored text when it changed and
 	// the document is not edited before it arrives.
-	private void check(FileRecord record, Set<ProjectPath> reread) {
+	private void check(FileRecord record, Set<ProjectPath> reread,
+			Runnable then) {
 		FileRecord.Request request = record.start(FileRecord.Kind.CHECK);
 		Document document = record.document();
 		if (document == null || document.isModified()) {
 			end(record, request);
+			then.run();
 			return;
 		}
 		texts.reread(record.path, request.base(), checked -> {
 			if (records.get(record.path) != record) {
 				end(record, request);
+				then.run();
 				return;
 			}
 			if (checked.found() != FileTexts.Found.CHANGED) {
@@ -872,16 +940,22 @@ public final class OpenProject {
 			}
 			end(record, request);
 			changed();
+			then.run();
 		});
 	}
 
-	private void reload(FileRecord record, Callback<String> done) {
+	// Reload record; when expect, only if storage is still at seen.
+	private void reload(FileRecord record, boolean expect, String seen,
+			Callback<String> done) {
 		FileRecord.Request request = record.start(FileRecord.Kind.RELOAD);
 		ProjectPath path = record.path;
 		texts.openStored(path, opening -> {
 			boolean took = false;
 			String problem = null;
-			if (opening instanceof FileTexts.Opened opened) {
+			if (opening instanceof FileTexts.Opened opened && expect &&
+					!Objects.equals(seen, opened.revision())) {
+				problem = "the file changed again";
+			} else if (opening instanceof FileTexts.Opened opened) {
 				// Typing that came after the request stays, with its
 				// draft.
 				took = record.document() == null
@@ -1021,12 +1095,27 @@ public final class OpenProject {
 		return snapshot;
 	}
 
+	// Find what runs from the text now; a choice made meanwhile wins,
+	// text changed meanwhile asks again.
 	private void updateRunning(Runnable then) {
+		int choice = this.choice;
+		int generation = this.generation;
 		Map<ProjectPath, Text> snapshot = snapshot();
 		worker.execute(() -> {
 			ProjectPath found = findRunning(snapshot);
 			main.execute(() -> {
-				running = found;
+				if (choice != this.choice) {
+					then.run();
+					return;
+				} else if (generation != this.generation) {
+					updateRunning(then);
+					return;
+				}
+				if (!Objects.equals(found, running)) {
+					running = found;
+					++this.choice;
+					++this.generation;
+				}
 				changed();
 				then.run();
 			});
@@ -1059,8 +1148,15 @@ public final class OpenProject {
 	}
 
 	private State state() {
+		Map<ProjectPath, FileTexts.Found> found = new HashMap<>();
+		for (FileRecord record : records.values()) {
+			if (record.document() != null &&
+					record.found != FileTexts.Found.SAME) {
+				found.put(record.path, record.found);
+			}
+		}
 		return new State(unsaved(), conflicts().keySet(), running, used,
-				diagnostics, unprotected());
+				diagnostics, unprotected(), found);
 	}
 
 	// Call the listener, unless nothing it hears about changed or a call
