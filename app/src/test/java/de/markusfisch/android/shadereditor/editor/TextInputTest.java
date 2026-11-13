@@ -518,6 +518,37 @@ public class TextInputTest {
 		assertEquals(List.of("0 0 -1 -1"), told);
 	}
 
+	@Test
+	public void refusedTextChangesNothingAndTellsTheKeyboardSo() {
+		document = new Document(Text.of("x".repeat(
+				(int) Document.MAX_BYTES - 1)), () -> 0);
+		document.select(3, 3);
+		input = new TextInput(document, listener);
+		input.setComposingRegion(1, 3);
+		List<String> refused = new ArrayList<>();
+		document.addListener(new Document.Listener() {
+			@Override
+			public void onRefused(String reason) {
+				refused.add(reason);
+			}
+		});
+		told.clear();
+		int revision = document.revision();
+
+		assertTrue(input.commitText("yyyy", 1));
+		assertTrue(input.setComposingText("yyyy", 1));
+
+		assertEquals(revision, document.revision());
+		assertEquals(new Selection(3, 3), document.selection());
+		assertEquals(1, input.composingStart());
+		assertEquals(3, input.composingEnd());
+		assertEquals(List.of("3 3 1 3", "3 3 1 3"), told);
+		assertEquals(2, refused.size());
+		told.clear();
+		assertTrue(input.commitText("yyy", 1));
+		assertEquals(List.of("4 4 -1 -1"), told);
+	}
+
 	private void open(String marked) {
 		StringBuilder text = new StringBuilder();
 		int anchor = 0;

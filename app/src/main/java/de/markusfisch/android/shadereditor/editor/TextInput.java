@@ -21,6 +21,12 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
  * the keyboard decides. Key events, editor actions and context menu
  * actions are the view's commands and arrive here as such changes.
  * <p>
+ * A commit or composing text the document refuses, as one that would
+ * make the text too large, changes nothing: text, selection and
+ * composing region stay as they were, and the keyboard is told them
+ * again, so it does not take its text as entered. The document tells
+ * its listeners why.
+ * <p>
  * Committed text without line breaks, composing text and the deletion
  * of one character join the document's run of typing; text with line
  * breaks and longer deletions, as an autocorrection makes, are undo
@@ -106,6 +112,9 @@ public final class TextInput {
 	// Whether the change being made is the keyboard's.
 	private boolean own;
 	private boolean reporting;
+	// Whether the keyboard is to be told the selection and the
+	// composing region although they did not change.
+	private boolean refused;
 	private boolean closed;
 	private boolean monitored;
 	private int token;
@@ -158,9 +167,10 @@ public final class TextInput {
 			return false;
 		}
 		Text committed = Text.of(text != null ? text : "");
-		replace(committed, position, composingStart > -1 ||
-				committed.lineCount() == 1 || committed.length() == 1);
-		composingStart = composingEnd = -1;
+		if (replace(committed, position, composingStart > -1 ||
+				committed.lineCount() == 1 || committed.length() == 1) > -1) {
+			composingStart = composingEnd = -1;
+		}
 		return done("commitText", text, position);
 	}
 
@@ -171,7 +181,9 @@ public final class TextInput {
 		}
 		Text composed = Text.of(text != null ? text : "");
 		int start = replace(composed, position, true);
-		setComposing(start, start + composed.length());
+		if (start > -1) {
+			setComposing(start, start + composed.length());
+		}
 		return done("setComposingText", text, position);
 	}
 
@@ -381,28 +393,32 @@ public final class TextInput {
 		return true;
 	}
 
-	// Makes a change of the keyboard's.
-	private void edit(int from, int to, Text text, boolean typed) {
+	// Makes a change of the keyboard's; returns whether the document
+	// took it.
+	private boolean edit(int from, int to, Text text, boolean typed) {
 		own = true;
 		try {
-			if (typed) {
-				document.type(from, to, text);
-			} else {
-				document.replace(from, to, text);
-			}
+			boolean took = typed
+					? document.type(from, to, text)
+					: document.replace(from, to, text);
+			refused |= !took;
+			return took;
 		} finally {
 			own = false;
 		}
 	}
 
 	// Replaces the composing region or else the selection by text, places
-	// the caret and returns where the text starts.
+	// the caret and returns where the text starts, or -1 when the
+	// document refused it and nothing changed.
 	private int replace(Text text, int position, boolean typed) {
 		Selection selection = document.selection();
 		boolean composing = composingStart > -1;
 		int from = composing ? composingStart : selection.start();
 		int to = composing ? composingEnd : selection.end();
-		edit(from, to, text, typed);
+		if (!edit(from, to, text, typed)) {
+			return -1;
+		}
 		long caret = position > 0
 				? (long) from + text.length() + position - 1
 				: (long) from + position;
@@ -597,8 +613,9 @@ public final class TextInput {
 		Selection selection = document.selection();
 		int start = composingStart;
 		int end = composingEnd;
-		boolean moved = !selection.equals(toldSelection) ||
+		boolean moved = refused || !selection.equals(toldSelection) ||
 				start != toldComposingStart || end != toldComposingEnd;
+		refused = false;
 		boolean extract = monitored &&
 				(moved || document.revision() != toldRevision);
 		toldRevision = document.revision();
