@@ -23,9 +23,9 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
  * delete; a name it lacks and a document that is gone are looked up
  * again. A document renamed elsewhere can be found under its old name
  * until then, or, for a folder, until its parent is listed again. Changes always look up their path again. A change
- * happens only where the grant allows writing and the document flags
- * offer it; on a root that offers no change at all, every change is
- * unsupported. Revisions are content
+ * happens only where the grant allows writing and the flags of the
+ * document it changes, or of the folder it creates in, offer it.
+ * Revisions are content
  * digests, because provider metadata need not change with the bytes.
  * Checking a revision and writing are not one step against other
  * writers. Use it off the main thread.
@@ -342,9 +342,11 @@ public final class SafProjectFiles implements ProjectFiles {
 		return new Document(rootId, "", true, 0);
 	}
 
+	// The root, when the grant allows writing; each change asks the
+	// document it changes, or the folder it creates in, for its flags.
 	private Document changeableRoot() throws IOException {
 		Document root = writable ? resolver.document(rootId) : null;
-		if (root == null || !offers(root, true).any()) {
+		if (root == null) {
 			throw new Problem(Refusal.UNSUPPORTED, "this folder is read-only");
 		}
 		return root;
