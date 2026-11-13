@@ -20,6 +20,8 @@ final class MemoryProjectFiles implements ProjectFiles {
 	String failure;
 	// Whether writes are taken; a store is read-only by default.
 	boolean writable;
+	// Outside edits so far, so each gets its own revision.
+	private int puts;
 
 	MemoryProjectFiles put(String path, String text) {
 		return put(path, text.getBytes(StandardCharsets.UTF_8));
@@ -27,7 +29,7 @@ final class MemoryProjectFiles implements ProjectFiles {
 
 	MemoryProjectFiles put(String path, byte[] bytes) {
 		files.put(ProjectPath.parse(path).value(),
-				new Content(bytes, "r" + files.size()));
+				new Content(bytes, "r" + puts++));
 		return this;
 	}
 
