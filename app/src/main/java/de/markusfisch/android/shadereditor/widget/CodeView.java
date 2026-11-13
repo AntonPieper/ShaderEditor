@@ -37,6 +37,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.EditCommands;
 import de.markusfisch.android.shadereditor.editor.KeyCommands;
+import de.markusfisch.android.shadereditor.editor.KeyboardSession;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -50,7 +51,12 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * the composing region and a blinking caret. It owns no text. Keys
  * become KeyCommands, and the caret is kept in view after each and
  * above the soft keyboard when that opens. The soft keyboard edits the
- * document through one TextInput per connection; a tap shows it. It
+ * document through one TextInput per connection; a tap shows it.
+ * Given a KeyboardSession, it records the connections and, as actions,
+ * every key event (action, key code, meta state, the text it types),
+ * the text on the clipboard before a paste, a tap's selection, the
+ * keyboard's context menu actions and the Enter command it runs for a
+ * committed line break. It
  * redraws when the document changes, and when a line on screen changes
  * colour because the continuations of the line styles or the document's
  * analysis, which it runs on one background thread, made it current.
@@ -149,6 +155,7 @@ public class CodeView extends View {
 			new ArrayList<>();
 	// The connection the keyboard used last; only its updates reach it.
 	private CodeInputConnection active;
+	private KeyboardSession session;
 	private LineStyles styles;
 	private LineMarks marks;
 	private boolean connected;
@@ -239,6 +246,16 @@ public class CodeView extends View {
 			restartInput();
 		}
 		invalidate();
+	}
+
+	/**
+	 * Record keyboard connections from the next one on to session, or
+	 * nothing if it is null.
+	 */
+	public void setKeyboardSession(@Nullable KeyboardSession session) {
+		this.session = session;
+		closeInput();
+		restartInput();
 	}
 
 	/**
@@ -431,7 +448,7 @@ public class CodeView extends View {
 			closeInput();
 		}
 		CodeInputConnection connection = new CodeInputConnection(this,
-				document);
+				document, session);
 		connections.add(connection);
 		if (active == null) {
 			active = connection;
@@ -448,6 +465,7 @@ public class CodeView extends View {
 		int c = event.getUnicodeChar(meta);
 		if ((c & KeyCharacterMap.COMBINING_ACCENT) != 0 &&
 				KeyCommands.types(meta)) {
+			action("key", event.getAction(), keyCode, meta, null);
 			deadChar = c & KeyCharacterMap.COMBINING_ACCENT_MASK;
 			return true;
 		}
@@ -456,14 +474,19 @@ public class CodeView extends View {
 			c = combined != 0 ? combined : c;
 			deadChar = 0;
 		}
-		return key(keyCode, meta, c != 0
-				? new String(Character.toChars(c))
-				: null) || super.onKeyDown(keyCode, event);
+		String typed = c != 0 ? new String(Character.toChars(c)) : null;
+		if (KeyCommands.command(keyCode, meta) ==
+				KeyCommands.Command.PASTE) {
+			recordClip();
+		}
+		action("key", event.getAction(), keyCode, meta, typed);
+		return key(keyCode, meta, typed) || super.onKeyDown(keyCode, event);
 	}
 
 	@Override
 	public boolean onKeyMultiple(int keyCode, int count, KeyEvent event) {
 		String characters = event.getCharacters();
+		action("key", event.getAction(), keyCode, 0, characters);
 		return keyCode == KeyEvent.KEYCODE_UNKNOWN && characters != null &&
 				keys != null && key(keyCode, 0, characters) ||
 				super.onKeyMultiple(keyCode, count, event);
@@ -472,6 +495,7 @@ public class CodeView extends View {
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event) {
 		int meta = event.getMetaState();
+		action("key", event.getAction(), keyCode, meta, null);
 		return keys != null && (KeyCommands.command(keyCode, meta) != null ||
 				KeyCommands.types(meta) && event.getUnicodeChar(meta) != 0) ||
 				super.onKeyUp(keyCode, event);
@@ -730,6 +754,7 @@ public class CodeView extends View {
 	/** Run the Enter command, for a line break the keyboard commits. */
 	void enter() {
 		if (keys != null) {
+			action("command", "enter");
 			commands.enter();
 			bringCaretIntoView();
 		}
@@ -742,10 +767,33 @@ public class CodeView extends View {
 			return false;
 		}
 		if (keys != null) {
+			if (command == KeyCommands.Command.PASTE) {
+				recordClip();
+			}
+			action("contextMenu", id);
 			keys.run(command, false, 0);
 			bringCaretIntoView();
 		}
 		return true;
+	}
+
+	/** Record a call the connection does not pass on. */
+	void note(String name, Object answer, Object... args) {
+		if (session != null) {
+			session.note(name, answer, args);
+		}
+	}
+
+	private void action(String name, Object... args) {
+		if (session != null) {
+			session.action(name, args);
+		}
+	}
+
+	private void recordClip() {
+		if (session != null) {
+			session.action("clip", clipboard.get());
+		}
 	}
 
 	private void restartInput() {
@@ -851,6 +899,7 @@ public class CodeView extends View {
 				appearance.lineHeight, text.lineCount());
 		int offset = text.lineStart(n) + layoutOf(n).offsetAt(
 				x + getScrollX() - textLeft(text.lineCount()));
+		action("select", offset, offset);
 		document.select(offset, offset);
 		requestFocus();
 		InputMethodManager imm = inputMethodManager();

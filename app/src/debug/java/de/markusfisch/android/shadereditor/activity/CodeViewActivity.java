@@ -11,6 +11,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.FrameMetrics;
@@ -22,6 +23,7 @@ import androidx.annotation.RequiresApi;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.EditCommands;
+import de.markusfisch.android.shadereditor.editor.KeyboardSession;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -51,7 +54,13 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
  * many;</li>
  * <li>"tab", the tab width; "size", the text size in sp;</li>
  * <li>"inputType", the input type keyboards are given, by default the
- * one the setting for native suggestions selects in the editor;</li>
+ * one the setting for native suggestions selects in the editor; 1, for
+ * example, is plain text with suggestions, on which keyboards
+ * compose;</li>
+ * <li>"record", true: record what keyboards and the app do to the text
+ * as a KeyboardSession, written every second and when the screen pauses
+ * to a new file in keyboard-sessions in the app's external files
+ * directory; see below.</li>
  * <li>"select", "anchor,head", or "caret", an offset; "line", a line to
  * put the caret at; "composing", "start,end"; "marks",
  * "line:error,line:warning" with lines from 1; "scrollx", pixels;</li>
@@ -80,6 +89,23 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
  * and the render thread during the phase (render in steps of 10 ms),
  * "other" that of every other thread: background work such as the
  * document's analysis.
+ * <p>
+ * To record a keyboard session, choose the keyboard in the system
+ * settings, then start the screen on a small text and use it:
+ * <pre>
+ * adb shell am start -n de.markusfisch.android.shadereditor.debug/\
+ *   de.markusfisch.android.shadereditor.activity.CodeViewActivity \
+ *   --ez record true --es shader new_shader [--ei inputType 1]
+ * </pre>
+ * Leave the screen (Home) so the last lines are written, then fetch
+ * the sessions with
+ * <pre>
+ * adb pull /sdcard/Android/data/de.markusfisch.android.shadereditor.debug/files/keyboard-sessions
+ * </pre>
+ * The log names each file ("recording to"). A session copied to
+ * app/src/test/resources/keyboard-sessions is replayed by the unit
+ * tests. Its first lines say which device, keyboard and input type
+ * recorded it.
  */
 public class CodeViewActivity extends Activity {
 	private static final String TAG = "CodeViewBench";
@@ -93,6 +119,9 @@ public class CodeViewActivity extends Activity {
 	// Change, onDraw and onDraw end of each scripted edit.
 	private final List<long[]> edits = new ArrayList<>();
 	private HandlerThread metricsThread;
+	private HandlerThread recordThread;
+	private KeyboardSession session;
+	private File sessionFile;
 	private CodeView view;
 	private Document document;
 	private long created;
@@ -128,7 +157,16 @@ public class CodeViewActivity extends Activity {
 			getWindow().addOnFrameMetricsAvailableListener(
 					this::frame, new Handler(metricsThread.getLooper()));
 		}
+		if (getIntent().getBooleanExtra("record", false)) {
+			record();
+		}
 		new Thread(this::load, "load").start();
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		writeSession();
 	}
 
 	@Override
@@ -137,7 +175,61 @@ public class CodeViewActivity extends Activity {
 		if (metricsThread != null) {
 			metricsThread.quitSafely();
 		}
+		if (recordThread != null) {
+			writeSession();
+			recordThread.quitSafely();
+		}
 		super.onDestroy();
+	}
+
+	private void record() {
+		File dir = new File(getExternalFilesDir(null), "keyboard-sessions");
+		sessionFile = new File(dir, System.currentTimeMillis() + ".txt");
+		session = new KeyboardSession();
+		view.setKeyboardSession(session);
+		recordThread = new HandlerThread("record");
+		recordThread.start();
+		String keyboard = Settings.Secure.getString(getContentResolver(),
+				Settings.Secure.DEFAULT_INPUT_METHOD);
+		int inputType = getIntent().getIntExtra("inputType",
+				ShaderEditorApp.preferences.hideNativeSuggestions()
+						? CodeView.INPUT_TYPE_NO_SUGGESTIONS
+						: CodeView.INPUT_TYPE_TEXT);
+		String header = "# " + Build.MANUFACTURER + " " + Build.MODEL +
+				", Android " + Build.VERSION.SDK_INT + "\n# keyboard " +
+				keyboard + ", inputType 0x" +
+				Integer.toHexString(inputType) + "\n";
+		new Handler(recordThread.getLooper()).post(() -> {
+			if (dir.mkdirs() || dir.isDirectory()) {
+				append(header);
+			}
+		});
+		Log.i(TAG, "recording to " + sessionFile);
+		main.postDelayed(this::drainSession, 1000);
+	}
+
+	private void drainSession() {
+		writeSession();
+		main.postDelayed(this::drainSession, 1000);
+	}
+
+	// Takes the lines recorded so far and writes them on recordThread.
+	private void writeSession() {
+		if (session == null) {
+			return;
+		}
+		String lines = session.drain();
+		if (!lines.isEmpty()) {
+			new Handler(recordThread.getLooper()).post(() -> append(lines));
+		}
+	}
+
+	private void append(String lines) {
+		try (FileWriter writer = new FileWriter(sessionFile, true)) {
+			writer.write(lines);
+		} catch (IOException e) {
+			Log.e(TAG, "cannot write " + sessionFile, e);
+		}
 	}
 
 	private void load() {
