@@ -59,6 +59,18 @@ public class KeyCommandsTest {
 	}
 
 	@Test
+	public void contextMenuActionsMapToCommands() {
+		assertEquals(Command.SELECT_ALL,
+				KeyCommands.contextMenuCommand(android.R.id.selectAll));
+		assertEquals(Command.PASTE,
+				KeyCommands.contextMenuCommand(android.R.id.paste));
+		assertEquals(Command.REDO,
+				KeyCommands.contextMenuCommand(android.R.id.redo));
+		assertEquals(null,
+				KeyCommands.contextMenuCommand(android.R.id.switchInputMethod));
+	}
+
+	@Test
 	public void printableKeysTypeUnlessCtrlIsHeld() {
 		Document document = new Document(Text.of("ab"));
 		document.select(1, 1);

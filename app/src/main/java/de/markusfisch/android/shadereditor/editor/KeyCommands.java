@@ -10,8 +10,8 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
  * Ctrl moves and deletes by words, goes to the ends of the text and
  * makes the shortcuts for select all, undo, redo and the clipboard. A
  * key with Ctrl or Meta held types nothing, so other shortcuts still
- * reach the app. Only constants of KeyEvent are used, so this runs on
- * the JVM.
+ * reach the app. Only constants of KeyEvent and android.R are used, so
+ * this runs on the JVM.
  */
 public final class KeyCommands {
 	public enum Command {
@@ -101,6 +101,27 @@ public final class KeyCommands {
 			default:
 				return null;
 		}
+	}
+
+	/**
+	 * Return the command of a context menu action, as keyboards ask for
+	 * one, null if it has none.
+	 */
+	public static Command contextMenuCommand(int id) {
+		if (id == android.R.id.selectAll) {
+			return Command.SELECT_ALL;
+		} else if (id == android.R.id.cut) {
+			return Command.CUT;
+		} else if (id == android.R.id.copy) {
+			return Command.COPY;
+		} else if (id == android.R.id.paste) {
+			return Command.PASTE;
+		} else if (id == android.R.id.undo) {
+			return Command.UNDO;
+		} else if (id == android.R.id.redo) {
+			return Command.REDO;
+		}
+		return null;
 	}
 
 	/** Return whether a key with meta held may type. */
