@@ -26,7 +26,6 @@
 	<dimen name="se_corner_container">16dp</dimen>
 	<!-- The navigation drawer -->
 	<dimen name="navigation_drawer_screen_margin">56dp</dimen>
-	<dimen name="navigation_header_height">60dp</dimen>
 	<dimen name="navigation_bar_height">60dp</dimen>
 	<dimen name="navigation_bar_padding">12dp</dimen>
 	<dimen name="navigation_row_padding_vertical">8dp</dimen>

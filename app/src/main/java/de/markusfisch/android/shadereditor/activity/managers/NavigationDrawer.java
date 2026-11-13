@@ -1,6 +1,8 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.content.res.Resources;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,6 +10,8 @@ import android.graphics.drawable.Drawable;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
@@ -15,6 +19,9 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -39,6 +46,7 @@ import de.markusfisch.android.shadereditor.navigation.Order;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
+import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
 
 /**
  * The drawer as one column of levels. It shows what a source lists and
@@ -101,14 +109,20 @@ public class NavigationDrawer implements ShaderList {
 		sources.put(Level.EXAMPLES, new ExamplesSource(activity, host));
 		sources.put(Level.FOLDERS, new FoldersSource(activity, library));
 
-		// Takes the place of the old drawer.
-		View old = activity.findViewById(R.id.menu_frame);
-		drawerLayout = (DrawerLayout) old.getParent();
-		drawerLayout.removeView(old);
+		// Takes the place of the old drawer, from the top edge to the
+		// bottom edge.
+		drawerLayout = holdScreen(activity);
 		drawer = activity.getLayoutInflater().inflate(
 				R.layout.navigation_drawer, drawerLayout, false);
 		drawer.getLayoutParams().width = getDrawerWidth();
 		drawerLayout.addView(drawer);
+		ViewCompat.setOnApplyWindowInsetsListener(drawer, (v, insets) -> {
+			Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() |
+					WindowInsetsCompat.Type.displayCutout());
+			v.setPadding(bars.left, bars.top, 0, bars.bottom);
+			return insets;
+		});
+		clearSystemBars(activity);
 
 		up = drawer.findViewById(R.id.navigation_up);
 		up.setOnClickListener(v -> go(level.up()));
@@ -434,6 +448,49 @@ public class NavigationDrawer implements ShaderList {
 
 	private void close() {
 		drawerLayout.closeDrawer(drawer);
+	}
+
+	// The drawer layout moves out from under the toolbar and holds the
+	// whole screen but the picture behind it, so that the drawer runs
+	// behind both system bars and its scrim covers the toolbar too.
+	@NonNull
+	private static TouchThruDrawerLayout holdScreen(
+			@NonNull AppCompatActivity activity) {
+		TouchThruDrawerLayout drawerLayout = activity.findViewById(
+				R.id.drawer_layout);
+		View content = activity.findViewById(R.id.content_frame);
+		ViewGroup column = (ViewGroup) drawerLayout.getParent();
+		int index = column.indexOfChild(drawerLayout);
+		drawerLayout.removeAllViews();
+		column.removeView(drawerLayout);
+		column.addView(content, index, drawerLayout.getLayoutParams());
+		View screen = activity.findViewById(R.id.main_coordinator);
+		ViewGroup root = (ViewGroup) screen.getParent();
+		ViewGroup.LayoutParams params = screen.getLayoutParams();
+		index = root.indexOfChild(screen);
+		root.removeView(screen);
+		drawerLayout.addView(screen, new DrawerLayout.LayoutParams(
+				ViewGroup.LayoutParams.MATCH_PARENT,
+				ViewGroup.LayoutParams.MATCH_PARENT));
+		root.addView(drawerLayout, index, params);
+		// A tap beside the open drawer closes it, also while the code
+		// is hidden and touches go through to the shader.
+		drawerLayout.setKeepsTouchesWhileOpen(true);
+		return drawerLayout;
+	}
+
+	// Nothing translucent of the system's may lie over the drawer, so
+	// the app draws the bars' backgrounds itself, as from Android 15.
+	private static void clearSystemBars(@NonNull AppCompatActivity activity) {
+		Window window = activity.getWindow();
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+			window.setStatusBarColor(Color.TRANSPARENT);
+			window.setNavigationBarColor(Color.TRANSPARENT);
+			activity.findViewById(R.id.navbar).setVisibility(View.VISIBLE);
+		}
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+			window.setNavigationBarContrastEnforced(false);
+		}
 	}
 
 	@NonNull

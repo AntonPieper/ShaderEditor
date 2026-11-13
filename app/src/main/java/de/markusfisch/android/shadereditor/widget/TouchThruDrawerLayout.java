@@ -5,6 +5,7 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
+import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 /**
@@ -12,6 +13,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
  */
 public class TouchThruDrawerLayout extends DrawerLayout {
 	private boolean touchThru = false;
+	private boolean keepsTouchesWhileOpen = false;
 
 	public TouchThruDrawerLayout(Context context) {
 		super(context);
@@ -25,15 +27,28 @@ public class TouchThruDrawerLayout extends DrawerLayout {
 		this.touchThru = touchThru;
 	}
 
+	/**
+	 * Whether an open drawer and its scrim take touches even while
+	 * touches go through otherwise.
+	 */
+	public void setKeepsTouchesWhileOpen(boolean keepsTouchesWhileOpen) {
+		this.keepsTouchesWhileOpen = keepsTouchesWhileOpen;
+	}
+
 	@Override
 	public boolean onInterceptTouchEvent(MotionEvent event) {
-		return !touchThru && super.onInterceptTouchEvent(event);
+		return !passesTouches() && super.onInterceptTouchEvent(event);
 	}
 
 	// Click is handled in super class.
 	@SuppressLint("ClickableViewAccessibility")
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
-		return !touchThru && super.onTouchEvent(event);
+		return !passesTouches() && super.onTouchEvent(event);
+	}
+
+	private boolean passesTouches() {
+		return touchThru && !(keepsTouchesWhileOpen &&
+				isDrawerVisible(GravityCompat.START));
 	}
 }
