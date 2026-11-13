@@ -5,11 +5,15 @@ import de.markusfisch.android.shadereditor.editor.Motion;
 import de.markusfisch.android.shadereditor.editor.Text;
 
 /**
- * What a touch selects in a CodeView: the offset a point of a line
- * means, and what a drag from where it started selects. A caret
+ * What a touch or a mouse selects in a CodeView: the offset a point of
+ * a line means, and what a drag from where it started selects. A caret
  * goes where it is dragged; a drag by character moves the head and
  * keeps the anchor; a drag by word keeps the word it started on and
- * extends to whole words, as Motion finds them. Offsets count into
+ * extends to whole words, as Motion finds them. A handle moves the head
+ * as the platform's handles do: while the selection grows, a word joins
+ * whole once the finger is past its middle; after the handle was moved
+ * back into a word, it goes by character, keeping its distance to the
+ * finger, until it is at the end of a word again. Offsets count into
  * the whole text; the work is that of one line, and a drag allocates
  * only when the selection changes.
  */
@@ -25,6 +29,7 @@ final class TouchSelection {
 	private static final int CARET = 0;
 	private static final int CHARS = 1;
 	private static final int WORDS = 2;
+	private static final int HANDLE = 3;
 
 	private final Motion motion;
 	private int unit;
@@ -34,6 +39,8 @@ final class TouchSelection {
 	private int wordStart;
 	private int wordEnd;
 	private int reached;
+	// From the offset of the finger to the head a handle is at.
+	private int delta;
 
 	TouchSelection(Motion motion) {
 		this.motion = motion;
@@ -66,11 +73,18 @@ final class TouchSelection {
 	}
 
 	/**
-	 * Start a drag of the end head of the selection from anchor, or of
-	 * the caret if they are equal.
+	 * Start a drag of the handle of the end head of the selection from
+	 * anchor, or of the caret's if they are equal.
 	 */
+	void dragHandle(int anchor, int head) {
+		dragChars(anchor, head);
+		unit = anchor == head ? CARET : HANDLE;
+		delta = 0;
+	}
+
+	/** Start a drag by character from anchor, the head at head. */
 	void dragChars(int anchor, int head) {
-		unit = anchor == head ? CARET : CHARS;
+		unit = CHARS;
 		this.anchor = anchor;
 		this.head = head;
 		reached = head;
@@ -87,7 +101,7 @@ final class TouchSelection {
 
 	/**
 	 * Drag to offset; return whether the selection changed. By
-	 * character, the head goes to offset unless that would make the
+	 * character, the head goes to offset; a handle never makes the
 	 * selection empty. By word, the selection spans the start word and
 	 * the word at offset.
 	 */
@@ -95,15 +109,16 @@ final class TouchSelection {
 		if (offset == reached) {
 			return false;
 		}
+		int from = reached;
 		reached = offset;
 		int oldAnchor = anchor;
 		int oldHead = head;
 		if (unit == CARET) {
 			anchor = head = offset;
 		} else if (unit == CHARS) {
-			if (offset != anchor) {
-				head = offset;
-			}
+			head = offset;
+		} else if (unit == HANDLE) {
+			moveHandle(text, from, offset);
 		} else if (offset >= wordStart) {
 			anchor = wordStart;
 			head = Math.max(wordEnd, motion.wordAt(text, offset).end());
@@ -112,6 +127,57 @@ final class TouchSelection {
 			head = motion.wordAt(text, offset).start();
 		}
 		return anchor != oldAnchor || head != oldHead;
+	}
+
+	// Moves the head of a handle the finger moved from one offset to
+	// another.
+	private void moveHandle(Text text, int from, int offset) {
+		int direction = head > anchor ? 1 : -1;
+		boolean grows = (offset - from) * direction > 0;
+		int line = text.lineOf(offset);
+		boolean otherLine = line != text.lineOf(head);
+		int to;
+		if (otherLine || (grows && !inWord(text, head))) {
+			to = snap(text, offset, direction);
+		} else {
+			int start = text.lineStart(line);
+			to = Math.max(start, Math.min(offset + delta,
+					start + text.line(line).length()));
+			// Not inside a character.
+			to = motion.previousChar(text, motion.nextChar(text, to));
+		}
+		if (to != anchor && (to - head) * direction * (grows ? 1 : -1) > 0) {
+			head = to;
+		}
+		delta = otherLine ? 0 : head - offset;
+	}
+
+	// Returns the end of the word at offset towards direction if offset
+	// is past its middle, else its other end; offset if it is not inside
+	// a word.
+	private int snap(Text text, int offset, int direction) {
+		Selection word = motion.wordAt(text, offset);
+		if (!inWord(text, word, offset)) {
+			return offset;
+		}
+		int middle = word.start() + (word.end() - word.start()) / 2;
+		return direction > 0
+				? offset >= middle ? word.end() : word.start()
+				: offset <= middle ? word.start() : word.end();
+	}
+
+	private boolean inWord(Text text, int offset) {
+		return inWord(text, motion.wordAt(text, offset), offset);
+	}
+
+	// Motion's word is white space if there is no word.
+	private static boolean inWord(Text text, Selection word, int offset) {
+		if (word.start() >= offset || offset >= word.end()) {
+			return false;
+		}
+		int line = text.lineOf(offset);
+		return !Character.isWhitespace(text.line(line).charAt(
+				word.start() - text.lineStart(line)));
 	}
 
 	int anchor() {

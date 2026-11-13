@@ -62,16 +62,59 @@ public class TouchSelectionTest {
 	@Test
 	public void aHandleMovesItsEndAndNeverEmptiesTheSelection() {
 		Text text = Text.of("float a;");
-		touch.dragChars(2, 5);
+		touch.dragHandle(2, 5);
 		assertTrue(touch.dragTo(text, 0));
 		assertEquals(2, touch.anchor());
 		assertEquals(0, touch.head());
 		assertFalse(touch.dragTo(text, 2));
 		assertEquals(0, touch.head());
 		// The caret's handle moves the caret.
-		touch.dragChars(3, 3);
+		touch.dragHandle(3, 3);
 		assertTrue(touch.dragTo(text, 7));
 		assertEquals(7, touch.anchor());
 		assertEquals(7, touch.head());
+	}
+
+	@Test
+	public void aHandleTakesAWordWholeOnceTheFingerIsPastItsMiddle() {
+		Text text = Text.of("float alpha = beta;");
+		touch.dragHandle(0, 5);
+		// Into the first half of alpha: up to its start.
+		assertTrue(touch.dragTo(text, 7));
+		assertEquals(6, touch.head());
+		// Past its middle: all of it.
+		assertTrue(touch.dragTo(text, 9));
+		assertEquals(11, touch.head());
+		assertFalse(touch.dragTo(text, 10));
+	}
+
+	@Test
+	public void aHandleMovedBackGoesByCharacterUntilAWordEnds() {
+		Text text = Text.of("float alpha = beta;");
+		touch.dragHandle(0, 5);
+		touch.dragTo(text, 9);
+		assertEquals(11, touch.head());
+		// Back by two, keeping the distance to the finger.
+		assertTrue(touch.dragTo(text, 7));
+		assertEquals(9, touch.head());
+		// Forward again by character, not to the end of the word.
+		assertTrue(touch.dragTo(text, 8));
+		assertEquals(10, touch.head());
+		assertTrue(touch.dragTo(text, 9));
+		assertEquals(11, touch.head());
+		// At the end of a word, the next one joins whole again.
+		assertTrue(touch.dragTo(text, 16));
+		assertEquals(18, touch.head());
+	}
+
+	@Test
+	public void theMouseSelectsByCharacterAndMayEmptyTheSelection() {
+		Text text = Text.of("float alpha;");
+		touch.dragChars(2, 2);
+		assertTrue(touch.dragTo(text, 8));
+		assertEquals(2, touch.anchor());
+		assertEquals(8, touch.head());
+		assertTrue(touch.dragTo(text, 2));
+		assertEquals(2, touch.head());
 	}
 }
