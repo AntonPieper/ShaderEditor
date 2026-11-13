@@ -8,6 +8,9 @@
 	<color name="code_directive">#C8CCD2</color>
 	<color name="code_invalid">#FF7B8A</color>
 	<color name="code_line_number">#8A8F96</color>
+	<!-- Line marks darken, so that the code on them stays readable -->
+	<color name="code_mark_error">#8C5C0A14</color>
+	<color name="code_mark_warning">#8C4A3000</color>
 	<color name="syntax_comment">@color/code_comment</color>
 	<color name="syntax_invalid">@color/code_invalid</color>
 	<color name="syntax_directive">@color/code_directive</color>
