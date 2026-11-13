@@ -51,6 +51,7 @@ public class UniformSampler2dPageFragment extends AddUniformPageFragment {
 		noTexturesMessage = view.findViewById(R.id.no_textures_message);
 
 		listView = view.findViewById(R.id.textures);
+		layoutOnAttach(listView);
 		texturesAdapter = new TextureAdapter(requireActivity());
 		listView.setAdapter(texturesAdapter);
 		initListView(view);
