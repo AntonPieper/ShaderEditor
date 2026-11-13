@@ -246,8 +246,9 @@ public class EditingSessionTest {
 		assertEquals(new Saved(revision(store, "copy/main.glsl")), outcome);
 		assertEquals("mine", read("copy/main.glsl"));
 		assertEquals("theirs", read("main.glsl"));
-		assertNull(session.draft(path("main.glsl")));
-		assertTrue(session.conflicts().isEmpty());
+		assertEquals("mine",
+				session.draft(path("main.glsl")).text().toString());
+		assertTrue(session.conflicts().containsKey(path("main.glsl")));
 	}
 
 	@Test

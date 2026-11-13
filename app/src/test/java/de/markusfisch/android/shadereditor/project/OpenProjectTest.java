@@ -394,6 +394,47 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void reloadOfAFileGoneKeepsTheDraftAndTheText()
+			throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open();
+		Document a = document(project, "a.glsl");
+		edit(project, a, "mine");
+		project.persist();
+		assertTrue(new File(root, "a.glsl").delete());
+
+		assertNotNull(this.<String>await(done ->
+				project.reload(path("a.glsl"), done)));
+
+		assertEquals("mine", a.text().toString());
+		assertTrue(a.isModified());
+		assertEquals("mine", text(open(), "a.glsl"));
+	}
+
+	@Test
+	public void copyKeepsTextTypedBeforeItsResult() throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open();
+		Document a = document(project, "a.glsl");
+		edit(project, a, "mine");
+		project.saveCopy(path("a.glsl"), copy -> {
+		});
+		worker.run();
+
+		edit(project, a, "later");
+		settle();
+		project.persist();
+		settle();
+
+		assertEquals("mine", read("a copy.glsl"));
+		assertEquals("later", a.text().toString());
+		assertTrue(a.isModified());
+		OpenProject reopened = open();
+		assertEquals("later", text(reopened, "a.glsl"));
+		assertEquals(Set.of(path("a.glsl")), reopened.unsaved());
+	}
+
+	@Test
 	public void keepsEditsUntilAnExplicitSave() throws IOException {
 		OpenProject project = editedElsewhere();
 
@@ -421,9 +462,9 @@ public class OpenProjectTest {
 		assertEquals("mine", read("a copy.glsl"));
 		assertEquals("theirs", read("a.glsl"));
 		assertEquals("mine", text(project, "a copy.glsl"));
-		assertEquals("theirs", text(project, "a.glsl"));
-		assertTrue(project.unsaved().isEmpty());
-		assertTrue(project.conflicts().isEmpty());
+		assertEquals("mine", text(project, "a.glsl"));
+		assertEquals(Set.of(path("a.glsl")), project.unsaved());
+		assertEquals(Set.of(path("a.glsl")), project.conflicts().keySet());
 		write("b.txt", "b");
 		edit(project, document(project, "b.txt"), "b!");
 		write("b copy.txt", "taken");
