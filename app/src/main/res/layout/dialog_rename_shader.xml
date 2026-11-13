@@ -1,16 +1,20 @@
-<LinearLayout
+<FrameLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
-	android:layout_height="match_parent"
-	android:orientation="vertical"
-	android:padding="16dp">
-	<EditText
-		tools:targetApi="o"
-		style="@android:style/Widget.EditText"
-		android:id="@+id/name"
+	android:layout_height="wrap_content"
+	android:paddingHorizontal="@dimen/se_margin_sheet"
+	android:paddingTop="@dimen/se_dialog_field_top">
+	<com.google.android.material.textfield.TextInputLayout
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:hint="@string/enter_name"
-		android:importantForAutofill="no"/>
-</LinearLayout>
+		android:hint="@string/enter_name">
+		<com.google.android.material.textfield.TextInputEditText
+			android:id="@+id/name"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:imeOptions="actionDone"
+			android:importantForAutofill="no"
+			android:inputType="text"
+			android:maxLines="1" />
+	</com.google.android.material.textfield.TextInputLayout>
+</FrameLayout>

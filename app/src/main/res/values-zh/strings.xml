@@ -196,8 +196,8 @@
 	<string name="insert_uniform_sampler">插入 sampler2D 变量</string>
 
 	<string name="view_texture">查看纹理</string>
+	<string name="delete">删除</string>
 	<string name="remove_texture">移除纹理</string>
-	<string name="sure_remove_texture">确定要移除这个纹理吗？</string>
 	<string name="removed_invalid_texture">纹理尺寸过大，无法处理</string>
 
 	<string name="texture_parameters">纹理过滤参数</string>

@@ -3,9 +3,6 @@ package de.markusfisch.android.shadereditor.activity.managers;
 import android.app.Activity;
 import android.content.Context;
 import android.text.format.DateUtils;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -34,7 +31,7 @@ import de.markusfisch.android.shadereditor.navigation.Order;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.resource.Resources;
-import de.markusfisch.android.shadereditor.view.SoftKeyboard;
+import de.markusfisch.android.shadereditor.widget.RenameDialog;
 
 /** The database shaders as the level Shaders. */
 final class LibrarySource implements Source {
@@ -126,21 +123,10 @@ final class LibrarySource implements Source {
 	}
 
 	private void rename(long id, @NonNull String title) {
-		View view = LayoutInflater.from(context).inflate(
-				R.layout.dialog_rename_shader, null);
-		EditText nameView = view.findViewById(R.id.name);
-		nameView.setText(title);
-		new MaterialAlertDialogBuilder(context)
-				.setTitle(R.string.rename_shader)
-				.setView(view)
-				.setPositiveButton(android.R.string.ok, (dialog, which) -> {
-					String newName = nameView.getText().toString();
-					dataSource.shader.updateShaderName(id, newName);
-					listener.onShaderRenamed(id, newName);
-					SoftKeyboard.hide(context, nameView);
-				})
-				.setNegativeButton(android.R.string.cancel, null)
-				.show();
+		RenameDialog.show(context, title, newName -> {
+			dataSource.shader.updateShaderName(id, newName);
+			listener.onShaderRenamed(id, newName);
+		});
 	}
 
 	@WorkerThread

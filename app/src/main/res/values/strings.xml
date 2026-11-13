@@ -210,8 +210,8 @@
 
 	<!-- TextureViewFragment -->
 	<string name="view_texture">View texture</string>
+	<string name="delete">Delete</string>
 	<string name="remove_texture">Remove texture</string>
-	<string name="sure_remove_texture">Do you want to remove this texture?</string>
 	<string name="removed_invalid_texture">Texture was too big to handle</string>
 
 	<!-- TextureParametersFragment -->

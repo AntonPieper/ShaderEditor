@@ -11,6 +11,10 @@
 	<dimen name="error_list_divider_padding">16dp</dimen>
 	<!-- Sizes and the one radius of the project-mode UI -->
 	<dimen name="se_margin_screen">16dp</dimen>
+	<!-- Left and right of the content of sheets and dialogs -->
+	<dimen name="se_margin_sheet">24dp</dimen>
+	<!-- Room above a field in a dialog for its label -->
+	<dimen name="se_dialog_field_top">8dp</dimen>
 	<dimen name="se_row_height">48dp</dimen>
 	<dimen name="se_row_height_two_line">56dp</dimen>
 	<dimen name="se_row_height_picture">72dp</dimen>

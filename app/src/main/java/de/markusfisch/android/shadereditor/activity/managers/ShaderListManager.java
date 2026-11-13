@@ -4,12 +4,10 @@ import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.ListView;
 
 import androidx.annotation.NonNull;
 
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +20,7 @@ import de.markusfisch.android.shadereditor.adapter.ShaderAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords.ShaderInfo;
 import de.markusfisch.android.shadereditor.database.DataSource;
-import de.markusfisch.android.shadereditor.view.SoftKeyboard;
+import de.markusfisch.android.shadereditor.widget.RenameDialog;
 
 public class ShaderListManager implements ShaderList {
 	public interface Listener {
@@ -152,21 +150,9 @@ public class ShaderListManager implements ShaderList {
 	}
 
 	private void editShaderName(final long id, @NonNull String name) {
-		View view = activity.getLayoutInflater().inflate(
-				R.layout.dialog_rename_shader, null);
-		final EditText nameView = view.findViewById(R.id.name);
-		nameView.setText(name);
-
-		new MaterialAlertDialogBuilder(activity)
-				.setTitle(R.string.rename_shader)
-				.setView(view)
-				.setPositiveButton(android.R.string.ok, (dialog, which) -> {
-					String newName = nameView.getText().toString();
-					dataSource.shader.updateShaderName(id, newName);
-					listener.onShaderRenamed(id, newName);
-					SoftKeyboard.hide(activity, nameView);
-				})
-				.setNegativeButton(android.R.string.cancel, null)
-				.show();
+		RenameDialog.show(activity, name, newName -> {
+			dataSource.shader.updateShaderName(id, newName);
+			listener.onShaderRenamed(id, newName);
+		});
 	}
 }

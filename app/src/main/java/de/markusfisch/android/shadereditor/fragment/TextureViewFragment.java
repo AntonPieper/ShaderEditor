@@ -151,10 +151,9 @@ public class TextureViewFragment extends Fragment {
 		}
 
 		new MaterialAlertDialogBuilder(activity)
-				.setTitle(R.string.remove_texture)
-				.setMessage(R.string.sure_remove_texture)
+				.setTitle(getString(R.string.delete_shader_title, textureName))
 				.setPositiveButton(
-						android.R.string.ok,
+						R.string.delete,
 						(dialog, whichButton) -> removeTextureAsync(id))
 				.setNegativeButton(android.R.string.cancel, null)
 				.show();
