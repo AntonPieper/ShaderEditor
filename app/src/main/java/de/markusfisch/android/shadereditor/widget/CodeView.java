@@ -28,6 +28,7 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EdgeEffect;
 import android.widget.OverScroller;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -66,7 +67,7 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * every key event (action, key code, meta state, the text it types),
  * the text on the clipboard before a paste, a tap's selection, the
  * keyboard's context menu actions and the Enter command it runs for a
- * committed line break. It
+ * committed line break. A copy the clipboard refuses says so. It
  * redraws when the document changes, and when a line on screen changes
  * colour because the continuations of the line styles or the document's
  * analysis, which it runs on one background thread, made it current.
@@ -106,6 +107,10 @@ public class CodeView extends View {
 	private static final long BLINK = 500;
 	// As the platform's insertion handle.
 	private static final long CARET_HANDLE = 4000;
+	// What the clipboard takes: a clip goes to the system, and from it
+	// to every app that reads it, in binder transactions of at most
+	// 1 MB, at up to two bytes a character.
+	private static final int MAX_CLIP = 400_000;
 	private static final int HORIZONTAL = 1;
 	private static final int VERTICAL = 2;
 	private static final int DRAG_WORDS = 1;
@@ -160,13 +165,17 @@ public class CodeView extends View {
 				public boolean set(String text) {
 					ClipboardManager manager = clipboardManager();
 					try {
-						// Fails for more than about 1 MB.
-						manager.setPrimaryClip(
-								ClipData.newPlainText(null, text));
-						return true;
+						if (text.length() <= MAX_CLIP) {
+							manager.setPrimaryClip(
+									ClipData.newPlainText(null, text));
+							return true;
+						}
 					} catch (RuntimeException e) {
-						return false;
+						// Too large after all.
 					}
+					Toast.makeText(getContext(), R.string.copy_failed,
+							Toast.LENGTH_SHORT).show();
+					return false;
 				}
 			};
 	private final OverScroller scroller;

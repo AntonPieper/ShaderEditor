@@ -151,9 +151,12 @@ public final class KeyCommands {
 
 	/**
 	 * Run command; a move with extend keeps the anchor of the selection.
-	 * Page Up and Down move pageLines lines.
+	 * Page Up and Down move pageLines lines. Return false if a command
+	 * of the clipboard did nothing: there was no selection to cut or
+	 * copy, the clipboard refused it, it held no text to paste or the
+	 * document refused the paste; the document is then as it was.
 	 */
-	public void run(Command command, boolean extend, int pageLines) {
+	public boolean run(Command command, boolean extend, int pageLines) {
 		switch (command) {
 			case BACKWARD -> commands.moveBackward(extend);
 			case FORWARD -> commands.moveForward(extend);
@@ -178,18 +181,17 @@ public final class KeyCommands {
 			case UNDO -> document.undo();
 			case REDO -> document.redo();
 			case CUT -> {
-				if (copy()) {
-					paste(Text.EMPTY);
-				}
+				return copy() && paste(Text.EMPTY);
 			}
-			case COPY -> copy();
+			case COPY -> {
+				return copy();
+			}
 			case PASTE -> {
 				CharSequence clip = clipboard.get();
-				if (clip != null) {
-					paste(Text.of(clip));
-				}
+				return clip != null && paste(Text.of(clip));
 			}
 		}
+		return true;
 	}
 
 	// Puts the selection on the clipboard; returns false if there is
@@ -200,13 +202,20 @@ public final class KeyCommands {
 				.substring(selection.start(), selection.end()));
 	}
 
-	// Replaces the selection by text, as one step, with the caret behind.
-	private void paste(Text text) {
+	// Replaces the selection by text, as one step, with the caret behind;
+	// returns false if the document refused it.
+	private boolean paste(Text text) {
 		Selection selection = document.selection();
 		int start = selection.start();
 		document.beginBatch();
-		document.replace(start, selection.end(), text);
-		document.select(start + text.length(), start + text.length());
-		document.endBatch();
+		try {
+			if (!document.replace(start, selection.end(), text)) {
+				return false;
+			}
+			document.select(start + text.length(), start + text.length());
+		} finally {
+			document.endBatch();
+		}
+		return true;
 	}
 }

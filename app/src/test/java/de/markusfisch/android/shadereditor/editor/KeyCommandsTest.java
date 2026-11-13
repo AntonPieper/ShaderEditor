@@ -105,6 +105,18 @@ public class KeyCommandsTest {
 		assertEquals("a-c", document.text().toString());
 	}
 
+	@Test
+	public void aPasteTheDocumentRefusesChangesNothing() {
+		Document document = new Document(Text.of(
+				"x".repeat((int) Document.MAX_BYTES - 1)));
+		document.select(1, 3);
+		String[] clip = {"long"};
+		assertFalse(keys(document, clip, true).run(Command.PASTE, false, 0));
+		assertEquals(new Document.Selection(1, 3), document.selection());
+		assertEquals(0, document.revision());
+		assertFalse(document.canUndo());
+	}
+
 	private static KeyCommands keys(Document document, String[] clip,
 			boolean accepts) {
 		return new KeyCommands(document, new EditCommands(document),
