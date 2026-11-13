@@ -85,10 +85,10 @@
 		<item name="subtitleTextAppearance">?attr/textAppearanceBodySmall</item>
 	</style>
 
-	<style name="Title" parent="@android:style/TextAppearance.Medium" />
-
-	<style name="Subtitle" parent="@android:style/TextAppearance.Small">
-		<item name="android:textSize">12sp</item>
+	<!-- The editor's toolbar, over the picture -->
+	<style name="Widget.ShaderEditor.Toolbar.OverPicture">
+		<item name="android:background">@color/se_level_bar</item>
+		<item name="titleTextAppearance">?attr/textAppearanceTitleMedium</item>
 	</style>
 
 	<style name="ListItem" parent="@android:style/TextAppearance.Medium">
