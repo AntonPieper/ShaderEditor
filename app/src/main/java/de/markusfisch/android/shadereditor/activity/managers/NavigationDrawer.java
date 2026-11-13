@@ -1,14 +1,17 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
+import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.graphics.drawable.Drawable;
+import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
 import android.view.Gravity;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -17,14 +20,17 @@ import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.graphics.Insets;
+import androidx.core.view.MenuCompat;
+import androidx.core.view.MenuItemCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.color.MaterialColors;
 
 import java.util.HashMap;
 import java.util.List;
@@ -251,6 +257,7 @@ public class NavigationDrawer implements ShaderList {
 	private void submitLoad() {
 		try {
 			executor.execute(() -> {
+				library.loadPlaceholder();
 				List<ShaderInfo> shaders = dataSource.shader.getShaders(false);
 				handler.post(() -> onShadersLoaded(shaders));
 			});
@@ -387,9 +394,13 @@ public class NavigationDrawer implements ShaderList {
 	private void showOrderMenu() {
 		boolean changed = ShaderEditorApp.preferences.sortByLastModification();
 		PopupMenu popup = new PopupMenu(drawer.getContext(), menu, Gravity.END);
-		popup.setForceShowIcon(true);
-		addCheckItem(popup.getMenu(), R.string.nav_order_changed, changed);
-		addCheckItem(popup.getMenu(), R.string.nav_order_name, !changed);
+		Menu orderMenu = popup.getMenu();
+		orderMenu.add(Menu.NONE, R.string.nav_order_changed, Menu.NONE,
+				R.string.nav_order_changed).setChecked(changed);
+		orderMenu.add(Menu.NONE, R.string.nav_order_name, Menu.NONE,
+				R.string.nav_order_name).setChecked(!changed);
+		// One of them, marked at the end of its row.
+		orderMenu.setGroupCheckable(Menu.NONE, true, true);
 		popup.setOnMenuItemClickListener(item -> {
 			ShaderEditorApp.preferences.setSortByLastModification(
 					item.getItemId() == R.string.nav_order_changed);
@@ -397,17 +408,6 @@ public class NavigationDrawer implements ShaderList {
 			return true;
 		});
 		popup.show();
-	}
-
-	private void addCheckItem(@NonNull Menu menu, int title, boolean checked) {
-		Drawable check = AppCompatResources.getDrawable(activity,
-				R.drawable.ic_check);
-		if (check != null && !checked) {
-			// Keeps the names in line with the checked one.
-			check = check.mutate();
-			check.setAlpha(0);
-		}
-		menu.add(Menu.NONE, title, Menu.NONE, title).setIcon(check);
 	}
 
 	private void showRowMenu(@NonNull Item item, @NonNull View view) {
@@ -418,16 +418,17 @@ public class NavigationDrawer implements ShaderList {
 		PopupMenu popup = new PopupMenu(drawer.getContext(), view, Gravity.END);
 		popup.setForceShowIcon(true);
 		Menu rowMenu = popup.getMenu();
+		// Delete is set apart, in its own group, and in the error colour.
+		MenuCompat.setGroupDividerEnabled(rowMenu, true);
 		for (Row.Action action : row.actions()) {
 			switch (action) {
 				case RENAME -> rowMenu.add(Menu.NONE, action.ordinal(),
 						Menu.NONE, R.string.nav_rename).setIcon(R.drawable.ic_edit);
 				case DUPLICATE -> rowMenu.add(Menu.NONE, action.ordinal(),
 						Menu.NONE, R.string.nav_duplicate)
-						.setIcon(R.drawable.ic_file_copy);
-				case DELETE -> rowMenu.add(Menu.NONE, action.ordinal(),
-						Menu.NONE, R.string.nav_delete)
-						.setIcon(R.drawable.ic_delete_forever);
+						.setIcon(R.drawable.ic_content_copy);
+				case DELETE -> addDestructive(rowMenu, action.ordinal(),
+						R.string.nav_delete, R.drawable.ic_delete);
 			}
 		}
 		Source source = source(level);
@@ -436,6 +437,16 @@ public class NavigationDrawer implements ShaderList {
 			return true;
 		});
 		popup.show();
+	}
+
+	private void addDestructive(@NonNull Menu menu, int id, int title,
+			int icon) {
+		int error = MaterialColors.getColor(drawer,
+				androidx.appcompat.R.attr.colorError);
+		SpannableString text = new SpannableString(activity.getString(title));
+		text.setSpan(new ForegroundColorSpan(error), 0, text.length(), 0);
+		MenuItem item = menu.add(1, id, Menu.NONE, text).setIcon(icon);
+		MenuItemCompat.setIconTintList(item, ColorStateList.valueOf(error));
 	}
 
 	private void scrollToSelected() {

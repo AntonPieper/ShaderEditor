@@ -10,12 +10,14 @@ import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.EnumSet;
 import java.util.List;
@@ -32,6 +34,7 @@ import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Order;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
+import de.markusfisch.android.shadereditor.resource.Resources;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 
 /** The database shaders as the level Shaders. */
@@ -44,6 +47,8 @@ final class LibrarySource implements Source {
 	private final ShaderListManager.Listener listener;
 	private final NavigationDrawer.Host host;
 	private List<ShaderInfo> shaders = List.of();
+	// What a new shader has for a picture until it is saved.
+	private volatile byte[] placeholder;
 
 	LibrarySource(@NonNull Activity activity,
 			@NonNull DataSource dataSource,
@@ -75,7 +80,9 @@ final class LibrarySource implements Source {
 			String title = shader.getTitle();
 			rows.add(new Row(String.valueOf(shader.id()),
 					Row.Kind.SHADER,
-					Row.Picture.png(shader.thumb()),
+					Row.Picture.png(isPlaceholder(shader.thumb())
+							? null
+							: shader.thumb()),
 					title != null ? title : "",
 					describe(changed, now),
 					changed,
@@ -136,6 +143,18 @@ final class LibrarySource implements Source {
 				})
 				.setNegativeButton(android.R.string.cancel, null)
 				.show();
+	}
+
+	@WorkerThread
+	void loadPlaceholder() {
+		if (placeholder == null) {
+			placeholder = Resources.loadBitmapResource(context,
+					R.drawable.thumbnail_new_shader);
+		}
+	}
+
+	private boolean isPlaceholder(@Nullable byte[] thumb) {
+		return thumb != null && Arrays.equals(thumb, placeholder);
 	}
 
 	// Today with the time, yesterday, or the date; the year only when

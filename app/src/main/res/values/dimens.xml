@@ -28,7 +28,7 @@
 	<dimen name="navigation_drawer_screen_margin">56dp</dimen>
 	<dimen name="navigation_bar_height">60dp</dimen>
 	<dimen name="navigation_bar_padding">12dp</dimen>
-	<dimen name="navigation_row_padding_vertical">8dp</dimen>
+	<dimen name="navigation_row_padding_vertical">4dp</dimen>
 	<!-- The selected row is inset by this, its content by twice this -->
 	<dimen name="navigation_row_inset">8dp</dimen>
 	<dimen name="navigation_state_mark">16dp</dimen>

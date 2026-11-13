@@ -2,10 +2,12 @@ package de.markusfisch.android.shadereditor.adapter;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -95,9 +97,8 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			};
 		}
 		if (viewType == HEADING) {
-			return new RecyclerView.ViewHolder(inflater.inflate(
-					R.layout.row_navigation_heading, parent, false)) {
-			};
+			return new HeadingHolder(inflater.inflate(
+					R.layout.row_navigation_heading, parent, false));
 		}
 		return new RowHolder(inflater.inflate(
 				R.layout.row_navigation, parent, false));
@@ -108,8 +109,22 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			int position) {
 		if (holder instanceof RowHolder rowHolder) {
 			rowHolder.bind(items.get(position));
-		} else if (holder.itemView instanceof TextView heading) {
-			heading.setText(items.get(position).heading());
+		} else if (holder instanceof HeadingHolder headingHolder) {
+			headingHolder.line.setVisibility(position > 0
+					? View.VISIBLE
+					: View.GONE);
+			headingHolder.heading.setText(items.get(position).heading());
+		}
+	}
+
+	private static final class HeadingHolder extends RecyclerView.ViewHolder {
+		private final View line;
+		private final TextView heading;
+
+		private HeadingHolder(@NonNull View view) {
+			super(view);
+			line = view.findViewById(R.id.navigation_heading_line);
+			heading = view.findViewById(R.id.navigation_heading);
 		}
 	}
 
@@ -118,6 +133,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 		private final TextView name;
 		private final TextView detail;
 		private final View wallpaper;
+		private final View readOnly;
 		private final View running;
 		private final View enters;
 		private Item item;
@@ -129,6 +145,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			name = view.findViewById(R.id.navigation_name);
 			detail = view.findViewById(R.id.navigation_detail);
 			wallpaper = view.findViewById(R.id.navigation_wallpaper);
+			readOnly = view.findViewById(R.id.navigation_read_only_mark);
 			running = view.findViewById(R.id.navigation_running);
 			enters = view.findViewById(R.id.navigation_enters);
 			view.setOnClickListener(v -> listener.onTap(item));
@@ -147,6 +164,9 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 							? R.dimen.se_row_height
 							: R.dimen.se_row_height_two_line));
 			bindPicture(row.picture());
+			// Beside the name when there is a second line, else centred.
+			((LinearLayout.LayoutParams) picture.getLayoutParams()).gravity =
+					row.detail() == null ? Gravity.CENTER_VERTICAL : Gravity.TOP;
 			name.setText(row.name());
 			// The scale's medium weight for the selected row.
 			TextViewCompat.setTextAppearance(name, item.selected()
@@ -157,6 +177,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			detail.setText(row.detail());
 			detail.setVisibility(row.detail() == null ? View.GONE : View.VISIBLE);
 			wallpaper.setVisibility(visibleIf(item, Row.Mark.WALLPAPER));
+			readOnly.setVisibility(visibleIf(item, Row.Mark.READ_ONLY));
 			running.setVisibility(visibleIf(item, Row.Mark.RUNNING));
 			enters.setVisibility(row.kind() == Row.Kind.FOLDER
 					? View.VISIBLE
@@ -168,10 +189,10 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			Bitmap bitmap = png != null && png.length > 0 ? decode(png) : null;
 			int icon = switch (picture.icon()) {
 				case LIBRARY -> R.drawable.ic_grid_view;
-				case EXAMPLES -> R.drawable.ic_book;
-				default -> 0;
+				case EXAMPLES -> R.drawable.ic_book_2;
+				case SHADER -> R.drawable.ic_draft;
 			};
-			boolean isIcon = bitmap == null && picture.resource() == 0 && icon != 0;
+			boolean isIcon = bitmap == null && picture.resource() == 0;
 			this.picture.setBackgroundResource(isIcon
 					? 0
 					: R.drawable.navigation_thumbnail);
@@ -186,10 +207,8 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 				this.picture.setImageBitmap(bitmap);
 			} else if (picture.resource() != 0) {
 				this.picture.setImageResource(picture.resource());
-			} else if (isIcon) {
-				this.picture.setImageResource(icon);
 			} else {
-				this.picture.setImageResource(R.drawable.thumbnail_new_shader);
+				this.picture.setImageResource(icon);
 			}
 		}
 
