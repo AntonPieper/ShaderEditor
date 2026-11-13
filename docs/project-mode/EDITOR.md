@@ -681,7 +681,7 @@ An independent review of the pure-Java core (T1 to T7, T14) found 29 issues, one
 
 - **The line states are a gap buffer of bytes.** An edit far from the last one moves bytes in proportion to the distance in lines: 5.5 µs median at 500,000 lines on the desktop JVM. Opening allocates one byte per line. Both are proportional to the file in theory and negligible in practice; a chunked structure is not worth its code.
 - **Error marks are scanned on every edit.** Their number is the number of diagnostics of one build, which is small.
-- **Memory can exceed four bytes per character** on extreme files: a whole-file analysis keeps twelve bytes per token. To be measured on the phone before the switch (T17), with the limit of decision D7 in mind.
+- **The whole-file analysis has a fixed memory budget** (fixed 2026-11-13, after it ran out of memory on a 500,000-line text): it reads the text line by line, keeps no tokens, at most 10,000 declarations and 131,072 characters of names, about 1 MB in all, and leaves the outline empty when a line is longer than 65,536 characters. Past a cap, completion offers built-ins and the earlier names only and later declared types are not coloured. Measured on the desktop JVM at 500,000 lines: 1 MB kept instead of 84 MB. The editor's total memory on the phone is still to be measured before the switch (T17), with the limit of decision D7 in mind.
 - **A one-line commit from the keyboard is typing for undo**, whatever its length: a glide word and a keyboard's clipboard paste are the same call. Text the view itself pastes goes through `Document.replace` and is its own step.
 - **Recording is an instrument, not a feature**: it is bounded, off by default, and meant for small texts.
 
