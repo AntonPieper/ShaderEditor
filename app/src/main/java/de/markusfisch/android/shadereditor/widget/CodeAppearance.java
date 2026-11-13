@@ -5,6 +5,7 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.text.TextPaint;
 
 import androidx.core.content.ContextCompat;
@@ -49,6 +50,8 @@ final class CodeAppearance {
 	int baseline;
 	// Whether every printable ASCII character has the same width.
 	boolean monospace;
+	// MonoGlyphs from Android 12 on, if the font allows; null else.
+	Object glyphs;
 
 	CodeAppearance(Context context) {
 		Resources res = context.getResources();
@@ -101,5 +104,8 @@ final class CodeAppearance {
 		for (int digit = '0'; digit <= '9'; ++digit) {
 			digitWidth = Math.max(digitWidth, widths[digit - 0x20]);
 		}
+		glyphs = monospace && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+				? MonoGlyphs.of(paint, PRINTABLE, charWidth)
+				: null;
 	}
 }
