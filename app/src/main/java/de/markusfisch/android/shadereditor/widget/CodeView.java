@@ -7,6 +7,8 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RecordingCanvas;
+import android.graphics.RenderNode;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Handler;
@@ -28,6 +30,7 @@ import android.widget.OverScroller;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.core.graphics.Insets;
 import androidx.core.view.WindowInsetsCompat;
 
@@ -164,6 +167,15 @@ public class CodeView extends View {
 	private int composingStart = -1;
 	private int composingEnd = -1;
 	private boolean caretOn;
+	// Where the last frame put the caret, if on screen.
+	private boolean caretShown;
+	private float caretX;
+	private float caretTop;
+	private float caretClipLeft;
+	// From Android 10 on, the drawing of everything but the caret,
+	// replayed when only the caret blinked.
+	private Object content;
+	private boolean caretOnly;
 	// The lines drawn by the last frame, from shownFirst on.
 	private LineCache.Line[] shown = new LineCache.Line[0];
 	private int shownFirst;
@@ -572,10 +584,67 @@ public class CodeView extends View {
 	}
 
 	@Override
+	public void invalidate() {
+		caretOnly = false;
+		super.invalidate();
+	}
+
+	@Override
 	protected void onDraw(@NonNull Canvas canvas) {
 		if (document == null) {
 			return;
 		}
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+				canvas.isHardwareAccelerated()) {
+			drawRecorded(canvas);
+		} else {
+			drawText(canvas);
+		}
+		drawCaret(canvas);
+	}
+
+	@RequiresApi(Build.VERSION_CODES.Q)
+	private void drawRecorded(Canvas canvas) {
+		if (content == null) {
+			content = new RenderNode("text");
+		}
+		RenderNode node = (RenderNode) content;
+		int scrollX = getScrollX();
+		int scrollY = getScrollY();
+		if (!caretOnly || !node.hasDisplayList() ||
+				node.getLeft() != scrollX || node.getTop() != scrollY ||
+				node.getWidth() != getWidth() ||
+				node.getHeight() != getHeight()) {
+			node.setPosition(scrollX, scrollY, scrollX + getWidth(),
+					scrollY + getHeight());
+			RecordingCanvas recording = node.beginRecording();
+			try {
+				recording.translate(-scrollX, -scrollY);
+				drawText(recording);
+			} finally {
+				node.endRecording();
+			}
+		}
+		canvas.drawRenderNode(node);
+	}
+
+	private void drawCaret(Canvas canvas) {
+		if (!caretOn || !caretShown) {
+			return;
+		}
+		CodeAppearance a = appearance;
+		int scrollY = getScrollY();
+		int save = canvas.save();
+		canvas.clipRect(caretClipLeft, scrollY, getScrollX() + getWidth(),
+				scrollY + getHeight());
+		fill.setColor(a.caretColor);
+		canvas.drawRect(caretX - a.caretWidth / 2, caretTop,
+				caretX + a.caretWidth / 2, caretTop + a.lineHeight, fill);
+		canvas.restoreToCount(save);
+	}
+
+	// Draws everything but the caret, and remembers where the caret goes.
+	private void drawText(Canvas canvas) {
 		cache.nextFrame();
 		CodeAppearance a = appearance;
 		Text text = document.text();
@@ -602,6 +671,8 @@ public class CodeView extends View {
 		int selEnd = selection.end();
 		int save = canvas.save();
 		canvas.clipRect(clipLeft, scrollY, right, scrollY + getHeight());
+		caretShown = false;
+		caretClipLeft = clipLeft;
 		int lineStart = text.lineStart(first);
 		int recordable = RecordBudget.lines(last - first + 1);
 		boolean unrecorded = false;
@@ -663,12 +734,11 @@ public class CodeView extends View {
 								lineStart),
 						lineHeight, fill);
 			}
-			if (caretOn && selStart == selEnd && selStart >= lineStart &&
+			if (selStart == selEnd && selStart >= lineStart &&
 					selStart <= lineEnd) {
-				float x = layout.xOf(selStart - lineStart);
-				fill.setColor(a.caretColor);
-				canvas.drawRect(x - a.caretWidth / 2, 0,
-						x + a.caretWidth / 2, lineHeight, fill);
+				caretShown = true;
+				caretX = textLeft + layout.xOf(selStart - lineStart);
+				caretTop = top;
 			}
 			canvas.translate(-textLeft, -top);
 			lineStart = lineEnd + 1;
@@ -1002,7 +1072,9 @@ public class CodeView extends View {
 
 	private void blink() {
 		caretOn = !caretOn;
-		invalidate();
+		// Unless something else was invalidated since the last frame.
+		caretOnly = caretOnly || !isDirty();
+		super.invalidate();
 		handler.postDelayed(blink, BLINK);
 	}
 }
