@@ -66,7 +66,8 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * caret's handle until a while has passed or the text changes. When the
  * finger lifts, the platform's floating toolbar offers the clipboard
  * for the selection; a tap inside the selection hides or shows it
- * again. Cut, copy and paste of the toolbar, the
+ * again. A tap on the caret's handle, or a long press past the end of a
+ * line, shows it for the caret. Cut, copy and paste of the toolbar, the
  * keyboard's context menu and the keys are the same KeyCommands; a copy
  * the clipboard refuses says so.
  * Given a KeyboardSession, it records the connections and, as actions,
@@ -311,7 +312,11 @@ public class CodeView extends View {
 
 					@Override
 					public void onLongPress(@NonNull MotionEvent e) {
-						dragWords(e.getX(), e.getY());
+						if (onText(e.getX(), e.getY())) {
+							dragWords(e.getX(), e.getY());
+						} else {
+							dragCaret(e.getX(), e.getY());
+						}
 					}
 
 					@Override
@@ -1283,6 +1288,22 @@ public class CodeView extends View {
 		startDrag(DRAG_HANDLE, x, y);
 	}
 
+	// Places the caret, with its handle, where a long press past the
+	// end of a line was; a drag after it moves the caret.
+	private void dragCaret(float x, float y) {
+		if (document == null) {
+			return;
+		}
+		toolbar.close();
+		int offset = offsetAt(x, y);
+		touch.dragChars(offset, offset);
+		select(offset, offset);
+		requestFocus();
+		performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+		caretHandle = true;
+		startDrag(DRAG_WORDS, x, y);
+	}
+
 	private void startDrag(int what, float x, float y) {
 		if (what != DRAG_HANDLE) {
 			pointDx = pointDy = 0;
@@ -1297,14 +1318,19 @@ public class CodeView extends View {
 	}
 
 	// The finger lifted from a drag. The toolbar shows for a selection,
-	// and again if it showed before.
+	// for the caret after a long press, again if it showed before, and
+	// a tap on the caret's handle shows or hides it.
 	private void drop() {
+		boolean tapped = dragging == DRAG_HANDLE && !moved;
+		boolean pressed = dragging == DRAG_WORDS;
 		dragging = 0;
 		if (touched == null) {
 			return;
 		}
 		showCaretHandle();
-		if (!touched.isEmpty() || toolbar.isShown()) {
+		if (tapped && touched.isEmpty()) {
+			toggleToolbar();
+		} else if (!touched.isEmpty() || pressed || toolbar.isShown()) {
 			showToolbar();
 		}
 	}
@@ -1363,6 +1389,18 @@ public class CodeView extends View {
 		}
 		int offset = offsetAt(x, y);
 		return offset >= touched.start() && offset <= touched.end();
+	}
+
+	// Returns whether x and y of the view are on the text of a line, not
+	// past its end or below the last.
+	private boolean onText(float x, float y) {
+		Text text = document.text();
+		float top = y + getScrollY() - textTop();
+		int n = CodeGeometry.lineAt(y + getScrollY(), textTop(),
+				appearance.lineHeight, text.lineCount());
+		return top < text.lineCount() * appearance.lineHeight &&
+				x + getScrollX() - textLeft(text.lineCount()) <
+						layoutOf(n).width();
 	}
 
 	// Returns the offset nearest x and y of the view.
