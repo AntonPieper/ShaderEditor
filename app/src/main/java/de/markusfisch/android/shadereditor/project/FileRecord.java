@@ -27,11 +27,19 @@ final class FileRecord {
 	}
 
 	final ProjectPath path;
-	// What the view keeps for the document, and the revision and
-	// modified state its draft was last kept at.
+	// What the view keeps for the document; the revision and modified
+	// state its draft was last kept at, as the journal acknowledged it,
+	// and as last sent to it; why the last write failed, or null; and
+	// the tickets of the timers that flush it.
 	Object state;
+	Document.Listener listener;
 	int drafted;
 	boolean draftModified;
+	int sent;
+	boolean sentModified;
+	String failure;
+	int timer;
+	int limit;
 
 	private final List<Runnable> waiting = new ArrayList<>();
 	private Document document;
@@ -109,7 +117,7 @@ final class FileRecord {
 		}
 		this.document = document;
 		base = revision;
-		drafted = document.revision();
+		drafted = sent = document.revision();
 		return true;
 	}
 
@@ -131,8 +139,8 @@ final class FileRecord {
 				Math.min(selection.head(), text.length()));
 		document.markSaved(document.state());
 		base = revision;
-		drafted = document.revision();
-		draftModified = false;
+		drafted = sent = document.revision();
+		draftModified = sentModified = false;
 		document.endBatch();
 		return true;
 	}

@@ -140,7 +140,8 @@ public class FileTextsTest {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of("\r\ntwo"));
-		texts.draft(MAIN, document.text(), document.isModified(), base);
+		texts.draft(MAIN, document.text(), document.isModified(), base,
+				kept -> assertTrue(kept));
 		worker.run();
 
 		texts = new FileTexts(EditingSession.restore(store,
