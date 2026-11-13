@@ -55,6 +55,7 @@
 		<item name="shapeCornerSizeExtraLargeIncreased">@dimen/se_corner_container</item>
 		<item name="shapeCornerSizeExtraExtraLarge">@dimen/se_corner_container</item>
 		<item name="popupMenuBackground">@drawable/background_popup</item>
+		<item name="spinnerStyle">@style/Widget.ShaderEditor.Spinner</item>
 		<item name="materialButtonStyle">@style/Widget.ShaderEditor.Button</item>
 		<item name="materialButtonTonalStyle">@style/Widget.ShaderEditor.Button.TonalButton</item>
 		<item name="materialButtonOutlinedStyle">@style/Widget.ShaderEditor.Button.OutlinedButton</item>
@@ -197,6 +198,11 @@
 
 	<style name="CodeView">
 		<item name="android:scrollbars">vertical|horizontal</item>
+	</style>
+
+	<!-- A spinner's list floats like a menu -->
+	<style name="Widget.ShaderEditor.Spinner" parent="Widget.AppCompat.Spinner">
+		<item name="android:popupBackground">@drawable/background_popup</item>
 	</style>
 
 	<!-- Buttons are pills by default; here they take the one radius. -->
