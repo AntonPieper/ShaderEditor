@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.project;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -636,6 +637,44 @@ public final class OpenProject {
 	public FileTexts.Found found(ProjectPath path) {
 		FileRecord record = loaded(path);
 		return record != null ? record.found : null;
+	}
+
+	/**
+	 * Write the current text of each of paths, as its document, else its
+	 * draft, else storage has it, to the same path in destination, where
+	 * it must not exist yet; nothing of this project changes. done gets
+	 * by path null when it was written, else why not.
+	 */
+	public void copyTo(ProjectFiles destination, Collection<ProjectPath> paths,
+			Callback<Map<ProjectPath, String>> done) {
+		Map<ProjectPath, Text> texts = new HashMap<>();
+		for (ProjectPath path : paths) {
+			FileRecord record = loaded(path);
+			if (record != null) {
+				texts.put(path, record.document().text());
+			}
+		}
+		List<ProjectPath> copied = new ArrayList<>(paths);
+		worker.execute(() -> {
+			Map<ProjectPath, String> problems = new LinkedHashMap<>();
+			for (ProjectPath path : copied) {
+				Text text = texts.get(path);
+				Read read = text == null ? session.files().read(path) : null;
+				ProjectFiles.Change change;
+				if (text != null) {
+					change = destination.write(path,
+							out -> TextBytes.write(text, out), null);
+				} else if (read instanceof Content content) {
+					change = destination.write(path, content.bytes(), null);
+				} else {
+					problems.put(path, CapturedFiles.problem(path, read));
+					continue;
+				}
+				problems.put(path, change instanceof ProjectFiles.Refused
+						refused ? refused.reason() : null);
+			}
+			main.execute(() -> done.done(problems));
+		});
 	}
 
 	/**
