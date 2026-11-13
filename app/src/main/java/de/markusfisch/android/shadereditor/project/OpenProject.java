@@ -42,12 +42,15 @@ public final class OpenProject {
 			.value();
 
 	/**
-	 * How many documents without unsaved text stay in memory: those
-	 * opened or shown most recently, besides the one shown. Every
-	 * document with unsaved text stays; the others are dropped with
-	 * their undo history and opened again on demand.
+	 * The fewest and the most bytes the documents in memory may take
+	 * besides the one shown and the one used last, see {@link #budget}.
+	 * Beyond them documents are dropped with their undo history and
+	 * opened again on demand: those without unsaved text first, then
+	 * those whose unsaved text the journal holds, each the one used
+	 * least recently first.
 	 */
-	static final int KEPT_CLEAN = 4;
+	static final long MIN_BUDGET = 8L * 1024 * 1024;
+	static final long MAX_BUDGET = 32L * 1024 * 1024;
 
 	/**
 	 * How long after the last change of a file its text goes to the
@@ -187,6 +190,7 @@ public final class OpenProject {
 	// The only file of a project of one document, else null.
 	private final ProjectPath lone;
 	private final Storage storage;
+	private final long budget;
 	private Runnable release;
 	// Why the journal could not be made durable, or null.
 	private String unsynced;
@@ -209,8 +213,9 @@ public final class OpenProject {
 	private OpenProject(String id, ProjectFiles store,
 			ProjectSessions sessions, Journal journal,
 			ProjectSessions.Recent recent, Executor worker, Executor main,
-			Later later, ProjectPath lone, Storage storage) {
+			Later later, ProjectPath lone, Storage storage, long budget) {
 		this.id = id;
+		this.budget = budget;
 		this.lone = lone;
 		this.storage = storage;
 		name = recent != null ? recent.name() : null;
@@ -244,11 +249,12 @@ public final class OpenProject {
 	 * worker. lone is the only file of a project of one document, which
 	 * runs, else null. A store of null cannot be reached for problem:
 	 * the project opens with its unsaved text and tells that through
-	 * {@link #storage}.
+	 * {@link #storage}. budget is how many bytes the documents in
+	 * memory may take besides the one shown and the one used last.
 	 */
 	static OpenProject open(String id, ProjectFiles store, ProjectPath lone,
 			String problem, ProjectSessions sessions, Executor worker,
-			Executor main, Later later) {
+			Executor main, Later later, long budget) {
 		Journal journal = sessions.journal(id);
 		if (journal == null) {
 			return null;
@@ -273,7 +279,8 @@ public final class OpenProject {
 					: Access.READ_ONLY, null);
 		}
 		OpenProject project = new OpenProject(id, store, sessions, journal,
-				sessions.recent(id), worker, main, later, lone, storage);
+				sessions.recent(id), worker, main, later, lone, storage,
+				budget);
 		// After what earlier projects of the session still write.
 		worker.execute(journal::removeLeftovers);
 		for (Journal.Header header : journal.headers().values()) {
@@ -292,6 +299,15 @@ public final class OpenProject {
 
 	public String id() {
 		return id;
+	}
+
+	/**
+	 * Return how many bytes documents may take on a heap of heap bytes:
+	 * an eighth of it, within {@link #MIN_BUDGET} and
+	 * {@link #MAX_BUDGET}.
+	 */
+	public static long budget(long heap) {
+		return Math.max(MIN_BUDGET, Math.min(MAX_BUDGET, heap / 8));
 	}
 
 	/** Return whether the project's files can be read and changed. */
@@ -958,8 +974,8 @@ public final class OpenProject {
 				if (document.revision() != revision) {
 					revision = document.revision();
 					++generation;
-					// Clean again, it counts among the clean ones; not
-					// dropped while its listeners are called.
+					// Clean again, it is dropped first; not while its
+					// listeners are called.
 					if (!document.isModified()) {
 						main.execute(OpenProject.this::trim);
 					}
@@ -1076,30 +1092,69 @@ public final class OpenProject {
 	}
 
 	// Count path as opened or shown last and drop the documents beyond
-	// those kept.
+	// the budget.
 	private void use(ProjectPath path) {
 		recent.remove(path);
 		recent.add(path);
 		trim();
 	}
 
+	// Drop documents while those in memory besides the one shown and
+	// the one used last take more than the budget: those without
+	// unsaved text first, then those whose unsaved text the journal
+	// holds, each the one used least recently first. One with an
+	// operation in flight waits for its outcome, one the journal does
+	// not hold as it is yet for the journal.
 	private void trim() {
 		List<ProjectPath> paths = new ArrayList<>(recent);
-		int clean = 0;
-		for (int i = paths.size(); i-- > 0; ) {
-			ProjectPath path = paths.get(i);
+		ProjectPath last = paths.isEmpty() ? null : paths.get(
+				paths.size() - 1);
+		long used = 0;
+		for (ProjectPath path : paths) {
 			FileRecord record = loaded(path);
-			// One whose journal is not removed yet waits for it, one
-			// with an operation in flight for its outcome.
-			if (record == null || record.document().isModified() ||
-					!record.settled() || path.equals(shown) ||
-					++clean <= KEPT_CLEAN || record.pending() != null) {
-				continue;
+			if (record != null && !path.equals(shown) &&
+					!path.equals(last)) {
+				used += cost(record.document());
 			}
-			records.remove(path);
-			recent.remove(path);
-			record.drop().removeListener(record.listener);
 		}
+		for (int pass = 0; pass < 2 && used > budget; ++pass) {
+			for (ProjectPath path : paths) {
+				FileRecord record = loaded(path);
+				if (used <= budget) {
+					break;
+				} else if (record == null || path.equals(shown) ||
+						path.equals(last) || record.pending() != null ||
+						!record.settled() ||
+						record.document().isModified() != (pass > 0)) {
+					continue;
+				}
+				used -= cost(record.document());
+				drop(record);
+			}
+		}
+	}
+
+	// Drop the document of record; a file with unsaved text keeps its
+	// record, which opens it again from the journal.
+	private void drop(FileRecord record) {
+		recent.remove(record.path);
+		record.state = null;
+		record.runs = Runs.UNKNOWN;
+		record.runsRevision = record.runsAsked = -1;
+		record.drop().removeListener(record.listener);
+		if (!record.journaled) {
+			records.remove(record.path);
+		}
+	}
+
+	/**
+	 * Return about how many bytes document takes in memory: two for each
+	 * character of its text and of its undo history, one for each line.
+	 */
+	static long cost(Document document) {
+		Text text = document.text();
+		return 2L * text.length() + text.lineCount() +
+				2L * document.historyChars();
 	}
 
 	// Flush record after the delay since its last change, and at the

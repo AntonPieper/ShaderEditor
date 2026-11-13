@@ -153,6 +153,14 @@ public final class Document {
 		return bytes;
 	}
 
+	/**
+	 * Return how many characters the texts of the steps undo and redo
+	 * keep add up to.
+	 */
+	public int historyChars() {
+		return historyChars;
+	}
+
 	/** Return the current text. */
 	public Text text() {
 		return text;

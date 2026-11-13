@@ -21,13 +21,15 @@ final class LiveProjects {
 	private final Executor worker;
 	private final Executor main;
 	private final OpenProject.Later later;
+	private final long budget;
 
 	LiveProjects(ProjectSessions sessions, Executor worker, Executor main,
-			OpenProject.Later later) {
+			OpenProject.Later later, long budget) {
 		this.sessions = sessions;
 		this.worker = worker;
 		this.main = main;
 		this.later = later;
+		this.budget = budget;
 	}
 
 	/**
@@ -48,7 +50,7 @@ final class LiveProjects {
 				opened.problem() != null
 						? opened.problem()
 						: "it cannot be opened",
-				sessions, worker, main, later);
+				sessions, worker, main, later, budget);
 		if (project != null) {
 			OpenProject opening = project;
 			project.onClose(() -> close(id, opening));
