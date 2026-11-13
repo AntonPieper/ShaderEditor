@@ -59,7 +59,9 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * document through one TextInput per connection; a tap shows it.
  * A tap places the caret; a double tap selects a word; a long press
  * selects one and a drag after it extends the selection by words,
- * scrolling while the finger is near an edge.
+ * scrolling while the finger is near an edge. A selection made by touch
+ * has the platform's handles, which drag its ends; a tap shows the
+ * caret's handle until a while has passed or the text changes.
  * Given a KeyboardSession, it records the connections and, as actions,
  * every key event (action, key code, meta state, the text it types),
  * the text on the clipboard before a paste, a tap's selection, the
@@ -102,9 +104,12 @@ public class CodeView extends View {
 			InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
 
 	private static final long BLINK = 500;
+	// As the platform's insertion handle.
+	private static final long CARET_HANDLE = 4000;
 	private static final int HORIZONTAL = 1;
 	private static final int VERTICAL = 2;
 	private static final int DRAG_WORDS = 1;
+	private static final int DRAG_HANDLE = 2;
 
 	private final CodeAppearance appearance;
 	private final Paint fill = new Paint();
@@ -132,6 +137,11 @@ public class CodeView extends View {
 	};
 	private final Runnable blink = this::blink;
 	private final Runnable edgeScroll = this::edgeScroll;
+	private final Runnable hideCaretHandle = () -> {
+		caretHandle = false;
+		invalidate();
+	};
+	private final SelectionHandles handles;
 	private final TouchSelection touch = new TouchSelection(new Motion());
 	private final KeyCommands.Clipboard clipboard =
 			new KeyCommands.Clipboard() {
@@ -172,6 +182,10 @@ public class CodeView extends View {
 	private float dragX;
 	private float dragY;
 	private boolean edgeScrolling;
+	// From the finger to the place a dragged handle points at.
+	private float pointDx;
+	private float pointDy;
+	private boolean caretHandle;
 	// The selection the last touch made, while it is the document's.
 	private Document.Selection touched;
 	private boolean selecting;
@@ -228,6 +242,8 @@ public class CodeView extends View {
 		super(context, attrs, 0, R.style.CodeView);
 		appearance = new CodeAppearance(context);
 		cache = new LineCache(appearance);
+		handles = new SelectionHandles(context, appearance.handleColor,
+				getResources().getDimension(R.dimen.se_tap_target));
 		setFocusable(true);
 		setFocusableInTouchMode(true);
 		scroller = new OverScroller(context);
@@ -473,8 +489,13 @@ public class CodeView extends View {
 	@SuppressLint("ClickableViewAccessibility")
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
-		boolean handled = gestures.onTouchEvent(event);
 		int action = event.getActionMasked();
+		if (action == MotionEvent.ACTION_DOWN) {
+			dragging = 0;
+			grabHandle(event.getX(), event.getY());
+		}
+		boolean handled = dragging == DRAG_HANDLE ||
+				gestures.onTouchEvent(event);
 		if (dragging != 0 && document != null) {
 			dragX = event.getX();
 			dragY = event.getY();
@@ -483,6 +504,7 @@ public class CodeView extends View {
 			} else if (action == MotionEvent.ACTION_UP ||
 					action == MotionEvent.ACTION_CANCEL) {
 				dragging = 0;
+				showCaretHandle();
 				selectionShown();
 			}
 			return true;
@@ -646,6 +668,9 @@ public class CodeView extends View {
 	protected void onFocusChanged(boolean gainFocus, int direction,
 			@Nullable Rect previouslyFocusedRect) {
 		super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
+		if (!gainFocus) {
+			touched = null;
+		}
 		restartBlink();
 		invalidate();
 	}
@@ -675,6 +700,7 @@ public class CodeView extends View {
 			drawText(canvas);
 		}
 		drawCaret(canvas);
+		drawHandles(canvas);
 	}
 
 	@RequiresApi(Build.VERSION_CODES.Q)
@@ -1040,6 +1066,7 @@ public class CodeView extends View {
 		}
 		int offset = offsetAt(x, y);
 		select(offset, offset);
+		showCaretHandle();
 		requestFocus();
 		InputMethodManager imm = inputMethodManager();
 		if (imm != null) {
@@ -1070,7 +1097,30 @@ public class CodeView extends View {
 		startDrag(DRAG_WORDS, x, y);
 	}
 
+	// Starts dragging the handle at x, y of the view, if there is one.
+	private void grabHandle(float x, float y) {
+		int which = handles.at(x + getScrollX(), y + getScrollY());
+		if (which < 0 || touched == null) {
+			return;
+		}
+		int head = which == SelectionHandles.START
+				? touched.start()
+				: touched.end();
+		touch.dragChars(touched.isEmpty() ? head : touched.start() +
+				touched.end() - head, head);
+		// The handle points at the bottom of a line; the drag at its
+		// middle.
+		pointDx = handles.x(which) - getScrollX() - x;
+		pointDy = handles.y(which) - getScrollY() -
+				appearance.lineHeight / 2f - y;
+		handler.removeCallbacks(hideCaretHandle);
+		startDrag(DRAG_HANDLE, x, y);
+	}
+
 	private void startDrag(int what, float x, float y) {
+		if (what != DRAG_HANDLE) {
+			pointDx = pointDy = 0;
+		}
 		dragging = what;
 		dragX = x;
 		dragY = y;
@@ -1087,7 +1137,7 @@ public class CodeView extends View {
 	// near an edge.
 	private void dragSelection() {
 		Text text = document.text();
-		if (touch.dragTo(text, offsetAt(dragX, dragY))) {
+		if (touch.dragTo(text, offsetAt(dragX + pointDx, dragY + pointDy))) {
 			select(touch.anchor(), touch.head());
 		}
 		if (!edgeScrolling && (edgeStepX() != 0 || edgeStepY() != 0)) {
@@ -1147,6 +1197,56 @@ public class CodeView extends View {
 			selecting = false;
 		}
 		touched = document.selection();
+	}
+
+	private void showCaretHandle() {
+		handler.removeCallbacks(hideCaretHandle);
+		if (touched != null && touched.isEmpty()) {
+			caretHandle = true;
+			handler.postDelayed(hideCaretHandle, CARET_HANDLE);
+			invalidate();
+		}
+	}
+
+	// Draws the handles of the selection the last touch made, those
+	// whose place is in view.
+	private void drawHandles(Canvas canvas) {
+		handles.clear();
+		if (touched == null || (touched.isEmpty() && !caretHandle) ||
+				!isFocused()) {
+			return;
+		}
+		if (touched.isEmpty()) {
+			placeHandle(-1, touched.head());
+		} else {
+			placeHandle(SelectionHandles.START, touched.start());
+			placeHandle(SelectionHandles.END, touched.end());
+		}
+		handles.draw(canvas);
+	}
+
+	private void placeHandle(int which, int offset) {
+		Text text = document.text();
+		int n = text.lineOf(offset);
+		int scrollX = getScrollX();
+		int scrollY = getScrollY();
+		float textLeft = textLeft(text.lineCount());
+		float bottom = textTop() + (n + 1) * appearance.lineHeight;
+		if (bottom <= scrollY + insets.top ||
+				bottom > scrollY + getHeight() - insets.bottom) {
+			return;
+		}
+		float x = textLeft + layoutOf(n).xOf(offset - text.lineStart(n));
+		// Not under the line numbers.
+		if (x < scrollX + textLeft - 1 ||
+				x > scrollX + getWidth() - insets.right) {
+			return;
+		}
+		if (which < 0) {
+			handles.caret(x, bottom);
+		} else {
+			handles.end(which, x, bottom);
+		}
 	}
 
 	private void selectionShown() {
@@ -1258,6 +1358,8 @@ public class CodeView extends View {
 
 	private void disconnect() {
 		handler.removeCallbacks(blink);
+		handler.removeCallbacks(hideCaretHandle);
+		caretHandle = false;
 		if (connected) {
 			document.removeListener(listener);
 			work.stop();

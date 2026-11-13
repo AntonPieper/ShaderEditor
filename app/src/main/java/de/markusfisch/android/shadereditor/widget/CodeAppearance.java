@@ -39,6 +39,7 @@ final class CodeAppearance {
 	final int warningColor;
 	final int selectionColor;
 	final int caretColor;
+	final int handleColor;
 	final float caretWidth;
 	final float underline;
 	final float padding;
@@ -66,10 +67,12 @@ final class CodeAppearance {
 		warningColor = ContextCompat.getColor(context,
 				R.color.syntax_warning);
 		caretColor = ContextCompat.getColor(context, R.color.editor_caret);
-		TypedArray a = context.obtainStyledAttributes(
-				new int[]{android.R.attr.textColorHighlight});
+		TypedArray a = context.obtainStyledAttributes(new int[]{
+				android.R.attr.textColorHighlight,
+				androidx.appcompat.R.attr.colorPrimary});
 		try {
 			selectionColor = a.getColor(0, 0x6633b5e5);
+			handleColor = a.getColor(1, caretColor);
 		} finally {
 			a.recycle();
 		}
