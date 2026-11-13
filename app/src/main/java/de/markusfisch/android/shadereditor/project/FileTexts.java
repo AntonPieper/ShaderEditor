@@ -1,7 +1,5 @@
 package de.markusfisch.android.shadereditor.project;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.Executor;
 
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -33,10 +31,12 @@ public final class FileTexts {
 
 	/**
 	 * The text of a file for the editor: its draft when unsaved, else
-	 * the stored text. A document of unsaved text starts modified, with
-	 * {@code markSaved(-1)}.
+	 * the stored text, and the revision of the stored text it is based
+	 * on, null for none. A document of unsaved text starts modified,
+	 * with {@code markSaved(-1)}.
 	 */
-	public record Opened(Text text, boolean unsaved) implements Opening {
+	public record Opened(Text text, boolean unsaved, String revision)
+			implements Opening {
 	}
 
 	/** A file that cannot be edited; reason tells the user why. */
@@ -50,15 +50,10 @@ public final class FileTexts {
 	public record Save(int state, Outcome outcome) {
 	}
 
-	/**
-	 * The text of a file that changed elsewhere and the revision it was
-	 * read at, for {@link #rebase} once a document took the text.
-	 */
+	/** The text of a file that changed elsewhere and its revision. */
 	public record Changed(Text text, String revision) {
 	}
 
-	// The revision each opened file was read or saved at; worker only.
-	private final Map<ProjectPath, String> bases = new HashMap<>();
 	private final EditingSession session;
 	private final Executor worker;
 	private final Executor main;
@@ -84,17 +79,16 @@ public final class FileTexts {
 	}
 
 	/**
-	 * Save text, taken from the document at state, to path. Call with
-	 * the document's current text and state; the text is immutable, so
-	 * editing on meanwhile changes nothing of what is written.
+	 * Save text, taken from the document at state, to path, expecting
+	 * base, the revision the text came from, when there is no draft.
+	 * Call with the document's current text and state; the text is
+	 * immutable, so editing on meanwhile changes nothing of what is
+	 * written.
 	 */
-	public void save(ProjectPath path, Text text, int state,
+	public void save(ProjectPath path, Text text, int state, String base,
 			Callback<Save> done) {
 		worker.execute(() -> {
-			Outcome outcome = session.save(path, text, bases.get(path));
-			if (outcome instanceof EditingSession.Saved saved) {
-				bases.put(path, saved.revision());
-			}
+			Outcome outcome = session.save(path, text, base);
 			Save save = new Save(state, outcome);
 			main.execute(() -> done.done(save));
 		});
@@ -102,12 +96,14 @@ public final class FileTexts {
 
 	/**
 	 * Keep text as the draft of path when it is modified, else drop the
-	 * draft, so the text survives the process.
+	 * draft, so the text survives the process. base is the revision the
+	 * text came from, kept with a new draft.
 	 */
-	public void draft(ProjectPath path, Text text, boolean modified) {
+	public void draft(ProjectPath path, Text text, boolean modified,
+			String base) {
 		worker.execute(() -> {
 			if (modified) {
-				session.setDraft(path, text, bases.get(path));
+				session.setDraft(path, text, base);
 			} else {
 				session.clearDraft(path);
 			}
@@ -116,18 +112,16 @@ public final class FileTexts {
 
 	/**
 	 * Read path again for a document without unsaved text. done gets
-	 * the stored text when the file changed since it was opened or
-	 * saved, or null when it did not, has a draft or cannot be opened.
-	 * Saves stay based on what was opened until {@link #rebase}, so a
-	 * document edited meanwhile meets a conflict instead of
-	 * overwriting the change.
+	 * the stored text when it is not at base anymore, or null when it
+	 * is, path has a draft or cannot be opened.
 	 */
-	public void reread(ProjectPath path, Callback<Changed> done) {
+	public void reread(ProjectPath path, String base,
+			Callback<Changed> done) {
 		worker.execute(() -> {
 			Changed changed = null;
 			if (session.draft(path) == null &&
 					session.store().read(path) instanceof Content content &&
-					!content.revision().equals(bases.get(path))) {
+					!content.revision().equals(base)) {
 				Text text = decode(content.bytes());
 				changed = text != null
 						? new Changed(text, content.revision())
@@ -138,18 +132,13 @@ public final class FileTexts {
 		});
 	}
 
-	/** Base the next save of path on revision, as reread gave it. */
-	public void rebase(ProjectPath path, String revision) {
-		worker.execute(() -> bases.put(path, revision));
-	}
-
 	private Opening read(ProjectPath path, long size) {
 		if (path.getKind() == ProjectPath.Kind.IMAGE) {
 			return new Unopened(path + " is an image, not text");
 		}
 		Draft draft = session.draft(path);
 		if (draft != null) {
-			return new Opened(draft.text(), true);
+			return new Opened(draft.text(), true, draft.base());
 		}
 		if (size > MAX_BYTES) {
 			return tooLarge(path);
@@ -166,8 +155,7 @@ public final class FileTexts {
 		if (text == null) {
 			return new Unopened(path + " is not a text file");
 		}
-		bases.put(path, content.revision());
-		return new Opened(text, false);
+		return new Opened(text, false, content.revision());
 	}
 
 	// Return the text of bytes, or null when they are not text the

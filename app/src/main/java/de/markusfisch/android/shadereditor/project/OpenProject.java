@@ -85,32 +85,23 @@ public final class OpenProject {
 	public record Used(ProjectPath path, boolean image) {
 	}
 
-	// A file opened in the editor: its document, what the view keeps for
-	// it, and the revision and modified state its draft was last kept
-	// at.
-	private final class Doc implements Document.Listener {
-		private final Document document;
-		private Object state;
-		private int drafted;
-		private boolean draftModified;
-
-		private Doc(Document document) {
-			this.document = document;
-		}
-
-		@Override
-		public void onUpdate() {
-			changed();
-		}
-	}
-
 	// What the listener hears about.
 	private record State(Set<ProjectPath> unsaved, Set<ProjectPath> conflicts,
 			ProjectPath running, List<Used> used,
 			List<ProjectDiagnostic> diagnostics) {
 	}
 
-	private final Map<ProjectPath, Doc> docs = new HashMap<>();
+	// The files opened, being opened or worked on in storage.
+	private final Map<ProjectPath, FileRecord> records = new HashMap<>();
+	// The callbacks of the opens in flight, which later ones join.
+	private final Map<ProjectPath, List<Callback<String>>> opening =
+			new HashMap<>();
+	private final Document.Listener updates = new Document.Listener() {
+		@Override
+		public void onUpdate() {
+			changed();
+		}
+	};
 	// The paths of the documents, opened or shown most recently last.
 	private final Set<ProjectPath> recent = new LinkedHashSet<>();
 	private final Set<ProjectPath> keptEdits = new HashSet<>();
@@ -248,23 +239,21 @@ public final class OpenProject {
 	 * {@link #document} has it, or why it cannot be edited.
 	 */
 	public void load(ProjectPath path, long size, Callback<String> done) {
-		if (docs.containsKey(path)) {
+		if (loaded(path) != null) {
 			use(path);
 			main.execute(() -> done.done(null));
 			return;
 		}
-		texts.open(path, size, opening -> {
-			if (opening instanceof FileTexts.Unopened unopened) {
-				done.done(unopened.reason());
-				return;
-			}
-			if (!docs.containsKey(path)) {
-				add(path, (FileTexts.Opened) opening);
-			}
-			use(path);
-			changed();
-			done.done(null);
-		});
+		List<Callback<String>> joined = opening.get(path);
+		if (joined != null) {
+			joined.add(done);
+			return;
+		}
+		joined = new ArrayList<>();
+		joined.add(done);
+		opening.put(path, joined);
+		FileRecord record = record(path);
+		record.whenIdle(() -> open(record, size));
 	}
 
 	/**
@@ -272,8 +261,8 @@ public final class OpenProject {
 	 * history, while it is in memory, else null.
 	 */
 	public Document document(ProjectPath path) {
-		Doc doc = docs.get(path);
-		return doc != null ? doc.document : null;
+		FileRecord record = records.get(path);
+		return record != null ? record.document() : null;
 	}
 
 	/**
@@ -281,14 +270,14 @@ public final class OpenProject {
 	 * to, or null when it keeps nothing; it goes with the document.
 	 */
 	public Object editorState(ProjectPath path) {
-		Doc doc = docs.get(path);
-		return doc != null ? doc.state : null;
+		FileRecord record = loaded(path);
+		return record != null ? record.state : null;
 	}
 
 	public void setEditorState(ProjectPath path, Object state) {
-		Doc doc = docs.get(path);
-		if (doc != null) {
-			doc.state = state;
+		FileRecord record = loaded(path);
+		if (record != null) {
+			record.state = state;
 		}
 	}
 
@@ -306,7 +295,7 @@ public final class OpenProject {
 	 */
 	public Document show(ProjectPath path) {
 		shown = path;
-		if (docs.containsKey(path)) {
+		if (loaded(path) != null) {
 			use(path);
 		}
 		return document(path);
@@ -318,11 +307,14 @@ public final class OpenProject {
 	 */
 	public Set<ProjectPath> unsaved() {
 		Set<ProjectPath> unsaved = new LinkedHashSet<>(session.unsaved());
-		for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
-			if (entry.getValue().document.isModified()) {
-				unsaved.add(entry.getKey());
+		for (FileRecord record : records.values()) {
+			Document document = record.document();
+			if (document == null) {
+				continue;
+			} else if (document.isModified()) {
+				unsaved.add(record.path);
 			} else {
-				unsaved.remove(entry.getKey());
+				unsaved.remove(record.path);
 			}
 		}
 		return unsaved;
@@ -339,14 +331,18 @@ public final class OpenProject {
 			keptShown = show;
 			worker.execute(() -> sessions.setShown(id, show));
 		}
-		for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
-			Doc doc = entry.getValue();
-			boolean modified = doc.document.isModified();
-			if (doc.document.revision() != doc.drafted ||
-					modified != doc.draftModified) {
-				doc.drafted = doc.document.revision();
-				doc.draftModified = modified;
-				texts.draft(entry.getKey(), doc.document.text(), modified);
+		for (FileRecord record : records.values()) {
+			Document document = record.document();
+			if (document == null) {
+				continue;
+			}
+			boolean modified = document.isModified();
+			if (document.revision() != record.drafted ||
+					modified != record.draftModified) {
+				record.drafted = document.revision();
+				record.draftModified = modified;
+				texts.draft(record.path, document.text(), modified,
+						record.base());
 			}
 		}
 	}
@@ -381,22 +377,16 @@ public final class OpenProject {
 			}
 		};
 		for (ProjectPath path : unsaved()) {
-			Doc doc = docs.get(path);
-			Draft draft = doc == null ? session.draft(path) : null;
-			if (doc == null && draft == null) {
+			if (loaded(path) == null && session.draft(path) == null) {
 				continue;
 			}
 			outcomes.put(path, null);
 			++left[0];
-			texts.save(path, doc != null ? doc.document.text() : draft.text(),
-					doc != null ? doc.document.state() : -1, save -> {
-						if (save.outcome() instanceof Saved &&
-								doc != null && docs.get(path) == doc) {
-							doc.document.markSaved(save.state());
-						}
-						outcomes.put(path, save.outcome());
-						finished.run();
-					});
+			FileRecord record = record(path);
+			record.whenIdle(() -> save(record, save -> {
+				outcomes.put(path, save != null ? save.outcome() : null);
+				finished.run();
+			}));
 		}
 		main.execute(finished);
 	}
@@ -424,22 +414,11 @@ public final class OpenProject {
 			session.refresh();
 		});
 		Set<ProjectPath> reread = new HashSet<>();
-		for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
-			ProjectPath path = entry.getKey();
-			Doc doc = entry.getValue();
-			int revision = doc.document.revision();
-			if (doc.document.isModified()) {
-				continue;
+		for (FileRecord record : new ArrayList<>(records.values())) {
+			Document document = record.document();
+			if (document != null && !document.isModified()) {
+				record.whenIdle(() -> check(record, reread));
 			}
-			texts.reread(path, changed -> {
-				// Unless it was edited meanwhile.
-				if (changed != null && docs.get(path) == doc &&
-						doc.document.revision() == revision) {
-					takeStored(doc, changed.text());
-					texts.rebase(path, changed.revision());
-					reread.add(path);
-				}
-			});
 		}
 		updateRunning(() -> done.done(reread));
 	}
@@ -451,28 +430,8 @@ public final class OpenProject {
 	 */
 	public void reload(ProjectPath path, Callback<String> done) {
 		keptEdits.remove(path);
-		Doc doc = docs.get(path);
-		if (doc != null) {
-			doc.drafted = doc.document.revision();
-			doc.draftModified = false;
-		}
-		texts.draft(path, Text.EMPTY, false);
-		texts.open(path, ProjectFiles.UNKNOWN, opening -> {
-			String problem = null;
-			if (opening instanceof FileTexts.Opened opened) {
-				Doc current = docs.get(path);
-				if (current == null) {
-					add(path, opened);
-					use(path);
-				} else {
-					takeStored(current, opened.text());
-				}
-			} else {
-				problem = ((FileTexts.Unopened) opening).reason();
-			}
-			changed();
-			done.done(problem);
-		});
+		FileRecord record = record(path);
+		record.whenIdle(() -> reload(record, done));
 	}
 
 	/**
@@ -589,10 +548,11 @@ public final class OpenProject {
 	 * whose own text defines main. Reads only that text, once.
 	 */
 	public boolean canRun(ProjectPath path) {
-		Doc doc = path.getKind() == ProjectPath.Kind.SHADER
-				? docs.get(path)
+		FileRecord record = path.getKind() == ProjectPath.Kind.SHADER
+				? loaded(path)
 				: null;
-		return doc != null && definesMain(doc.document.text().toString());
+		return record != null &&
+				definesMain(record.document().text().toString());
 	}
 
 	/** Keep the diagnostics of the last build of what runs. */
@@ -658,14 +618,137 @@ public final class OpenProject {
 		return errors;
 	}
 
-	private void add(ProjectPath path, FileTexts.Opened opened) {
-		Doc doc = new Doc(new Document(opened.text()));
-		if (opened.unsaved()) {
-			doc.document.markSaved(-1);
-			doc.draftModified = true;
+	// Return the record of path, made when there is none.
+	private FileRecord record(ProjectPath path) {
+		FileRecord record = records.get(path);
+		if (record == null) {
+			record = new FileRecord(path);
+			records.put(path, record);
 		}
-		doc.document.addListener(doc);
-		docs.put(path, doc);
+		return record;
+	}
+
+	// Return the record of path while its document is in memory.
+	private FileRecord loaded(ProjectPath path) {
+		FileRecord record = records.get(path);
+		return record != null && record.document() != null ? record : null;
+	}
+
+	// End request of record and forget the record when it has nothing
+	// left to keep.
+	private void end(FileRecord record, FileRecord.Request request) {
+		record.end(request);
+		if (record.document() == null && record.pending() == null &&
+				records.get(record.path) == record) {
+			records.remove(record.path);
+		}
+	}
+
+	private void open(FileRecord record, long size) {
+		FileRecord.Request request = record.start(FileRecord.Kind.OPEN);
+		ProjectPath path = record.path;
+		texts.open(path, size, opened -> {
+			String problem = null;
+			if (opened instanceof FileTexts.Unopened unopened) {
+				problem = unopened.reason();
+			} else {
+				take(record, request, (FileTexts.Opened) opened);
+			}
+			List<Callback<String>> joined = opening.remove(path);
+			end(record, request);
+			changed();
+			if (joined != null) {
+				for (Callback<String> done : joined) {
+					done.done(problem);
+				}
+			}
+		});
+	}
+
+	// Give record a document of opened, unless it has one.
+	private void take(FileRecord record, FileRecord.Request request,
+			FileTexts.Opened opened) {
+		Document document = new Document(opened.text());
+		if (opened.unsaved()) {
+			document.markSaved(-1);
+		}
+		if (records.get(record.path) == record &&
+				record.adoptOpened(request, document, opened.revision())) {
+			record.draftModified = opened.unsaved();
+			document.addListener(updates);
+			use(record.path);
+		}
+	}
+
+	// Save the text the document of record or its draft has now; done
+	// gets the save, or null when there was nothing to save.
+	private void save(FileRecord record, Callback<FileTexts.Save> done) {
+		FileRecord.Request request = record.start(FileRecord.Kind.SAVE);
+		ProjectPath path = record.path;
+		Document document = record.document();
+		Draft draft = document == null ? session.draft(path) : null;
+		if (document == null && draft == null) {
+			end(record, request);
+			done.done(null);
+			return;
+		}
+		texts.save(path, document != null ? document.text() : draft.text(),
+				document != null ? document.state() : -1, request.base(),
+				save -> {
+					if (save.outcome() instanceof Saved saved &&
+							records.get(path) == record) {
+						record.adoptSaved(request, save.state(),
+								saved.revision());
+					}
+					end(record, request);
+					done.done(save);
+				});
+	}
+
+	// Give the document of record the stored text when it changed and
+	// the document is not edited before it arrives.
+	private void check(FileRecord record, Set<ProjectPath> reread) {
+		FileRecord.Request request = record.start(FileRecord.Kind.CHECK);
+		Document document = record.document();
+		if (document == null || document.isModified()) {
+			end(record, request);
+			return;
+		}
+		texts.reread(record.path, request.base(), changed -> {
+			if (changed != null && records.get(record.path) == record &&
+					record.adoptStored(request, changed.text(),
+							changed.revision())) {
+				reread.add(record.path);
+			}
+			end(record, request);
+		});
+	}
+
+	private void reload(FileRecord record, Callback<String> done) {
+		FileRecord.Request request = record.start(FileRecord.Kind.RELOAD);
+		ProjectPath path = record.path;
+		if (record.document() != null) {
+			record.drafted = record.document().revision();
+			record.draftModified = false;
+		}
+		texts.draft(path, Text.EMPTY, false, null);
+		texts.open(path, ProjectFiles.UNKNOWN, opening -> {
+			String problem = null;
+			if (opening instanceof FileTexts.Opened opened) {
+				if (record.document() == null) {
+					take(record, request, opened);
+				} else if (records.get(path) == record) {
+					// Typing that came after the request stays.
+					record.adoptStored(request, opened.text(),
+							opened.revision());
+				}
+			} else {
+				problem = ((FileTexts.Unopened) opening).reason();
+			}
+			end(record, request);
+			changed();
+			done.done(problem);
+		});
 	}
 
 	// Count path as opened or shown last and drop the documents beyond
@@ -681,38 +764,26 @@ public final class OpenProject {
 		int clean = 0;
 		for (int i = paths.size(); i-- > 0; ) {
 			ProjectPath path = paths.get(i);
-			Doc doc = docs.get(path);
-			// One whose draft is not dropped yet waits for persist.
-			if (doc == null || doc.document.isModified() ||
-					doc.draftModified || path.equals(shown) ||
-					++clean <= KEPT_CLEAN) {
+			FileRecord record = loaded(path);
+			// One whose draft is not dropped yet waits for persist, one
+			// with an operation in flight for its outcome.
+			if (record == null || record.document().isModified() ||
+					record.draftModified || path.equals(shown) ||
+					++clean <= KEPT_CLEAN || record.pending() != null) {
 				continue;
 			}
-			docs.remove(path);
+			records.remove(path);
 			recent.remove(path);
-			doc.document.removeListener(doc);
+			record.drop().removeListener(updates);
 		}
-	}
-
-	// Give the document the stored text as one change that can be
-	// undone, keeping the selection where it can.
-	private void takeStored(Doc doc, Text text) {
-		Document document = doc.document;
-		Document.Selection selection = document.selection();
-		document.beginBatch();
-		document.replace(0, document.text().length(), text);
-		document.select(Math.min(selection.anchor(), text.length()),
-				Math.min(selection.head(), text.length()));
-		document.markSaved(document.state());
-		document.endBatch();
-		doc.drafted = document.revision();
-		doc.draftModified = false;
 	}
 
 	private Map<ProjectPath, Text> snapshot() {
 		Map<ProjectPath, Text> snapshot = new HashMap<>();
-		for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
-			snapshot.put(entry.getKey(), entry.getValue().document.text());
+		for (FileRecord record : records.values()) {
+			if (record.document() != null) {
+				snapshot.put(record.path, record.document().text());
+			}
 		}
 		return snapshot;
 	}

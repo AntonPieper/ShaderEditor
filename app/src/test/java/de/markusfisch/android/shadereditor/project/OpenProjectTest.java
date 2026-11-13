@@ -18,13 +18,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 import de.markusfisch.android.shadereditor.editor.Document;
@@ -52,8 +51,9 @@ public class OpenProjectTest {
 	@Rule
 	public final TemporaryFolder temp = new TemporaryFolder();
 
-	private final Queue worker = new Queue();
-	private final Queue main = new Queue();
+	private final Steps steps = new Steps();
+	private final Steps.Queue worker = steps.worker;
+	private final Steps.Queue main = steps.main;
 	private File root;
 	private File sessionsDir;
 	private String id;
@@ -317,6 +317,80 @@ public class OpenProjectTest {
 		a.undo();
 		assertEquals("mine", a.text().toString());
 		assertEquals(Set.of(path("a.glsl")), project.unsaved());
+	}
+
+	@Test
+	public void openAgainJoinsTheFirstSoAChangeElsewhereConflicts()
+			throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open();
+		List<String> problems = new ArrayList<>();
+		project.load(path("a.glsl"), ProjectFiles.UNKNOWN, problems::add);
+		worker.run();
+		write("a.glsl", "theirs");
+		project.load(path("a.glsl"), ProjectFiles.UNKNOWN, problems::add);
+		worker.run();
+		main.run();
+		assertEquals(Arrays.asList(null, null), problems);
+		Document a = project.document(path("a.glsl"));
+		assertEquals("stored", a.text().toString());
+
+		edit(project, a, "mine");
+
+		assertTrue(save(project, false).get(path("a.glsl")) instanceof
+				Conflict);
+		assertEquals("theirs", read("a.glsl"));
+		assertEquals("mine", a.text().toString());
+	}
+
+	@Test
+	public void reloadKeepsTypingThatCameBeforeItsResult()
+			throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open();
+		Document a = document(project, "a.glsl");
+		edit(project, a, "mine");
+		project.persist();
+		settle();
+		write("a.glsl", "theirs");
+		project.reload(path("a.glsl"), problem -> {
+		});
+		worker.run();
+
+		edit(project, a, "later");
+		settle();
+
+		assertEquals("later", a.text().toString());
+		assertTrue(a.isModified());
+		assertEquals(Set.of(path("a.glsl")), project.unsaved());
+		assertTrue(save(project, false).get(path("a.glsl")) instanceof
+				Conflict);
+		assertEquals("theirs", read("a.glsl"));
+	}
+
+	@Test
+	public void listenerThatEditsWhileTheStoredTextIsTakenSaves()
+			throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open();
+		Document a = document(project, "a.glsl");
+		write("a.glsl", "theirs");
+		a.addListener(new Document.Listener() {
+			@Override
+			public void onUpdate() {
+				if (a.text().toString().equals("theirs")) {
+					edit(project, a, "mine");
+					project.persist();
+				}
+			}
+		});
+
+		assertEquals(Set.of(path("a.glsl")), refresh(project));
+
+		assertEquals("mine", a.text().toString());
+		assertTrue(save(project, false).get(path("a.glsl")) instanceof
+				Saved);
+		assertEquals("mine", read("a.glsl"));
 	}
 
 	@Test
@@ -752,12 +826,8 @@ public class OpenProjectTest {
 				worker, main);
 	}
 
-	// Run what the worker and the main thread were given until both are
-	// idle.
 	private void settle() {
-		while (worker.run() | main.run()) {
-			// Again: a task may have posted another.
-		}
+		steps.settle();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -886,25 +956,6 @@ public class OpenProjectTest {
 			return path.equals(failing)
 					? new Refused(Refusal.FAILED, "the card was removed")
 					: files.write(path, bytes, expectedRevision);
-		}
-	}
-
-	private static final class Queue implements Executor {
-		private final ArrayDeque<Runnable> tasks = new ArrayDeque<>();
-
-		@Override
-		public void execute(Runnable task) {
-			tasks.add(task);
-		}
-
-		// Run every task given so far and those they give; return
-		// whether there was any.
-		boolean run() {
-			boolean ran = false;
-			for (Runnable task; (task = tasks.poll()) != null; ran = true) {
-				task.run();
-			}
-			return ran;
 		}
 	}
 }
