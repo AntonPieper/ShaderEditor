@@ -44,6 +44,14 @@ public final class OpenProject {
 			.value();
 
 	/**
+	 * How many documents without unsaved text stay in memory: those
+	 * opened or shown most recently, besides the one shown. Every
+	 * document with unsaved text stays; the others are dropped with
+	 * their undo history and opened again on demand.
+	 */
+	static final int KEPT_CLEAN = 4;
+
+	/**
 	 * A file or folder in a folder of the project, with its size and
 	 * time of last change as the listing told them, or
 	 * {@link ProjectFiles#UNKNOWN}.
@@ -100,6 +108,8 @@ public final class OpenProject {
 	}
 
 	private final Map<ProjectPath, Doc> docs = new HashMap<>();
+	// The paths of the documents, opened or shown most recently last.
+	private final Set<ProjectPath> recent = new LinkedHashSet<>();
 	private final Set<ProjectPath> keptEdits = new HashSet<>();
 	private final String id;
 	private final String name;
@@ -236,6 +246,7 @@ public final class OpenProject {
 	 */
 	public void load(ProjectPath path, long size, Callback<String> done) {
 		if (docs.containsKey(path)) {
+			use(path);
 			main.execute(() -> done.done(null));
 			return;
 		}
@@ -247,6 +258,7 @@ public final class OpenProject {
 			if (!docs.containsKey(path)) {
 				add(path, (FileTexts.Opened) opening);
 			}
+			use(path);
 			changed();
 			done.done(null);
 		});
@@ -291,6 +303,9 @@ public final class OpenProject {
 	 */
 	public Document show(ProjectPath path) {
 		shown = path;
+		if (docs.containsKey(path)) {
+			use(path);
+		}
 		return document(path);
 	}
 
@@ -357,6 +372,7 @@ public final class OpenProject {
 		int[] left = {1};
 		Runnable finished = () -> {
 			if (--left[0] == 0) {
+				trim();
 				changed();
 				done.done(outcomes);
 			}
@@ -444,6 +460,7 @@ public final class OpenProject {
 				Doc current = docs.get(path);
 				if (current == null) {
 					add(path, opened);
+					use(path);
 				} else {
 					takeStored(current, opened.text());
 				}
@@ -646,6 +663,32 @@ public final class OpenProject {
 		}
 		doc.document.addListener(doc);
 		docs.put(path, doc);
+	}
+
+	// Count path as opened or shown last and drop the documents beyond
+	// those kept.
+	private void use(ProjectPath path) {
+		recent.remove(path);
+		recent.add(path);
+		trim();
+	}
+
+	private void trim() {
+		List<ProjectPath> paths = new ArrayList<>(recent);
+		int clean = 0;
+		for (int i = paths.size(); i-- > 0; ) {
+			ProjectPath path = paths.get(i);
+			Doc doc = docs.get(path);
+			// One whose draft is not dropped yet waits for persist.
+			if (doc == null || doc.document.isModified() ||
+					doc.draftModified || path.equals(shown) ||
+					++clean <= KEPT_CLEAN) {
+				continue;
+			}
+			docs.remove(path);
+			recent.remove(path);
+			doc.document.removeListener(doc);
+		}
 	}
 
 	// Give the document the stored text as one change that can be

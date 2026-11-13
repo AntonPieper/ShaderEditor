@@ -396,6 +396,53 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void keepsModifiedDocumentsAndTheCleanOnesUsedLast()
+			throws IOException {
+		OpenProject project = open();
+		Document edited = document(project, "edited.glsl", "e");
+		edit(project, edited, "edited");
+		Document shown = document(project, "shown.glsl", "s");
+		project.show(path("shown.glsl"));
+		List<Document> clean = new ArrayList<>();
+		for (int i = 0; i <= OpenProject.KEPT_CLEAN; ++i) {
+			clean.add(document(project, i + ".glsl", "" + i));
+		}
+
+		assertNull(project.document(path("0.glsl")));
+		for (int i = 1; i <= OpenProject.KEPT_CLEAN; ++i) {
+			assertSame(clean.get(i), project.document(path(i + ".glsl")));
+		}
+		assertSame(edited, project.document(path("edited.glsl")));
+		assertSame(shown, project.document(path("shown.glsl")));
+		Document reopened = document(project, "0.glsl");
+		assertNotSame(clean.get(0), reopened);
+		assertEquals("0", reopened.text().toString());
+		assertNull(project.document(path("1.glsl")));
+		assertEquals(Set.of(path("edited.glsl")), project.unsaved());
+	}
+
+	@Test
+	public void keepsACleanDocumentUntilItsDraftIsDropped()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "a");
+		edit(project, a, "a!");
+		project.persist();
+		settle();
+		a.undo();
+		for (int i = 0; i <= OpenProject.KEPT_CLEAN; ++i) {
+			document(project, i + ".glsl", "" + i);
+		}
+
+		assertSame(a, project.document(path("a.glsl")));
+		assertTrue(project.unsaved().isEmpty());
+		project.persist();
+		document(project, "x.glsl", "x");
+		assertNull(project.document(path("a.glsl")));
+		assertTrue(open().unsaved().isEmpty());
+	}
+
+	@Test
 	public void listsOneFolderAtATimeFoldersFirst() throws IOException {
 		write("zeta.glsl", "z");
 		write("Alpha.png", "p");
