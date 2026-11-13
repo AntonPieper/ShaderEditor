@@ -41,13 +41,12 @@
 	<string name="save_battery">省电模式</string>
 	<string name="save_battery_summary">电池电量低时停止渲染</string>
 	<string name="sort_by_last_modification">按修改时间排序</string>
-	<string name="sensors">传感器</string>
 	<string name="sensor_delay">传感器延迟</string>
 	<string name="no_shader_selected">未选择着色器</string>
 	<string name="shader">着色器</string>
-	<string name="editor">编辑器</string>
 	<string name="keyboard">Keyboard</string>
-	<string name="running_and_saving">Running and saving</string>
+	<string name="running">运行</string>
+	<string name="shaders">着色器</string>
 	<string name="run_mode">调试运行模式</string>
 	<string name="update_delay">自动运行延迟</string>
 	<string name="text_size">字体大小</string>

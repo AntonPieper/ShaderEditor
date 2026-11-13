@@ -41,13 +41,12 @@
 	<string name="save_battery">省电模式</string>
 	<string name="save_battery_summary">電池電量低時停止渲染</string>
 	<string name="sort_by_last_modification">按最後修改時間排序</string>
-	<string name="sensors">感應器</string>
 	<string name="sensor_delay">感應器延遲</string>
 	<string name="no_shader_selected">未選取著色器</string>
 	<string name="shader">著色器</string>
-	<string name="editor">編輯器</string>
 	<string name="keyboard">Keyboard</string>
-	<string name="running_and_saving">Running and saving</string>
+	<string name="running">執行</string>
+	<string name="shaders">著色器</string>
 	<string name="run_mode">執行模式</string>
 	<string name="update_delay">更新延遲</string>
 	<string name="text_size">字型大小</string>

@@ -44,13 +44,12 @@
 	<string name="save_battery">Экономить батарею</string>
 	<string name="save_battery_summary">Прекратить отрисовку при низком заряде аккамулятора</string>
 	<string name="sort_by_last_modification">Сортировать по недавним изменениям</string>
-	<string name="sensors">Сенсоры</string>
 	<string name="sensor_delay">Задержка сенсоров</string>
 	<string name="no_shader_selected">Шейдер не выбран</string>
 	<string name="shader">Шейдер</string>
-	<string name="editor">Редактор</string>
 	<string name="keyboard">Keyboard</string>
-	<string name="running_and_saving">Running and saving</string>
+	<string name="running">Запуск</string>
+	<string name="shaders">Шейдеры</string>
 	<string name="run_mode">Режим исполнения</string>
 	<string name="update_delay">Задержка в обновлении</string>
 	<string name="text_size">Размер шрифта</string>
