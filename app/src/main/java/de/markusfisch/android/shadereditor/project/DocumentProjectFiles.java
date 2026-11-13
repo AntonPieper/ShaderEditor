@@ -82,6 +82,11 @@ public final class DocumentProjectFiles implements ProjectFiles {
 
 	@Override
 	public Read read(ProjectPath path) {
+		return read(path, Long.MAX_VALUE);
+	}
+
+	@Override
+	public Read read(ProjectPath path, long limit) {
 		if (!this.path.equals(path)) {
 			// A lone document has no manifest beside it.
 			return ProjectManifest.FILE.equals(path)
@@ -89,8 +94,10 @@ public final class DocumentProjectFiles implements ProjectFiles {
 					: new Failed(OPEN_FOLDER);
 		}
 		try {
-			byte[] bytes = resolver.read(id);
-			return new Content(bytes, SafProjectFiles.revision(bytes));
+			byte[] bytes = resolver.read(id, limit);
+			return bytes != null
+					? new Content(bytes, SafProjectFiles.revision(bytes))
+					: new Failed(TOO_LARGE);
 		} catch (IOException | RuntimeException e) {
 			return new Failed(SafProjectFiles.reason(e, LOST_FILE));
 		} catch (OutOfMemoryError e) {

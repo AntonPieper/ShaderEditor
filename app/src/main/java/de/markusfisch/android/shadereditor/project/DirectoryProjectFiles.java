@@ -366,19 +366,28 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 	private static byte[] readBytes(File file, long limit)
 			throws IOException {
 		try (InputStream in = new FileInputStream(file)) {
-			ByteArrayOutputStream out = new ByteArrayOutputStream(
-					(int) Math.min(Math.min(file.length(), limit), 1 << 20));
-			byte[] buffer = new byte[8192];
-			long total = 0;
-			for (int n; (n = in.read(buffer)) > -1; ) {
-				total += n;
-				if (total > limit) {
-					return null;
-				}
-				out.write(buffer, 0, n);
-			}
-			return out.toByteArray();
+			return readBytes(in, file.length(), limit);
 		}
+	}
+
+	/**
+	 * Return the bytes in, of about length, has, or null as soon as
+	 * there are more than limit.
+	 */
+	static byte[] readBytes(InputStream in, long length, long limit)
+			throws IOException {
+		ByteArrayOutputStream out = new ByteArrayOutputStream(
+				(int) Math.min(Math.min(length, limit), 1 << 20));
+		byte[] buffer = new byte[8192];
+		long total = 0;
+		for (int n; (n = in.read(buffer)) > -1; ) {
+			total += n;
+			if (total > limit) {
+				return null;
+			}
+			out.write(buffer, 0, n);
+		}
+		return out.toByteArray();
 	}
 
 	private static String revision(byte[] bytes) throws IOException {

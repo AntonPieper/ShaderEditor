@@ -65,6 +65,16 @@ public class DocumentProjectFilesTest {
 	}
 
 	@Test
+	public void refusesTheDocumentOverTheLimitAsked() {
+		ProjectPath wave = files.getPath();
+
+		assertEquals(new Failed(ProjectFiles.TOO_LARGE),
+				files.read(wave, 13));
+		assertEquals("void main() {}", text(((Content) files.read(wave, 14))
+				.bytes()));
+	}
+
+	@Test
 	public void runsAloneAndAsksForTheFolderForAnInclude() {
 		Preparation alone = Preparation.prepare(files, files.getPath(),
 				ProjectLimits.DEFAULT, BuiltinNames.ALL);

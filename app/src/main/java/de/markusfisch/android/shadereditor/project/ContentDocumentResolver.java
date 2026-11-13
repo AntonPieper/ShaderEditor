@@ -7,7 +7,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
 
-import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -88,17 +87,12 @@ public final class ContentDocumentResolver implements DocumentResolver {
 	}
 
 	@Override
-	public byte[] read(String id) throws IOException {
+	public byte[] read(String id, long limit) throws IOException {
 		try (InputStream in = resolver.openInputStream(uri(id))) {
 			if (in == null) {
 				throw new FileNotFoundException(id);
 			}
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buffer = new byte[8192];
-			for (int n; (n = in.read(buffer)) > -1; ) {
-				out.write(buffer, 0, n);
-			}
-			return out.toByteArray();
+			return DirectoryProjectFiles.readBytes(in, 8192, limit);
 		}
 	}
 
