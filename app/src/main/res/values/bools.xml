@@ -1,4 +1,6 @@
 <resources>
 	<!-- The development gate of project mode: on only in debug builds. -->
 	<bool name="project_mode">false</bool>
+	<!-- Whether the device has colours the accent can follow -->
+	<bool name="device_colours">false</bool>
 </resources>
