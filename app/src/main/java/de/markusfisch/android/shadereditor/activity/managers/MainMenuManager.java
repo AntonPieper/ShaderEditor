@@ -167,6 +167,7 @@ public class MainMenuManager {
 		View contentView = popupWindow.getContentView();
 		contentView.measure(View.MeasureSpec.UNSPECIFIED,
 				View.MeasureSpec.UNSPECIFIED);
+		popupWindow.setWidth(contentView.getMeasuredWidth());
 		popupWindow.setHeight(Math.min(maxHeight,
 				contentView.getMeasuredHeight()));
 		popupWindow.showAsDropDown(anchor,
