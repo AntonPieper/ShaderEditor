@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.CRC32;
 
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 
@@ -50,7 +51,7 @@ final class Journal {
 	 * What a journal holds: its header, the text as of its last good
 	 * record and the revision of that record. text is null and problem
 	 * tells why when the header or the snapshot is damaged. tooLarge
-	 * tells that the text is over {@link FileTexts#MAX_BYTES}; it is
+	 * tells that the text is over {@link Document#MAX_BYTES}; it is
 	 * recovered all the same.
 	 */
 	record Recovered(Header header, Text text, int revision, String problem,
@@ -218,7 +219,7 @@ final class Journal {
 			tails.put(path, new Tail(revision, length, bytes.length,
 					records));
 			return new Recovered(header, text, revision, null,
-					TextBytes.length(text) > FileTexts.MAX_BYTES);
+					TextBytes.length(text) > Document.MAX_BYTES);
 		} catch (IOException | RuntimeException e) {
 			return damaged(path, "it cannot be read");
 		}

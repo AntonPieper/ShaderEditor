@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.editor;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -52,6 +53,41 @@ public class DocumentTest {
 		});
 		document.replace(1, 1, Text.of("x"));
 		assertEquals(List.of("ab>axb"), seen);
+	}
+
+	@Test
+	public void refusesAnEditThatWouldGrowTheTextPastTheLimit() {
+		int limit = (int) Document.MAX_BYTES;
+		Document document = new Document(Text.of("x".repeat(limit - 2)));
+		List<String> refused = new ArrayList<>();
+		document.addListener(new Document.Listener() {
+			@Override
+			public void onRefused(String reason) {
+				refused.add(reason);
+			}
+		});
+
+		assertTrue(document.type(0, 0, Text.of("\u00e9")));
+		assertFalse(document.type(0, 0, Text.of("y")));
+
+		assertEquals(List.of("the text would be larger than 16 MiB"),
+				refused);
+		assertEquals(limit - 1, document.text().length());
+		assertEquals(1, document.revision());
+		assertTrue(document.replace(0, 1, Text.of("z")));
+		assertTrue(document.type(0, 0, Text.of("y")));
+		assertEquals(1, refused.size());
+		assertEquals(8, Document.bytes(Text.of("a\n\u00e9\uD83D\uDE00")));
+	}
+
+	@Test
+	public void textOverTheLimitMayShrinkButNotGrow() {
+		Document document = new Document(Text.of("x".repeat(
+				(int) Document.MAX_BYTES + 2)));
+
+		assertTrue(document.replace(0, 1, Text.EMPTY));
+		assertFalse(document.replace(0, 0, Text.of("y")));
+		assertTrue(document.replace(0, 1, Text.of("y")));
 	}
 
 	@Test

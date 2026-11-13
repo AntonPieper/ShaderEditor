@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.Journal.Appended;
 import de.markusfisch.android.shadereditor.project.Journal.Change;
@@ -204,7 +205,7 @@ public class JournalTest {
 
 	@Test
 	public void textOverTheLimitIsRecoveredButTooLarge() {
-		String text = "x".repeat((int) FileTexts.MAX_BYTES + 1);
+		String text = "x".repeat((int) Document.MAX_BYTES + 1);
 		assertTrue(journal.snapshot(HEADER, 0, Text.of(text)));
 
 		Recovered recovered = new Journal(dir).read(A);

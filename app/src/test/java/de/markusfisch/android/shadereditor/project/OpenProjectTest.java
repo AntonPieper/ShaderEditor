@@ -158,7 +158,7 @@ public class OpenProjectTest {
 
 		assertNull(open(huge).running());
 
-		assertEquals(List.of(FileTexts.MAX_BYTES, FileTexts.MAX_BYTES),
+		assertEquals(List.of(Document.MAX_BYTES, Document.MAX_BYTES),
 				limits);
 	}
 
@@ -1340,7 +1340,7 @@ public class OpenProjectTest {
 		assertEquals("notes", text(project, "notes.txt"));
 		assertEquals("big.glsl is larger than 16 MiB",
 				this.<String>await(done -> project.load(path("big.glsl"),
-						FileTexts.MAX_BYTES + 1, done)));
+						Document.MAX_BYTES + 1, done)));
 		assertNull(load(project, "big.glsl"));
 	}
 

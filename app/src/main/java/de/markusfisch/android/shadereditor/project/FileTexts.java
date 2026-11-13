@@ -19,9 +19,6 @@ import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
  * at a time, in the order given; results are posted to main.
  */
 public final class FileTexts {
-	/** The largest file, in bytes, that is opened for editing. */
-	public static final long MAX_BYTES = 16L * 1024 * 1024;
-
 	public interface Callback<T> {
 		void done(T result);
 	}
@@ -33,12 +30,13 @@ public final class FileTexts {
 	/**
 	 * The text of a file for the editor: its journal's when unsaved,
 	 * else the stored text; the revision of the stored text it is based
-	 * on, null for none; and the revision of the journal it came from,
-	 * -1 for none. A document of unsaved text starts modified, with
+	 * on, null for none; the revision of the journal it came from, -1
+	 * for none; and its bytes, as {@link Document#bytes} counts them. A
+	 * document of unsaved text starts modified, with
 	 * {@code markSaved(-1)}.
 	 */
 	public record Opened(Text text, boolean unsaved, String revision,
-			int journal) implements Opening {
+			int journal, long bytes) implements Opening {
 	}
 
 	/** A file that cannot be edited; reason tells the user why. */
@@ -83,8 +81,8 @@ public final class FileTexts {
 	 * Open path for the editor, from its journal when journaled and it
 	 * can be read. size is its size in bytes as the listing told it, or
 	 * {@link ProjectFiles#UNKNOWN}; a file larger than
-	 * {@link #MAX_BYTES} is refused before it is read when the size is
-	 * known, after it is read otherwise.
+	 * {@link Document#MAX_BYTES} is refused before it is read when the
+	 * size is known, after it is read otherwise.
 	 */
 	public void open(ProjectPath path, long size, boolean journaled,
 			Callback<Opening> done) {
@@ -178,7 +176,7 @@ public final class FileTexts {
 	 * stored text when it changed and decode; on the worker.
 	 */
 	Checked check(ProjectPath path, String base, boolean decode) {
-		Read read = store.read(path, MAX_BYTES);
+		Read read = store.read(path, Document.MAX_BYTES);
 		if (read == null) {
 			return new Checked(Found.MISSING, null, null);
 		}
@@ -191,7 +189,7 @@ public final class FileTexts {
 		}
 		if (content.revision().equals(base)) {
 			return new Checked(Found.SAME, null, base);
-		} else if (content.bytes().length > MAX_BYTES) {
+		} else if (content.bytes().length > Document.MAX_BYTES) {
 			return new Checked(Found.TOO_LARGE, null, content.revision());
 		} else if (!decode) {
 			return new Checked(Found.CHANGED, null, content.revision());
@@ -226,7 +224,7 @@ public final class FileTexts {
 			return new Save(state, new OpenProject.Failed(refused.reason()),
 					null);
 		}
-		Read read = store.read(path, MAX_BYTES);
+		Read read = store.read(path, Document.MAX_BYTES);
 		return new Save(state, new OpenProject.Conflict(refused.reason()),
 				read instanceof Content content ? content.revision() : null);
 	}
@@ -259,17 +257,17 @@ public final class FileTexts {
 			return tooLarge(path);
 		}
 		return new Opened(recovered.text(), true, recovered.header().base(),
-				recovered.revision());
+				recovered.revision(), Document.bytes(recovered.text()));
 	}
 
 	private Opening read(ProjectPath path, long size) {
 		if (path.getKind() == ProjectPath.Kind.IMAGE) {
 			return new Unopened(path + " is an image, not text");
 		}
-		if (size > MAX_BYTES) {
+		if (size > Document.MAX_BYTES) {
 			return tooLarge(path);
 		}
-		Read read = store.read(path, MAX_BYTES);
+		Read read = store.read(path, Document.MAX_BYTES);
 		if (read instanceof ProjectFiles.Failed failed &&
 				ProjectFiles.TOO_LARGE.equals(failed.reason())) {
 			return tooLarge(path);
@@ -278,20 +276,21 @@ public final class FileTexts {
 			return new Unopened(CapturedFiles.problem(path, read));
 		}
 		byte[] bytes = content.bytes();
-		if (bytes.length > MAX_BYTES) {
+		if (bytes.length > Document.MAX_BYTES) {
 			return tooLarge(path);
 		}
 		Text text = decode(bytes);
 		if (text == null) {
 			return new Unopened(path + " is not a text file");
 		}
-		return new Opened(text, false, content.revision(), -1);
+		return new Opened(text, false, content.revision(), -1,
+				Document.bytes(text));
 	}
 
 	// Return the text of bytes, or null when they are not text the
 	// editor opens.
 	private static Text decode(byte[] bytes) {
-		String text = bytes.length <= MAX_BYTES
+		String text = bytes.length <= Document.MAX_BYTES
 				? SourceText.decode(bytes)
 				: null;
 		return text != null && text.indexOf('\0') < 0 ? Text.of(text) : null;
@@ -299,6 +298,6 @@ public final class FileTexts {
 
 	private static Unopened tooLarge(ProjectPath path) {
 		return new Unopened(path + " is larger than " +
-				MAX_BYTES / (1024 * 1024) + " MiB");
+				Document.MAX_BYTES / (1024 * 1024) + " MiB");
 	}
 }
