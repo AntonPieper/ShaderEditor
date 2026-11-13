@@ -9,10 +9,11 @@
 	<LinearLayout
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
+		android:minWidth="@dimen/menu_width"
 		android:orientation="vertical">
 
 		<LinearLayout
-			android:layout_width="@dimen/menu_width"
+			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:background="@drawable/background_menu_header"
 			android:orientation="horizontal">
@@ -64,7 +65,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="@dimen/menu_item_height"
 			android:text="@string/duplicate_shader"
-			app:icon="@drawable/ic_file_copy" />
+			app:icon="@drawable/ic_content_copy" />
 
 		<Button
 			android:id="@+id/delete_shader"
@@ -73,7 +74,7 @@
 			android:layout_height="@dimen/menu_item_height"
 			android:gravity="center|start"
 			android:text="@string/delete_shader"
-			app:icon="@drawable/ic_delete_forever" />
+			app:icon="@drawable/ic_delete" />
 
 		<com.google.android.material.divider.MaterialDivider
 			android:layout_width="match_parent"
@@ -113,7 +114,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="@dimen/menu_item_height"
 			android:text="@string/load_sample"
-			app:icon="@drawable/ic_quick_reference_all" />
+			app:icon="@drawable/ic_book_2" />
 
 		<com.google.android.material.divider.MaterialDivider
 			android:layout_width="match_parent"
@@ -136,7 +137,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="@dimen/menu_item_height"
 			android:text="@string/faq"
-			app:icon="@drawable/ic_forum" />
+			app:icon="@drawable/ic_help" />
 
 		<com.google.android.material.divider.MaterialDivider
 			android:layout_width="match_parent"
@@ -153,7 +154,7 @@
 			android:background="?attr/selectableItemBackground"
 			android:button="@null"
 			android:drawableStart="@drawable/ic_bottom_panel_open"
-			android:drawableEnd="?android:attr/listChoiceIndicatorMultiple"
+			android:drawableEnd="@drawable/menu_check"
 			android:drawablePadding="8dp"
 			app:drawableTint="@color/menu_item_selector"
 			android:gravity="center|start"
