@@ -936,7 +936,7 @@ public final class OpenProject {
 	// whether it took it.
 	private boolean take(FileRecord record, FileRecord.Request request,
 			FileTexts.Opened opened) {
-		Document document = new Document(opened.text());
+		Document document = new Document(opened.text(), opened.bytes());
 		if (opened.unsaved()) {
 			document.markSaved(-1);
 		}
@@ -1226,7 +1226,7 @@ public final class OpenProject {
 			return lone;
 		}
 		ProjectFiles files = new Edited(snapshot, journaled);
-		long limit = FileTexts.MAX_BYTES;
+		long limit = Document.MAX_BYTES;
 		ProjectPath found = sessions.running(id);
 		if (found == null ||
 				!(files.read(found, limit) instanceof Content)) {

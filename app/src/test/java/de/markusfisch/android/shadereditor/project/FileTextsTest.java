@@ -64,8 +64,8 @@ public class FileTextsTest {
 
 	@Test
 	public void refusesFileOverLimitWithoutReadingIt() {
-		store.put("main.glsl", new byte[(int) FileTexts.MAX_BYTES + 1]);
-		Opening opening = open(MAIN, FileTexts.MAX_BYTES + 1);
+		store.put("main.glsl", new byte[(int) Document.MAX_BYTES + 1]);
+		Opening opening = open(MAIN, Document.MAX_BYTES + 1);
 		assertEquals("main.glsl is larger than 16 MiB",
 				((Unopened) opening).reason());
 		assertEquals(0, store.reads);
@@ -218,7 +218,7 @@ public class FileTextsTest {
 		assertTrue(open(MAIN, ProjectFiles.UNKNOWN) instanceof Unopened);
 		assertEquals(FileTexts.Found.TOO_LARGE, reread(MAIN).found());
 		assertTrue("handed out " + handed[0],
-				handed[0] <= 2 * (FileTexts.MAX_BYTES + 8192));
+				handed[0] <= 2 * (Document.MAX_BYTES + 8192));
 	}
 
 	@Test

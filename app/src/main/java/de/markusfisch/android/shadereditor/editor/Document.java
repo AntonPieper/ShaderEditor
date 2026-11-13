@@ -11,10 +11,17 @@ import java.util.List;
  * has cleaned. Listeners hear of each change as it happens and once
  * more when an edit, or a batch of them, is complete. Positions held
  * elsewhere follow the edits through Change.map. Undo and redo work in
- * steps, and a run of typing is one step. A document is used on one
+ * steps, and a run of typing is one step. An edit that would grow the
+ * text past {@link #MAX_BYTES} is refused. A document is used on one
  * thread; its texts may be read on any.
  */
 public final class Document {
+	/**
+	 * The most bytes of UTF-8 a text may grow to by editing, on every
+	 * device; files are opened for editing up to the same size.
+	 */
+	public static final long MAX_BYTES = 16L * 1024 * 1024;
+
 	/** A replace: inserted took the place of removed at start. */
 	public record Change(int start, Text removed, Text inserted) {
 		/**
@@ -61,6 +68,13 @@ public final class Document {
 		 */
 		default void onUpdate() {
 		}
+
+		/**
+		 * Called when an edit was refused; reason tells the user why.
+		 * The document is as it was.
+		 */
+		default void onRefused(String reason) {
+		}
 	}
 
 	interface Clock {
@@ -97,14 +111,46 @@ public final class Document {
 	// Whether the selection moved since the last change of this batch.
 	private boolean moved;
 	private int historyChars;
+	// The bytes of UTF-8 of the text.
+	private long bytes;
 
 	public Document(Text text) {
-		this(text, () -> System.nanoTime() / 1_000_000);
+		this(text, bytes(text));
+	}
+
+	/**
+	 * A document of text, which has bytes of UTF-8, as
+	 * {@link #bytes(Text)} counts them, so they need not be counted.
+	 */
+	public Document(Text text, long bytes) {
+		this(text, bytes, () -> System.nanoTime() / 1_000_000);
 	}
 
 	Document(Text text, Clock clock) {
+		this(text, bytes(text), clock);
+	}
+
+	private Document(Text text, long bytes, Clock clock) {
 		this.text = text;
+		this.bytes = bytes;
 		this.clock = clock;
+	}
+
+	/**
+	 * Return how many bytes of UTF-8 text has, lines joined by '\n'; a
+	 * lone surrogate counts as two.
+	 */
+	public static long bytes(Text text) {
+		long bytes = text.lineCount() - 1;
+		for (int i = text.lineCount(); i-- > 0; ) {
+			String line = text.line(i);
+			for (int j = line.length(); j-- > 0; ) {
+				char c = line.charAt(j);
+				bytes += c < 0x80 ? 1
+						: c < 0x800 || Character.isSurrogate(c) ? 2 : 3;
+			}
+		}
+		return bytes;
 	}
 
 	/** Return the current text. */
@@ -169,9 +215,11 @@ public final class Document {
 	 * or as part of the step of the current batch. The selection
 	 * follows the change as Change.map moves it. Replacing a range by
 	 * the text it holds only moves the selection so; it is no change.
+	 * Return false when the change would grow the text past
+	 * {@link #MAX_BYTES}: it is refused, and the listeners hear why.
 	 */
-	public void replace(int from, int to, Text text) {
-		edit(from, to, text, false);
+	public boolean replace(int from, int to, Text text) {
+		return edit(from, to, text, false);
 	}
 
 	/**
@@ -180,8 +228,8 @@ public final class Document {
 	 * change touches the text it changed. Selecting another place,
 	 * any other edit, undo, redo and markSaved end the run.
 	 */
-	public void type(int from, int to, Text text) {
-		edit(from, to, text, true);
+	public boolean type(int from, int to, Text text) {
+		return edit(from, to, text, true);
 	}
 
 	/**
@@ -277,21 +325,39 @@ public final class Document {
 		return state != saved;
 	}
 
-	private void edit(int from, int to, Text text, boolean typed) {
+	private boolean edit(int from, int to, Text text, boolean typed) {
 		Change change = new Change(from, this.text.slice(from, to), text);
 		if (same(change.removed(), text)) {
 			select(change.map(selection.anchor()),
 					change.map(selection.head()));
-			return;
+			return true;
+		}
+		long grown = bytes(text) - removedBytes(change);
+		if (grown > 0 && bytes + grown > MAX_BYTES) {
+			String reason = "the text would be larger than " +
+					MAX_BYTES / (1024 * 1024) + " MiB";
+			for (Listener listener : listeners) {
+				listener.onRefused(reason);
+			}
+			return false;
 		}
 		beginBatch();
 		record(change, typed);
 		apply(change);
 		state = revision;
 		endBatch();
+		return true;
+	}
+
+	// Return the bytes change removes, without counting the whole text.
+	private long removedBytes(Change change) {
+		return change.removed().length() == text.length()
+				? bytes
+				: bytes(change.removed());
 	}
 
 	private void apply(Change change) {
+		bytes += bytes(change.inserted()) - removedBytes(change);
 		Text before = text;
 		text = before.replace(change.start(),
 				change.start() + change.removed().length(), change.inserted());
