@@ -11,8 +11,8 @@
 	<color name="editor_text">@color/code_text</color>
 	<color name="editor_line_numbers">@color/code_line_number</color>
 	<color name="editor_caret">@color/editor_text</color>
-	<color name="syntax_error">#8800</color>
-	<color name="syntax_warning">#8a60</color>
+	<color name="syntax_error">@color/code_mark_error</color>
+	<color name="syntax_warning">@color/code_mark_warning</color>
 	<color name="crop_bound">#8fff</color>
 	<color name="cube_face_selected">#ffff</color>
 	<color name="cube_face_text">#fff</color>
