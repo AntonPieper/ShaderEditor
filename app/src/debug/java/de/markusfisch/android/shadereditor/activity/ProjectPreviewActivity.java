@@ -8,6 +8,7 @@ import android.util.Log;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 
 import java.io.File;
@@ -17,11 +18,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.OpenProject;
-import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
@@ -64,14 +67,14 @@ public class ProjectPreviewActivity extends PreviewActivity {
 							int flags = data.getFlags();
 							worker.execute(() -> {
 								use(projects().openTree(tree, flags));
-								report(1f);
+								runOnUiThread(() -> report(1f));
 							});
 						}
 					});
 	private DialogFragment errorList;
 	// Worker thread only.
 	private Projects projects;
-	// Set on the worker thread.
+	// Set on the worker thread, used on the main thread.
 	private volatile OpenProject project;
 
 	@Override
@@ -112,13 +115,16 @@ public class ProjectPreviewActivity extends PreviewActivity {
 							Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION));
 		}
 		worker.execute(() -> {
-			apply(extras);
-			report(extras.getFloat(QUALITY, 1f));
+			open(extras);
+			float quality = extras.getFloat(QUALITY, 1f);
+			runOnUiThread(() -> apply(extras,
+					() -> afterWorker(() -> report(quality))));
 		});
 		return true;
 	}
 
-	private void apply(Bundle extras) {
+	// Opens or removes a project; on the worker thread.
+	private void open(Bundle extras) {
 		String folder = extras.getString(FOLDER);
 		String session = extras.getString("session");
 		if (folder != null) {
@@ -135,8 +141,21 @@ public class ProjectPreviewActivity extends PreviewActivity {
 		if (remove != null) {
 			log("removed " + remove + ": " + projects().remove(remove));
 		}
+		List<String> recent = new ArrayList<>();
+		for (ProjectSessions.Recent kept : projects().sessions().recent()) {
+			recent.add(kept.id() + " " + kept.name() + " (" +
+					kept.location() + (kept.unsaved() ? ", unsaved" : "") +
+					")");
+		}
+		log("recent " + recent);
+	}
+
+	// Drives the open project, then runs then; on the main thread, which
+	// the project belongs to.
+	private void apply(Bundle extras, Runnable then) {
 		OpenProject current = project;
 		if (current == null) {
+			then.run();
 			return;
 		}
 		ProjectPath runThis = path(extras.getString("run_this"));
@@ -146,60 +165,79 @@ public class ProjectPreviewActivity extends PreviewActivity {
 		ProjectPath edit = path(extras.getString("edit"));
 		String text = extras.getString("text");
 		if (edit != null && text != null) {
-			String problem = current.load(edit);
-			if (problem != null) {
-				log(problem);
-			} else {
-				current.edit(edit, text.replace("\\n", "\n"));
-				current.persist();
-			}
+			current.load(edit, ProjectFiles.UNKNOWN, problem -> {
+				Document document = current.document(edit);
+				if (problem != null) {
+					log(problem);
+				} else if (document != null) {
+					document.replace(0, document.text().length(),
+							Text.of(text.replace("\\n", "\n")));
+					current.persist();
+				}
+				resolve(current, extras);
+				then.run();
+			});
+		} else {
+			resolve(current, extras);
+			then.run();
 		}
+	}
+
+	private void resolve(OpenProject current, Bundle extras) {
 		if (extras.getBoolean("save")) {
-			log("saved " + current.save(true));
+			current.save(true, outcomes -> log("saved " + outcomes));
 		}
 		if (extras.getBoolean("refresh")) {
-			log("read again " + current.refresh());
+			current.refresh(reread -> log("read again " + reread));
 		}
 		ProjectPath file = path(extras.getString("file"));
 		String resolve = extras.getString("resolve");
 		if (file != null && "reload".equals(resolve)) {
-			log("reload " + current.reload(file));
+			current.reload(file, problem -> log("reload " + problem));
 		} else if (file != null && "keep".equals(resolve)) {
 			current.keepEdits(file);
 		} else if (file != null && "copy".equals(resolve)) {
-			log("copy " + current.saveCopy(file));
+			current.saveCopy(file, copy -> log("copy " + copy));
 		}
 	}
 
 	// Logs the state of the project and runs what it runs.
+	// On the main thread.
 	private void report(float quality) {
-		List<String> recent = new ArrayList<>();
-		for (ProjectSessions.Recent session : projects().sessions().recent()) {
-			recent.add(session.id() + " " + session.name() + " (" +
-					session.location() + (session.unsaved() ? ", unsaved" : "") +
-					")");
-		}
-		log("recent " + recent);
 		OpenProject current = project;
 		if (current == null) {
 			return;
 		}
-		List<String> files = new ArrayList<>();
-		for (OpenProject.Item item : current.list(null).items()) {
-			files.add(item.path() + (item.folder() ? "/" : ""));
-		}
+		worker.execute(() -> {
+			List<String> files = new ArrayList<>();
+			for (OpenProject.Item item : current.list(null).items()) {
+				files.add(item.path() + (item.folder() ? "/" : ""));
+			}
+			log("project " + current.id() + ", files " + files);
+		});
 		log("project " + current.id() + " runs " + current.running() +
-				", files " + files + ", conflicts " + current.conflicts());
+				", conflicts " + current.conflicts());
 		for (ProjectPath unsaved : current.unsaved()) {
-			current.load(unsaved);
-			log("unsaved " + unsaved + ": " + current.text(unsaved));
+			current.load(unsaved, ProjectFiles.UNKNOWN, problem -> {
+				Document document = current.document(unsaved);
+				log("unsaved " + unsaved + ": " + (document != null
+						? document.text()
+						: problem));
+			});
 		}
-		Preparation preparation = current.prepare(UniformTable.types());
-		if (preparation == null) {
-			log("nothing runs");
-		} else {
-			getShaderView().getEngine().setPlan(preparation, quality);
-		}
+		current.prepare(UniformTable.types(), preparation -> {
+			if (preparation == null) {
+				log("nothing runs");
+			} else {
+				getShaderView().getEngine().setPlan(preparation, quality);
+			}
+		});
+	}
+
+	// Runs task on the main thread once the worker did what it was given
+	// before.
+	private void afterWorker(Runnable task) {
+		worker.execute(() -> runOnUiThread(task));
 	}
 
 	private void use(Projects.Opened opened) {
@@ -213,7 +251,8 @@ public class ProjectPreviewActivity extends PreviewActivity {
 
 	private Projects projects() {
 		if (projects == null) {
-			projects = new Projects(this);
+			projects = new Projects(this, worker,
+					ContextCompat.getMainExecutor(this));
 		}
 		return projects;
 	}

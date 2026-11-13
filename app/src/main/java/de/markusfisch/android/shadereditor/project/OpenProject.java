@@ -5,15 +5,19 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
+import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.DraftFiles.Draft;
 import de.markusfisch.android.shadereditor.project.EditingSession.Outcome;
 import de.markusfisch.android.shadereditor.project.EditingSession.Saved;
+import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Content;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
@@ -24,13 +28,16 @@ import de.markusfisch.android.shadereditor.syntax.Tokens;
 
 /**
  * The project open in the editor, for the screens that show it: its
- * folders, the text and editor state of every file opened, saving,
- * changes made elsewhere, what runs, prepared from that text, and the
+ * folders, a {@link Document} for every file opened, saving, changes
+ * made elsewhere, what runs, prepared from the documents, and the
  * diagnostics of its last build by file. Unsaved text is kept by an
- * {@link EditingSession}, so it survives the process. Methods that read
- * or write storage are called from one worker thread at a time; the
- * others only touch memory and may be called from any thread. One
- * listener hears when what the screens mark changes.
+ * {@link EditingSession}, so it survives the process. The project
+ * belongs to the main thread, like its documents: call every method
+ * there, except open, list and offers, which read storage and are
+ * called on a worker. Work on storage runs on the worker given at
+ * opening, one task at a time in the order asked, and its result is
+ * posted to main. One listener hears when what the screens mark
+ * changes.
  */
 public final class OpenProject {
 	public static final ProjectPath MAIN = ProjectPath.parse("main.glsl")
@@ -67,15 +74,23 @@ public final class OpenProject {
 	public record Used(ProjectPath path, boolean image) {
 	}
 
-	// A file opened in the editor: its text there, the text stored when
-	// it was read, the revision its draft is based on, the text the
-	// journal has, and what the editor keeps for it.
-	private static final class Doc {
-		private String text;
-		private String stored;
-		private String base;
-		private String journaled;
+	// A file opened in the editor: its document, what the view keeps for
+	// it, and the revision and modified state its draft was last kept
+	// at.
+	private final class Doc implements Document.Listener {
+		private final Document document;
 		private Object state;
+		private int drafted;
+		private boolean draftModified;
+
+		private Doc(Document document) {
+			this.document = document;
+		}
+
+		@Override
+		public void onUpdate() {
+			changed();
+		}
 	}
 
 	// What the listener hears about.
@@ -84,17 +99,17 @@ public final class OpenProject {
 			List<ProjectDiagnostic> diagnostics) {
 	}
 
-	private static final int MAX_TEXT = ProjectLimits.DEFAULT.sourceBytes();
-
 	private final Map<ProjectPath, Doc> docs = new HashMap<>();
 	private final Set<ProjectPath> keptEdits = new HashSet<>();
-	private final ProjectFiles files = new Edited();
 	private final String id;
 	private final String name;
 	private final String location;
 	private final ProjectFiles store;
 	private final ProjectSessions sessions;
 	private final EditingSession session;
+	private final FileTexts texts;
+	private final Executor worker;
+	private final Executor main;
 	private List<ProjectDiagnostic> diagnostics = List.of();
 	private List<Used> used = List.of();
 	private ProjectPath running;
@@ -108,40 +123,37 @@ public final class OpenProject {
 
 	private OpenProject(String id, ProjectFiles store,
 			ProjectSessions sessions, EditingSession session,
-			ProjectSessions.Recent recent) {
+			ProjectSessions.Recent recent, Executor worker, Executor main) {
 		this.id = id;
 		name = recent != null ? recent.name() : null;
 		location = recent != null ? recent.location() : null;
 		this.store = store;
 		this.sessions = sessions;
 		this.session = session;
+		this.worker = worker;
+		this.main = main;
+		texts = new FileTexts(session, worker, main);
 	}
 
 	/**
 	 * Open session id of sessions over store with the drafts it kept,
 	 * the file shown last and its name and location among the recent
 	 * projects, and find what runs; return null when there is no such
-	 * session.
+	 * session. Storage work runs on worker, one task at a time, and
+	 * results are posted to main.
 	 */
 	public static OpenProject open(String id, ProjectFiles store,
-			ProjectSessions sessions) {
+			ProjectSessions sessions, Executor worker, Executor main) {
 		DraftJournal journal = sessions.drafts(id);
 		if (journal == null) {
 			return null;
 		}
 		OpenProject project = new OpenProject(id, store, sessions,
-				EditingSession.restore(store, journal), sessions.recent(id));
+				EditingSession.restore(store, journal), sessions.recent(id),
+				worker, main);
 		project.shown = project.keptShown = sessions.shown(id);
-		project.findRunning();
+		project.running = project.findRunning(Map.of());
 		return project;
-	}
-
-	/**
-	 * Return the session that keeps the unsaved text, for editing files
-	 * as {@link FileTexts}.
-	 */
-	public EditingSession session() {
-		return session;
 	}
 
 	public String id() {
@@ -171,8 +183,7 @@ public final class OpenProject {
 	 * before the call is made are heard once. A listener set before
 	 * replaces it; null stops listening.
 	 */
-	public synchronized void setListener(Executor executor,
-			Runnable listener) {
+	public void setListener(Executor executor, Runnable listener) {
 		this.executor = executor;
 		this.listener = listener;
 		announced = state();
@@ -217,79 +228,49 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Read path for the editor, its draft or the stored text, unless it
-	 * is open already. Return null when it is open, or why it cannot be
-	 * edited.
+	 * Open path for the editor as a document of its draft, which starts
+	 * with unsaved text, or of its stored text, unless it is in memory
+	 * already. size is its size as the listing told it, or
+	 * {@link ProjectFiles#UNKNOWN}. done gets null once
+	 * {@link #document} has it, or why it cannot be edited.
 	 */
-	public String load(ProjectPath path) {
-		synchronized (this) {
-			if (docs.containsKey(path)) {
-				return null;
+	public void load(ProjectPath path, long size, Callback<String> done) {
+		if (docs.containsKey(path)) {
+			main.execute(() -> done.done(null));
+			return;
+		}
+		texts.open(path, size, opening -> {
+			if (opening instanceof FileTexts.Unopened unopened) {
+				done.done(unopened.reason());
+				return;
 			}
-		}
-		if (path.getKind() == ProjectPath.Kind.IMAGE) {
-			return path + " is an image, not text";
-		}
-		Read read = store.read(path);
-		Draft draft = session.draft(path);
-		Doc doc = new Doc();
-		if (read instanceof Content content) {
-			doc.stored = text(content.bytes());
-			if (doc.stored == null) {
-				return path + " is not a text file of at most " +
-						MAX_TEXT / 1024 + " KiB";
-			}
-			doc.base = content.revision();
-		} else if (read != null || draft == null) {
-			return CapturedFiles.problem(path, read);
-		}
-		if (draft != null) {
-			doc.text = draft.text().toString();
-			doc.base = draft.base();
-		} else {
-			doc.text = doc.stored;
-		}
-		doc.journaled = doc.text;
-		synchronized (this) {
 			if (!docs.containsKey(path)) {
-				docs.put(path, doc);
+				add(path, (FileTexts.Opened) opening);
 			}
-		}
-		return null;
-	}
-
-	/** Return the text of path in the editor, null when not open. */
-	public synchronized String text(ProjectPath path) {
-		Doc doc = docs.get(path);
-		return doc != null ? doc.text : null;
-	}
-
-	/** Set the text of path, open in the editor, as it is there now. */
-	public void edit(ProjectPath path, String text) {
-		synchronized (this) {
-			Doc doc = docs.get(path);
-			if (doc == null) {
-				return;
-			}
-			boolean unsaved = !doc.text.equals(doc.stored);
-			doc.text = text;
-			if (unsaved == !text.equals(doc.stored)) {
-				return;
-			}
-		}
-		changed();
+			changed();
+			done.done(null);
+		});
 	}
 
 	/**
-	 * Return what the editor keeps for path, such as its undo history,
-	 * or null when it keeps nothing; reading path again drops it.
+	 * Return the document of path, with its text, selection and undo
+	 * history, while it is in memory, else null.
 	 */
-	public synchronized Object editorState(ProjectPath path) {
+	public Document document(ProjectPath path) {
+		Doc doc = docs.get(path);
+		return doc != null ? doc.document : null;
+	}
+
+	/**
+	 * Return what the view keeps for path, such as where it scrolled
+	 * to, or null when it keeps nothing; it goes with the document.
+	 */
+	public Object editorState(ProjectPath path) {
 		Doc doc = docs.get(path);
 		return doc != null ? doc.state : null;
 	}
 
-	public synchronized void setEditorState(ProjectPath path, Object state) {
+	public void setEditorState(ProjectPath path, Object state) {
 		Doc doc = docs.get(path);
 		if (doc != null) {
 			doc.state = state;
@@ -300,108 +281,112 @@ public final class OpenProject {
 	 * Return the file shown in the editor, or null; after opening, the
 	 * file shown last.
 	 */
-	public synchronized ProjectPath shown() {
+	public ProjectPath shown() {
 		return shown;
 	}
 
-	public synchronized void show(ProjectPath path) {
+	/**
+	 * Show path in the editor and return its document, or null when it
+	 * is not in memory; nothing else changes.
+	 */
+	public Document show(ProjectPath path) {
 		shown = path;
+		return document(path);
 	}
 
-	/** Return every file with unsaved text. */
-	public synchronized Set<ProjectPath> unsaved() {
+	/**
+	 * Return every file with unsaved text: the modified documents and
+	 * the drafts of files not in memory.
+	 */
+	public Set<ProjectPath> unsaved() {
 		Set<ProjectPath> unsaved = new LinkedHashSet<>(session.unsaved());
 		for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
-			Doc doc = entry.getValue();
-			if (doc.text.equals(doc.stored)) {
-				unsaved.remove(entry.getKey());
-			} else {
+			if (entry.getValue().document.isModified()) {
 				unsaved.add(entry.getKey());
+			} else {
+				unsaved.remove(entry.getKey());
 			}
 		}
 		return unsaved;
 	}
 
 	/**
-	 * Keep the text of every open file and the file shown durably where
-	 * they changed since; text that is stored like this drops its draft.
-	 * Return whether all was kept durably; it is kept in memory either
-	 * way.
+	 * Keep the text of every document and the file shown durably where
+	 * they changed since: a modified document as a draft, one without
+	 * unsaved text by dropping its draft.
 	 */
-	public boolean persist() {
-		record Change(ProjectPath path, Doc doc, String text) {
-		}
-		List<Change> changes = new ArrayList<>();
-		synchronized (this) {
-			for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
-				Doc doc = entry.getValue();
-				if (!doc.text.equals(doc.journaled)) {
-					changes.add(new Change(entry.getKey(), doc, doc.text));
-				}
-			}
-		}
-		ProjectPath show;
-		synchronized (this) {
-			show = shown;
-		}
-		boolean durable = true;
+	public void persist() {
+		ProjectPath show = shown;
 		if (show == null ? keptShown != null : !show.equals(keptShown)) {
-			durable = sessions.setShown(id, show);
-			if (durable) {
-				keptShown = show;
+			keptShown = show;
+			worker.execute(() -> sessions.setShown(id, show));
+		}
+		for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
+			Doc doc = entry.getValue();
+			boolean modified = doc.document.isModified();
+			if (doc.document.revision() != doc.drafted ||
+					modified != doc.draftModified) {
+				doc.drafted = doc.document.revision();
+				doc.draftModified = modified;
+				texts.draft(entry.getKey(), doc.document.text(), modified);
 			}
 		}
-		for (Change change : changes) {
-			Doc doc = change.doc();
-			durable &= change.text().equals(doc.stored)
-					? session.clearDraft(change.path())
-					: session.setDraft(change.path(), change.text(), doc.base);
-			synchronized (this) {
-				doc.journaled = change.text();
-			}
-		}
-		return durable;
 	}
 
 	/**
-	 * Save every file with unsaved text where it is and return the
+	 * Save every file with unsaved text where it is, and mark each
+	 * document saved as it was when its text was taken. done gets the
 	 * outcome by path. A file changed elsewhere is saved only when
 	 * explicit and the user chose to keep their edits.
 	 */
-	public Map<ProjectPath, Outcome> save(boolean explicit) {
+	public void save(boolean explicit, Callback<Map<ProjectPath, Outcome>> done) {
 		persist();
-		if (explicit) {
-			Set<ProjectPath> kept;
-			synchronized (this) {
-				kept = new HashSet<>(keptEdits);
-			}
-			for (ProjectPath path : kept) {
-				if (session.keepEdits(path) == null) {
-					synchronized (this) {
-						keptEdits.remove(path);
+		if (explicit && !keptEdits.isEmpty()) {
+			List<ProjectPath> kept = new ArrayList<>(keptEdits);
+			worker.execute(() -> {
+				List<ProjectPath> resolved = new ArrayList<>();
+				for (ProjectPath path : kept) {
+					if (session.keepEdits(path) == null) {
+						resolved.add(path);
 					}
 				}
-			}
+				main.execute(() -> keptEdits.removeAll(resolved));
+			});
 		}
-		Map<ProjectPath, Outcome> outcomes = session.save();
-		synchronized (this) {
-			for (Map.Entry<ProjectPath, Outcome> entry : outcomes.entrySet()) {
-				Doc doc = docs.get(entry.getKey());
-				if (doc != null && entry.getValue() instanceof Saved saved) {
-					doc.stored = doc.journaled;
-					doc.base = saved.revision();
-				}
+		Map<ProjectPath, Outcome> outcomes = new LinkedHashMap<>();
+		int[] left = {1};
+		Runnable finished = () -> {
+			if (--left[0] == 0) {
+				changed();
+				done.done(outcomes);
 			}
+		};
+		for (ProjectPath path : unsaved()) {
+			Doc doc = docs.get(path);
+			Draft draft = doc == null ? session.draft(path) : null;
+			if (doc == null && draft == null) {
+				continue;
+			}
+			outcomes.put(path, null);
+			++left[0];
+			texts.save(path, doc != null ? doc.document.text() : draft.text(),
+					doc != null ? doc.document.state() : -1, save -> {
+						if (save.outcome() instanceof Saved &&
+								doc != null && docs.get(path) == doc) {
+							doc.document.markSaved(save.state());
+						}
+						outcomes.put(path, save.outcome());
+						finished.run();
+					});
 		}
-		changed();
-		return outcomes;
+		main.execute(finished);
 	}
 
 	/**
 	 * Return why each file with unsaved text changed elsewhere, for the
 	 * files the user has not decided about yet.
 	 */
-	public synchronized Map<ProjectPath, String> conflicts() {
+	public Map<ProjectPath, String> conflicts() {
 		Map<ProjectPath, String> conflicts = session.conflicts();
 		conflicts.keySet().removeAll(keptEdits);
 		return conflicts;
@@ -409,61 +394,65 @@ public final class OpenProject {
 
 	/**
 	 * Look for changes made elsewhere: keep the drafts, forget what
-	 * listings told, find conflicts, read open files without unsaved
-	 * text again when they changed, and find what runs. Return the files
-	 * read again.
+	 * listings told, find conflicts, give documents without unsaved
+	 * text the stored text when it changed, as one change that can be
+	 * undone, and find what runs. done gets the files read again.
 	 */
-	public Set<ProjectPath> refresh() {
+	public void refresh(Callback<Set<ProjectPath>> done) {
 		persist();
-		store.forgetListings();
-		session.refresh();
-		Map<ProjectPath, String> clean = new HashMap<>();
-		synchronized (this) {
-			for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
-				Doc doc = entry.getValue();
-				if (doc.text.equals(doc.stored) &&
-						session.draft(entry.getKey()) == null) {
-					clean.put(entry.getKey(), doc.base);
-				}
-			}
-		}
-		Set<ProjectPath> reloaded = new HashSet<>();
-		for (Map.Entry<ProjectPath, String> entry : clean.entrySet()) {
-			if (!(store.read(entry.getKey()) instanceof Content content) ||
-					content.revision().equals(entry.getValue())) {
+		worker.execute(() -> {
+			store.forgetListings();
+			session.refresh();
+		});
+		Set<ProjectPath> reread = new HashSet<>();
+		for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
+			ProjectPath path = entry.getKey();
+			Doc doc = entry.getValue();
+			int revision = doc.document.revision();
+			if (doc.document.isModified()) {
 				continue;
 			}
-			String text = text(content.bytes());
-			synchronized (this) {
-				Doc doc = docs.get(entry.getKey());
+			texts.reread(path, changed -> {
 				// Unless it was edited meanwhile.
-				if (text != null && doc != null &&
-						doc.text.equals(doc.stored)) {
-					doc.text = doc.stored = doc.journaled = text;
-					doc.base = content.revision();
-					doc.state = null;
-					reloaded.add(entry.getKey());
+				if (changed != null && docs.get(path) == doc &&
+						doc.document.revision() == revision) {
+					takeStored(doc, changed.text());
+					texts.rebase(path, changed.revision());
+					reread.add(path);
 				}
-			}
+			});
 		}
-		findRunning();
-		changed();
-		return reloaded;
+		updateRunning(() -> done.done(reread));
 	}
 
 	/**
-	 * Drop the unsaved text of path and read it again from storage.
-	 * Return null when done, or why it cannot be read.
+	 * Drop the unsaved text of path and read it again from storage, into
+	 * its document as one change that can be undone. done gets null
+	 * when done, or why it cannot be read.
 	 */
-	public String reload(ProjectPath path) {
-		session.clearDraft(path);
-		synchronized (this) {
-			docs.remove(path);
-			keptEdits.remove(path);
+	public void reload(ProjectPath path, Callback<String> done) {
+		keptEdits.remove(path);
+		Doc doc = docs.get(path);
+		if (doc != null) {
+			doc.drafted = doc.document.revision();
+			doc.draftModified = false;
 		}
-		String problem = load(path);
-		changed();
-		return problem;
+		texts.draft(path, Text.EMPTY, false);
+		texts.open(path, ProjectFiles.UNKNOWN, opening -> {
+			String problem = null;
+			if (opening instanceof FileTexts.Opened opened) {
+				Doc current = docs.get(path);
+				if (current == null) {
+					add(path, opened);
+				} else {
+					takeStored(current, opened.text());
+				}
+			} else {
+				problem = ((FileTexts.Unopened) opening).reason();
+			}
+			changed();
+			done.done(problem);
+		});
 	}
 
 	/**
@@ -471,127 +460,102 @@ public final class OpenProject {
 	 * the next explicit save overwrites the file.
 	 */
 	public void keepEdits(ProjectPath path) {
-		synchronized (this) {
-			keptEdits.add(path);
-		}
+		keptEdits.add(path);
 		changed();
 	}
 
 	/**
-	 * Write the unsaved text of path to a new file next to it, open that
-	 * file, and read path again from storage.
+	 * Write the unsaved text of path to a new file next to it, read path
+	 * again from storage and open the copy. done gets where the copy
+	 * is, or why it was not written.
 	 */
-	public Copy saveCopy(ProjectPath path) {
+	public void saveCopy(ProjectPath path, Callback<Copy> done) {
 		persist();
-		Draft draft = session.draft(path);
-		ProjectPath to = freeCopyPath(path);
-		if (draft == null || to == null) {
-			return new Copy(null, draft == null
-					? "there are no edits of " + path
-					: "there is no free name for a copy of " + path);
-		}
-		Outcome outcome = session.saveCopy(path, to);
-		if (!(outcome instanceof Saved saved)) {
-			return new Copy(null, ((EditingSession.Failed) outcome).reason());
-		}
-		Doc copy = new Doc();
-		copy.text = copy.stored = copy.journaled = draft.text().toString();
-		copy.base = saved.revision();
-		synchronized (this) {
-			docs.remove(path);
-			keptEdits.remove(path);
-			docs.put(to, copy);
-		}
-		load(path);
-		changed();
-		return new Copy(to, null);
+		worker.execute(() -> {
+			Draft draft = session.draft(path);
+			ProjectPath to = draft != null ? freeCopyPath(path) : null;
+			Copy copy;
+			if (to == null) {
+				copy = new Copy(null, draft == null
+						? "there are no edits of " + path
+						: "there is no free name for a copy of " + path);
+			} else if (session.saveCopy(path, to) instanceof
+					EditingSession.Failed failed) {
+				copy = new Copy(null, failed.reason());
+			} else {
+				copy = new Copy(to, null);
+			}
+			main.execute(() -> {
+				if (copy.path() == null) {
+					done.done(copy);
+					return;
+				}
+				keptEdits.remove(path);
+				reload(path, problem -> load(to, ProjectFiles.UNKNOWN,
+						opened -> done.done(copy)));
+			});
+		});
 	}
 
 	/** Return the file that runs, or null when nothing runs. */
-	public synchronized ProjectPath running() {
+	public ProjectPath running() {
 		return running;
 	}
 
 	/**
-	 * Find what runs by the one rule: the file last chosen with Run this
-	 * file if it still exists, else the entry of a valid manifest, else
-	 * main.glsl when present, else nothing. Return it, or null.
-	 */
-	public ProjectPath findRunning() {
-		ProjectPath found = sessions.running(id);
-		if (found == null || !(files.read(found) instanceof Content)) {
-			found = null;
-			ProjectParseResult<ProjectManifest> manifest = null;
-			if (files.read(ProjectManifest.FILE) instanceof Content content) {
-				String text = SourceText.decode(content.bytes());
-				manifest = text != null ? ProjectManifest.parse(text) : null;
-			}
-			if (manifest != null && manifest.isSuccess()) {
-				found = manifest.value().entry();
-			} else if (files.read(MAIN) instanceof Content) {
-				found = MAIN;
-			}
-		}
-		synchronized (this) {
-			running = found;
-		}
-		changed();
-		return found;
-	}
-
-	/**
 	 * Run path from now on, also after reopening, until another file is
-	 * chosen; the project's files stay as they are. Return whether the
-	 * choice was kept durably.
+	 * chosen; the project's files stay as they are.
 	 */
-	public boolean runThisFile(ProjectPath path) {
-		synchronized (this) {
-			running = path;
-		}
+	public void runThisFile(ProjectPath path) {
+		running = path;
 		changed();
-		return sessions.setRunning(id, path);
+		worker.execute(() -> sessions.setRunning(id, path));
 	}
 
 	/**
-	 * Prepare what runs from the text in the editor and the drafts, or
-	 * return null when nothing runs, and keep the files it read as those
-	 * of the last build. Any thread.
+	 * Prepare what runs from the text of the documents and the drafts,
+	 * and keep the files it read as those of the last build. done gets
+	 * the preparation, or null when nothing runs.
 	 */
-	public Preparation prepare(Map<String, String> reserved) {
-		ProjectPath entry = running();
-		Preparation preparation = entry != null
-				? Preparation.prepare(files, entry, ProjectLimits.DEFAULT,
-						reserved)
-				: null;
-		List<Used> read = new ArrayList<>();
-		if (preparation != null) {
-			for (SourceAssembly.Dependency dependency :
-					preparation.dependencies()) {
-				ProjectPath path = dependency.path();
-				if (dependency.revision() != null &&
-						!ProjectManifest.FILE.equals(path)) {
-					read.add(new Used(path,
-							path.getKind() == ProjectPath.Kind.IMAGE));
+	public void prepare(Map<String, String> reserved,
+			Callback<Preparation> done) {
+		ProjectPath entry = running;
+		Map<ProjectPath, Text> snapshot = snapshot();
+		worker.execute(() -> {
+			Preparation preparation = entry != null
+					? Preparation.prepare(new Edited(snapshot), entry,
+							ProjectLimits.DEFAULT, reserved)
+					: null;
+			List<Used> read = new ArrayList<>();
+			if (preparation != null) {
+				for (SourceAssembly.Dependency dependency :
+						preparation.dependencies()) {
+					ProjectPath path = dependency.path();
+					if (dependency.revision() != null &&
+							!ProjectManifest.FILE.equals(path)) {
+						read.add(new Used(path,
+								path.getKind() == ProjectPath.Kind.IMAGE));
+					}
 				}
 			}
-		}
-		synchronized (this) {
-			used = Collections.unmodifiableList(read);
-		}
-		changed();
-		return preparation;
+			main.execute(() -> {
+				used = Collections.unmodifiableList(read);
+				changed();
+				done.done(preparation);
+			});
+		});
 	}
 
 	/**
 	 * Return the files the last build read, in the order it read them,
 	 * without the manifest and files it could not read.
 	 */
-	public synchronized List<Used> used() {
+	public List<Used> used() {
 		return used;
 	}
 
 	/** Return whether the last build of what runs read path. */
-	public synchronized boolean uses(ProjectPath path) {
+	public boolean uses(ProjectPath path) {
 		for (Used file : used) {
 			if (file.path().equals(path)) {
 				return true;
@@ -605,27 +569,25 @@ public final class OpenProject {
 	 * whose own text defines main. Reads only that text, once.
 	 */
 	public boolean canRun(ProjectPath path) {
-		String text = path.getKind() == ProjectPath.Kind.SHADER
-				? text(path)
+		Doc doc = path.getKind() == ProjectPath.Kind.SHADER
+				? docs.get(path)
 				: null;
-		return text != null && definesMain(text);
+		return doc != null && definesMain(doc.document.text().toString());
 	}
 
 	/** Keep the diagnostics of the last build of what runs. */
 	public void setDiagnostics(List<ProjectDiagnostic> diagnostics) {
-		synchronized (this) {
-			this.diagnostics = List.copyOf(diagnostics);
-		}
+		this.diagnostics = List.copyOf(diagnostics);
 		changed();
 	}
 
 	/** Return the diagnostics of the last build, of all files. */
-	public synchronized List<ProjectDiagnostic> diagnostics() {
+	public List<ProjectDiagnostic> diagnostics() {
 		return diagnostics;
 	}
 
 	/** Return the diagnostics of the last build located in file. */
-	public synchronized List<ProjectDiagnostic> diagnostics(ProjectPath file) {
+	public List<ProjectDiagnostic> diagnostics(ProjectPath file) {
 		List<ProjectDiagnostic> inFile = new ArrayList<>();
 		for (ProjectDiagnostic diagnostic : diagnostics) {
 			if (file != null && file.equals(diagnostic.file())) {
@@ -640,7 +602,7 @@ public final class OpenProject {
 	 * it, or of the whole project with diagnostics of no file when null.
 	 * Memory only.
 	 */
-	public synchronized Marks marks(ProjectPath path) {
+	public Marks marks(ProjectPath path) {
 		int unsaved = 0;
 		for (ProjectPath file : unsaved()) {
 			unsaved += under(file, path) ? 1 : 0;
@@ -666,7 +628,7 @@ public final class OpenProject {
 	}
 
 	/** Return how many diagnostics of the last build are errors. */
-	public synchronized int errors() {
+	public int errors() {
 		int errors = 0;
 		for (ProjectDiagnostic diagnostic : diagnostics) {
 			if (diagnostic.severity() == ProjectDiagnostic.Severity.ERROR) {
@@ -676,7 +638,74 @@ public final class OpenProject {
 		return errors;
 	}
 
-	private synchronized State state() {
+	private void add(ProjectPath path, FileTexts.Opened opened) {
+		Doc doc = new Doc(new Document(opened.text()));
+		if (opened.unsaved()) {
+			doc.document.markSaved(-1);
+			doc.draftModified = true;
+		}
+		doc.document.addListener(doc);
+		docs.put(path, doc);
+	}
+
+	// Give the document the stored text as one change that can be
+	// undone, keeping the selection where it can.
+	private void takeStored(Doc doc, Text text) {
+		Document document = doc.document;
+		Document.Selection selection = document.selection();
+		document.beginBatch();
+		document.replace(0, document.text().length(), text);
+		document.select(Math.min(selection.anchor(), text.length()),
+				Math.min(selection.head(), text.length()));
+		document.markSaved(document.state());
+		document.endBatch();
+		doc.drafted = document.revision();
+		doc.draftModified = false;
+	}
+
+	private Map<ProjectPath, Text> snapshot() {
+		Map<ProjectPath, Text> snapshot = new HashMap<>();
+		for (Map.Entry<ProjectPath, Doc> entry : docs.entrySet()) {
+			snapshot.put(entry.getKey(), entry.getValue().document.text());
+		}
+		return snapshot;
+	}
+
+	private void updateRunning(Runnable then) {
+		Map<ProjectPath, Text> snapshot = snapshot();
+		worker.execute(() -> {
+			ProjectPath found = findRunning(snapshot);
+			main.execute(() -> {
+				running = found;
+				changed();
+				then.run();
+			});
+		});
+	}
+
+	// Find what runs by the one rule: the file last chosen with Run this
+	// file if it still exists, else the entry of a valid manifest, else
+	// main.glsl when present, else nothing. On the worker.
+	private ProjectPath findRunning(Map<ProjectPath, Text> snapshot) {
+		ProjectFiles files = new Edited(snapshot);
+		ProjectPath found = sessions.running(id);
+		if (found == null || !(files.read(found) instanceof Content)) {
+			found = null;
+			ProjectParseResult<ProjectManifest> manifest = null;
+			if (files.read(ProjectManifest.FILE) instanceof Content content) {
+				String text = SourceText.decode(content.bytes());
+				manifest = text != null ? ProjectManifest.parse(text) : null;
+			}
+			if (manifest != null && manifest.isSuccess()) {
+				found = manifest.value().entry();
+			} else if (files.read(MAIN) instanceof Content) {
+				found = MAIN;
+			}
+		}
+		return found;
+	}
+
+	private State state() {
 		return new State(unsaved(), conflicts().keySet(), running, used,
 				diagnostics);
 	}
@@ -684,30 +713,22 @@ public final class OpenProject {
 	// Call the listener, unless nothing it hears about changed or a call
 	// is on its way.
 	private void changed() {
-		Executor post;
-		synchronized (this) {
-			State state = state();
-			if (state.equals(announced)) {
-				return;
-			}
-			announced = state;
-			if (listener == null || pending) {
-				return;
-			}
-			pending = true;
-			post = executor;
+		State state = state();
+		if (state.equals(announced)) {
+			return;
 		}
-		post.execute(this::announce);
+		announced = state;
+		if (listener == null || pending) {
+			return;
+		}
+		pending = true;
+		executor.execute(this::announce);
 	}
 
 	private void announce() {
-		Runnable call;
-		synchronized (this) {
-			pending = false;
-			call = listener;
-		}
-		if (call != null) {
-			call.run();
+		pending = false;
+		if (listener != null) {
+			listener.run();
 		}
 	}
 
@@ -732,15 +753,6 @@ public final class OpenProject {
 			}
 		}
 		return null;
-	}
-
-	// Return the text of bytes, or null when they are not text the
-	// editor can hold.
-	private static String text(byte[] bytes) {
-		String text = bytes.length <= MAX_TEXT
-				? SourceText.decode(bytes)
-				: null;
-		return text != null && text.indexOf('\0') < 0 ? text : null;
 	}
 
 	// Whether text declares a function main outside any other block and
@@ -781,16 +793,23 @@ public final class OpenProject {
 		return order != 0 ? order : a.compareTo(b);
 	}
 
-	// The project as the editor has it: open files with their text in
-	// the editor, the others with their drafts or as stored.
+	// The project as the editor had it when the snapshot was taken:
+	// files in memory with the text of their documents, the others with
+	// their drafts or as stored.
 	private final class Edited implements ProjectFiles {
+		private final Map<ProjectPath, Text> snapshot;
+
+		private Edited(Map<ProjectPath, Text> snapshot) {
+			this.snapshot = snapshot;
+		}
+
 		@Override
 		public Read read(ProjectPath path) {
-			String text = text(path);
+			Text text = snapshot.get(path);
 			if (text == null) {
 				return session.files().read(path);
 			}
-			byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+			byte[] bytes = text.toString().getBytes(StandardCharsets.UTF_8);
 			String revision = StoredFiles.revision(bytes);
 			return revision != null
 					? new Content(bytes, "editor:" + revision)

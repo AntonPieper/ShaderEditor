@@ -4,6 +4,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -17,16 +18,22 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 
+import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.EditingSession.Conflict;
 import de.markusfisch.android.shadereditor.project.EditingSession.Failed;
 import de.markusfisch.android.shadereditor.project.EditingSession.Outcome;
 import de.markusfisch.android.shadereditor.project.EditingSession.Saved;
+import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic.Severity;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
@@ -40,10 +47,13 @@ public class OpenProjectTest {
 				color = vec4(1.0);
 			}
 			""";
+	private static final Object NOTHING = new Object();
 
 	@Rule
 	public final TemporaryFolder temp = new TemporaryFolder();
 
+	private final Queue worker = new Queue();
+	private final Queue main = new Queue();
 	private File root;
 	private File sessionsDir;
 	private String id;
@@ -65,7 +75,7 @@ public class OpenProjectTest {
 		OpenProject project = open();
 
 		assertNull(project.running());
-		assertNull(project.prepare(BuiltinNames.ALL));
+		assertNull(prepare(project));
 	}
 
 	@Test
@@ -93,7 +103,7 @@ public class OpenProjectTest {
 		OpenProject project = open();
 
 		assertEquals(path("main.glsl"), project.running());
-		Preparation preparation = project.prepare(BuiltinNames.ALL);
+		Preparation preparation = prepare(project);
 		assertNull(preparation.plan());
 		assertEquals(ProjectManifest.FILE,
 				preparation.diagnostics().get(0).file());
@@ -109,6 +119,7 @@ public class OpenProjectTest {
 		OpenProject project = open();
 
 		project.runThisFile(path("c.glsl"));
+		settle();
 
 		assertEquals(path("c.glsl"), project.running());
 		assertEquals(path("c.glsl"), open().running());
@@ -122,6 +133,7 @@ public class OpenProjectTest {
 		write("main.glsl", SHADER);
 		write("c.glsl", SHADER);
 		open().runThisFile(path("c.glsl"));
+		settle();
 
 		assertTrue(new File(root, "c.glsl").delete());
 
@@ -133,16 +145,31 @@ public class OpenProjectTest {
 		write("main.glsl", "#include \"lib/common.glsl\"\n" + SHADER);
 		write("lib/common.glsl", "// common\n");
 		OpenProject project = open();
-		assertNull(project.load(path("lib/common.glsl")));
+		document(project, "lib/common.glsl");
 		project.show(path("lib/common.glsl"));
 
-		project.edit(path("lib/common.glsl"), "// edited\n");
+		edit(project, "lib/common.glsl", "// edited\n");
 
 		assertEquals(path("main.glsl"), project.running());
-		Preparation preparation = project.prepare(BuiltinNames.ALL);
-		assertEquals("// edited\n", new String(preparation.files()
-				.get(path("lib/common.glsl")).bytes(), StandardCharsets.UTF_8));
+		Preparation preparation = prepare(project);
+		assertEquals("// edited\n", built(preparation, "lib/common.glsl"));
 		assertEquals("// common\n", read("lib/common.glsl"));
+	}
+
+	@Test
+	public void preparesTheTextTheDocumentsHadWhenAsked() throws IOException {
+		write("main.glsl", SHADER);
+		OpenProject project = open();
+		document(project, "main.glsl");
+		edit(project, "main.glsl", SHADER + "// one\n");
+		Preparation[] prepared = new Preparation[1];
+
+		project.prepare(BuiltinNames.ALL, preparation ->
+				prepared[0] = preparation);
+		edit(project, "main.glsl", SHADER + "// two\n");
+		settle();
+
+		assertEquals(SHADER + "// one\n", built(prepared[0], "main.glsl"));
 	}
 
 	@Test
@@ -153,52 +180,65 @@ public class OpenProjectTest {
 		assertEquals(path("main.glsl"), project.running());
 
 		write("shader-project.json", "{\"entry\": \"b.glsl\"}");
-		project.refresh();
+		refresh(project);
 
 		assertEquals(path("b.glsl"), project.running());
 	}
 
 	@Test
-	public void switchingFilesKeepsTextAndEditorState() throws IOException {
+	public void switchingFilesKeepsUnsavedTextAndSeparateHistories()
+			throws IOException {
 		write("a.glsl", "a");
 		write("b.glsl", "b");
 		OpenProject project = open();
-		Object undoOfA = new Object();
-		assertNull(project.load(path("a.glsl")));
-		project.edit(path("a.glsl"), "a!");
-		project.setEditorState(path("a.glsl"), undoOfA);
+		Document a = document(project, "a.glsl");
+		Document b = document(project, "b.glsl");
+		a.type(1, 1, Text.of("!"));
+		b.type(1, 1, Text.of("?"));
+		List<Runnable> posted = new ArrayList<>();
+		project.setListener(posted::add, () -> {
+		});
 
-		assertNull(project.load(path("b.glsl")));
-		project.edit(path("b.glsl"), "b!");
-		assertNull(project.load(path("a.glsl")));
+		assertSame(a, project.show(path("a.glsl")));
+		assertSame(b, project.show(path("b.glsl")));
+		assertSame(a, project.show(path("a.glsl")));
 
-		assertEquals("a!", project.text(path("a.glsl")));
-		assertSame(undoOfA, project.editorState(path("a.glsl")));
-		assertEquals("b!", project.text(path("b.glsl")));
+		assertEquals(0, drain(posted));
+		assertEquals(1, a.revision());
+		assertEquals("a!", a.text().toString());
+		assertEquals("b?", b.text().toString());
 		assertEquals(Set.of(path("a.glsl"), path("b.glsl")),
 				project.unsaved());
-
-		project.edit(path("b.glsl"), "b");
-		assertEquals(Set.of(path("a.glsl")), project.unsaved());
+		a.undo();
+		assertEquals("a", a.text().toString());
+		assertEquals("b?", b.text().toString());
+		assertEquals(Set.of(path("b.glsl")), project.unsaved());
+		assertEquals(1, drain(posted));
+		b.undo();
+		assertFalse(b.canUndo());
+		assertTrue(a.canRedo());
 	}
 
 	@Test
-	public void keepsDraftsOfSeveralFilesAcrossTheProcess() throws IOException {
+	public void restoresDraftsIntoDocumentsAfterTheProcessDied()
+			throws IOException {
 		write("a.glsl", "a");
 		write("b.glsl", "b");
 		OpenProject project = open();
-		project.load(path("a.glsl"));
-		project.load(path("b.glsl"));
-		project.edit(path("a.glsl"), "a!");
-		project.edit(path("b.glsl"), "b!");
+		edit(project, document(project, "a.glsl"), "a!");
+		edit(project, document(project, "b.glsl"), "b!");
 
-		assertTrue(project.persist());
+		project.persist();
+		settle();
 		OpenProject restarted = open();
 
 		assertEquals(Set.of(path("a.glsl"), path("b.glsl")),
 				restarted.unsaved());
-		assertNull(restarted.load(path("b.glsl")));
-		assertEquals("b!", restarted.text(path("b.glsl")));
+		assertNull(restarted.document(path("b.glsl")));
+		Document b = document(restarted, "b.glsl");
+		assertEquals("b!", b.text().toString());
+		assertTrue(b.isModified());
+		assertFalse(b.canUndo());
 		assertEquals("a", read("a.glsl"));
 	}
 
@@ -210,44 +250,73 @@ public class OpenProjectTest {
 		FailingFiles store = new FailingFiles(new DirectoryProjectFiles(root));
 		store.failing = path("b.glsl");
 		OpenProject project = open(store);
-		project.load(path("a.glsl"));
-		project.load(path("b.glsl"));
-		project.edit(path("a.glsl"), "a!");
-		project.edit(path("b.glsl"), "b!");
+		Document a = document(project, "a.glsl");
+		Document b = document(project, "b.glsl");
+		edit(project, a, "a!");
+		edit(project, b, "b!");
 
-		Map<ProjectPath, Outcome> outcomes = project.save(true);
+		Map<ProjectPath, Outcome> outcomes = save(project, true);
 
 		assertTrue(outcomes.get(path("a.glsl")) instanceof Saved);
 		assertEquals(new Failed("the card was removed"),
 				outcomes.get(path("b.glsl")));
 		assertEquals("a!", read("a.glsl"));
 		assertEquals("b", read("b.glsl"));
+		assertFalse(a.isModified());
+		assertTrue(b.isModified());
 		assertEquals(Set.of(path("b.glsl")), project.unsaved());
 		assertEquals(Set.of(path("b.glsl")), open().unsaved());
 
 		store.failing = null;
-		outcomes = project.save(true);
+		outcomes = save(project, true);
 
 		assertEquals(Set.of(path("b.glsl")), outcomes.keySet());
 		assertEquals("b!", read("b.glsl"));
 		assertTrue(project.unsaved().isEmpty());
 		assertTrue(open().unsaved().isEmpty());
-		project.edit(path("a.glsl"), "a!!");
+		edit(project, a, "a!!");
 		assertEquals(Set.of(path("a.glsl")), project.unsaved());
-		project.edit(path("a.glsl"), "a!");
+		a.undo();
 		assertTrue(project.unsaved().isEmpty());
 	}
 
 	@Test
-	public void reloadsFromFileOnRequest() throws IOException {
+	public void savesTheTextADocumentHadWhenSaveWasAsked()
+			throws IOException {
+		write("a.glsl", "a");
+		OpenProject project = open();
+		Document a = document(project, "a.glsl");
+		edit(project, a, "one");
+		Map<?, ?>[] outcomes = new Map<?, ?>[1];
+
+		project.save(false, saved -> outcomes[0] = saved);
+		edit(project, a, "two");
+		settle();
+
+		assertTrue(outcomes[0].get(path("a.glsl")) instanceof Saved);
+		assertEquals("one", read("a.glsl"));
+		assertTrue(a.isModified());
+		assertEquals(Set.of(path("a.glsl")), project.unsaved());
+		a.undo();
+		assertFalse(a.isModified());
+	}
+
+	@Test
+	public void reloadsFromFileOnRequestAsOneUndoableChange()
+			throws IOException {
 		OpenProject project = editedElsewhere();
+		Document a = project.document(path("a.glsl"));
 
-		assertNull(project.reload(path("a.glsl")));
+		assertNull(this.<String>await(done ->
+				project.reload(path("a.glsl"), done)));
 
-		assertEquals("theirs", project.text(path("a.glsl")));
-		assertNull(project.editorState(path("a.glsl")));
+		assertSame(a, project.document(path("a.glsl")));
+		assertEquals("theirs", a.text().toString());
 		assertTrue(project.unsaved().isEmpty());
 		assertTrue(project.conflicts().isEmpty());
+		a.undo();
+		assertEquals("mine", a.text().toString());
+		assertEquals(Set.of(path("a.glsl")), project.unsaved());
 	}
 
 	@Test
@@ -257,9 +326,11 @@ public class OpenProjectTest {
 		project.keepEdits(path("a.glsl"));
 
 		assertTrue(project.conflicts().isEmpty());
-		assertTrue(project.save(false).get(path("a.glsl")) instanceof Conflict);
+		assertTrue(save(project, false).get(path("a.glsl")) instanceof
+				Conflict);
+		assertTrue(project.document(path("a.glsl")).isModified());
 		assertEquals("theirs", read("a.glsl"));
-		assertTrue(project.save(true).get(path("a.glsl")) instanceof Saved);
+		assertTrue(save(project, true).get(path("a.glsl")) instanceof Saved);
 		assertEquals("mine", read("a.glsl"));
 		assertTrue(project.unsaved().isEmpty());
 	}
@@ -268,41 +339,50 @@ public class OpenProjectTest {
 	public void savesACopyBesideTheChangedFile() throws IOException {
 		OpenProject project = editedElsewhere();
 
-		OpenProject.Copy copy = project.saveCopy(path("a.glsl"));
+		OpenProject.Copy copy = await(done ->
+				project.saveCopy(path("a.glsl"), done));
 
 		assertNull(copy.problem());
 		assertEquals(path("a copy.glsl"), copy.path());
 		assertEquals("mine", read("a copy.glsl"));
 		assertEquals("theirs", read("a.glsl"));
-		assertEquals("mine", project.text(path("a copy.glsl")));
-		assertEquals("theirs", project.text(path("a.glsl")));
+		assertEquals("mine", text(project, "a copy.glsl"));
+		assertEquals("theirs", text(project, "a.glsl"));
 		assertTrue(project.unsaved().isEmpty());
 		assertTrue(project.conflicts().isEmpty());
 		write("b.txt", "b");
-		project.load(path("b.txt"));
-		project.edit(path("b.txt"), "b!");
+		edit(project, document(project, "b.txt"), "b!");
 		write("b copy.txt", "taken");
-		assertEquals(path("b copy 2.txt"),
-				project.saveCopy(path("b.txt")).path());
+		assertEquals(path("b copy 2.txt"), this.<OpenProject.Copy>await(
+				done -> project.saveCopy(path("b.txt"), done)).path());
 	}
 
 	@Test
-	public void refreshReadsUneditedFilesAgain() throws IOException {
+	public void refreshGivesCleanDocumentsTheChangedFile()
+			throws IOException {
 		write("a.glsl", "a");
 		write("b.glsl", "b");
 		OpenProject project = open();
-		project.load(path("a.glsl"));
-		project.load(path("b.glsl"));
-		project.setEditorState(path("a.glsl"), new Object());
-		project.edit(path("b.glsl"), "b!");
+		Document a = document(project, "a.glsl");
+		Document b = document(project, "b.glsl");
+		edit(project, b, "b!");
 		write("a.glsl", "a2");
 
-		assertEquals(Set.of(path("a.glsl")), project.refresh());
+		assertEquals(Set.of(path("a.glsl")), refresh(project));
 
-		assertEquals("a2", project.text(path("a.glsl")));
-		assertNull(project.editorState(path("a.glsl")));
-		assertEquals("b!", project.text(path("b.glsl")));
+		assertSame(a, project.document(path("a.glsl")));
+		assertEquals("a2", a.text().toString());
+		assertFalse(a.isModified());
+		assertEquals("b!", b.text().toString());
 		assertTrue(project.conflicts().isEmpty());
+		assertTrue(refresh(project).isEmpty());
+		edit(project, a, "a3");
+		assertTrue(save(project, false).get(path("a.glsl")) instanceof Saved);
+		assertEquals("a3", read("a.glsl"));
+		a.undo();
+		a.undo();
+		assertEquals("a", a.text().toString());
+		assertTrue(a.isModified());
 	}
 
 	@Test
@@ -310,7 +390,7 @@ public class OpenProjectTest {
 		FailingFiles store = new FailingFiles(new DirectoryProjectFiles(root));
 		OpenProject project = open(store);
 
-		project.refresh();
+		refresh(project);
 
 		assertEquals(1, store.forgotten);
 	}
@@ -363,7 +443,7 @@ public class OpenProjectTest {
 		OpenProject project = open();
 		assertEquals(List.of(), project.used());
 
-		project.prepare(BuiltinNames.ALL);
+		prepare(project);
 
 		assertEquals(List.of(new OpenProject.Used(path("main.glsl"), false),
 						new OpenProject.Used(path("lib/common.glsl"), false),
@@ -379,7 +459,7 @@ public class OpenProjectTest {
 		write("main.glsl", "#include \"missing.glsl\"\n" + SHADER);
 		OpenProject project = open();
 
-		project.prepare(BuiltinNames.ALL);
+		prepare(project);
 
 		assertEquals(List.of(new OpenProject.Used(path("main.glsl"), false)),
 				project.used());
@@ -395,21 +475,16 @@ public class OpenProjectTest {
 		write("commented.glsl", "// void main() {}\n");
 		write("notes.txt", SHADER);
 		OpenProject project = open();
-		for (String file : List.of("main.glsl", "tight.glsl",
-				"lib/common.glsl", "declared.glsl", "disabled.glsl",
-				"commented.glsl", "notes.txt")) {
-			assertNull(project.load(path(file)));
-		}
 
-		assertTrue(project.canRun(path("main.glsl")));
-		assertTrue(project.canRun(path("tight.glsl")));
-		assertFalse(project.canRun(path("lib/common.glsl")));
-		assertFalse(project.canRun(path("declared.glsl")));
-		assertFalse(project.canRun(path("disabled.glsl")));
-		assertFalse(project.canRun(path("commented.glsl")));
-		assertFalse(project.canRun(path("notes.txt")));
+		assertTrue(canRun(project, "main.glsl"));
+		assertTrue(canRun(project, "tight.glsl"));
+		assertFalse(canRun(project, "lib/common.glsl"));
+		assertFalse(canRun(project, "declared.glsl"));
+		assertFalse(canRun(project, "disabled.glsl"));
+		assertFalse(canRun(project, "commented.glsl"));
+		assertFalse(canRun(project, "notes.txt"));
 		assertFalse(project.canRun(path("other.glsl")));
-		project.edit(path("lib/common.glsl"), "void main() {}");
+		edit(project, document(project, "lib/common.glsl"), "void main() {}");
 		assertTrue(project.canRun(path("lib/common.glsl")));
 	}
 
@@ -422,13 +497,13 @@ public class OpenProjectTest {
 		OpenProject project = open();
 		for (String file : List.of("lib/x.glsl", "lib/deep/y.glsl",
 				"library.glsl", "a.glsl")) {
-			project.load(path(file));
+			document(project, file);
 		}
-		project.edit(path("lib/x.glsl"), "mine");
-		project.edit(path("lib/deep/y.glsl"), "mine");
-		project.edit(path("library.glsl"), "mine");
+		edit(project, "lib/x.glsl", "mine");
+		edit(project, "lib/deep/y.glsl", "mine");
+		edit(project, "library.glsl", "mine");
 		write("lib/x.glsl", "theirs");
-		project.refresh();
+		refresh(project);
 		project.setDiagnostics(List.of(
 				new ProjectDiagnostic(Severity.ERROR, "e", path("lib/x.glsl"), 1),
 				new ProjectDiagnostic(Severity.WARNING, "w",
@@ -459,20 +534,20 @@ public class OpenProjectTest {
 	public void tellsTheListenerOnceThroughItsExecutor() throws IOException {
 		write("a.glsl", "a");
 		OpenProject project = open();
-		project.load(path("a.glsl"));
+		document(project, "a.glsl");
 		List<Runnable> posted = new ArrayList<>();
 		int[] heard = {0};
 		project.setListener(posted::add, () -> ++heard[0]);
 
-		project.edit(path("a.glsl"), "a!");
-		project.edit(path("a.glsl"), "a!!");
+		edit(project, "a.glsl", "a!");
+		edit(project, "a.glsl", "a!!");
 		project.setDiagnostics(List.of(ProjectDiagnostic.error("e")));
 
 		assertEquals(0, heard[0]);
 		assertEquals(1, posted.size());
 		posted.remove(0).run();
 		assertEquals(1, heard[0]);
-		project.edit(path("a.glsl"), "a!!!");
+		edit(project, "a.glsl", "a!!!");
 		project.setDiagnostics(List.of(ProjectDiagnostic.error("e")));
 		assertTrue(posted.isEmpty());
 	}
@@ -483,28 +558,28 @@ public class OpenProjectTest {
 		write("lib.glsl", "// lib\n");
 		write("b.glsl", SHADER);
 		OpenProject project = open();
-		project.load(path("lib.glsl"));
+		document(project, "lib.glsl");
 		List<Runnable> posted = new ArrayList<>();
 		project.setListener(posted::add, () -> {
 		});
 
-		project.edit(path("lib.glsl"), "// edited\n");
+		edit(project, "lib.glsl", "// edited\n");
 		assertEquals(1, drain(posted));
-		project.save(true);
+		save(project, true);
 		assertEquals(1, drain(posted));
-		project.prepare(BuiltinNames.ALL);
+		prepare(project);
 		assertEquals(1, drain(posted));
 		project.setDiagnostics(List.of(ProjectDiagnostic.error("e")));
 		assertEquals(1, drain(posted));
 		project.runThisFile(path("b.glsl"));
 		assertEquals(1, drain(posted));
-		project.edit(path("lib.glsl"), "// mine\n");
+		edit(project, "lib.glsl", "// mine\n");
 		drain(posted);
 		write("lib.glsl", "// theirs\n");
-		project.refresh();
+		refresh(project);
 		assertEquals(Set.of(path("lib.glsl")), project.conflicts().keySet());
 		assertEquals(1, drain(posted));
-		project.refresh();
+		refresh(project);
 		assertEquals(0, drain(posted));
 
 		project.setListener(null, null);
@@ -528,9 +603,10 @@ public class OpenProjectTest {
 	public void showsTheFileShownLastAfterReopening() throws IOException {
 		write("lib/common.glsl", "// common\n");
 		OpenProject project = open();
-		project.show(path("lib/common.glsl"));
+		assertNull(project.show(path("lib/common.glsl")));
 
-		assertTrue(project.persist());
+		project.persist();
+		settle();
 
 		assertEquals(path("lib/common.glsl"), open().shown());
 		assertEquals(path("lib/common.glsl"),
@@ -558,17 +634,21 @@ public class OpenProjectTest {
 	}
 
 	@Test
-	public void opensOnlyTextInTheEditor() throws IOException {
+	public void opensOnlyTextOfAtMost16MiBInTheEditor() throws IOException {
 		write("image.png", "not really");
 		Files.write(new File(root, "data.bin").toPath(), new byte[]{0, 1, 2});
 		write("notes.txt", "notes");
+		write("big.glsl", "// " + "x".repeat(2 * 1024 * 1024));
 		OpenProject project = open();
 
-		assertNotNull(project.load(path("image.png")));
-		assertNotNull(project.load(path("data.bin")));
-		assertNotNull(project.load(path("missing.glsl")));
-		assertNull(project.load(path("notes.txt")));
-		assertEquals("notes", project.text(path("notes.txt")));
+		assertNotNull(load(project, "image.png"));
+		assertNotNull(load(project, "data.bin"));
+		assertNotNull(load(project, "missing.glsl"));
+		assertEquals("notes", text(project, "notes.txt"));
+		assertEquals("big.glsl is larger than 16 MiB",
+				this.<String>await(done -> project.load(path("big.glsl"),
+						FileTexts.MAX_BYTES + 1, done)));
+		assertNull(load(project, "big.glsl"));
 	}
 
 	@Test
@@ -578,9 +658,9 @@ public class OpenProjectTest {
 				.toPath());
 
 		OpenProject project = open();
-		project.load(path("main.glsl"));
+		document(project, "main.glsl");
 		project.persist();
-		project.refresh();
+		refresh(project);
 
 		assertArrayEquals(before, Files.readAllBytes(
 				new File(root, "main.glsl").toPath()));
@@ -590,12 +670,12 @@ public class OpenProjectTest {
 	private OpenProject editedElsewhere() throws IOException {
 		write("a.glsl", "stored");
 		OpenProject project = open();
-		project.load(path("a.glsl"));
-		project.setEditorState(path("a.glsl"), new Object());
-		project.edit(path("a.glsl"), "mine");
+		edit(project, document(project, "a.glsl"), "mine");
 		write("a.glsl", "theirs");
-		project.refresh();
+		refresh(project);
 		assertEquals(Set.of(path("a.glsl")), project.conflicts().keySet());
+		assertEquals("mine", project.document(path("a.glsl")).text()
+				.toString());
 		return project;
 	}
 
@@ -604,7 +684,77 @@ public class OpenProjectTest {
 	}
 
 	private OpenProject open(ProjectFiles store) {
-		return OpenProject.open(id, store, new ProjectSessions(sessionsDir));
+		return OpenProject.open(id, store, new ProjectSessions(sessionsDir),
+				worker, main);
+	}
+
+	// Run what the worker and the main thread were given until both are
+	// idle.
+	private void settle() {
+		while (worker.run() | main.run()) {
+			// Again: a task may have posted another.
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T await(Consumer<Callback<T>> call) {
+		Object[] result = {NOTHING};
+		call.accept(value -> result[0] = value);
+		settle();
+		assertNotSame(NOTHING, result[0]);
+		return (T) result[0];
+	}
+
+	private String load(OpenProject project, String path) {
+		return await(done -> project.load(path(path), ProjectFiles.UNKNOWN,
+				done));
+	}
+
+	private Document document(OpenProject project, String path) {
+		assertNull(load(project, path));
+		return project.document(path(path));
+	}
+
+	private Document document(OpenProject project, String path, String text)
+			throws IOException {
+		write(path, text);
+		return document(project, path);
+	}
+
+	private boolean canRun(OpenProject project, String path) {
+		document(project, path);
+		return project.canRun(path(path));
+	}
+
+	private String text(OpenProject project, String path) {
+		return document(project, path).text().toString();
+	}
+
+	private static void edit(OpenProject project, String path, String text) {
+		edit(project, project.document(path(path)), text);
+	}
+
+	private static void edit(OpenProject project, Document document,
+			String text) {
+		document.replace(0, document.text().length(), Text.of(text));
+	}
+
+	private Map<ProjectPath, Outcome> save(OpenProject project,
+			boolean explicit) {
+		return await(done -> project.save(explicit, done));
+	}
+
+	private Set<ProjectPath> refresh(OpenProject project) {
+		return await(project::refresh);
+	}
+
+	private Preparation prepare(OpenProject project) {
+		return await(done -> project.prepare(BuiltinNames.ALL, done));
+	}
+
+	private static String built(Preparation preparation, String path) {
+		return new String(preparation.files().get(path(path)).bytes(),
+				StandardCharsets.UTF_8);
 	}
 
 	private void write(String name, String text) throws IOException {
@@ -672,6 +822,25 @@ public class OpenProjectTest {
 			return path.equals(failing)
 					? new Refused(Refusal.FAILED, "the card was removed")
 					: files.write(path, bytes, expectedRevision);
+		}
+	}
+
+	private static final class Queue implements Executor {
+		private final ArrayDeque<Runnable> tasks = new ArrayDeque<>();
+
+		@Override
+		public void execute(Runnable task) {
+			tasks.add(task);
+		}
+
+		// Run every task given so far and those they give; return
+		// whether there was any.
+		boolean run() {
+			boolean ran = false;
+			for (Runnable task; (task = tasks.poll()) != null; ran = true) {
+				task.run();
+			}
+			return ran;
 		}
 	}
 }
