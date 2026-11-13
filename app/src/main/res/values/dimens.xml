@@ -26,6 +26,9 @@
 	<dimen name="se_hairline">1dp</dimen>
 	<dimen name="se_corner">8dp</dimen>
 	<dimen name="se_corner_container">16dp</dimen>
+	<!-- The platform's dim behind a dialog in a dark theme; Material 3's
+	0.32 is hardly seen over the dark editor -->
+	<item name="se_dialog_dim" format="float" type="dimen">0.6</item>
 	<!-- The navigation drawer -->
 	<dimen name="navigation_drawer_screen_margin">56dp</dimen>
 	<dimen name="navigation_bar_height">60dp</dimen>
