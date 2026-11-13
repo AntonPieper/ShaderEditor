@@ -3,133 +3,155 @@
 		xmlns:app="http://schemas.android.com/apk/res-auto"
 		android:title="@string/settings"
 	android:key="preferences">
-	<PreferenceCategory android:title="@string/appearance">
+	<PreferenceCategory app:iconSpaceReserved="false" android:title="@string/appearance">
 		<ListPreference
+			app:iconSpaceReserved="false"
 			android:key="picture_behind_code"
 			android:title="@string/picture_behind_code"
 			android:entries="@array/picture_behind_code_names"
 			android:entryValues="@array/picture_behind_code_values"
 			android:defaultValue="balanced"/>
 		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
 			android:key="use_device_colours"
 			android:title="@string/use_device_colours"
 			android:summary="@string/use_device_colours_summary"
 			android:defaultValue="false"
 			app:isPreferenceVisible="@bool/device_colours"/>
 	</PreferenceCategory>
-	<PreferenceCategory android:title="@string/wallpaper">
+	<PreferenceCategory app:iconSpaceReserved="false" android:title="@string/wallpaper">
 		<de.markusfisch.android.shadereditor.preference.ShaderListPreference
+			app:iconSpaceReserved="false"
 			android:key="shader"
 			android:title="@string/shader"/>
 		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
 			android:key="save_battery"
 			android:title="@string/save_battery"
 			android:summary="@string/save_battery_summary"
 			android:checked="true"
 			android:defaultValue="true"/>
 	</PreferenceCategory>
-	<PreferenceCategory android:title="@string/editor">
-		<androidx.preference.SwitchPreferenceCompat
-			android:key="sort_by_last_modification"
-			android:title="@string/sort_by_last_modification"
-			android:summary="@string/sort_by_last_modification_summary"
-			android:checked="true"
-			android:defaultValue="true"/>
+	<PreferenceCategory app:iconSpaceReserved="false" android:title="@string/editor">
 		<ListPreference
-			android:key="run_mode"
-			android:title="@string/run_mode"
-			android:entries="@array/run_mode_names"
-			android:entryValues="@array/run_mode_values"
-			android:defaultValue="1"/>
-		<ListPreference
-			android:key="update_delay"
-			android:title="@string/update_delay"
-			android:entries="@array/update_delay_names"
-			android:entryValues="@array/update_delay_values"
-			android:defaultValue="1000"/>
-		<ListPreference
+			app:iconSpaceReserved="false"
 			android:key="text_size"
 			android:title="@string/text_size"
 			android:entries="@array/text_size_names"
 			android:entryValues="@array/text_size_values"
 			android:defaultValue="12"/>
 		<ListPreference
+				app:iconSpaceReserved="false"
 				android:defaultValue="@string/default_font_value"
 				android:entries="@array/font_names"
 				android:entryValues="@array/font_values"
 				android:key="font"
 				android:title="@string/font" />
-		<SwitchPreference
-				android:defaultValue="false"
-				android:key="use_ligatures"
-				android:title="@string/use_ligatures"
-				app:summary="@string/use_ligatures_summary" />
+		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
+			android:key="use_ligatures"
+			android:title="@string/use_ligatures"
+			android:summary="@string/use_ligatures_summary"
+			android:defaultValue="false"/>
 		<ListPreference
+			app:iconSpaceReserved="false"
 			android:key="tab_width"
 			android:title="@string/tab_width"
 			android:entries="@array/tab_width_names"
 			android:entryValues="@array/tab_width_values"
 			android:defaultValue="2"/>
 		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
 			android:key="show_line_numbers"
 			android:title="@string/show_line_numbers"
-			android:summary="@string/show_line_numbers_summary"
 			android:checked="true"
 			android:defaultValue="true"/>
 		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
+			android:key="disable_highlighting"
+			android:title="@string/disable_highlighting"
+			android:summary="@string/disable_highlighting_summary"
+			android:checked="false"
+			android:defaultValue="false"/>
+	</PreferenceCategory>
+	<PreferenceCategory app:iconSpaceReserved="false" android:title="@string/keyboard">
+		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
 			android:key="use_tab_for_indent"
 			android:title="@string/use_tab_for_indent"
 			android:summary="@string/use_tab_for_indent_summary"
 			android:checked="true"
 			android:defaultValue="true"/>
 		<androidx.preference.SwitchPreferenceCompat
-			android:key="export_tabs"
-			android:title="@string/export_tabs"
-			android:summary="@string/export_tabs_summary"
-			android:checked="false"
-			android:defaultValue="false"/>
-		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
 			android:key="show_insert_tab"
 			android:title="@string/show_insert_tab"
-			android:summary="@string/show_insert_tab_summary"
 			android:checked="true"
 			android:defaultValue="true"/>
 		<androidx.preference.SwitchPreferenceCompat
-			android:key="save_on_run"
-			android:title="@string/save_on_run"
-			android:summary="@string/save_on_run_summary"
-			android:checked="true"
-			android:defaultValue="true"/>
-		<androidx.preference.SwitchPreferenceCompat
-			android:key="disable_highlighting"
-			android:title="@string/disable_highlighting"
-			android:summary="@string/disable_highlighting_summary"
-			android:checked="false"
-			android:defaultValue="false"/>
-		<androidx.preference.SwitchPreferenceCompat
-			android:key="auto_save"
-			android:title="@string/auto_save"
-			android:summary="@string/auto_save_summary"
-			android:checked="false"
-			android:defaultValue="true"/>
-		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
 			android:key="auto_hide_extra_keys"
 			android:title="@string/auto_hide_extra_keys"
 			android:summary="@string/auto_hide_extra_keys_summary"
 			android:checked="true"
 			android:defaultValue="true"/>
 		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
 			android:key="hide_native_suggestions"
 			android:title="@string/hide_native_suggestions"
 			android:summary="@string/hide_native_suggestions_summary"
 			android:checked="true"
 			android:defaultValue="true"/>
+	</PreferenceCategory>
+	<PreferenceCategory app:iconSpaceReserved="false" android:title="@string/running_and_saving">
+		<ListPreference
+			app:iconSpaceReserved="false"
+			android:key="run_mode"
+			android:title="@string/run_mode"
+			android:entries="@array/run_mode_names"
+			android:entryValues="@array/run_mode_values"
+			android:defaultValue="1"/>
+		<ListPreference
+			app:iconSpaceReserved="false"
+			android:key="update_delay"
+			android:title="@string/update_delay"
+			android:entries="@array/update_delay_names"
+			android:entryValues="@array/update_delay_values"
+			android:defaultValue="1000"/>
+		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
+			android:key="save_on_run"
+			android:title="@string/save_on_run"
+			android:summary="@string/save_on_run_summary"
+			android:checked="true"
+			android:defaultValue="true"/>
+		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
+			android:key="auto_save"
+			android:title="@string/auto_save"
+			android:checked="false"
+			android:defaultValue="true"/>
 		<de.markusfisch.android.shadereditor.preference.ShaderListPreference
+			app:iconSpaceReserved="false"
 			android:key="default_new_shader"
 			android:title="@string/default_new_shader"/>
+		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
+			android:key="sort_by_last_modification"
+			android:title="@string/sort_by_last_modification"
+			android:checked="true"
+			android:defaultValue="true"/>
+		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
+			android:key="export_tabs"
+			android:title="@string/export_tabs"
+			android:summary="@string/export_tabs_summary"
+			android:checked="false"
+			android:defaultValue="false"/>
 	</PreferenceCategory>
-	<PreferenceCategory android:title="@string/sensors">
+	<PreferenceCategory app:iconSpaceReserved="false" android:title="@string/sensors">
 		<ListPreference
+			app:iconSpaceReserved="false"
 			android:key="sensor_delay"
 			android:title="@string/sensor_delay"
 			android:entries="@array/sensor_delay_names"
@@ -137,21 +159,26 @@
 			android:defaultValue="Normal"/>
 	</PreferenceCategory>
 	<PreferenceCategory
+			app:iconSpaceReserved="false"
 			android:key="import_export"
 			android:title="@string/import_export">
 		<Preference
+			app:iconSpaceReserved="false"
 			android:key="import_from_directory"
 			android:title="@string/import_shaders_files"
 			android:summary="@string/import_shaders_files_summary"/>
 		<Preference
+			app:iconSpaceReserved="false"
 			android:key="export_to_directory"
 			android:title="@string/export_shaders_files"
 			android:summary="@string/export_shaders_files_summary"/>
 		<Preference
+			app:iconSpaceReserved="false"
 			android:key="import_database"
 			android:title="@string/import_database"
 			android:summary="@string/import_database_summary"/>
 		<Preference
+			app:iconSpaceReserved="false"
 			android:key="export_database"
 			android:title="@string/export_database"
 			android:summary="@string/export_database_summary"/>

@@ -41,12 +41,13 @@
 	<string name="save_battery">省电模式</string>
 	<string name="save_battery_summary">電池電量低時停止渲染</string>
 	<string name="sort_by_last_modification">按最後修改時間排序</string>
-	<string name="sort_by_last_modification_summary">根據最後修改時間對著色器進行排序</string>
 	<string name="sensors">感應器</string>
 	<string name="sensor_delay">感應器延遲</string>
 	<string name="no_shader_selected">未選取著色器</string>
 	<string name="shader">著色器</string>
 	<string name="editor">編輯器</string>
+	<string name="keyboard">Keyboard</string>
+	<string name="running_and_saving">Running and saving</string>
 	<string name="run_mode">執行模式</string>
 	<string name="update_delay">更新延遲</string>
 	<string name="text_size">字型大小</string>
@@ -66,13 +67,11 @@
 	<string name="export_tabs">匯出時保留製表符</string>
 	<string name="export_tabs_summary">分享或匯出文件時，不將製表符轉換為空格</string>
 	<string name="show_insert_tab">顯示插入製表符選項</string>
-	<string name="show_insert_tab_summary">在選單中顯示「插入製表符」項目</string>
 	<string name="save_on_run">執行即儲存</string>
 	<string name="save_on_run_summary">手動執行著色器時自動儲存更改</string>
 	<string name="disable_highlighting">關閉語法高亮</string>
 	<string name="disable_highlighting_summary">為大型著色器檔案關閉高亮以提升效能</string>
 	<string name="auto_save">自動儲存</string>
-	<string name="auto_save_summary">自動儲存著色器更改</string>
 	<string name="auto_hide_extra_keys">自動隱藏擴展按鍵</string>
 	<string name="auto_hide_extra_keys_summary">自動隱藏螢幕鍵盤上方的額外按键列</string>
 	<string name="default_new_shader">預設新著色器模板</string>
@@ -86,7 +85,6 @@
 	<string name="export_database">匯出資料庫</string>
 	<string name="export_database_summary">將所有著色器匯出至 SQLite 資料庫</string>
 	<string name="show_line_numbers">顯示行號</string>
-	<string name="show_line_numbers_summary">在每行程式碼開頭顯示行號</string>
 	<string name="enable_notification_listener">若要使用 notificationCount 或 lastNotificationTime 變數，請在設定中啟用「通知接聽服務」。</string>
 	<string name="go_to_settings">前往設定</string>
 	<string name="enable_notification_listener_title">啟用通知接聽</string>

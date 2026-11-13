@@ -44,12 +44,13 @@
 	<string name="save_battery">Save battery</string>
 	<string name="save_battery_summary">Stop rendering when battery is low</string>
 	<string name="sort_by_last_modification">Sort by last modification</string>
-	<string name="sort_by_last_modification_summary">Sort shaders by last modification</string>
 	<string name="sensors">Sensors</string>
 	<string name="sensor_delay">Sensor delay</string>
 	<string name="no_shader_selected">No shader selected</string>
 	<string name="shader">Shader</string>
 	<string name="editor">Editor</string>
+	<string name="keyboard">Keyboard</string>
+	<string name="running_and_saving">Running and saving</string>
 	<string name="run_mode">Run mode</string>
 	<string name="update_delay">Update delay</string>
 	<string name="text_size">Text size</string>
@@ -65,19 +66,17 @@
 	<string name="picture_bright">Bright</string>
 	<string name="tab_width">Tab width</string>
 	<string name="use_tab_for_indent">Use tab key</string>
-	<string name="use_tab_for_indent_summary">Use tab key for indenting instead of focus navigation</string>
+	<string name="use_tab_for_indent_summary">Otherwise it moves the focus</string>
 	<string name="export_tabs">Export tabs</string>
-	<string name="export_tabs_summary">Export tabs instead of converting to spaces when sharing</string>
+	<string name="export_tabs_summary">Otherwise tabs become spaces when sharing</string>
 	<string name="show_insert_tab">Show insert tab</string>
-	<string name="show_insert_tab_summary">Show insert tab menu item</string>
 	<string name="save_on_run">Save on run</string>
 	<string name="save_on_run_summary">Save changes when running manually</string>
 	<string name="disable_highlighting">Disable highlighting</string>
 	<string name="disable_highlighting_summary">Disable highlighting for big shaders</string>
 	<string name="auto_save">Auto save</string>
-	<string name="auto_save_summary">Save shader automatically</string>
 	<string name="auto_hide_extra_keys">Auto hide extra keys</string>
-	<string name="auto_hide_extra_keys_summary">Automatically hide the extra keys row above the soft keyboard</string>
+	<string name="auto_hide_extra_keys_summary">When the keyboard is closed</string>
 	<string name="default_new_shader">Default new shader</string>
 	<string name="import_export">Import &amp; export</string>
 	<string name="import_shaders_files">Import shaders from files</string>
@@ -89,12 +88,11 @@
 	<string name="export_database">Export database</string>
 	<string name="export_database_summary">Export all shaders into a SQLite database</string>
 	<string name="show_line_numbers">Show line numbers</string>
-	<string name="show_line_numbers_summary">Show line numbers at the start of each line</string>
 	<string name="enable_notification_listener">To use the notificationCount or lastNotificationTime uniform, enable the notification listener in Settings.</string>
 	<string name="go_to_settings">Go to Settings</string>
 	<string name="enable_notification_listener_title">Enable notification listener</string>
 	<string name="hide_native_suggestions">Hide native suggestions</string>
-	<string name="hide_native_suggestions_summary">Hides the soft keyboard\'s suggestions. If problems arise, turn this setting off.</string>
+	<string name="hide_native_suggestions_summary">Turn off if typing misbehaves</string>
 
 	<!-- Preferences -->
 	<string name="run_auto">Auto run on change</string>
