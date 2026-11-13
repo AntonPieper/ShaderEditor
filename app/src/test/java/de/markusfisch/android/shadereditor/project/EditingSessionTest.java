@@ -184,7 +184,10 @@ public class EditingSessionTest {
 		MemoryFiles store = new MemoryFiles().put("main.glsl", "stored");
 		EditingSession session = conflicted(store);
 
-		assertNull(session.keepEdits(path("main.glsl")));
+		assertEquals(store.revision("main.glsl"),
+				session.seen().get(path("main.glsl")));
+		assertNull(session.keepEdits(path("main.glsl"),
+				store.revision("main.glsl")));
 
 		assertTrue(session.conflicts().isEmpty());
 		assertEquals("theirs", store.text("main.glsl"));
@@ -203,7 +206,7 @@ public class EditingSessionTest {
 		store.remove("main.glsl");
 		session.refresh();
 
-		assertNull(session.keepEdits(path("main.glsl")));
+		assertNull(session.keepEdits(path("main.glsl"), null));
 
 		assertNull(session.draft(path("main.glsl")).base());
 		assertTrue(session.save().get(path("main.glsl")) instanceof Saved);
@@ -211,16 +214,18 @@ public class EditingSessionTest {
 	}
 
 	@Test
-	public void keepEditsNeedsReadableFile() {
+	public void keepEditsOfAnOlderRevisionConflictsAgain() {
 		MemoryFiles store = new MemoryFiles().put("main.glsl", "stored");
 		EditingSession session = conflicted(store);
-		store.unreadable = path("main.glsl");
+		String seen = store.revision("main.glsl");
+		store.put("main.glsl", "again");
 
-		assertNotNull(session.keepEdits(path("main.glsl")));
+		assertNull(session.keepEdits(path("main.glsl"), seen));
 
-		assertEquals(Set.of(path("main.glsl")),
-				session.conflicts().keySet());
-		assertNotNull(session.keepEdits(path("other.glsl")));
+		assertTrue(session.save().get(path("main.glsl")) instanceof
+				Conflict);
+		assertEquals("again", store.text("main.glsl"));
+		assertNotNull(session.keepEdits(path("other.glsl"), null));
 	}
 
 	@Test

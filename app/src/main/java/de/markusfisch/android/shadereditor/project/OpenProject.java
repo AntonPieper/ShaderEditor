@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
@@ -58,6 +59,11 @@ public final class OpenProject {
 	 */
 	static final long FLUSH_DELAY = 2000;
 	static final long FLUSH_LIMIT = 5000;
+
+	/** How the user resolves a conflict. */
+	public enum Choice {
+		RELOAD, KEEP
+	}
 
 	/** Runs a task on the main thread after a delay in milliseconds. */
 	interface Later {
@@ -122,10 +128,11 @@ public final class OpenProject {
 	private final Executor worker;
 	private final Executor main;
 	private final Later later;
-	// The files with drafts and those in conflict, as the session on the
-	// worker last told them.
+	// The files with drafts and those in conflict with the revision
+	// they were seen at, as the session on the worker last told them.
 	private Set<ProjectPath> drafts;
 	private Map<ProjectPath, String> conflicted;
+	private Map<ProjectPath, String> seen;
 	private List<ProjectDiagnostic> diagnostics = List.of();
 	private List<Used> used = List.of();
 	private ProjectPath running;
@@ -153,6 +160,7 @@ public final class OpenProject {
 		texts = new FileTexts(session, worker, main);
 		drafts = session.unsaved();
 		conflicted = session.conflicts();
+		seen = session.seen();
 	}
 
 	/**
@@ -387,19 +395,6 @@ public final class OpenProject {
 	 */
 	public void save(boolean explicit, Callback<Map<ProjectPath, Outcome>> done) {
 		persist();
-		if (explicit && !keptEdits.isEmpty()) {
-			List<ProjectPath> kept = new ArrayList<>(keptEdits);
-			worker.execute(() -> {
-				List<ProjectPath> resolved = new ArrayList<>();
-				for (ProjectPath path : kept) {
-					if (session.keepEdits(path) == null) {
-						resolved.add(path);
-					}
-				}
-				main.execute(() -> keptEdits.removeAll(resolved));
-			});
-			sync(null);
-		}
 		Map<ProjectPath, Outcome> outcomes = new LinkedHashMap<>();
 		int[] left = {1};
 		Runnable finished = () -> {
@@ -412,6 +407,10 @@ public final class OpenProject {
 		for (ProjectPath path : unsaved()) {
 			if (loaded(path) == null && !drafts.contains(path)) {
 				continue;
+			} else if (!explicit && keptEdits.contains(path)) {
+				outcomes.put(path, new EditingSession.Conflict(
+						"the file changed elsewhere"));
+				continue;
 			}
 			outcomes.put(path, null);
 			++left[0];
@@ -421,6 +420,10 @@ public final class OpenProject {
 					outcomes.put(path, save.outcome());
 				} else {
 					outcomes.remove(path);
+				}
+				// A conflict asks again.
+				if (!(save.outcome() instanceof EditingSession.Failed)) {
+					keptEdits.remove(path);
 				}
 				sync(finished);
 			}));
@@ -474,12 +477,49 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Keep the unsaved text of path although the file changed elsewhere;
-	 * the next explicit save overwrites the file.
+	 * Resolve the conflict of path, as the user saw it at revision seen,
+	 * see {@link #seen}: reload the stored text, or keep the unsaved
+	 * text so the next explicit save overwrites that revision. Nothing
+	 * happens when the file is not in conflict at seen anymore.
 	 */
-	public void keepEdits(ProjectPath path) {
+	public void resolve(ProjectPath path, Choice choice, String seen) {
+		if (!conflicts().containsKey(path) ||
+				!Objects.equals(seen, this.seen.get(path))) {
+			return;
+		}
+		if (choice == Choice.RELOAD) {
+			reload(path, problem -> {
+			});
+			return;
+		}
 		keptEdits.add(path);
+		FileRecord record = loaded(path);
+		if (record != null) {
+			record.consent(seen);
+		}
+		worker.execute(() -> session.keepEdits(path, seen));
+		sync(null);
 		changed();
+	}
+
+	/**
+	 * Return the revision storage held when path was last found in
+	 * conflict, null when the file was absent or path is not in
+	 * conflict.
+	 */
+	public String seen(ProjectPath path) {
+		return seen.get(path);
+	}
+
+	/**
+	 * Return what the last check found in storage for path while its
+	 * document is in memory, else null. A document without unsaved text
+	 * whose file is not there or not readable as text keeps its text,
+	 * but what runs is made of the file as stored.
+	 */
+	public FileTexts.Found found(ProjectPath path) {
+		FileRecord record = loaded(path);
+		return record != null ? record.found : null;
 	}
 
 	/**
@@ -755,13 +795,21 @@ public final class OpenProject {
 			end(record, request);
 			return;
 		}
-		texts.reread(record.path, request.base(), changed -> {
-			if (changed != null && records.get(record.path) == record &&
-					record.adoptStored(request, changed.text(),
-							changed.revision())) {
+		texts.reread(record.path, request.base(), checked -> {
+			if (records.get(record.path) != record) {
+				end(record, request);
+				return;
+			}
+			if (checked.found() != FileTexts.Found.CHANGED) {
+				record.adoptFound(request, checked.found());
+			} else if (record.adoptStored(request, checked.text(),
+					checked.revision())) {
 				reread.add(record.path);
+			} else {
+				record.adoptFound(request, checked.found());
 			}
 			end(record, request);
+			changed();
 		});
 	}
 
@@ -884,9 +932,11 @@ public final class OpenProject {
 		worker.execute(() -> {
 			Set<ProjectPath> unsaved = session.unsaved();
 			Map<ProjectPath, String> conflicts = session.conflicts();
+			Map<ProjectPath, String> revisions = session.seen();
 			main.execute(() -> {
 				drafts = unsaved;
 				conflicted = conflicts;
+				seen = revisions;
 				changed();
 				if (then != null) {
 					then.run();
@@ -898,8 +948,12 @@ public final class OpenProject {
 	private Map<ProjectPath, Text> snapshot() {
 		Map<ProjectPath, Text> snapshot = new HashMap<>();
 		for (FileRecord record : records.values()) {
-			if (record.document() != null) {
-				snapshot.put(record.path, record.document().text());
+			Document document = record.document();
+			// A file gone from storage is not built from what was shown.
+			if (document != null && (document.isModified() ||
+					record.found == FileTexts.Found.SAME ||
+					record.found == FileTexts.Found.CHANGED)) {
+				snapshot.put(record.path, document.text());
 			}
 		}
 		return snapshot;

@@ -488,10 +488,47 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void keepingEditsOverOneRevisionConflictsWithTheNext()
+			throws IOException {
+		OpenProject project = editedElsewhere();
+		String seen = project.seen(path("a.glsl"));
+		assertNotNull(seen);
+
+		project.resolve(path("a.glsl"), OpenProject.Choice.KEEP, seen);
+		settle();
+		write("a.glsl", "again");
+
+		assertTrue(save(project, true).get(path("a.glsl")) instanceof
+				Conflict);
+		assertEquals("again", read("a.glsl"));
+		assertEquals(Set.of(path("a.glsl")), project.conflicts().keySet());
+		project.resolve(path("a.glsl"), OpenProject.Choice.KEEP, seen);
+		assertEquals(Set.of(path("a.glsl")), project.conflicts().keySet());
+	}
+
+	@Test
+	public void cleanFileDeletedElsewhereKeepsItsTextAndIsNotBuilt()
+			throws IOException {
+		write(OpenProject.MAIN.toString(), SHADER);
+		OpenProject project = open();
+		Document main = document(project, OpenProject.MAIN.toString());
+		assertTrue(new File(root, OpenProject.MAIN.toString()).delete());
+
+		refresh(project);
+
+		assertEquals(FileTexts.Found.MISSING, project.found(OpenProject.MAIN));
+		assertSame(main, project.document(OpenProject.MAIN));
+		assertEquals(SHADER, main.text().toString());
+		Preparation preparation = prepare(project);
+		assertTrue(preparation == null || preparation.plan() == null);
+	}
+
+	@Test
 	public void keepsEditsUntilAnExplicitSave() throws IOException {
 		OpenProject project = editedElsewhere();
 
-		project.keepEdits(path("a.glsl"));
+		project.resolve(path("a.glsl"), OpenProject.Choice.KEEP,
+				project.seen(path("a.glsl")));
 
 		assertTrue(project.conflicts().isEmpty());
 		assertTrue(save(project, false).get(path("a.glsl")) instanceof
@@ -815,7 +852,8 @@ public class OpenProjectTest {
 		assertEquals(0, drain(posted));
 
 		project.setListener(null, null);
-		project.keepEdits(path("lib.glsl"));
+		project.resolve(path("lib.glsl"), OpenProject.Choice.KEEP,
+				project.seen(path("lib.glsl")));
 		assertEquals(0, drain(posted));
 	}
 

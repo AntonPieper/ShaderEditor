@@ -194,7 +194,8 @@ public class ProjectPreviewActivity extends PreviewActivity {
 		if (file != null && "reload".equals(resolve)) {
 			current.reload(file, problem -> log("reload " + problem));
 		} else if (file != null && "keep".equals(resolve)) {
-			current.keepEdits(file);
+			current.resolve(file, OpenProject.Choice.KEEP,
+					current.seen(file));
 		} else if (file != null && "copy".equals(resolve)) {
 			current.saveCopy(file, copy -> log("copy " + copy));
 		}
