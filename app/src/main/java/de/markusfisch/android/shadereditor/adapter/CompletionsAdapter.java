@@ -1,6 +1,11 @@
 package de.markusfisch.android.shadereditor.adapter;
 
 import android.annotation.SuppressLint;
+import android.graphics.Typeface;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.TextPaint;
+import android.text.style.MetricAffectingSpan;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -49,19 +54,29 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 	}
 
 	public void submitCompletions(@NonNull List<String> completions, int position) {
-		submitList(completions, () -> this.position = position);
+		submitList(completions, () -> {
+			if (this.position != position) {
+				this.position = position;
+				// Same words with a longer prefix: split them again.
+				notifyItemRangeChanged(0, getItemCount());
+			}
+		});
 	}
 
 	public class ViewHolder extends RecyclerView.ViewHolder {
 		private final Button btn;
+		private final Typeface boldFont;
+		private String item = "";
 
 		public ViewHolder(@NonNull View itemView) {
 			super(itemView);
 			btn = itemView.findViewById(R.id.btn);
-			btn.setTypeface(ShaderEditorApp.preferences.getFont());
+			Typeface font = ShaderEditorApp.preferences.getFont();
+			btn.setTypeface(font);
+			// A bundled font's family holds its real bold weight.
+			boldFont = Typeface.create(font, Typeface.BOLD);
 			btn.setOnClickListener((v) -> {
-				CharSequence text = btn.getText();
-				onInsertListener.onInsert(text.subSequence(position, text.length()));
+				onInsertListener.onInsert(item.substring(prefixLength()));
 			});
 			itemView.setOnTouchListener(new View.OnTouchListener() {
 				@SuppressLint("ClickableViewAccessibility")
@@ -73,7 +88,34 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 		}
 
 		public void update(String item) {
-			btn.setText(item);
+			this.item = item;
+			// The typed prefix stays regular, the part to insert is bold.
+			SpannableString text = new SpannableString(item);
+			text.setSpan(new FontSpan(boldFont), prefixLength(), item.length(),
+					Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+			btn.setText(text);
+		}
+
+		private int prefixLength() {
+			return Math.min(position, item.length());
+		}
+	}
+
+	private static final class FontSpan extends MetricAffectingSpan {
+		private final Typeface typeface;
+
+		private FontSpan(@NonNull Typeface typeface) {
+			this.typeface = typeface;
+		}
+
+		@Override
+		public void updateDrawState(@NonNull TextPaint paint) {
+			paint.setTypeface(typeface);
+		}
+
+		@Override
+		public void updateMeasureState(@NonNull TextPaint paint) {
+			paint.setTypeface(typeface);
 		}
 	}
 }
