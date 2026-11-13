@@ -2,7 +2,9 @@ package de.markusfisch.android.shadereditor.editor;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -149,7 +151,8 @@ public class AnalysisTest {
 		Main main = new Main();
 		List<Analysis> results = new ArrayList<>();
 		AnalysisScheduler scheduler = new AnalysisScheduler(document, 50,
-				Runnable::run, main, results::add);
+				Runnable::run, main, results::add, () -> main.now,
+				Analysis::of);
 		main.advance(0);
 		assertEquals(1, results.size());
 		document.replace(0, 0, Text.of("x"));
@@ -172,7 +175,8 @@ public class AnalysisTest {
 		Main main = new Main();
 		Background background = new Background();
 		List<Analysis> results = new ArrayList<>();
-		new AnalysisScheduler(document, 50, background, main, results::add);
+		new AnalysisScheduler(document, 50, background, main, results::add,
+				() -> main.now, Analysis::of);
 		main.advance(0);
 		background.runAll();
 		// Done, not yet delivered when the next change comes.
@@ -182,12 +186,119 @@ public class AnalysisTest {
 		main.advance(50);
 		document.replace(0, 0, Text.of("y"));
 		main.advance(50);
-		// The first of two queued tasks is stale and skips its work.
-		assertEquals(2, background.tasks.size());
+		// The pass for "x" sees the change and skips its work.
+		assertEquals(1, background.tasks.size());
+		background.runAll();
+		main.advance(0);
 		background.runAll();
 		main.advance(0);
 		assertEquals(1, results.size());
 		assertEquals(2, results.get(0).revision());
+	}
+
+	@Test
+	public void givesUpAtTheStartOfALineWhenCancelled() {
+		int[] asked = new int[1];
+		assertNull(Analysis.of(Text.of("float a;\n".repeat(10)), 0,
+				Analysis.NONE, () -> ++asked[0] == 3));
+		assertEquals(3, asked[0]);
+	}
+
+	@Test
+	public void pacesPassesByHowLongTheLastOneTook() {
+		Document document = new Document(Text.of("float a;"));
+		Main main = new Main();
+		Background background = new Background();
+		int[] passes = new int[1];
+		List<Analysis> results = new ArrayList<>();
+		new AnalysisScheduler(document, 50, background, main, results::add,
+				() -> main.now, (text, revision, previous, cancel) -> {
+			++passes[0];
+			main.now += 150;
+			return Analysis.of(text, revision, previous);
+		});
+		// A key every 100 ms for a minute.
+		typeUntil(document, main, background, 60_000, 100);
+		assertTrue(passes[0] <= 60_000 / (150 * 9) + 1);
+		int during = passes[0];
+		int resultsDuring = results.size();
+		assertTrue(resultsDuring > 10);
+		// Exactly one more once the keys stop, delivered within the
+		// spacing.
+		typeUntil(document, main, background, main.now + 10_000, 0);
+		assertEquals(during + 1, passes[0]);
+		assertEquals(resultsDuring + 1, results.size());
+		assertEquals(document.revision(), results.get(results.size() - 1)
+				.revision());
+	}
+
+	@Test
+	public void abandonsAPassOnceTheDocumentChanges() {
+		Document document = new Document(Text.of("float a;"));
+		Main main = new Main();
+		Background background = new Background();
+		List<Boolean> cancelled = new ArrayList<>();
+		List<Analysis> results = new ArrayList<>();
+		new AnalysisScheduler(document, 50, background, main, results::add,
+				() -> main.now, (text, revision, previous, cancel) -> {
+			if (cancelled.isEmpty()) {
+				// A key arrives while the pass runs.
+				document.replace(0, 0, Text.of("x"));
+			}
+			cancelled.add(cancel.cancelled());
+			return cancel.cancelled()
+					? null
+					: Analysis.of(text, revision, previous);
+		});
+		main.advance(0);
+		background.runAll();
+		main.advance(0);
+		assertEquals(List.of(true), cancelled);
+		assertEquals(List.of(), results);
+		main.advance(50);
+		background.runAll();
+		main.advance(0);
+		assertEquals(List.of(true, false), cancelled);
+		assertEquals(1, results.size());
+		assertEquals(document.revision(), results.get(0).revision());
+	}
+
+	@Test
+	public void keepsTheShortDelayForAFastDocument() {
+		Document document = new Document(Text.of("float a;\n".repeat(500)));
+		Main main = new Main();
+		Background background = new Background();
+		List<Analysis> results = new ArrayList<>();
+		new AnalysisScheduler(document, 50, background, main, results::add,
+				() -> main.now, (text, revision, previous, cancel) -> {
+			main.now += 5;
+			return Analysis.of(text, revision, previous);
+		});
+		for (int i = 0; i < 3; ++i) {
+			typeUntil(document, main, background, main.now + 1000, 100);
+			document.replace(0, 0, Text.of("x"));
+			typeUntil(document, main, background, main.now + 49, 0);
+			int before = results.size();
+			typeUntil(document, main, background, main.now + 1, 0);
+			assertEquals(before + 1, results.size());
+			assertEquals(document.revision(), results.get(before).revision());
+		}
+	}
+
+	// Types a key every keyMillis, or none if 0, and runs the background
+	// work as it comes.
+	private static void typeUntil(Document document, Main main,
+			Background background, long until, long keyMillis) {
+		long next = main.now;
+		while (main.now < until) {
+			if (keyMillis > 0 && main.now >= next) {
+				document.replace(0, 0, Text.of("x"));
+				next += keyMillis;
+			}
+			main.advance(1);
+			background.runAll();
+			main.advance(0);
+		}
 	}
 
 	@Test
@@ -197,7 +308,8 @@ public class AnalysisTest {
 		Background background = new Background();
 		List<Analysis> results = new ArrayList<>();
 		AnalysisScheduler scheduler = new AnalysisScheduler(document, 50,
-				background, main, results::add);
+				background, main, results::add, () -> main.now,
+				Analysis::of);
 		main.advance(0);
 		scheduler.close();
 		background.runAll();

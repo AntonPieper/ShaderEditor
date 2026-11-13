@@ -37,6 +37,23 @@ public class LineStylesSchedulerTest {
 	}
 
 	@Test
+	public void runsNothingInTheBackgroundForOrdinaryTyping() {
+		Document document = new Document(Text.of(
+				"float a;\n".repeat(20_000)));
+		LineStyles styles = new LineStyles(document, 200);
+		Main main = new Main();
+		Background background = new Background();
+		new LineStylesScheduler(document, styles, background, main, () -> {});
+		settle(main, background);
+		int offset = document.text().lineStart(10_000);
+		for (char c : "float x = 1.0; // y\n".toCharArray()) {
+			document.type(offset, offset, Text.of(String.valueOf(c)));
+			++offset;
+			assertEquals(List.of(), background.tasks);
+		}
+	}
+
+	@Test
 	public void appliesNothingAfterClose() {
 		Document document = new Document(Text.of(
 				"float a;\n".repeat(1000)));

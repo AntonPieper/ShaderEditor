@@ -31,6 +31,12 @@ public final class Analysis {
 			"^([ \t]*uniform.+)$",
 			Pattern.MULTILINE);
 	private static final Pattern ENDIF = Pattern.compile("(#endif)\\b");
+	/** Tells an analysis in progress to give up. */
+	interface Cancel {
+		/** Called between lines, on the thread that analyses. */
+		boolean cancelled();
+	}
+
 	/** The analysis of the empty text, for no revision. */
 	public static final Analysis NONE = of(Text.EMPTY, -1, null);
 
@@ -57,6 +63,15 @@ public final class Analysis {
 	 * or null, if the names are the same.
 	 */
 	public static Analysis of(Text text, int revision, Analysis previous) {
+		return of(text, revision, previous, () -> false);
+	}
+
+	/**
+	 * Return the analysis like {@link #of(Text, int, Analysis)}, or null
+	 * as soon as cancel tells so at the start of a line.
+	 */
+	static Analysis of(Text text, int revision, Analysis previous,
+			Cancel cancel) {
 		Outline.Builder builder = new Outline.Builder(MAX_DECLARATIONS,
 				MAX_NAME_CHARS);
 		boolean outlined = text.longestLineLength() <= MAX_LINE_LENGTH;
@@ -67,6 +82,9 @@ public final class Analysis {
 		int endifEnd = -1;
 		int state = GlslLexer.TEXT_START;
 		for (int n = 0, lines = text.lineCount(); n < lines; ++n) {
+			if (cancel.cancelled()) {
+				return null;
+			}
 			String line = text.line(n);
 			int lineStart = text.lineStart(n);
 			if (outlined) {
