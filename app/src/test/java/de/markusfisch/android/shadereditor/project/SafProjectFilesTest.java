@@ -43,6 +43,16 @@ public class SafProjectFilesTest {
 	}
 
 	@Test
+	public void refusesAFileOverTheLimitAsked() {
+		documents.put("main.glsl", "void main() {}");
+
+		assertEquals(new Failed(ProjectFiles.TOO_LARGE),
+				files.read(path("main.glsl"), 13));
+		assertEquals("void main() {}", text(((Content) files.read(
+				path("main.glsl"), 14)).bytes()));
+	}
+
+	@Test
 	public void openingReadsNothingAndAPathReadsOnlyItsWay() {
 		for (int i = 0; i < 100; ++i) {
 			documents.put("big/file" + i + ".glsl", "");

@@ -119,6 +119,11 @@ public final class SafProjectFiles implements ProjectFiles {
 
 	@Override
 	public Read read(ProjectPath path) {
+		return read(path, Long.MAX_VALUE);
+	}
+
+	@Override
+	public Read read(ProjectPath path, long limit) {
 		// A kept listing may name a document that is gone.
 		for (boolean retry = remembers(); ; retry = false) {
 			try {
@@ -128,8 +133,10 @@ public final class SafProjectFiles implements ProjectFiles {
 				} else if (file.folder()) {
 					return new Failed("it is a folder");
 				}
-				byte[] bytes = resolver.read(file.id());
-				return new Content(bytes, revision(bytes));
+				byte[] bytes = resolver.read(file.id(), limit);
+				return bytes != null
+						? new Content(bytes, revision(bytes))
+						: new Failed(TOO_LARGE);
 			} catch (IOException | RuntimeException e) {
 				if (!retry) {
 					return new Failed(reason(e, LOST_FOLDER));

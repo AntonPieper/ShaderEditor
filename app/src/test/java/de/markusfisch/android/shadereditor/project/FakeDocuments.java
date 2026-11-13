@@ -121,8 +121,9 @@ class FakeDocuments implements DocumentResolver {
 	}
 
 	@Override
-	public byte[] read(String id) throws IOException {
-		return node("read", id).bytes.clone();
+	public byte[] read(String id, long limit) throws IOException {
+		byte[] bytes = node("read", id).bytes;
+		return bytes.length > limit ? null : bytes.clone();
 	}
 
 	@Override

@@ -141,6 +141,28 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void findsWhatRunsWithoutReadingAFileWhole() {
+		List<Long> limits = new ArrayList<>();
+		ProjectFiles huge = new ProjectFiles() {
+			@Override
+			public Read read(ProjectPath path) {
+				throw new AssertionError("read all of " + path);
+			}
+
+			@Override
+			public Read read(ProjectPath path, long limit) {
+				limits.add(limit);
+				return new Failed(ProjectFiles.TOO_LARGE);
+			}
+		};
+
+		assertNull(open(huge).running());
+
+		assertEquals(List.of(FileTexts.MAX_BYTES, FileTexts.MAX_BYTES),
+				limits);
+	}
+
+	@Test
 	public void editingAnotherFileKeepsWhatRunsU10() throws IOException {
 		write("main.glsl", "#include \"lib/common.glsl\"\n" + SHADER);
 		write("lib/common.glsl", "// common\n");

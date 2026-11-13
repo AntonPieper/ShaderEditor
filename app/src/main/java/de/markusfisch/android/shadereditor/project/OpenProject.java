@@ -1226,17 +1226,20 @@ public final class OpenProject {
 			return lone;
 		}
 		ProjectFiles files = new Edited(snapshot, journaled);
+		long limit = FileTexts.MAX_BYTES;
 		ProjectPath found = sessions.running(id);
-		if (found == null || !(files.read(found) instanceof Content)) {
+		if (found == null ||
+				!(files.read(found, limit) instanceof Content)) {
 			found = null;
 			ProjectParseResult<ProjectManifest> manifest = null;
-			if (files.read(ProjectManifest.FILE) instanceof Content content) {
+			if (files.read(ProjectManifest.FILE, limit) instanceof
+					Content content) {
 				String text = SourceText.decode(content.bytes());
 				manifest = text != null ? ProjectManifest.parse(text) : null;
 			}
 			if (manifest != null && manifest.isSuccess()) {
 				found = manifest.value().entry();
-			} else if (files.read(MAIN) instanceof Content) {
+			} else if (files.read(MAIN, limit) instanceof Content) {
 				found = MAIN;
 			}
 		}
@@ -1375,15 +1378,23 @@ public final class OpenProject {
 
 		@Override
 		public Read read(ProjectPath path) {
+			return read(path, Long.MAX_VALUE);
+		}
+
+		@Override
+		public Read read(ProjectPath path, long limit) {
 			Text text = snapshot.get(path);
 			if (text == null && journaled.contains(path)) {
 				Journal.Recovered recovered = journal.read(path);
 				text = recovered != null ? recovered.text() : null;
 			}
 			if (text == null) {
-				return store.read(path);
+				return store.read(path, limit);
 			}
 			byte[] bytes = text.toString().getBytes(StandardCharsets.UTF_8);
+			if (bytes.length > limit) {
+				return new Failed(TOO_LARGE);
+			}
 			String revision = StoredFiles.revision(bytes);
 			return revision != null
 					? new Content(bytes, "editor:" + revision)

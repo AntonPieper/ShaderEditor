@@ -29,7 +29,15 @@ public interface DocumentResolver {
 
 	List<Document> children(String folderId) throws IOException;
 
-	byte[] read(String id) throws IOException;
+	default byte[] read(String id) throws IOException {
+		return read(id, Long.MAX_VALUE);
+	}
+
+	/**
+	 * Return the content of a file, or null as soon as it has more than
+	 * limit bytes, whatever its size said.
+	 */
+	byte[] read(String id, long limit) throws IOException;
 
 	/**
 	 * Replace the content of a file.
