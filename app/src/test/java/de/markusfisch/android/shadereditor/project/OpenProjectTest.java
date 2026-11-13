@@ -659,13 +659,29 @@ public class OpenProjectTest {
 	@Test
 	public void opensASessionOnceUntilItIsClosed() {
 		LiveProjects live = live();
-		OpenProject project = live.open(id, this::folder);
+		OpenProject project = open(live, this::folder);
 
-		assertSame(project, live.open(id, this::folder));
+		assertSame(project, open(live, this::folder));
 		assertEquals(OpenProject.Access.AVAILABLE,
 				project.storage().access());
 		project.close();
-		assertNotSame(project, live.open(id, this::folder));
+		assertNotSame(project, open(live, this::folder));
+	}
+
+	@Test
+	public void reopeningAfterCloseReadsWhatTheProjectWroteLast()
+			throws IOException {
+		LiveProjects live = live();
+		OpenProject project = open(live, this::folder);
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		project.close();
+		OpenProject[] reopened = {null};
+
+		live.open(id, this::folder, opened -> reopened[0] = opened);
+		settle();
+
+		assertEquals(Set.of(path("a.glsl")), reopened[0].unsaved());
+		assertEquals("mine", text(reopened[0], "a.glsl"));
 	}
 
 	@Test
@@ -675,7 +691,7 @@ public class OpenProjectTest {
 		edit(project, document(project, "a.glsl", "stored"), "mine");
 		flush(project);
 
-		OpenProject gone = live().open(id, locator ->
+		OpenProject gone = open(live(), locator ->
 				new SafProjects.Opened(null, null, "the folder is gone"));
 
 		assertEquals(new OpenProject.Storage(OpenProject.Access.UNAVAILABLE,
@@ -827,7 +843,7 @@ public class OpenProjectTest {
 		OpenProject project = open();
 		edit(project, document(project, "a.glsl", "stored"), "mine");
 		flush(project);
-		OpenProject gone = live().open(id, locator ->
+		OpenProject gone = open(live(), locator ->
 				new SafProjects.Opened(null, null, "the folder is gone"));
 		MemoryProjectFiles destination = new MemoryProjectFiles();
 		destination.writable = true;
@@ -1441,6 +1457,14 @@ public class OpenProjectTest {
 			}
 		}
 		return used;
+	}
+
+	private OpenProject open(LiveProjects live, LiveProjects.Opener opener) {
+		OpenProject[] opened = {null};
+		live.open(id, opener, project -> opened[0] = project);
+		settle();
+		assertNotNull(opened[0]);
+		return opened[0];
 	}
 
 	private SafProjects.Opened folder(Locator locator) {

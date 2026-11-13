@@ -9,7 +9,10 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 /**
  * The projects open in the process, one per session: opening a session
  * that is open returns the same project until it is closed. A session
- * whose files cannot be reached opens with its drafts all the same.
+ * whose files cannot be reached opens with its unsaved text all the
+ * same. Projects are opened on the worker their storage work runs on,
+ * so opening comes after what a project of the session that closed
+ * still writes.
  */
 final class LiveProjects {
 	interface Opener {
@@ -33,10 +36,22 @@ final class LiveProjects {
 	}
 
 	/**
-	 * Return the project of session id, opened through opener when it is
-	 * not open, or null when there is no such session.
+	 * Find the project of session id, opened through opener when it is
+	 * not open, on the worker after what it was given before; done gets
+	 * it there, or null when there is no such session or opening failed.
 	 */
-	synchronized OpenProject open(String id, Opener opener) {
+	void open(String id, Opener opener, FileTexts.Callback<OpenProject> done) {
+		worker.execute(() -> {
+			OpenProject project = null;
+			try {
+				project = open(id, opener);
+			} finally {
+				done.done(project);
+			}
+		});
+	}
+
+	private synchronized OpenProject open(String id, Opener opener) {
 		OpenProject project = live.get(id);
 		if (project != null) {
 			return project;

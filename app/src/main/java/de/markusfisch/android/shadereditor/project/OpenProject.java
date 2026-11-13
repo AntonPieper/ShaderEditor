@@ -246,7 +246,8 @@ public final class OpenProject {
 	 * unsaved text was based on it is in conflict. Storage work runs on
 	 * worker, one task at a time, results are posted to main, and later
 	 * runs the timers that keep unsaved text in the journal; call it on
-	 * worker. lone is the only file of a project of one document, which
+	 * worker, so it reads after what was written there before. lone is
+	 * the only file of a project of one document, which
 	 * runs, else null. A store of null cannot be reached for problem:
 	 * the project opens with its unsaved text and tells that through
 	 * {@link #storage}. budget is how many bytes the documents in
@@ -281,8 +282,7 @@ public final class OpenProject {
 		OpenProject project = new OpenProject(id, store, sessions, journal,
 				sessions.recent(id), worker, main, later, lone, storage,
 				budget);
-		// After what earlier projects of the session still write.
-		worker.execute(journal::removeLeftovers);
+		journal.removeLeftovers();
 		for (Journal.Header header : journal.headers().values()) {
 			FileRecord record = project.record(header.path());
 			record.recover(header);
