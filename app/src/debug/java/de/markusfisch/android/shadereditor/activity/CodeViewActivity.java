@@ -19,6 +19,7 @@ import android.view.Window;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+import androidx.core.content.res.ResourcesCompat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -52,7 +53,10 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
  * "unicode" for lines of accented, CJK, emoji and Arabic text and a line
  * of 20,000 characters: the text; "lines" repeats its lines up to that
  * many;</li>
- * <li>"tab", the tab width; "size", the text size in sp;</li>
+ * <li>"tab", the tab width; "size", the text size in sp; "font", a
+ * font of res/font by its file name, "fira_code" for example, and
+ * "ligatures", true to keep its ligatures, set as the editor's
+ * settings set them;</li>
  * <li>"inputType", the input type keyboards are given, by default the
  * one the setting for native suggestions selects in the editor; 1, for
  * example, is plain text with suggestions, on which keyboards
@@ -145,6 +149,10 @@ public class CodeViewActivity extends Activity {
 		view.setTabWidth(getIntent().getIntExtra("tab", 4));
 		view.setTextSize(TypedValue.COMPLEX_UNIT_SP,
 				getIntent().getFloatExtra("size", 12));
+		String font = getIntent().getStringExtra("font");
+		if (font != null) {
+			setFont(font, getIntent().getBooleanExtra("ligatures", false));
+		}
 		view.setInputType(getIntent().getIntExtra("inputType",
 				ShaderEditorApp.preferences.hideNativeSuggestions()
 						? CodeView.INPUT_TYPE_NO_SUGGESTIONS
@@ -230,6 +238,21 @@ public class CodeViewActivity extends Activity {
 		} catch (IOException e) {
 			Log.e(TAG, "cannot write " + sessionFile, e);
 		}
+	}
+
+	private void setFont(String name, boolean ligatures) {
+		String[] names = {"fira_code", "ibm_plex_mono", "jetbrains_mono",
+				"roboto_mono", "source_code_pro"};
+		int[] ids = {R.font.fira_code, R.font.ibm_plex_mono,
+				R.font.jetbrains_mono, R.font.roboto_mono,
+				R.font.source_code_pro};
+		int i = Arrays.asList(names).indexOf(name);
+		if (i < 0) {
+			Log.e(TAG, "no font " + name);
+			return;
+		}
+		view.setTypeface(ResourcesCompat.getFont(this, ids[i]));
+		view.setFontFeatureSettings(ligatures ? "normal" : "calt off");
 	}
 
 	private void load() {
