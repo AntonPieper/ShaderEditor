@@ -23,9 +23,8 @@ import de.markusfisch.android.shadereditor.project.ProjectFiles.Content;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
-import de.markusfisch.android.shadereditor.syntax.Outline;
+import de.markusfisch.android.shadereditor.syntax.LineTokens;
 import de.markusfisch.android.shadereditor.syntax.Style;
-import de.markusfisch.android.shadereditor.syntax.Tokens;
 
 /**
  * The project open in the editor, for the screens that show it: its
@@ -91,6 +90,11 @@ public final class OpenProject {
 		}
 	}
 
+	/** Whether a file's own text defines main, as far as known. */
+	public enum Runs {
+		YES, NO, UNKNOWN
+	}
+
 	/** How the user resolves a conflict. */
 	public enum Choice {
 		RELOAD, KEEP
@@ -139,7 +143,8 @@ public final class OpenProject {
 	private record State(Set<ProjectPath> unsaved, Set<ProjectPath> conflicts,
 			ProjectPath running, List<Used> used,
 			List<ProjectDiagnostic> diagnostics, String unprotected,
-			Map<ProjectPath, FileTexts.Found> found) {
+			Map<ProjectPath, FileTexts.Found> found,
+			Map<ProjectPath, Runs> runs) {
 	}
 
 	// The files opened, being opened or worked on in storage.
@@ -739,14 +744,37 @@ public final class OpenProject {
 
 	/**
 	 * Return whether path, open in the editor, can run: a .glsl file
-	 * whose own text defines main. Reads only that text, once.
+	 * whose own text defines main. Until that is known for its text,
+	 * UNKNOWN, and the text is read on the worker, once per revision;
+	 * the listener hears when it is known.
 	 */
-	public boolean canRun(ProjectPath path) {
+	public Runs runs(ProjectPath path) {
 		FileRecord record = path.getKind() == ProjectPath.Kind.SHADER
 				? loaded(path)
 				: null;
-		return record != null &&
-				definesMain(record.document().text().toString());
+		if (record == null) {
+			return Runs.NO;
+		}
+		Document document = record.document();
+		int revision = document.revision();
+		if (record.runsRevision == revision) {
+			return record.runs;
+		} else if (record.runsAsked != revision) {
+			record.runsAsked = revision;
+			Text text = document.text();
+			worker.execute(() -> {
+				Runs runs = definesMain(text) ? Runs.YES : Runs.NO;
+				main.execute(() -> {
+					if (record.document() == document &&
+							document.revision() == revision) {
+						record.runs = runs;
+						record.runsRevision = revision;
+						changed();
+					}
+				});
+			});
+		}
+		return Runs.UNKNOWN;
 	}
 
 	/** Keep the diagnostics of the last build of what runs. */
@@ -1155,8 +1183,15 @@ public final class OpenProject {
 				found.put(record.path, record.found);
 			}
 		}
+		Map<ProjectPath, Runs> runs = new HashMap<>();
+		for (FileRecord record : records.values()) {
+			if (record.document() != null &&
+					record.runsRevision == record.document().revision()) {
+				runs.put(record.path, record.runs);
+			}
+		}
 		return new State(unsaved(), conflicts().keySet(), running, used,
-				diagnostics, unprotected(), found);
+				diagnostics, unprotected(), found, runs);
 	}
 
 	// Call the listener, unless nothing it hears about changed or a call
@@ -1205,33 +1240,65 @@ public final class OpenProject {
 	}
 
 	// Whether text declares a function main outside any other block and
-	// gives it a body, as the lexer reads it.
-	static boolean definesMain(String text) {
-		Tokens tokens = GlslLexer.lex(text);
-		for (Outline.Declaration declaration :
-				Outline.of(tokens, text).declarations()) {
-			if (declaration.kind() != Outline.Kind.FUNCTION ||
-					!"main".equals(declaration.name())) {
-				continue;
+	// outside "#if 0", and gives it a body, as the lexer reads it. Reads
+	// one line at a time and keeps only the tokens of that line.
+	static boolean definesMain(Text text) {
+		LineTokens tokens = new LineTokens();
+		int state = GlslLexer.TEXT_START;
+		int braces = 0;
+		int level = 0;
+		int disabled = -1;
+		int parens = 0;
+		// 0: nothing, 1: after "main", 2: in its parameters, 3: after them.
+		int stage = 0;
+		boolean word = false;
+		for (int n = 0, lines = text.lineCount(); n < lines; ++n) {
+			String line = text.line(n);
+			state = GlslLexer.lexLine(line, n < lines - 1, state, tokens);
+			String directive = line.trim();
+			if (directive.startsWith("#")) {
+				directive = directive.substring(1).trim();
+				if (directive.startsWith("if")) {
+					++level;
+					if (disabled < 0 && directive.matches("if\\s+0\\b.*")) {
+						disabled = level;
+					}
+				} else if (directive.startsWith("endif")) {
+					if (disabled == level) {
+						disabled = -1;
+					}
+					--level;
+				} else if (directive.startsWith("el") && disabled == level) {
+					disabled = -1;
+				}
 			}
-			int parens = 0;
-			for (int i = tokens.indexAt(declaration.start()) + 1,
-					size = tokens.size(); i < size; ++i) {
-				if (tokens.style(i) == Style.COMMENT ||
+			for (int i = 0, size = tokens.size(); i < size; ++i) {
+				if (disabled >= 0 || tokens.style(i) == Style.COMMENT ||
 						tokens.inDirective(i)) {
 					continue;
 				}
-				char c = text.charAt(tokens.start(i));
-				if (c == '(') {
-					++parens;
-				} else if (c == ')') {
-					--parens;
-				} else if (parens == 0) {
+				String token = line.substring(tokens.start(i),
+						tokens.end(i));
+				char c = token.charAt(0);
+				if (stage == 1) {
+					stage = c == '(' ? 2 : 0;
+					parens = 1;
+				} else if (stage == 2) {
+					parens += c == '(' ? 1 : c == ')' ? -1 : 0;
+					stage = parens == 0 ? 3 : 2;
+					continue;
+				} else if (stage == 3) {
 					if (c == '{') {
 						return true;
 					}
-					break;
+					stage = 0;
 				}
+				if (stage == 0 && braces == 0 && word &&
+						token.equals("main")) {
+					stage = 1;
+				}
+				braces += c == '{' ? 1 : c == '}' ? -1 : 0;
+				word = Character.isJavaIdentifierStart(c);
 			}
 		}
 		return false;
