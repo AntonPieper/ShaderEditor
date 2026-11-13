@@ -22,8 +22,8 @@ import java.util.regex.Pattern;
  * and how it is listed among the recent projects, so screens can pass
  * the id instead of project content and tell about a project without
  * opening it. The folder also keeps which session was open last.
- * Removing a session never touches the project's files. Use it off the
- * main thread.
+ * Removing or discarding a session never touches the project's files.
+ * Use it off the main thread.
  */
 public final class ProjectSessions {
 	/** What a locator points at. */
@@ -303,10 +303,34 @@ public final class ProjectSessions {
 	}
 
 	/**
+	 * Remove session id from the recent projects. A session without
+	 * drafts is forgotten; one with drafts keeps its locator and drafts,
+	 * unlisted, until they are saved or discarded, and opening its
+	 * project again finds it by its locator. Return whether it is no
+	 * longer listed.
+	 */
+	public synchronized boolean remove(String id) {
+		File dir = file(id, null);
+		if (dir == null || !dir.exists()) {
+			return true;
+		}
+		if (id.equals(last()) && !setLast(null)) {
+			return false;
+		}
+		File recent = new File(dir, RECENT);
+		if (recent.exists() && !recent.delete()) {
+			return false;
+		}
+		// Deleting the drafts folder fails while it holds any file.
+		File drafts = new File(dir, DRAFTS);
+		return drafts.exists() && !drafts.delete() || discard(id);
+	}
+
+	/**
 	 * Forget session id with its drafts; the project's files stay as
 	 * they are. Return whether nothing of it is left.
 	 */
-	public synchronized boolean remove(String id) {
+	public synchronized boolean discard(String id) {
 		if (file(id, null) == null) {
 			return true;
 		}
