@@ -8,7 +8,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -34,6 +33,7 @@ import de.markusfisch.android.shadereditor.io.ImportExportAsFiles;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.preference.ShaderListPreference;
 import de.markusfisch.android.shadereditor.receiver.BatteryLevelReceiver;
+import de.markusfisch.android.shadereditor.widget.Message;
 
 public class PreferencesFragment
 		extends PreferenceFragmentCompat
@@ -53,11 +53,11 @@ public class PreferencesFragment
 				new ActivityResultContracts.StartActivityForResult(),
 				result -> {
 					if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-						Context context = getContext();
-						if (context != null) {
+						Activity activity = getActivity();
+						if (activity != null) {
 							String message = DatabaseImporter.importDatabase(
-									context, result.getData().getData());
-							Toast.makeText(context, message, Toast.LENGTH_LONG).show();
+									activity, result.getData().getData());
+							Message.show(activity, message);
 						}
 					}
 				});
@@ -66,11 +66,10 @@ public class PreferencesFragment
 				new ActivityResultContracts.RequestPermission(),
 				isGranted -> {
 					if (isGranted) {
-						ImportExportAsFiles.importFromDirectory(getContext());
+						ImportExportAsFiles.importFromDirectory(requireActivity());
 					} else {
-						Toast.makeText(getActivity(),
-								getString(R.string.read_access_required),
-								Toast.LENGTH_LONG).show();
+						Message.show(requireActivity(),
+								R.string.read_access_required);
 					}
 				});
 
@@ -78,11 +77,10 @@ public class PreferencesFragment
 				new ActivityResultContracts.RequestPermission(),
 				isGranted -> {
 					if (isGranted) {
-						ImportExportAsFiles.exportToDirectory(getContext());
+						ImportExportAsFiles.exportToDirectory(requireActivity());
 					} else {
-						Toast.makeText(getActivity(),
-								getString(R.string.write_access_required),
-								Toast.LENGTH_LONG).show();
+						Message.show(requireActivity(),
+								R.string.write_access_required);
 					}
 				});
 	}
@@ -219,14 +217,14 @@ public class PreferencesFragment
 				importFromDirectory.setOnPreferenceClickListener(preference -> {
 					if (checkExternalStoragePermission(
 							Manifest.permission.READ_EXTERNAL_STORAGE)) {
-						ImportExportAsFiles.importFromDirectory(getContext());
+						ImportExportAsFiles.importFromDirectory(requireActivity());
 					}
 					return true;
 				});
 				exportToDirectory.setOnPreferenceClickListener(preference -> {
 					if (checkExternalStoragePermission(
 							Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-						ImportExportAsFiles.exportToDirectory(getContext());
+						ImportExportAsFiles.exportToDirectory(requireActivity());
 					}
 					return true;
 				});
@@ -262,11 +260,10 @@ public class PreferencesFragment
 				return true;
 			});
 			exportDatabase.setOnPreferenceClickListener(preference -> {
-				Context context = getContext();
-				if (context != null) {
-					Toast.makeText(context,
-							DatabaseExporter.exportDatabase(context),
-							Toast.LENGTH_LONG).show();
+				Activity activity = getActivity();
+				if (activity != null) {
+					Message.show(activity,
+							DatabaseExporter.exportDatabase(activity));
 				}
 				return true;
 			});

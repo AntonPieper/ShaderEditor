@@ -296,6 +296,7 @@
 	<string name="nav_examples_count">%d examples</string>
 	<string name="nav_order_changed">Last changed first</string>
 	<string name="nav_order_name">By name</string>
+	<string name="unsaved_changes">unsaved changes</string>
 	<string name="nav_rename">Rename</string>
 	<string name="nav_duplicate">Duplicate</string>
 	<string name="nav_delete">Delete</string>
