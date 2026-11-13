@@ -43,16 +43,11 @@ final class FileRecord {
 	}
 
 	final ProjectPath path;
-	// What the view keeps for the document; the revision and modified
-	// state its draft was last kept at, as the journal acknowledged it,
-	// and as last sent to it; why the last write of the journal failed,
-	// or null; and the tickets of the timers that flush it.
+	// What the view keeps for the document; why the last write of the
+	// journal failed, or null; and the tickets of the timers that flush
+	// it.
 	Object state;
 	Document.Listener listener;
-	int drafted;
-	boolean draftModified;
-	int sent;
-	boolean sentModified;
 	String failure;
 	int timer;
 	int limit;
@@ -193,7 +188,6 @@ final class FileRecord {
 		writes = acked = Math.max(journal, 0);
 		flushed = document.revision();
 		changes = new ArrayList<>();
-		drafted = sent = document.revision();
 		return true;
 	}
 
@@ -218,8 +212,6 @@ final class FileRecord {
 		found = FileTexts.Found.SAME;
 		conflict = null;
 		kept = false;
-		drafted = sent = document.revision();
-		draftModified = sentModified = false;
 		document.endBatch();
 		return true;
 	}

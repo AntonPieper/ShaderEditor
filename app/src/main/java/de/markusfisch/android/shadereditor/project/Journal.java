@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.project;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -10,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -68,6 +70,10 @@ final class Journal {
 	// "SEJ1"
 	private static final int MAGIC = 0x53454a31;
 	private static final String SUFFIX = ".journal";
+	private static final String TEMP_PREFIX = ".journal-";
+	private static final String TEMP = ".tmp";
+	// What the format before this one called a journal.
+	private static final String DRAFT = ".draft";
 	// Records are rewritten into a snapshot once they exceed the
 	// snapshot's size, but not before MIN_RECORDS and at the latest at
 	// MAX_RECORDS bytes.
@@ -96,7 +102,7 @@ final class Journal {
 		tails.remove(path);
 		byte[] head = header(header, revision);
 		byte[] bytes = encode(text.toString());
-		if (!DraftJournal.replace(dir, name(path), out -> {
+		if (!replace(dir, name(path), out -> {
 			DataOutputStream data = new DataOutputStream(out);
 			data.writeInt(MAGIC);
 			writeBlock(data, head);
@@ -272,8 +278,60 @@ final class Journal {
 		return synced;
 	}
 
+	/**
+	 * Delete what earlier versions and crashes left in the folder: the
+	 * drafts of the format before this one and unfinished snapshots.
+	 */
+	void removeLeftovers() {
+		File[] files = dir.listFiles((d, name) -> name.endsWith(DRAFT) ||
+				name.startsWith(TEMP_PREFIX) && name.endsWith(TEMP));
+		if (files != null) {
+			for (File file : files) {
+				//noinspection ResultOfMethodCallIgnored
+				file.delete();
+			}
+		}
+	}
+
 	File file(ProjectPath path) {
 		return new File(dir, name(path));
+	}
+
+	/**
+	 * Replace the file name in dir with bytes in one rename, creating
+	 * dir when it is missing. Return whether it was written.
+	 */
+	static boolean replace(File dir, String name, byte[] bytes) {
+		return replace(dir, name, out -> out.write(bytes));
+	}
+
+	/**
+	 * Replace the file name in dir with what source writes, synced, as
+	 * {@link #replace(File, String, byte[])} does.
+	 */
+	static boolean replace(File dir, String name,
+			ProjectFiles.Source source) {
+		if (!dir.isDirectory() && !dir.mkdirs()) {
+			return false;
+		}
+		File temp = null;
+		try {
+			temp = File.createTempFile(TEMP_PREFIX, TEMP, dir);
+			try (FileOutputStream file = new FileOutputStream(temp)) {
+				OutputStream out = new BufferedOutputStream(file);
+				source.writeTo(out);
+				out.flush();
+				file.getFD().sync();
+			}
+			return temp.renameTo(new File(dir, name));
+		} catch (IOException e) {
+			return false;
+		} finally {
+			if (temp != null && temp.exists()) {
+				//noinspection ResultOfMethodCallIgnored
+				temp.delete();
+			}
+		}
 	}
 
 	private Recovered damaged(ProjectPath path, String problem) {

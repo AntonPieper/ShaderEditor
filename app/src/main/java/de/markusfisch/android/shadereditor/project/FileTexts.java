@@ -1,21 +1,22 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executor;
 
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Text;
-import de.markusfisch.android.shadereditor.project.DraftFiles.Draft;
-import de.markusfisch.android.shadereditor.project.EditingSession.Outcome;
+import de.markusfisch.android.shadereditor.project.OpenProject.Outcome;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Content;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
 
 /**
- * Files of a project opened as {@link Text} for the editor, and saved
- * and drafted from it, with the drafts and conflicts of an
- * {@link EditingSession}. Everything that costs time in proportion to
- * a file, reading, decoding, splitting into lines, encoding and
- * writing, runs on the worker; the main thread only hands over and
- * receives immutable values. The worker runs one task at a time, in
- * the order given; results are posted to main.
+ * Files of a project opened as {@link Text} for the editor, saved from
+ * it, and their unsaved text kept in a {@link Journal}. Everything that
+ * costs time in proportion to a file, reading, decoding, splitting into
+ * lines, encoding and writing, runs on the worker; the main thread only
+ * hands over and receives immutable values. The worker runs one task
+ * at a time, in the order given; results are posted to main.
  */
 public final class FileTexts {
 	/** The largest file, in bytes, that is opened for editing. */
@@ -30,13 +31,14 @@ public final class FileTexts {
 	}
 
 	/**
-	 * The text of a file for the editor: its draft when unsaved, else
-	 * the stored text, and the revision of the stored text it is based
-	 * on, null for none. A document of unsaved text starts modified,
-	 * with {@code markSaved(-1)}.
+	 * The text of a file for the editor: its journal's when unsaved,
+	 * else the stored text; the revision of the stored text it is based
+	 * on, null for none; and the revision of the journal it came from,
+	 * -1 for none. A document of unsaved text starts modified, with
+	 * {@code markSaved(-1)}.
 	 */
-	public record Opened(Text text, boolean unsaved, String revision)
-			implements Opening {
+	public record Opened(Text text, boolean unsaved, String revision,
+			int journal) implements Opening {
 	}
 
 	/** A file that cannot be edited; reason tells the user why. */
@@ -44,10 +46,12 @@ public final class FileTexts {
 	}
 
 	/**
-	 * What a save did, and the state of the document it took the text
-	 * at, which a {@link EditingSession.Saved} outcome marks as saved.
+	 * What a save did, the state of the document it took the text at,
+	 * which a {@link OpenProject.Saved} outcome marks as saved, and the
+	 * revision storage holds after a {@link OpenProject.Conflict}, null
+	 * when none.
 	 */
-	public record Save(int state, Outcome outcome) {
+	public record Save(int state, Outcome outcome, String seen) {
 	}
 
 	/** What storage holds of a file, compared with what it was. */
@@ -62,96 +66,119 @@ public final class FileTexts {
 	public record Checked(Found found, Text text, String revision) {
 	}
 
-	private final EditingSession session;
+	private final ProjectFiles store;
+	private final Journal journal;
 	private final Executor worker;
 	private final Executor main;
 
-	public FileTexts(EditingSession session, Executor worker,
+	FileTexts(ProjectFiles store, Journal journal, Executor worker,
 			Executor main) {
-		this.session = session;
+		this.store = store;
+		this.journal = journal;
 		this.worker = worker;
 		this.main = main;
 	}
 
 	/**
-	 * Open path for the editor. size is its size in bytes as the listing
-	 * told it, or {@link ProjectFiles#UNKNOWN}; a file larger than
+	 * Open path for the editor, from its journal when journaled and it
+	 * can be read. size is its size in bytes as the listing told it, or
+	 * {@link ProjectFiles#UNKNOWN}; a file larger than
 	 * {@link #MAX_BYTES} is refused before it is read when the size is
 	 * known, after it is read otherwise.
 	 */
-	public void open(ProjectPath path, long size, Callback<Opening> done) {
+	public void open(ProjectPath path, long size, boolean journaled,
+			Callback<Opening> done) {
 		worker.execute(() -> {
-			Opening opening = read(path, size, true);
-			main.execute(() -> done.done(opening));
+			Opening opening = journaled ? recover(path) : null;
+			Opening opened = opening != null ? opening : read(path, size);
+			main.execute(() -> done.done(opened));
 		});
 	}
 
-	/**
-	 * Open path for the editor as storage has it, also when it has a
-	 * draft.
-	 */
+	/** Open path for the editor as storage has it. */
 	public void openStored(ProjectPath path, Callback<Opening> done) {
 		worker.execute(() -> {
-			Opening opening = read(path, ProjectFiles.UNKNOWN, false);
+			Opening opening = read(path, ProjectFiles.UNKNOWN);
 			main.execute(() -> done.done(opening));
 		});
 	}
 
 	/**
 	 * Save text, taken from the document at state, to path, expecting
-	 * base, the revision the text came from, when there is no draft.
-	 * Call with the document's current text and state, or with null
-	 * for the text of the draft of path; the outcome is null when there
-	 * is none. The text is immutable, so editing on meanwhile changes
-	 * nothing of what is written.
+	 * base, the revision the text came from. Call with null for the
+	 * text the journal of path holds, which goes once it is written;
+	 * the outcome is null when there is none. The text is immutable,
+	 * so editing on meanwhile changes nothing of what is written.
 	 */
 	public void save(ProjectPath path, Text text, int state, String base,
 			Callback<Save> done) {
 		worker.execute(() -> {
-			Draft draft = text == null ? session.draft(path) : null;
-			Outcome outcome = text != null || draft != null
-					? session.save(path, text != null ? text : draft.text(),
-							base)
-					: null;
-			Save save = new Save(state, outcome);
+			Save save = save(path, text, base, state);
 			main.execute(() -> done.done(save));
 		});
 	}
 
-	/**
-	 * Keep text as the draft of path when it is modified, else drop the
-	 * draft, so the text survives the process. base is the revision the
-	 * text came from, kept with a new draft. done gets whether the
-	 * journal took it.
-	 */
-	public void draft(ProjectPath path, Text text, boolean modified,
-			String base, Callback<Boolean> done) {
+	/** Do what flush asks of the journal of path. */
+	void journal(ProjectPath path, FileRecord.Flush flush,
+			Callback<Journal.Appended> done) {
 		worker.execute(() -> {
-			boolean kept = modified
-					? session.setDraft(path, text, base)
-					: session.clearDraft(path);
+			Journal.Appended appended = write(path, flush);
+			main.execute(() -> done.done(appended));
+		});
+	}
+
+	/**
+	 * Keep header in the journal of its path, for a file not in memory.
+	 */
+	void header(Journal.Header header, Callback<Boolean> done) {
+		worker.execute(() -> {
+			boolean kept = journal.setHeader(header);
 			main.execute(() -> done.done(kept));
+		});
+	}
+
+	/**
+	 * Make what the journal holds durable once everything given before
+	 * is written; done gets whether it is.
+	 */
+	void sync(Callback<Boolean> done) {
+		worker.execute(() -> {
+			boolean synced = journal.sync();
+			main.execute(() -> done.done(synced));
 		});
 	}
 
 	/**
 	 * Read path again for a document without unsaved text. done gets
 	 * what storage holds compared with base, with the stored text when
-	 * it changed; a file with a draft counts as the same.
+	 * it changed.
 	 */
 	public void reread(ProjectPath path, String base,
 			Callback<Checked> done) {
 		worker.execute(() -> {
-			Checked checked = check(path, base);
+			Checked checked = check(path, base, true);
 			main.execute(() -> done.done(checked));
 		});
 	}
 
-	private Checked check(ProjectPath path, String base) {
-		if (session.draft(path) != null) {
-			return new Checked(Found.SAME, null, base);
-		}
-		Read read = session.store().read(path, MAX_BYTES);
+	/**
+	 * Compare what storage holds of path with base, for unsaved text;
+	 * done gets what it found, without the text.
+	 */
+	public void compare(ProjectPath path, String base,
+			Callback<Checked> done) {
+		worker.execute(() -> {
+			Checked checked = check(path, base, false);
+			main.execute(() -> done.done(checked));
+		});
+	}
+
+	/**
+	 * Return what storage holds of path compared with base, with the
+	 * stored text when it changed and decode; on the worker.
+	 */
+	Checked check(ProjectPath path, String base, boolean decode) {
+		Read read = store.read(path, MAX_BYTES);
 		if (read == null) {
 			return new Checked(Found.MISSING, null, null);
 		}
@@ -166,6 +193,8 @@ public final class FileTexts {
 			return new Checked(Found.SAME, null, base);
 		} else if (content.bytes().length > MAX_BYTES) {
 			return new Checked(Found.TOO_LARGE, null, content.revision());
+		} else if (!decode) {
+			return new Checked(Found.CHANGED, null, content.revision());
 		}
 		Text text = decode(content.bytes());
 		return text != null
@@ -173,18 +202,74 @@ public final class FileTexts {
 				: new Checked(Found.NOT_TEXT, null, content.revision());
 	}
 
-	private Opening read(ProjectPath path, long size, boolean drafted) {
+	private Save save(ProjectPath path, Text text, String base, int state) {
+		Text written = text;
+		if (written == null) {
+			Journal.Recovered recovered = journal.read(path);
+			written = recovered != null ? recovered.text() : null;
+		}
+		if (written == null) {
+			return new Save(state, null, null);
+		}
+		Text bytes = written;
+		ProjectFiles.Change change = store.write(path,
+				out -> TextBytes.write(bytes, out), base);
+		if (change instanceof ProjectFiles.Done done) {
+			if (text == null) {
+				journal.remove(path);
+			}
+			return new Save(state, new OpenProject.Saved(done.revision()),
+					null);
+		}
+		ProjectFiles.Refused refused = (ProjectFiles.Refused) change;
+		if (refused.refusal() != ProjectFiles.Refusal.CONFLICT) {
+			return new Save(state, new OpenProject.Failed(refused.reason()),
+					null);
+		}
+		Read read = store.read(path, MAX_BYTES);
+		return new Save(state, new OpenProject.Conflict(refused.reason()),
+				read instanceof Content content ? content.revision() : null);
+	}
+
+	private Journal.Appended write(ProjectPath path, FileRecord.Flush flush) {
+		if (flush.write() == FileRecord.Write.SNAPSHOT) {
+			return journal.snapshot(flush.header(), flush.to(), flush.text())
+					? Journal.Appended.DONE
+					: Journal.Appended.FAILED;
+		} else if (flush.write() == FileRecord.Write.REMOVE) {
+			return journal.remove(path)
+					? Journal.Appended.DONE
+					: Journal.Appended.FAILED;
+		}
+		List<Journal.Change> changes = new ArrayList<>();
+		for (Document.Change change : flush.changes()) {
+			changes.add(new Journal.Change(change.start(),
+					change.removed().length(), change.inserted().toString()));
+		}
+		return journal.append(path, flush.from(), flush.to(), changes);
+	}
+
+	// Return the text the journal of path holds, or null when there is
+	// none or it cannot be read; the stored file is opened then.
+	private Opening recover(ProjectPath path) {
+		Journal.Recovered recovered = journal.read(path);
+		if (recovered == null || recovered.text() == null) {
+			return null;
+		} else if (recovered.tooLarge()) {
+			return tooLarge(path);
+		}
+		return new Opened(recovered.text(), true, recovered.header().base(),
+				recovered.revision());
+	}
+
+	private Opening read(ProjectPath path, long size) {
 		if (path.getKind() == ProjectPath.Kind.IMAGE) {
 			return new Unopened(path + " is an image, not text");
-		}
-		Draft draft = drafted ? session.draft(path) : null;
-		if (draft != null) {
-			return new Opened(draft.text(), true, draft.base());
 		}
 		if (size > MAX_BYTES) {
 			return tooLarge(path);
 		}
-		Read read = session.store().read(path, MAX_BYTES);
+		Read read = store.read(path, MAX_BYTES);
 		if (read instanceof ProjectFiles.Failed failed &&
 				ProjectFiles.TOO_LARGE.equals(failed.reason())) {
 			return tooLarge(path);
@@ -200,7 +285,7 @@ public final class FileTexts {
 		if (text == null) {
 			return new Unopened(path + " is not a text file");
 		}
-		return new Opened(text, false, content.revision());
+		return new Opened(text, false, content.revision(), -1);
 	}
 
 	// Return the text of bytes, or null when they are not text the

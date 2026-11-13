@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 
@@ -68,8 +69,8 @@ public class ProjectSessionsTest {
 		assertNull(sessions.locator("00000000"));
 		assertNull(sessions.locator("../project"));
 		assertNull(sessions.locator(null));
-		assertNull(sessions.drafts("00000000"));
-		assertNull(sessions.drafts("../sessions"));
+		assertNull(sessions.journal("00000000"));
+		assertNull(sessions.journal("../sessions"));
 		assertTrue(sessions.remove("../project"));
 		assertTrue(project.isDirectory());
 		assertTrue(sessions.remove("00000000"));
@@ -89,14 +90,12 @@ public class ProjectSessionsTest {
 		String id = sessions.open(locator);
 		DirectoryProjectFiles store = new DirectoryProjectFiles(
 				new File(sessions.locator(id).value()));
-		EditingSession session = EditingSession.restore(store,
-				sessions.drafts(id));
-		session.setDraft(path("main.glsl"), "saved", revision(store,
-				"main.glsl"));
-		session.save();
-		session.setDraft(path("lib.glsl"), "unsaved", revision(store,
-				"lib.glsl"));
-		assertFalse(sessions.drafts(id).drafts().isEmpty());
+		assertTrue(store.write(path("main.glsl"),
+				"saved".getBytes(StandardCharsets.UTF_8),
+				revision(store, "main.glsl")) instanceof ProjectFiles.Done);
+		keep(sessions.journal(id), "lib.glsl", "unsaved",
+				revision(store, "lib.glsl"));
+		assertFalse(sessions.unsaved(id).isEmpty());
 
 		assertTrue(sessions.discard(id));
 
@@ -106,7 +105,7 @@ public class ProjectSessionsTest {
 		assertEquals("saved", read(new File(project, "main.glsl")));
 		assertEquals("library", read(new File(project, "lib.glsl")));
 		String again = sessions.open(locator);
-		assertTrue(sessions.drafts(again).drafts().isEmpty());
+		assertTrue(sessions.unsaved(again).isEmpty());
 	}
 
 	@Test
@@ -131,8 +130,7 @@ public class ProjectSessionsTest {
 		String id = sessions.open(locator);
 		assertTrue(sessions.remember(id, "project", "Shaders", 10));
 		assertTrue(sessions.setLast(id));
-		sessions.drafts(id).put(path("main.glsl"),
-				new DraftFiles.Draft("unsaved", "r0"));
+		keep(sessions.journal(id), "main.glsl", "unsaved", "r0");
 
 		assertTrue(sessions.remove(id));
 
@@ -141,8 +139,8 @@ public class ProjectSessionsTest {
 		assertNull(sessions.last());
 		assertEquals(id, sessions.find(locator));
 		assertEquals(Set.of(path("main.glsl")), sessions.unsaved(id));
-		assertEquals("unsaved", sessions.drafts(id).drafts()
-				.get(path("main.glsl")).text().toString());
+		assertEquals("unsaved", sessions.journal(id).read(path("main.glsl"))
+				.text().toString());
 		assertTrue(sessions.remember(id, "project", "Shaders", 20));
 		assertEquals(List.of(id), ids(sessions.recent()));
 	}
@@ -170,8 +168,7 @@ public class ProjectSessionsTest {
 						new Locator(Kind.DIRECTORY, project.getPath()), "project",
 						"ShaderEditor / Shaders", 10, false),
 				restarted.recent(first));
-		restarted.drafts(second).put(path("main.glsl"),
-				new DraftFiles.Draft("edited", null));
+		keep(restarted.journal(second), "main.glsl", "edited", null);
 		assertTrue(restarted.recent(second).unsaved());
 		assertNull(restarted.recent(unlisted));
 
@@ -198,7 +195,8 @@ public class ProjectSessionsTest {
 		File drafts = new File(root, id + "/drafts");
 		assertTrue(drafts.mkdirs());
 		write(new File(drafts, ".journal-123.tmp"), "half");
-		write(new File(drafts, "broken.draft"), "no header");
+		write(new File(drafts, "old.draft"), "a draft of before");
+		write(new File(drafts, "broken.journal"), "no header");
 
 		assertFalse(sessions.recent(id).unsaved());
 		assertFalse(sessions.recent().get(0).unsaved());
@@ -212,10 +210,8 @@ public class ProjectSessionsTest {
 		assertEquals(Set.of(), sessions.unsaved(id));
 
 		assertTrue(sessions.setShown(id, path("lib/common.glsl")));
-		sessions.drafts(id).put(path("main.glsl"),
-				new DraftFiles.Draft("edited", "r0"));
-		sessions.drafts(id).put(path("lib/common.glsl"),
-				new DraftFiles.Draft("edited", null));
+		keep(sessions.journal(id), "main.glsl", "edited", "r0");
+		keep(sessions.journal(id), "lib/common.glsl", "edited", null);
 		ProjectSessions restarted = new ProjectSessions(root);
 
 		assertEquals(path("lib/common.glsl"), restarted.shown(id));
@@ -250,6 +246,12 @@ public class ProjectSessionsTest {
 			ids.add(session.id());
 		}
 		return ids;
+	}
+
+	private static void keep(Journal journal, String path, String text,
+			String base) {
+		assertTrue(journal.snapshot(new Journal.Header(path(path), base,
+				false, null), 0, Text.of(text)));
 	}
 
 	private static String revision(ProjectFiles store, String path) {

@@ -28,11 +28,11 @@ import java.util.function.Consumer;
 
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Text;
-import de.markusfisch.android.shadereditor.project.EditingSession.Conflict;
-import de.markusfisch.android.shadereditor.project.EditingSession.Failed;
-import de.markusfisch.android.shadereditor.project.EditingSession.Outcome;
-import de.markusfisch.android.shadereditor.project.EditingSession.Saved;
 import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
+import de.markusfisch.android.shadereditor.project.OpenProject.Conflict;
+import de.markusfisch.android.shadereditor.project.OpenProject.Failed;
+import de.markusfisch.android.shadereditor.project.OpenProject.Outcome;
+import de.markusfisch.android.shadereditor.project.OpenProject.Saved;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic.Severity;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
@@ -241,6 +241,113 @@ public class OpenProjectTest {
 		assertTrue(b.isModified());
 		assertFalse(b.canUndo());
 		assertEquals("a", read("a.glsl"));
+
+		assertTrue(save(restarted, false).get(path("a.glsl")) instanceof
+				Saved);
+		assertEquals("a!", read("a.glsl"));
+		assertNull(restarted.document(path("a.glsl")));
+		assertNull(journaled("a.glsl"));
+		assertTrue(open().unsaved().isEmpty());
+	}
+
+	@Test
+	public void reopensTheTextOfTheLastCompleteRecordWhereverItWasCut()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		File file = new ProjectSessions(sessionsDir).journal(id)
+				.file(path("a.glsl"));
+		List<Long> ends = new ArrayList<>();
+		List<String> texts = new ArrayList<>();
+		for (String text : List.of("one", "one two", "three two",
+				"three two\nfour")) {
+			edit(project, a, text);
+			flush(project);
+			ends.add(file.length());
+			texts.add(text);
+		}
+		byte[] full = Files.readAllBytes(file.toPath());
+		assertTrue("appended, not rewritten", ends.get(1) > ends.get(0));
+
+		for (long cut = ends.get(0); cut <= full.length; ++cut) {
+			Files.write(file.toPath(), Arrays.copyOf(full, (int) cut));
+			int complete = 0;
+			while (complete + 1 < ends.size() &&
+					ends.get(complete + 1) <= cut) {
+				++complete;
+			}
+			OpenProject reopened = open();
+			assertEquals("cut at " + cut, Set.of(path("a.glsl")),
+					reopened.unsaved());
+			assertEquals("cut at " + cut, texts.get(complete),
+					text(reopened, "a.glsl"));
+		}
+	}
+
+	@Test
+	public void damagedJournalKeepsWhatIsGoodElseOpensTheStoredFile()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		edit(project, a, "mine");
+		flush(project);
+		File file = new ProjectSessions(sessionsDir).journal(id)
+				.file(path("a.glsl"));
+		int snapshot = (int) file.length();
+		a.type(4, 4, Text.of("!"));
+		flush(project);
+		byte[] bytes = Files.readAllBytes(file.toPath());
+		assertTrue(bytes.length > snapshot);
+
+		// The checksum of the record appended, then of the snapshot.
+		bytes[bytes.length - 1] ^= 1;
+		Files.write(file.toPath(), bytes);
+		assertEquals("mine", text(open(), "a.glsl"));
+		bytes[snapshot - 1] ^= 1;
+		Files.write(file.toPath(), bytes);
+		OpenProject reopened = open();
+		Document stored = document(reopened, "a.glsl");
+		flush(reopened);
+
+		assertEquals("stored", stored.text().toString());
+		assertFalse(stored.isModified());
+		assertArrayEquals(bytes, Files.readAllBytes(file.toPath()));
+	}
+
+	@Test
+	public void deletesDraftsOfTheFormatBeforeAndUnfinishedSnapshots()
+			throws IOException {
+		File drafts = new File(new File(sessionsDir, id), "drafts");
+		assertTrue(drafts.mkdirs());
+		File old = new File(drafts, "0123.draft");
+		File half = new File(drafts, ".journal-1.tmp");
+		Files.write(old.toPath(), new byte[]{1});
+		Files.write(half.toPath(), new byte[]{2});
+
+		OpenProject project = open();
+		settle();
+
+		assertFalse(old.exists());
+		assertFalse(half.exists());
+		assertTrue(project.unsaved().isEmpty());
+	}
+
+	@Test
+	public void appendTheJournalDoesNotContinueIsSentAsASnapshot()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		edit(project, a, "one");
+		flush(project);
+		File file = new ProjectSessions(sessionsDir).journal(id)
+				.file(path("a.glsl"));
+		assertTrue(file.delete());
+
+		a.type(3, 3, Text.of(" two"));
+		flush(project);
+
+		assertEquals("one two", journaled("a.glsl"));
+		assertNull(project.unprotected());
 	}
 
 	@Test
@@ -418,7 +525,9 @@ public class OpenProjectTest {
 		OpenProject project = open();
 		Document a = document(project, "a.glsl");
 		edit(project, a, "mine");
-		project.saveCopy(path("a.glsl"), copy -> {
+		MemoryProjectFiles destination = new MemoryProjectFiles();
+		destination.writable = true;
+		project.copyTo(destination, List.of(path("a.glsl")), problems -> {
 		});
 		worker.run();
 
@@ -427,7 +536,7 @@ public class OpenProjectTest {
 		project.persist();
 		settle();
 
-		assertEquals("mine", read("a copy.glsl"));
+		assertEquals("mine", destination.text("a.glsl"));
 		assertEquals("later", a.text().toString());
 		assertTrue(a.isModified());
 		OpenProject reopened = open();
@@ -724,25 +833,84 @@ public class OpenProjectTest {
 	}
 
 	@Test
-	public void savesACopyBesideTheChangedFile() throws IOException {
+	public void savesNothingOfAFileInConflict() throws IOException {
 		OpenProject project = editedElsewhere();
 
-		OpenProject.Copy copy = await(done ->
-				project.saveCopy(path("a.glsl"), done));
+		assertTrue(save(project, true).get(path("a.glsl")) instanceof
+				Conflict);
 
-		assertNull(copy.problem());
-		assertEquals(path("a copy.glsl"), copy.path());
-		assertEquals("mine", read("a copy.glsl"));
 		assertEquals("theirs", read("a.glsl"));
-		assertEquals("mine", text(project, "a copy.glsl"));
-		assertEquals("mine", text(project, "a.glsl"));
 		assertEquals(Set.of(path("a.glsl")), project.unsaved());
-		assertEquals(Set.of(path("a.glsl")), project.conflicts().keySet());
-		write("b.txt", "b");
-		edit(project, document(project, "b.txt"), "b!");
-		write("b copy.txt", "taken");
-		assertEquals(path("b copy 2.txt"), this.<OpenProject.Copy>await(
-				done -> project.saveCopy(path("b.txt"), done)).path());
+	}
+
+	@Test
+	public void keptEditsStayKeptAfterARestart() throws IOException {
+		OpenProject project = editedElsewhere();
+		project.resolve(path("a.glsl"), OpenProject.Choice.KEEP,
+				project.seen(path("a.glsl")));
+		flush(project);
+
+		OpenProject restarted = open();
+
+		assertTrue(restarted.conflicts().isEmpty());
+		assertTrue(save(restarted, false).get(path("a.glsl")) instanceof
+				Conflict);
+		assertEquals("theirs", read("a.glsl"));
+		assertTrue(save(restarted, true).get(path("a.glsl")) instanceof
+				Saved);
+		assertEquals("mine", read("a.glsl"));
+		assertTrue(open().unsaved().isEmpty());
+	}
+
+	@Test
+	public void keepingEditsOfAFileDeletedElsewhereCreatesItAgain()
+			throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl"), "mine");
+		assertTrue(new File(root, "a.glsl").delete());
+		refresh(project);
+		assertEquals("the file was deleted",
+				project.conflicts().get(path("a.glsl")));
+		assertNull(project.seen(path("a.glsl")));
+
+		project.resolve(path("a.glsl"), OpenProject.Choice.KEEP, null);
+
+		assertTrue(save(project, true).get(path("a.glsl")) instanceof Saved);
+		assertEquals("mine", read("a.glsl"));
+	}
+
+	@Test
+	public void fileChangedWhileTheProcessWasDeadIsInConflict()
+			throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		write("a.glsl", "theirs");
+
+		OpenProject restarted = open();
+
+		assertEquals(Set.of(path("a.glsl")), restarted.conflicts().keySet());
+		assertNotNull(restarted.seen(path("a.glsl")));
+		assertEquals("mine", text(restarted, "a.glsl"));
+		assertTrue(save(restarted, true).get(path("a.glsl")) instanceof
+				Conflict);
+		assertEquals("theirs", read("a.glsl"));
+	}
+
+	@Test
+	public void buildsAFileNotInMemoryFromItsJournal() throws IOException {
+		write("main.glsl", "#include \"lib.glsl\"\n" + SHADER);
+		write("lib.glsl", "// lib\n");
+		OpenProject project = open();
+		edit(project, document(project, "lib.glsl"), "// edited\n");
+		flush(project);
+
+		OpenProject restarted = open();
+
+		assertNull(restarted.document(path("lib.glsl")));
+		assertEquals("// edited\n", built(prepare(restarted), "lib.glsl"));
+		assertEquals("// lib\n", read("lib.glsl"));
 	}
 
 	@Test
@@ -1264,9 +1432,9 @@ public class OpenProjectTest {
 
 	// Return the text the journal keeps for path, or null.
 	private String journaled(String path) {
-		DraftFiles.Draft draft = new ProjectSessions(sessionsDir).drafts(id)
-				.drafts().get(path(path));
-		return draft != null ? draft.text().toString() : null;
+		Journal.Recovered recovered = new ProjectSessions(sessionsDir)
+				.journal(id).read(path(path));
+		return recovered != null ? recovered.text().toString() : null;
 	}
 
 	private Set<ProjectPath> refresh(OpenProject project) {

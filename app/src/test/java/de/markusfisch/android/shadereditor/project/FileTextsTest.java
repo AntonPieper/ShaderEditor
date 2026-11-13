@@ -18,13 +18,13 @@ import java.util.concurrent.Executor;
 
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Text;
-import de.markusfisch.android.shadereditor.project.EditingSession.Conflict;
-import de.markusfisch.android.shadereditor.project.EditingSession.Failed;
-import de.markusfisch.android.shadereditor.project.EditingSession.Saved;
 import de.markusfisch.android.shadereditor.project.FileTexts.Opened;
 import de.markusfisch.android.shadereditor.project.FileTexts.Opening;
 import de.markusfisch.android.shadereditor.project.FileTexts.Save;
 import de.markusfisch.android.shadereditor.project.FileTexts.Unopened;
+import de.markusfisch.android.shadereditor.project.OpenProject.Conflict;
+import de.markusfisch.android.shadereditor.project.OpenProject.Failed;
+import de.markusfisch.android.shadereditor.project.OpenProject.Saved;
 
 public class FileTextsTest {
 	private static final ProjectPath MAIN = OpenProject.MAIN;
@@ -127,29 +127,33 @@ public class FileTextsTest {
 		save(document);
 
 		assertTrue(saves.get(0).outcome() instanceof Conflict);
+		assertEquals(store.read(MAIN).revision(), saves.get(0).seen());
 		assertTrue(document.isModified());
 		assertEquals("elsewhere", store.text("main.glsl"));
-		EditingSession session = EditingSession.restore(store,
-				new DraftJournal(drafts));
-		assertEquals("one two", session.draft(MAIN).text().toString());
-		assertTrue(session.conflicts().containsKey(MAIN));
 	}
 
 	@Test
-	public void draftIsReopenedAsUnsavedText() {
+	public void journalIsReopenedAsUnsavedTextAndGoesWhenSaved() {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of("\r\ntwo"));
-		texts.draft(MAIN, document.text(), document.isModified(), base,
-				kept -> assertTrue(kept));
-		worker.run();
+		assertTrue(new Journal(drafts).snapshot(new Journal.Header(MAIN,
+				base, false, null), 4, document.text()));
 
-		texts = new FileTexts(EditingSession.restore(store,
-				new DraftJournal(drafts)), worker, main);
-		Opened opened = (Opened) open(MAIN, 3);
+		texts = null;
+		Opened opened = (Opened) open(MAIN, 3, true);
 		assertTrue(opened.unsaved());
+		assertEquals(4, opened.journal());
+		assertEquals(base, opened.revision());
 		assertEquals("one\ntwo", opened.text().toString());
 		assertEquals(2, opened.text().lineCount());
+
+		texts.save(MAIN, null, -1, base, this::saved);
+		worker.run();
+		main.run();
+		assertTrue(saves.get(0).outcome() instanceof Saved);
+		assertEquals("one\ntwo", store.text("main.glsl"));
+		assertNull(new Journal(drafts).read(MAIN));
 	}
 
 	@Test
@@ -160,8 +164,7 @@ public class FileTextsTest {
 		}
 		Text text = Text.of(sb);
 		assertEquals(500_001, text.lineCount());
-		texts = new FileTexts(EditingSession.restore(store,
-				new DraftJournal(drafts)), worker, main);
+		texts = new FileTexts(store, new Journal(drafts), worker, main);
 		texts.save(MAIN, text, 0, null, this::saved);
 		worker.run();
 		main.run();
@@ -210,8 +213,7 @@ public class FileTextsTest {
 				return new ProjectFiles.Failed(ProjectFiles.TOO_LARGE);
 			}
 		};
-		texts = new FileTexts(EditingSession.restore(huge,
-				new DraftJournal(drafts)), worker, main);
+		texts = new FileTexts(huge, new Journal(drafts), worker, main);
 
 		assertTrue(open(MAIN, ProjectFiles.UNKNOWN) instanceof Unopened);
 		assertEquals(FileTexts.Found.TOO_LARGE, reread(MAIN).found());
@@ -257,12 +259,15 @@ public class FileTextsTest {
 	}
 
 	private Opening open(ProjectPath path, long size) {
+		return open(path, size, false);
+	}
+
+	private Opening open(ProjectPath path, long size, boolean journaled) {
 		if (texts == null) {
-			texts = new FileTexts(EditingSession.restore(store,
-					new DraftJournal(drafts)), worker, main);
+			texts = new FileTexts(store, new Journal(drafts), worker, main);
 		}
 		Opening[] opening = new Opening[1];
-		texts.open(path, size, result -> opening[0] = result);
+		texts.open(path, size, journaled, result -> opening[0] = result);
 		worker.run();
 		assertNull(opening[0]);
 		main.run();
