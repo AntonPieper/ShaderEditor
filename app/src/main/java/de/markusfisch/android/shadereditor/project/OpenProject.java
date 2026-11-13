@@ -78,7 +78,10 @@ public final class OpenProject {
 			int conflicts) {
 	}
 
-	/** A file the last build read, and whether it is an image. */
+	/**
+	 * A file the last build of what runs is made of, and whether it is
+	 * an image.
+	 */
 	public record Used(ProjectPath path, boolean image) {
 	}
 
@@ -531,8 +534,8 @@ public final class OpenProject {
 
 	/**
 	 * Prepare what runs from the text of the documents and the drafts,
-	 * and keep the files it read as those of the last build. done gets
-	 * the preparation, or null when nothing runs.
+	 * and keep the files it is made of as those of the last build. done
+	 * gets the preparation, or null when nothing runs.
 	 */
 	public void prepare(Map<String, String> reserved,
 			Callback<Preparation> done) {
@@ -546,10 +549,9 @@ public final class OpenProject {
 			List<Used> read = new ArrayList<>();
 			if (preparation != null) {
 				for (SourceAssembly.Dependency dependency :
-						preparation.dependencies()) {
+						preparation.uses()) {
 					ProjectPath path = dependency.path();
-					if (dependency.revision() != null &&
-							!ProjectManifest.FILE.equals(path)) {
+					if (dependency.revision() != null) {
 						read.add(new Used(path,
 								path.getKind() == ProjectPath.Kind.IMAGE));
 					}
@@ -564,14 +566,15 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Return the files the last build read, in the order it read them,
-	 * without the manifest and files it could not read.
+	 * Return the files the last build of what runs is made of, in the
+	 * order it read them, without files it could not read; see
+	 * {@link Preparation#uses()}.
 	 */
 	public List<Used> used() {
 		return used;
 	}
 
-	/** Return whether the last build of what runs read path. */
+	/** Return whether the last build of what runs is made of path. */
 	public boolean uses(ProjectPath path) {
 		for (Used file : used) {
 			if (file.path().equals(path)) {

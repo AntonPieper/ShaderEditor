@@ -23,6 +23,10 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
  *                     used; a null revision means the file was absent
  *                     or could not be read. Complete also when there is
  *                     no plan.
+ * @param uses         the dependencies the running shader is made of,
+ *                     in order: its passes, includes and images, not
+ *                     the manifest nor a file read only to check that
+ *                     the manifest's entry exists
  * @param files        the content of every file read, by path in the
  *                     order of reading: later stages use these bytes
  *                     and never read a file again
@@ -31,10 +35,12 @@ public record Preparation(
 		RenderPlan plan,
 		List<ProjectDiagnostic> diagnostics,
 		List<SourceAssembly.Dependency> dependencies,
+		List<SourceAssembly.Dependency> uses,
 		Map<ProjectPath, ProjectFiles.Content> files) {
 	public Preparation {
 		diagnostics = List.copyOf(diagnostics);
 		dependencies = List.copyOf(dependencies);
+		uses = List.copyOf(uses);
 		files = Collections.unmodifiableMap(new LinkedHashMap<>(files));
 	}
 
@@ -61,10 +67,14 @@ public record Preparation(
 			diagnostics.add(error("The running shader must be a .glsl " +
 					"file: " + entry, entry));
 			return new Preparation(null, diagnostics,
-					captured.dependencies(), captured.contents());
+					captured.dependencies(), List.of(), captured.contents());
 		}
+		int before = captured.dependencies().size();
 		PassGraph graph = PassGraph.discover(captured, entry, limits,
 				reserved);
+		List<SourceAssembly.Dependency> read = captured.dependencies();
+		List<SourceAssembly.Dependency> uses = read.subList(before,
+				read.size());
 		diagnostics.addAll(graph.diagnostics);
 		if (manifest != null && manifest.isSuccess() &&
 				!manifest.value().entry().equals(entry)) {
@@ -78,7 +88,7 @@ public record Preparation(
 				? null
 				: plan(graph, diagnostics);
 		return new Preparation(plan, diagnostics, captured.dependencies(),
-				captured.contents());
+				uses, captured.contents());
 	}
 
 	/**
