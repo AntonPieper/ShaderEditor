@@ -101,6 +101,23 @@ public class SafProjectFilesTest {
 	}
 
 	@Test
+	public void listingAFolderAgainForgetsFoldersReplacedInIt() {
+		FakeDocuments.Node old = documents.put("lib/sub/a.glsl", "old");
+		files.list(path("lib/sub"));
+		old.parent.parent.name = "moved";
+		documents.put("lib/sub/a.glsl", "new");
+		documents.put("kept/b.glsl", "kept");
+		files.list(path("kept"));
+
+		files.list(null);
+
+		assertEquals("new", read(files, "lib/sub/a.glsl"));
+		documents.calls.clear();
+		assertEquals("kept", read(files, "kept/b.glsl"));
+		assertEquals(1, documents.calls.size());
+	}
+
+	@Test
 	public void revisionChangesWithTheBytes() {
 		documents.put("a.glsl", "same");
 		documents.put("b.glsl", "same");

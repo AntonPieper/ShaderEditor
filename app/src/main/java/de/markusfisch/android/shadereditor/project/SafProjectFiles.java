@@ -22,7 +22,7 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
  * listed is one call, until {@link #forgetListings()}, a rename or a
  * delete; a name it lacks and a document that is gone are looked up
  * again. A document renamed elsewhere can be found under its old name
- * until then. Changes always look up their path again. A change
+ * until then, or, for a folder, until its parent is listed again. Changes always look up their path again. A change
  * happens only where the grant allows writing and the document flags
  * offer it; on a root that offers no change at all, every change is
  * unsupported. Revisions are content
@@ -414,8 +414,34 @@ public final class SafProjectFiles implements ProjectFiles {
 		}
 		synchronized (listings) {
 			listings.put(key, new Listed(folder, byName));
+			forgetReplaced(key, byName);
 		}
 		return children;
+	}
+
+	// Forget the listings below the folder at key that are reached
+	// through a folder the folder no longer maps to.
+	private void forgetReplaced(String key, Map<String, Document> byName) {
+		String prefix = key.isEmpty() ? "" : key + "/";
+		List<String> replaced = new ArrayList<>();
+		for (String below : listings.keySet()) {
+			if (below.length() <= prefix.length() ||
+					!below.startsWith(prefix)) {
+				continue;
+			}
+			int end = below.indexOf('/', prefix.length());
+			String name = below.substring(prefix.length(),
+					end < 0 ? below.length() : end);
+			Listed child = listings.get(prefix + name);
+			Document now = byName.get(name);
+			if (child == null || now == null || now == TWICE ||
+					!now.id().equals(child.folder().id())) {
+				replaced.add(below);
+			}
+		}
+		for (String below : replaced) {
+			listings.remove(below);
+		}
 	}
 
 	private static String key(String[] segments, int count) {
