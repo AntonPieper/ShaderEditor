@@ -75,6 +75,16 @@
 		<item name="android:windowContentOverlay">@null</item>
 	</style>
 
+	<!-- The toolbar of a screen without a picture. Its height grows
+	with the text; SystemBarMetrics pads it by the status bar. -->
+	<style name="Widget.ShaderEditor.Toolbar" parent="Widget.Material3.Toolbar">
+		<item name="android:background">@drawable/background_bar</item>
+		<item name="android:minHeight">?attr/actionBarSize</item>
+		<item name="maxButtonHeight">?attr/actionBarSize</item>
+		<item name="titleTextAppearance">?attr/textAppearanceTitleLarge</item>
+		<item name="subtitleTextAppearance">?attr/textAppearanceBodySmall</item>
+	</style>
+
 	<style name="Title" parent="@android:style/TextAppearance.Medium" />
 
 	<style name="Subtitle" parent="@android:style/TextAppearance.Small">
