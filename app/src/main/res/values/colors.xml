@@ -1,6 +1,5 @@
 <resources>
 	<color name="primary">#222</color>
-	<color name="primary_translucent">#8222</color>
 	<color name="accent">#fff</color>
 	<color name="drawer_text">#fff</color>
 	<color name="drawer_text_unselected">#8affffff</color>
