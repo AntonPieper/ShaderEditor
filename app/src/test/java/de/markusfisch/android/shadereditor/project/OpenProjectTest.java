@@ -736,6 +736,26 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void documentCleanAgainCountsAmongTheCleanOnes()
+			throws IOException {
+		OpenProject project = open();
+		Document edited = document(project, "edited.glsl", "e");
+		edit(project, edited, "edited");
+		flush(project);
+		for (int i = 0; i < OpenProject.KEPT_CLEAN; ++i) {
+			document(project, i + ".glsl", "" + i);
+		}
+		assertSame(edited, project.document(path("edited.glsl")));
+
+		edited.undo();
+		flush(project);
+
+		assertNull(project.document(path("edited.glsl")));
+		assertNull(journaled("edited.glsl"));
+		assertTrue(project.unsaved().isEmpty());
+	}
+
+	@Test
 	public void keepsModifiedDocumentsAndTheCleanOnesUsedLast()
 			throws IOException {
 		OpenProject project = open();
