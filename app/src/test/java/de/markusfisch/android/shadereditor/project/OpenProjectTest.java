@@ -659,6 +659,54 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void copyWritesTheCurrentTextsAndLeavesTheProjectAsItIs()
+			throws IOException {
+		write("b.glsl", "stored b");
+		write("c.glsl", "stored c");
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored a");
+		edit(project, a, "mine");
+		flush(project);
+		MemoryProjectFiles destination = new MemoryProjectFiles();
+		destination.writable = true;
+		destination.put("c.glsl", "taken");
+
+		Map<ProjectPath, String> problems = await(done -> project.copyTo(
+				destination, List.of(path("a.glsl"), path("b.glsl"),
+						path("c.glsl"), path("gone.glsl")), done));
+
+		assertEquals("mine", destination.text("a.glsl"));
+		assertEquals("stored b", destination.text("b.glsl"));
+		assertEquals("taken", destination.text("c.glsl"));
+		assertNull(problems.get(path("a.glsl")));
+		assertNull(problems.get(path("b.glsl")));
+		assertNotNull(problems.get(path("c.glsl")));
+		assertNotNull(problems.get(path("gone.glsl")));
+		assertTrue(a.isModified());
+		assertEquals("mine", journaled("a.glsl"));
+		assertEquals(Set.of(path("a.glsl")), project.unsaved());
+		assertEquals("stored a", read("a.glsl"));
+	}
+
+	@Test
+	public void copiesTheUnsavedTextOfASessionWhoseFilesAreGone()
+			throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		OpenProject gone = live().open(id, locator ->
+				new SafProjects.Opened(null, null, "the folder is gone"));
+		MemoryProjectFiles destination = new MemoryProjectFiles();
+		destination.writable = true;
+
+		Map<ProjectPath, String> problems = await(done -> gone.copyTo(
+				destination, List.of(path("a.glsl")), done));
+
+		assertNull(problems.get(path("a.glsl")));
+		assertEquals("mine", destination.text("a.glsl"));
+	}
+
+	@Test
 	public void keepsEditsUntilAnExplicitSave() throws IOException {
 		OpenProject project = editedElsewhere();
 
