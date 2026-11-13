@@ -1107,6 +1107,58 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void undoAfterReopeningEqualsUndoBeforeTheDrop()
+			throws IOException {
+		budget = OpenProject.cost(new Document(Text.of("0")));
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "one");
+		edit(project, a, "two");
+		edit(project, a, "three");
+		a.select(1, 2);
+		flush(project);
+		document(project, "b.glsl", "b");
+		project.show(path("b.glsl"));
+		document(project, "c.glsl", "c");
+		settle();
+		assertNull(project.document(path("a.glsl")));
+
+		Document reopened = document(project, "a.glsl");
+
+		assertEquals("three", reopened.text().toString());
+		assertEquals(new Document.Selection(1, 2), reopened.selection());
+		assertTrue(reopened.isModified());
+		reopened.undo();
+		assertEquals("two", reopened.text().toString());
+		reopened.undo();
+		assertEquals("one", reopened.text().toString());
+		assertFalse(reopened.isModified());
+		assertFalse(reopened.canUndo());
+	}
+
+	@Test
+	public void historySurvivesARestartForTheSameTextOnly()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "one");
+		edit(project, a, "two");
+		assertTrue(save(project, true).get(path("a.glsl")) instanceof Saved);
+		flush(project);
+
+		Document restarted = document(open(), "a.glsl");
+		assertFalse(restarted.isModified());
+		restarted.undo();
+		assertEquals("one", restarted.text().toString());
+		assertTrue(restarted.isModified());
+
+		write("a.glsl", "theirs");
+		Document changed = document(open(), "a.glsl");
+		assertEquals("theirs", changed.text().toString());
+		assertFalse(changed.canUndo());
+		File history = new File(new File(sessionsDir, id), "history");
+		assertEquals(0, history.list().length);
+	}
+
+	@Test
 	public void dropsTheCleanDocumentsUsedLeastRecentlyFirst()
 			throws IOException {
 		Document sample = new Document(Text.of("e"));
