@@ -92,8 +92,8 @@ public interface ProjectFiles {
 	}
 
 	/**
-	 * A change that did not happen and changed nothing; reason tells
-	 * the user why.
+	 * A change that did not happen; reason tells the user why. It
+	 * changed nothing, unless its refusal is {@link Refusal#PARTIAL}.
 	 */
 	record Refused(Refusal refusal, String reason) implements Change {
 	}
@@ -116,7 +116,13 @@ public interface ProjectFiles {
 		/** This store cannot make this change. */
 		UNSUPPORTED,
 		/** The storage failed, or the path is not usable here. */
-		FAILED
+		FAILED,
+		/**
+		 * The storage failed while changing the file, which may now hold
+		 * part of the new bytes or be left behind: read it again before
+		 * changing it again.
+		 */
+		PARTIAL
 	}
 
 	/**
