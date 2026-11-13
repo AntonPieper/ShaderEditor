@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.Process;
+import android.os.SystemClock;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.FrameMetrics;
@@ -18,12 +20,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Document;
@@ -51,8 +55,28 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
  * <li>"drive", phases run in order: "idle" (5 s of nothing), "type" (60
  * characters, every 20th a line break, then 20 deletes, one every
  * 150 ms), "fling" (down and up, "velocity" px/s), "paste" (5,000
- * lines, then undo).</li>
+ * lines, then undo), "select" (select all, then put the caret back),
+ * "jump" (to the end, then back to the start), "big" (paste 1 MB,
+ * then undo).</li>
  * </ul>
+ * Lines logged, one per kind; fields are added at the end only:
+ * <pre>
+ * open lines=N chars=N load=Nus main=Nus firstDraw=Nus createToFirstDraw=Nus
+ * edit phase=P i=N change=Nus onDraw=Nus frame=Nus
+ * draws phase=idle at(ms)= N N ...
+ * summary phase=P frames=N onDraws=N onDraw STATS | frameMain STATS | frameTotal STATS
+ * summary phase=P edits=N change STATS | onDraw STATS | frame STATS | change+frame STATS
+ * jank phase=P refresh=F.FHz frameTime=Nus frames=N over=N
+ * cpu phase=P main=Nms render=Nms other=Nms
+ * done
+ * </pre>
+ * STATS is "p50=Nus p90=Nus p99=Nus max=Nus". An edit's onDraw and frame
+ * are those of the first frame drawn after it. "over" counts the frames
+ * whose total duration exceeded frameTime, one period of the display's
+ * refresh rate. "main" and "render" are the CPU time of the main thread
+ * and the render thread during the phase (render in steps of 10 ms),
+ * "other" that of every other thread: background work such as the
+ * document's analysis.
  */
 public class CodeViewActivity extends Activity {
 	private static final String TAG = "CodeViewBench";
@@ -73,6 +97,9 @@ public class CodeViewActivity extends Activity {
 	private long firstDraw;
 	private long[] pendingEdit;
 	private String phase = "open";
+	private long phaseCpu;
+	private long phaseMainCpu;
+	private long phaseRenderCpu;
 
 	@Override
 	protected void onCreate(Bundle state) {
@@ -207,6 +234,15 @@ public class CodeViewActivity extends Activity {
 			case "paste":
 				paste(then);
 				break;
+			case "select":
+				select(then);
+				break;
+			case "jump":
+				jump(then);
+				break;
+			case "big":
+				big(then);
+				break;
 			default:
 				main.postDelayed(then, 5000);
 				break;
@@ -220,6 +256,9 @@ public class CodeViewActivity extends Activity {
 		draws.clear();
 		edits.clear();
 		phase = name;
+		phaseCpu = Process.getElapsedCpuTime();
+		phaseMainCpu = SystemClock.currentThreadTimeMillis();
+		phaseRenderCpu = renderThreadCpu();
 	}
 
 	private void type(Runnable then) {
@@ -266,6 +305,43 @@ public class CodeViewActivity extends Activity {
 				main.postDelayed(then, 3000);
 			});
 		}, "paste").start();
+	}
+
+	private void select(Runnable then) {
+		int caret = document.selection().head();
+		edit(() -> document.select(0, document.text().length()));
+		main.postDelayed(() -> edit(() -> document.select(caret, caret)),
+				1500);
+		main.postDelayed(then, 3000);
+	}
+
+	private void jump(Runnable then) {
+		edit(() -> {
+			int end = document.text().length();
+			document.select(end, end);
+		});
+		main.postDelayed(() -> edit(() -> document.select(0, 0)), 1500);
+		main.postDelayed(then, 3000);
+	}
+
+	private void big(Runnable then) {
+		new Thread(() -> {
+			String source = document.text().toString();
+			StringBuilder sb = new StringBuilder(1 << 20);
+			while (sb.length() < 1 << 20) {
+				sb.append(source).append('\n');
+			}
+			sb.setLength(1 << 20);
+			Text pasted = Text.of(sb);
+			main.post(() -> {
+				edit(() -> {
+					Document.Selection s = document.selection();
+					document.replace(s.start(), s.end(), pasted);
+				});
+				main.postDelayed(() -> edit(document::undo), 2000);
+				main.postDelayed(then, 4000);
+			});
+		}, "big").start();
 	}
 
 	private void edit(Runnable change) {
@@ -355,6 +431,63 @@ public class CodeViewActivity extends Activity {
 					stats(onDraw) + " | frame " + stats(frame) +
 					" | change+frame " + stats(sum));
 		}
+		float refresh = getWindowManager().getDefaultDisplay()
+				.getRefreshRate();
+		long frameTime = (long) (1e9 / refresh);
+		int over = 0;
+		for (long total : frameTotal) {
+			if (total > frameTime) {
+				++over;
+			}
+		}
+		Log.i(TAG, "jank phase=" + phase + " refresh=" +
+				String.format(Locale.ROOT, "%.1f", refresh) + "Hz frameTime=" +
+				frameTime / 1000 + "us frames=" + frameTotal.length +
+				" over=" + over);
+		long mainCpu = SystemClock.currentThreadTimeMillis() - phaseMainCpu;
+		long renderCpu = renderThreadCpu() - phaseRenderCpu;
+		Log.i(TAG, "cpu phase=" + phase + " main=" + mainCpu + "ms render=" +
+				renderCpu + "ms other=" + (Process.getElapsedCpuTime() -
+				phaseCpu - mainCpu - renderCpu) + "ms");
+	}
+
+	// From the user and system time in /proc, in ticks of 10 ms.
+	private static long renderThreadCpu() {
+		File[] tasks = new File("/proc/self/task").listFiles();
+		if (tasks == null) {
+			return 0;
+		}
+		for (File task : tasks) {
+			try {
+				if (!"RenderThread".equals(read(new File(task, "comm"))
+						.trim())) {
+					continue;
+				}
+				String stat = read(new File(task, "stat"));
+				String[] fields = stat.substring(stat.lastIndexOf(')') + 2)
+						.split(" ");
+				return (Long.parseLong(fields[11]) +
+						Long.parseLong(fields[12])) * 10;
+			} catch (IOException | RuntimeException e) {
+				return 0;
+			}
+		}
+		return 0;
+	}
+
+	private static String read(File file) throws IOException {
+		try (InputStream in = new FileInputStream(file)) {
+			return readAll(in);
+		}
+	}
+
+	private static String readAll(InputStream in) throws IOException {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		byte[] buffer = new byte[65536];
+		for (int n; (n = in.read(buffer)) > 0; ) {
+			out.write(buffer, 0, n);
+		}
+		return out.toString("UTF-8");
 	}
 
 	// The shader is named by an extra, so it is found by its name.
@@ -371,12 +504,7 @@ public class CodeViewActivity extends Activity {
 				: getResources().openRawResource(getResources().getIdentifier(
 						shader != null ? shader : "sample_horizon", "raw",
 						getPackageName()))) {
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buffer = new byte[65536];
-			for (int n; (n = in.read(buffer)) > 0; ) {
-				out.write(buffer, 0, n);
-			}
-			return out.toString("UTF-8");
+			return readAll(in);
 		}
 	}
 
