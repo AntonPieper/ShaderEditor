@@ -376,6 +376,36 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void unreadableJournalIsToldUntilDismissed() throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		File file = new ProjectSessions(sessionsDir).journal(id)
+				.file(path("a.glsl"));
+		byte[] bytes = Files.readAllBytes(file.toPath());
+		bytes[bytes.length - 1] ^= 1;
+		Files.write(file.toPath(), bytes);
+
+		OpenProject restarted = open();
+		assertNull(load(restarted, "a.glsl"));
+		String reason = restarted.unreadable(path("a.glsl"));
+
+		assertNotNull(reason);
+		assertTrue(reason, reason.contains("a.glsl"));
+		assertEquals(Set.of(path("a.glsl")), restarted.unsaved());
+		assertTrue(save(restarted, true).isEmpty());
+		OpenProject again = open();
+		assertEquals(Set.of(path("a.glsl")), again.unsaved());
+		assertTrue(save(again, true).get(path("a.glsl")) instanceof Failed);
+		restarted.dismiss(path("a.glsl"));
+		settle();
+		assertNull(restarted.unreadable(path("a.glsl")));
+		assertTrue(restarted.unsaved().isEmpty());
+		assertFalse(file.exists());
+		assertTrue(open().unsaved().isEmpty());
+	}
+
+	@Test
 	public void deletesDraftsOfTheFormatBeforeAndUnfinishedSnapshots()
 			throws IOException {
 		File drafts = new File(new File(sessionsDir, id), "drafts");
