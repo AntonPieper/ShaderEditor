@@ -22,6 +22,7 @@ import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.OpenProject;
+import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -73,6 +74,7 @@ public class ProjectPreviewActivity extends PreviewActivity {
 	private DialogFragment errorList;
 	// Worker thread only.
 	private Projects projects;
+	private OpenProject.Build build;
 	// Set on the worker thread, used on the main thread.
 	private volatile OpenProject project;
 
@@ -225,7 +227,9 @@ public class ProjectPreviewActivity extends PreviewActivity {
 						: problem));
 			});
 		}
-		current.prepare(UniformTable.types(), preparation -> {
+		current.prepare(UniformTable.types(), build -> {
+			Preparation preparation = build.preparation();
+			this.build = build;
 			if (preparation == null) {
 				log("nothing runs");
 			} else {
@@ -259,7 +263,9 @@ public class ProjectPreviewActivity extends PreviewActivity {
 	private void showDiagnostics(@NonNull List<ProjectDiagnostic> diagnostics) {
 		OpenProject current = project;
 		if (current != null) {
-			current.setDiagnostics(diagnostics);
+			if (build != null) {
+				current.setDiagnostics(build, diagnostics);
+			}
 			log("diagnostics " + diagnostics + ", errors " + current.errors());
 		}
 		if (errorList != null) {
