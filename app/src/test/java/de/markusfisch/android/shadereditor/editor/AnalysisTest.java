@@ -1,16 +1,25 @@
 package de.markusfisch.android.shadereditor.editor;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
 
+import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
-import de.markusfisch.android.shadereditor.syntax.Style;
+import de.markusfisch.android.shadereditor.syntax.BundledShaders;
+import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.Outline;
+import de.markusfisch.android.shadereditor.syntax.Tokens;
 
 public class AnalysisTest {
 	@Test
@@ -21,9 +30,92 @@ public class AnalysisTest {
 		assertEquals(7, analysis.revision());
 		assertEquals(Set.of("Ray"), analysis.typeNames());
 		assertEquals(List.of("Ray", "r", "f"), names(analysis));
-		// The type guess stops at the line end; the outline colours it.
-		assertEquals(Style.TYPE, analysis.tokens().style(
-				analysis.tokens().indexAt(24)));
+	}
+
+	@Test
+	public void readsLineByLineAsTheWholeTextWouldBeRead()
+			throws IOException {
+		List<String> texts = new ArrayList<>(BundledShaders.read().values());
+		String[] fragments = {"#if 0\n", "#else\n", "#endif\n", "#define ",
+				"struct ", "uniform ", "float ", "Ray ", "x", "(", ")", "{",
+				"}", "[", "]", ";", ",", "=", "/*", "*/", "//", "\n", "\r\n",
+				"\\\n", " "};
+		Random random = new Random(5);
+		for (int n = 0; n < 5000; ++n) {
+			StringBuilder sb = new StringBuilder();
+			for (int i = random.nextInt(40); i-- > 0; ) {
+				sb.append(fragments[random.nextInt(fragments.length)]);
+			}
+			texts.add(sb.toString());
+		}
+		for (String text : texts) {
+			Text document = Text.of(text);
+			Analysis analysis = Analysis.of(document, 0, Analysis.NONE);
+			// The text as the document holds it, with its line ends.
+			text = document.toString();
+			List<Outline.Declaration> declarations = Outline.of(
+					GlslLexer.lex(text), text).declarations();
+			Set<String> typeNames = new HashSet<>();
+			for (Outline.Declaration declaration : declarations) {
+				if (declaration.kind() == Outline.Kind.TYPE) {
+					typeNames.add(declaration.name());
+				}
+			}
+			assertEquals(text, declarations,
+					analysis.outline().declarations());
+			assertEquals(text, typeNames, analysis.typeNames());
+			assertEquals(text, Analysis.uniformLineEnd(text),
+					analysis.uniformLineEnd());
+			assertEquals(text, Analysis.endifEnd(text), analysis.endifEnd());
+		}
+	}
+
+	@Test
+	public void keepsTheFirstDeclarationsOfAHugeText() {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 300000; ++i) {
+			sb.append("float v").append(i).append(" = 1.0;\n");
+		}
+		Analysis analysis = Analysis.of(Text.of(sb), 0, Analysis.NONE);
+		List<Outline.Declaration> declarations =
+				analysis.outline().declarations();
+		assertEquals(Analysis.MAX_DECLARATIONS, declarations.size());
+		assertEquals("v" + (Analysis.MAX_DECLARATIONS - 1),
+				declarations.get(declarations.size() - 1).name());
+		for (Field field : Analysis.class.getDeclaredFields()) {
+			Class<?> type = field.getType();
+			assertFalse(field.getName(), type.isArray() ||
+					CharSequence.class.isAssignableFrom(type) ||
+					Text.class.isAssignableFrom(type) ||
+					Tokens.class.isAssignableFrom(type));
+		}
+	}
+
+	@Test
+	public void keepsDeclarationsWhileTheirNamesFitTheBudget() {
+		int length = 1000;
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 200; ++i) {
+			sb.append("float ").append("n".repeat(length - 3))
+					.append(String.format(Locale.ROOT, "%03d", i))
+					.append(";\n");
+		}
+		Analysis analysis = Analysis.of(Text.of(sb), 0, Analysis.NONE);
+		assertEquals(Analysis.MAX_NAME_CHARS / length,
+				analysis.outline().declarations().size());
+	}
+
+	@Test
+	public void leavesTheOutlineEmptyWithATooLongLine() {
+		String declarations = "uniform float a;\nstruct A { int b; };\n";
+		String fits = declarations + "x".repeat(Analysis.MAX_LINE_LENGTH);
+		assertEquals(2, Analysis.of(Text.of(fits), 0, Analysis.NONE)
+				.outline().declarations().size());
+		String tooLong = fits + "x";
+		Analysis analysis = Analysis.of(Text.of(tooLong), 0, Analysis.NONE);
+		assertEquals(List.of(), analysis.outline().declarations());
+		assertEquals(Set.of(), analysis.typeNames());
+		assertEquals(declarations.indexOf("\n"), analysis.uniformLineEnd());
 	}
 
 	@Test

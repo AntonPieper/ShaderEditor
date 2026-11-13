@@ -41,10 +41,8 @@ final class DocumentWork {
 				Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
 				task.run();
 			}, "DocumentWork"));
-	private final Executor background = this::execute;
 	private LineStylesScheduler stylesScheduler;
 	private AnalysisScheduler analysisScheduler;
-	private int generation;
 
 	/**
 	 * Start the work for document and its styles, in place of the work
@@ -52,31 +50,12 @@ final class DocumentWork {
 	 */
 	void start(Document document, LineStyles styles, Runnable restyled) {
 		stop();
-		++generation;
 		stylesScheduler = new LineStylesScheduler(document, styles,
-				background, main, restyled::run);
+				thread, main, restyled::run);
 		analysisScheduler = new AnalysisScheduler(document, ANALYSIS_DELAY,
-				background, main, analysis -> {
+				thread, main, analysis -> {
 			if (styles.setTypeNames(analysis.typeNames())) {
 				restyled.run();
-			}
-		});
-	}
-
-	// The analysis of a huge text may not fit in memory; the lines then
-	// keep their colours without it.
-	private void execute(Runnable task) {
-		int started = generation;
-		thread.execute(() -> {
-			try {
-				task.run();
-			} catch (OutOfMemoryError e) {
-				handler.post(() -> {
-					if (started == generation && analysisScheduler != null) {
-						analysisScheduler.close();
-						analysisScheduler = null;
-					}
-				});
 			}
 		});
 	}
