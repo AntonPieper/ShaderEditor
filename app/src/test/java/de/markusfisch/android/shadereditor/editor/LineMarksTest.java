@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.editor;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -141,6 +142,37 @@ public class LineMarksTest {
 		assertEquals(changes + 2, marks.changes());
 	}
 
+	@Test
+	public void keepsTheMessagesOfALinesErrorsInOrder() {
+		Document document = new Document(Text.of(TEXT));
+		LineMarks marks = new LineMarks(document);
+		marks.set(document.revision(), List.of(error(4, "b"), warning(2),
+				error(2, "first"), error(4, "a"), error(2, "second")));
+		assertEquals(List.of("first", "second"), marks.messages(1));
+		assertEquals(List.of("b", "a"), marks.messages(3));
+		assertEquals(List.of(), marks.messages(0));
+		assertArrayEquals(new int[]{1, 3}, marks.errorLines());
+	}
+
+	@Test
+	public void theOpenLineFollowsItsMark() {
+		Document document = new Document(Text.of(TEXT));
+		LineMarks marks = marked(document, error(3), warning(5));
+		assertFalse(marks.open(4));
+		assertEquals(-1, marks.open());
+		assertTrue(marks.open(2));
+		document.replace(0, 0, Text.of("\n"));
+		assertEquals(3, marks.open());
+		marks.set(document.revision(), List.of(error(4), error(5)));
+		assertEquals(3, marks.open());
+		marks.set(document.revision(), List.of(error(5)));
+		assertEquals(-1, marks.open());
+		marks.open(4);
+		document.replace(document.text().lineStart(4),
+				document.text().lineStart(5), Text.EMPTY);
+		assertEquals(-1, marks.open());
+	}
+
 	private static LineMarks marked(Document document,
 			ProjectDiagnostic... diagnostics) {
 		LineMarks marks = new LineMarks(document);
@@ -158,7 +190,11 @@ public class LineMarksTest {
 	}
 
 	private static ProjectDiagnostic error(int line) {
-		return new ProjectDiagnostic(Severity.ERROR, "e", null, line);
+		return error(line, "e");
+	}
+
+	private static ProjectDiagnostic error(int line, String message) {
+		return new ProjectDiagnostic(Severity.ERROR, message, null, line);
 	}
 
 	private static ProjectDiagnostic warning(int line) {
