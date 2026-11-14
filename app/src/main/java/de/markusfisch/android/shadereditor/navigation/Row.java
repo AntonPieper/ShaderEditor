@@ -28,6 +28,7 @@ public record Row(String key, Kind kind, Picture picture, String name,
 
 	/** Marks at the end of a row, in the order they are shown. */
 	public enum Mark {
+		UNSAVED,
 		WALLPAPER,
 		READ_ONLY,
 		RUNNING
@@ -46,7 +47,8 @@ public record Row(String key, Kind kind, Picture picture, String name,
 		public enum Icon {
 			SHADER,
 			LIBRARY,
-			EXAMPLES
+			EXAMPLES,
+			FOLDER
 		}
 
 		public static Picture of(Icon icon) {
