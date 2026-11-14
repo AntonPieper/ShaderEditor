@@ -34,6 +34,9 @@ public interface ShaderScreen {
 		/** Pick the live wallpaper if it is not picked, else say it is set. */
 		void showWallpaper();
 
+		/** Forget what an earlier run reported. */
+		void clearErrors();
+
 		/**
 		 * Run the text in the editor as the shader open: behind the
 		 * code, or in the preview that preview launches.
