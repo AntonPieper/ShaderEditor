@@ -25,6 +25,11 @@ package de.markusfisch.android.shadereditor.editor;
  * caret's. A paragraph is the rest of a line that is not empty, or the
  * next line that is not; a page the given number of lines. A search
  * gives up after MAX_CHARS characters or lines.
+ * <p>
+ * A change is heard in the window of its start in the text before it,
+ * and in a window of the text after it that starts at the same offset,
+ * the removed and the inserted text cut at MAX_CHARS characters from
+ * that start.
  */
 public final class AccessibleText {
 	/** The lines of a block. */
@@ -39,6 +44,15 @@ public final class AccessibleText {
 
 	/** The range [start, end) of text moved over. */
 	public record Segment(int start, int end) {
+	}
+
+	/**
+	 * A change as a service hears it: the window of the text before and
+	 * of the text after it, both from the same start, and where in them
+	 * count removed characters took the place of added ones.
+	 */
+	public record Edit(Window before, Window after, int from, int removed,
+			int added) {
 	}
 
 	/** A window [start, end) of a text. */
@@ -72,12 +86,29 @@ public final class AccessibleText {
 			if (start > 0 && Character.isLowSurrogate(charAt(text, start))) {
 				++start;
 			}
-			if (end < text.length() &&
-					Character.isLowSurrogate(charAt(text, end))) {
-				--end;
-			}
+			end = cut(text, end);
 		}
 		return new Window(start, end);
+	}
+
+	/** Return change, made to before and giving after, as heard. */
+	public static Edit edit(Text before, Text after, Document.Change change) {
+		int from = change.start();
+		Window window = window(before, from, from);
+		int start = window.start();
+		int limit = start + MAX_CHARS;
+		int removedEnd = from + change.removed().length();
+		int addedEnd = from + change.inserted().length();
+		int beforeEnd = cut(before, Math.min(Math.max(window.end(), removedEnd),
+				limit));
+		int afterEnd = cut(after, Math.min(beforeEnd >= removedEnd
+				? beforeEnd - removedEnd + addedEnd
+				: addedEnd, limit));
+		return new Edit(new Window(start, beforeEnd),
+				new Window(start, afterEnd),
+				from - start,
+				Math.max(0, Math.min(removedEnd, beforeEnd) - from),
+				Math.max(0, Math.min(addedEnd, afterEnd) - from));
 	}
 
 	/**
@@ -204,6 +235,12 @@ public final class AccessibleText {
 			}
 		}
 		return true;
+	}
+
+	// Returns end, or the offset before it if it splits a surrogate pair.
+	private static int cut(Text text, int end) {
+		return end > 0 && end < text.length() &&
+				Character.isLowSurrogate(charAt(text, end)) ? end - 1 : end;
 	}
 
 	private static char charAt(Text text, int offset) {

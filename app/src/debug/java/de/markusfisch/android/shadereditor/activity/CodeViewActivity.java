@@ -13,9 +13,13 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.Log;
+import android.text.InputType;
 import android.util.TypedValue;
 import android.view.FrameMetrics;
+import android.view.Gravity;
+import android.view.View;
 import android.view.Window;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -74,6 +78,10 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
  * lines, then undo), "select" (select all, then put the caret back),
  * "jump" (to the end, then back to the start), "big" (paste 1 MB,
  * then undo).</li>
+ * <li>"a11y", an AccessibilityScript to run on the view once the text
+ * is shown, logged with the tag "CodeViewA11y" with every accessibility
+ * event the view sends; "edittext", true: a platform EditText in place
+ * of the CodeView, to compare the two.</li>
  * </ul>
  * Lines logged, one per kind; fields are added at the end only:
  * <pre>
@@ -127,6 +135,7 @@ public class CodeViewActivity extends Activity {
 	private KeyboardSession session;
 	private File sessionFile;
 	private CodeView view;
+	private EditText editText;
 	private Document document;
 	private long created;
 	private long firstDrawEnd;
@@ -141,6 +150,18 @@ public class CodeViewActivity extends Activity {
 	protected void onCreate(Bundle state) {
 		super.onCreate(state);
 		created = System.nanoTime();
+		String script = getIntent().getStringExtra("a11y");
+		if (getIntent().getBooleanExtra("edittext", false)) {
+			editText = new EditText(this);
+			editText.setGravity(Gravity.TOP);
+			editText.setInputType(InputType.TYPE_CLASS_TEXT |
+					InputType.TYPE_TEXT_FLAG_MULTI_LINE |
+					InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+			editText.setHorizontallyScrolling(true);
+			setContentView(AccessibilityScript.logEvents(this, editText));
+			new Thread(this::load, "load").start();
+			return;
+		}
 		view = new TimedCodeView(this);
 		view.setBackgroundResource(R.color.background_editor);
 		int padding = getResources().getDimensionPixelSize(
@@ -157,7 +178,9 @@ public class CodeViewActivity extends Activity {
 				ShaderEditorApp.preferences.hideNativeSuggestions()
 						? CodeView.INPUT_TYPE_NO_SUGGESTIONS
 						: CodeView.INPUT_TYPE_TEXT));
-		setContentView(view);
+		setContentView(script != null
+				? AccessibilityScript.logEvents(this, view)
+				: view);
 		getWindow().getDecorView().setBackgroundColor(0xff000000);
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 			metricsThread = new HandlerThread("metrics");
@@ -268,6 +291,15 @@ public class CodeViewActivity extends Activity {
 		if (lines > 0) {
 			string = repeat(string, lines);
 		}
+		if (editText != null) {
+			String shown = string;
+			main.post(() -> {
+				editText.setText(shown);
+				editText.requestFocus();
+				runScript(editText);
+			});
+			return;
+		}
 		Text text = Text.of(string);
 		long loaded = System.nanoTime();
 		main.post(() -> show(text, (loaded - start) / 1000));
@@ -290,10 +322,19 @@ public class CodeViewActivity extends Activity {
 				"us main=" + (shown - start) / 1000 + "us firstDraw=" +
 				firstDraw / 1000 + "us createToFirstDraw=" +
 				(firstDrawEnd - created) / 1000 + "us"));
+		runScript(view);
 		String drive = getIntent().getStringExtra("drive");
 		if (drive != null) {
 			main.postDelayed(() -> drive(new ArrayList<>(
 					Arrays.asList(drive.split(",")))), 3000);
+		}
+	}
+
+	private void runScript(View target) {
+		String script = getIntent().getStringExtra("a11y");
+		if (script != null) {
+			main.postDelayed(() -> AccessibilityScript.run(target, script),
+					1500);
 		}
 	}
 

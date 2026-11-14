@@ -7,10 +7,12 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.RecordingCanvas;
 import android.graphics.RenderNode;
 import android.graphics.Typeface;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
@@ -28,6 +30,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.WindowInsets;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
@@ -133,9 +136,11 @@ public class CodeView extends View {
 	private final char[] digits = new char[10];
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final DocumentWork work = new DocumentWork();
+	private final CodeAccessibility accessibility = new CodeAccessibility(this);
 	private final Document.Listener listener = new Document.Listener() {
 		@Override
 		public void onChange(Document.Change change, Text before) {
+			accessibility.changed(change, before);
 			invalidate();
 		}
 
@@ -149,6 +154,7 @@ public class CodeView extends View {
 			toolbar.moved();
 			restartBlink();
 			scrollInside(getScrollX(), getScrollY());
+			accessibility.updated();
 			invalidate();
 		}
 	};
@@ -304,7 +310,7 @@ public class CodeView extends View {
 				IMPORTANT_FOR_ACCESSIBILITY_AUTO) {
 			setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
 		}
-		setAccessibilityDelegate(new CodeAccessibility(this));
+		setAccessibilityDelegate(accessibility);
 		scroller = new OverScroller(context);
 		edgeTop = new EdgeEffect(context);
 		edgeBottom = new EdgeEffect(context);
@@ -398,6 +404,7 @@ public class CodeView extends View {
 			connect();
 			restartInput();
 		}
+		accessibility.documentChanged();
 		invalidate();
 	}
 
@@ -646,6 +653,14 @@ public class CodeView extends View {
 			SelectionToolbar.fill(menu, offered(),
 					item -> contextMenuAction(item.getItemId()));
 		}
+	}
+
+	@Override
+	public void addExtraDataToAccessibilityNodeInfo(
+			@NonNull AccessibilityNodeInfo info, @NonNull String key,
+			@Nullable Bundle arguments) {
+		super.addExtraDataToAccessibilityNodeInfo(info, key, arguments);
+		accessibility.addExtraData(info, key, arguments);
 	}
 
 	@Override
@@ -1202,6 +1217,37 @@ public class CodeView extends View {
 		} else {
 			out.set((int) left, (int) top, (int) Math.ceil(right),
 					(int) Math.ceil(bottom));
+		}
+	}
+
+	/**
+	 * Put the bounds on screen of the characters from offset on into
+	 * out, null for one not on screen.
+	 */
+	void characterBounds(int offset, RectF[] out) {
+		Text text = document.text();
+		int lineCount = text.lineCount();
+		int[] location = new int[2];
+		getLocationOnScreen(location);
+		float left = textLeft(lineCount);
+		float dx = location[0] - getScrollX();
+		float dy = location[1] - getScrollY();
+		for (int i = 0; i < out.length; ++i) {
+			int n = text.lineOf(offset + i);
+			int column = offset + i - text.lineStart(n);
+			LineLayout layout = layoutOf(n);
+			float x = left + layout.xOf(column);
+			float right = left + layout.xOf(Math.min(column + 1,
+					text.line(n).length()));
+			float top = textTop() + n * appearance.lineHeight;
+			float bottom = top + appearance.lineHeight;
+			boolean shown = right >= getScrollX() + left &&
+					x <= getScrollX() + getWidth() - insets.right &&
+					bottom > getScrollY() + insets.top &&
+					top < getScrollY() + getHeight() - insets.bottom;
+			out[i] = shown
+					? new RectF(x + dx, top + dy, right + dx, bottom + dy)
+					: null;
 		}
 	}
 

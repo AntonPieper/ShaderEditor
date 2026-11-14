@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.widget;
 
 import android.content.Context;
+import android.graphics.RectF;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -11,6 +12,8 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
 
 import androidx.annotation.NonNull;
+
+import java.util.Collections;
 
 import de.markusfisch.android.shadereditor.editor.AccessibleText;
 import de.markusfisch.android.shadereditor.editor.Document;
@@ -25,7 +28,12 @@ import de.markusfisch.android.shadereditor.editor.Text;
  * are not part of the text. Services move the caret by the units of
  * AccessibleText, select, cut, copy, paste, replace the text, press
  * Enter, tap, long press and scroll by a page, through the view's own
- * commands. The framework calls it only while a service is enabled.
+ * commands. It sends what TextView sends: text changed, with the text
+ * before, in the window AccessibleText.edit gives; selection changed;
+ * traversed at movement granularity; and, as a scroll view, scrolled.
+ * It gives the bounds of characters on screen. The framework calls it
+ * only while a service is enabled, and the view tells it of changes
+ * only then.
  */
 final class CodeAccessibility extends View.AccessibilityDelegate {
 	private static final int GRANULARITIES =
@@ -41,6 +49,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	private Text windowOf;
 	private AccessibleText.Window window;
 	private String windowText;
+	// The selection the last event reported.
+	private Document.Selection reported;
 
 	CodeAccessibility(CodeView view) {
 		this.view = view;
@@ -73,6 +83,11 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		String text = text(document.text(), window);
 		info.setText(text.isEmpty() ? null : text);
 		if (!text.isEmpty()) {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+				info.setAvailableExtraData(Collections.singletonList(
+						AccessibilityNodeInfo
+								.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY));
+			}
 			info.setTextSelection(window.index(selection.anchor()),
 					window.index(selection.head()));
 			info.addAction(AccessibilityAction.ACTION_NEXT_AT_MOVEMENT_GRANULARITY);
@@ -96,6 +111,141 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			if (offers(offered, android.R.id.cut)) {
 				info.addAction(AccessibilityAction.ACTION_CUT);
 			}
+		}
+	}
+
+	/**
+	 * Add the character bounds a service asks for to info, as
+	 * View.addExtraDataToAccessibilityNodeInfo does; the framework calls
+	 * that of the view, not the delegate's.
+	 */
+	void addExtraData(AccessibilityNodeInfo info, String key,
+			Bundle arguments) {
+		Document document = view.getDocument();
+		if (document == null || arguments == null || !AccessibilityNodeInfo
+				.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY.equals(key)) {
+			return;
+		}
+		int head = document.selection().head();
+		AccessibleText.Window window = window(document.text(), head, head,
+				head);
+		int start = arguments.getInt(AccessibilityNodeInfo
+				.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_START_INDEX, -1);
+		int length = arguments.getInt(AccessibilityNodeInfo
+				.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_LENGTH, -1);
+		if (length <= 0 || start < 0 || start >= window.length()) {
+			return;
+		}
+		RectF[] bounds = new RectF[Math.min(length, window.length() - start)];
+		view.characterBounds(window.start() + start, bounds);
+		info.getExtras().putParcelableArray(key, bounds);
+	}
+
+	@Override
+	public void onInitializeAccessibilityEvent(@NonNull View host,
+			@NonNull AccessibilityEvent event) {
+		super.onInitializeAccessibilityEvent(host, event);
+		Document document = view.getDocument();
+		if (document == null) {
+			return;
+		}
+		switch (event.getEventType()) {
+			case AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED -> {
+				Document.Selection selection = document.selection();
+				AccessibleText.Window window = window(document.text(),
+						selection.head(), selection.head(), selection.head());
+				if (window.length() > 0) {
+					event.setFromIndex(window.index(selection.anchor()));
+					event.setToIndex(window.index(selection.head()));
+					event.setItemCount(window.length());
+				}
+			}
+			case AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
+				event.setScrollable(host.canScrollVertically(-1) ||
+						host.canScrollVertically(1) ||
+						host.canScrollHorizontally(-1) ||
+						host.canScrollHorizontally(1));
+				event.setScrollX(host.getScrollX());
+				event.setScrollY(host.getScrollY());
+				event.setMaxScrollX(Math.max(0,
+						view.computeHorizontalScrollRange() - host.getWidth()));
+				event.setMaxScrollY(Math.max(0,
+						view.computeVerticalScrollRange() - host.getHeight()));
+			}
+			default -> {
+			}
+		}
+	}
+
+	@Override
+	public void onPopulateAccessibilityEvent(@NonNull View host,
+			@NonNull AccessibilityEvent event) {
+		super.onPopulateAccessibilityEvent(host, event);
+		Document document = view.getDocument();
+		if (document == null) {
+			return;
+		}
+		int head = document.selection().head();
+		String text = text(document.text(), window(document.text(), head,
+				head, head));
+		if (!text.isEmpty()) {
+			event.getText().add(text);
+		}
+	}
+
+	/**
+	 * Tell services the document's text and selection are new, as
+	 * TextView does when its text is set.
+	 */
+	void documentChanged() {
+		Document document = view.getDocument();
+		reported = document != null ? document.selection() : null;
+		ViewParent parent = view.getParent();
+		if (parent != null && isEnabled()) {
+			parent.notifySubtreeAccessibilityStateChanged(view, view,
+					AccessibilityEvent.CONTENT_CHANGE_TYPE_TEXT);
+		}
+	}
+
+	/**
+	 * Tell services of change, made to before, as TextView does while
+	 * it has focus.
+	 */
+	void changed(Document.Change change, Text before) {
+		ViewParent parent = view.getParent();
+		Document document = view.getDocument();
+		if (parent == null || document == null || !view.isFocused() ||
+				!view.isShown() || !isEnabled()) {
+			return;
+		}
+		Text after = document.text();
+		AccessibleText.Edit edit = AccessibleText.edit(before, after, change);
+		AccessibilityEvent event = AccessibilityEvent.obtain(
+				AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED);
+		view.onInitializeAccessibilityEvent(event);
+		event.setBeforeText(before.substring(edit.before().start(),
+				edit.before().end()));
+		String text = text(after, edit.after());
+		if (!text.isEmpty()) {
+			event.getText().add(text);
+		}
+		event.setFromIndex(edit.from());
+		event.setRemovedCount(edit.removed());
+		event.setAddedCount(edit.added());
+		parent.requestSendAccessibilityEvent(view, event);
+	}
+
+	/** Tell services the selection changed, if it did. */
+	void updated() {
+		Document document = view.getDocument();
+		if (document == null || !isEnabled()) {
+			return;
+		}
+		Document.Selection selection = document.selection();
+		if (!selection.equals(reported)) {
+			reported = selection;
+			view.sendAccessibilityEvent(
+					AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED);
 		}
 	}
 
