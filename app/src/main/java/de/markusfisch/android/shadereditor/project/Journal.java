@@ -53,9 +53,11 @@ final class Journal {
 	/**
 	 * What a journal holds: its header, the text as of its last good
 	 * record and the revision of that record. text is null and problem
-	 * tells why when the header or the snapshot is damaged. tooLarge
-	 * tells that the text is over {@link Document#MAX_BYTES}; it is
-	 * recovered all the same.
+	 * tells why when the header or the snapshot is damaged or holds
+	 * more than a document may: no more than that is taken into memory.
+	 * tooLarge tells that the records after the snapshot made the text
+	 * larger than {@link Document#MAX_BYTES}; it is recovered all the
+	 * same.
 	 */
 	record Recovered(Header header, Text text, int revision, String problem,
 			boolean tooLarge) {
@@ -83,6 +85,12 @@ final class Journal {
 	// MAX_RECORDS bytes.
 	private static final long MIN_RECORDS = 16 * 1024;
 	private static final long MAX_RECORDS = 128 * 1024;
+	// The most bytes a header and a snapshot are read as, checked
+	// before any are taken into memory: a path and two revisions, and
+	// the text of a document, whose characters take at most twice the
+	// bytes here that they take in a file.
+	private static final int MAX_HEAD = 256 * 1024;
+	private static final long MAX_TEXT = 2 * Document.MAX_BYTES;
 
 	// Where a journal ends and at which revision, as last read or
 	// written.
@@ -237,7 +245,7 @@ final class Journal {
 		}
 		try (DataInputStream in = new DataInputStream(
 				new BufferedInputStream(new FileInputStream(file)))) {
-			byte[] head = readMagic(in) ? readBlock(in) : null;
+			byte[] head = readMagic(in) ? readBlock(in, MAX_HEAD) : null;
 			if (head == null) {
 				return damaged(path, "its header is damaged");
 			}
@@ -251,14 +259,18 @@ final class Journal {
 			if (!path.equals(header.path())) {
 				return damaged(path, "it belongs to " + header.path());
 			}
-			byte[] bytes = readBlock(in);
+			byte[] bytes = readBlock(in, MAX_TEXT);
 			if (bytes == null) {
 				return damaged(path, "its text is damaged");
+			} else if (fileBytes(bytes) > Document.MAX_BYTES) {
+				return damaged(path,
+						"its text is larger than a document may be");
 			}
 			Text text = Text.of(decode(bytes));
 			long length = 12L + head.length + 8 + bytes.length;
 			long records = 0;
-			for (byte[] record; (record = readBlock(in)) != null; ) {
+			for (byte[] record; records <= MAX_RECORDS &&
+					(record = readBlock(in, MAX_RECORDS)) != null; ) {
 				Replayed replayed = replay(record, revision, text);
 				if (replayed == null) {
 					break;
@@ -274,6 +286,8 @@ final class Journal {
 					TextBytes.length(text) > Document.MAX_BYTES);
 		} catch (IOException | RuntimeException e) {
 			return damaged(path, "it cannot be read");
+		} catch (OutOfMemoryError e) {
+			return damaged(path, "it is too large for this device");
 		}
 	}
 
@@ -305,7 +319,9 @@ final class Journal {
 			int known = headers.size();
 			try (DataInputStream in = new DataInputStream(
 					new BufferedInputStream(new FileInputStream(file)))) {
-				byte[] head = readMagic(in) ? readBlock(in) : null;
+				byte[] head = readMagic(in)
+						? readBlock(in, MAX_HEAD)
+						: null;
 				if (head != null) {
 					Header header = header(new DataInputStream(
 							new ByteArrayInputStream(head)));
@@ -531,13 +547,14 @@ final class Journal {
 		out.writeInt((int) crc(bytes));
 	}
 
-	// Return the next block, or null at the end, at a torn block or one
-	// whose checksum does not match.
-	private static byte[] readBlock(DataInputStream in) throws IOException {
+	// Return the next block, or null at the end, at a torn block, one
+	// of more than max bytes or one whose checksum does not match.
+	private static byte[] readBlock(DataInputStream in, long max)
+			throws IOException {
 		try {
 			int length = in.readInt();
 			// More than the file has left is a damaged length.
-			if (length < 0 || length > in.available()) {
+			if (length < 0 || length > max || length > in.available()) {
 				return null;
 			}
 			byte[] bytes = new byte[length];
@@ -572,6 +589,28 @@ final class Journal {
 			}
 		}
 		return out.toByteArray();
+	}
+
+	// Return how many bytes the text encoded in bytes has in a file, as
+	// Document.bytes counts them, without decoding it.
+	private static long fileBytes(byte[] bytes) {
+		long count = 0;
+		for (int i = 0, n = bytes.length; i < n; ) {
+			int b = bytes[i] & 0xff;
+			if (b < 0x80) {
+				i += 1;
+				count += 1;
+			} else if ((b & 0xe0) == 0xc0) {
+				i += 2;
+				count += 2;
+			} else {
+				// A surrogate is half of four bytes.
+				count += b == 0xed && i + 1 < n &&
+						(bytes[i + 1] & 0xe0) == 0xa0 ? 2 : 3;
+				i += 3;
+			}
+		}
+		return count;
 	}
 
 	static String decode(byte[] bytes) throws IOException {

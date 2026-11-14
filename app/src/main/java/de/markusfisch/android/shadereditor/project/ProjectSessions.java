@@ -59,6 +59,8 @@ public final class ProjectSessions {
 	}
 
 	private static final int MAGIC = 0x5345534c;
+	// The most bytes one of the files kept here is read as.
+	private static final int MAX_BYTES = 256 * 1024;
 	private static final String LOCATOR = "locator";
 	private static final String DRAFTS = "drafts";
 	private static final String HISTORY = "history";
@@ -122,7 +124,7 @@ public final class ProjectSessions {
 			return null;
 		}
 		try (InputStream in = new FileInputStream(file)) {
-			byte[] data = new byte[(int) file.length()];
+			byte[] data = new byte[small(file)];
 			new DataInputStream(in).readFully(data);
 			DataInputStream locator = new DataInputStream(
 					new ByteArrayInputStream(data));
@@ -216,7 +218,7 @@ public final class ProjectSessions {
 			return null;
 		}
 		try (InputStream in = new FileInputStream(file)) {
-			byte[] data = new byte[(int) file.length()];
+			byte[] data = new byte[small(file)];
 			new DataInputStream(in).readFully(data);
 			DataInputStream recent = new DataInputStream(
 					new ByteArrayInputStream(data));
@@ -362,7 +364,7 @@ public final class ProjectSessions {
 			return null;
 		}
 		try (InputStream in = new FileInputStream(file)) {
-			byte[] data = new byte[(int) file.length()];
+			byte[] data = new byte[small(file)];
 			new DataInputStream(in).readFully(data);
 			DataInputStream path = new DataInputStream(
 					new ByteArrayInputStream(data));
@@ -396,6 +398,16 @@ public final class ProjectSessions {
 			return false;
 		}
 		return Journal.replace(dir, name, bytes.toByteArray());
+	}
+
+	// Return the length of file, which holds a few names: anything
+	// longer is not what was written here and is not read.
+	private static int small(File file) throws IOException {
+		long length = file.length();
+		if (length > MAX_BYTES) {
+			throw new IOException("too large");
+		}
+		return (int) length;
 	}
 
 	private String newId() {
