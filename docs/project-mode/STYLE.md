@@ -305,6 +305,8 @@ What has to hold for the two cases to stay one design:
 
 How it is applied: one switch, at activity creation. The theme is always `Theme.ShaderEditor`; a helper called first in every activity's `onCreate` adds the overlay `ThemeOverlay.ShaderEditor.DeviceAccent` (defined in `values-v31`) with `getTheme().applyStyle(…, true)` when the setting is on, and changing the setting recreates the activity. Not `DynamicColors.applyToActivitiesIfAvailable`: that replaces every role, surfaces and error included. The tone numbers are from memory of how the library builds its dark dynamic scheme and have to be checked; that tones 700 and 100 keep at least 4.5 : 1 for every wallpaper is by the palette's construction, not measured.
 
+**Menus take their surface explicitly.** The library's menu default, `colorSurfaceContainer`, is `se_surface_1`, the drawer panel's own colour, so a menu opened over the drawer would not stand out. Every menu therefore draws `colorSurfaceContainerHigh` itself: the main menu through `background_menu`; the drawer's row and order menus and every spinner list through `background_popup` (the theme's `popupMenuBackground` and the spinner style), which adds a hairline in `colorOutlineVariant`. Both have 16 dp corners.
+
 Fixed colours exist because of the picture: a surface that takes the device's colour would be a third colour source over it. `colorTertiary` and its container are set to the neutral values too, so that no component falls back to a tint. Pressed and focused states are the library's ripple (`?selectableItemBackground`), never a colour of ours.
 
 ### 6.2 Translucency levels
@@ -325,13 +327,15 @@ The UI font is the system's (Roboto). Seven Material text appearances and no oth
 
 | Appearance | Size | Used for |
 | --- | --- | --- |
-| `?textAppearanceTitleLarge` | 22 sp | Toolbar titles of every screen but the main one, sheet and dialog titles: the library's default |
+| `?textAppearanceTitleLarge` | 22 sp | Toolbar titles of every screen but the main one, sheet titles |
 | `?textAppearanceTitleMedium` | 16 sp medium | The main toolbar's title and the drawer header, where width is short; empty-state titles |
 | `?textAppearanceTitleSmall` | 14 sp medium | Section headings, in `colorPrimary`, as Android's settings do |
 | `?textAppearanceBodyLarge` | 16 sp | The first line of every row, menu entries, field text |
 | `?textAppearanceBodyMedium` | 14 sp | Second lines, dialog and sheet text, snackbar, messages |
 | `?textAppearanceLabelLarge` | 14 sp medium | Buttons, tabs, the frame-rate and quality control (with tabular figures) |
 | `?textAppearanceBodySmall` | 12 sp | The toolbar's and the drawer header's second line |
+
+Dialog titles keep the library's own `?textAppearanceHeadlineSmall` (24 sp); it is the one place an eighth appearance is used, because the dialog is the library's and is not restyled.
 
 **The code font** is the one the user chose in Settings (`TextAppearance.ShaderEditor.Code`, falling back to `monospace`). It is used for what is GLSL, anywhere in the app, at 14 sp or more outside the editor: the editor and gutter, the completion strip and extra keys, uniform names and their types (16 sp), GL constants, source quoted in a message. Numbers the app reports (frame rate, sizes, settings values) and file names are in the UI font: a monospace at small sizes is harder to read than Roboto, and they are not code.
 
@@ -344,16 +348,20 @@ Spacing is 4, 8, 12, 16 or 24 dp; nothing else.
 | `se_margin_screen` | 16 dp | Left and right of every row and sheet content (24 dp inside sheets and dialogs: `se_margin_sheet`) |
 | `se_row_height` / `_two_line` / `_picture` | 48 / 56 / 72 dp | One line; two lines or a 40 dp picture; a 56 dp picture |
 | `se_tap_target` | 48 dp | Minimum for anything tappable; 44 dp only for keys in the extra-keys row (`se_key_height`), where a 48 dp row would cost a line of code |
-| `se_icon` / `se_mark` | 24 / 18 dp | Icons in a 48 dp target; marks at the end of a row |
+| `se_icon` / `se_mark` | 24 / 18 dp | Icons in a 48 dp target, and the chevron at the end of a row that opens a folder; the wallpaper mark at the end of a row |
+| `navigation_state_mark` | 16 dp | The running and read-only marks at the end of a row and in the drawer header (6.6) |
+| `navigation_mark_spacing` | 8 dp | Between the text of a row and each mark after it |
 | `se_thumbnail` / `_large` | 40 / 56 dp | Shader pictures in lists; in Examples. Never cut to a circle: the corners are part of the picture |
 | `se_drawer_max_width` | 328 dp | The drawer: the smaller of this and the screen minus 56 dp |
 | `se_hairline` | 1 dp | Dividers, in `colorOutlineVariant`. Between groups, not between rows |
 
 Settings use the library's preference rows as they are, title over current value, with `iconSpaceReserved` off. The frame-rate and quality control is a 36 dp filled chip (14 % white on the bar) with a dropdown arrow.
 
-Toolbars and menus are never a fixed size: the toolbar is at least `?actionBarSize` and grows with the text; a menu is between 200 and 280 dp wide.
+Toolbars and menus are never a fixed size: the toolbar is at least `?actionBarSize`, which is 64 dp in Material 3 (the mock-ups assumed 56), and grows with the text; a menu is between 200 and 280 dp wide.
 
 Shape, as recommended in S6 and open until it is decided: **anything up to 56 dp tall has 8 dp corners (`se_corner`); a larger thing that floats over the screen has 16 dp (`se_corner_container`); whatever touches a screen edge is square on that edge.** So: buttons, the chip, segments, fields, keys, the selected row, pictures and the snackbar 8 dp; menus, dialogs and the top of a sheet 16 dp; bars, the code, the drawer and the bottom of a sheet square. Round only where it is a state or a platform part: switches, the count badge, text handles.
+
+**Buttons in use.** Material Components 1.14 makes every button a pill by default, so each button the app uses has a style of its own that takes `shapeAppearanceCornerSmall` (8 dp), and the theme makes those the defaults: `Widget.ShaderEditor.Button` (filled: the one main action of a screen, such as the drawer's New with its icon in `.Icon`), `.TonalButton` (a second way out beside it, as in the drawer's empty state), `.OutlinedButton` and `.TextButton`, and `.TextButton.Dialog` and `.TextButton.Dialog.Flush` for the buttons of dialogs. Outside the library's buttons: `BarButton` for the extra keys and completions (a text button with 8 dp corners in `colorOnSurface`, at least 44 dp), `BarButton.Tab` for the Tab key (filled with `colorSurfaceContainerHighest`, 40 dp high), `IconButton` for the toolbar's icons (transparent, with a round ripple), `MenuItem` for the rows of the main menu (square, the menu's full width, 48 dp) and `FAB` for the floating buttons of the texture screens (8 dp).
 
 ### 6.5 Icons
 
@@ -371,7 +379,7 @@ Never colour alone: every state has an icon or a shape, and a spoken text.
 | --- | --- | --- |
 | Selected | Filled with `colorSecondaryContainer`, `se_corner`, inset 8 dp from the edges; first line in medium weight; second line and marks in `colorOnSecondaryContainer`. A selected segment or chip is the library's: the same fill and a check mark | selected |
 | Running | Filled triangle, 16 dp, `colorPrimary`, at the end of the row; in the toolbar's second line before the file name | running |
-| Unsaved | A dot, 8 dp, `colorOnSurface`, after the name in the toolbar and at the end of a row | unsaved |
+| Unsaved | A dot, "•" in the title's own colour (`colorOnSurface`), before the name in the toolbar, so that an ellipsis never cuts it off; at the end of a row in lists | unsaved changes (the title's spoken text) |
 | Error | `ic_error` and a count in `colorError`; in code 6.9 | N errors |
 | Warning | `ic_warning` and a count in `se_warning` | N warnings |
 | Changed outside | `ic_sync_problem` in `se_warning` | changed outside |
@@ -406,6 +414,7 @@ Every changed string changes in all five languages (AGENTS 15); a rule about Eng
 - On screens without a picture the bars are `colorSurface` with a hairline under the toolbar.
 - The drawer, as recommended in S8, draws behind both system bars: its header is padded by the status-bar inset, its bottom bar by the navigation inset.
 - The keyboard moves the extra-keys row; nothing else resizes.
+- A display cutout: the window draws into it (`EdgeToEdge`'s default). The bars' backgrounds and content run through it and keep out of the system bars only (`SystemBarMetrics`): the status-bar inset pads the toolbar, the left, right and bottom insets of the system bars and the keyboard pad the rest. A cutout on a short edge stays beside the toolbar in landscape, so nothing of the bars is under it. What is read in a column keeps out of the cutout as well: the drawer pads its content by the system bars and the cutout (`NavigationDrawer`), and the new code view starts its gutter, text and caret after both (`CodeView`). The old editor does not; in landscape its line numbers can lie under a cutout.
 - The app declares itself as always in night mode (`AppCompatDelegate.MODE_NIGHT_YES`), so that what the platform draws for it (the selection toolbar, handles) is dark too. Not verified.
 
 ### 6.10 The code editor
@@ -426,16 +435,21 @@ Binding for the new editor view (EDITOR 4.4); the old widget gets the palette an
 | Selection toolbar | The platform's floating toolbar, dark (6.9) | – |
 | Extra-keys row | Bar level, 44 dp, a hairline on top | `se_level_bar`, `se_key_height` |
 | Tab key | 44 × 40 dp, `se_corner`, `ic_keyboard_tab` | `se_surface_3` |
-| Keys and completions | Code font 14 sp, at least 44 dp wide, hairlines between completions; the part already typed in `colorOnSurfaceVariant`, the rest in `colorOnSurface` | – |
+| Keys and completions | Code font 14 sp, at least 44 dp wide, hairlines between completions, all in `colorOnSurface`; nothing is dimmed. The part already typed is regular, the part a tap inserts is bold, in the real bold face each bundled code font ships | – |
 
 ### 6.11 Which surface for what
 
 | Need | Surface |
 | --- | --- |
-| A question with two answers, or one field | Dialog |
-| A list to choose from, several fields, or something to look at | Bottom sheet, with the library's drag handle |
+| A question with two answers, one field, or one list setting | Dialog: the library's Material dialog (`MaterialAlertDialogBuilder`) for every dialog, list settings included; `colorSurfaceContainerHigh`, 16 dp corners, behind it a dim of 0.6 (`se_dialog_dim`); text buttons at the end, Cancel before the verb. A field in it is the library's outlined field, 24 dp from the dialog's sides, with the keyboard up |
+| A list to choose from, several fields, or something to look at | Bottom sheet: the library's modal sheet with its drag handle; `colorSurfaceContainerLow`, 16 dp corners at the top, square at the bottom edge, the dialogs' dim behind it; content 24 dp from the sides |
 | Actions on one thing | Menu, anchored to it |
-| A result, with or without an action | Snackbar above the gesture bar, in `se_surface_3`; a toast only where no screen of the app is in front (the wallpaper service) |
+| Saved state | State, not a message: the unsaved dot (6.6) is there while the open shader has changes nobody saved and goes as soon as any save writes them (explicit, auto save, save on run) |
+| The success of an explicit save | "Shader saved" for 2 s in the toolbar's second line, in place of the frame rate, which then returns. Auto save and save on run say nothing: the dot going is the signal. One owner of the second line decides what it shows: a notice until its time, otherwise the line of what is open, otherwise the frame rate |
+| A failure, or a result with an action | Snackbar at the bottom, above the extra-keys row when it is shown, otherwise above the navigation bar and the keyboard; in a form, above the button that was pressed. `colorSurfaceInverse` (`se_surface_3`), 8 dp corners. An action only where it leads somewhere. Results of actions on other screens (Settings, the texture screens) are shown the same way |
+| The compile error | The same snackbar with a Details action, over the toolbar, where upstream put it so that it does not cover the line being edited. Where it should finally go is an open decision |
+| Rule for the editor | Nothing floats over the line being edited. With the keyboard up a snackbar at the bottom covers the caret's line when the caret is on the last visible line, so the editor sends there only failures, which are rare and must be read, and the few results of menu actions that are not a save (wallpaper set, a link that cannot be opened) |
+| Where no screen of the app is in front | A toast: the wallpaper service, filling the database on first start, and a screen that closes right after its message |
 | Something wrong that stays wrong | In place: the error button with its count, a bar in the file, a line in the list |
 | Nothing to show | An empty state: a title, one sentence, the one or two ways out |
 
