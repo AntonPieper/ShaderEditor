@@ -278,16 +278,31 @@ final class Journal {
 	}
 
 	/**
+	 * The journals of a folder: the header of every one that has a
+	 * readable one, by path, and how many have none, so no file is
+	 * known for them until the file they are named after is opened.
+	 */
+	record Scan(Map<ProjectPath, Header> headers, int damaged) {
+	}
+
+	/**
 	 * Return the header of every journal that has a readable one, by
 	 * path; the texts are not read.
 	 */
 	Map<ProjectPath, Header> headers() {
+		return scan().headers();
+	}
+
+	/** Return the journals of the folder; the texts are not read. */
+	Scan scan() {
 		Map<ProjectPath, Header> headers = new LinkedHashMap<>();
 		File[] files = dir.listFiles((d, name) -> name.endsWith(SUFFIX));
 		if (files == null) {
-			return headers;
+			return new Scan(headers, 0);
 		}
+		int damaged = 0;
 		for (File file : files) {
+			int known = headers.size();
 			try (DataInputStream in = new DataInputStream(
 					new BufferedInputStream(new FileInputStream(file)))) {
 				byte[] head = readMagic(in) ? readBlock(in) : null;
@@ -301,8 +316,9 @@ final class Journal {
 			} catch (IOException | RuntimeException e) {
 				// Not a journal anyone can read; it stays as it is.
 			}
+			damaged += headers.size() == known ? 1 : 0;
 		}
-		return headers;
+		return new Scan(headers, damaged);
 	}
 
 	/** Forget the journal of path; return whether none is kept now. */

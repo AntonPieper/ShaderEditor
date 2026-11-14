@@ -192,6 +192,8 @@ Every command is acknowledged or fails with a reason. Any confusion degrades to 
 
 Failure handling: the record's `journal` advances only on the worker's acknowledgement. A failed write sets FAILED(reason), which the snapshot type exposes ("unsaved changes are not protected"), keeps the document pinned in memory, and is retried with a snapshot on the next flush. A journal whose snapshot fails its checksum is kept on disk untouched, reported once, and the file opens from storage.
 
+**Damage is never answered with older text in silence.** A journal that cannot be read stays on disk until the user dismisses it, and everything that would use its text says so instead of taking the stored file in its place: opening the file shows the stored text with the notice, also when the stored file cannot be opened either; saving answers "unreadable" for that path and writes nothing; a copy or a build that needs the file fails for that path with the reason. Only the opened editor document falls back to the stored text, because there the notice is on screen. A journal whose header is damaged cannot name its file: the project counts such journals, the recent entry still shows unsaved text, and since a journal's file name is derived from its path, opening the file it belongs to finds it and offers to dismiss it.
+
 ## 3. Undo
 
 **In memory: no change to the design.** `Document` keeps steps of `Change(start, removed, inserted)`, typing grouped, bounded at 1,000 steps and 4,000,000 characters **[code]**. Texts in steps share structure with nothing (they are the removed and inserted pieces), so the cost is the edited characters plus a small per-step overhead. The editor-core review found it sound; I found no reason to touch it. Two small additions only:

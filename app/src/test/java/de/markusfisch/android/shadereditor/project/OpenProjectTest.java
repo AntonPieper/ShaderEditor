@@ -393,10 +393,16 @@ public class OpenProjectTest {
 		assertNotNull(reason);
 		assertTrue(reason, reason.contains("a.glsl"));
 		assertEquals(Set.of(path("a.glsl")), restarted.unsaved());
-		assertTrue(save(restarted, true).isEmpty());
+		// Neither the stored text shown in its place nor nothing at all
+		// is what a save of it writes.
+		assertEquals(new OpenProject.Unreadable(reason),
+				save(restarted, true).get(path("a.glsl")));
+		assertEquals("stored", read("a.glsl"));
 		OpenProject again = open();
 		assertEquals(Set.of(path("a.glsl")), again.unsaved());
-		assertTrue(save(again, true).get(path("a.glsl")) instanceof Failed);
+		assertEquals(new OpenProject.Unreadable(reason),
+				save(again, true).get(path("a.glsl")));
+		assertEquals(reason, again.unreadable(path("a.glsl")));
 		assertNull(load(again, "a.glsl"));
 		again.dismiss(path("a.glsl"));
 		settle();
@@ -495,6 +501,83 @@ public class OpenProjectTest {
 		assertTrue(sessions.remove(id));
 		assertNotNull(sessions.locator(id));
 		assertEquals("mine", text(open(), "a.glsl"));
+	}
+
+	@Test
+	public void journalWithADamagedHeaderIsToldAndKept() throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		File file = damage(0);
+
+		OpenProject restarted = open();
+
+		// No file is known for it yet, but it is not gone.
+		assertEquals(1, restarted.damagedJournals());
+		assertTrue(restarted.unsaved().isEmpty());
+		assertTrue(new ProjectSessions(sessionsDir).remember(id, "n", "l",
+				1));
+		assertTrue(new ProjectSessions(sessionsDir).recent(id).unsaved());
+		assertNull(load(restarted, "a.glsl"));
+		assertNotNull(restarted.unreadable(a));
+		assertEquals(Set.of(a), restarted.unsaved());
+		assertEquals("stored", restarted.document(a).text().toString());
+		assertTrue(file.exists());
+		restarted.dismiss(a);
+		settle();
+		assertFalse(file.exists());
+		assertEquals(0, restarted.damagedJournals());
+		assertTrue(restarted.unsaved().isEmpty());
+	}
+
+	@Test
+	public void unreadableJournalIsToldAlsoWhenTheFileCannotBeOpened()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		File file = damage(-1);
+		assertTrue(new File(root, "a.glsl").delete());
+
+		OpenProject restarted = open();
+		assertNotNull(load(restarted, "a.glsl"));
+
+		assertNotNull(restarted.unreadable(a));
+		assertEquals(Set.of(a), restarted.unsaved());
+		assertTrue(file.exists());
+		restarted.dismiss(a);
+		settle();
+		assertFalse(file.exists());
+		assertTrue(restarted.unsaved().isEmpty());
+	}
+
+	@Test
+	public void copyAndBuildTellUnsavedTextThatCannotBeRead()
+			throws IOException {
+		write("main.glsl", "#include \"a.glsl\"\n" + SHADER);
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		damage(-1);
+		OpenProject restarted = open();
+		MemoryProjectFiles destination = new MemoryProjectFiles();
+		destination.writable = true;
+
+		Map<ProjectPath, String> problems = await(done -> restarted.copyTo(
+				destination, List.of(a), done));
+		Preparation preparation = prepare(restarted);
+
+		// Not the stored text in place of the unsaved one.
+		assertTrue(problems.get(a), problems.get(a).contains(
+				"cannot be recovered"));
+		assertNull(destination.text("a.glsl"));
+		assertNull(preparation.plan());
+		assertTrue(preparation.diagnostics().get(0).message(),
+				preparation.diagnostics().get(0).message().contains(
+						"cannot be recovered"));
 	}
 
 	@Test
@@ -2219,6 +2302,17 @@ public class OpenProjectTest {
 	// Return the files the journal keeps unsaved text of.
 	private Set<ProjectPath> kept() {
 		return new ProjectSessions(sessionsDir).unsaved(id);
+	}
+
+	// Flip a bit of the journal of a.glsl, at offset from its start, or
+	// from its end when negative, and return its file.
+	private File damage(int offset) throws IOException {
+		File file = new ProjectSessions(sessionsDir).journal(id)
+				.file(path("a.glsl"));
+		byte[] bytes = Files.readAllBytes(file.toPath());
+		bytes[offset < 0 ? bytes.length + offset : offset] ^= 1;
+		Files.write(file.toPath(), bytes);
+		return file;
 	}
 
 	// Return the text the journal keeps for path, or null.

@@ -24,8 +24,13 @@ public final class FileTexts {
 		void done(T result);
 	}
 
-	/** What opening a file found: {@link Opened} or {@link Unopened}. */
+	/**
+	 * What opening a file found: {@link Opened} or {@link Unopened};
+	 * either tells why the journal of the file could not be read, else
+	 * null.
+	 */
 	public interface Opening {
+		String unreadable();
 	}
 
 	/**
@@ -44,7 +49,8 @@ public final class FileTexts {
 	}
 
 	/** A file that cannot be edited; reason tells the user why. */
-	public record Unopened(String reason) implements Opening {
+	public record Unopened(String reason, String unreadable)
+			implements Opening {
 	}
 
 	/**
@@ -87,18 +93,15 @@ public final class FileTexts {
 	}
 
 	/**
-	 * Open path for the editor, from its journal when journaled and it
+	 * Open path for the editor, from its journal when it has one that
 	 * can be read. size is its size in bytes as the listing told it, or
 	 * {@link ProjectFiles#UNKNOWN}; a file larger than
 	 * {@link Document#MAX_BYTES} is refused before it is read when the
 	 * size is known, after it is read otherwise.
 	 */
-	public void open(ProjectPath path, long size, boolean journaled,
-			Callback<Opening> done) {
+	public void open(ProjectPath path, long size, Callback<Opening> done) {
 		worker.execute(() -> {
-			Journal.Recovered recovered = journaled
-					? journal.read(path)
-					: null;
+			Journal.Recovered recovered = journal.read(path);
 			Opening opening = withHistory(path,
 					recovered != null && recovered.text() != null
 							? recovered(path, recovered)
@@ -172,6 +175,14 @@ public final class FileTexts {
 		worker.execute(() -> {
 			boolean removed = journal.dismiss(path);
 			main.execute(() -> done.done(removed));
+		});
+	}
+
+	/** Count the journals whose header cannot be read. */
+	void damaged(Callback<Integer> done) {
+		worker.execute(() -> {
+			int damaged = journal.scan().damaged();
+			main.execute(() -> done.done(damaged));
 		});
 	}
 
@@ -287,7 +298,7 @@ public final class FileTexts {
 		if (written == null) {
 			Journal.Recovered recovered = journal.read(path);
 			if (recovered != null && recovered.text() == null) {
-				return new Save(state, new OpenProject.Failed(
+				return new Save(state, new OpenProject.Unreadable(
 						recovered.problem()), null);
 			}
 			written = recovered != null ? recovered.text() : null;
@@ -350,7 +361,7 @@ public final class FileTexts {
 	private static Opening recovered(ProjectPath path,
 			Journal.Recovered recovered) {
 		if (recovered.tooLarge()) {
-			return tooLarge(path);
+			return tooLarge(path, null);
 		}
 		return new Opened(recovered.text(), true, recovered.header().base(),
 				recovered.revision(), Document.bytes(recovered.text()), null,
@@ -361,26 +372,28 @@ public final class FileTexts {
 	// journal could not be read, or null.
 	private Opening read(ProjectPath path, long size, String unreadable) {
 		if (path.getKind() == ProjectPath.Kind.IMAGE) {
-			return new Unopened(path + " is an image, not text");
+			return new Unopened(path + " is an image, not text",
+					unreadable);
 		}
 		if (size > Document.MAX_BYTES) {
-			return tooLarge(path);
+			return tooLarge(path, unreadable);
 		}
 		Read read = store.read(path, Document.MAX_BYTES);
 		if (read instanceof ProjectFiles.Failed failed &&
 				ProjectFiles.TOO_LARGE.equals(failed.reason())) {
-			return tooLarge(path);
+			return tooLarge(path, unreadable);
 		}
 		if (!(read instanceof Content content)) {
-			return new Unopened(CapturedFiles.problem(path, read));
+			return new Unopened(CapturedFiles.problem(path, read),
+					unreadable);
 		}
 		byte[] bytes = content.bytes();
 		if (bytes.length > Document.MAX_BYTES) {
-			return tooLarge(path);
+			return tooLarge(path, unreadable);
 		}
 		Text text = decode(bytes);
 		if (text == null) {
-			return new Unopened(path + " is not a text file");
+			return new Unopened(path + " is not a text file", unreadable);
 		}
 		return new Opened(text, false, content.revision(), -1,
 				Document.bytes(text), unreadable, null);
@@ -395,8 +408,8 @@ public final class FileTexts {
 		return text != null && text.indexOf('\0') < 0 ? Text.of(text) : null;
 	}
 
-	private static Unopened tooLarge(ProjectPath path) {
+	private static Unopened tooLarge(ProjectPath path, String unreadable) {
 		return new Unopened(path + " is larger than " +
-				Document.MAX_BYTES / (1024 * 1024) + " MiB");
+				Document.MAX_BYTES / (1024 * 1024) + " MiB", unreadable);
 	}
 }

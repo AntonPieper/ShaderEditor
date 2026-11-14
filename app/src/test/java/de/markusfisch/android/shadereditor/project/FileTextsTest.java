@@ -142,7 +142,7 @@ public class FileTextsTest {
 				base, false, null), 4, document.text()));
 
 		texts = null;
-		Opened opened = (Opened) open(MAIN, 3, true);
+		Opened opened = (Opened) open(MAIN, 3);
 		assertTrue(opened.unsaved());
 		assertEquals(4, opened.journal());
 		assertEquals(base, opened.revision());
@@ -289,16 +289,12 @@ public class FileTextsTest {
 	}
 
 	private Opening open(ProjectPath path, long size) {
-		return open(path, size, false);
-	}
-
-	private Opening open(ProjectPath path, long size, boolean journaled) {
 		if (texts == null) {
 			texts = new FileTexts(store, new Journal(drafts).own(), histories(),
 				worker, main);
 		}
 		Opening[] opening = new Opening[1];
-		texts.open(path, size, journaled, result -> opening[0] = result);
+		texts.open(path, size, result -> opening[0] = result);
 		worker.run();
 		assertNull(opening[0]);
 		main.run();
