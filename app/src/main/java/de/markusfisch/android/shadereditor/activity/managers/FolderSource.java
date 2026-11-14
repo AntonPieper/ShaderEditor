@@ -19,6 +19,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.navigation.FileActions;
 import de.markusfisch.android.shadereditor.navigation.FileMarks;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
@@ -56,9 +57,16 @@ final class FolderSource {
 		boolean open(@NonNull ProjectPath path, boolean single);
 	}
 
+	/** Does what the menu of a row offers. */
+	interface Actor {
+		void act(@NonNull FolderSource source, @NonNull Level level,
+				@NonNull Row row, @NonNull Row.Action action);
+	}
+
 	private final Context context;
 	private final ProjectHolds holds;
 	private final Opener opener;
+	private final Actor actor;
 	private final Executor listings;
 	private final Handler handler;
 	private final String key;
@@ -66,6 +74,8 @@ final class FolderSource {
 	private final Runnable changed;
 	// How far each folder is read, by its path; the root is "".
 	private final Map<String, Reading> readings = new HashMap<>();
+	// The paths of the folders that can be changed.
+	private final Set<String> writable = new HashSet<>();
 	private String name;
 	private String location;
 	private OpenProject project;
@@ -79,15 +89,18 @@ final class FolderSource {
 	 * @param folders where it is listed under Recent and told when it
 	 *                is lost
 	 * @param opener  opens its files in the editor
+	 * @param actor   does what the menus of its rows offer
 	 * @param changed called when what a level lists changed
 	 */
 	FolderSource(@NonNull Context context, @NonNull ProjectHolds holds,
 			@NonNull Executor listings, @NonNull Handler handler,
 			@NonNull String key, @NonNull FoldersSource folders,
-			@NonNull Opener opener, @NonNull Runnable changed) {
+			@NonNull Opener opener, @NonNull Actor actor,
+			@NonNull Runnable changed) {
 		this.context = context;
 		this.holds = holds;
 		this.opener = opener;
+		this.actor = actor;
 		this.listings = listings;
 		this.handler = handler;
 		this.key = key;
@@ -114,6 +127,34 @@ final class FolderSource {
 	/** Whether it is a single file rather than a folder. */
 	boolean isFile() {
 		return file;
+	}
+
+	/** Its project, once it is open, else null. */
+	@Nullable
+	OpenProject project() {
+		return project;
+	}
+
+	/** The names in the folder of level, as far as it was read. */
+	@NonNull
+	List<String> names(@NonNull Level level) {
+		List<String> names = new ArrayList<>();
+		Reading reading = readings.get(path(level));
+		if (reading != null) {
+			for (Reading.Entry entry : reading.entries()) {
+				names.add(entry.name());
+			}
+		}
+		return names;
+	}
+
+	/** The name of the folder of level, with its path from the root. */
+	@NonNull
+	String title(@NonNull Level level) {
+		String title = name != null ? name : "";
+		return level.path() != null
+				? title + " / " + level.path().replace("/", " / ")
+				: title;
 	}
 
 	/** Where it was, to start choosing it again from, or null. */
@@ -153,6 +194,7 @@ final class FolderSource {
 
 			@Override
 			public void act(Row row, Row.Action action) {
+				actor.act(FolderSource.this, level, row, action);
 			}
 		};
 	}
@@ -214,22 +256,25 @@ final class FolderSource {
 				}
 			}, Reading.SLOW_MILLIS);
 		}
-		String title = name != null ? name : "";
-		if (level.path() != null) {
-			title += " / " + level.path().replace("/", " / ");
-		}
-		return new Listing(title,
+		return new Listing(title(level),
 				location == null || location.isEmpty() ? null : location,
 				false,
 				false,
 				// A single file's folder can be opened to load the rest.
 				file ? Listing.Bar.OPEN_FOLDER : Listing.Bar.NEW,
 				List.of(new Listing.Section(null, FileMarks.unsaved(
-						reading.rows(level,
+						FileActions.of(reading.rows(level,
 								context.getString(R.string.nav_show_more),
 								context.getString(R.string.nav_shown_of)),
+								running(), writable.contains(path)),
 						unsaved()))),
 				reading.notice());
+	}
+
+	@Nullable
+	private String running() {
+		ProjectPath running = project != null ? project.running() : null;
+		return running != null ? running.toString() : null;
 	}
 
 	// The files with unsaved text, by their paths.
@@ -268,7 +313,16 @@ final class FolderSource {
 						? listed.list(folder)
 						: new OpenProject.Folder(List.of(), closedFor);
 				Access access = items.problem() != null ? access() : null;
-				handler.post(() -> listed(path, items, reachable, access));
+				boolean changes = listed != null && reachable &&
+						listed.offers(folder).create();
+				handler.post(() -> {
+					if (changes) {
+						writable.add(path);
+					} else {
+						writable.remove(path);
+					}
+					listed(path, items, reachable, access);
+				});
 			});
 		} catch (RejectedExecutionException e) {
 			// Closed.

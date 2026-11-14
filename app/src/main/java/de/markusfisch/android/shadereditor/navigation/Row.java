@@ -38,8 +38,12 @@ public record Row(String key, Kind kind, Picture picture, String name,
 
 	/** Entries of a row's menu. */
 	public enum Action {
+		/** Runs the file from now on. */
+		RUN,
 		RENAME,
 		DUPLICATE,
+		/** Creates something in the folder. */
+		NEW_HERE,
 		DELETE,
 		/** Removes it from Recent; its files stay. */
 		REMOVE
