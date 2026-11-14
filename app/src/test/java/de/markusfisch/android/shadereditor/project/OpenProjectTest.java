@@ -930,6 +930,65 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void openingIsAnsweredOnMainAfterWhatWasWrittenBefore()
+			throws IOException {
+		LiveProjects live = live();
+		OpenProject project = open(live, this::folder);
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		// Its last writes wait on the worker.
+		project.close();
+		List<String> order = new ArrayList<>();
+		List<OpenProject> reopened = new ArrayList<>();
+		LiveProjects.Opener opener = locator -> {
+			order.add("opened with " + journaled("a.glsl"));
+			return folder(locator);
+		};
+
+		live.open(id, opener, opened -> {
+			reopened.add(opened);
+			order.add("answered");
+		});
+		live.open(id, opener, reopened::add);
+
+		// Nothing ran yet: the caller was not held.
+		assertTrue(order.isEmpty());
+		worker.run();
+		assertEquals(List.of("opened with mine"), order);
+		assertTrue(reopened.isEmpty());
+		main.run();
+		assertEquals(List.of("opened with mine", "answered"), order);
+		assertEquals(2, reopened.size());
+		assertSame(reopened.get(0), reopened.get(1));
+		assertNotSame(project, reopened.get(0));
+	}
+
+	@Test
+	public void closingNeedsNothingOfTheWorkerWhileAnotherSessionOpens()
+			throws IOException {
+		LiveProjects live = live();
+		OpenProject project = open(live, this::folder);
+		String other = new ProjectSessions(sessionsDir).open(new Locator(
+				Kind.DIRECTORY, temp.newFolder("other").getPath()));
+		List<OpenProject> opened = new ArrayList<>();
+		// On the worker and not run, as if held by slow storage.
+		live.open(other, this::folder, opened::add);
+
+		project.close();
+		live.open(id, this::folder, opened::add);
+		settle();
+
+		assertEquals(2, opened.size());
+		assertEquals(other, opened.get(0).id());
+		assertNotSame(project, opened.get(1));
+		// No method holds a lock a slow opener could keep from main.
+		for (java.lang.reflect.Method method :
+				LiveProjects.class.getDeclaredMethods()) {
+			assertFalse(method.getName(), java.lang.reflect.Modifier
+					.isSynchronized(method.getModifiers()));
+		}
+	}
+
+	@Test
 	public void sessionWhoseFilesAreGoneOpensWithItsDrafts()
 			throws IOException {
 		OpenProject project = open();

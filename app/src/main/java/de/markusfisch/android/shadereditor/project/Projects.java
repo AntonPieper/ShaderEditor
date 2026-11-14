@@ -9,10 +9,10 @@ import android.os.Looper;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 
@@ -22,8 +22,10 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
  * drafts, listed among the recent projects, so screens pass only its
  * id and a project reopens with its drafts also after the process
  * died. Removing one releases its grant and keeps unsaved drafts,
- * never touching its files.
- * Use it off the main thread.
+ * never touching its files. Call it on the main thread: everything
+ * that reads or writes runs on the one queue the projects of the
+ * process work on, after what was given to it before, and answers on
+ * main. Nothing waits for the queue.
  */
 public final class Projects {
 	/** An opened project with its session id, or why it is closed. */
@@ -39,17 +41,13 @@ public final class Projects {
 	private final ProjectSessions sessions;
 	private final Handler main = new Handler(Looper.getMainLooper());
 
-	/**
-	 * Open projects on the calling worker; they work on storage on one
-	 * queue of the process, a task at a time, and post results to the
-	 * main thread.
-	 */
 	public Projects(Context context) {
 		this.context = context.getApplicationContext();
 		sessions = new ProjectSessions(new File(
 				this.context.getNoBackupFilesDir(), "projects"));
 	}
 
+	/** Return the sessions; use them off the main thread. */
 	public ProjectSessions sessions() {
 		return sessions;
 	}
@@ -59,13 +57,15 @@ public final class Projects {
 	 * picker's result: keep its grant, start its session or find the
 	 * one it has, and list it among the recent projects.
 	 */
-	public Opened openTree(Uri tree, int resultFlags) {
-		Locator locator = SafProjects.locate(context, tree);
-		if (locator != null && locator.kind() == Kind.TREE) {
-			SafProjects.keepGrant(context.getContentResolver(), tree,
-					resultFlags);
-		}
-		return openNew(locator);
+	public void openTree(Uri tree, int resultFlags, Callback<Opened> done) {
+		QUEUE.execute(() -> {
+			Locator locator = SafProjects.locate(context, tree);
+			if (locator != null && locator.kind() == Kind.TREE) {
+				SafProjects.keepGrant(context.getContentResolver(), tree,
+						resultFlags);
+			}
+			openNew(locator, done);
+		});
 	}
 
 	/**
@@ -73,55 +73,54 @@ public final class Projects {
 	 * flags of its grant as a project of that one file, which runs
 	 * whatever its name.
 	 */
-	public Opened openDocument(Uri uri, int resultFlags) {
-		SafProjects.keepGrant(context.getContentResolver(), uri,
-				resultFlags);
-		return openNew(new Locator(Kind.DOCUMENT, uri.toString()));
+	public void openDocument(Uri uri, int resultFlags,
+			Callback<Opened> done) {
+		QUEUE.execute(() -> {
+			SafProjects.keepGrant(context.getContentResolver(), uri,
+					resultFlags);
+			openNew(new Locator(Kind.DOCUMENT, uri.toString()), done);
+		});
 	}
 
 	/**
 	 * Open a folder of the app's own files like a folder the picker
 	 * granted.
 	 */
-	public Opened openDirectory(File dir) {
-		Locator locator;
-		try {
-			locator = new Locator(Kind.DIRECTORY, dir.getCanonicalPath());
-		} catch (IOException e) {
-			locator = null;
-		}
-		return openNew(locator);
+	public void openDirectory(File dir, Callback<Opened> done) {
+		QUEUE.execute(() -> {
+			Locator locator;
+			try {
+				locator = new Locator(Kind.DIRECTORY,
+						dir.getCanonicalPath());
+			} catch (IOException e) {
+				locator = null;
+			}
+			openNew(locator, done);
+		});
 	}
 
 	/**
 	 * Open the project of session id again, with the unsaved text it
-	 * kept, and remember it as the one open last; return the project
-	 * when it is open already. A project whose files cannot be reached
-	 * opens with its unsaved text, and problem tells why. It stays open
-	 * until {@link OpenProject#close}. Waits for the queue the projects
-	 * work on, so it is never called from there.
+	 * kept, and remember it as the one open last; done gets the project
+	 * that is open already when there is one. A project whose files
+	 * cannot be reached opens with its unsaved text, and problem tells
+	 * why. It stays open until {@link OpenProject#close}.
 	 */
-	public Opened open(String id) {
-		OpenProject[] opened = {null};
-		CountDownLatch done = new CountDownLatch(1);
+	public void open(String id, Callback<Opened> done) {
 		live().open(id, locator -> SafProjects.open(context, locator),
 				project -> {
-					opened[0] = project;
-					done.countDown();
+					if (project == null) {
+						done.done(new Opened(id, null,
+								"it is not a known project"));
+						return;
+					}
+					QUEUE.execute(() -> {
+						sessions.touch(id, System.currentTimeMillis());
+						sessions.setLast(id);
+					});
+					done.done(new Opened(id, project,
+							project.storage().reason()));
 				});
-		try {
-			done.await();
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			return new Opened(id, null, "opening was interrupted");
-		}
-		OpenProject project = opened[0];
-		if (project == null) {
-			return new Opened(id, null, "it is not a known project");
-		}
-		sessions.touch(id, System.currentTimeMillis());
-		sessions.setLast(id);
-		return new Opened(id, project, project.storage().reason());
 	}
 
 	private LiveProjects live() {
@@ -140,27 +139,33 @@ public final class Projects {
 	/**
 	 * Remove project id from the recent projects and release its grant;
 	 * its files stay where they are, and so do its drafts until the
-	 * project is opened again and they are saved or discarded. Return
-	 * whether it is no longer listed.
+	 * project is opened again and they are saved or discarded. done
+	 * gets whether it is no longer listed.
 	 */
-	public boolean remove(String id) {
-		Locator locator = sessions.locator(id);
-		if (locator != null && locator.kind() == Kind.TREE) {
-			SafProjects.releaseGrant(context.getContentResolver(),
-					Uri.parse(locator.value()));
-		}
-		return sessions.remove(id);
+	public void remove(String id, Callback<Boolean> done) {
+		QUEUE.execute(() -> {
+			Locator locator = sessions.locator(id);
+			if (locator != null && locator.kind() == Kind.TREE) {
+				SafProjects.releaseGrant(context.getContentResolver(),
+						Uri.parse(locator.value()));
+			}
+			boolean removed = sessions.remove(id);
+			main.post(() -> done.done(removed));
+		});
 	}
 
-	private Opened openNew(Locator locator) {
+	// On the queue.
+	private void openNew(Locator locator, Callback<Opened> done) {
 		String[] description = locator != null
 				? SafProjects.describe(context, locator)
 				: null;
 		String id = description != null ? sessions.open(locator) : null;
 		if (id == null || !sessions.remember(id, description[0],
 				description[1], System.currentTimeMillis())) {
-			return new Opened(null, null, "this folder cannot be opened");
+			main.post(() -> done.done(new Opened(null, null,
+					"this folder cannot be opened")));
+		} else {
+			main.post(() -> open(id, done));
 		}
-		return open(id);
 	}
 }
