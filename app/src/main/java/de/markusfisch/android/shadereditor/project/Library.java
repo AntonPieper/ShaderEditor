@@ -77,6 +77,20 @@ public final class Library {
 		return new Previews(new File(state(), "previews"));
 	}
 
+	/**
+	 * Return the file of the library the live wallpaper shows, for a
+	 * list to mark, or null when it shows none of them: the file the
+	 * installed snapshot was taken of, or, while the wallpaper still
+	 * shows the shader of the database with this id, the file that
+	 * shader was moved to. The file may have changed since, or be gone.
+	 */
+	public ProjectPath wallpaperFile(WallpaperSnapshots.Snapshot installed,
+			long databaseId) {
+		return installed != null
+				? installed.origin()
+				: note().moved(databaseId);
+	}
+
 	/** Return the library's files, of a folder that is made if needed. */
 	ProjectFiles files() {
 		File folder = folder();
