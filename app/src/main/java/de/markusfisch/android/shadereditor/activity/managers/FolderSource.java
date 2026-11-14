@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -441,6 +442,12 @@ final class FolderSource {
 				}
 				ProjectPath wallpaperFile = shown;
 				handler.post(() -> {
+					// What was read replaces the folder's pictures: a
+					// file made again under a gone file's name never shows
+					// the gone file's picture.
+					if (looks != null) {
+						forgetPictures(path);
+					}
 					pictures.putAll(read);
 					wallpaper = wallpaperFile != null
 							? wallpaperFile.toString()
@@ -455,6 +462,18 @@ final class FolderSource {
 			});
 		} catch (RejectedExecutionException e) {
 			// Closed.
+		}
+	}
+
+	// The pictures of the files directly in the folder at path.
+	private void forgetPictures(@NonNull String path) {
+		for (Iterator<String> it = pictures.keySet().iterator();
+				it.hasNext(); ) {
+			String file = it.next();
+			int slash = file.lastIndexOf('/');
+			if ((slash > -1 ? file.substring(0, slash) : "").equals(path)) {
+				it.remove();
+			}
 		}
 	}
 

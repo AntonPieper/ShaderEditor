@@ -107,9 +107,14 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 	public List<Row> rows(Level level, String more, String shownOf,
 			Order order) {
 		List<Entry> visible = visible();
+		// Ordered whole, then only the rows shown are made.
+		List<Entry> ordered = order != null
+				? order.sortEntries(visible)
+				: visible;
 		List<Row> rows = new ArrayList<>();
 		String path = level.path();
-		for (Entry entry : visible) {
+		for (Entry entry : ordered.subList(0, Math.min(shown,
+				ordered.size()))) {
 			String name = entry.name;
 			// A hint from the name, for the icon: what the file is, is
 			// read from its bytes when it is opened or used.
@@ -132,11 +137,6 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 					EnumSet.noneOf(Row.Mark.class),
 					EnumSet.noneOf(Row.Action.class)));
 		}
-		if (order != null) {
-			rows = order.sort(rows);
-		}
-		rows = new ArrayList<>(rows.subList(0, Math.min(shown,
-				rows.size())));
 		if (visible.size() > shown) {
 			rows.add(new Row("", Row.Kind.MORE, Row.Picture.of(
 					Row.Picture.Icon.SHADER), more,
