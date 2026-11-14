@@ -15,7 +15,9 @@ public record Listing(String title, String subtitle, boolean readOnly,
 	public enum Bar {
 		NONE,
 		NEW,
-		NEW_SHADER
+		NEW_SHADER,
+		/** Open folder, and Open file beside it. */
+		OPEN
 	}
 
 	/** Rows under a heading; a section without heading shows none. */

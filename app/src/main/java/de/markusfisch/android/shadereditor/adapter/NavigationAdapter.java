@@ -132,6 +132,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 		private final ImageView picture;
 		private final TextView name;
 		private final TextView detail;
+		private final View unsaved;
 		private final View wallpaper;
 		private final View readOnly;
 		private final View running;
@@ -144,6 +145,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			picture.setClipToOutline(true);
 			name = view.findViewById(R.id.navigation_name);
 			detail = view.findViewById(R.id.navigation_detail);
+			unsaved = view.findViewById(R.id.navigation_unsaved);
 			wallpaper = view.findViewById(R.id.navigation_wallpaper);
 			readOnly = view.findViewById(R.id.navigation_read_only_mark);
 			running = view.findViewById(R.id.navigation_running);
@@ -176,6 +178,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 					name.getContext(), R.color.navigation_row_text));
 			detail.setText(row.detail());
 			detail.setVisibility(row.detail() == null ? View.GONE : View.VISIBLE);
+			unsaved.setVisibility(visibleIf(item, Row.Mark.UNSAVED));
 			wallpaper.setVisibility(visibleIf(item, Row.Mark.WALLPAPER));
 			readOnly.setVisibility(visibleIf(item, Row.Mark.READ_ONLY));
 			running.setVisibility(visibleIf(item, Row.Mark.RUNNING));
@@ -190,6 +193,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			int icon = switch (picture.icon()) {
 				case LIBRARY -> R.drawable.ic_grid_view;
 				case EXAMPLES -> R.drawable.ic_book_2;
+				case FOLDER -> R.drawable.ic_folder;
 				case SHADER -> R.drawable.ic_draft;
 			};
 			boolean isIcon = bitmap == null && picture.resource() == 0;

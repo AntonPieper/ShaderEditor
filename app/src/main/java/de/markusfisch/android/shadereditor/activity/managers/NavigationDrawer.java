@@ -1,8 +1,12 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -18,6 +22,9 @@ import android.view.Window;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
@@ -30,6 +37,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 
 import java.util.Collections;
@@ -53,6 +61,9 @@ import de.markusfisch.android.shadereditor.navigation.Order;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
+import de.markusfisch.android.shadereditor.project.ProjectSessions;
+import de.markusfisch.android.shadereditor.project.Projects;
+import de.markusfisch.android.shadereditor.widget.Message;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
 
 /**
@@ -88,8 +99,13 @@ public class NavigationDrawer implements ShaderList {
 	private final TextView subtitle;
 	private final View lists;
 	private final View bar;
-	private final TextView newButton;
+	private final MaterialButton newButton;
+	private final View openFile;
 	private final LibrarySource library;
+	private final FoldersSource folders;
+	private final Projects projects;
+	private final ActivityResultLauncher<Intent> pickFolder;
+	private final ActivityResultLauncher<Intent> pickFile;
 	private final Map<Level, Source> sources = new HashMap<>();
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
@@ -114,7 +130,15 @@ public class NavigationDrawer implements ShaderList {
 		library = new LibrarySource(activity, dataSource, listener, host);
 		sources.put(Level.LIBRARY, library);
 		sources.put(Level.EXAMPLES, new ExamplesSource(activity, host));
-		sources.put(Level.FOLDERS, new FoldersSource(activity, library));
+		folders = new FoldersSource(activity, library);
+		sources.put(Level.FOLDERS, folders);
+		projects = new Projects(activity);
+		pickFolder = activity.registerForActivityResult(
+				new ActivityResultContracts.StartActivityForResult(),
+				result -> onPicked(result, true));
+		pickFile = activity.registerForActivityResult(
+				new ActivityResultContracts.StartActivityForResult(),
+				result -> onPicked(result, false));
 
 		// Takes the place of the old drawer, from the top edge to the
 		// bottom edge.
@@ -142,7 +166,15 @@ public class NavigationDrawer implements ShaderList {
 		lists = drawer.findViewById(R.id.navigation_lists);
 		bar = drawer.findViewById(R.id.navigation_bar);
 		newButton = drawer.findViewById(R.id.navigation_new);
-		newButton.setOnClickListener(v -> addShader());
+		newButton.setOnClickListener(v -> {
+			if (listing.bar() == Listing.Bar.OPEN) {
+				pick(true);
+			} else {
+				addShader();
+			}
+		});
+		openFile = drawer.findViewById(R.id.navigation_open_file);
+		openFile.setOnClickListener(v -> pick(false));
 		list = initList(R.id.navigation_list);
 		nextList = initList(R.id.navigation_list_next);
 
@@ -161,6 +193,7 @@ public class NavigationDrawer implements ShaderList {
 				if (newState != DrawerLayout.STATE_IDLE &&
 						!drawerLayout.isDrawerOpen(drawer)) {
 					scrollToSelected();
+					loadRecent();
 				}
 			}
 
@@ -195,6 +228,7 @@ public class NavigationDrawer implements ShaderList {
 					bundle.putString(LEVEL, level.name());
 					return bundle;
 				});
+		loadRecent();
 	}
 
 	/** Opens the drawer on the examples. */
@@ -265,6 +299,75 @@ public class NavigationDrawer implements ShaderList {
 		} catch (RejectedExecutionException e) {
 			reloadGate.abort();
 		}
+	}
+
+	private void loadRecent() {
+		try {
+			executor.execute(() -> {
+				List<ProjectSessions.Recent> recent =
+						projects.sessions().recent();
+				handler.post(() -> {
+					folders.setRecent(recent);
+					if (level.equals(Level.FOLDERS)) {
+						refresh();
+					}
+				});
+			});
+		} catch (RejectedExecutionException e) {
+			// Destroyed.
+		}
+	}
+
+	private void pick(boolean folder) {
+		Intent intent = new Intent(folder
+				? Intent.ACTION_OPEN_DOCUMENT_TREE
+				: Intent.ACTION_OPEN_DOCUMENT)
+				.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION |
+						Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+						Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+		if (!folder) {
+			intent.addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
+		}
+		try {
+			(folder ? pickFolder : pickFile).launch(intent);
+		} catch (ActivityNotFoundException e) {
+			Message.show(activity, R.string.nav_cannot_pick);
+		}
+	}
+
+	// Cancelling the picker changes nothing.
+	private void onPicked(@NonNull ActivityResult result, boolean folder) {
+		Intent data = result.getData();
+		Uri uri = data != null ? data.getData() : null;
+		if (result.getResultCode() != Activity.RESULT_OK || uri == null) {
+			return;
+		}
+		if (folder) {
+			projects.openTree(uri, data.getFlags(),
+					opened -> onOpened(opened, true));
+		} else {
+			projects.openDocument(uri, data.getFlags(),
+					opened -> onOpened(opened, false));
+		}
+	}
+
+	private void onOpened(@NonNull Projects.Opened opened, boolean folder) {
+		if (opened.project() != null) {
+			// Nothing of it is shown in the editor yet.
+			opened.project().close();
+		}
+		if (!isActivityAlive()) {
+			return;
+		}
+		if (opened.id() == null) {
+			Message.show(activity, folder
+					? R.string.nav_cannot_open_folder
+					: R.string.nav_cannot_open_file);
+			return;
+		}
+		loadRecent();
+		go(Level.FOLDERS);
+		drawerLayout.openDrawer(drawer);
 	}
 
 	private void onShadersLoaded(@NonNull List<ShaderInfo> shaders) {
@@ -365,9 +468,18 @@ public class NavigationDrawer implements ShaderList {
 		bar.setVisibility(listing.bar() == Listing.Bar.NONE
 				? View.GONE
 				: View.VISIBLE);
-		newButton.setText(listing.bar() == Listing.Bar.NEW_SHADER
-				? R.string.add_shader
-				: R.string.nav_new);
+		Listing.Bar action = listing.bar();
+		newButton.setText(switch (action) {
+			case NEW_SHADER -> R.string.add_shader;
+			case OPEN -> R.string.nav_open_folder;
+			default -> R.string.nav_new;
+		});
+		newButton.setIconResource(action == Listing.Bar.OPEN
+				? R.drawable.ic_folder_open
+				: R.drawable.ic_add);
+		openFile.setVisibility(action == Listing.Bar.OPEN
+				? View.VISIBLE
+				: View.GONE);
 	}
 
 	@NonNull

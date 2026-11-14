@@ -306,5 +306,12 @@
 	<string name="nav_no_shaders">No shaders yet</string>
 	<string name="nav_no_shaders_text">A new shader is saved here.</string>
 	<string name="nav_untitled">Untitled</string>
+	<string name="nav_recent">Recent</string>
+	<string name="nav_open_folder">Open folder</string>
+	<string name="nav_open_file">Open file</string>
+	<string name="nav_single_file">single file</string>
+	<string name="nav_cannot_pick">No app on this device can choose files</string>
+	<string name="nav_cannot_open_folder">This folder cannot be opened</string>
+	<string name="nav_cannot_open_file">This file cannot be opened</string>
 	<string name="copy_failed">无法复制到剪贴板</string>
 </resources>
