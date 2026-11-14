@@ -133,6 +133,7 @@ public class CodeView extends View {
 	private static final int DRAG_MOUSE = 3;
 
 	private final CodeAppearance appearance;
+	private final LineGeometry lines = new LineGeometry();
 	private final Paint fill = new Paint();
 	private final LineCache cache;
 	private final char[] digits = new char[10];
@@ -305,6 +306,7 @@ public class CodeView extends View {
 	public CodeView(Context context, @Nullable AttributeSet attrs) {
 		super(context, attrs, 0, R.style.CodeView);
 		appearance = new CodeAppearance(context);
+		lines.setLineHeight(appearance.lineHeight);
 		cache = new LineCache(appearance);
 		handles = new SelectionHandles(context, appearance.handleColor,
 				getResources().getDimension(R.dimen.se_tap_target));
@@ -530,7 +532,7 @@ public class CodeView extends View {
 		int n = text.lineOf(head);
 		float x = textLeft(text.lineCount()) +
 				layoutOf(n).xOf(head - text.lineStart(n));
-		float top = textTop() + n * appearance.lineHeight;
+		float top = lineTop(n);
 		float margin = appearance.charWidth * 4;
 		int scrollX = getScrollX();
 		int scrollY = getScrollY();
@@ -956,10 +958,8 @@ public class CodeView extends View {
 		float clipLeft = showLineNumbers
 				? scrollX + textLeft - a.padding / 2
 				: scrollX;
-		int first = CodeGeometry.lineAt(scrollY, textTop, lineHeight,
-				lineCount);
-		int last = CodeGeometry.lineAt(scrollY + getHeight(), textTop,
-				lineHeight, lineCount);
+		int first = lineAt(scrollY);
+		int last = lineAt(scrollY + getHeight());
 		if (styles != null) {
 			styles.show(first, last + 1);
 		}
@@ -980,7 +980,7 @@ public class CodeView extends View {
 					styles != null ? styles.runs(n) : null, true);
 			shown[n - first] = line;
 			LineLayout layout = line.layout();
-			float top = textTop + n * lineHeight;
+			float top = textTop + lines.top(n);
 			int lineEnd = lineStart + s.length();
 			if (backdrop != null && !s.isEmpty()) {
 				backdrop.draw(canvas, n, textLeft, top,
@@ -1057,6 +1057,16 @@ public class CodeView extends View {
 		return getPaddingTop() + insets.top;
 	}
 
+	/** Return where line n starts, without scrolling. */
+	float lineTop(int n) {
+		return textTop() + lines.top(n);
+	}
+
+	/** Return the line at y, without scrolling. */
+	int lineAt(float y) {
+		return lines.lineAt(y - textTop(), document.text().lineCount());
+	}
+
 	/** Return where the numbers of the lines start. */
 	float gutterLeft() {
 		return getPaddingLeft() + insets.left;
@@ -1086,9 +1096,8 @@ public class CodeView extends View {
 	// system bars, or above the keyboard.
 	private int maxScrollY() {
 		int visible = getHeight() - insets.top - insets.bottom;
-		float bottom = textTop() + document.text().lineCount() *
-				appearance.lineHeight + getPaddingBottom() + insets.bottom +
-				visible / 2f;
+		float bottom = textTop() + lines.height(document.text().lineCount()) +
+				getPaddingBottom() + insets.bottom + visible / 2f;
 		return Math.max(0, (int) Math.ceil(bottom - getHeight()));
 	}
 
@@ -1235,9 +1244,9 @@ public class CodeView extends View {
 			right = visibleLeft + layout.xOf(selection.end() - start) -
 					scrollX;
 		}
-		float top = textTop() + first * appearance.lineHeight - scrollY;
-		float bottom = textTop() + (last + 1) * appearance.lineHeight -
-				scrollY + handles.height();
+		float top = lineTop(first) - scrollY;
+		float bottom = lineTop(last) + appearance.lineHeight - scrollY +
+				handles.height();
 		left = Math.max(left, visibleLeft);
 		right = Math.min(right, getWidth() - insets.right);
 		top = Math.max(top, insets.top);
@@ -1269,7 +1278,7 @@ public class CodeView extends View {
 			float x = left + layout.xOf(column);
 			float right = left + layout.xOf(Math.min(column + 1,
 					text.line(n).length()));
-			float top = textTop() + n * appearance.lineHeight;
+			float top = lineTop(n);
 			float bottom = top + appearance.lineHeight;
 			boolean shown = right >= getScrollX() + left &&
 					x <= getScrollX() + getWidth() - insets.right &&
@@ -1602,8 +1611,7 @@ public class CodeView extends View {
 		float left = textLeft(text.lineCount());
 		float x = Math.max(left, Math.min(dragX + pointDx,
 				left - getScrollX() + layoutOf(n).width()));
-		float y = textTop() + (n + .5f) * appearance.lineHeight -
-				getScrollY();
+		float y = lineTop(n) + appearance.lineHeight / 2f - getScrollY();
 		if (y < insets.top || y > getHeight() - insets.bottom) {
 			dismissMagnifier();
 			return;
@@ -1749,10 +1757,8 @@ public class CodeView extends View {
 	// past its end or below the last.
 	private boolean onText(float x, float y) {
 		Text text = document.text();
-		float top = y + getScrollY() - textTop();
-		int n = CodeGeometry.lineAt(y + getScrollY(), textTop(),
-				appearance.lineHeight, text.lineCount());
-		return top < text.lineCount() * appearance.lineHeight &&
+		int n = lineAt(y + getScrollY());
+		return y + getScrollY() < lineTop(n) + appearance.lineHeight &&
 				x + getScrollX() - textLeft(text.lineCount()) <
 						layoutOf(n).width();
 	}
@@ -1760,8 +1766,7 @@ public class CodeView extends View {
 	// Returns the offset nearest x and y of the view.
 	private int offsetAt(float x, float y) {
 		Text text = document.text();
-		int n = CodeGeometry.lineAt(y + getScrollY(), textTop(),
-				appearance.lineHeight, text.lineCount());
+		int n = lineAt(y + getScrollY());
 		return touch.offsetAt(text, n,
 				x + getScrollX() - textLeft(text.lineCount()), layoutOf(n));
 	}
@@ -1809,7 +1814,7 @@ public class CodeView extends View {
 		int scrollX = getScrollX();
 		int scrollY = getScrollY();
 		float textLeft = textLeft(text.lineCount());
-		float bottom = textTop() + (n + 1) * appearance.lineHeight;
+		float bottom = lineTop(n) + appearance.lineHeight;
 		if (bottom <= scrollY + insets.top ||
 				bottom > scrollY + getHeight() - insets.bottom) {
 			return;
@@ -1849,7 +1854,7 @@ public class CodeView extends View {
 			first = CodeGeometry.numbersFrom(first);
 			last = CodeGeometry.numbersTo(last, lineCount);
 		}
-		float top = textTop + first * appearance.lineHeight;
+		float top = textTop + lines.top(first);
 		int save = canvas.save();
 		if (recorded) {
 			// The lines of the blocks that are out of view.
@@ -1878,7 +1883,8 @@ public class CodeView extends View {
 				digitCount != gutterDigits || !node.hasDisplayList()) {
 			node.setPosition(0, 0,
 					(int) Math.ceil(digitCount * appearance.digitWidth) + 1,
-					(last - first + 1) * appearance.lineHeight);
+					(int) Math.ceil(lines.top(last) - lines.top(first)) +
+							appearance.lineHeight);
 			node.setClipToBounds(false);
 			RecordingCanvas recording = node.beginRecording();
 			try {
@@ -1901,6 +1907,7 @@ public class CodeView extends View {
 		Paint paint = a.paint;
 		paint.setColor(a.lineNumberColor);
 		float right = digitCount * a.digitWidth;
+		float firstTop = lines.top(first);
 		for (int n = first; n <= last; ++n) {
 			int start = digits.length;
 			for (int number = n + 1; number > 0; number /= 10) {
@@ -1909,7 +1916,7 @@ public class CodeView extends View {
 			int count = digits.length - start;
 			canvas.drawText(digits, start, count,
 					right - count * a.digitWidth,
-					(n - first) * a.lineHeight + a.baseline, paint);
+					lines.top(n) - firstTop + a.baseline, paint);
 		}
 	}
 
@@ -1951,6 +1958,7 @@ public class CodeView extends View {
 
 	private void appearanceChanged() {
 		appearance.measure();
+		lines.setLineHeight(appearance.lineHeight);
 		forgetLines();
 		gutterLast = -1;
 		invalidate();
