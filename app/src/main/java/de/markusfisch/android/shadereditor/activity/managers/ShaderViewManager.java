@@ -1,12 +1,16 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.app.Activity;
+import android.text.TextUtils;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.List;
 
@@ -33,6 +37,9 @@ public class ShaderViewManager {
 	@NonNull
 	private float[] qualityValues;
 	private float quality = 1f;
+	private ArrayAdapter<CharSequence> adapter;
+	@Nullable
+	private CharSequence frameRate;
 
 	public ShaderViewManager(@NonNull Activity activity,
 			@NonNull ShaderView shaderView,
@@ -76,6 +83,14 @@ public class ShaderViewManager {
 		shaderView.getEngine().requestThumbnail(callback);
 	}
 
+	/** Show the frame rate beside the quality, none when null. */
+	public void setFrameRate(@Nullable CharSequence frameRate) {
+		if (!TextUtils.equals(frameRate, this.frameRate)) {
+			this.frameRate = frameRate;
+			adapter.notifyDataSetChanged();
+		}
+	}
+
 	public void setQuality(float quality) {
 		for (int i = 0; i < qualityValues.length; ++i) {
 			if (qualityValues[i] == quality) {
@@ -108,10 +123,24 @@ public class ShaderViewManager {
 			qualityValues[i] = Float.parseFloat(qualityStringValues[i]);
 		}
 
-		ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
-				activity,
-				R.array.quality_names,
-				android.R.layout.simple_spinner_item);
+		// The frame rate stands before the quality chosen, when it is
+		// not in the toolbar's second line.
+		adapter = new ArrayAdapter<>(activity,
+				android.R.layout.simple_spinner_item,
+				activity.getResources().getTextArray(R.array.quality_names)) {
+			@NonNull
+			@Override
+			public View getView(int position, @Nullable View convertView,
+					@NonNull ViewGroup parent) {
+				TextView view = (TextView) super.getView(position,
+						convertView, parent);
+				if (frameRate != null) {
+					view.setText(activity.getString(R.string.frame_rate_quality,
+							frameRate, getItem(position)));
+				}
+				return view;
+			}
+		};
 		adapter.setDropDownViewResource(
 				android.R.layout.simple_spinner_dropdown_item);
 		qualitySpinner.setAdapter(adapter);

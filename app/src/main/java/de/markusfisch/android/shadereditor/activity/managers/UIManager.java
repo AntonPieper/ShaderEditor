@@ -148,6 +148,7 @@ public class UIManager {
 		}
 		this.title = title;
 		secondLine.setOwn(subtitle);
+		shaderViewManager.setFrameRate(secondLine.besideQuality());
 		// The name never moves: the dot is an end drawable, after it.
 		titleView.setText(title);
 		titleView.setCompoundDrawablesRelativeWithIntrinsicBounds(
@@ -174,6 +175,7 @@ public class UIManager {
 	public void setFrameRate(@NonNull String frameRate) {
 		toolbar.post(() -> {
 			secondLine.setFrameRate(frameRate);
+			shaderViewManager.setFrameRate(secondLine.besideQuality());
 			showSubtitle();
 		});
 	}
