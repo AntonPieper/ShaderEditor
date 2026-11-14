@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
+import de.markusfisch.android.shadereditor.syntax.Indentation;
+
 // Pinned from what ShaderEditor's auto-indent does today. Most texts
 // start with a line "x" because today's rule skips the first line.
 public class AutoIndentTest {
@@ -83,19 +85,21 @@ public class AutoIndentTest {
 	@Test
 	public void aSelectionIndentsFromItsStart() {
 		Text text = Text.of("x\n\tf(bar)\n");
-		assertEquals("\t\t", AutoIndent.indentAfterBreak(text, 5, 8, "\t"));
+		assertEquals("\t\t", AutoIndent.indentAfterBreak(text, 5, 8, "\t",
+				Indentation.C));
 	}
 
 	@Test
 	public void aLevelIsWhatTheSettingSays() {
 		assertEquals("        ", AutoIndent.indentAfterBreak(
-				Text.of("x\n    f(\n"), 8, 8, "    "));
+				Text.of("x\n    f(\n"), 8, 8, "    ", Indentation.C));
 	}
 
 	// Returns the indentation after a line break typed at '|'.
 	private static String indentAt(String state) {
 		int caret = state.indexOf('|');
 		Text text = Text.of(state.replace("|", ""));
-		return AutoIndent.indentAfterBreak(text, caret, caret, "\t");
+		return AutoIndent.indentAfterBreak(text, caret, caret, "\t",
+				Indentation.C);
 	}
 }

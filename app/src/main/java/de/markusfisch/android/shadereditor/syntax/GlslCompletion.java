@@ -176,7 +176,7 @@ public final class GlslCompletion {
 
 	/**
 	 * The names an outline declares, sorted, for completing them without
-	 * looking at every declaration. Immutable; made where the outline is.
+	 * looking at every declaration. Immutable; the outline sorted them.
 	 */
 	public static final class Names {
 		private final Outline outline;
@@ -191,24 +191,7 @@ public final class GlslCompletion {
 		}
 
 		public static Names of(Outline outline) {
-			List<Outline.Declaration> declarations = outline.declarations();
-			String[] names = new String[declarations.size()];
-			for (int i = 0; i < names.length; ++i) {
-				names[i] = declarations.get(i).name();
-			}
-			Arrays.sort(names);
-			int[] counts = new int[names.length];
-			int size = 0;
-			for (String name : names) {
-				if (size > 0 && names[size - 1].equals(name)) {
-					++counts[size - 1];
-				} else {
-					names[size] = name;
-					counts[size++] = 1;
-				}
-			}
-			return new Names(outline, Arrays.copyOf(names, size),
-					Arrays.copyOf(counts, size));
+			return new Names(outline, outline.names, outline.counts);
 		}
 
 		// Returns what words returns, but at most MAX_WORDS of them.

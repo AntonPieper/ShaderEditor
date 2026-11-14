@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.editor;
 
 import de.markusfisch.android.shadereditor.editor.Document.Selection;
+import de.markusfisch.android.shadereditor.syntax.Indentation;
 
 /**
  * The commands that keys and gestures map to, applied to a document.
@@ -18,6 +19,7 @@ public final class EditCommands {
 	private final Motion motion;
 	private int tabWidth = 4;
 	private boolean indentWithSpaces;
+	private Indentation indentation = Indentation.C;
 	// The column of a run of vertical moves, while the selection is the
 	// one the last of them made. The document makes a new selection for
 	// every change, and undo, which restores an old one, a new revision.
@@ -46,6 +48,11 @@ public final class EditCommands {
 	 */
 	public void setIndentWithSpaces(boolean indentWithSpaces) {
 		this.indentWithSpaces = indentWithSpaces;
+	}
+
+	/** Set how a new line is indented, C's way by default. */
+	public void setIndentation(Indentation indentation) {
+		this.indentation = indentation;
 	}
 
 	/** Move to the previous character, or to the selection's start. */
@@ -173,7 +180,7 @@ public final class EditCommands {
 		int start = selection.start();
 		int end = selection.end();
 		document.type(start, end, Text.of("\n" + AutoIndent.indentAfterBreak(
-				document.text(), start, end, level(0))));
+				document.text(), start, end, level(0), indentation)));
 	}
 
 	/**

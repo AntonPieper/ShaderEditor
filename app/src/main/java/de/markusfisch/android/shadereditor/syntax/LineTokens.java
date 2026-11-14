@@ -1,7 +1,7 @@
 package de.markusfisch.android.shadereditor.syntax;
 
 /**
- * The tokens of one line, as {@link GlslLexer#lexLine} leaves them, with
+ * The tokens of one line, as {@link Syntax#lexLine} leaves them, with
  * UTF-16 offsets into that line. One instance is meant to be filled again
  * for every line; it grows to the line with the most tokens.
  */

@@ -20,13 +20,17 @@ import java.util.concurrent.Executor;
 
 import de.markusfisch.android.shadereditor.syntax.BundledShaders;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
 import de.markusfisch.android.shadereditor.syntax.Outline;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
 
 public class AnalysisTest {
+	private static final Syntax GLSL = GlslSyntax.INSTANCE;
+
 	@Test
 	public void analysesTheWholeTextForItsRevision() {
-		Analysis analysis = Analysis.of(Text.of(
+		Analysis analysis = Analysis.of(GLSL, Text.of(
 				"struct Ray { vec3 o; };\nRay\nr;\nfloat f() { return 1.; }"),
 				7, Analysis.NONE);
 		assertEquals(7, analysis.revision());
@@ -52,7 +56,7 @@ public class AnalysisTest {
 		}
 		for (String text : texts) {
 			Text document = Text.of(text);
-			Analysis analysis = Analysis.of(document, 0, Analysis.NONE);
+			Analysis analysis = Analysis.of(GLSL, document, 0, Analysis.NONE);
 			// The text as the document holds it, with its line ends.
 			text = document.toString();
 			List<Outline.Declaration> declarations = Outline.of(
@@ -78,7 +82,7 @@ public class AnalysisTest {
 		for (int i = 0; i < 300000; ++i) {
 			sb.append("float v").append(i).append(" = 1.0;\n");
 		}
-		Analysis analysis = Analysis.of(Text.of(sb), 0, Analysis.NONE);
+		Analysis analysis = Analysis.of(GLSL, Text.of(sb), 0, Analysis.NONE);
 		List<Outline.Declaration> declarations =
 				analysis.outline().declarations();
 		assertEquals(Analysis.MAX_DECLARATIONS, declarations.size());
@@ -102,7 +106,7 @@ public class AnalysisTest {
 					.append(String.format(Locale.ROOT, "%03d", i))
 					.append(";\n");
 		}
-		Analysis analysis = Analysis.of(Text.of(sb), 0, Analysis.NONE);
+		Analysis analysis = Analysis.of(GLSL, Text.of(sb), 0, Analysis.NONE);
 		assertEquals(Analysis.MAX_NAME_CHARS / length,
 				analysis.outline().declarations().size());
 	}
@@ -111,10 +115,11 @@ public class AnalysisTest {
 	public void leavesTheOutlineEmptyWithATooLongLine() {
 		String declarations = "uniform float a;\nstruct A { int b; };\n";
 		String fits = declarations + "x".repeat(Analysis.MAX_LINE_LENGTH);
-		assertEquals(2, Analysis.of(Text.of(fits), 0, Analysis.NONE)
+		assertEquals(2, Analysis.of(GLSL, Text.of(fits), 0, Analysis.NONE)
 				.outline().declarations().size());
 		String tooLong = fits + "x";
-		Analysis analysis = Analysis.of(Text.of(tooLong), 0, Analysis.NONE);
+		Analysis analysis = Analysis.of(GLSL, Text.of(tooLong), 0,
+				Analysis.NONE);
 		assertEquals(List.of(), analysis.outline().declarations());
 		assertEquals(Set.of(), analysis.typeNames());
 		assertEquals(declarations.indexOf("\n"), analysis.uniformLineEnd());
@@ -122,12 +127,12 @@ public class AnalysisTest {
 
 	@Test
 	public void keepsTheSetOfTypeNamesWhileTheyStayTheSame() {
-		Analysis first = Analysis.of(Text.of("struct A { int a; };"), 0,
+		Analysis first = Analysis.of(GLSL, Text.of("struct A { int a; };"), 0,
 				Analysis.NONE);
-		Analysis second = Analysis.of(Text.of("struct A { int b; };"), 1,
+		Analysis second = Analysis.of(GLSL, Text.of("struct A { int b; };"), 1,
 				first);
 		assertSame(first.typeNames(), second.typeNames());
-		Analysis third = Analysis.of(Text.of("struct B { int b; };"), 2,
+		Analysis third = Analysis.of(GLSL, Text.of("struct B { int b; };"), 2,
 				second);
 		assertEquals(Set.of("B"), third.typeNames());
 	}
@@ -136,10 +141,10 @@ public class AnalysisTest {
 	public void findsWhereAddUniformInserts() {
 		String text = "#ifdef GL_ES\n#endif\nuniform float a;\n" +
 				"  uniform vec2 b;\nvoid main() {}\n";
-		Analysis analysis = Analysis.of(Text.of(text), 0, Analysis.NONE);
+		Analysis analysis = Analysis.of(GLSL, Text.of(text), 0, Analysis.NONE);
 		assertEquals(text.indexOf(";\nvoid") + 1, analysis.uniformLineEnd());
 		assertEquals(text.indexOf("\nuniform"), analysis.endifEnd());
-		Analysis none = Analysis.of(Text.of("void main() {}"), 0,
+		Analysis none = Analysis.of(GLSL, Text.of("void main() {}"), 0,
 				Analysis.NONE);
 		assertEquals(-1, none.uniformLineEnd());
 		assertEquals(-1, none.endifEnd());
@@ -152,7 +157,7 @@ public class AnalysisTest {
 		List<Analysis> results = new ArrayList<>();
 		AnalysisScheduler scheduler = new AnalysisScheduler(document, 50,
 				Runnable::run, main, results::add, () -> main.now,
-				Analysis::of);
+				AnalysisTest::analyse);
 		main.advance(0);
 		assertEquals(1, results.size());
 		document.replace(0, 0, Text.of("x"));
@@ -176,7 +181,7 @@ public class AnalysisTest {
 		Background background = new Background();
 		List<Analysis> results = new ArrayList<>();
 		new AnalysisScheduler(document, 50, background, main, results::add,
-				() -> main.now, Analysis::of);
+				() -> main.now, AnalysisTest::analyse);
 		main.advance(0);
 		background.runAll();
 		// Done, not yet delivered when the next change comes.
@@ -199,7 +204,7 @@ public class AnalysisTest {
 	@Test
 	public void givesUpAtTheStartOfALineWhenCancelled() {
 		int[] asked = new int[1];
-		assertNull(Analysis.of(Text.of("float a;\n".repeat(10)), 0,
+		assertNull(Analysis.of(GLSL, Text.of("float a;\n".repeat(10)), 0,
 				Analysis.NONE, () -> ++asked[0] == 3));
 		assertEquals(3, asked[0]);
 	}
@@ -215,7 +220,7 @@ public class AnalysisTest {
 				() -> main.now, (text, revision, previous, cancel) -> {
 			++passes[0];
 			main.now += 150;
-			return Analysis.of(text, revision, previous);
+			return Analysis.of(GLSL, text, revision, previous);
 		});
 		// A key every 100 ms for a minute.
 		typeUntil(document, main, background, 60_000, 100);
@@ -248,7 +253,7 @@ public class AnalysisTest {
 			cancelled.add(cancel.cancelled());
 			return cancel.cancelled()
 					? null
-					: Analysis.of(text, revision, previous);
+					: Analysis.of(GLSL, text, revision, previous);
 		});
 		main.advance(0);
 		background.runAll();
@@ -272,7 +277,7 @@ public class AnalysisTest {
 		new AnalysisScheduler(document, 50, background, main, results::add,
 				() -> main.now, (text, revision, previous, cancel) -> {
 			main.now += 5;
-			return Analysis.of(text, revision, previous);
+			return Analysis.of(GLSL, text, revision, previous);
 		});
 		for (int i = 0; i < 3; ++i) {
 			typeUntil(document, main, background, main.now + 1000, 100);
@@ -309,7 +314,7 @@ public class AnalysisTest {
 		List<Analysis> results = new ArrayList<>();
 		AnalysisScheduler scheduler = new AnalysisScheduler(document, 50,
 				background, main, results::add, () -> main.now,
-				Analysis::of);
+				AnalysisTest::analyse);
 		main.advance(0);
 		scheduler.close();
 		background.runAll();
@@ -375,5 +380,11 @@ public class AnalysisTest {
 			tasks.clear();
 			run.forEach(Runnable::run);
 		}
+	}
+
+	private static Analysis analyse(Text text, int revision,
+			Analysis previous, Analysis.Cancel cancel) {
+		return Analysis.of(GLSL, text, revision, previous,
+				cancel);
 	}
 }

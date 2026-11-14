@@ -2,6 +2,8 @@ package de.markusfisch.android.shadereditor.editor;
 
 import java.util.concurrent.Executor;
 
+import de.markusfisch.android.shadereditor.syntax.Syntax;
+
 /**
  * Keeps the {@link Analysis} of a document: a delay after the last
  * change it analyses the current text on a background executor and
@@ -29,7 +31,7 @@ public final class AnalysisScheduler {
 		void onAnalysis(Analysis analysis);
 	}
 
-	/** Makes the analysis; Analysis::of but in tests. */
+	/** Makes the analysis; Analysis.of but in tests. */
 	interface Pass {
 		Analysis run(Text text, int revision, Analysis previous,
 				Analysis.Cancel cancel);
@@ -65,13 +67,16 @@ public final class AnalysisScheduler {
 	private Analysis latest = Analysis.NONE;
 
 	/**
-	 * Start analysing document now and again delayMillis after each
-	 * change, until {@link #close()}.
+	 * Start analysing document as syntax reads it, now and again
+	 * delayMillis after each change, until {@link #close()}.
 	 */
-	public AnalysisScheduler(Document document, long delayMillis,
-			Executor background, MainThread main, Callback callback) {
+	public AnalysisScheduler(Document document, Syntax syntax,
+			long delayMillis, Executor background, MainThread main,
+			Callback callback) {
 		this(document, delayMillis, background, main, callback,
-				() -> System.nanoTime() / 1_000_000, Analysis::of);
+				() -> System.nanoTime() / 1_000_000,
+				(text, revision, previous, cancel) -> Analysis.of(syntax,
+						text, revision, previous, cancel));
 	}
 
 	AnalysisScheduler(Document document, long delayMillis,

@@ -12,7 +12,8 @@ import java.util.List;
  * This is a scan of the tokens, not a parse. It tracks braces, brackets
  * and parentheses and reads what is declared outside of them. Both
  * branches of a conditional are read, except code between "#if 0" and its
- * "#elif", "#else" or "#endif".
+ * "#elif", "#else" or "#endif". That scan is GLSL's; the declarations
+ * are what any language may collect, see {@link Syntax#outline}.
  */
 public final class Outline {
 	public enum Kind {
@@ -27,10 +28,33 @@ public final class Outline {
 	public record Declaration(String name, Kind kind, int start, int end) {
 	}
 
+	/** No declarations. */
+	public static final Outline NONE = new Outline(new ArrayList<>());
+
 	private final List<Declaration> declarations;
+	// Each name once, sorted, and how many declarations have it.
+	final String[] names;
+	final int[] counts;
 
 	private Outline(List<Declaration> declarations) {
 		this.declarations = Collections.unmodifiableList(declarations);
+		String[] names = new String[declarations.size()];
+		for (int i = 0; i < names.length; ++i) {
+			names[i] = declarations.get(i).name();
+		}
+		Arrays.sort(names);
+		int[] counts = new int[names.length];
+		int size = 0;
+		for (String name : names) {
+			if (size > 0 && names[size - 1].equals(name)) {
+				++counts[size - 1];
+			} else {
+				names[size] = name;
+				counts[size++] = 1;
+			}
+		}
+		this.names = Arrays.copyOf(names, size);
+		this.counts = Arrays.copyOf(counts, size);
 	}
 
 	public static Outline of(Tokens tokens, CharSequence text) {
@@ -82,33 +106,46 @@ public final class Outline {
 	}
 
 	/**
-	 * Builds the outline of a text line by line, from the tokens
-	 * {@link GlslLexer#lexLine} gives for each line, without the whole text
-	 * or all of its tokens. It keeps the declarations in the order they
-	 * appear until there are maxDeclarations of them or the next name would
-	 * make their names longer than maxNameChars together; the
-	 * declarations after that are left out.
+	 * Builds the outline of a text line by line, without the whole text
+	 * or all of its tokens.
 	 */
-	public static final class Builder {
-		private final Scan scan;
-
-		public Builder(int maxDeclarations, int maxNameChars) {
-			scan = new Scan(maxDeclarations, maxNameChars);
-		}
-
-		/** Add the next line, which starts at offset lineStart. */
-		public void addLine(CharSequence line, int lineStart,
-				LineTokens tokens) {
-			for (int i = 0, size = tokens.size(); i < size; ++i) {
-				scan.token(line, lineStart, tokens.start(i), tokens.end(i),
-						tokens.style(i), tokens.inDirective(i));
-			}
-		}
+	public interface Builder {
+		/**
+		 * Add the next line, which starts at offset lineStart, with the
+		 * tokens the language gave it.
+		 */
+		void addLine(CharSequence line, int lineStart, LineTokens tokens);
 
 		/** Return the outline of the lines added; call it once, last. */
-		public Outline build() {
-			return scan.outline();
-		}
+		Outline build();
+	}
+
+	/**
+	 * Return a builder of the outline of GLSL, from the tokens
+	 * {@link GlslLexer#lexLine} gives for each line. It keeps the
+	 * declarations in the order they appear until there are
+	 * maxDeclarations of them or the next name would make their names
+	 * longer than maxNameChars together; the declarations after that are
+	 * left out.
+	 */
+	public static Builder builder(int maxDeclarations, int maxNameChars) {
+		Scan scan = new Scan(maxDeclarations, maxNameChars);
+		return new Builder() {
+			@Override
+			public void addLine(CharSequence line, int lineStart,
+					LineTokens tokens) {
+				for (int i = 0, size = tokens.size(); i < size; ++i) {
+					scan.token(line, lineStart, tokens.start(i),
+							tokens.end(i), tokens.style(i),
+							tokens.inDirective(i));
+				}
+			}
+
+			@Override
+			public Outline build() {
+				return scan.outline();
+			}
+		};
 	}
 
 	// Reads one token after the other; a token is the range [start, end)

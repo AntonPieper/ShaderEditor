@@ -55,8 +55,8 @@ final class DocumentWork {
 		stop();
 		stylesScheduler = new LineStylesScheduler(document, styles,
 				thread, main, restyled::run);
-		analysisScheduler = new AnalysisScheduler(document, ANALYSIS_DELAY,
-				thread, main, analysis -> {
+		analysisScheduler = new AnalysisScheduler(document, styles.syntax(),
+				ANALYSIS_DELAY, thread, main, analysis -> {
 			if (styles.setTypeNames(analysis.typeNames())) {
 				restyled.run();
 			}

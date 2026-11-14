@@ -11,14 +11,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
 import de.markusfisch.android.shadereditor.syntax.Style;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 public class LineStylesSchedulerTest {
+	private static final Syntax GLSL = GlslSyntax.INSTANCE;
+
 	@Test
 	public void makesEveryLineCurrentInBoundedSteps() {
 		Document document = new Document(Text.of(
 				"float a;\n".repeat(20_000)));
-		LineStyles styles = new LineStyles(document, 200);
+		LineStyles styles = new LineStyles(document, GLSL, 200);
 		Main main = new Main();
 		Background background = new Background();
 		int[] applied = new int[1];
@@ -40,7 +44,7 @@ public class LineStylesSchedulerTest {
 	public void runsNothingInTheBackgroundForOrdinaryTyping() {
 		Document document = new Document(Text.of(
 				"float a;\n".repeat(20_000)));
-		LineStyles styles = new LineStyles(document, 200);
+		LineStyles styles = new LineStyles(document, GLSL, 200);
 		Main main = new Main();
 		Background background = new Background();
 		new LineStylesScheduler(document, styles, background, main, () -> {});
@@ -57,7 +61,7 @@ public class LineStylesSchedulerTest {
 	public void appliesNothingAfterClose() {
 		Document document = new Document(Text.of(
 				"float a;\n".repeat(1000)));
-		LineStyles styles = new LineStyles(document, 200);
+		LineStyles styles = new LineStyles(document, GLSL, 200);
 		Main main = new Main();
 		Background background = new Background();
 		List<String> applied = new ArrayList<>();

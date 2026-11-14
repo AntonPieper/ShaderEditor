@@ -28,7 +28,7 @@ import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
-import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
+import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
 import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.ShaderToySource;
@@ -307,7 +307,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		this.document = document;
 		revision = document.revision();
 		errors = Collections.emptyList();
-		styles = new LineStyles(document, STYLE_BUDGET);
+		styles = new LineStyles(document, GlslSyntax.INSTANCE, STYLE_BUDGET);
 		marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
 		document.addListener(documentListener);
@@ -364,11 +364,10 @@ final class CodeViewSourceEditor implements SourceEditor {
 		int n = text.lineOf(caret);
 		int lineStart = text.lineStart(n);
 		Analysis analysis = view.getAnalysis();
-		GlslCompletion.Completions completions = GlslCompletion.atColumn(
-				styles.runs(n).line(), caret - lineStart, lineStart,
-				analysis.names(), analysis.revision() == document.revision(),
-				BUILTIN_UNIFORMS);
-		listener.onCompletions(completions.words(), completions.position());
+		styles.syntax().complete(styles.runs(n).line(), caret - lineStart,
+				lineStart, analysis.outline(),
+				analysis.revision() == document.revision(), BUILTIN_UNIFORMS,
+				listener::onCompletions);
 	}
 
 	// Whether the text defines mainImage and no main, as ShaderToy's do;

@@ -19,10 +19,13 @@ import java.util.Set;
 
 import de.markusfisch.android.shadereditor.syntax.BundledShaders;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
 import de.markusfisch.android.shadereditor.syntax.Style;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 public class LineStylesTest {
+	private static final Syntax GLSL = GlslSyntax.INSTANCE;
 	private static final String[] TYPED = {
 			"/*", "*/", "//", "\n", "\n", "\\\n", "#define A ", "#", "struct ",
 			"S s;", ".", " ", "x", "float y = 1.0;", "\"", "{", "}\n"};
@@ -32,7 +35,7 @@ public class LineStylesTest {
 			throws IOException {
 		String base = bundled(false);
 		Document document = new Document(Text.of(base));
-		LineStyles styles = new LineStyles(document, 30);
+		LineStyles styles = new LineStyles(document, GLSL, 30);
 		Random random = new Random(42);
 		List<LineStyles.Result> late = new ArrayList<>();
 		for (int i = 1; i <= 20_000; ++i) {
@@ -73,7 +76,7 @@ public class LineStylesTest {
 			throws IOException {
 		Text text = Text.of(repeat(bundled(true), 50_000));
 		Document document = new Document(text);
-		LineStyles styles = new LineStyles(document, 200);
+		LineStyles styles = new LineStyles(document, GLSL, 200);
 		drain(styles, Integer.MAX_VALUE);
 		document.replace(0, 0, Text.of("/*"));
 		assertEquals(200, styles.staleFrom());
@@ -89,7 +92,7 @@ public class LineStylesTest {
 	@Test
 	public void anEditedShownLineInTheStaleRangeIsCurrent() {
 		Document document = new Document(Text.of("x\n".repeat(30)));
-		LineStyles styles = new LineStyles(document, 2);
+		LineStyles styles = new LineStyles(document, GLSL, 2);
 		drain(styles, 100);
 		styles.show(15, 25);
 		document.replace(0, 0, Text.of("/*"));
@@ -102,7 +105,7 @@ public class LineStylesTest {
 	@Test
 	public void applyStoresABoundedPartOfAResultPerCall() {
 		Document document = new Document(Text.of(lines(10_000)));
-		LineStyles styles = new LineStyles(document, 10);
+		LineStyles styles = new LineStyles(document, GLSL, 10);
 		drain(styles, Integer.MAX_VALUE);
 		document.replace(0, 0, Text.of("/*"));
 		LineStyles.Result result =
@@ -120,7 +123,7 @@ public class LineStylesTest {
 		String shaders = bundled(false);
 		Text text = Text.of(repeat(shaders, 5_000));
 		Document document = new Document(text);
-		LineStyles styles = new LineStyles(document, 200);
+		LineStyles styles = new LineStyles(document, GLSL, 200);
 		drain(styles, Integer.MAX_VALUE);
 		Text paste = Text.of(repeat(shaders, 5_000));
 		document.replace(text.lineStart(100), text.lineStart(100), paste);
@@ -132,7 +135,7 @@ public class LineStylesTest {
 	@Test
 	public void aResultCountsUpToTheFirstLineChangedSince() {
 		Document document = new Document(Text.of(lines(2000)));
-		LineStyles styles = new LineStyles(document, 10);
+		LineStyles styles = new LineStyles(document, GLSL, 10);
 		drain(styles, Integer.MAX_VALUE);
 		document.replace(0, 0, Text.of("/*"));
 		assertEquals(10, styles.staleFrom());
@@ -148,7 +151,7 @@ public class LineStylesTest {
 	@Test
 	public void aResultIsDroppedAfterAChangeAboveIt() {
 		Document document = new Document(Text.of(lines(2000)));
-		LineStyles styles = new LineStyles(document, 10);
+		LineStyles styles = new LineStyles(document, GLSL, 10);
 		drain(styles, Integer.MAX_VALUE);
 		document.replace(0, 0, Text.of("/*"));
 		LineStyles.Result result = styles.continuation().run(5000);
@@ -164,7 +167,7 @@ public class LineStylesTest {
 	@Test
 	public void aResultIsDroppedAfterTooManyChanges() {
 		Document document = new Document(Text.of(lines(2000)));
-		LineStyles styles = new LineStyles(document, 10);
+		LineStyles styles = new LineStyles(document, GLSL, 10);
 		document.replace(0, 0, Text.of("/*"));
 		LineStyles.Result result = styles.continuation().run(5000);
 		for (int i = 0; i < 65; ++i) {
@@ -179,7 +182,7 @@ public class LineStylesTest {
 	@Test
 	public void runsAreCachedByLineAndStartState() {
 		Document document = new Document(Text.of("a\nb /* c\nd */ e\nf"));
-		LineStyles styles = new LineStyles(document, 100);
+		LineStyles styles = new LineStyles(document, GLSL, 100);
 		LineStyles.Runs runs = styles.runs(3);
 		assertSame(runs, styles.runs(3));
 		// A line that only moved keeps its runs.
@@ -197,7 +200,7 @@ public class LineStylesTest {
 	@Test
 	public void runsJoinNeighboursOfOneStyle() {
 		Document document = new Document(Text.of("a != b; // c"));
-		LineStyles.Runs runs = new LineStyles(document, 100).runs(0);
+		LineStyles.Runs runs = new LineStyles(document, GLSL, 100).runs(0);
 		assertEquals(5, runs.size());
 		assertEquals(2, runs.start(1));
 		assertEquals(4, runs.end(1));
@@ -208,7 +211,7 @@ public class LineStylesTest {
 	@Test
 	public void declaredTypeNamesPaintIdentifiers() {
 		Document document = new Document(Text.of("x = Light(1.0);"));
-		LineStyles styles = new LineStyles(document, 100);
+		LineStyles styles = new LineStyles(document, GLSL, 100);
 		assertEquals(Style.IDENTIFIER, styles.runs(0).style(2));
 		Set<String> names = Set.of("Light");
 		assertTrue(styles.setTypeNames(names));
@@ -220,7 +223,7 @@ public class LineStylesTest {
 	@Test
 	public void aCurrentDocumentHasNoContinuation() {
 		Document document = new Document(Text.of(lines(50)));
-		LineStyles styles = new LineStyles(document, 100);
+		LineStyles styles = new LineStyles(document, GLSL, 100);
 		assertNull(styles.continuation());
 		type(document, 0, "/*");
 		assertNull(styles.continuation());
@@ -229,7 +232,7 @@ public class LineStylesTest {
 	@Test
 	public void ignoresEditsOnceClosed() {
 		Document document = new Document(Text.of("x\ny"));
-		LineStyles styles = new LineStyles(document, 10);
+		LineStyles styles = new LineStyles(document, GLSL, 10);
 		styles.close();
 		document.replace(0, 0, Text.of("/*"));
 		assertNotEquals(Style.COMMENT, styles.runs(1).style(0));
@@ -287,7 +290,7 @@ public class LineStylesTest {
 		assertNull(styles.continuation());
 		assertEquals(text.lineCount(), styles.staleFrom());
 		int[] expected = startStates(text);
-		LineStyles fresh = new LineStyles(new Document(text),
+		LineStyles fresh = new LineStyles(new Document(text), GLSL,
 				Integer.MAX_VALUE);
 		for (int line = 0; line < expected.length; ++line) {
 			assertEquals("line " + line, expected[line],
