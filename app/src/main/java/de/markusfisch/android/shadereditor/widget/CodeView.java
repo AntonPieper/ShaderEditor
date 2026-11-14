@@ -95,9 +95,10 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * words while it grows, with the magnifier; a tap shows the caret's
  * handle until a while has passed or the text changes. When the
  * finger lifts, the platform's floating toolbar offers the clipboard
- * for the selection; a tap inside the selection hides or shows it
- * again. A tap on the caret's handle, or a long press past the end of a
- * line, shows it for the caret. Cut, copy and paste of the toolbar, the
+ * for the selection, and the keyboard shows to type over it; a tap
+ * inside the selection hides or shows it again. A tap on the caret's
+ * handle, or a long press past the end of a line, shows it for the
+ * caret. Cut, copy and paste of the toolbar, the
  * keyboard's context menu and the keys are the same KeyCommands; a copy
  * the clipboard refuses says so. A mouse click places the caret, a
  * double click selects a word, Shift extends the selection, a drag
@@ -1452,10 +1453,21 @@ public class CodeView extends View {
 		}
 	}
 
+	// Shows the toolbar for a touch, and, as Editor does when it starts
+	// one for a selection, the keyboard, to type over the selection.
 	private void showToolbar() {
 		handler.removeCallbacks(hideCaretHandle);
-		if (touch.showsToolbar()) {
-			toolbar.show();
+		if (!touch.showsToolbar()) {
+			return;
+		}
+		boolean starting = !toolbar.isShown();
+		toolbar.show();
+		if (starting && toolbar.isShown() &&
+				!document.selection().isEmpty()) {
+			InputMethodManager imm = inputMethodManager();
+			if (imm != null) {
+				imm.showSoftInput(this, 0);
+			}
 		}
 	}
 
@@ -1967,7 +1979,8 @@ public class CodeView extends View {
 			touched = null;
 			showContextMenu(x, y);
 		} else {
-			showToolbar();
+			// Not the keyboard, which a click does not show.
+			toolbar.show();
 		}
 	}
 
