@@ -19,17 +19,20 @@ public class FileActionsTest {
 	@Test
 	public void aShaderFileThatDoesNotRunCanBeRun() {
 		List<Row> rows = FileActions.of(ROWS, null, true);
-		assertEquals(EnumSet.of(Row.Action.RUN, Row.Action.DUPLICATE),
-				rows.get(1).actions());
-		assertEquals(EnumSet.of(Row.Action.DUPLICATE), rows.get(2).actions());
-		assertEquals(EnumSet.of(Row.Action.DUPLICATE),
-				FileActions.of(ROWS, "main.glsl", true).get(1).actions());
+		assertEquals(EnumSet.of(Row.Action.RUN, Row.Action.RENAME,
+				Row.Action.DUPLICATE, Row.Action.DELETE), rows.get(1).actions());
+		assertEquals(EnumSet.of(Row.Action.RENAME, Row.Action.DUPLICATE,
+				Row.Action.DELETE), rows.get(2).actions());
+		assertEquals(EnumSet.of(Row.Action.RENAME, Row.Action.DUPLICATE,
+				Row.Action.DELETE), FileActions.of(ROWS, "main.glsl", true)
+				.get(1).actions());
 	}
 
 	@Test
 	public void aFolderIsCreatedIn() {
-		assertEquals(EnumSet.of(Row.Action.NEW_HERE),
-				FileActions.of(ROWS, null, true).get(0).actions());
+		assertEquals(EnumSet.of(Row.Action.RENAME, Row.Action.NEW_HERE,
+				Row.Action.DELETE), FileActions.of(ROWS, null, true).get(0)
+				.actions());
 	}
 
 	@Test

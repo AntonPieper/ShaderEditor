@@ -345,6 +345,14 @@
 	<string name="nav_run_this_file">Run this file</string>
 	<string name="nav_new_file_here">New file here</string>
 	<string name="nav_cannot_duplicate">%1$s cannot be duplicated: %2$s</string>
+	<string name="nav_delete_folder">Everything in it is deleted too.</string>
+	<string name="nav_used_by">%s, which runs, uses this file.</string>
+	<string name="nav_cannot_rename">%1$s cannot be renamed: %2$s</string>
+	<string name="nav_cannot_delete">%1$s cannot be deleted: %2$s</string>
+	<string name="nav_cannot_rename_held">%s is open or has unsaved text, so it cannot be renamed yet</string>
+	<string name="nav_cannot_delete_held">%s is open or has unsaved text, so it cannot be deleted yet</string>
+	<string name="nav_cannot_rename_holding">%s holds a file that is open or has unsaved text, so it cannot be renamed yet</string>
+	<string name="nav_cannot_delete_holding">%s holds a file that is open or has unsaved text, so it cannot be deleted yet</string>
 	<string name="nav_remove_title">Remove %s from the list?</string>
 	<string name="nav_remove">Remove</string>
 	<plurals name="nav_remove_unsaved">
