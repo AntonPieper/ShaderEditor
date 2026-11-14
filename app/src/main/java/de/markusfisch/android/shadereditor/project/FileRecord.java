@@ -20,7 +20,7 @@ import de.markusfisch.android.shadereditor.editor.Text;
  */
 final class FileRecord {
 	enum Kind {
-		OPEN, RELOAD, SAVE, CHECK
+		OPEN, RELOAD, SAVE, CHECK, MOVE
 	}
 
 	/**
@@ -48,7 +48,8 @@ final class FileRecord {
 		}
 	}
 
-	final ProjectPath path;
+	// Where the file is; a rename gives it another path.
+	ProjectPath path;
 	// What the view keeps for the document; why the last write of the
 	// journal failed, or null; and the tickets of the timers that flush
 	// it.
