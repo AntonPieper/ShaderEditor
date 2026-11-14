@@ -33,6 +33,9 @@
 	<!-- The unsaved mark after the title: the size of a "•" in it -->
 	<dimen name="se_unsaved_dot">4dp</dimen>
 	<dimen name="se_unsaved_gap">8dp</dimen>
+	<!-- The editor's toolbar title always gets this much before the frame
+	rate stands in the quality chip: "common.glsl" and the unsaved mark -->
+	<dimen name="toolbar_title_min">108dp</dimen>
 	<!-- The frame-rate and quality chip in the editor's toolbar -->
 	<dimen name="quality_chip_height">36dp</dimen>
 	<dimen name="quality_chip_padding_start">10dp</dimen>

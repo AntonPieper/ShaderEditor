@@ -33,6 +33,10 @@ public class UIManager {
 	private final TextView titleView;
 	private final TextView subtitleView;
 	private final Drawable unsavedDot;
+	private final View titleColumn;
+	private final View quality;
+	private final int titleMin;
+	private boolean frameRateFits = true;
 	private final TouchThruDrawerLayout drawerLayout;
 	private final Runnable showSubtitle = this::showSubtitle;
 
@@ -68,6 +72,12 @@ public class UIManager {
 		unsavedDot = Objects.requireNonNull(AppCompatResources.getDrawable(
 				activity, R.drawable.unsaved_dot)).mutate();
 		unsavedDot.setTintList(titleView.getTextColors());
+		titleColumn = (View) titleView.getParent();
+		quality = toolbar.findViewById(R.id.quality);
+		titleMin = activity.getResources().getDimensionPixelSize(
+				R.dimen.toolbar_title_min);
+		toolbar.addOnLayoutChangeListener((v, left, top, right, bottom,
+				oldLeft, oldTop, oldRight, oldBottom) -> fitFrameRate());
 
 		drawerLayout = activity.findViewById(R.id.drawer_layout);
 		drawerToggle = new ActionBarDrawerToggle(
@@ -148,7 +158,7 @@ public class UIManager {
 		}
 		this.title = title;
 		secondLine.setOwn(subtitle);
-		shaderViewManager.setFrameRate(secondLine.besideQuality());
+		showFrameRate();
 		// The name never moves: the dot is an end drawable, after it.
 		titleView.setText(title);
 		titleView.setCompoundDrawablesRelativeWithIntrinsicBounds(
@@ -175,9 +185,39 @@ public class UIManager {
 	public void setFrameRate(@NonNull String frameRate) {
 		toolbar.post(() -> {
 			secondLine.setFrameRate(frameRate);
-			shaderViewManager.setFrameRate(secondLine.besideQuality());
+			showFrameRate();
 			showSubtitle();
 		});
+	}
+
+	// The frame rate stands in the quality chip only while the title
+	// keeps its room; otherwise it is not shown until there is room.
+	private void showFrameRate() {
+		shaderViewManager.setFrameRate(frameRateFits
+				? secondLine.besideQuality()
+				: null);
+	}
+
+	private void fitFrameRate() {
+		CharSequence frameRate = secondLine.besideQuality();
+		if (frameRate == null) {
+			return;
+		}
+		int chipWithRate = shaderViewManager.chipWidth(frameRate);
+		if (chipWithRate < 0) {
+			return;
+		}
+		// With the unsaved mark always, so that it does not move the rate.
+		int titleNeeds = Math.round(titleView.getPaint().measureText(
+				title.toString())) + titleView.getCompoundDrawablePadding() +
+				unsavedDot.getIntrinsicWidth();
+		boolean fits = ToolbarSpace.frameRateFits(
+				quality.getRight() - titleColumn.getLeft(), chipWithRate,
+				titleNeeds, titleMin);
+		if (fits != frameRateFits) {
+			frameRateFits = fits;
+			toolbar.post(this::showFrameRate);
+		}
 	}
 
 	private void showSubtitle() {
