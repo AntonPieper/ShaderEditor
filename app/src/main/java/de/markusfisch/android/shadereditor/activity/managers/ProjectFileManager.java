@@ -406,11 +406,14 @@ public final class ProjectFileManager {
 		}
 		saved.getProject().setEditorState(saved.getPath(),
 				editor.getDocumentState());
+		if (key == null) {
+			return null;
+		}
 		// Outside the library nothing else keeps the quality.
-		return key != null
-				? OpenState.file(key, saved.getPath().toString(),
-						saved.isSingle(), saved.getQuality())
-				: null;
+		OpenState state = OpenState.file(key, saved.getPath().toString(),
+				saved.isSingle(), saved.getQuality());
+		// A tap that has not found out yet whether the file runs.
+		return saved.getPath().equals(deciding) ? state.undecided() : state;
 	}
 
 	/**

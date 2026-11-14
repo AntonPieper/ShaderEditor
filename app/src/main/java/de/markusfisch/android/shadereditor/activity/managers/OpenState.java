@@ -15,7 +15,7 @@ import androidx.annotation.Nullable;
  * @param key      the session of the file's folder, for a file
  * @param path     its path there
  * @param single   whether that is a single file, not a folder
- * @param tapped   for a file asked for, whether by a tap
+ * @param tapped   for a file, whether by a tap that is not settled yet
  * @param quality  the quality it runs at
  * @param shader   the id of a shader of the database
  * @param modified whether that shader has changes that are not saved
@@ -54,6 +54,16 @@ public record OpenState(@NonNull Kind kind, @Nullable String key,
 			boolean single, float quality) {
 		return new OpenState(Kind.FILE, key, path, single, false, quality, 0,
 				false, null);
+	}
+
+	/**
+	 * Return this file as one whose tap is not settled yet: whether it
+	 * runs is decided again where it comes back.
+	 */
+	@NonNull
+	public OpenState undecided() {
+		return new OpenState(kind, key, path, single, true, quality, shader,
+				modified, title);
 	}
 
 	@NonNull

@@ -70,6 +70,7 @@ public final class LibraryStart {
 
 	private final Activity activity;
 	private final Projects projects;
+	private final ProjectHolds holds;
 	private final Listener listener;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final ExecutorService listing =
@@ -79,11 +80,16 @@ public final class LibraryStart {
 	// the screen made in its place tells it. On the main thread.
 	@Nullable
 	private static String untold;
+	// The move was redone for a screen that is gone: the folder open
+	// last is the library that was put aside, so the next screen shows
+	// the library itself.
+	private static boolean redone;
 
-	public LibraryStart(@NonNull Activity activity, @NonNull Projects projects,
+	public LibraryStart(@NonNull Activity activity, @NonNull ProjectHolds holds,
 			@NonNull Listener listener) {
 		this.activity = activity;
-		this.projects = projects;
+		this.projects = holds.projects();
+		this.holds = holds;
 		this.listener = listener;
 	}
 
@@ -122,7 +128,9 @@ public final class LibraryStart {
 						listener.onMoved(told);
 					}
 					listener.onNotMoved(result.failed());
-					open(show, false);
+					boolean library = redone;
+					redone = false;
+					open(show, library);
 				});
 	}
 
@@ -131,17 +139,35 @@ public final class LibraryStart {
 	 * a new one, then show that. Nothing may hold the library open.
 	 */
 	public void redo(@NonNull DataSource database) {
+		// The library may be open without a holder, where the start
+		// only learned its session while another file came back: it
+		// is let go. One that is held stays open, and the move says so.
+		projects.openLibrary(opened -> {
+			OpenProject library = opened.project();
+			if (library != null) {
+				holds.hold(library);
+				holds.release(library);
+			}
+			redoMove(database);
+		});
+	}
+
+	private void redoMove(@NonNull DataSource database) {
 		projects.redoLibraryMove(database, UniformTable.builtins().names(),
 				activity.getString(R.string.nav_untitled), chosen(),
-				redone -> {
-					if (destroyed) {
-						return;
-					}
-					LibraryMove.Result result = redone.moved();
-					String told = describe(activity, redone.problem() != null
-									? redone.problem()
+				done -> {
+					LibraryMove.Result result = done.moved();
+					String told = describe(activity, done.problem() != null
+									? done.problem()
 									: result != null ? result.problem() : null,
 							result != null ? result.moved() : List.of());
+					if (destroyed) {
+						// The next screen tells it and shows the new
+						// library.
+						untold = told != null ? told : untold;
+						redone |= result != null;
+						return;
+					}
 					if (told != null) {
 						listener.onMoved(told);
 					}

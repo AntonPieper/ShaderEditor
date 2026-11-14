@@ -19,6 +19,7 @@ public class OpenStateTest {
 				OpenState.file("a1b2c3d4", "Plasma.frag", false, .5f),
 				OpenState.file("examples", "Ink/main.frag", false, 1f),
 				OpenState.file("9z8y7x6w", "a b/\u00e4.frag", true, .25f),
+				OpenState.file("a1b2c3d4", "New.frag", false, 1f).undecided(),
 				OpenState.asked("a1b2c3d4", "lib/sdf.glsl", false, true),
 				OpenState.notMoved(42, "Old one", .125f, true),
 				OpenState.notMoved(7, "two\nlines", 1f, false),
@@ -44,6 +45,18 @@ public class OpenStateTest {
 		assertTrue(OpenState.file("k", "A.frag", false, 1f).isFile());
 		assertTrue(OpenState.asked("k", "A.frag", false, true).isFile());
 		assertFalse(OpenState.notMoved(3, "t", 1f, false).isFile());
+	}
+
+	// A file whose tap was not settled comes back as tapped, so that
+	// it is decided again whether it runs.
+	@Test
+	public void aTapNotSettledComesBackAsATap() {
+		OpenState state = OpenState.decode(OpenState.file("k", "A.frag",
+				false, .5f).undecided().encode());
+
+		assertEquals(OpenState.Kind.FILE, state.kind());
+		assertTrue(state.tapped());
+		assertFalse(OpenState.file("k", "A.frag", false, .5f).tapped());
 	}
 
 	// What says nothing a screen can come back to starts as a cold

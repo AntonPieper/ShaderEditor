@@ -358,7 +358,7 @@ public class MainActivity extends AppCompatActivity {
 	// Move what is left in the database into the library, then show
 	// the file the library showed last.
 	private void startLibrary(boolean show) {
-		libraryStart = new LibraryStart(this, holds.projects(),
+		libraryStart = new LibraryStart(this, holds,
 				new LibraryStart.Listener() {
 					@Override
 					public void onMoving() {
@@ -371,6 +371,11 @@ public class MainActivity extends AppCompatActivity {
 						if (shaderListManager instanceof NavigationDrawer
 								drawer) {
 							drawer.setLibrary(key);
+							// Let go of with the library, when the move
+							// was asked for again and refused.
+							if (!notMoved.isEmpty()) {
+								drawer.setNotMoved(notMoved);
+							}
 						}
 						looks.setLibrary(key);
 						files.setLibrary(key);
@@ -1199,6 +1204,11 @@ public class MainActivity extends AppCompatActivity {
 		boolean covered = cover.getVisibility() == View.VISIBLE;
 		cover.setText(moving ? "" : getString(R.string.no_file_open));
 		cover.setVisibility(text ? View.GONE : View.VISIBLE);
+		// A quality is chosen for what runs, a key inserts into a text.
+		findViewById(R.id.quality).setVisibility(text
+				? View.VISIBLE
+				: View.GONE);
+		extraKeysManager.setHasText(text);
 		// The editor's view is made after this screen is: it must not
 		// come to lie over the cover.
 		View editor = editorFragment.getView();

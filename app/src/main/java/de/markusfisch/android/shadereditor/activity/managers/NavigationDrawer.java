@@ -263,10 +263,9 @@ public class NavigationDrawer implements ShaderList {
 					}
 
 					@Override
-					public void onNotKept(@NonNull String reason) {
+					public void onFailed(@NonNull String message) {
 						if (isActivityAlive()) {
-							tell(activity.getString(
-									R.string.library_not_kept, reason));
+							tell(message);
 						}
 					}
 				});
@@ -376,6 +375,8 @@ public class NavigationDrawer implements ShaderList {
 	public void setLibrary(@NonNull String key) {
 		libraryKey = key;
 		newFile.setLibrary(key);
+		// The screen can show a file by now.
+		newFile.resume();
 		loadRecent();
 		if (!drawerLayout.isDrawerVisible(drawer)) {
 			go(home());
@@ -537,6 +538,7 @@ public class NavigationDrawer implements ShaderList {
 		if (sheet != null) {
 			sheet.dismiss();
 		}
+		newFile.destroy();
 		if (folder != null) {
 			folder.close();
 		}
