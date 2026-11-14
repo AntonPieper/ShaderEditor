@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import de.markusfisch.android.shadereditor.editor.Document;
@@ -55,6 +56,10 @@ public class LifecycleSequencesTest {
 		BACKGROUND,
 		/** The project is closed. */
 		CLOSE,
+		/** The user renames the file, to the other of two names. */
+		RENAME,
+		/** The user deletes the file, with the text it has now. */
+		DELETE,
 		/** The process dies and the project is opened again. */
 		REOPEN
 	}
@@ -77,7 +82,13 @@ public class LifecycleSequencesTest {
 		 * The same, replaced by a reload whose history could not be
 		 * written: the journal waits for one.
 		 */
-		RELOADED(4, RELOADED_SEQUENCES);
+		RELOADED(4, RELOADED_SEQUENCES),
+		/**
+		 * Unsaved text the journal holds, with RENAME and DELETE in
+		 * place of reload, save and flush(done); FAIL fails journal and
+		 * history.
+		 */
+		MOVED(4, MOVED_SEQUENCES);
 
 		private final int length;
 		private final int sequences;
@@ -92,6 +103,8 @@ public class LifecycleSequencesTest {
 	private static final int UNSTORABLE_SEQUENCES = 1340;
 	private static final int HELD_SEQUENCES = 1925;
 	private static final int RELOADED_SEQUENCES = 1931;
+	private static final int MOVED_SEQUENCES = 926;
+	private static final ProjectPath B = ProjectPath.parse("b.glsl").value();
 	private static final ProjectPath A = ProjectPath.parse("a.glsl").value();
 
 	@Rule
@@ -195,6 +208,9 @@ public class LifecycleSequencesTest {
 		private int floor;
 		private int typed;
 		private boolean closed;
+		// How many texts the file had had when its deletion was asked
+		// for, -1 when it was not.
+		private int deleteAt = -1;
 		// Whether the user ever asked for a reload.
 		private boolean reloaded;
 		private final Start start;
@@ -204,8 +220,9 @@ public class LifecycleSequencesTest {
 
 		private World(Start start) {
 			this.start = start;
-			boolean held = start == Start.HELD || start == Start.RELOADED;
-			failing = held
+			boolean held = start != Start.SAVED &&
+					start != Start.UNSTORABLE;
+			failing = start == Start.HELD || start == Start.RELOADED
 					? new File[]{history}
 					: new File[]{drafts, history};
 			setWritable(true);
@@ -243,12 +260,23 @@ public class LifecycleSequencesTest {
 			project = OpenProject.open(id, store, null, null,
 					new ProjectSessions(sessionsDir), steps.worker,
 					steps.main, steps.timers, OpenProject.MAX_BUDGET);
-			project.load(A, ProjectFiles.UNKNOWN,
-					problem -> project.show(A));
-			steps.settle();
-			document = project.document(A);
-			assertNotNull(document);
 			closed = false;
+			load(A);
+			assertNotNull(document);
+		}
+
+		private void load(ProjectPath path) {
+			project.load(path, ProjectFiles.UNKNOWN,
+					problem -> project.show(path));
+			steps.settle();
+			document = project.document(path);
+		}
+
+		// Return where the project has the document, or null when it
+		// closed it.
+		private ProjectPath at() {
+			return project.document(A) == document ? A
+					: project.document(B) == document ? B : null;
 		}
 
 		// Return the steps that change something here.
@@ -260,9 +288,13 @@ public class LifecycleSequencesTest {
 			for (Step step : Step.values()) {
 				if (switch (step) {
 					// The same twice in a row is as good as once.
-					case TYPE, SAVE, BACKGROUND -> !closed && step != last;
+					case TYPE -> !closed && step != last && at() != null;
+					case SAVE, BACKGROUND -> !closed && step != last &&
+							start != Start.MOVED;
 					case RELOAD -> !closed && step != last &&
-							start != Start.SAVED;
+							start != Start.SAVED && start != Start.MOVED;
+					case RENAME, DELETE -> !closed && step != last &&
+							start == Start.MOVED && at() != null;
 					case CLOSE -> !closed;
 					case TIMER -> !closed && steps.later.size() > 0;
 					case WORKER, FAIL -> steps.worker.size() > 0;
@@ -317,6 +349,20 @@ public class LifecycleSequencesTest {
 					closed = true;
 					fence = true;
 				}
+				case RENAME -> project.rename(at(), at() == A ? B : A,
+						moved -> {
+						});
+				case DELETE -> {
+					// What is typed after the first one asked for was not
+					// given up with it; a later one may never start.
+					if (deleteAt < 0) {
+						deleteAt = texts.size();
+					}
+					project.delete(at(), document.isModified()
+							? Map.of(at(), document.revision())
+							: Map.of(), moved -> {
+					});
+				}
 				case REOPEN -> {
 					die(sequence);
 					return;
@@ -335,7 +381,12 @@ public class LifecycleSequencesTest {
 				}
 				return;
 			}
+			ProjectPath at = at();
 			String now = document.text().toString();
+			if (at == null) {
+				// Closed by a deletion: nothing more is told of it.
+				return;
+			}
 			if (!now.equals(text)) {
 				replaced = null;
 				if (step != Step.TYPE) {
@@ -345,19 +396,20 @@ public class LifecycleSequencesTest {
 				texts.add(now);
 				text = now;
 			}
-			if (project.settled(A)) {
+			if (project.settled(at)) {
 				floor = texts.size() - 1;
 				givenUp.clear();
 			}
-			assertNull(sequence, project.unreadable(A));
+			assertNull(sequence, project.unreadable(at));
 			assertEquals(sequence, 0, project.damagedJournals());
 			if (!document.isModified() &&
-					project.found(A) == FileTexts.Found.SAME) {
+					project.found(at) == FileTexts.Found.SAME &&
+					store.read(at) != null) {
 				// Exactly: not what its bytes would be.
 				assertTrue(sequence + ": saved, but stored \"" +
-								new String(store.read(A).bytes(),
+								new String(store.read(at).bytes(),
 										StandardCharsets.UTF_8) + "\"",
-						FileTexts.holds(store.read(A).bytes(),
+						FileTexts.holds(store.read(at).bytes(),
 								document.text()));
 			}
 		}
@@ -368,20 +420,29 @@ public class LifecycleSequencesTest {
 			Set<String> may = new HashSet<>(texts.subList(floor,
 					texts.size()));
 			may.addAll(givenUp);
-			open();
+			if (start == Start.MOVED) {
+				if (!moved(sequence, may)) {
+					return;
+				}
+			} else {
+				open();
+			}
 			String found = document.text().toString();
-			assertTrue(sequence + ": reopened \"" + found +
-					"\", but the user had " + may + " of " + texts,
-					may.contains(found));
-			assertNull(sequence, project.unreadable(A));
+			if (store.read(A) != null || store.read(B) != null) {
+				assertTrue(sequence + ": reopened \"" + found +
+						"\", but the user had " + may + " of " + texts,
+						may.contains(found));
+			}
+			ProjectPath at = at();
+			assertNull(sequence, project.unreadable(at));
 			// Text that comes back after a reload says so, where its
 			// journal could be written; no other text does.
 			if (found.equals(replaced) && failing.length == 1) {
 				assertTrue(sequence + ": came back without saying so",
-						project.replaced(A));
+						project.replaced(at));
 			} else if (!reloaded) {
 				assertTrue(sequence + ": says a reload replaced it",
-						!project.replaced(A));
+						!project.replaced(at));
 			}
 			if (replaced != null && !found.equals(replaced)) {
 				assertTrue(sequence + ": no undo to what was reloaded",
@@ -399,6 +460,51 @@ public class LifecycleSequencesTest {
 			// What a restart gives is what the next one gives.
 			floor = texts.size() - 1;
 			givenUp.clear();
+		}
+
+		// Open again after renames and deletions: the stored file and
+		// the unsaved text are under one name, the same, or both gone.
+		// Return whether there is a file to go on with.
+		private boolean moved(String sequence, Set<String> may) {
+			steps = new Steps();
+			project = OpenProject.open(id, store, null, null,
+					new ProjectSessions(sessionsDir), steps.worker,
+					steps.main, steps.timers, OpenProject.MAX_BUDGET);
+			closed = false;
+			List<ProjectPath> stored = new ArrayList<>();
+			for (ProjectPath path : List.of(A, B)) {
+				if (store.read(path) != null) {
+					stored.add(path);
+				}
+			}
+			Set<ProjectPath> unsaved = project.unsaved();
+			String state = sequence + ": stored " + stored + ", unsaved " +
+					unsaved;
+			assertTrue(state, stored.size() <= 1 && unsaved.size() <= 1);
+			assertNull(state, new ProjectSessions(sessionsDir).journal(id)
+					.move());
+			assertTrue(state, project.conflicts().isEmpty() ||
+					stored.isEmpty());
+			if (stored.isEmpty()) {
+				// Deleted, as asked: only what was typed after that may
+				// be there, as unsaved text of a file that is gone.
+				assertTrue(state, deleteAt >= 0);
+				if (unsaved.isEmpty()) {
+					document = null;
+					closed = true;
+					return false;
+				}
+				load(unsaved.iterator().next());
+				assertTrue(state + ": text given up with the file is back",
+						texts.indexOf(document.text().toString()) >=
+								deleteAt);
+				return true;
+			}
+			assertTrue(state, unsaved.isEmpty() || unsaved.equals(
+					Set.copyOf(stored)));
+			load(stored.get(0));
+			assertNotNull(state, document);
+			return true;
 		}
 	}
 }
