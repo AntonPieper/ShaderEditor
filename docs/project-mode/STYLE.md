@@ -379,7 +379,7 @@ Never colour alone: every state has an icon or a shape, and a spoken text.
 | --- | --- | --- |
 | Selected | Filled with `colorSecondaryContainer`, `se_corner`, inset 8 dp from the edges; first line in medium weight; second line and marks in `colorOnSecondaryContainer`. A selected segment or chip is the library's: the same fill and a check mark | selected |
 | Running | Filled triangle, 16 dp, `colorPrimary`, at the end of the row; in the toolbar's second line before the file name | running |
-| Unsaved | A dot, "•" in the title's own colour (`colorOnSurface`), before the name in the toolbar, so that an ellipsis never cuts it off; at the end of a row in lists | unsaved changes (the title's spoken text) |
+| Unsaved | A dot, 4 dp, the size of a "•" in the title, in the title's own colour, 8 dp after the name in the toolbar, in a slot of its own; at the end of a row in lists. After the name, because the name must not move when the dot comes or goes. In its own slot, because a character added to the title would be cut off by the ellipsis of a long name: the slot makes the name shorten before the dot | unsaved changes (the title's spoken text) |
 | Error | `ic_error` and a count in `colorError`; in code 6.9 | N errors |
 | Warning | `ic_warning` and a count in `se_warning` | N warnings |
 | Changed outside | `ic_sync_problem` in `se_warning` | changed outside |

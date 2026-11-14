@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tinted with the title's text colour -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+	android:shape="oval">
+	<size
+		android:width="@dimen/se_unsaved_dot"
+		android:height="@dimen/se_unsaved_dot" />
+	<solid android:color="@android:color/white" />
+</shape>
