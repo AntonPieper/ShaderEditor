@@ -36,18 +36,21 @@ public final class FileTexts {
 	}
 
 	/**
-	 * The text of a file for the editor: its journal's when unsaved,
-	 * else the stored text; the revision of the stored text it is based
-	 * on, null for none; the revision of the journal it came from, -1
-	 * for none; its bytes, as {@link Document#bytes} counts them; why
-	 * its journal could not be read, so the stored text was opened
-	 * instead, else null; and the undo history kept for this text, else
-	 * null. A document of unsaved text starts modified, with
-	 * {@code markSaved(-1)}, whatever its history.
+	 * A file for the editor: a document nobody else has yet, of its
+	 * journal's text when unsaved, else of the stored text, with the
+	 * undo history kept for that text; the revision of the stored text
+	 * it is based on, null for none; the revision of the journal it came
+	 * from, -1 for none; and why its journal could not be read, so the
+	 * stored text was opened instead, else null. A document of unsaved
+	 * text starts modified, whatever its history. It is made on the
+	 * worker, so a device without the memory for it is told there.
 	 */
-	public record Opened(Text text, boolean unsaved, String revision,
-			int journal, long bytes, String unreadable,
-			Document.History history) implements Opening {
+	public record Opened(Document document, boolean unsaved,
+			String revision, int journal, String unreadable)
+			implements Opening {
+		public Text text() {
+			return document.text();
+		}
 	}
 
 	/**
@@ -423,18 +426,25 @@ public final class FileTexts {
 		return journal.snapshot(flush.header(), flush.to(), flush.text());
 	}
 
-	// Return opened with the history kept for its text, if there is one.
+	// Give the document of opened the history kept for its text, if
+	// there is one. Only where the text came from tells whether it is
+	// saved.
 	private Opening withHistory(ProjectPath path, Opening opening) {
-		if (!(opening instanceof Opened opened) || !histories.has(path)) {
+		if (!(opening instanceof Opened opened)) {
 			return opening;
 		}
-		String hash = Histories.hash(opened.text());
+		Document document = opened.document();
+		String hash = histories.has(path)
+				? Histories.hash(document.text())
+				: null;
 		Document.History kept = hash != null
 				? histories.read(path, hash)
 				: null;
-		return kept == null ? opened : new Opened(opened.text(),
-				opened.unsaved(), opened.revision(), opened.journal(),
-				opened.bytes(), opened.unreadable(), kept);
+		if (kept != null) {
+			document.restore(kept);
+		}
+		document.markSaved(opened.unsaved() ? -1 : document.state());
+		return opened;
 	}
 
 	// Return the text recovered from the journal of path.
@@ -443,9 +453,9 @@ public final class FileTexts {
 		if (recovered.tooLarge()) {
 			return tooLarge(path, null, null);
 		}
-		return new Opened(recovered.text(), true, recovered.header().base(),
-				recovered.revision(), Document.bytes(recovered.text()), null,
-				null);
+		Text text = recovered.text();
+		return new Opened(new Document(text, Document.bytes(text)), true,
+				recovered.header().base(), recovered.revision(), null);
 	}
 
 	// Return the stored text of path, telling unreadable, why its
@@ -478,8 +488,8 @@ public final class FileTexts {
 			return new Unopened(path + " is not a text file", unreadable,
 					Found.NOT_TEXT, content.revision());
 		}
-		return new Opened(text, false, content.revision(), -1,
-				Document.bytes(text), unreadable, null);
+		return new Opened(new Document(text, Document.bytes(text)), false,
+				content.revision(), -1, unreadable);
 	}
 
 	// Return the text of bytes, or null when they are not text the

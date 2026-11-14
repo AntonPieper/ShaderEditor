@@ -1176,6 +1176,31 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void noOneIsHandedAProjectAnotherCallerClosed() throws IOException {
+		write("a.glsl", "stored");
+		LiveProjects live = live();
+		List<OpenProject> opened = new ArrayList<>();
+		List<String> loaded = new ArrayList<>();
+
+		// Both ask before it is open; the first closes what it gets.
+		live.open(id, this::folder, project -> {
+			opened.add(project);
+			project.close();
+		});
+		live.open(id, this::folder, project -> {
+			opened.add(project);
+			project.load(path("a.glsl"), ProjectFiles.UNKNOWN,
+					problem -> loaded.add(project.document(path("a.glsl"))
+							.text().toString()));
+		});
+		settle();
+
+		assertEquals(2, opened.size());
+		assertNotSame(opened.get(0), opened.get(1));
+		assertEquals(List.of("stored"), loaded);
+	}
+
+	@Test
 	public void sessionWhoseFilesAreGoneOpensWithItsDrafts()
 			throws IOException {
 		OpenProject project = open();
@@ -2135,6 +2160,31 @@ public class OpenProjectTest {
 		assertSame(shown, project.document(b));
 		assertNotSame(told.get(0), shown);
 		assertTrue(used(project) <= budget);
+	}
+
+	@Test
+	public void documentStaysUntilEveryoneWhoAskedForItWasTold()
+			throws IOException {
+		budget = 0;
+		OpenProject project = open();
+		shown(project, "b.glsl", "b");
+		write("a.glsl", "larger than the budget");
+		ProjectPath a = path("a.glsl");
+		List<Document> told = new ArrayList<>();
+
+		// The first to be told shows another file before using it.
+		project.load(a, ProjectFiles.UNKNOWN, problem -> {
+			project.show(path("b.glsl"));
+			told.add(project.document(a));
+		});
+		project.load(a, ProjectFiles.UNKNOWN,
+				problem -> told.add(project.document(a)));
+		settle();
+
+		assertEquals(2, told.size());
+		assertNotNull(told.get(0));
+		assertSame(told.get(0), told.get(1));
+		assertNull(project.document(a));
 	}
 
 	@Test

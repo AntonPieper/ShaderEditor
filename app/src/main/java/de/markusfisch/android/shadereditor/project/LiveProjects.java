@@ -74,7 +74,7 @@ final class LiveProjects {
 			try {
 				opened[0] = open(id, opener);
 			} finally {
-				main.execute(() -> publish(id, opened[0]));
+				main.execute(() -> publish(id, opener, opened[0]));
 			}
 		});
 	}
@@ -93,7 +93,7 @@ final class LiveProjects {
 				sessions, worker, main, later, budget);
 	}
 
-	private void publish(String id, OpenProject project) {
+	private void publish(String id, Opener opener, OpenProject project) {
 		List<FileTexts.Callback<OpenProject>> joined = opening.remove(id);
 		if (project != null) {
 			live.put(id, project);
@@ -104,7 +104,13 @@ final class LiveProjects {
 			});
 		}
 		for (FileTexts.Callback<OpenProject> done : joined) {
-			done.done(project);
+			// One told before may have closed it: nobody is handed a
+			// closed project as the one they opened.
+			if (project != null && live.get(id) != project) {
+				open(id, opener, done);
+			} else {
+				done.done(project);
+			}
 		}
 	}
 }
