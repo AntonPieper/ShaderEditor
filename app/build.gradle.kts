@@ -2,6 +2,12 @@ plugins {
 	alias(libs.plugins.android.application)
 }
 
+// Languages of the app's own translations (the values-* folders in
+// src/main/res, English being values). Libraries ship strings for about 85
+// languages; only these are packaged. Add a new translation here too;
+// LocaleFiltersTest fails when one is missing.
+val appLocales = listOf("en", "ru", "uk", "zh", "zh-rTW")
+
 android {
 	namespace = "de.markusfisch.android.shadereditor"
 
@@ -37,6 +43,16 @@ android {
 			isMinifyEnabled = true
 			isShrinkResources = true
 			signingConfig = signingConfigs["release"]
+		}
+	}
+
+	androidResources {
+		localeFilters += appLocales
+	}
+
+	testOptions {
+		unitTests.all {
+			it.systemProperty("app.locales", appLocales.joinToString(","))
 		}
 	}
 
