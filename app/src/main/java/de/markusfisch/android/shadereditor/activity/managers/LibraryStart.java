@@ -20,6 +20,7 @@ import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.LibraryMove;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
 
 /**
@@ -38,8 +39,14 @@ public final class LibraryStart {
 		/** The library is open, as the session key. */
 		void onLibrary(@NonNull String key);
 
-		/** Show the file at path of the library, known by key. */
-		void onShow(@NonNull String key, @NonNull ProjectPath path);
+		/**
+		 * Show the file at path of the folder opened before with key:
+		 * the library, or the folder the editor showed a file of last.
+		 *
+		 * @param single whether that is a single file, not a folder
+		 */
+		void onShow(@NonNull String key, @NonNull ProjectPath path,
+				boolean single);
 
 		/** The library has no file to show. */
 		void onEmpty(@NonNull String key);
@@ -168,7 +175,9 @@ public final class LibraryStart {
 				: null;
 	}
 
-	// The file the library showed last, else its newest file.
+	// The file the editor showed last: of another folder when that was
+	// open last, else the file the library showed last, else its newest
+	// file.
 	private void show(@NonNull Projects.Opened opened) {
 		OpenProject project = opened.project();
 		String key = opened.id();
@@ -177,18 +186,30 @@ public final class LibraryStart {
 		}
 		listener.onLibrary(key);
 		ProjectPath shown = project.shown();
-		if (shown != null) {
-			listener.onShow(key, shown);
-			return;
-		}
+		ProjectSessions sessions = projects.sessions();
 		try {
 			listing.execute(() -> {
-				ProjectPath newest = newest(project.list(null));
+				String last = sessions.last();
+				ProjectPath other = last != null && !last.equals(key)
+						? sessions.shown(last)
+						: null;
+				ProjectSessions.Recent recent = other != null
+						? sessions.recent(last)
+						: null;
+				boolean single = recent != null && recent.locator().kind() ==
+						ProjectSessions.Kind.DOCUMENT;
+				ProjectPath newest = other == null && shown == null
+						? newest(project.list(null))
+						: null;
 				handler.post(() -> {
 					if (destroyed) {
 						return;
+					} else if (other != null) {
+						listener.onShow(last, other, single);
+					} else if (shown != null) {
+						listener.onShow(key, shown, false);
 					} else if (newest != null) {
-						listener.onShow(key, newest);
+						listener.onShow(key, newest, false);
 					} else {
 						listener.onEmpty(key);
 					}
