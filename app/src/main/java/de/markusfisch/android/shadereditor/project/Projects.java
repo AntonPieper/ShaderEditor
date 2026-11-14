@@ -185,8 +185,20 @@ public final class Projects {
 	public void redoLibraryMove(DataSource database, Set<String> reserved,
 			String untitled, LibraryMove.Chosen chosen,
 			Callback<Redone> done) {
-		Locator locator = libraryLocator();
-		String id = locator != null ? sessions.find(locator) : null;
+		// The library's session is looked up on the queue, which reads
+		// the disk; what is open only main knows.
+		QUEUE.execute(() -> {
+			Locator locator = libraryLocator();
+			String id = locator != null ? sessions.find(locator) : null;
+			main.post(() -> redo(id, database, reserved, untitled, chosen,
+					done));
+		});
+	}
+
+	// On main, with the library's session id, null when it has none.
+	private void redo(String id, DataSource database, Set<String> reserved,
+			String untitled, LibraryMove.Chosen chosen,
+			Callback<Redone> done) {
 		// An opening that was asked for and has not come to a session
 		// yet counts: it would get the folder that is put aside.
 		if (live().busy() || (id != null && live().isOpen(id))) {
