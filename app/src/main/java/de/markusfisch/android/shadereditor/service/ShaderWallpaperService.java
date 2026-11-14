@@ -7,6 +7,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Handler;
 import android.os.Looper;
 import android.service.wallpaper.WallpaperService;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.widget.Toast;
@@ -27,6 +28,8 @@ import de.markusfisch.android.shadereditor.receiver.BatteryLevelReceiver;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
 public class ShaderWallpaperService extends WallpaperService {
+	private static final String TAG = "ShaderWallpaper";
+
 	private static ShaderWallpaperEngine engine;
 
 	private ComponentName batteryLevelComponent;
@@ -69,7 +72,7 @@ public class ShaderWallpaperService extends WallpaperService {
 		private ShaderWallpaperView view;
 		private long runtimeShaderId;
 		// GL thread only.
-		private String shownWarnings = "";
+		private String shownDiagnostics = "";
 
 		@Override
 		public void onSharedPreferenceChanged(
@@ -88,7 +91,7 @@ public class ShaderWallpaperService extends WallpaperService {
 				@Override
 				public void onDiagnostics(
 						@NonNull List<ProjectDiagnostic> diagnostics) {
-					showWarnings(diagnostics);
+					showDiagnostics(diagnostics);
 				}
 
 				@Override
@@ -187,23 +190,23 @@ public class ShaderWallpaperService extends WallpaperService {
 			}
 		}
 
-		// A wallpaper has no place to list diagnostics, so it shows what
-		// it cannot provide in a toast, once until that changes.
-		private void showWarnings(@NonNull List<ProjectDiagnostic> diagnostics) {
-			var warnings = new StringBuilder();
-			for (var diagnostic : diagnostics) {
-				if (diagnostic.severity() == ProjectDiagnostic.Severity.WARNING) {
-					if (warnings.length() > 0) {
-						warnings.append('\n');
-					}
-					warnings.append(diagnostic.message());
-				}
-			}
-			String text = warnings.toString();
-			if (text.equals(shownWarnings)) {
+		// A wallpaper has no place to list diagnostics, so it shows them in
+		// a toast, once until they change. On an error the engine keeps
+		// drawing the last shader that worked, or draws nothing; the
+		// errors are logged too.
+		private void showDiagnostics(
+				@NonNull List<ProjectDiagnostic> diagnostics) {
+			String text = WallpaperDiagnostics.text(diagnostics);
+			if (text.equals(shownDiagnostics)) {
 				return;
 			}
-			shownWarnings = text;
+			shownDiagnostics = text;
+			for (var diagnostic : diagnostics) {
+				if (diagnostic.severity() == ProjectDiagnostic.Severity.ERROR) {
+					Log.e(TAG, diagnostic.location() + ": " +
+							diagnostic.message());
+				}
+			}
 			if (!text.isEmpty()) {
 				mainHandler.post(() -> Toast.makeText(ShaderWallpaperService.this,
 						text, Toast.LENGTH_LONG).show());
