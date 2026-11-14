@@ -186,8 +186,11 @@ public final class ProjectFileManager {
 		if (ask != asked || destroyed || problem == null) {
 			return;
 		}
-		listener.onFailed(activity.getString(R.string.file_cannot_open,
-				path.toString(), problem));
+		// A reason that names the file says enough by itself.
+		listener.onFailed(problem.startsWith(path + " ")
+				? problem
+				: activity.getString(R.string.file_cannot_open,
+						path.toString(), problem));
 		if (!tapped) {
 			listener.onGone();
 		}

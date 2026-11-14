@@ -100,13 +100,22 @@ final class PassGraph {
 		if (graph.entry == null) {
 			return graph;
 		} else if (graph.entry.source == null) {
-			graph.error(entry, 0, graph.entry.problem);
+			graph.error(entry, 0, about(entry, graph.entry.problem));
 		} else if (!graph.entry.entryPoint) {
-			graph.error(entry, 0, entry + " defines no " +
+			graph.error(entry, 0, "defines no " +
 					graph.entry.language.entryPoint() + ", so it cannot run");
 		}
 		graph.validate();
 		return graph;
+	}
+
+	// A problem of the file that runs is located at it, so it does not
+	// name it again; a database shader is shown without a file at all.
+	private static String about(ProjectPath file, String problem) {
+		String named = file + " ";
+		return problem.startsWith(named)
+				? problem.substring(named.length())
+				: problem;
 	}
 
 	private Node node(ProjectPath file, ProjectPath from, int line) {
