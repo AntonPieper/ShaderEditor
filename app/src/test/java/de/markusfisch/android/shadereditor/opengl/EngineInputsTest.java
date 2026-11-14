@@ -26,13 +26,13 @@ public class EngineInputsTest {
 	public void resizeReportsOnlyChangedRenderSizes() {
 		var inputs = new EngineInputs();
 		inputs.restart(.5f, 0L);
-		assertTrue(inputs.resize(1080, 1920, 0L));
+		assertTrue(inputs.resize(1080, 1920));
 		assertEquals(540, inputs.getRenderWidth());
 		assertEquals(960, inputs.getRenderHeight());
-		assertFalse(inputs.resize(1080, 1920, 0L));
+		assertFalse(inputs.resize(1080, 1920));
 		inputs.restart(1f, 0L);
 		assertEquals(1080, inputs.getRenderWidth());
-		assertFalse(inputs.resize(1080, 1920, 0L));
+		assertFalse(inputs.resize(1080, 1920));
 
 		var in = inputs.capture(0L, 3f);
 		assertEquals(1080, in.surfaceWidth);
@@ -41,10 +41,13 @@ public class EngineInputsTest {
 		assertEquals(1920f, in.height, 0f);
 	}
 
+	// The clock restarts with the histories, which a resize keeps when
+	// no target changes its size.
 	@Test
-	public void clockRestartsOnResizeAndCountsFrames() {
+	public void clockRestartsWhenToldNotOnResizeAndCountsFrames() {
 		var inputs = new EngineInputs();
-		inputs.resize(100, 100, 1000000000L);
+		inputs.resize(100, 100);
+		inputs.restart(1000000000L);
 		var in = inputs.capture(1500000000L, 3f);
 		assertEquals(.5f, in.time, EPSILON);
 		assertEquals(0, in.frame);
@@ -52,11 +55,16 @@ public class EngineInputsTest {
 		assertEquals(1, inputs.capture(1600000000L, 3f).frame);
 		assertEquals(.1f, in.runtime, EPSILON);
 
-		inputs.resize(100, 100, 2000000000L);
+		assertFalse(inputs.resize(100, 100));
+		in = inputs.capture(1700000000L, 3f);
+		assertEquals(2, in.frame);
+		assertEquals(.7f, in.time, EPSILON);
+
+		inputs.restart(2000000000L);
 		in = inputs.capture(2000000000L, 3f);
 		assertEquals(0, in.frame);
 		assertEquals(0f, in.time, 0f);
-		assertEquals(.1f, in.runtime, EPSILON);
+		assertEquals(.2f, in.runtime, EPSILON);
 	}
 
 	// A drawing, B set: A keeps its clock while B decodes or when B
@@ -88,7 +96,7 @@ public class EngineInputsTest {
 	@Test
 	public void touchIsScaledToTheRenderTarget() {
 		var inputs = new EngineInputs();
-		inputs.resize(200, 400, 0L);
+		inputs.resize(200, 400);
 		inputs.restart(.5f, 0L);
 
 		inputs.post(touch(MotionEvent.ACTION_DOWN, 20f, 40f, 5f));
@@ -121,7 +129,7 @@ public class EngineInputsTest {
 	@Test
 	public void inputPostedFromAnotherThreadAppearsInTheNextFrame() throws Exception {
 		var inputs = new EngineInputs();
-		inputs.resize(100, 100, 0L);
+		inputs.resize(100, 100);
 		var poster = new Thread(() -> {
 			inputs.post(touch(MotionEvent.ACTION_DOWN, 1f, 2f, 3f, 4f, 5f, 6f));
 			inputs.postOffset(.25f, .5f);
@@ -139,7 +147,7 @@ public class EngineInputsTest {
 	@Test
 	public void twoPostsBetweenFramesLeaveTheLast() {
 		var inputs = new EngineInputs();
-		inputs.resize(100, 100, 0L);
+		inputs.resize(100, 100);
 		inputs.postOffset(.1f, .2f);
 		inputs.postOffset(.3f, .4f);
 		inputs.post(touch(MotionEvent.ACTION_DOWN, 1f, 1f, 1f, 2f, 2f, 2f));
@@ -156,7 +164,7 @@ public class EngineInputsTest {
 	@Test
 	public void pointerCountNeverDisagreesWithThePointers() throws Exception {
 		var inputs = new EngineInputs();
-		inputs.resize(100, 100, 0L);
+		inputs.resize(100, 100);
 		var touches = new EngineInputs.Touch[FrameInputs.MAX_POINTERS];
 		for (int count = 1; count <= touches.length; ++count) {
 			float[] pointers = new float[count * 3];
@@ -193,7 +201,7 @@ public class EngineInputsTest {
 	@Test
 	public void qualityAndRenderSizeChangeTogether() throws Exception {
 		var inputs = new EngineInputs();
-		inputs.resize(800, 800, 0L);
+		inputs.resize(800, 800);
 		inputs.post(touch(MotionEvent.ACTION_DOWN, 100f, 100f, 1f));
 		var done = new AtomicBoolean();
 		var poster = new Thread(() -> {
