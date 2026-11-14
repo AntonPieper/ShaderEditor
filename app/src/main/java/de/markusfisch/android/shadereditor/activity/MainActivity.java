@@ -423,10 +423,19 @@ public class MainActivity extends AppCompatActivity {
 				onChanged();
 			}
 
+			// What comes next is the library's last shader, until there
+			// is a screen for no file open.
 			@Override
-			public void onNotRestored() {
+			public void onGone() {
 				shaderManager.selectShader(
 						ShaderEditorApp.preferences.getLastOpenedShader());
+			}
+
+			@Override
+			public void onMoved(@NonNull String key) {
+				if (shaderListManager instanceof NavigationDrawer drawer) {
+					drawer.reread(key);
+				}
 			}
 
 			@Override

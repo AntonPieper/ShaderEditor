@@ -117,7 +117,8 @@ public final class ProjectFile implements OpenItem {
 
 	@Override
 	public boolean can(@NonNull Action action) {
-		return action == Action.SAVE || action == Action.RUN_THIS_FILE &&
+		return action == Action.SAVE || action == Action.DELETE && !single ||
+				action == Action.RUN_THIS_FILE &&
 				!path.equals(project.running()) &&
 				project.runs(path) == OpenProject.Runs.YES;
 	}
@@ -125,8 +126,8 @@ public final class ProjectFile implements OpenItem {
 	// Run this file only when it can run and does not.
 	@Override
 	public boolean offers(@NonNull Action action) {
-		return action == Action.SAVE || action == Action.RUN_THIS_FILE &&
-				can(action);
+		return action == Action.SAVE || action == Action.DELETE && !single ||
+				action == Action.RUN_THIS_FILE && can(action);
 	}
 
 	@Override
@@ -177,8 +178,20 @@ public final class ProjectFile implements OpenItem {
 	public void saveCopy() {
 	}
 
+	// With the project, which asks before unsaved text goes; the
+	// editor closes once the project says it is deleted.
 	@Override
 	public void delete() {
+		if (!can(Action.DELETE)) {
+			return;
+		}
+		Deleting.delete(context, project, path, moved -> {
+			if (moved instanceof OpenProject.Refused refused) {
+				listener.onFailed(context.getString(
+						R.string.nav_cannot_delete, path.getFileName(),
+						refused.reason()));
+			}
+		});
 	}
 
 	@Override

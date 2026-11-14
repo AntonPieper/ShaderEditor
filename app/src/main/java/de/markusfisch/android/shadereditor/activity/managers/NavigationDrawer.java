@@ -390,6 +390,16 @@ public class NavigationDrawer implements ShaderList {
 				NewSheet.Kind.SHADER);
 	}
 
+	/**
+	 * Reads the folders of the folder opened before with key again, as
+	 * files of it were renamed or deleted.
+	 */
+	public void reread(@NonNull String key) {
+		if (folder != null && folder.key().equals(key)) {
+			folder.forget();
+		}
+	}
+
 	@Override
 	public void destroy() {
 		if (sheet != null) {
