@@ -1,0 +1,16 @@
+<!-- Material Symbols arrow_drop_down, cropped to 16 dp wide for the
+quality chip, where the room is the toolbar title's -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+	android:width="16dp"
+	android:height="24dp"
+	android:tint="?attr/colorControlNormal"
+	android:viewportWidth="640"
+	android:viewportHeight="960">
+	<group
+		android:translateX="-160"
+		android:translateY="960">
+		<path
+			android:fillColor="@android:color/white"
+			android:pathData="M480-360 280-560h400L480-360Z" />
+	</group>
+</vector>
