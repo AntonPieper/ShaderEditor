@@ -111,6 +111,7 @@ public class ShaderEditor extends LineNumberEditText {
 	private int updateDelay = 1000;
 	@NonNull
 	private List<ProjectDiagnostic> shaderErrors = Collections.emptyList();
+	private boolean highlightErrorsAfterLayout;
 	private boolean isUserInteraction = true;
 	private int colorError;
 	private int colorWarning;
@@ -247,15 +248,32 @@ public class ShaderEditor extends LineNumberEditText {
 		clearSpans(e, 0, e.length(), BackgroundColorSpan.class);
 	}
 
+	@Override
+	protected void onLayout(boolean changed, int left, int top, int right,
+			int bottom) {
+		super.onLayout(changed, left, top, right, bottom);
+		if (highlightErrorsAfterLayout && getLayout() != null) {
+			highlightErrorsAfterLayout = false;
+			// Not here: changing spans during a layout pass asks for another.
+			post(this::updateErrorHighlighting);
+		}
+	}
+
 	private void highlightErrors(List<ProjectDiagnostic> shaderErrors) {
 		Spannable e = getText();
 		clearError(e);
 		if (e == null || e.length() == 0) {
 			return;
 		}
+		// Errors can arrive before the first layout pass; mark them then.
+		Layout layout = getLayout();
+		if (layout == null) {
+			highlightErrorsAfterLayout = true;
+			return;
+		}
+		highlightErrorsAfterLayout = false;
 		for (ProjectDiagnostic shaderError : shaderErrors) {
 			int line = shaderError.line() - 1;
-			Layout layout = getLayout();
 			if (line < 0 || line >= layout.getLineCount()) {
 				continue;
 			}
