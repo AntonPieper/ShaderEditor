@@ -146,6 +146,29 @@ public class ShaderSwapTest {
 		assertFalse(c.released);
 	}
 
+	// An edit that fails leaves the last picture that worked, and says
+	// so; once a newer one is drawn, it is that one's again.
+	@Test
+	public void aFailedRevisionIsReportedOverTheLastPictureThatWorked() {
+		buildAndSwap("a");
+		assertFalse(swap.showsEarlier(swap.currentRevision()));
+		swap.offer("broken");
+		var broken = swap.take();
+		swap.failed(broken);
+		assertTrue(swap.showsEarlier(broken));
+		buildAndSwap("c");
+		assertFalse(swap.showsEarlier(swap.currentRevision()));
+	}
+
+	// Nothing that draws is not an earlier picture.
+	@Test
+	public void aFailureWithNothingDrawnIsNotTheLastPicture() {
+		swap.offer("broken");
+		var broken = swap.take();
+		swap.failed(broken);
+		assertFalse(swap.showsEarlier(broken));
+	}
+
 	// R02: B waits for its images when a newer C fails to compile.
 	@Test
 	public void waitingBuildDoesNotSurviveANewerShaderThatFails() {

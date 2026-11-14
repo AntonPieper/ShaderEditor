@@ -28,6 +28,12 @@ public final class ShaderEngine {
 		// Called on the GL thread; empty when the shader built.
 		void onDiagnostics(@NonNull List<ProjectDiagnostic> diagnostics);
 
+		// Called on the GL thread before onDiagnostics: whether the
+		// picture drawn is an earlier revision's, the last that worked,
+		// while the diagnostics are of a newer one that did not.
+		default void onLastPicture(boolean shown) {
+		}
+
 		void onFramesPerSecond(int fps);
 	}
 
@@ -467,7 +473,8 @@ public final class ShaderEngine {
 			@Nullable ShaderSwap.Revision<Offer> revision,
 			@NonNull List<ProjectDiagnostic> errors) {
 		if (revision != null && shaders.report(revision)) {
-			submitErrors(revision.shader().reporting().locate(errors));
+			submitErrors(revision.shader().reporting().locate(errors),
+					shaders.showsEarlier(revision));
 		}
 	}
 
@@ -494,8 +501,14 @@ public final class ShaderEngine {
 	}
 
 	private void submitErrors(@NonNull List<ProjectDiagnostic> errors) {
+		submitErrors(errors, false);
+	}
+
+	private void submitErrors(@NonNull List<ProjectDiagnostic> errors,
+			boolean lastPicture) {
 		var listener = this.listener;
 		if (listener != null) {
+			listener.onLastPicture(lastPicture);
 			listener.onDiagnostics(errors);
 		}
 	}

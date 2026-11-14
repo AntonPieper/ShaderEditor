@@ -26,6 +26,10 @@ public class ShaderViewManager {
 
 		void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog);
 
+		// Before onInfoLog: whether the picture is the last that worked
+		// while infoLog is of a newer build that did not.
+		void onLastPicture(boolean shown);
+
 		void onQualityChanged(float quality);
 	}
 
@@ -165,6 +169,11 @@ public class ShaderViewManager {
 			@Override
 			public void onFramesPerSecond(int fps) {
 				listener.onFramesPerSecond(fps);
+			}
+
+			@Override
+			public void onLastPicture(boolean shown) {
+				listener.onLastPicture(shown);
 			}
 
 			@Override

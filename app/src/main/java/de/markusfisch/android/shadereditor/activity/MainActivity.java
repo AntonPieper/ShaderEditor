@@ -676,6 +676,11 @@ public class MainActivity extends AppCompatActivity {
 			}
 
 			@Override
+			public void onLastPicture(boolean shown) {
+				runOnUiThread(() -> editorFragment.setShowsLastPicture(shown));
+			}
+
+			@Override
 			public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
 				runOnUiThread(() -> {
 					if (open instanceof ProjectFile file) {
