@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.project.HostDirective.Input;
 import de.markusfisch.android.shadereditor.project.HostDirective.Target;
+import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
 
 /**
  * The host directives of one assembled pass file: {@code #pragma se
@@ -38,8 +39,11 @@ public record HostDirectives(
 	public record Reference(ProjectPath path, ProjectPath file, int line) {
 	}
 
-	private static final Set<String> SAMPLER_TYPES = Set.of(
-			"sampler2D", "samplerCube", "samplerExternalOES");
+	// The GLSL types an input can be declared with.
+	private static final Map<String, TextureKind> SAMPLER_TYPES = Map.of(
+			"sampler2D", TextureKind.FLAT,
+			"samplerCube", TextureKind.CUBE,
+			"samplerExternalOES", TextureKind.EXTERNAL);
 	// What GLSL reads as whitespace besides the space and line ends.
 	private static final String WHITESPACE = "\t\u000b\f\r";
 	private static final Set<String> PRECISIONS = Set.of(
@@ -57,15 +61,14 @@ public record HostDirectives(
 	}
 
 	/**
-	 * Parse the host directives of an assembled pass file. reserved are
-	 * the GLSL types of the engine's builtin uniforms by name: an input
-	 * with a path cannot use one, an input without a path must name an
-	 * engine sampler of its type.
+	 * Parse the host directives of an assembled pass file. Of the
+	 * engine's builtins, an input with a path cannot use one, and an
+	 * input without a path must name a sampler and declare its type.
 	 */
 	public static HostDirectives parse(
 			SourceAssembly assembly,
-			Map<String, String> reserved) {
-		Parser parser = new Parser(assembly, reserved);
+			Builtins builtins) {
+		Parser parser = new Parser(assembly, builtins);
 		parser.run();
 		List<ProjectDiagnostic> diagnostics =
 				new ArrayList<>(assembly.diagnostics());
@@ -78,12 +81,22 @@ public record HostDirectives(
 		return lines.isEmpty() ? "" : String.join("\n", lines) + "\n";
 	}
 
+	/** Return the GLSL type a texture read as kind is declared with. */
+	static String keyword(TextureKind kind) {
+		for (Map.Entry<String, TextureKind> type : SAMPLER_TYPES.entrySet()) {
+			if (type.getValue() == kind) {
+				return type.getKey();
+			}
+		}
+		throw new IllegalArgumentException(String.valueOf(kind));
+	}
+
 	private record Declaration(String type, String name) {
 	}
 
 	private static final class Parser {
 		private final List<SourceAssembly.Line> source;
-		private final Map<String, String> reserved;
+		private final Builtins builtins;
 		private final List<String> lines;
 		private final List<Input> inputs = new ArrayList<>();
 		private final List<Reference> references = new ArrayList<>();
@@ -91,9 +104,9 @@ public record HostDirectives(
 		private Target target;
 		private int targetLine;
 
-		private Parser(SourceAssembly assembly, Map<String, String> reserved) {
+		private Parser(SourceAssembly assembly, Builtins builtins) {
 			source = assembly.source();
-			this.reserved = reserved;
+			this.builtins = builtins;
 			lines = new ArrayList<>(assembly.lines());
 		}
 
@@ -223,23 +236,24 @@ public record HostDirectives(
 				error(at, "A file is read as sampler2D or samplerCube, " +
 						"not " + type);
 			}
-			String builtin = reserved.get(name);
-			if (source == null && builtin != null &&
-					builtin.startsWith("sampler") && !builtin.equals(type)) {
+			TextureKind texture = SAMPLER_TYPES.get(type);
+			TextureKind sampler = builtins.samplers().get(name);
+			if (source == null && sampler != null && sampler != texture) {
+				String builtin = keyword(sampler);
 				error(at, name + " is an engine sampler of type " + builtin +
 						", declare it as uniform " + builtin + " " + name);
-			} else if (source == null && !type.equals(builtin)) {
+			} else if (source == null && sampler == null) {
 				error(at, name + " is not an engine sampler, add a path " +
 						"such as #pragma se input \"assets/" + name +
 						".png\"");
-			} else if (source != null && builtin != null) {
+			} else if (source != null && builtins.names().contains(name)) {
 				error(at, name + " is reserved for a builtin uniform, " +
 						"rename the uniform to bind " + source);
 			}
 			if (diagnostics.size() > errors) {
 				return false;
 			}
-			inputs.add(new Input(parsed.file(), parsed.line(), name, type,
+			inputs.add(new Input(parsed.file(), parsed.line(), name, texture,
 					source, parsed.frame(), parsed.min(), parsed.mag(),
 					parsed.mipmap(), parsed.wrapS(), parsed.wrapT()));
 			return true;
@@ -311,7 +325,7 @@ public record HostDirectives(
 			if (type.equals("struct")) {
 				error(at, "Struct uniforms cannot be inputs, " + SHAPE);
 				return null;
-			} else if (!SAMPLER_TYPES.contains(type)) {
+			} else if (!SAMPLER_TYPES.containsKey(type)) {
 				error(at, "An input needs a sampler2D or samplerCube " +
 						"uniform, not '" + type + "', " + SHAPE);
 				return null;

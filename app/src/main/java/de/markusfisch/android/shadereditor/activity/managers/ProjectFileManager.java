@@ -234,7 +234,7 @@ public final class ProjectFileManager {
 		OpenProject project = shown.getProject();
 		built = project;
 		builtEntry = project.running();
-		project.prepare(UniformTable.types(), prepared -> {
+		project.prepare(UniformTable.builtins(), prepared -> {
 			ProjectFile now = file;
 			if (now == null || now.getProject() != project) {
 				return;

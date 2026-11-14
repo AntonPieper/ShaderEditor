@@ -12,6 +12,8 @@ Cost of making a place neutral now: **trivial** (wording, a rename), **small** (
 
 The project format weighs highest, because files on users' storage cannot be changed by an app update.
 
+Sections 1 to 7 describe the code and documents as they were audited. The Status column of section 8 says what has been changed since, and how.
+
 ## 1. Project format (SPEC.md)
 
 | # | Where | What is assumed | Seam or leak | What another language or backend needs | Cost now |
@@ -129,7 +131,7 @@ Ordered by what a release would make expensive.
 | --- | --- | --- | --- | --- |
 | 1 | **F4** Reserve the names of other shading languages in the table, and say that an include is in the language of its includer (F5) | The only place where waiting changes the meaning of files that are valid today. After a release it costs `projectVersion` 2 | small | open |
 | 2 | **F1, F2, F3, F5, F6, F10, F14** Say in SPEC what is the format (directive text, options, sources, sampling, targets, the graph) and what is GLSL's way of writing it (carrier, declaration, entry point, include spelling) | The document is what a later reader, and a later language, is held to. Words only | trivial | done: SPEC terms, 2.1, 3, 3.2, 8, 10 and 13 |
-| 3 | **P1, P2, P4** The plan and `prepare` carry no GLSL names: how a texture is read instead of a type keyword, the lines that stay first instead of the version line, builtins without keywords | The plan is the contract between preparation and every engine, and all hosts call `prepare`. Each is a rename or a small type today and a migration once a second engine reads the plan | small | open |
+| 3 | **P1, P2, P4** The plan and `prepare` carry no GLSL names: how a texture is read instead of a type keyword, the lines that stay first instead of the version line, builtins without keywords | The plan is the contract between preparation and every engine, and all hosts call `prepare`. Each is a rename or a small type today and a migration once a second engine reads the plan | small | done: `RenderPlan.Input.texture` is a `TextureKind` (flat, cube, external) that `HostDirectives` maps from the GLSL type; `RenderPlan.Program.head` counts the lines that stay first; `prepare` takes `Builtins` (names, and how the samplers are read) from `UniformTable.builtins()` |
 | 4 | **P5, P6** One place reads a file in its language, chosen through the `ShaderLanguage` table; the pass graph and `runs(path)` ask it | Roles are decided in the graph. While it reads GLSL itself, every later rule about roles is written against GLSL | small | open |
 
 ## 9. Ranked: what to leave, and what would change that

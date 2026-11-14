@@ -29,7 +29,7 @@ public class HostDirectiveTest {
 		assertEquals(path("shaders/main.frag"), input.file());
 		assertEquals(3, input.line());
 		assertNull(input.uniform());
-		assertNull(input.samplerType());
+		assertNull(input.texture());
 		assertNull(input.frame());
 		assertNull(input.min());
 		assertNull(input.mag());

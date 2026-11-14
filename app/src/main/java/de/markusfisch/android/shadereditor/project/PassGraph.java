@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
+import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
 
 /**
  * The pass files reachable from the running shader through shader
@@ -77,14 +78,14 @@ final class PassGraph {
 	private final Set<ProjectPath> pictures = new HashSet<>();
 	private final CapturedFiles files;
 	private final ProjectLimits limits;
-	private final Map<String, String> reserved;
+	private final Builtins builtins;
 	private boolean stopped;
 
 	private PassGraph(CapturedFiles files, ProjectPath entry,
-			ProjectLimits limits, Map<String, String> reserved) {
+			ProjectLimits limits, Builtins builtins) {
 		this.files = files;
 		this.limits = limits;
-		this.reserved = reserved;
+		this.builtins = builtins;
 		this.entry = node(entry, entry, 0);
 	}
 
@@ -92,8 +93,8 @@ final class PassGraph {
 			CapturedFiles files,
 			ProjectPath entry,
 			ProjectLimits limits,
-			Map<String, String> reserved) {
-		PassGraph graph = new PassGraph(files, entry, limits, reserved);
+			Builtins builtins) {
+		PassGraph graph = new PassGraph(files, entry, limits, builtins);
 		if (graph.entry == null) {
 			return graph;
 		} else if (graph.entry.directives == null) {
@@ -134,7 +135,7 @@ final class PassGraph {
 			return node;
 		}
 		node.assembly = SourceAssembly.assemble(files, file, limits);
-		node.directives = HostDirectives.parse(node.assembly, reserved);
+		node.directives = HostDirectives.parse(node.assembly, builtins);
 		// Not told for a file with errors of its own: they come first,
 		// and may be why no main is found.
 		node.main = mentions(node, MAIN) ||
@@ -208,11 +209,12 @@ final class PassGraph {
 						"to a picture, " + source + " is a pass and has " +
 						"no mipmaps");
 			}
-			if (input.samplerType() != null &&
-					!"sampler2D".equals(input.samplerType())) {
+			if (input.texture() != null &&
+					input.texture() != TextureKind.FLAT) {
 				error(input.file(), input.line(), "A pass is read as " +
-						"uniform sampler2D " + input.uniform() + ", not " +
-						input.samplerType());
+						"uniform " + HostDirectives.keyword(
+						TextureKind.FLAT) + " " + input.uniform() +
+						", not " + HostDirectives.keyword(input.texture()));
 			}
 		} else if (pictures.contains(source) && input.frame() != null) {
 			error(input.file(), input.line(), "frame= applies only to " +

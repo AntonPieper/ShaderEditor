@@ -15,8 +15,8 @@ import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.SensorSources.Gravity;
@@ -35,6 +35,8 @@ import de.markusfisch.android.shadereditor.opengl.SystemSources.Microphone;
 import de.markusfisch.android.shadereditor.opengl.SystemSources.NightMode;
 import de.markusfisch.android.shadereditor.opengl.SystemSources.Notifications;
 import de.markusfisch.android.shadereditor.opengl.SystemSources.PowerConnected;
+import de.markusfisch.android.shadereditor.project.Builtins;
+import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
 
 public final class UniformTable {
 	public static final String BACKBUFFER = "backbuffer";
@@ -174,15 +176,21 @@ public final class UniformTable {
 	private UniformTable() {
 	}
 
-	// The GLSL types of the builtins by name, which preparing a project
-	// reserves.
+	// The builtins as preparing a project asks about them: their names,
+	// and how the samplers among them are read.
 	@NonNull
-	public static Map<String, String> types() {
-		var types = new HashMap<String, String>();
+	public static Builtins builtins() {
+		var names = new HashSet<String>();
+		var samplers = new HashMap<String, TextureKind>();
 		for (var builtin : BUILTINS) {
-			types.put(builtin.getName(), builtin.getType().getKeyword());
+			names.add(builtin.getName());
+			if (builtin.getType() == SAMPLER_2D) {
+				samplers.put(builtin.getName(), TextureKind.FLAT);
+			} else if (builtin.getType() == SAMPLER_EXTERNAL_OES) {
+				samplers.put(builtin.getName(), TextureKind.EXTERNAL);
+			}
 		}
-		return types;
+		return new Builtins(names, samplers);
 	}
 
 	@NonNull

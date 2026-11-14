@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
+import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -47,7 +48,7 @@ final class PlanBindings {
 
 		@NonNull
 		Texture texture() {
-			return new Texture(image(), "samplerCube".equals(input.samplerType()));
+			return new Texture(image(), input.texture() == TextureKind.CUBE);
 		}
 
 		@NonNull

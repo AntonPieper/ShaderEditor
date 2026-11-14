@@ -13,11 +13,27 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.project.Builtins;
+import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
 
 public class UniformTableTest {
 	private static final float EPSILON = 1e-6f;
+
+	@Test
+	public void tellsPreparationTheNamesAndHowTheSamplersAreRead() {
+		Builtins builtins = UniformTable.builtins();
+		assertEquals(UniformTable.BUILTINS.size(), builtins.names().size());
+		assertTrue(builtins.names().contains("time"));
+		assertTrue(builtins.names().contains("backbuffer"));
+		// No type name of the shading language leaves the engine.
+		assertEquals(Map.of(
+				"backbuffer", TextureKind.FLAT,
+				"cameraBack", TextureKind.EXTERNAL,
+				"cameraFront", TextureKind.EXTERNAL), builtins.samplers());
+	}
 
 	static class RecordingOutput implements UniformOutput {
 		final List<String> calls = new ArrayList<>();

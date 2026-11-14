@@ -33,7 +33,7 @@ public class LegacyShaderConverterTest {
 			"sky", new LibraryTexture(true, 64, 96),
 			"cameraBack", new LibraryTexture(false, 8, 8),
 			"time", new LibraryTexture(false, 8, 8));
-	private static final Set<String> NAMES = BuiltinNames.ALL.keySet();
+	private static final Set<String> NAMES = BuiltinNames.ALL.names();
 	private static final String NOISE_DEFAULT =
 			"#pragma se input \"textures/noise.png\" " +
 					"min=nearest mag=linear wrap=repeat";

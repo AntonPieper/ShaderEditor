@@ -35,10 +35,16 @@ public record HostDirective(
 	public enum Mipmap {NONE, NEAREST, LINEAR}
 	public enum Wrap {CLAMP, REPEAT, MIRROR}
 	public enum Format {RGBA8, RGBA16F}
+	/**
+	 * How a texture is read: as one picture, as the six faces of a
+	 * cube, or as one the platform owns, such as a camera frame.
+	 */
+	public enum TextureKind {FLAT, CUBE, EXTERNAL}
 
 	/**
-	 * An input for {@code uniform samplerType uniform;}; both are null
-	 * until the input is attached to its declaration. A null source means
+	 * An input for the declaration of a texture named uniform; both
+	 * are null until the input is attached to its declaration. A null
+	 * source means
 	 * an engine sampler. {@code filter=} sets both min and mag, a single
 	 * {@code wrap=} value sets both axes.
 	 */
@@ -46,7 +52,7 @@ public record HostDirective(
 			ProjectPath file,
 			int line,
 			String uniform,
-			String samplerType,
+			TextureKind texture,
 			ProjectPath source,
 			Frame frame,
 			Filter min,

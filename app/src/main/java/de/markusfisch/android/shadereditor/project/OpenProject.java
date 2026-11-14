@@ -1415,7 +1415,7 @@ public final class OpenProject {
 	 * and keep the files it is made of as those of the last build. done
 	 * gets the preparation, or null when nothing runs.
 	 */
-	public void prepare(Map<String, String> reserved, Callback<Build> done) {
+	public void prepare(Builtins builtins, Callback<Build> done) {
 		persist();
 		int generation = this.generation;
 		ProjectPath entry = running;
@@ -1423,7 +1423,7 @@ public final class OpenProject {
 		worker.execute(() -> {
 			Preparation preparation = entry != null
 					? Preparation.prepare(edited, entry,
-							ProjectLimits.DEFAULT, reserved)
+							ProjectLimits.DEFAULT, builtins)
 					: null;
 			List<Used> read = new ArrayList<>();
 			if (preparation != null) {
