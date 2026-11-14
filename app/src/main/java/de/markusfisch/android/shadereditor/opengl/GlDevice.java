@@ -36,20 +36,17 @@ class GlDevice {
 	private int maxTextureUnits;
 	private int maxTextureSize;
 	private int maxCubemapSize;
-	@Nullable
-	private GlTexture2D emptyTexture2D;
-	@Nullable
-	private GlCubemap emptyCubemap;
-	@Nullable
-	private GlExternalTexture emptyExternalTexture;
+	// Names by EmptyTexture, 0 where the context has none.
+	private final int[] empties = new int[EmptyTexture.values().length];
 
 	private record ShaderCompileResult(
 			@Nullable GlShader shader,
 			@NonNull List<ProjectDiagnostic> infoLog) {
 	}
 
-	// Call once for every new context, before anything else.
-	void createContextResources() {
+	// Call once for every new context of this GLES major version, before
+	// anything else.
+	void createContextResources(int glesVersion) {
 		int[] units = new int[1];
 		GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_IMAGE_UNITS, units, 0);
 		maxTextureUnits = units[0];
@@ -58,38 +55,24 @@ class GlDevice {
 		GLES20.glGetIntegerv(GLES20.GL_MAX_CUBE_MAP_TEXTURE_SIZE, units, 0);
 		maxCubemapSize = units[0];
 
-		ByteBuffer black = ByteBuffer.allocateDirect(4);
-		black.put(3, (byte) 0xff);
-		emptyTexture2D = createTexture2D();
-		if (emptyTexture2D.isValid()) {
-			bindTexture(0, emptyTexture2D);
-			fillEmpty(GLES20.GL_TEXTURE_2D, black);
-			setNearest(GLES20.GL_TEXTURE_2D);
+		for (var kind : EmptyTexture.values()) {
+			empties[kind.ordinal()] = glesVersion >= kind.glesVersion
+					? createEmpty(kind)
+					: 0;
 		}
-		emptyCubemap = createCubemap();
-		if (emptyCubemap.isValid()) {
-			bindTexture(0, emptyCubemap);
-			for (int target : CUBE_MAP_TARGETS) {
-				fillEmpty(target, black);
-			}
-			setNearest(GLES20.GL_TEXTURE_CUBE_MAP);
-		}
-		// Without an image, an external texture samples as opaque black.
-		emptyExternalTexture = createExternalTexture();
 	}
 
-	// Gives every element of every active sampler an opaque black texture,
-	// so a unit nothing else binds never samples a leftover texture.
+	// Gives every element of every active sampler the empty texture of
+	// its kind, so a unit nothing else binds reads zero and never a
+	// leftover texture.
 	void bindEmptyTextures(@NonNull List<GlUniform> samplers) {
 		for (var sampler : samplers) {
-			GlTexture texture = switch (sampler.textureTarget()) {
-				case GLES20.GL_TEXTURE_2D -> emptyTexture2D;
-				case GLES20.GL_TEXTURE_CUBE_MAP -> emptyCubemap;
-				case GLES11Ext.GL_TEXTURE_EXTERNAL_OES -> emptyExternalTexture;
-				default -> null;
-			};
-			for (int i = 0; i < sampler.size(); ++i) {
-				bindTexture(sampler.unit() + i, texture);
+			var kind = EmptyTexture.of(sampler.type());
+			int name = kind != null ? empties[kind.ordinal()] : 0;
+			for (int i = 0; name != 0 && i < sampler.size() &&
+					sampler.unit() + i < maxTextureUnits; ++i) {
+				GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + sampler.unit() + i);
+				GLES20.glBindTexture(kind.target, name);
 			}
 		}
 	}
@@ -651,21 +634,50 @@ class GlDevice {
 		return textures[0];
 	}
 
-	private static void fillEmpty(int target, @NonNull ByteBuffer pixel) {
-		GLES20.glTexImage2D(
-				target,
-				0,
-				GLES20.GL_RGBA,
-				1,
-				1,
-				0,
-				GLES20.GL_RGBA,
-				GLES20.GL_UNSIGNED_BYTE,
-				pixel);
+	// One texel of zeros, opaque for color, nearest, and for a depth
+	// texture compared so that it never passes; 0 when no name could be
+	// made.
+	private static int createEmpty(@NonNull EmptyTexture kind) {
+		int name = genTexture();
+		if (name == 0) {
+			return 0;
+		}
+		GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+		GLES20.glBindTexture(kind.target, name);
+		var zero = ByteBuffer.allocateDirect(4);
+		if (kind.format == GLES20.GL_RGBA) {
+			zero.put(3, (byte) 0xff);
+		}
+		switch (kind.target) {
+			case GLES20.GL_TEXTURE_2D -> fillEmpty(kind.target, kind, zero);
+			case GLES20.GL_TEXTURE_CUBE_MAP -> {
+				for (int face : CUBE_MAP_TARGETS) {
+					fillEmpty(face, kind, zero);
+				}
+			}
+			case GLES30.GL_TEXTURE_3D, GLES30.GL_TEXTURE_2D_ARRAY ->
+					GLES30.glTexImage3D(kind.target, 0, kind.internalFormat,
+							1, 1, 1, 0, kind.format, kind.type, zero);
+			default -> {
+			}
+		}
+		GLES20.glTexParameteri(kind.target, GLES20.GL_TEXTURE_MIN_FILTER,
+				GLES20.GL_NEAREST);
+		GLES20.glTexParameteri(kind.target, GLES20.GL_TEXTURE_MAG_FILTER,
+				GLES20.GL_NEAREST);
+		if (kind.compares) {
+			GLES20.glTexParameteri(kind.target, GLES30.GL_TEXTURE_COMPARE_MODE,
+					GLES30.GL_COMPARE_REF_TO_TEXTURE);
+			GLES20.glTexParameteri(kind.target, GLES30.GL_TEXTURE_COMPARE_FUNC,
+					GLES20.GL_NEVER);
+		}
+		return name;
 	}
 
-	private static void setNearest(int target) {
-		GLES20.glTexParameteri(target, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+	private static void fillEmpty(int target, @NonNull EmptyTexture kind,
+			@NonNull ByteBuffer pixel) {
+		GLES20.glTexImage2D(target, 0, kind.internalFormat, 1, 1, 0,
+				kind.format, kind.type, pixel);
 	}
 
 	@Nullable
