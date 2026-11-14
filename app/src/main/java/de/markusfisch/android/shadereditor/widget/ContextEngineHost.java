@@ -6,24 +6,29 @@ import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.activity.ComponentActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicReference;
 
 import de.markusfisch.android.shadereditor.opengl.EngineHost;
 import de.markusfisch.android.shadereditor.service.NotificationService;
 
 final class ContextEngineHost implements EngineHost {
-	private static final int PERMISSION_REQUEST_CODE = 1;
+	// Main thread only. Each permission is asked for once while the app
+	// runs, so a denial does not bring the dialog back every time a
+	// shader starts. After the app started again, it asks again if the
+	// platform still lets it show the dialog.
+	private static final HashSet<String> requested = new HashSet<>();
+	private static int requests;
 
 	private final Handler mainHandler = new Handler(Looper.getMainLooper());
-	// Main thread only. Each permission is asked for once per view, so a
-	// denial does not bring the dialog back every time the view resumes.
-	private final HashSet<String> requested = new HashSet<>();
 	@NonNull
 	private final Context context;
 
@@ -38,22 +43,33 @@ final class ContextEngineHost implements EngineHost {
 	}
 
 	@Override
-	public boolean onPermissionNeeded(@NonNull String permission) {
+	public boolean onPermissionNeeded(@NonNull String permission,
+			@NonNull Runnable denied) {
 		if (isGranted(permission)) {
 			return true;
 		}
-		if (!(context instanceof Activity activity)) {
+		if (!(context instanceof ComponentActivity activity)) {
 			return false;
 		}
 		mainHandler.post(() -> {
-			if (!isGranted(permission) &&
-					requested.add(permission) &&
-					!activity.isFinishing()) {
-				ActivityCompat.requestPermissions(
-						activity,
-						new String[]{permission},
-						PERMISSION_REQUEST_CODE);
+			if (isGranted(permission) || activity.isFinishing()) {
+				return;
 			}
+			if (!requested.add(permission)) {
+				denied.run();
+				return;
+			}
+			var launcher = new AtomicReference<ActivityResultLauncher<String>>();
+			launcher.set(activity.getActivityResultRegistry().register(
+					"engine_permission_" + ++requests,
+					new ActivityResultContracts.RequestPermission(),
+					granted -> {
+						launcher.get().unregister();
+						if (!granted) {
+							denied.run();
+						}
+					}));
+			launcher.get().launch(permission);
 		});
 		return true;
 	}

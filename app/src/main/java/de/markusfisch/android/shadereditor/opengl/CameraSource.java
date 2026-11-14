@@ -15,6 +15,8 @@ final class CameraSource implements UniformSource {
 	}
 
 	static final Key<CameraSource> KEY = CameraSource::new;
+	private static final String PERMISSION_MISSING =
+			"The camera permission is missing";
 
 	final float[] orientation = new float[4];
 	final float[] addent = new float[2];
@@ -73,15 +75,21 @@ final class CameraSource implements UniformSource {
 		int lensFacing = UniformTable.CAMERA_BACK.equals(binding.sampler())
 				? CameraSelector.LENS_FACING_BACK
 				: CameraSelector.LENS_FACING_FRONT;
-		listener = new CameraListener(
+		var listener = new CameraListener(
 				texture.getId(),
 				lensFacing,
 				renderWidth,
 				renderHeight,
 				sources.getDeviceRotation(),
 				host.context());
-		listener.register(owner,
-				() -> host.onPermissionNeeded(Manifest.permission.CAMERA));
+		this.listener = listener;
+		listener.register(owner, () -> {
+			if (!host.onPermissionNeeded(Manifest.permission.CAMERA,
+					() -> listener.fail(PERMISSION_MISSING))) {
+				listener.fail(PERMISSION_MISSING +
+						"; run this shader in the app once to allow it");
+			}
+		});
 	}
 
 	private void close() {
