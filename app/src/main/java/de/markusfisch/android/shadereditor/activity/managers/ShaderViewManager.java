@@ -98,8 +98,16 @@ public class ShaderViewManager {
 	 * Show no picture until the next shader or plan is set, as when
 	 * what is open runs nothing; the engine cannot clear its picture.
 	 */
+	/**
+	 * Show no picture: nothing runs. What a build reported before is
+	 * not of what is shown now, so the listener hears that no picture
+	 * is the last that worked and that there is nothing to report; a
+	 * report of why nothing runs may follow.
+	 */
 	public void showNothing() {
 		showPicture(false);
+		listener.onLastPicture(false);
+		listener.onInfoLog(List.of());
 	}
 
 	public void setVisibility(boolean visible) {
