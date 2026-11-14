@@ -606,6 +606,12 @@ At every start, in this order, without asking anything:
 2. **The library opens**, and its session's file is shown and run: the file last shown, which the move set to the shader that was last opened. A file that is gone shows the newest file of the library instead. An empty library opens the drawer on it with its empty state (6.7). A library that cannot be opened is said in the bottom message with its reason, and the screen shows "No file open": the drawer, the examples and the settings stay within reach.
 3. **Once, after a start that moved shaders**, a message at the bottom: **"%d shaders are now files in ShaderEditor / Shaders"** (singular "1 shader is now a file …"), for 4 s, no action. Shaders that failed are not in the message; they are in the section Not moved. A move that could not begin at all is the only failure told at start, by the same bottom message with its reason; the list then shows what the library holds.
 
+**A screen that is made again** (the device is turned, or the system took the app's process while it was in the background) comes back to what it had open. One thing is kept for that, written in one place: a file, told by the session of its folder and its path, whether it is the library's, another folder's or an example; a shader of the database that was not moved; a file that was asked for while the old editor was in use; nothing; or a start that has not shown a file yet. The start reads it:
+
+- A file or a shader comes back itself, with its unsaved text, and the move and the library's opening go on behind it. What depends on the library (the quality kept for the file, whether pasted ShaderToy code is converted) is settled for it once the library is known.
+- Nothing open comes back as nothing open (6.7): no file is opened in its place.
+- A screen whose start had not shown a file yet is treated as a cold start: the move, then the file the library shows. A screen made again while the shaders move shows **Moving shaders into files…** at once, stays without an editor, and still gets the message of what was moved, also when the move ended for the screen that is gone.
+
 ### 11.5 The toolbar for a library file
 
 As for any file (6.1): the title is the file's name, `Plasma.frag`, with the unsaved dot; the second line is the folder, **Shaders**, and with another file running, **▶ Other.frag · Shaders**. A "not moved" shader keeps today's title, its database title, and its second line says **Not moved**, so it is never taken for a file.

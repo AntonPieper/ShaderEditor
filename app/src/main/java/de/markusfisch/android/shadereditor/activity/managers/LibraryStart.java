@@ -44,9 +44,13 @@ public final class LibraryStart {
 		 * the library, or the folder the editor showed a file of last.
 		 *
 		 * @param single whether that is a single file, not a folder
+		 * @param chosen whether the folder showed it last; else it is
+		 *               shown in place of one that is gone or was
+		 *               never chosen, and runs as a file that is
+		 *               tapped does
 		 */
 		void onShow(@NonNull String key, @NonNull ProjectPath path,
-				boolean single);
+				boolean single, boolean chosen);
 
 		/** The library has no file to show. */
 		void onEmpty(@NonNull String key);
@@ -71,6 +75,10 @@ public final class LibraryStart {
 	private final ExecutorService listing =
 			Executors.newSingleThreadExecutor();
 	private boolean destroyed;
+	// What a move that ended after its screen was gone has to tell;
+	// the screen made in its place tells it. On the main thread.
+	@Nullable
+	private static String untold;
 
 	public LibraryStart(@NonNull Activity activity, @NonNull Projects projects,
 			@NonNull Listener listener) {
@@ -98,16 +106,23 @@ public final class LibraryStart {
 				activity.getString(R.string.nav_untitled), chosen(),
 				result -> {
 					handler.removeCallbacks(moving);
-					if (destroyed) {
-						return;
-					}
 					String told = describe(activity, result.problem(),
 							result.moved());
+					if (destroyed) {
+						// Said once all the same: by the next screen,
+						// whose own move finds nothing left to tell.
+						untold = told != null ? told : untold;
+						return;
+					}
+					if (told == null) {
+						told = untold;
+					}
+					untold = null;
 					if (told != null) {
 						listener.onMoved(told);
 					}
 					listener.onNotMoved(result.failed());
-					open(show);
+					open(show, false);
 				});
 	}
 
@@ -135,7 +150,9 @@ public final class LibraryStart {
 					if (result != null) {
 						listener.onNotMoved(result.failed());
 					}
-					open(true);
+					// The library itself: the folder that was open
+					// last is the one that was just put aside.
+					open(true, true);
 				});
 	}
 
@@ -144,7 +161,7 @@ public final class LibraryStart {
 	 * the move.
 	 */
 	public void show() {
-		open(true);
+		open(true, true);
 	}
 
 	public void destroy() {
@@ -160,7 +177,9 @@ public final class LibraryStart {
 				ShaderEditorApp.preferences.getLastOpenedShader());
 	}
 
-	private void open(boolean show) {
+	// library: whether only a file of the library is shown, not the
+	// file of another folder that was open last.
+	private void open(boolean show, boolean library) {
 		projects.openLibrary(opened -> {
 			if (destroyed) {
 				return;
@@ -173,7 +192,7 @@ public final class LibraryStart {
 								? opened.problem()
 								: ""));
 			} else if (show) {
-				show(opened);
+				show(opened, library);
 			} else {
 				listener.onLibrary(opened.id());
 			}
@@ -199,7 +218,7 @@ public final class LibraryStart {
 	// The file the editor showed last: of another folder when that was
 	// open last, else the file the library showed last, else its newest
 	// file.
-	private void show(@NonNull Projects.Opened opened) {
+	private void show(@NonNull Projects.Opened opened, boolean library) {
 		OpenProject project = opened.project();
 		String key = opened.id();
 		if (project == null || key == null) {
@@ -207,10 +226,12 @@ public final class LibraryStart {
 		}
 		listener.onLibrary(key);
 		ProjectPath shown = project.shown();
+		// Unsaved text of a file that is gone is still there to show.
+		boolean held = shown != null && project.unsaved().contains(shown);
 		ProjectSessions sessions = projects.sessions();
 		try {
 			listing.execute(() -> {
-				String last = sessions.last();
+				String last = library ? null : sessions.last();
 				ProjectPath other = last != null && !last.equals(key)
 						? sessions.shown(last)
 						: null;
@@ -219,18 +240,23 @@ public final class LibraryStart {
 						: null;
 				boolean single = recent != null && recent.locator().kind() ==
 						ProjectSessions.Kind.DOCUMENT;
-				ProjectPath newest = other == null && shown == null
+				// A file that went since shows the newest instead.
+				ProjectPath there = shown != null && other == null &&
+						(held || exists(project, shown))
+						? shown
+						: null;
+				ProjectPath newest = other == null && there == null
 						? newest(project.list(null))
 						: null;
 				handler.post(() -> {
 					if (destroyed) {
 						return;
 					} else if (other != null) {
-						listener.onShow(last, other, single);
-					} else if (shown != null) {
-						listener.onShow(key, shown, false);
+						listener.onShow(last, other, single, true);
+					} else if (there != null) {
+						listener.onShow(key, there, false, true);
 					} else if (newest != null) {
-						listener.onShow(key, newest, false);
+						listener.onShow(key, newest, false, false);
 					} else {
 						listener.onEmpty(key);
 					}
@@ -239,6 +265,28 @@ public final class LibraryStart {
 		} catch (RejectedExecutionException e) {
 			// Destroyed.
 		}
+	}
+
+	// Whether the folder of path lists it; one that cannot be listed
+	// is left to the opening to tell.
+	private static boolean exists(@NonNull OpenProject project,
+			@NonNull ProjectPath path) {
+		String text = path.toString();
+		int slash = text.lastIndexOf('/');
+		var parent = slash > 0
+				? ProjectPath.parse(text.substring(0, slash))
+				: null;
+		OpenProject.Folder folder = project.list(parent != null &&
+				parent.isSuccess() ? parent.value() : null);
+		if (folder.problem() != null) {
+			return true;
+		}
+		for (OpenProject.Item item : folder.items()) {
+			if (!item.folder() && item.path().equals(path)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Nullable

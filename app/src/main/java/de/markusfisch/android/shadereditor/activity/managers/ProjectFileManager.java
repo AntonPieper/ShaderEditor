@@ -68,12 +68,6 @@ public final class ProjectFileManager {
 				@NonNull List<ProjectDiagnostic> nothingRuns, float quality);
 	}
 
-	private static final String KEY = "project_file_key";
-	private static final String PATH = "project_file_path";
-	private static final String SINGLE = "project_file_single";
-	private static final String TAPPED = "project_file_tapped";
-	private static final String ASKED = "project_file_asked";
-	private static final String QUALITY = "project_file_quality";
 
 	// A file asked for while the old editor was in use, opened once the
 	// screen is made again with the new one; a shader of the library is
@@ -162,9 +156,17 @@ public final class ProjectFileManager {
 		return open(key, path, single, true);
 	}
 
-	/** Takes the session of the library, whose root files are shaders. */
+	/**
+	 * Takes the session of the library, whose root files are shaders. A
+	 * screen made again shows its file before the library is known:
+	 * what depends on the library is settled for that file now.
+	 */
 	public void setLibrary(@NonNull String key) {
 		library = key;
+		ProjectFile shown = file;
+		if (shown != null && key.equals(this.key)) {
+			editor.setShaderToy(Library.convertsShaderToy(shown.getPath()));
+		}
 	}
 
 	/**
@@ -387,61 +389,48 @@ public final class ProjectFileManager {
 		}
 	}
 
-	public void saveState(@NonNull Bundle state) {
+	/**
+	 * Return what of the file in the editor is kept when the screen is
+	 * made again, or of the file that was asked for while the old
+	 * editor is in use; null when there is neither.
+	 */
+	@Nullable
+	public OpenState state() {
 		ProjectFile saved = file;
 		if (saved == null) {
 			Asked asked = askedFor;
-			if (asked != null) {
-				state.putString(KEY, asked.key());
-				state.putString(PATH, asked.path().toString());
-				state.putBoolean(SINGLE, asked.single());
-				state.putBoolean(TAPPED, asked.tapped());
-				state.putBoolean(ASKED, true);
-			}
-			return;
+			return asked != null
+					? OpenState.asked(asked.key(), asked.path().toString(),
+							asked.single(), asked.tapped())
+					: null;
 		}
 		saved.getProject().setEditorState(saved.getPath(),
 				editor.getDocumentState());
-		state.putString(KEY, key);
-		state.putString(PATH, saved.getPath().toString());
-		state.putBoolean(SINGLE, saved.isSingle());
-		// Outside the library nothing else keeps it.
-		state.putFloat(QUALITY, saved.getQuality());
-	}
-
-	/**
-	 * Whether a file of a folder was in the editor before the screen was
-	 * made again; otherwise a shader of the library was.
-	 */
-	public boolean hadFile(@NonNull Bundle state) {
-		return savedPath(state) != null && !state.getBoolean(ASKED);
+		// Outside the library nothing else keeps the quality.
+		return key != null
+				? OpenState.file(key, saved.getPath().toString(),
+						saved.isSingle(), saved.getQuality())
+				: null;
 	}
 
 	/**
 	 * Open the file that was in the editor before the screen was made
-	 * again, or the one asked for when the new editor was turned on;
-	 * call it after the library's shader is restored.
+	 * again, or the one asked for when the new editor was turned on.
 	 */
-	public void restoreState(@NonNull Bundle state) {
-		ProjectPath path = savedPath(state);
-		String restored = state.getString(KEY);
-		if (path != null && restored != null) {
-			if (state.containsKey(QUALITY)) {
-				keptQuality = new Kept(restored, path,
-						state.getFloat(QUALITY));
-			}
-			open(restored, path, state.getBoolean(SINGLE),
-					state.getBoolean(TAPPED));
-		}
-	}
-
-	@Nullable
-	private static ProjectPath savedPath(@NonNull Bundle state) {
-		String path = state.getString(PATH);
-		var parsed = path != null && state.getString(KEY) != null
-				? ProjectPath.parse(path)
+	public void restore(@NonNull OpenState state) {
+		var parsed = state.isFile() && state.path() != null
+				? ProjectPath.parse(state.path())
 				: null;
-		return parsed != null && parsed.isSuccess() ? parsed.value() : null;
+		String restored = state.key();
+		if (parsed == null || !parsed.isSuccess() || restored == null) {
+			listener.onGone();
+			return;
+		}
+		if (state.kind() == OpenState.Kind.FILE) {
+			keptQuality = new Kept(restored, parsed.value(),
+					state.quality());
+		}
+		open(restored, parsed.value(), state.single(), state.tapped());
 	}
 
 	public void destroy() {

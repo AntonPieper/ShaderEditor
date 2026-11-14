@@ -72,6 +72,14 @@ interface SourceEditor {
 			@Nullable Object state, boolean shaderToy);
 
 	/**
+	 * Set whether text the user puts into the document shown is
+	 * converted from ShaderToy's form, when that is known only after
+	 * the document was shown.
+	 */
+	default void setShaderToy(boolean shaderToy) {
+	}
+
+	/**
 	 * Return what the view keeps of the document shown besides the
 	 * document itself, such as where it scrolled to, or null.
 	 */

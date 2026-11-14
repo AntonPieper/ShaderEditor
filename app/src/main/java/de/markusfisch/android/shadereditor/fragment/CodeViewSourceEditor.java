@@ -150,6 +150,16 @@ final class CodeViewSourceEditor implements SourceEditor {
 		return true;
 	}
 
+	// What is in the document now is as it was written; only what is
+	// put in from here on is converted.
+	@Override
+	public void setShaderToy(boolean shaderToy) {
+		if (shaderToy != convert) {
+			converting = shaderToy ? getText() : null;
+			convert = shaderToy;
+		}
+	}
+
 	@Nullable
 	@Override
 	public Object getDocumentState() {
