@@ -33,6 +33,21 @@
 					android:layout_width="match_parent"
 					android:layout_height="match_parent">
 
+					<!-- In place of the editor while no file is open;
+						not a text field, so nothing is typed into
+						nowhere. -->
+					<TextView
+						android:id="@+id/no_file"
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:background="?attr/colorSurface"
+						android:gravity="center"
+						android:padding="@dimen/se_margin_screen"
+						android:text="@string/no_file_open"
+						android:textAppearance="?attr/textAppearanceBodyLarge"
+						android:textColor="?attr/colorOnSurfaceVariant"
+						android:visibility="gone" />
+
 				</androidx.coordinatorlayout.widget.CoordinatorLayout>
 
 				<!-- Navigation Drawer -->

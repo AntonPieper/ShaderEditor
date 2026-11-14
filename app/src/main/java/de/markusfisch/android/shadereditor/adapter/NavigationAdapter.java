@@ -168,6 +168,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 				case SLOW -> R.string.nav_still_reading;
 				case STOPPED -> R.string.nav_stopped;
 				case EMPTY -> R.string.nav_empty_folder;
+				case NO_SHADERS -> R.string.nav_library_empty;
 				case FAILED -> R.string.nav_cannot_read;
 				case LOST_FOLDER -> R.string.nav_lost_folder;
 				case LOST_FILE -> R.string.nav_lost_file;
@@ -186,7 +187,8 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			main.setVisibility(View.GONE);
 			action.setVisibility(View.GONE);
 			for (Notice.Action way : actions) {
-				TextView button = way == Notice.Action.CHOOSE_AGAIN
+				TextView button = way == Notice.Action.CHOOSE_AGAIN ||
+						way == Notice.Action.NEW_SHADER
 						? main
 						: action;
 				button.setVisibility(View.VISIBLE);
@@ -197,6 +199,8 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 							? R.string.nav_choose_file_again
 							: R.string.nav_choose_folder_again;
 					case REMOVE -> R.string.nav_remove_from_list;
+					case NEW_SHADER -> R.string.add_shader;
+					case EXAMPLES -> R.string.load_sample;
 				});
 				button.setOnClickListener(v -> listener.onNotice(way));
 			}

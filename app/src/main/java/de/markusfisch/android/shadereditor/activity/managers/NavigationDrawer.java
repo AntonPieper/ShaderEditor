@@ -518,7 +518,13 @@ public class NavigationDrawer implements ShaderList {
 
 					@Override
 					public void onNotice(@NonNull Notice.Action action) {
-						if (folder == null) {
+						if (action == Notice.Action.NEW_SHADER) {
+							showNewShader();
+							return;
+						} else if (action == Notice.Action.EXAMPLES) {
+							showExamples();
+							return;
+						} else if (folder == null) {
 							return;
 						}
 						switch (action) {
@@ -528,6 +534,8 @@ public class NavigationDrawer implements ShaderList {
 									folder.uri());
 							case REMOVE -> remove(folder.key(),
 									folder.name());
+							default -> {
+							}
 						}
 					}
 				}));
@@ -783,8 +791,29 @@ public class NavigationDrawer implements ShaderList {
 						? Order.CHANGED
 						: Order.BY_NAME);
 		return libraryKey != null && level.equals(Level.root(libraryKey))
-				? withNotMoved(listing)
+				? withNotMoved(withoutShaders(listing))
 				: listing;
+	}
+
+	// A library without a shader says so and offers to make one; its
+	// folders, such as textures, may be there (NAVIGATION 6.7).
+	@NonNull
+	private Listing withoutShaders(@NonNull Listing listing) {
+		Notice notice = listing.notice();
+		if (!notMoved.isEmpty() || (notice != null &&
+				notice.kind() != Notice.Kind.EMPTY)) {
+			return listing;
+		}
+		for (Listing.Section section : listing.sections()) {
+			for (Row row : section.rows()) {
+				if (row.kind() != Row.Kind.FOLDER) {
+					return listing;
+				}
+			}
+		}
+		return new Listing(listing.title(), listing.subtitle(),
+				listing.readOnly(), listing.sortable(), listing.bar(),
+				listing.sections(), new Notice(Notice.Kind.NO_SHADERS, null));
 	}
 
 	// The shaders that could not be moved, by title and why, after
