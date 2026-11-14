@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -379,6 +380,121 @@ public final class Library {
 			}
 		}
 		return places;
+	}
+
+	/**
+	 * What Save a copy made: the path of the file to show, or null when
+	 * nothing was copied, the paths of the read-only folder that were
+	 * copied, those the library has already with other bytes, which
+	 * were kept as they are and which the copy now reads, and why the
+	 * copy failed, or null.
+	 */
+	public record Copied(ProjectPath path, List<ProjectPath> copied,
+			List<ProjectPath> kept, String problem) {
+		public Copied {
+			copied = List.copyOf(copied);
+			kept = List.copyOf(kept);
+		}
+	}
+
+	/**
+	 * Return the store Save a copy writes into, for places from
+	 * {@link #places}: a file with a place is written there, never over
+	 * another, and noted as copied; any other file is one the library
+	 * has, which stays as it is and is noted as kept when the copy's
+	 * bytes differ. Write from one thread at a time.
+	 */
+	Copy copy(Map<ProjectPath, ProjectPath> places) {
+		return new Copy(files(), places);
+	}
+
+	/** A copy into the library, as {@link #copy} makes it. */
+	static final class Copy implements ProjectFiles {
+		private final ProjectFiles files;
+		private final Map<ProjectPath, ProjectPath> places;
+		private final List<ProjectPath> copied =
+				Collections.synchronizedList(new ArrayList<>());
+		private final List<ProjectPath> kept =
+				Collections.synchronizedList(new ArrayList<>());
+
+		private Copy(ProjectFiles files, Map<ProjectPath, ProjectPath> places) {
+			this.files = files;
+			this.places = places;
+		}
+
+		@Override
+		public Read read(ProjectPath path) {
+			return null;
+		}
+
+		@Override
+		public Change write(ProjectPath path, byte[] bytes,
+				String expectedRevision) {
+			ProjectPath place = places.get(path);
+			if (place != null) {
+				Change change = files.write(place, bytes, null);
+				if (change instanceof Done) {
+					copied.add(path);
+				}
+				return change;
+			}
+			if (!(files.read(path) instanceof Content content &&
+					Arrays.equals(content.bytes(), bytes))) {
+				kept.add(path);
+			}
+			return new Done(null);
+		}
+
+		List<ProjectPath> copied() {
+			return new ArrayList<>(copied);
+		}
+
+		List<ProjectPath> kept() {
+			return new ArrayList<>(kept);
+		}
+
+		/**
+		 * Remove what this copy wrote, so that a copy that failed half
+		 * way leaves nothing: every file it wrote, and the folder it
+		 * made for a shader of a folder. Return why something stayed,
+		 * or null.
+		 */
+		String undo() {
+			List<String> left = new ArrayList<>();
+			for (ProjectPath path : copied()) {
+				ProjectPath place = places.get(path);
+				if (files.delete(place) instanceof Refused) {
+					left.add(place.toString());
+				}
+			}
+			// A folder the copy made under an unused name is its own.
+			for (ProjectPath place : places.values()) {
+				String at = place.toString();
+				int slash = at.indexOf('/');
+				ProjectParseResult<ProjectPath> folder = slash > 0
+						? ProjectPath.parse(at.substring(0, slash))
+						: null;
+				if (folder != null && folder.isSuccess() &&
+						!places.containsValue(folder.value()) &&
+						isEmpty(folder.value())) {
+					files.delete(folder.value());
+				}
+			}
+			copied.clear();
+			StringBuilder sb = new StringBuilder();
+			for (String path : left) {
+				sb.append(sb.length() > 0 ? ", " : "").append(path);
+			}
+			return left.isEmpty()
+					? null
+					: sb + " could not be removed";
+		}
+
+		private boolean isEmpty(ProjectPath folder) {
+			ProjectFiles.Listing listing = files.list(folder);
+			return listing instanceof ProjectFiles.Entries entries &&
+					entries.entries().isEmpty();
+		}
 	}
 
 	// What is kept of a file just written; why something is not, or null.

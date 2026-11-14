@@ -10,6 +10,7 @@ import android.os.Looper;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -167,56 +168,53 @@ public final class Projects {
 	/**
 	 * Save a copy of paths of project, a read-only folder, in the
 	 * library, where {@link Library#places} says, with the text each
-	 * has now; a file the library has already is used as it is.
-	 * Nothing of project changes. done gets the path of the
-	 * copy of entry, or why not all was copied. To show it, as for
+	 * has now; a file the library has already is used as it is, and
+	 * named among the kept when its bytes differ. Nothing of project
+	 * changes. A copy that fails half way is removed again. done gets
+	 * what was copied, see {@link Library.Copied}. To show it, as for
 	 * {@link #newShader}.
 	 */
 	public void saveCopy(OpenProject project, ProjectPath entry,
-			Collection<ProjectPath> paths, Callback<Library.Created> done) {
+			Collection<ProjectPath> paths, Callback<Library.Copied> done) {
 		QUEUE.execute(() -> {
-			Map<ProjectPath, ProjectPath> places = guarded(() -> {
-				Library library = library();
-				return library.enter(this::relocated) == null
-						? library.places(entry, paths)
-						: null;
-			}, problem -> null);
-			ProjectFiles library = new DirectoryProjectFiles(
-					library().folder());
+			Library library = library();
+			Map<ProjectPath, ProjectPath> places = guarded(() ->
+					library.enter(this::relocated) == null
+							? library.places(entry, paths)
+							: null, problem -> null);
+			Library.Copy copy = places != null ? library.copy(places) : null;
 			main.post(() -> {
-				if (places == null) {
-					done.done(new Library.Created(null,
+				if (copy == null) {
+					done.done(new Library.Copied(null, List.of(), List.of(),
 							"the library cannot be listed"));
 					return;
 				}
-				project.copyTo(new ProjectFiles() {
-					@Override
-					public Read read(ProjectPath path) {
-						return null;
-					}
-
-					@Override
-					public Change write(ProjectPath path, Source source,
-							String expected) {
-						return library.write(places.get(path), source, null);
-					}
-
-					@Override
-					public Change write(ProjectPath path, byte[] bytes,
-							String expected) {
-						return library.write(places.get(path), bytes, null);
-					}
-				}, places.keySet(), problems -> {
+				// Every path: those the library has are compared, not
+				// written.
+				project.copyTo(copy, paths, problems -> {
+					String failed = null;
 					for (Map.Entry<ProjectPath, String> problem :
 							problems.entrySet()) {
 						if (problem.getValue() != null) {
-							done.done(new Library.Created(null,
-									problem.getKey() + ": " +
-											problem.getValue()));
-							return;
+							failed = problem.getKey() + ": " +
+									problem.getValue();
+							break;
 						}
 					}
-					done.done(new Library.Created(places.get(entry), null));
+					if (failed == null) {
+						done.done(new Library.Copied(places.get(entry),
+								copy.copied(), copy.kept(), null));
+						return;
+					}
+					// A copy that failed half way leaves nothing.
+					String reason = failed;
+					QUEUE.execute(() -> {
+						String left = guarded(copy::undo, problem -> problem);
+						main.post(() -> done.done(new Library.Copied(null,
+								List.of(), copy.kept(), left != null
+										? reason + "; " + left
+										: reason)));
+					});
 				});
 			});
 		});

@@ -618,6 +618,43 @@ public class LibraryTest {
 				library.places(ink, List.of(ink, pass, noise)));
 	}
 
+	// A lib/ the library has with other bytes is kept and named; a copy
+	// that fails half way leaves nothing behind.
+	@Test
+	public void aCopyNamesWhatItKeptAndCanBeUndone() throws IOException {
+		Library library = library();
+		File folder = library.folder();
+		new File(folder, "lib").mkdirs();
+		Files.write(new File(folder, "lib/noise.glsl").toPath(),
+				"mine".getBytes(StandardCharsets.UTF_8));
+		Files.write(new File(folder, "lib/same.glsl").toPath(),
+				"same".getBytes(StandardCharsets.UTF_8));
+		ProjectPath ink = path("Ink/main.frag");
+		ProjectPath pass = path("Ink/ink.frag");
+		ProjectPath noise = path("lib/noise.glsl");
+		ProjectPath same = path("lib/same.glsl");
+		Map<ProjectPath, ProjectPath> places = library.places(ink,
+				List.of(ink, pass, noise, same));
+
+		Library.Copy copy = library.copy(places);
+		byte[] main = MAIN.getBytes(StandardCharsets.UTF_8);
+		assertTrue(copy.write(ink, main, null) instanceof ProjectFiles.Done);
+		assertTrue(copy.write(pass, main, null) instanceof ProjectFiles.Done);
+		assertTrue(copy.write(noise, "theirs".getBytes(
+				StandardCharsets.UTF_8), null) instanceof ProjectFiles.Done);
+		assertTrue(copy.write(same, "same".getBytes(
+				StandardCharsets.UTF_8), null) instanceof ProjectFiles.Done);
+		assertEquals(List.of(ink, pass), copy.copied());
+		assertEquals(List.of(noise), copy.kept());
+		assertEquals("mine", text(new File(folder, "lib/noise.glsl")));
+		assertTrue(new File(folder, "Ink/main.frag").isFile());
+
+		assertNull(copy.undo());
+		assertFalse(new File(folder, "Ink").exists());
+		assertTrue(new File(folder, "lib/noise.glsl").isFile());
+		assertEquals(List.of(), copy.copied());
+	}
+
 	private Library library() {
 		return library(temp.getRoot());
 	}

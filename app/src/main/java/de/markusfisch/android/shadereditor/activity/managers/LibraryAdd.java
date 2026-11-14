@@ -5,10 +5,16 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.database.DataSource;
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -29,19 +35,24 @@ public final class LibraryAdd {
 		/** It is the file at path of the library, known by key. */
 		void onAdded(@NonNull String key, @NonNull ProjectPath path);
 
-		/** It was not made, for message. */
+		/** Tell message: it was not made, or what to know of it. */
 		void onFailed(@NonNull String message);
 	}
 
 	private final Context context;
+	// The screen, for a dialog.
+	private final Context screen;
 	private final Projects projects;
 	private final DataSource database;
 	private final Listener listener;
 	private boolean destroyed;
+	// Whether a copy is being made.
+	private boolean copying;
 
 	public LibraryAdd(@NonNull Context context, @NonNull Projects projects,
 			@NonNull DataSource database, @NonNull Listener listener) {
 		this.context = context.getApplicationContext();
+		this.screen = context;
 		this.projects = projects;
 		this.database = database;
 		this.listener = listener;
@@ -50,12 +61,26 @@ public final class LibraryAdd {
 	/**
 	 * Save a copy of paths of project, a read-only folder, in the
 	 * library, where entry is the file to show; see
-	 * {@link Projects#saveCopy}. The unsaved text of project goes with
-	 * the copy: project is read from storage again.
+	 * {@link Projects#saveCopy}. The unsaved text of a file that went
+	 * into the copy goes with it: that file is read from storage again,
+	 * unless it was edited since. Files the library has already with
+	 * other bytes are named. While a copy is made, another is not.
 	 */
 	public void saveCopy(@NonNull OpenProject project,
 			@NonNull ProjectPath entry, @NonNull List<ProjectPath> paths) {
+		if (copying) {
+			return;
+		}
+		copying = true;
+		Map<ProjectPath, Integer> revisions = new HashMap<>();
+		for (ProjectPath path : paths) {
+			Document document = project.document(path);
+			if (document != null) {
+				revisions.put(path, document.revision());
+			}
+		}
 		projects.saveCopy(project, entry, paths, made -> {
+			copying = false;
 			if (destroyed) {
 				return;
 			} else if (made.path() == null) {
@@ -63,11 +88,20 @@ public final class LibraryAdd {
 						made.problem()));
 				return;
 			}
-			for (ProjectPath unsaved : project.unsaved()) {
-				project.reload(unsaved, problem -> {
-				});
+			Set<ProjectPath> unsaved = project.unsaved();
+			for (ProjectPath copied : made.copied()) {
+				Document document = project.document(copied);
+				Integer revision = revisions.get(copied);
+				if (unsaved.contains(copied) && document != null &&
+						revision != null && document.revision() == revision) {
+					project.reload(copied, problem -> {
+					});
+				}
 			}
 			show(made.path());
+			if (!made.kept().isEmpty()) {
+				tellKept(made.kept());
+			}
 		});
 	}
 
@@ -127,6 +161,21 @@ public final class LibraryAdd {
 
 	public void destroy() {
 		destroyed = true;
+	}
+
+	// A dialog, not a bottom message: the copy may fail to compile
+	// against a kept file right away, and that message must not hide
+	// why.
+	private void tellKept(@NonNull List<ProjectPath> kept) {
+		StringBuilder files = new StringBuilder();
+		for (ProjectPath path : kept) {
+			files.append("\n").append(path);
+		}
+		new MaterialAlertDialogBuilder(screen)
+				.setTitle(R.string.copy_saved)
+				.setMessage(screen.getString(R.string.copy_kept, files))
+				.setPositiveButton(android.R.string.ok, null)
+				.show();
 	}
 
 	private void failed(@Nullable String problem) {
