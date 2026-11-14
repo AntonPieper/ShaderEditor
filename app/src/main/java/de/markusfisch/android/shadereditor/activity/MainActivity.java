@@ -125,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
 				shaderViewManager);
 		if (getResources().getBoolean(R.bool.project_mode)) {
 			holds = new ProjectHolds(new Projects(this));
-			looks = new LibraryLooks(holds.projects(), shaderViewManager,
+			looks = new LibraryLooks(this, holds.projects(), shaderViewManager,
 					() -> shaderListManager.loadShadersAsync(),
 					problem -> Message.show(this, getString(
 							R.string.library_not_kept, problem)));

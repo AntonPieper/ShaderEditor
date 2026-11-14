@@ -61,6 +61,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.adapter.NavigationAdapter;
 import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
@@ -178,7 +179,9 @@ public class NavigationDrawer implements ShaderList {
 			public byte[] picture(@NonNull ProjectPath path) {
 				Previews.Picture picture = projects.library().previews()
 						.get(path);
-				return picture != null ? picture.png() : null;
+				return picture != null
+						? OldPlaceholder.real(activity, picture.png())
+						: null;
 			}
 
 			@Nullable

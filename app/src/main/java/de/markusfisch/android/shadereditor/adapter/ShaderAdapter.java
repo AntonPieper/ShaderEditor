@@ -10,9 +10,12 @@ import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.TextView;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.widget.ImageViewCompat;
 import com.google.android.material.color.MaterialColors;
 
 import java.util.ArrayList;
@@ -28,6 +31,9 @@ public class ShaderAdapter extends BaseAdapter {
 	private final int textColorUnselected;
 	private final List<ShaderInfo> shaders = new ArrayList<>();
 	private long selectedShaderId = 0;
+	// What a shader without a picture shows: a picture, or an icon.
+	private int placeholder = R.drawable.thumbnail_new_shader;
+	private boolean placeholderIsIcon;
 
 	public ShaderAdapter(Context context) {
 		this(context, R.layout.row_shader);
@@ -74,6 +80,13 @@ public class ShaderAdapter extends BaseAdapter {
 		return convertView;
 	}
 
+	/** Show the icon placeholder where a shader has no picture. */
+	public void setPlaceholder(@DrawableRes int icon) {
+		placeholder = icon;
+		placeholderIsIcon = true;
+		notifyDataSetChanged();
+	}
+
 	public void setSelectedId(long id) {
 		selectedShaderId = id;
 		notifyDataSetChanged();
@@ -101,10 +114,20 @@ public class ShaderAdapter extends BaseAdapter {
 
 		void bindTo(@NonNull final ShaderInfo shader) {
 			byte[] bytes = shader.thumb();
+			boolean isIcon = (bytes == null || bytes.length == 0) &&
+					placeholderIsIcon;
+			// As the drawer shows a file without a picture.
+			icon.setScaleType(isIcon
+					? ImageView.ScaleType.CENTER
+					: ImageView.ScaleType.CENTER_CROP);
+			ImageViewCompat.setImageTintList(icon, isIcon
+					? AppCompatResources.getColorStateList(
+							icon.getContext(), R.color.navigation_row_mark)
+					: null);
 			if (bytes != null && bytes.length > 0) {
 				icon.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
 			} else {
-				icon.setImageResource(R.drawable.thumbnail_new_shader);
+				icon.setImageResource(placeholder);
 			}
 
 			title.setText(shader.getTitle());
