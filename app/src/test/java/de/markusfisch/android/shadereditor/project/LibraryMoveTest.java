@@ -500,8 +500,8 @@ public class LibraryMoveTest {
 		assertEquals(List.of("2 Fine.frag"), moved(result));
 		assertEquals(1, result.failed().size());
 		// Nor a comment that is rewritten and holds more than ASCII.
-		assertEquals(List.of("1 Lost: a comment the conversion " +
-				"rewrites holds characters outside ASCII"), failed(
+		assertEquals(List.of("1 Lost: line 1 has the character \u2603 in " +
+				"a comment the conversion takes away"), failed(
 				new Start(temp.newFolder()).move(new MoveDatabase().add(1,
 						"Lost", "uniform sampler2D backbuffer; " +
 								"///min:l;mag:l; \u2603\n" + MAIN))));

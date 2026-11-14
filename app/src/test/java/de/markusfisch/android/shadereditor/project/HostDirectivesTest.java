@@ -511,6 +511,19 @@ public class HostDirectivesTest {
 	}
 
 	@Test
+	public void aCharacterBehindAContinuationBackslashIsToldAsLeftOut() {
+		HostDirectives result = parse("#define A 1.0 + \\\u00e9", " 2.0",
+				"float b = 1.0 \\ \u00e9", "// c \\\u00e9");
+		assertEquals(List.of("WARNING 1 Character \u00e9 (U+00E9) outside " +
+						"a comment is left out, so that the line goes on " +
+						"behind its backslash: shader compilers read only " +
+						"ASCII code; replace it",
+				"WARNING 3 Character \u00e9 (U+00E9) outside a comment is " +
+						"read as a space: shader compilers read only ASCII " +
+						"code; replace it"), told(result));
+	}
+
+	@Test
 	public void nonAsciiPathOfAnInputIsNoCodeCharacter() {
 		HostDirectives result = parse("#pragma se input \"caf\u00e9.png\"",
 				"uniform sampler2D tex;");
@@ -577,6 +590,14 @@ public class HostDirectivesTest {
 	private static <T> T single(List<T> list) {
 		assertEquals(list.toString(), 1, list.size());
 		return list.get(0);
+	}
+
+	private static List<String> told(HostDirectives result) {
+		List<String> told = new java.util.ArrayList<>();
+		for (ProjectDiagnostic d : result.diagnostics()) {
+			told.add(d.severity() + " " + d.line() + " " + d.message());
+		}
+		return told;
 	}
 
 	private static HostDirectives parse(String... source) {
