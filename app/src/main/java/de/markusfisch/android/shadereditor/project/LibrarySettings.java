@@ -3,7 +3,6 @@ package de.markusfisch.android.shadereditor.project;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -23,15 +22,27 @@ public final class LibrarySettings {
 	private static final String TEMPLATE = "template";
 
 	private final File file;
+	// What has not followed a rename or deletion yet, or null.
+	private final Following following;
 
 	LibrarySettings(File file) {
+		this(file, null);
+	}
+
+	LibrarySettings(File file, Following following) {
 		this.file = file;
+		this.following = following;
 	}
 
 	/** Return the quality of the shader at path, 1 when none is kept. */
 	public float quality(ProjectPath path) {
+		// Where it is kept while a rename has not been followed; a
+		// path a file left has nothing kept.
+		ProjectPath stored = following != null
+				? following.stored(path)
+				: path;
 		try {
-			return read().quality(path);
+			return stored != null ? read().quality(stored) : 1f;
 		} catch (IOException e) {
 			return 1f;
 		}
@@ -40,7 +51,10 @@ public final class LibrarySettings {
 	/** Return the shader new ones are copied from, or null for none. */
 	public ProjectPath template() {
 		try {
-			return read().template();
+			ProjectPath template = read().template();
+			return following != null
+					? root(following.current(template))
+					: template;
 		} catch (IOException e) {
 			return null;
 		}
@@ -60,8 +74,18 @@ public final class LibrarySettings {
 			ProjectParseResult<ProjectPath> path = template != null
 					? ProjectPath.parse(template)
 					: null;
-			return path != null && path.isSuccess() ? path.value() : null;
+			return path != null && path.isSuccess()
+					? root(path.value())
+					: null;
 		}
+	}
+
+	// The shader new ones are copied from is a file of the library's
+	// root. One that went into a folder is not it anymore.
+	private static ProjectPath root(ProjectPath template) {
+		return template != null && template.toString().indexOf('/') < 0
+				? template
+				: null;
 	}
 
 	/**
@@ -138,18 +162,27 @@ public final class LibrarySettings {
 			return false;
 		}
 		State next = new State();
+		Map<String, Float> followed = new LinkedHashMap<>();
 		boolean changed = false;
-		for (Iterator<Map.Entry<String, Float>> all =
-				state.qualities.entrySet().iterator(); all.hasNext(); ) {
-			Map.Entry<String, Float> quality = all.next();
+		for (Map.Entry<String, Float> quality :
+				state.qualities.entrySet()) {
 			String now = followed(quality.getKey(), move);
-			changed |= !quality.getKey().equals(now);
-			if (now != null) {
+			if (quality.getKey().equals(now)) {
 				next.qualities.put(now, quality.getValue());
+			} else if (now != null) {
+				followed.put(now, quality.getValue());
 			}
+			changed |= !quality.getKey().equals(now);
 		}
-		next.template = state.template != null
+		// What followed the file is what is kept for where it is
+		// now, whatever was left there of a file that is gone.
+		next.qualities.putAll(followed);
+		String template = state.template != null
 				? followed(state.template, move)
+				: null;
+		// Not into a folder: there it is not the template anymore.
+		next.template = template != null && template.indexOf('/') < 0
+				? template
 				: null;
 		changed |= state.template != null &&
 				!state.template.equals(next.template);

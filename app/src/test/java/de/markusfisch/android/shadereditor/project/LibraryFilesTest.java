@@ -121,6 +121,112 @@ public class LibraryFilesTest {
 		assertNull(library.previews().get(path("Alpha.frag")));
 	}
 
+	// The settings could not follow the first rename. It stays noted,
+	// whatever is renamed next, and follows as soon as it can.
+	@Test
+	public void aFollowThatFailedIsNotDroppedByTheNextRename()
+			throws IOException {
+		Library library = library();
+		OpenProject project = open(library);
+		File settings = new File(temp.getRoot(), "files/library/settings");
+		assertTrue(settings.setReadable(false, false));
+		try {
+			assertFalse(settings.canRead());
+			project.rename(path("Alpha.frag"), path("Beta.frag"), done -> {
+			});
+			steps.settle();
+		} finally {
+			settings.setReadable(true);
+		}
+		// Until it followed, what is asked is answered from where it
+		// is still kept.
+		assertEquals(.25f, library.settings().quality(path("Beta.frag")),
+				0f);
+		assertEquals(path("Beta.frag"), library.settings().template());
+		assertArrayEquals(Pictures.png(1),
+				library.previews().get(path("Beta.frag")).png());
+
+		project.rename(path("sub"), path("moved"), done -> {
+		});
+		steps.settle();
+		steps = new Steps();
+		open(library);
+		assertEquals(.25f, library.settings().quality(path("Beta.frag")),
+				0f);
+		assertEquals(path("Beta.frag"), library.settings().template());
+		assertEquals(.5f, library.settings().quality(
+				path("moved/Deep.frag")), 0f);
+		assertFalse(new File(temp.getRoot(), "files/library/following")
+				.exists());
+	}
+
+	// A new file under the old name is another file: it gets nothing
+	// of the one that left, also while that one's follow is pending.
+	@Test
+	public void aFollowThatFailedIsNotLostWhenTheOldNameIsUsedAgain()
+			throws IOException {
+		Library library = library();
+		OpenProject project = open(library);
+		File settings = new File(temp.getRoot(), "files/library/settings");
+		assertTrue(settings.setReadable(false, false));
+		try {
+			project.rename(path("Alpha.frag"), path("Beta.frag"), done -> {
+			});
+			steps.settle();
+		} finally {
+			settings.setReadable(true);
+		}
+		write(new File(library.folder(), "Alpha.frag"),
+				"// a new file\n" + MAIN);
+		// Before anything followed:
+		assertEquals(1f, library.settings().quality(path("Alpha.frag")),
+				0f);
+		assertNull(library.previews().get(path("Alpha.frag")));
+		assertEquals(path("Beta.frag"), library.settings().template());
+
+		steps = new Steps();
+		open(library);
+		assertEquals(path("Beta.frag"), library.settings().template());
+		assertEquals(1f, library.settings().quality(path("Alpha.frag")),
+				0f);
+		assertNull(library.previews().get(path("Alpha.frag")));
+		assertEquals(.25f, library.settings().quality(path("Beta.frag")),
+				0f);
+		assertArrayEquals(Pictures.png(1),
+				library.previews().get(path("Beta.frag")).png());
+	}
+
+	// A copy in the root of a shader in a folder would look for its
+	// includes in the wrong place, however it got into the folder.
+	@Test
+	public void aTemplateMovedIntoAFolderIsNotTheTemplateAnymore()
+			throws IOException {
+		Library library = library();
+		OpenProject project = open(library);
+		project.rename(path("Alpha.frag"), path("sub/Alpha.frag"), done -> {
+		});
+		steps.settle();
+		assertTrue(new File(library.folder(), "sub/Alpha.frag").isFile());
+		assertNull(library.settings().template());
+		// Its quality and picture went with it all the same.
+		assertEquals(.25f, library.settings().quality(
+				path("sub/Alpha.frag")), 0f);
+		assertArrayEquals(Pictures.png(1), library.previews().get(
+				path("sub/Alpha.frag")).png());
+	}
+
+	// In the root it follows, as before.
+	@Test
+	public void aTemplateRenamedInTheRootStaysTheTemplate()
+			throws IOException {
+		Library library = library();
+		OpenProject project = open(library);
+		project.rename(path("Alpha.frag"), path("Gamma.frag"), done -> {
+		});
+		steps.settle();
+		assertEquals(path("Gamma.frag"), library.settings().template());
+	}
+
 	private OpenProject open(Library library) throws IOException {
 		ProjectSessions sessions = sessions();
 		String id = sessions.open(locator(library.folder()));
