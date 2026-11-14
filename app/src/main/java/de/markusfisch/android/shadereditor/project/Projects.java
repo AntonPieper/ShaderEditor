@@ -9,6 +9,8 @@ import android.os.Looper;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -49,6 +51,8 @@ public final class Projects {
 	public record Redone(String problem, LibraryMove.Result moved) {
 	}
 
+	// The folder of the assets that holds the examples.
+	private static final String EXAMPLES = "examples";
 	// The one queue every project of the process works on storage on.
 	private static final Executor QUEUE =
 			Executors.newSingleThreadExecutor();
@@ -140,6 +144,79 @@ public final class Projects {
 				} else {
 					openDirectory(folder, answer);
 				}
+			});
+		});
+	}
+
+	/**
+	 * Find the session of the examples that come with the app, a
+	 * read-only folder of its assets, or start it, listed as name;
+	 * done gets its id, or null when it cannot be kept. Open it as any
+	 * other: it is not listed among the recent projects.
+	 */
+	public void examples(String name, Callback<String> done) {
+		QUEUE.execute(() -> {
+			Locator locator = new Locator(Kind.EXAMPLES, EXAMPLES);
+			String id = sessions.open(locator);
+			boolean kept = id != null && sessions.remember(id, name, "",
+					System.currentTimeMillis());
+			main.post(() -> done.done(kept ? id : null));
+		});
+	}
+
+	/**
+	 * Save a copy of paths of project, a read-only folder, in the
+	 * library, where {@link Library#places} says, with the text each
+	 * has now; nothing of project changes. done gets the path of the
+	 * copy of entry, or why not all was copied. To show it, as for
+	 * {@link #newShader}.
+	 */
+	public void saveCopy(OpenProject project, ProjectPath entry,
+			Collection<ProjectPath> paths, Callback<Library.Created> done) {
+		QUEUE.execute(() -> {
+			Map<ProjectPath, ProjectPath> places = guarded(() -> {
+				Library library = library();
+				return library.enter(this::relocated) == null
+						? library.places(entry, paths)
+						: null;
+			}, problem -> null);
+			ProjectFiles library = new DirectoryProjectFiles(
+					library().folder());
+			main.post(() -> {
+				if (places == null) {
+					done.done(new Library.Created(null,
+							"the library cannot be listed"));
+					return;
+				}
+				project.copyTo(new ProjectFiles() {
+					@Override
+					public Read read(ProjectPath path) {
+						return null;
+					}
+
+					@Override
+					public Change write(ProjectPath path, Source source,
+							String expected) {
+						return library.write(places.get(path), source, null);
+					}
+
+					@Override
+					public Change write(ProjectPath path, byte[] bytes,
+							String expected) {
+						return library.write(places.get(path), bytes, null);
+					}
+				}, paths, problems -> {
+					for (Map.Entry<ProjectPath, String> problem :
+							problems.entrySet()) {
+						if (problem.getValue() != null) {
+							done.done(new Library.Created(null,
+									problem.getKey() + ": " +
+											problem.getValue()));
+							return;
+						}
+					}
+					done.done(new Library.Created(places.get(entry), null));
+				});
 			});
 		});
 	}

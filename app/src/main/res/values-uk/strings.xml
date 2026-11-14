@@ -419,6 +419,8 @@
 	<string name="file_not_saved">%1$s was not saved: %2$s</string>
 	<string name="file_cannot_open">%1$s cannot be opened: %2$s</string>
 	<string name="showing_last_picture">Showing the last picture that worked</string>
+	<string name="file_read_only">%s is read-only. Save a copy to keep your changes.</string>
+	<string name="copy_not_saved">The copy was not saved: %s</string>
 	<string name="file_needs_new_editor">Files of a folder open in the new editor</string>
 	<string name="turn_on">Turn on</string>
 	<string name="file_runs_behind_code">Files of a folder run only behind the code. Choose another run mode in Settings.</string>

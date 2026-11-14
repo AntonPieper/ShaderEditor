@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -326,6 +328,46 @@ public final class Library {
 					: "the quality or the picture of " + path +
 							" could not be kept";
 		});
+	}
+
+	/**
+	 * Return where Save a copy puts files of a read-only folder in the
+	 * library, by their path there: entry alone goes to the root, named
+	 * as a new shader of its name is; entry with the files it reads
+	 * goes into a new folder named after it, or after its folder when
+	 * it is a main.frag, where they keep their paths. Return null when
+	 * the root cannot be listed.
+	 */
+	Map<ProjectPath, ProjectPath> places(ProjectPath entry,
+			Collection<ProjectPath> paths) {
+		ProjectFiles.Listing listing = files().list(null);
+		if (!(listing instanceof ProjectFiles.Entries entries)) {
+			return null;
+		}
+		List<String> names = new ArrayList<>();
+		for (ProjectFiles.Entry listed : entries.entries()) {
+			names.add(listed.name());
+		}
+		Naming naming = new Naming(names);
+		String name = entry.getFileName();
+		Map<ProjectPath, ProjectPath> places = new LinkedHashMap<>();
+		if (paths.size() == 1 && paths.contains(entry)) {
+			places.put(entry, ProjectPath.parse(naming.unused(
+					Naming.stem(name, "Untitled"),
+					ShaderLanguage.PASS)).value());
+			return places;
+		}
+		String path = entry.toString();
+		int slash = path.lastIndexOf('/');
+		String folder = naming.unused(Naming.stem(OpenProject.MAIN.toString()
+				.equals(name) && slash > 0
+				? path.substring(path.lastIndexOf('/', slash - 1) + 1, slash)
+				: name, "Untitled"), "");
+		for (ProjectPath copied : paths) {
+			places.put(copied, ProjectPath.parse(folder + "/" + copied)
+					.value());
+		}
+		return places;
 	}
 
 	// What is kept of a file just written; why something is not, or null.

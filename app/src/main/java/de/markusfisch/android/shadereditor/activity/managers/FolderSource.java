@@ -468,6 +468,8 @@ final class FolderSource {
 		} else if (locator.kind() == ProjectSessions.Kind.DIRECTORY) {
 			return new Access(new File(locator.value()).isDirectory(),
 					false, null);
+		} else if (locator.kind() == ProjectSessions.Kind.EXAMPLES) {
+			return new Access(true, false, null);
 		}
 		Uri uri = Uri.parse(locator.value());
 		boolean granted = UserFilesProvider.AUTHORITY.equals(

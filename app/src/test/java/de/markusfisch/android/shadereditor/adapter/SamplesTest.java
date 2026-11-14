@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Set;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.project.ExamplesTest;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 
 public class SamplesTest {
 	@Test
@@ -35,6 +37,20 @@ public class SamplesTest {
 		}
 		assertEquals(Samples.ALL.size(), listed.size());
 		assertEquals(bundled, listed);
+	}
+
+	@Test
+	public void everyExampleFileIsListedOnce() {
+		Set<String> files = new HashSet<>();
+		for (ProjectPath path : ExamplesTest.shaders()) {
+			files.add(path.toString());
+		}
+		Set<String> listed = new HashSet<>();
+		for (Samples.Sample sample : Samples.ALL) {
+			listed.add(sample.path());
+		}
+		assertEquals(Samples.ALL.size(), listed.size());
+		assertEquals(files, listed);
 	}
 
 	@Test

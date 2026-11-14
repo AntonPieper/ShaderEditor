@@ -53,6 +53,8 @@ The names follow SPEC 2.1: a shader that runs, and every pass, is `*.frag`; code
 
 A tap opens the example in place from a read-only store and runs it. UX 5 already defines the rest: on read-only storage the user keeps editing locally and is offered Save a copy, which copies the running shader and its dependencies. Nothing is written until the user wants to keep something, edits belong to the copy, and an app update replaces the bundled tree without touching any copy. There is no example versioning and no update prompt.
 
+Built (X10): the first edit of an example says that it is read-only and offers Save a copy; Save is not offered there. Save a copy goes to the library without asking where: an example that reads no other file becomes a file in the library's root, named as a new shader of its name (`Tilt.frag`, `Tilt 2.frag`); one that reads other files goes into a new folder of the library named after it, where its files keep the paths they have in the examples (`Blobs/Blobs.frag`, `Blobs/lib/sdf.glsl`), so no file of the library is ever reused or written over. The example then forgets the edits that went into the copy, and the copy opens and runs. The tree lies in the debug source set while only debug builds have project mode; release builds keep their examples as raw resources.
+
 The rejected alternative is copying on tap into the open folder with a shared `lib/`. It needs a rule for a `lib/sdf.glsl` that already exists and differs, and an example loaded after an app update can then fail to compile against the user's older copy.
 
 ## 3. A shared include library

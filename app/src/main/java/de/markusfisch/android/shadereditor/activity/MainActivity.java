@@ -490,23 +490,28 @@ public class MainActivity extends AppCompatActivity {
 						shaderManager.selectShader(id);
 					}
 
+					// Opened where it is, in the read-only examples;
+					// Save a copy keeps it.
 					@Override
 					public void onOpenExample(@NonNull Samples.Sample sample) {
-						// A copy in the library, as New shader makes one.
-						if (libraryAdd != null) {
-							libraryAdd.addExample(getString(sample.nameId()),
-									sample.resId(), sample.thumbId(),
-									sample.quality());
-							return;
-						}
-						if (shaderManager.isModified()) {
-							shaderManager.saveShader();
-						}
-						shaderManager.createShaderFromResource(
-								getString(sample.nameId()),
-								sample.resId(),
-								sample.thumbId(),
-								sample.quality());
+						ProjectPath path = ProjectPath.parse(sample.path())
+								.value();
+						holds.projects().examples(getString(
+								R.string.load_sample), key -> {
+							if (isFinishing()) {
+								return;
+							} else if (key == null) {
+								Message.show(MainActivity.this, getString(
+										R.string.file_cannot_open,
+										sample.path(),
+										"its session cannot be kept"));
+								return;
+							}
+							if (ShaderEditorApp.preferences.autoSave()) {
+								open.save(false);
+							}
+							files.open(key, path, false);
+						});
 					}
 				});
 	}
@@ -642,6 +647,38 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onFailed(@NonNull String message) {
 				Message.show(MainActivity.this, message);
+			}
+
+			@Override
+			public void onReadOnly(@NonNull ProjectFile file) {
+				String name = file.getProject().name();
+				Message.make(MainActivity.this, getString(
+								R.string.file_read_only, name != null
+										? name
+										: file.getTitle()),
+						Snackbar.LENGTH_LONG)
+						.setAction(R.string.duplicate_shader,
+								v -> file.saveCopy())
+						.show();
+			}
+
+			// What runs and what it reads, else the file alone.
+			@Override
+			public void onSaveCopy(@NonNull ProjectFile file) {
+				OpenProject project = file.getProject();
+				ProjectPath running = project.running();
+				List<ProjectPath> paths = new ArrayList<>();
+				paths.add(running != null ? running : file.getPath());
+				if (running != null) {
+					for (OpenProject.Used use : project.used()) {
+						if (!paths.contains(use.path())) {
+							paths.add(use.path());
+						}
+					}
+				}
+				if (libraryAdd != null) {
+					libraryAdd.saveCopy(project, paths.get(0), paths);
+				}
 			}
 
 			// Long enough to be read after the drawer closed, and to be
