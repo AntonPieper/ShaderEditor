@@ -294,6 +294,15 @@ public final class Projects {
 				origin), done);
 	}
 
+	/**
+	 * Have the live wallpaper show the shader of the database again, on
+	 * the queue: see {@link WallpaperSnapshots#uninstall}. done gets
+	 * why a snapshot is still installed, or null.
+	 */
+	public void clearWallpaper(Callback<String> done) {
+		change(() -> wallpaper().uninstall(), done);
+	}
+
 	// What a task of the queue answers; nothing it throws leaves the
 	// queue.
 	private interface Task<T> {

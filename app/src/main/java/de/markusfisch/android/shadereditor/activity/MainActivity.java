@@ -877,6 +877,19 @@ public class MainActivity extends AppCompatActivity {
 					});
 			return;
 		}
+		if (looks != null) {
+			// A shader that was not moved; a file may be the wallpaper.
+			OpenItem item = open;
+			looks.setDatabaseWallpaper(item::setAsWallpaper, problem -> {
+				if (problem != null) {
+					Message.show(this, getString(
+							R.string.cannot_install_wallpaper, problem));
+				} else {
+					showWallpaper();
+				}
+			});
+			return;
+		}
 		open.setAsWallpaper();
 		showWallpaper();
 	}
