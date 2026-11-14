@@ -2,6 +2,8 @@ package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -14,11 +16,15 @@ import org.jetbrains.annotations.Contract;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.project.Library;
 import de.markusfisch.android.shadereditor.project.LibraryMove;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
@@ -36,6 +42,11 @@ import de.markusfisch.android.shadereditor.widget.Message;
 public final class LibraryScreen implements ShaderScreen {
 	// How long the notice that a folder is read-only stays.
 	private static final int READ_ONLY_MILLIS = 10000;
+	// Reads which file of the library follows one that went.
+	private final ExecutorService newest =
+			Executors.newSingleThreadExecutor();
+	private final Handler handler = new Handler(Looper.getMainLooper());
+	private boolean destroyed;
 
 	private static final String OPEN = "open";
 	private static final int NEEDS_NEW_EDITOR_MILLIS = 10000;
@@ -345,6 +356,9 @@ public final class LibraryScreen implements ShaderScreen {
 		if (!finishing) {
 			holds.keepOpen();
 		}
+		destroyed = true;
+		newest.shutdownNow();
+		handler.removeCallbacksAndMessages(null);
 		files.destroy();
 		if (libraryStart != null) {
 			libraryStart.destroy();
@@ -353,6 +367,30 @@ public final class LibraryScreen implements ShaderScreen {
 		looks.destroy();
 		shaderManager.destroy();
 		shaderListManager.destroy();
+	}
+
+	// Show the newest file of the library, session key, if it has one
+	// and nothing else was opened meanwhile.
+	private void showNewest(@NonNull String key) {
+		Projects projects = holds.projects();
+		try {
+			newest.execute(() -> {
+				List<Library.RootFile> root = projects.library().rootFiles();
+				var path = root.isEmpty()
+						? null
+						: ProjectPath.parse(root.get(0).name());
+				handler.post(() -> {
+					if (!destroyed && open == nothing && path != null &&
+							path.isSuccess()) {
+						// As tapped: it runs, and if it cannot be opened
+						// that is said, and nothing more follows.
+						files.open(key, path.value(), false);
+					}
+				});
+			});
+		} catch (RejectedExecutionException e) {
+			// Destroyed.
+		}
 	}
 
 	@Override
@@ -671,6 +709,12 @@ public final class LibraryScreen implements ShaderScreen {
 			// is a screen for no file open.
 			@Override
 			public void onGone() {
+				// A file of the library that went is followed by the
+				// newest it has, as a start whose file went (NAVIGATION
+				// 11.4); a file of another folder by nothing.
+				String gone = open instanceof ProjectFile file
+						? file.getProject().id()
+						: null;
 				if (holdsUnshownFile) {
 					// Its text is not a shader of the library to save.
 					holdsUnshownFile = false;
@@ -682,6 +726,9 @@ public final class LibraryScreen implements ShaderScreen {
 				moving = false;
 				forgetHeldMessage();
 				showOpen();
+				if (gone != null && holds.projects().isLibrary(gone)) {
+					showNewest(gone);
+				}
 			}
 
 			@Override
