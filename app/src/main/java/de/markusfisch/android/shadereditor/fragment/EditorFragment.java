@@ -1,10 +1,8 @@
 package de.markusfisch.android.shadereditor.fragment;
 
 import android.content.Context;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.StrictMode;
-import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,10 +20,8 @@ import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
-import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
-import de.markusfisch.android.shadereditor.view.UndoRedo;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
 import de.markusfisch.android.shadereditor.widget.ShaderEditor;
 
@@ -38,8 +34,7 @@ public class EditorFragment extends Fragment {
 			Executors.newSingleThreadExecutor();
 
 	private View editorContainer;
-	private ShaderEditor shaderEditor;
-	private UndoRedo undoRedo;
+	private SourceEditor editor;
 	// Text set before the view exists, for example from an intent
 	// that started the activity.
 	@Nullable
@@ -65,6 +60,9 @@ public class EditorFragment extends Fragment {
 		private String key;
 		@Nullable
 		private String text;
+		// What the editor keeps in memory besides text.
+		@Nullable
+		private Object retained;
 	}
 
 	@Override
@@ -72,30 +70,39 @@ public class EditorFragment extends Fragment {
 		View view = inflater.inflate(R.layout.fragment_editor, container, false);
 
 		editorContainer = view.findViewById(R.id.editor_container);
-		shaderEditor = view.findViewById(R.id.editor);
-		shaderEditor.setOnEditPausedListener((text) -> {
-			if (editPausedListener != null) {
-				editPausedListener.onEditPaused(text);
+		editor = new EditTextSourceEditor(view.findViewById(R.id.editor));
+		editor.setListener(new SourceEditor.Listener() {
+			@Override
+			public void onTextModified() {
+				if (textModifiedListener != null) {
+					textModifiedListener.onTextModified();
+				}
 			}
-		});
-		shaderEditor.setOnTextModifiedListener(() -> {
-			if (textModifiedListener != null) {
-				textModifiedListener.onTextModified();
+
+			@Override
+			public void onEditPaused(@NonNull String text) {
+				if (editPausedListener != null) {
+					editPausedListener.onEditPaused(text);
+				}
 			}
-		});
-		shaderEditor.setOnCompletionsListener((completions, position) -> {
-			if (codeCompletionListener != null) {
-				codeCompletionListener.onCodeCompletions(completions, position);
+
+			@Override
+			public void onCompletions(@NonNull List<String> words,
+					int position) {
+				if (codeCompletionListener != null) {
+					codeCompletionListener.onCodeCompletions(words, position);
+				}
 			}
 		});
 		setShowLineNumbers(ShaderEditorApp.preferences.showLineNumbers());
-		undoRedo = new UndoRedo(shaderEditor, ShaderEditorApp.editHistory);
+		DraftHolder holder = getDraftHolder();
+		boolean inMemory = state != null &&
+				holder.key != null &&
+				holder.key.equals(state.getString(DRAFT_KEY));
 		String restored = restoreDraft(state);
 		if (restored != null) {
-			// Before the view state restores the selection, and without
-			// clearing the undo history, like EditText's own restore did.
-			// The undo listener only starts in onResume().
-			shaderEditor.setTextHighlighted(restored);
+			editor.restoreText(restored, inMemory ? holder.retained : null,
+					state);
 			pendingText = null;
 		} else if (pendingText != null) {
 			setText(pendingText);
@@ -108,18 +115,19 @@ public class EditorFragment extends Fragment {
 	@Override
 	public void onSaveInstanceState(@NonNull Bundle outState) {
 		super.onSaveInstanceState(outState);
-		if (shaderEditor == null) {
+		if (editor == null) {
 			return;
 		}
 		DraftHolder holder = getDraftHolder();
-		CharSequence current = shaderEditor.getText();
-		String text = current == null ? "" : current.toString();
+		String text = editor.getText();
 		if (holder.key == null || !text.equals(holder.text)) {
 			holder.key = EditorDraft.newKey();
 			holder.text = text;
 			getDraft().save(holder.key, text);
 		}
+		holder.retained = editor.getRetainedState();
 		outState.putString(DRAFT_KEY, holder.key);
+		editor.saveInstanceState(outState);
 	}
 
 	@Override
@@ -190,89 +198,86 @@ public class EditorFragment extends Fragment {
 	@Override
 	public void onDestroyView() {
 		super.onDestroyView();
-		undoRedo.detachListener();
+		editor.destroy();
 	}
 
 	@Override
 	public void onResume() {
 		super.onResume();
-		updateToPreferences();
-		// Only start listening after EditText restored its content
-		// to make sure the initial change is not recorded.
-		undoRedo.listenForChanges();
+		editor.applySettings(ShaderEditorApp.preferences);
+		editor.resume();
 	}
 
 	public void undo() {
-		undoRedo.undo();
+		editor.undo();
 	}
 
 	public boolean canUndo() {
-		return undoRedo.canUndo();
+		return editor.canUndo();
 	}
 
 	public void redo() {
-		undoRedo.redo();
+		editor.redo();
 	}
 
 	public boolean canRedo() {
-		return undoRedo.canRedo();
+		return editor.canRedo();
 	}
 
 	public boolean hasErrors() {
-		return shaderEditor.hasErrors();
+		return ProjectDiagnostic.anyError(editor.getErrors());
 	}
 
 	public void clearError() {
-		shaderEditor.setErrors(Collections.emptyList());
+		editor.setErrors(Collections.emptyList());
 	}
 
 	public void updateHighlighting() {
-		shaderEditor.updateHighlighting();
+		editor.updateHighlighting();
 	}
 
 	public void highlightErrors() {
-		shaderEditor.updateErrorHighlighting();
+		editor.markErrors();
 	}
 
 	public void setErrors(@NonNull List<ProjectDiagnostic> errors) {
-		shaderEditor.setErrors(errors);
+		editor.setErrors(errors);
 		highlightErrors();
 	}
 
 	public void showErrors() {
-		List<ProjectDiagnostic> errors = shaderEditor.getErrors();
+		List<ProjectDiagnostic> errors = editor.getErrors();
 		// The editor shows a single file, so the file is ignored.
 		new ErrorListModal(errors, (file, lineNumber) -> navigateToLine(lineNumber))
 				.show(getParentFragmentManager(), ErrorListModal.TAG);
 	}
 
 	public void navigateToLine(int lineNumber) {
-		shaderEditor.navigateToLine(lineNumber);
+		editor.navigateToLine(lineNumber);
 	}
 
 
 	public String getText() {
-		return shaderEditor.getCleanText();
+		return editor.getCleanText();
 	}
 
 	public void setText(String text) {
-		if (shaderEditor == null) {
+		if (editor == null) {
 			pendingText = text;
 			return;
 		}
 		clearError();
-		undoRedo.clearHistory();
-		undoRedo.stopListeningForChanges();
-		shaderEditor.setTextHighlighted(text);
-		undoRedo.listenForChanges();
+		editor.setText(text == null ? "" : text);
 	}
 
 	public void insert(@NonNull CharSequence text) {
-		shaderEditor.insert(text);
+		editor.insert(text);
 	}
 
-	public void addUniform(String name) {
-		shaderEditor.addUniform(name);
+	public void addUniform(@Nullable String statement) {
+		if (statement != null) {
+			editor.addUniform(statement);
+		}
 	}
 
 	public boolean isCodeVisible() {
@@ -283,28 +288,12 @@ public class EditorFragment extends Fragment {
 		boolean visible = isCodeVisible();
 		editorContainer.setVisibility(visible ? View.GONE : View.VISIBLE);
 		if (visible) {
-			SoftKeyboard.hide(getActivity(), shaderEditor);
+			SoftKeyboard.hide(getActivity(), editor.getView());
 		}
 		return visible;
 	}
 
-	private void updateToPreferences() {
-		Preferences preferences = ShaderEditorApp.preferences;
-		shaderEditor.setUpdateDelay(preferences.getUpdateDelay());
-		shaderEditor.setTextSize(TypedValue.COMPLEX_UNIT_SP, preferences.getTextSize());
-		Typeface font = preferences.getFont();
-		shaderEditor.setTypeface(font);
-		String features = shaderEditor.getFontFeatureSettings();
-		boolean isMono = font == Typeface.MONOSPACE;
-		// Don't touch font features for the default MONOSPACE font as
-		// this can impact performance.
-		if (!isMono || features != null) {
-			shaderEditor.setFontFeatureSettings(isMono ? null : preferences.useLigatures() ?
-					"normal" : "calt off");
-		}
-	}
-
 	public void setShowLineNumbers(boolean showLineNumbers) {
-		shaderEditor.setShowLineNumbers(showLineNumbers);
+		editor.setShowLineNumbers(showLineNumbers);
 	}
 }
