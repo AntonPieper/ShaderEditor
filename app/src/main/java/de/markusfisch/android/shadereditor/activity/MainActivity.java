@@ -45,6 +45,7 @@ import de.markusfisch.android.shadereditor.activity.managers.RunGuard;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderList;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
+import de.markusfisch.android.shadereditor.activity.managers.ShaderScreen;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderViewManager;
 import de.markusfisch.android.shadereditor.activity.managers.UIManager;
 import de.markusfisch.android.shadereditor.adapter.Samples;
@@ -85,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
 	private ShaderViewManager shaderViewManager;
 	private ExtraKeysManager extraKeysManager;
 	private NavigationManager navigationManager;
+	// The world this screen is in: rows of the database, or files.
+	private ShaderScreen screen;
 	// The files of folders, with project mode only, else null.
 	@Nullable
 	private ProjectHolds holds;
@@ -161,135 +164,12 @@ public class MainActivity extends AppCompatActivity {
 				editorFragment,
 				extraKeysManager,
 				shaderViewManager);
-		if (getResources().getBoolean(R.bool.project_mode)) {
-			holds = new ProjectHolds(new Projects(this));
-			libraryAdd = new LibraryAdd(this, holds.projects(), dataSource,
-					new LibraryAdd.Listener() {
-						@Override
-						public void onAdded(@NonNull String key,
-								@NonNull ProjectPath path) {
-							if (ShaderEditorApp.preferences.autoSave()) {
-								open.save(false);
-							}
-							files.open(key, path, false);
-							shaderListManager.loadShadersAsync();
-						}
-
-						@Override
-						public void onFailed(@NonNull String message) {
-							Message.show(MainActivity.this, message);
-							// The start left the screen to what was
-							// to be added: the library's file, then.
-							if (!open.hasText() && moving) {
-								libraryStart.show();
-							}
-						}
-					});
-			looks = new LibraryLooks(this, holds.projects(), shaderViewManager,
-					() -> shaderListManager.loadShadersAsync(),
-					problem -> Message.show(this, getString(
-							R.string.library_not_kept, problem)));
-			// The quality chosen is told once it changes, also when the
-			// spinner first shows what it holds: what it holds now.
-			shaderViewManager.setQuality(1f);
-			guard = new RunGuard(new RunGuard.Store() {
-				@NonNull
-				@Override
-				public String pending() {
-					return ShaderEditorApp.preferences.getPendingCrashFile();
-				}
-
-				@Override
-				public void setPending(@NonNull String file) {
-					ShaderEditorApp.preferences.setPendingCrashFile(file);
-				}
-
-				@NonNull
-				@Override
-				public String held() {
-					return ShaderEditorApp.preferences.getHeldFile();
-				}
-
-				@Override
-				public void setHeld(@NonNull String file) {
-					ShaderEditorApp.preferences.setHeldFile(file);
-				}
-			});
-			files = new ProjectFileManager(this, editorFragment, holds,
-					createProjectFileListener(),
-					(preparation, nothingRuns, quality) -> {
-						if (preparation != null) {
-							ProjectFile file = files.file();
-							String key = files.key();
-							ProjectPath running = file != null
-									? file.getProject().running()
-									: null;
-							looks.quality(files.key(), running, quality,
-									read -> {
-										float kept = Arrays.asList(key, running)
-												.equals(chosenFor)
-												? chosenQuality
-												: read;
-										if (file != null) {
-											file.setQuality(kept);
-										}
-										if (key != null && running != null &&
-												!mayRun(key, running)) {
-											return;
-										}
-										// The folder and the file that
-										// runs: what another one showed
-										// never stays when this fails.
-										shaderViewManager.setPlan(
-												preparation, kept,
-												Arrays.asList(key, running));
-										looks.ran(files.key(), running);
-									});
-						} else {
-							// No build reports, so only the manifest
-							// can be wrong.
-							forgetHeldMessage();
-							shaderViewManager.showNothing();
-							shaderViewListener.onInfoLog(nothingRuns);
-						}
-					});
-			editorFragment.setOnErrorSelectedListener((file, line) -> {
-				if (file != null) {
-					files.openAt(file, line);
-				} else {
-					editorFragment.navigateToLine(line);
-				}
-			});
-		}
 		MainMenuManager.ShaderActions shaderActions =
 				createShaderActions(extraKeysManager);
-		shaderListManager = createShaderList(shaderActions);
-		shaderManager = new ShaderManager(this,
-				editorFragment,
-				shaderViewManager,
-				shaderListManager,
-				navigationManager,
-				dataSource,
-				files != null,
-				createShaderViewListener(),
-				this::showOpenTitle,
-				() -> uiManager.showNotice(getText(R.string.shader_saved),
-						SAVED_NOTICE_MILLIS));
-		nothing = new NothingOpen(getString(R.string.nav_shaders));
-		// Where the shaders are files, nothing is open until the start
-		// shows a file: no shader of the database stands in for it.
-		open = files != null ? nothing : shaderManager;
-		if (files != null) {
-			// A shader that was not moved is shown.
-			shaderManager.setOnShownListener(() -> {
-				files.leave();
-				open = shaderManager;
-				moving = false;
-				forgetHeldMessage();
-				showOpen();
-			});
-			shaderManager.setOnGoneListener(this::showLibraryFile);
-		}
+		// The one place that decides which world this screen is in.
+		screen = getResources().getBoolean(R.bool.project_mode)
+				? new FileScreen(shaderViewListener)
+				: new DatabaseScreen();
 
 		MainMenuManager mainMenuManager = new MainMenuManager(
 				this,
@@ -309,19 +189,7 @@ public class MainActivity extends AppCompatActivity {
 				},
 				v -> editorFragment.showErrors());
 
-		// Only load the last shader when no incoming text was opened,
-		// or it would replace that text.
-		boolean openedText = libraryAdd != null
-				? addShared(getIntent())
-				: shaderManager.handleSendText(getIntent());
-		// Where the shaders are files, the start opens the library.
-		isInitialLoad = state == null && !openedText && files == null;
-		restored = files != null && state != null
-				? OpenState.decode(state.getString(OPEN))
-				: null;
-		holdsUnshownFile = restored != null &&
-				restored.kind() == OpenState.Kind.FILE &&
-				!ShaderEditorApp.preferences.useNewEditor();
+		screen.start(state, getIntent());
 
 		editorFragment.setOnEditPausedListener(text -> {
 			if (ShaderEditorApp.preferences.doesRunOnChange() &&
@@ -336,23 +204,6 @@ public class MainActivity extends AppCompatActivity {
 		});
 		editorFragment.setOnTextModifiedListener(() -> open.onTextModified());
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
-		if (files != null) {
-			// A screen that had a file, a shader or nothing open comes
-			// back to that; one that had not come that far shows what
-			// the library shows, as a cold start does, unless text
-			// that was shared comes instead, or a shader the screen
-			// before this one asked for.
-			boolean show = !openedText && !libraryAdd.awaits() &&
-					(restored == null || restored.showsLibrary());
-			// Nothing stands where the code is until what was open is
-			// back, or the start has shown a file.
-			moving = true;
-			movingTold = restored != null &&
-					restored.kind() == OpenState.Kind.MOVING;
-			showOpen();
-			startLibrary(show);
-			libraryAdd.resume();
-		}
 	}
 
 	// Move what is left in the database into the library, then show
@@ -463,44 +314,12 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onRestoreInstanceState(@NonNull Bundle state) {
 		super.onRestoreInstanceState(state);
-		if (files == null) {
-			shaderManager.restoreState(state);
-		} else if (restored != null && restored.isFile()) {
-			files.restore(restored);
-		} else if (restored != null &&
-				restored.kind() == OpenState.Kind.NOT_MOVED) {
-			shaderManager.restore(restored.shader(),
-					restored.title() != null ? restored.title() : "",
-					restored.quality(), restored.modified());
-			open = shaderManager;
-			moving = false;
-			showOpen();
-		} else if (restored != null &&
-				restored.kind() == OpenState.Kind.NOTHING) {
-			moving = false;
-			showOpen();
-		}
-		// Not that far yet: the start shows what the library shows.
-		if (!state.getBoolean(CODE_VISIBLE, true)) {
-			if (open.hasText()) {
-				uiManager.toggleCodeVisibility();
-			} else {
-				hideCodeOnShow = true;
-			}
-		}
+		screen.onRestoreInstanceState(state);
 	}
 
 	@Override
 	protected void onSaveInstanceState(@NonNull Bundle state) {
-		if (files == null) {
-			shaderManager.saveState(state);
-		} else {
-			state.putString(OPEN, openState().encode());
-		}
-		// With nothing open the editor's view is gone for that reason.
-		state.putBoolean(CODE_VISIBLE, open.hasText()
-				? editorFragment.isCodeVisible()
-				: !hideCodeOnShow);
+		screen.onSaveInstanceState(state);
 		state.putCharSequence(TOOLBAR_TITLE, uiManager.getToolbarTitle());
 		super.onSaveInstanceState(state);
 	}
@@ -508,20 +327,12 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onStart() {
 		super.onStart();
-		if (files != null) {
-			// The editor's view exists by now.
-			if (!open.hasText()) {
-				showOpen();
-			}
-			files.onStart();
-		}
+		screen.onStart();
 	}
 
 	@Override
 	protected void onStop() {
-		if (files != null) {
-			files.onStop();
-		}
+		screen.onStop();
 		super.onStop();
 	}
 
@@ -529,7 +340,7 @@ public class MainActivity extends AppCompatActivity {
 	protected void onResume() {
 		super.onResume();
 		uiManager.updateUiToPreferences();
-		shaderListManager.loadShadersAsync();
+		screen.onResume();
 		shaderViewManager.onResume();
 	}
 
@@ -539,36 +350,15 @@ public class MainActivity extends AppCompatActivity {
 			open.save(false);
 		}
 		ShaderEditorApp.preferences.setPendingCrashShaderId(0);
-		if (guard != null) {
-			guard.ran();
-		}
+		screen.onPause();
 		super.onPause();
 		shaderViewManager.onPause();
 	}
 
 	@Override
 	protected void onDestroy() {
-		// The screen made again after a configuration change takes them.
-		if (holds != null && !isFinishing()) {
-			holds.keepOpen();
-		}
-		if (files != null) {
-			files.destroy();
-		}
-		if (libraryStart != null) {
-			libraryStart.destroy();
-		}
-		if (libraryAdd != null) {
-			libraryAdd.destroy();
-		}
-		if (looks != null) {
-			looks.destroy();
-		}
-		if (shaderManager != null) {
-			shaderManager.destroy();
-		}
-		if (shaderListManager != null) {
-			shaderListManager.destroy();
+		if (screen != null) {
+			screen.onDestroy(isFinishing());
 		}
 		if (extraKeysManager != null) {
 			extraKeysManager.destroy();
@@ -579,11 +369,7 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onNewIntent(Intent intent) {
 		super.onNewIntent(intent);
-		if (libraryAdd != null) {
-			addShared(intent);
-		} else {
-			shaderManager.handleSendText(intent);
-		}
+		screen.onNewIntent(intent);
 	}
 
 	// Where the shaders are files, text another app shares or opens
@@ -608,26 +394,14 @@ public class MainActivity extends AppCompatActivity {
 		super.onPostCreate(state);
 		uiManager.setToolbarTitle(title, open.getSubtitle(),
 				open.isModified());
-		// A file that comes back keeps its title until it is shown.
-		if (!open.hasText() && (restored == null ||
-				restored.showsLibrary())) {
-			showOpenTitle();
-		}
+		screen.onPostCreate();
 		if (uiManager.drawerToggle != null) {
 			uiManager.drawerToggle.syncState();
 		}
 	}
 
-	// The one place that chooses between the old and the new drawer.
 	@NonNull
-	private ShaderList createShaderList(
-			@NonNull MainMenuManager.ShaderActions shaderActions) {
-		if (!getResources().getBoolean(R.bool.project_mode)) {
-			return new ShaderListManager(this,
-					findViewById(R.id.shaders),
-					dataSource,
-					createShaderListListener());
-		}
+	private NavigationDrawer createDrawer() {
 		return new NavigationDrawer(this, holds,
 				new NavigationDrawer.Host() {
 					@Override
@@ -1151,7 +925,7 @@ public class MainActivity extends AppCompatActivity {
 			return;
 		}
 		// Where the shaders are files, one of the database was not moved.
-		String subtitle = files != null && open == shaderManager &&
+		String subtitle = open == shaderManager &&
 				shaderManager.getSelectedShaderId() > 0
 				? getString(R.string.library_not_moved_line)
 				: open.getSubtitle();
@@ -1414,5 +1188,336 @@ public class MainActivity extends AppCompatActivity {
 		}
 		builder.append("#endif\n");
 		return builder.toString();
+	}
+
+	// The shaders are rows of the database, as in release builds.
+	private final class DatabaseScreen implements ShaderScreen {
+		DatabaseScreen() {
+			shaderListManager = new ShaderListManager(MainActivity.this,
+					findViewById(R.id.shaders),
+					dataSource,
+					createShaderListListener());
+			shaderManager = new ShaderManager(MainActivity.this,
+					editorFragment,
+					shaderViewManager,
+					shaderListManager,
+					navigationManager,
+					dataSource,
+					false,
+					createShaderViewListener(),
+					this::showTitle,
+					() -> uiManager.showNotice(getText(R.string.shader_saved),
+							SAVED_NOTICE_MILLIS));
+			open = shaderManager;
+		}
+
+		@Override
+		public void start(@Nullable Bundle state, @Nullable Intent intent) {
+			// Only load the last shader when no incoming text was opened,
+			// or it would replace that text.
+			boolean openedText = shaderManager.handleSendText(intent);
+			isInitialLoad = state == null && !openedText;
+		}
+
+		@Override
+		public void onRestoreInstanceState(@NonNull Bundle state) {
+			shaderManager.restoreState(state);
+			if (!state.getBoolean(CODE_VISIBLE, true)) {
+				uiManager.toggleCodeVisibility();
+			}
+		}
+
+		@Override
+		public void onSaveInstanceState(@NonNull Bundle state) {
+			shaderManager.saveState(state);
+			state.putBoolean(CODE_VISIBLE, editorFragment.isCodeVisible());
+		}
+
+		@Override
+		public void onPostCreate() {
+		}
+
+		@Override
+		public void onStart() {
+		}
+
+		@Override
+		public void onStop() {
+		}
+
+		@Override
+		public void onResume() {
+			shaderListManager.loadShadersAsync();
+		}
+
+		@Override
+		public void onPause() {
+		}
+
+		@Override
+		public void onDestroy(boolean finishing) {
+			shaderManager.destroy();
+			shaderListManager.destroy();
+		}
+
+		@Override
+		public void onNewIntent(@Nullable Intent intent) {
+			shaderManager.handleSendText(intent);
+		}
+
+		private void showTitle() {
+			uiManager.setToolbarTitle(open.getTitle(), open.getSubtitle(),
+					open.isModified());
+		}
+	}
+
+	// The shaders are files, of the library and of other folders.
+	private final class FileScreen implements ShaderScreen {
+		private final MainActivity activity = MainActivity.this;
+
+		FileScreen(@NonNull ShaderViewManager.Listener shaderViewListener) {
+			holds = new ProjectHolds(new Projects(activity));
+			libraryAdd = new LibraryAdd(activity, holds.projects(), dataSource,
+					new LibraryAdd.Listener() {
+						@Override
+						public void onAdded(@NonNull String key,
+								@NonNull ProjectPath path) {
+							if (ShaderEditorApp.preferences.autoSave()) {
+								open.save(false);
+							}
+							files.open(key, path, false);
+							shaderListManager.loadShadersAsync();
+						}
+
+						@Override
+						public void onFailed(@NonNull String message) {
+							Message.show(MainActivity.this, message);
+							// The start left the screen to what was
+							// to be added: the library's file, then.
+							if (!open.hasText() && moving) {
+								libraryStart.show();
+							}
+						}
+					});
+			looks = new LibraryLooks(activity, holds.projects(), shaderViewManager,
+					() -> shaderListManager.loadShadersAsync(),
+					problem -> Message.show(activity, getString(
+							R.string.library_not_kept, problem)));
+			// The quality chosen is told once it changes, also when the
+			// spinner first shows what it holds: what it holds now.
+			shaderViewManager.setQuality(1f);
+			guard = new RunGuard(new RunGuard.Store() {
+				@NonNull
+				@Override
+				public String pending() {
+					return ShaderEditorApp.preferences.getPendingCrashFile();
+				}
+
+				@Override
+				public void setPending(@NonNull String file) {
+					ShaderEditorApp.preferences.setPendingCrashFile(file);
+				}
+
+				@NonNull
+				@Override
+				public String held() {
+					return ShaderEditorApp.preferences.getHeldFile();
+				}
+
+				@Override
+				public void setHeld(@NonNull String file) {
+					ShaderEditorApp.preferences.setHeldFile(file);
+				}
+			});
+			files = new ProjectFileManager(activity, editorFragment, holds,
+					createProjectFileListener(),
+					(preparation, nothingRuns, quality) -> {
+						if (preparation != null) {
+							ProjectFile file = files.file();
+							String key = files.key();
+							ProjectPath running = file != null
+									? file.getProject().running()
+									: null;
+							looks.quality(files.key(), running, quality,
+									read -> {
+										float kept = Arrays.asList(key, running)
+												.equals(chosenFor)
+												? chosenQuality
+												: read;
+										if (file != null) {
+											file.setQuality(kept);
+										}
+										if (key != null && running != null &&
+												!mayRun(key, running)) {
+											return;
+										}
+										// The folder and the file that
+										// runs: what another one showed
+										// never stays when this fails.
+										shaderViewManager.setPlan(
+												preparation, kept,
+												Arrays.asList(key, running));
+										looks.ran(files.key(), running);
+									});
+						} else {
+							// No build reports, so only the manifest
+							// can be wrong.
+							forgetHeldMessage();
+							shaderViewManager.showNothing();
+							shaderViewListener.onInfoLog(nothingRuns);
+						}
+					});
+			editorFragment.setOnErrorSelectedListener((file, line) -> {
+				if (file != null) {
+					files.openAt(file, line);
+				} else {
+					editorFragment.navigateToLine(line);
+				}
+			});
+		
+			shaderListManager = createDrawer();
+			shaderManager = new ShaderManager(activity,
+					editorFragment,
+					shaderViewManager,
+					shaderListManager,
+					navigationManager,
+					dataSource,
+					true,
+					createShaderViewListener(),
+					activity::showOpenTitle,
+					() -> uiManager.showNotice(getText(R.string.shader_saved),
+							SAVED_NOTICE_MILLIS));
+			nothing = new NothingOpen(getString(R.string.nav_shaders));
+			// Where the shaders are files, nothing is open until the start
+			// shows a file: no shader of the database stands in for it.
+			open = nothing;
+			// A shader that was not moved is shown.
+			shaderManager.setOnShownListener(() -> {
+				files.leave();
+				open = shaderManager;
+				moving = false;
+				forgetHeldMessage();
+				showOpen();
+			});
+			shaderManager.setOnGoneListener(activity::showLibraryFile);
+		}
+
+		@Override
+		public void start(@Nullable Bundle state, @Nullable Intent intent) {
+			// Only show the library's file when no incoming text was
+			// opened, or it would replace that text.
+			boolean openedText = addShared(intent);
+			restored = state != null
+					? OpenState.decode(state.getString(OPEN))
+					: null;
+			holdsUnshownFile = restored != null &&
+					restored.kind() == OpenState.Kind.FILE &&
+					!ShaderEditorApp.preferences.useNewEditor();
+			// A screen that had a file, a shader or nothing open comes
+			// back to that; one that had not come that far shows what
+			// the library shows, as a cold start does, unless text
+			// that was shared comes instead, or a shader the screen
+			// before this one asked for.
+			boolean show = !openedText && !libraryAdd.awaits() &&
+					(restored == null || restored.showsLibrary());
+			// Nothing stands where the code is until what was open is
+			// back, or the start has shown a file.
+			moving = true;
+			movingTold = restored != null &&
+					restored.kind() == OpenState.Kind.MOVING;
+			showOpen();
+			startLibrary(show);
+			libraryAdd.resume();
+		}
+
+		@Override
+		public void onRestoreInstanceState(@NonNull Bundle state) {
+			if (restored != null && restored.isFile()) {
+				files.restore(restored);
+			} else if (restored != null &&
+					restored.kind() == OpenState.Kind.NOT_MOVED) {
+				shaderManager.restore(restored.shader(),
+						restored.title() != null ? restored.title() : "",
+						restored.quality(), restored.modified());
+				open = shaderManager;
+				moving = false;
+				showOpen();
+			} else if (restored != null &&
+					restored.kind() == OpenState.Kind.NOTHING) {
+				moving = false;
+				showOpen();
+			}
+			// Not that far yet: the start shows what the library shows.
+			if (!state.getBoolean(CODE_VISIBLE, true)) {
+				if (open.hasText()) {
+					uiManager.toggleCodeVisibility();
+				} else {
+					hideCodeOnShow = true;
+				}
+			}
+		}
+
+		@Override
+		public void onSaveInstanceState(@NonNull Bundle state) {
+			state.putString(OPEN, openState().encode());
+			// With nothing open the editor's view is gone for that reason.
+			state.putBoolean(CODE_VISIBLE, open.hasText()
+					? editorFragment.isCodeVisible()
+					: !hideCodeOnShow);
+		}
+
+		@Override
+		public void onPostCreate() {
+			// A file that comes back keeps its title until it is shown.
+			if (!open.hasText() && (restored == null ||
+					restored.showsLibrary())) {
+				showOpenTitle();
+			}
+		}
+
+		@Override
+		public void onStart() {
+			// The editor's view exists by now.
+			if (!open.hasText()) {
+				showOpen();
+			}
+			files.onStart();
+		}
+
+		@Override
+		public void onStop() {
+			files.onStop();
+		}
+
+		@Override
+		public void onResume() {
+			shaderListManager.loadShadersAsync();
+		}
+
+		@Override
+		public void onPause() {
+			guard.ran();
+		}
+
+		@Override
+		public void onDestroy(boolean finishing) {
+			// The screen made again after a configuration change takes them.
+			if (!finishing) {
+				holds.keepOpen();
+			}
+			files.destroy();
+			if (libraryStart != null) {
+				libraryStart.destroy();
+			}
+			libraryAdd.destroy();
+			looks.destroy();
+			shaderManager.destroy();
+			shaderListManager.destroy();
+		}
+
+		@Override
+		public void onNewIntent(@Nullable Intent intent) {
+			addShared(intent);
+		}
 	}
 }

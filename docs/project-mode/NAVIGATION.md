@@ -620,6 +620,12 @@ At every start, in this order, without asking anything:
 
 As for any file (6.1): the title is the file's name, `Plasma.frag`, with the unsaved dot; the second line is the folder, **Shaders**, and with another file running, **▶ Other.frag · Shaders**. A "not moved" shader keeps today's title, its database title, and its second line says **Not moved**, so it is never taken for a file.
 
+### 11.6 The two worlds of the main screen, in code
+
+The main screen is in one of two worlds: the shaders are rows of the database, as release builds have them, or they are files, of the library and of other folders. Which one it is is decided **once**, where the screen is made, from `@bool/project_mode`. Nothing in the activity asks again.
+
+The two worlds stand behind one interface, `ShaderScreen`. The activity tells the screen what happens to it: it is started (with what was kept of the screen before, and with text another app shared), its state is kept and taken back, it starts, stops, resumes and pauses, it is destroyed, it gets a new intent. Each world answers in its own way; where one has nothing to do, it does nothing.
+
 ## Decisions of 2026-11-12
 
 The owner took every open decision as recommended (option a in each):
