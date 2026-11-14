@@ -52,9 +52,12 @@ final class ShaderRenderPipeline {
 			uniform sampler2D frame;
 			void main(void) {
 				vec4 c = texture2D(frame, gl_FragCoord.xy / resolution.xy);
-				// PictureLimit.apply
-				c = clamp(c, 0.0, 1.0);
-				c.rgb /= 1.0 + limit * max(c.r, max(c.g, c.b));
+				// PictureLimit.apply; only presenting has a limit, a
+				// stretch into a history keeps values above 1.
+				if (limit > 0.0) {
+					c = clamp(c, 0.0, 1.0);
+					c.rgb /= 1.0 + limit * max(c.r, max(c.g, c.b));
+				}
 				gl_FragColor = c;
 			}
 			""";

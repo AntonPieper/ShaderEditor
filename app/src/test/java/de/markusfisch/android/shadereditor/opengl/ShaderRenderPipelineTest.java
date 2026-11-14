@@ -15,13 +15,17 @@ public class ShaderRenderPipelineTest {
 		assertTrue(shader.contains("precision mediump sampler2D;"));
 	}
 
-	// The shader clamps as PictureLimit.apply does, so an rgba16f output
-	// stays under the ceiling.
+	// The shader clamps as PictureLimit.apply does, and only with a limit:
+	// presented under a ceiling, an rgba16f output stays under it, while a
+	// stretch of initial content into a history, drawn without a limit,
+	// keeps values above 1.
 	@Test
-	public void theInternalShaderClampsBeforeItLimits() {
+	public void theInternalShaderClampsOnlyWhenItLimits() {
 		String shader = ShaderRenderPipeline.SURFACE_FRAGMENT_SHADER;
+		int limited = shader.indexOf("if (limit > 0.0) {");
 		int clamp = shader.indexOf("c = clamp(c, 0.0, 1.0);");
-		assertTrue(clamp > -1);
+		assertTrue(limited > -1);
+		assertTrue(clamp > limited);
 		assertTrue(clamp < shader.indexOf("c.rgb /= 1.0 + limit"));
 	}
 }

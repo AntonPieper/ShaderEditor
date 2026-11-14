@@ -388,6 +388,35 @@ public class PlanRuntimeTest {
 				errors(engine.diagnostics));
 	}
 
+	// The presentation shader both presents and stretches initial content
+	// over a history; only presenting is limited. A seed of 1000 in an
+	// rgba16f target survives the stretch, and the presented picture under
+	// a ceiling is still no brighter than it. The shader computes what
+	// PictureLimit.apply computes with the limit it is given.
+	@Test
+	public void onlyThePresentedPictureIsLimited() {
+		var engine = new FakeEngine(prepare("main.frag", lines(
+						"#pragma se input \"main.frag\" frame=previous",
+						"uniform sampler2D self;",
+						"#pragma se target format=rgba16f initial=\"seed.frag\"",
+						MAIN),
+				"seed.frag", lines(
+						"#pragma se target format=rgba16f",
+						MAIN)), 3);
+		float ceiling = PictureLimit.BALANCED / 255f;
+		engine.pipeline.setLimit(PictureLimit.strength(ceiling));
+		engine.resize(8, 4);
+		engine.draw(0);
+		var stretched = engine.stretched();
+		assertEquals(1, stretched.size());
+		float stretch = stretched.get(0).uniforms().get("limit")[0];
+		assertEquals(1000f, PictureLimit.apply(1000f, 1000f, stretch), 0f);
+		var presented = engine.presented();
+		assertEquals(1, presented.size());
+		float present = presented.get(0).uniforms().get("limit")[0];
+		assertEquals(ceiling, PictureLimit.apply(4f, 4f, present), 1e-6f);
+	}
+
 	private static List<ProjectDiagnostic> checkInitial(
 			Preparation preparation,
 			boolean history) {
