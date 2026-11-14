@@ -84,7 +84,8 @@ final class EditTextSourceEditor implements SourceEditor {
 	// Its text is the EditText's own.
 	@Override
 	public boolean showDocument(@NonNull Document document,
-			@NonNull Syntax syntax, @Nullable Object state) {
+			@NonNull Syntax syntax, @Nullable Object state,
+			boolean shaderToy) {
 		return false;
 	}
 

@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.activity.managers;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -31,17 +32,28 @@ final class FoldersSource implements Source {
 	}
 
 	private final Context context;
-	private final Source library;
 	private final Remover remover;
+	// The library's session, or null while it is not known, and how
+	// many shaders it holds, or -1 while that is not known.
+	private String library;
+	private int shaders = -1;
 	// What was found to be lost when it was gone into.
 	private final Set<String> lost = new HashSet<>();
 	private List<ProjectSessions.Recent> sessions = List.of();
 
-	FoldersSource(@NonNull Context context, @NonNull Source library,
-			@NonNull Remover remover) {
+	FoldersSource(@NonNull Context context, @NonNull Remover remover) {
 		this.context = context;
-		this.library = library;
 		this.remover = remover;
+	}
+
+	/**
+	 * Takes the session of the library, which the row Shaders leads
+	 * into and Recent does not list, and how many shaders it holds, -1
+	 * when that is not known.
+	 */
+	void setLibrary(@Nullable String key, int shaders) {
+		library = key;
+		this.shaders = shaders;
 	}
 
 	/** Takes the recent projects, the one opened last first. */
@@ -69,17 +81,27 @@ final class FoldersSource implements Source {
 
 	@Override
 	public Listing list(Order order) {
-		Listing shaders = library.list(order);
+		List<Row> top = new ArrayList<>();
+		if (library != null) {
+			top.add(folder(Level.root(library), Row.Picture.Icon.LIBRARY,
+					context.getString(R.string.nav_shaders), shaders < 0
+							? null
+							: shaders == 0
+							? context.getString(R.string.nav_no_shaders)
+							: context.getResources().getQuantityString(
+									R.plurals.nav_shaders_count, shaders,
+									shaders),
+					EnumSet.noneOf(Row.Mark.class)));
+		}
 		List<Listing.Section> sections = new ArrayList<>();
 		sections.add(new Listing.Section(null, List.of(
-				folder(Level.LIBRARY, Row.Picture.Icon.LIBRARY,
-						shaders.title(), shaders.subtitle(),
-						EnumSet.noneOf(Row.Mark.class)),
 				folder(Level.EXAMPLES, Row.Picture.Icon.EXAMPLES,
 						context.getString(R.string.load_sample),
 						context.getString(R.string.nav_examples_count,
 								Samples.ALL.size()),
 						EnumSet.of(Row.Mark.READ_ONLY)))));
+		top.addAll(sections.remove(0).rows());
+		sections.add(0, new Listing.Section(null, top));
 		List<Recent> recent = recent();
 		if (!recent.isEmpty()) {
 			sections.add(new Listing.Section(
@@ -114,7 +136,8 @@ final class FoldersSource implements Source {
 		List<Recent> recent = new ArrayList<>();
 		for (ProjectSessions.Recent session : sessions) {
 			ProjectSessions.Kind kind = session.locator().kind();
-			if (kind != ProjectSessions.Kind.DATABASE) {
+			if (kind != ProjectSessions.Kind.DATABASE &&
+					!session.id().equals(library)) {
 				recent.add(new Recent(session.id(),
 						kind == ProjectSessions.Kind.DOCUMENT,
 						session.name(), session.location(),

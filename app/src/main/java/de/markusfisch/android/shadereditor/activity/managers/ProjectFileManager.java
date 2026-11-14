@@ -19,6 +19,7 @@ import de.markusfisch.android.shadereditor.navigation.Moves;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Tap;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
+import de.markusfisch.android.shadereditor.project.Library;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
@@ -103,6 +104,9 @@ public final class ProjectFileManager {
 	private int line;
 	@Nullable
 	private String key;
+	// The session of the library, once known.
+	@Nullable
+	private String library;
 	@Nullable
 	private Asked askedFor;
 	// The file tapped last until it is known whether it can run.
@@ -147,6 +151,19 @@ public final class ProjectFileManager {
 	public boolean open(@NonNull String key, @NonNull ProjectPath path,
 			boolean single) {
 		return open(key, path, single, true);
+	}
+
+	/** Takes the session of the library, whose root files are shaders. */
+	public void setLibrary(@NonNull String key) {
+		library = key;
+	}
+
+	/**
+	 * Show the file at path of the folder opened before with key as the
+	 * file it showed last: what runs there runs, whatever the file is.
+	 */
+	public void show(@NonNull String key, @NonNull ProjectPath path) {
+		open(key, path, false, false);
 	}
 
 	/**
@@ -248,7 +265,8 @@ public final class ProjectFileManager {
 		project.setListener(ContextCompat.getMainExecutor(activity),
 				this::changed);
 		editor.showDocument(document, project.syntax(path),
-				project.editorState(path));
+				project.editorState(path),
+				key.equals(library) && Library.convertsShaderToy(path));
 		listener.onShown(shown);
 		String unreadable = project.unreadable(path);
 		if (unreadable != null) {

@@ -83,7 +83,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// The text converted from ShaderToy's form last.
 	@Nullable
 	private String converting;
-	// Whether ShaderToy's form is converted, which a file is not.
+	// Whether ShaderToy's form is converted, which a file is only in
+	// the library's root.
 	private boolean convert = true;
 	@NonNull
 	private List<ProjectDiagnostic> errors = Collections.emptyList();
@@ -134,11 +135,13 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public boolean showDocument(@NonNull Document document,
-			@NonNull Syntax syntax, @Nullable Object state) {
+			@NonNull Syntax syntax, @Nullable Object state,
+			boolean shaderToy) {
 		show(document, syntax);
-		// Not the user's own text, which is not rewritten.
-		converting = null;
-		convert = false;
+		// The text as it is now is not the user's doing: only what is
+		// put in after is converted.
+		converting = shaderToy ? getText() : null;
+		convert = shaderToy;
 		if (state instanceof int[] scroll && scroll.length == 2) {
 			view.scrollTo(scroll[0], scroll[1]);
 		} else {

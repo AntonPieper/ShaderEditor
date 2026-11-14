@@ -93,6 +93,17 @@ public final class Library {
 				: note().moved(databaseId);
 	}
 
+	/**
+	 * Return whether the text of the file at path is converted from
+	 * ShaderToy's form, as the text of a shader of the database was: a
+	 * file of the library's root is a shader of its own. Files in its
+	 * folders are not, nor are those of other folders, where a port
+	 * from ShaderToy has files that must not be rewritten one by one.
+	 */
+	public static boolean convertsShaderToy(ProjectPath path) {
+		return path.toString().indexOf('/') < 0;
+	}
+
 	/** Return the library's files, of a folder that is made if needed. */
 	ProjectFiles files() {
 		File folder = folder();
