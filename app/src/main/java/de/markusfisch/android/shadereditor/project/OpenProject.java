@@ -1422,7 +1422,7 @@ public final class OpenProject {
 		worker.execute(() -> {
 			Preparation preparation = entry != null
 					? Preparation.prepare(edited, entry,
-							ProjectLimits.DEFAULT, reserved, lone != null)
+							ProjectLimits.DEFAULT, reserved)
 					: null;
 			List<Used> read = new ArrayList<>();
 			if (preparation != null) {

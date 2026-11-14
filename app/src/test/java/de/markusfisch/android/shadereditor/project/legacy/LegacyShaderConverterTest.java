@@ -886,11 +886,17 @@ public class LegacyShaderConverterTest {
 	private static Preparation prepare(Result result) {
 		Map<ProjectPath, byte[]> files = new HashMap<>();
 		for (Map.Entry<ProjectPath, String> file : result.files().entrySet()) {
-			files.put(file.getKey(),
-					file.getValue().getBytes(StandardCharsets.UTF_8));
+			// The tests convert pieces of shaders; what is prepared
+			// has a main, as a shader that ran had.
+			String text = file.getValue();
+			files.put(file.getKey(), (text.contains("main") ? text
+					: text + "\nvoid main() {}\n").getBytes(
+					StandardCharsets.UTF_8));
 		}
 		for (TextureFile texture : result.textures()) {
-			files.put(texture.path(), new byte[]{1, 2, 3});
+			files.put(texture.path(),
+					de.markusfisch.android.shadereditor.project.Pictures
+							.png(1, 2, 3));
 		}
 		ProjectFiles project = path -> files.containsKey(path)
 				? new ProjectFiles.Content(files.get(path), "1")

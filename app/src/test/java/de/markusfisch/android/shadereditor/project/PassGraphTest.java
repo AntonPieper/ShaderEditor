@@ -219,7 +219,7 @@ public class PassGraphTest {
 						"#pragma se target initial=\"seed.png\"",
 						"uniform sampler2D backbuffer;",
 						MAIN))
-				.put("seed.png", new byte[]{1, 2, 3});
+				.put("seed.png", Pictures.png(1, 2, 3));
 		PassGraph graph = discover(files);
 		assertTrue(graph.diagnostics.isEmpty());
 		assertEquals(path("seed.png"), graph.entry.initialImage);
@@ -290,7 +290,7 @@ public class PassGraphTest {
 						"// seed",
 						"#pragma se target initial=\"seed.png\"",
 						MAIN))
-				.put("seed.png", new byte[]{1}));
+				.put("seed.png", Pictures.png(1)));
 		assertEquals(List.of("WARNING main.glsl:2 initial has no effect " +
 						"because nothing reads the previous frame of " +
 						"main.glsl, read it with frame=previous or remove " +
@@ -310,7 +310,7 @@ public class PassGraphTest {
 				.put("p.glsl", lines(
 						"#pragma se target initial=\"seed.png\"",
 						MAIN))
-				.put("seed.png", new byte[]{1}));
+				.put("seed.png", Pictures.png(1)));
 		assertTrue(graph.diagnostics.isEmpty());
 		assertEquals(List.of("p.glsl", "main.glsl"), paths(graph.reset));
 	}

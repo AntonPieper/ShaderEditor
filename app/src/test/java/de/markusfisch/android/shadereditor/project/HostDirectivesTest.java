@@ -454,17 +454,9 @@ public class HostDirectivesTest {
 	}
 
 	@Test
-	public void rejectsFrameOnImageOrEngineSampler() {
-		assertError("frame= applies only",
-				"#pragma se input \"a.png\" frame=previous", TEX);
+	public void rejectsFrameAndMipmapOnTheBackbuffer() {
 		assertError("frame= applies only", "#pragma se input frame=current",
 				"uniform sampler2D backbuffer;");
-	}
-
-	@Test
-	public void rejectsMipmapOnPassOutputOrBackbuffer() {
-		assertError("mipmap= applies only",
-				"#pragma se input \"pass.glsl\" mipmap=linear", TEX);
 		assertError("mipmap= applies only", "#pragma se input mipmap=none",
 				"uniform sampler2D backbuffer;");
 	}
@@ -477,17 +469,10 @@ public class HostDirectivesTest {
 	}
 
 	@Test
-	public void rejectsCubemapFromShader() {
-		assertError("sampler2D sky, not samplerCube",
-				"#pragma se input \"pass.glsl\"",
-				"uniform samplerCube sky;");
-	}
-
-	@Test
-	public void rejectsUnrecognizedSourceExtension() {
-		assertError("cannot be a source", "#pragma se input \"a.gif\"", TEX);
-		assertError("cannot be a source",
-				"#pragma se target initial=\"a.txt\"");
+	public void rejectsAFileReadAsAnotherSamplerThanTheTwoAFileCanBe() {
+		assertError("A file is read as sampler2D or samplerCube",
+				"#pragma se input \"a.png\"",
+				"uniform samplerExternalOES camera;");
 	}
 
 	@Test

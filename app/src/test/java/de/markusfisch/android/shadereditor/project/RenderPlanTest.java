@@ -60,7 +60,7 @@ public class RenderPlanTest {
 	public void cameraInputRejectsWrapOtherThanClamp() {
 		ProjectParseResult<Sampling> result = Sampling.of(input("cameraFront",
 				null, Filter.LINEAR, Filter.LINEAR, null, Wrap.REPEAT,
-				Wrap.CLAMP));
+				Wrap.CLAMP), false);
 		assertFalse(result.isSuccess());
 		assertEquals(MAIN, result.diagnostic().file());
 		assertEquals(3, result.diagnostic().line());
@@ -173,8 +173,10 @@ public class RenderPlanTest {
 			Mipmap mipmap,
 			Wrap wrapS,
 			Wrap wrapT) {
+		// The tests name pictures .png; a build reads the bytes.
 		ProjectParseResult<Sampling> result = Sampling.of(input(uniform,
-				source, min, mag, mipmap, wrapS, wrapT));
+				source, min, mag, mipmap, wrapS, wrapT), source != null &&
+				source.toString().endsWith(".png"));
 		assertTrue(result.isSuccess());
 		return result.value();
 	}
