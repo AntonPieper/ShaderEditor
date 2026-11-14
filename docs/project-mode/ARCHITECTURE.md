@@ -30,7 +30,7 @@ There is one dialect and one producer of plans. A database shader is converted t
 
 ### What a file is
 
-Three questions, three places (SPEC 2.1). *Kind* (picture, text, other) is read from bytes by one class with one signature table; a store can hand out the first bytes of a file alone, for the cases where a file is not read whole. *Role* is decided where references are followed, the pass graph and the entry rule, and nowhere else. *Language* is one table from name to language in one class. A hint for a list icon is a separate function from the kind, and takes a name or a reported type, never bytes. No other code may look at the ending of a file name.
+Three questions, three places (SPEC 2.1). *Kind* (picture, text, other) is read from bytes by one class with one signature table; a store can hand out the first bytes of a file alone, for the cases where a file is not read whole. *Role* is decided where references are followed, the pass graph and the entry rule, and nowhere else. *Language* is one table from name to language in one class, `ShaderLanguage`, and that class is also where everything that reads shader text for a project asks: how a pass file is read (its includes, its host directives, whether it has an entry point) and whether a text can run. The pass graph, `prepare` and the files of an open project know no shading language themselves (NEUTRALITY.md). A hint for a list icon is a separate function from the kind, and takes a name or a reported type, never bytes. No other code may look at the ending of a file name.
 
 ### Seams
 

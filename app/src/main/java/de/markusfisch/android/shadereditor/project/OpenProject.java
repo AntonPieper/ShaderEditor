@@ -20,9 +20,6 @@ import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Content;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
-import de.markusfisch.android.shadereditor.syntax.GlslLexer;
-import de.markusfisch.android.shadereditor.syntax.LineTokens;
-import de.markusfisch.android.shadereditor.syntax.Style;
 
 /**
  * The project open in the editor, for the screens that show it: its
@@ -1471,8 +1468,8 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Return whether path, open in the editor, can run: a text file,
-	 * whatever its name, whose own text defines main. Until that is
+	 * Return whether path, open in the editor, can run: a text file
+	 * whose own text defines what its language starts at. Until that is
 	 * known for its text,
 	 * UNKNOWN, and the text is read on the worker, once per revision;
 	 * the listener hears when it is known.
@@ -1490,7 +1487,8 @@ public final class OpenProject {
 			record.runsAsked = revision;
 			Text text = document.text();
 			worker.execute(() -> {
-				Runs runs = definesMain(text) ? Runs.YES : Runs.NO;
+				Runs runs = ShaderLanguage.of(path.toString())
+						.runnable(text) ? Runs.YES : Runs.NO;
 				main.execute(() -> {
 					if (record.document() == document &&
 							document.revision() == revision) {
@@ -2093,71 +2091,6 @@ public final class OpenProject {
 	private static boolean under(ProjectPath file, ProjectPath path) {
 		return path == null || file.equals(path) ||
 				file.toString().startsWith(path + "/");
-	}
-
-	// Whether text declares a function main outside any other block and
-	// outside "#if 0", and gives it a body, as the lexer reads it. Reads
-	// one line at a time and keeps only the tokens of that line.
-	static boolean definesMain(Text text) {
-		LineTokens tokens = new LineTokens();
-		int state = GlslLexer.TEXT_START;
-		int braces = 0;
-		int level = 0;
-		int disabled = -1;
-		int parens = 0;
-		// 0: nothing, 1: after "main", 2: in its parameters, 3: after them.
-		int stage = 0;
-		boolean word = false;
-		for (int n = 0, lines = text.lineCount(); n < lines; ++n) {
-			String line = text.line(n);
-			state = GlslLexer.lexLine(line, n < lines - 1, state, tokens);
-			String directive = line.trim();
-			if (directive.startsWith("#")) {
-				directive = directive.substring(1).trim();
-				if (directive.startsWith("if")) {
-					++level;
-					if (disabled < 0 && directive.matches("if\\s+0\\b.*")) {
-						disabled = level;
-					}
-				} else if (directive.startsWith("endif")) {
-					if (disabled == level) {
-						disabled = -1;
-					}
-					--level;
-				} else if (directive.startsWith("el") && disabled == level) {
-					disabled = -1;
-				}
-			}
-			for (int i = 0, size = tokens.size(); i < size; ++i) {
-				if (disabled >= 0 || tokens.style(i) == Style.COMMENT ||
-						tokens.inDirective(i)) {
-					continue;
-				}
-				String token = line.substring(tokens.start(i),
-						tokens.end(i));
-				char c = token.charAt(0);
-				if (stage == 1) {
-					stage = c == '(' ? 2 : 0;
-					parens = 1;
-				} else if (stage == 2) {
-					parens += c == '(' ? 1 : c == ')' ? -1 : 0;
-					stage = parens == 0 ? 3 : 2;
-					continue;
-				} else if (stage == 3) {
-					if (c == '{') {
-						return true;
-					}
-					stage = 0;
-				}
-				if (stage == 0 && braces == 0 && word &&
-						token.equals("main")) {
-					stage = 1;
-				}
-				braces += c == '{' ? 1 : c == '}' ? -1 : 0;
-				word = Character.isJavaIdentifierStart(c);
-			}
-		}
-		return false;
 	}
 
 	private static int compareNames(String a, String b) {

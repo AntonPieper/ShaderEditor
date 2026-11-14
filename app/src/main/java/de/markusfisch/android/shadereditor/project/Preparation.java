@@ -145,9 +145,9 @@ public record Preparation(
 		List<RenderPlan.Pass> passes = new ArrayList<>();
 		for (PassGraph.Node node : graph.nodes) {
 			int self = index.get(node);
-			HostDirectives directives = node.directives;
-			programs.add(new RenderPlan.Program(node.file, directives.lines(),
-					directives.sourceMap(), node.assembly.versionLine()));
+			PassSource source = node.source;
+			programs.add(new RenderPlan.Program(node.file, source.lines(),
+					source.sourceMap(), source.head()));
 			List<RenderPlan.Input> inputs = new ArrayList<>();
 			for (PassGraph.Edge edge : node.inputs) {
 				HostDirective.Input input = edge.input();
@@ -157,19 +157,19 @@ public record Preparation(
 					diagnostics.add(sampling.diagnostic());
 					continue;
 				}
-				Source source = Source.ENGINE;
+				Source from = Source.ENGINE;
 				Frame frame = Frame.CURRENT;
 				if (edge.producer() != null) {
-					source = Source.pass(index.get(edge.producer()));
+					from = Source.pass(index.get(edge.producer()));
 					frame = input.frame() != null ? input.frame() : frame;
 				} else if (input.source() != null) {
-					source = Source.image(input.source());
+					from = Source.image(input.source());
 				} else if ("backbuffer".equals(input.uniform())) {
-					source = Source.pass(self);
+					from = Source.pass(self);
 					frame = Frame.PREVIOUS;
 				}
 				inputs.add(new RenderPlan.Input(input.uniform(),
-						input.texture(), source, frame, sampling.value(),
+						input.texture(), from, frame, sampling.value(),
 						input.file(), input.line()));
 			}
 			Source initial = null;
@@ -179,7 +179,7 @@ public record Preparation(
 				initial = Source.image(node.initialImage);
 			}
 			passes.add(new RenderPlan.Pass(self, inputs,
-					RenderPlan.Target.of(directives.target(), node.file),
+					RenderPlan.Target.of(source.target(), node.file),
 					initial, node.history, node.perFrame));
 		}
 		List<Integer> reset = new ArrayList<>();
