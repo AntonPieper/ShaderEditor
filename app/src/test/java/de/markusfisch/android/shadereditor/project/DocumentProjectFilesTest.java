@@ -34,7 +34,7 @@ public class DocumentProjectFilesTest {
 
 	@Test
 	public void pathsComeFromTheName() {
-		assertEquals("main.glsl", named("main.glsl"));
+		assertEquals("main.frag", named("main.frag"));
 		assertEquals("caf\u00e9.glsl", named("cafe\u0301.glsl"));
 		assertEquals("a_b_c_d_.glsl", named("a/b\\c\"d\u0001.glsl"));
 		assertEquals("_..", named(".."));
@@ -42,8 +42,8 @@ public class DocumentProjectFilesTest {
 		assertEquals("_.git", named(".git"));
 		assertEquals("_c:x.glsl", named("c:x.glsl"));
 		assertEquals("_https:x", named("https:x"));
-		assertEquals("shader.glsl", named(""));
-		assertEquals("shader.glsl", named(null));
+		assertEquals("shader.frag", named(""));
+		assertEquals("shader.frag", named(null));
 		assertEquals("notes.txt", named("notes.txt"));
 	}
 

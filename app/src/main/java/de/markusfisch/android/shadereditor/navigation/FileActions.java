@@ -3,7 +3,6 @@ package de.markusfisch.android.shadereditor.navigation;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 /** What the menus of the rows of a folder offer. */
@@ -35,8 +34,10 @@ public final class FileActions {
 					}
 				}
 				case SHADER, TEXT, IMAGE -> {
-					if (!row.key().equals(running) && row.name()
-							.toLowerCase(Locale.ROOT).endsWith(".glsl")) {
+					// Any file that may be text: whether it has a main is
+					// told when it runs, not by its name.
+					if (!row.key().equals(running) &&
+							row.kind() != Row.Kind.IMAGE) {
 						actions.add(Row.Action.RUN);
 					}
 					if (writable) {

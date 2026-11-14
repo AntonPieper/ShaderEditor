@@ -14,6 +14,7 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.project.HostDirective.Filter;
 import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
@@ -33,7 +34,7 @@ import de.markusfisch.android.shadereditor.project.SourceText;
  */
 public final class LegacyShaderConverter {
 	/** Where the converted shader is. */
-	public static final ProjectPath SHADER = path("main.glsl");
+	public static final ProjectPath SHADER = path("main.frag");
 	/**
 	 * How a sampler that reads no image gets one in the old conventions,
 	 * formatted with its name.
@@ -556,7 +557,8 @@ public final class LegacyShaderConverter {
 			ProjectPath image = texture(settings.preset(), preset, false, at);
 			String file = image.getFileName();
 			ProjectPath shader = path("presets/" +
-					file.substring(0, file.length() - 4) + ".glsl");
+					file.substring(0, file.length() - 4) +
+							ShaderLanguage.PASS);
 			files.put(shader, PresetShader.text("../" + image,
 					preset.width(), preset.height()));
 			origins.put(shader, at);

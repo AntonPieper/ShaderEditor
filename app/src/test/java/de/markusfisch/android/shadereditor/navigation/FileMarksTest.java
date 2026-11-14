@@ -16,9 +16,9 @@ public class FileMarksTest {
 		List<Row> rows = FileMarks.unsaved(rows(Reading.started().listed(
 				List.of(new Reading.Entry("lib", true),
 						new Reading.Entry("other", true),
-						new Reading.Entry("main.glsl", false),
+						new Reading.Entry("main.frag", false),
 						new Reading.Entry("noise.glsl", false))), ROOT),
-				Set.of("main.glsl", "lib/deep/common.glsl"));
+				Set.of("main.frag", "lib/deep/common.glsl"));
 		assertTrue(rows.get(0).marks().contains(Row.Mark.UNSAVED));
 		assertTrue(rows.get(1).marks().isEmpty());
 		assertTrue(rows.get(2).marks().contains(Row.Mark.UNSAVED));
@@ -32,8 +32,8 @@ public class FileMarksTest {
 				new Reading.Entry("common.glsl", false))), lib).get(0);
 		assertEquals(new Item.Place(lib, row.key()),
 				Item.Place.file("1", "lib/common.glsl"));
-		assertEquals(new Item.Place(ROOT, "main.glsl"),
-				Item.Place.file("1", "main.glsl"));
+		assertEquals(new Item.Place(ROOT, "main.frag"),
+				Item.Place.file("1", "main.frag"));
 	}
 
 	private static List<Row> rows(Reading reading, Level level) {

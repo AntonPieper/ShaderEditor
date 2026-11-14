@@ -208,7 +208,7 @@ public class UniformWarningsTest {
 
 	@Test
 	public void warningsAreLocatedInTheirProjectFile() {
-		var main = ProjectPath.parse("main.glsl").value();
+		var main = ProjectPath.parse("main.frag").value();
 		var lib = ProjectPath.parse("lib/inputs.glsl").value();
 		var include = new SourceLocation(main, 2, null);
 		var sourceMap = new SourceMap(List.of(

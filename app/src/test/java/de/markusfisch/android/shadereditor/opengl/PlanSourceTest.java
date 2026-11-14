@@ -22,7 +22,7 @@ public class PlanSourceTest {
 	@Test
 	public void mapsADriverErrorInANestedIncludeToItsFileAndLine() {
 		var source = source(3, plan(
-				"main.glsl", lines(
+				"main.frag", lines(
 						"#version 300 es",
 						"precision mediump float;",
 						"#include \"lib/common.glsl\"",
@@ -47,7 +47,7 @@ public class PlanSourceTest {
 		var main = DriverLog.parse("ERROR: 0:" +
 				lineOf(source.fragment(), "out vec4 color;") + ": x",
 				mapping).get(0);
-		assertEquals(path("main.glsl"), main.file());
+		assertEquals(path("main.frag"), main.file());
 		assertEquals(4, main.line());
 
 		String generated = "ERROR: 0:" + lineOf(source.fragment(),
@@ -59,7 +59,7 @@ public class PlanSourceTest {
 
 	@Test
 	public void generatesItsLinesAfterTheVersion() {
-		var source = source(3, plan("main.glsl", lines(
+		var source = source(3, plan("main.frag", lines(
 				"// header",
 				"#version 300 es",
 				"uniform samplerExternalOES cameraBack;",
@@ -79,7 +79,7 @@ public class PlanSourceTest {
 
 	@Test
 	public void generatesItsLinesAtTheTopWithoutAVersion() {
-		var source = source(2, plan("main.glsl", lines(
+		var source = source(2, plan("main.frag", lines(
 				"uniform samplerExternalOES cameraFront;",
 				"void main() {}")));
 		assertEquals(lines(
@@ -89,7 +89,7 @@ public class PlanSourceTest {
 				"void main() {}"), source.fragment());
 		assertEquals(FullScreenQuad.VERTEX_SHADER, source.vertex());
 		var first = source.sourceMap().locate(3);
-		assertEquals(path("main.glsl"), first.file());
+		assertEquals(path("main.frag"), first.file());
 		assertEquals(1, first.line());
 		assertTrue(source.sourceMap().locate(1).isGenerated());
 	}
@@ -97,30 +97,30 @@ public class PlanSourceTest {
 	@Test
 	public void refusesAVersionTheContextCannotCompile() {
 		var errors = new ArrayList<ProjectDiagnostic>();
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 				"",
 				"#version 310 es",
 				"void main() {}"));
 		assertNull(PlanSource.of(plan.programs().get(0), 2, errors));
 		assertEquals(List.of(new ProjectDiagnostic(Severity.ERROR,
 				"#version 310 es needs OpenGL ES 3.0, but this device only " +
-						"has OpenGL ES 2.0", path("main.glsl"), 2)), errors);
+						"has OpenGL ES 2.0", path("main.frag"), 2)), errors);
 		assertNotNull(PlanSource.of(plan.programs().get(0), 3, errors));
 	}
 
 	@Test
 	public void readsTheFTimePeriodOfTheAssembledSource() {
 		assertEquals(5f, source(2, plan(
-				"main.glsl", lines("#include \"period.glsl\"", "void main() {}"),
+				"main.frag", lines("#include \"period.glsl\"", "void main() {}"),
 				"period.glsl", "#define FTIME_PERIOD 5.\n")).fTimeMax(), 0f);
-		assertEquals(3f, source(2, plan("main.glsl",
+		assertEquals(3f, source(2, plan("main.frag",
 				"void main() {}\n")).fTimeMax(), 0f);
 	}
 
 	// The old renderer divided by it, so ftime was NaN.
 	@Test
 	public void zeroFTimePeriodKeepsItsMeaning() {
-		var source = source(2, plan("main.glsl", lines(
+		var source = source(2, plan("main.frag", lines(
 				"#define FTIME_PERIOD 0",
 				"void main() {}")));
 		assertEquals(0f, source.fTimeMax(), 0f);
@@ -137,7 +137,7 @@ public class PlanSourceTest {
 	public void malformedFTimePeriodIsAnErrorAtItsLine() {
 		var errors = new ArrayList<ProjectDiagnostic>();
 		var plan = plan(
-				"main.glsl", lines(
+				"main.frag", lines(
 						"precision mediump float;",
 						"#include \"period.glsl\"",
 						"void main() {}"),
@@ -152,7 +152,7 @@ public class PlanSourceTest {
 
 	@Test
 	public void blanksNonAsciiCharactersOfCommentsButKeepsTheLines() {
-		var source = source(2, plan("main.glsl", lines(
+		var source = source(2, plan("main.frag", lines(
 				"// \u00e9t\u00e9",
 				"void main() {}")));
 		assertEquals(lines("#define SHADER_EDITOR 1", "//  t ", "void main() {}"),
@@ -162,7 +162,7 @@ public class PlanSourceTest {
 	// The comment names a camera, but the shader reads none.
 	@Test
 	public void commentsRequireNoExtension() {
-		var source = source(2, plan("main.glsl", lines(
+		var source = source(2, plan("main.frag", lines(
 				"// would read a samplerExternalOES here",
 				"/* uniform samplerExternalOES cameraBack; */",
 				"void main() {}")));
@@ -172,7 +172,7 @@ public class PlanSourceTest {
 	@Test
 	public void versionInACommentIsNoVersion() {
 		var errors = new ArrayList<ProjectDiagnostic>();
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 				"/*",
 				"#version 300 es",
 				"*/",

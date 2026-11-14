@@ -40,6 +40,16 @@ final class MemoryProjectFiles implements ProjectFiles {
 		return files.get(path);
 	}
 
+	// The first bytes are not a read of the file.
+	@Override
+	public byte[] head(ProjectPath path, int count) {
+		Content content = files.get(path);
+		return content != null
+				? java.util.Arrays.copyOf(content.bytes(),
+						Math.min(count, content.bytes().length))
+				: null;
+	}
+
 	String text(String path) {
 		Content content = files.get(ProjectPath.parse(path).value());
 		return content != null

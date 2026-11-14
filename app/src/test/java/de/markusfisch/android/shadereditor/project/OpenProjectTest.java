@@ -82,15 +82,15 @@ public class OpenProjectTest {
 
 	@Test
 	public void runsMainWithoutManifestU10() throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		write("other.glsl", SHADER);
 
-		assertEquals(path("main.glsl"), open().running());
+		assertEquals(path("main.frag"), open().running());
 	}
 
 	@Test
 	public void runsTheManifestEntryOverMainU10() throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		write("passes/b.glsl", SHADER);
 		write("shader-project.json", "{\"entry\": \"passes/b.glsl\"}");
 
@@ -99,12 +99,12 @@ public class OpenProjectTest {
 
 	@Test
 	public void runsMainBesideAnInvalidManifestU10() throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		write("shader-project.json", "{\"projectVersion\": 2}");
 
 		OpenProject project = open();
 
-		assertEquals(path("main.glsl"), project.running());
+		assertEquals(path("main.frag"), project.running());
 		Preparation preparation = prepare(project);
 		assertNull(preparation.plan());
 		assertEquals(ProjectManifest.FILE,
@@ -113,7 +113,7 @@ public class OpenProjectTest {
 
 	@Test
 	public void remembersRunThisFileOverManifestU10() throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		write("b.glsl", SHADER);
 		write("c.glsl", SHADER);
 		String manifest = "{\"entry\": \"b.glsl\"}";
@@ -126,20 +126,20 @@ public class OpenProjectTest {
 		assertEquals(path("c.glsl"), project.running());
 		assertEquals(path("c.glsl"), open().running());
 		assertEquals(manifest, read("shader-project.json"));
-		write("shader-project.json", "{\"entry\": \"main.glsl\"}");
+		write("shader-project.json", "{\"entry\": \"main.frag\"}");
 		assertEquals(path("c.glsl"), open().running());
 	}
 
 	@Test
 	public void forgetsAChosenFileThatIsGoneU10() throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		write("c.glsl", SHADER);
 		open().runThisFile(path("c.glsl"));
 		settle();
 
 		assertTrue(new File(root, "c.glsl").delete());
 
-		assertEquals(path("main.glsl"), open().running());
+		assertEquals(path("main.frag"), open().running());
 	}
 
 	@Test
@@ -167,7 +167,7 @@ public class OpenProjectTest {
 	@Test
 	public void buildAndCopyReportAFileOverTheLimitWithoutReadingIt()
 			throws IOException {
-		write("main.glsl", "#include \"big.glsl\"\n" + SHADER);
+		write("main.frag", "#include \"big.glsl\"\n" + SHADER);
 		ProjectPath big = path("big.glsl");
 		DirectoryProjectFiles files = new DirectoryProjectFiles(root);
 		OpenProject project = open(new ProjectFiles() {
@@ -189,7 +189,7 @@ public class OpenProjectTest {
 
 		Preparation preparation = prepare(project);
 		Map<ProjectPath, String> problems = await(done -> project.copyTo(
-				destination, List.of(big, path("main.glsl")), done));
+				destination, List.of(big, path("main.frag")), done));
 
 		assertNull(preparation.plan());
 		assertTrue(preparation.diagnostics().get(0).message(),
@@ -197,13 +197,13 @@ public class OpenProjectTest {
 						"big.glsl: it is too large"));
 		assertEquals("Could not read big.glsl: it is too large",
 				problems.get(big));
-		assertNull(problems.get(path("main.glsl")));
+		assertNull(problems.get(path("main.frag")));
 		assertNull(destination.text("big.glsl"));
 	}
 
 	@Test
 	public void editingAnotherFileKeepsWhatRunsU10() throws IOException {
-		write("main.glsl", "#include \"lib/common.glsl\"\n" + SHADER);
+		write("main.frag", "#include \"lib/common.glsl\"\n" + SHADER);
 		write("lib/common.glsl", "// common\n");
 		OpenProject project = open();
 		document(project, "lib/common.glsl");
@@ -211,7 +211,7 @@ public class OpenProjectTest {
 
 		edit(project, "lib/common.glsl", "// edited\n");
 
-		assertEquals(path("main.glsl"), project.running());
+		assertEquals(path("main.frag"), project.running());
 		Preparation preparation = prepare(project);
 		assertEquals("// edited\n", built(preparation, "lib/common.glsl"));
 		assertEquals("// common\n", read("lib/common.glsl"));
@@ -219,27 +219,27 @@ public class OpenProjectTest {
 
 	@Test
 	public void doesNotDeliverABuildOfAnOlderText() throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		OpenProject project = open();
-		document(project, "main.glsl");
-		edit(project, "main.glsl", SHADER + "// one\n");
+		document(project, "main.frag");
+		edit(project, "main.frag", SHADER + "// one\n");
 		List<OpenProject.Build> builds = new ArrayList<>();
 
 		project.prepare(BuiltinNames.ALL, builds::add);
-		edit(project, "main.glsl", SHADER + "// two\n");
+		edit(project, "main.frag", SHADER + "// two\n");
 		settle();
 
 		assertTrue(builds.isEmpty());
 		assertEquals(SHADER + "// two\n",
-				built(prepare(project), "main.glsl"));
+				built(prepare(project), "main.frag"));
 	}
 
 	@Test
 	public void refreshFindsAChangedManifestU10() throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		write("b.glsl", SHADER);
 		OpenProject project = open();
-		assertEquals(path("main.glsl"), project.running());
+		assertEquals(path("main.frag"), project.running());
 
 		write("shader-project.json", "{\"entry\": \"b.glsl\"}");
 		refresh(project);
@@ -576,7 +576,7 @@ public class OpenProjectTest {
 	@Test
 	public void copyAndBuildTellUnsavedTextThatCannotBeRead()
 			throws IOException {
-		write("main.glsl", "#include \"a.glsl\"\n" + SHADER);
+		write("main.frag", "#include \"a.glsl\"\n" + SHADER);
 		OpenProject project = open();
 		ProjectPath a = path("a.glsl");
 		edit(project, document(project, "a.glsl", "stored"), "mine");
@@ -1008,19 +1008,19 @@ public class OpenProjectTest {
 	@Test
 	public void switchingFilesAndRunningKeepTheTextAtOnce()
 			throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		OpenProject project = open();
 		Document a = document(project, "a.glsl", "stored");
 		project.show(path("a.glsl"));
 		settle();
 
 		edit(project, a, "shown");
-		project.show(path("main.glsl"));
+		project.show(path("main.frag"));
 		settle();
 		assertEquals("shown", journaled("a.glsl"));
 
 		edit(project, a, "chosen");
-		project.runThisFile(path("main.glsl"));
+		project.runThisFile(path("main.frag"));
 		settle();
 		assertEquals("chosen", journaled("a.glsl"));
 
@@ -1032,7 +1032,7 @@ public class OpenProjectTest {
 	@Test
 	public void selectionTheSessionCouldNotKeepIsSentAgain()
 			throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		OpenProject project = open();
 		ProjectSessions sessions = new ProjectSessions(sessionsDir);
 		// A file cannot be renamed onto a folder.
@@ -1040,8 +1040,8 @@ public class OpenProjectTest {
 		File running = new File(new File(sessionsDir, id), "running");
 		assertTrue(shown.mkdir() && running.mkdir());
 
-		project.show(path("main.glsl"));
-		project.runThisFile(path("main.glsl"));
+		project.show(path("main.frag"));
+		project.runThisFile(path("main.frag"));
 		settle();
 		assertNotNull(project.unkept());
 
@@ -1050,8 +1050,8 @@ public class OpenProjectTest {
 		settle();
 
 		assertNull(project.unkept());
-		assertEquals(path("main.glsl"), sessions.shown(id));
-		assertEquals(path("main.glsl"), sessions.running(id));
+		assertEquals(path("main.frag"), sessions.shown(id));
+		assertEquals(path("main.frag"), sessions.running(id));
 	}
 
 	@Test
@@ -1269,7 +1269,7 @@ public class OpenProjectTest {
 	@Test
 	public void refreshDoesNotUndoAChoiceMadeMeanwhile()
 			throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		write("b.glsl", SHADER);
 		OpenProject project = open();
 		project.refresh(reread -> {
@@ -1291,7 +1291,7 @@ public class OpenProjectTest {
 	@Test
 	public void buildAskedBeforeAnotherEntryIsNotDelivered()
 			throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 		write("b.glsl", SHADER);
 		OpenProject project = open();
 		List<OpenProject.Build> builds = new ArrayList<>();
@@ -1312,10 +1312,10 @@ public class OpenProjectTest {
 
 	@Test
 	public void refreshMakesABuildPreparedBeforeStale() throws IOException {
-		write("main.glsl", "#include \"lib.glsl\"\n" + SHADER);
+		write("main.frag", "#include \"lib.glsl\"\n" + SHADER);
 		write("lib.glsl", "float one() { return 1.0; }\n");
 		OpenProject project = open();
-		document(project, "main.glsl");
+		document(project, "main.frag");
 		OpenProject.Build build = build(project);
 
 		assertTrue(new File(root, "lib.glsl").delete());
@@ -1923,7 +1923,7 @@ public class OpenProjectTest {
 
 	@Test
 	public void buildsAFileNotInMemoryFromItsJournal() throws IOException {
-		write("main.glsl", "#include \"lib.glsl\"\n" + SHADER);
+		write("main.frag", "#include \"lib.glsl\"\n" + SHADER);
 		write("lib.glsl", "// lib\n");
 		OpenProject project = open();
 		edit(project, document(project, "lib.glsl"), "// edited\n");
@@ -2836,8 +2836,8 @@ public class OpenProjectTest {
 
 	@Test
 	public void listsSizeAndTimeOfLastChange() throws IOException {
-		write("main.glsl", SHADER);
-		assertTrue(new File(root, "main.glsl").setLastModified(
+		write("main.frag", SHADER);
+		assertTrue(new File(root, "main.frag").setLastModified(
 				1_700_000_000_000L));
 
 		OpenProject.Item item = open().list(null).items().get(0);
@@ -2848,11 +2848,11 @@ public class OpenProjectTest {
 
 	@Test
 	public void keepsWhatTheLastBuildRead() throws IOException {
-		write("main.glsl", "#include \"lib/common.glsl\"\n" +
+		write("main.frag", "#include \"lib/common.glsl\"\n" +
 				"#pragma se input \"noise.png\"\n" +
 				"uniform sampler2D noise;\n" + SHADER);
 		write("lib/common.glsl", "// common\n");
-		write("noise.png", "not decoded");
+		Files.write(new File(root, "noise.png").toPath(), Pictures.png(1));
 		write("shader-project.json", "{}");
 		write("other.glsl", SHADER);
 		OpenProject project = open();
@@ -2860,7 +2860,7 @@ public class OpenProjectTest {
 
 		prepare(project);
 
-		assertEquals(List.of(new OpenProject.Used(path("main.glsl"), false),
+		assertEquals(List.of(new OpenProject.Used(path("main.frag"), false),
 						new OpenProject.Used(path("lib/common.glsl"), false),
 						new OpenProject.Used(path("noise.png"), true)),
 				project.used());
@@ -2888,18 +2888,19 @@ public class OpenProjectTest {
 
 	@Test
 	public void leavesOutFilesTheBuildCouldNotRead() throws IOException {
-		write("main.glsl", "#include \"missing.glsl\"\n" + SHADER);
+		write("main.frag", "#include \"missing.glsl\"\n" + SHADER);
 		OpenProject project = open();
 
 		prepare(project);
 
-		assertEquals(List.of(new OpenProject.Used(path("main.glsl"), false)),
+		assertEquals(List.of(new OpenProject.Used(path("main.frag"), false)),
 				project.used());
 	}
 
 	@Test
-	public void runsAGlslFileWhoseOwnTextDefinesMain() throws IOException {
-		write("main.glsl", SHADER);
+	public void runsATextFileOfAnyNameWhoseOwnTextDefinesMain()
+			throws IOException {
+		write("main.frag", SHADER);
 		write("tight.glsl", "void main(){}");
 		write("lib/common.glsl", "float f() { return 1.0; }\n");
 		write("declared.glsl", "void main();\n");
@@ -2908,13 +2909,14 @@ public class OpenProjectTest {
 		write("notes.txt", SHADER);
 		OpenProject project = open();
 
-		assertTrue(canRun(project, "main.glsl"));
+		assertTrue(canRun(project, "main.frag"));
 		assertTrue(canRun(project, "tight.glsl"));
 		assertFalse(canRun(project, "lib/common.glsl"));
 		assertFalse(canRun(project, "declared.glsl"));
 		assertFalse(canRun(project, "disabled.glsl"));
 		assertFalse(canRun(project, "commented.glsl"));
-		assertFalse(canRun(project, "notes.txt"));
+		// The name plays no part.
+		assertTrue(canRun(project, "notes.txt"));
 		assertEquals(OpenProject.Runs.NO, project.runs(path("other.glsl")));
 		edit(project, document(project, "lib/common.glsl"), "void main() {}");
 		assertTrue(canRun(project, "lib/common.glsl"));
@@ -2982,11 +2984,11 @@ public class OpenProjectTest {
 
 	@Test
 	public void tellsWhatTheStorageOffers() throws IOException {
-		write("main.glsl", SHADER);
+		write("main.frag", SHADER);
 
-		assertTrue(open().offers(path("main.glsl")).write());
+		assertTrue(open().offers(path("main.frag")).write());
 		assertEquals(ProjectFiles.Offers.NONE, open(new MemoryProjectFiles()
-				.put("main.glsl", SHADER)).offers(path("main.glsl")));
+				.put("main.frag", SHADER)).offers(path("main.frag")));
 	}
 
 	@Test
@@ -3015,7 +3017,7 @@ public class OpenProjectTest {
 
 	@Test
 	public void tellsTheListenerWhatTheScreensMark() throws IOException {
-		write("main.glsl", "#include \"lib.glsl\"\n" + SHADER);
+		write("main.frag", "#include \"lib.glsl\"\n" + SHADER);
 		write("lib.glsl", "// lib\n");
 		write("b.glsl", SHADER);
 		OpenProject project = open();
@@ -3079,7 +3081,7 @@ public class OpenProjectTest {
 	public void groupsDiagnosticsByFile() throws IOException {
 		OpenProject project = open();
 		ProjectDiagnostic inMain = new ProjectDiagnostic(Severity.WARNING,
-				"unused", path("main.glsl"), 3);
+				"unused", path("main.frag"), 3);
 		ProjectDiagnostic inLib = new ProjectDiagnostic(Severity.ERROR,
 				"syntax error", path("lib/common.glsl"), 7);
 		ProjectDiagnostic nowhere = ProjectDiagnostic.error("driver crashed");
@@ -3089,7 +3091,7 @@ public class OpenProjectTest {
 
 		assertEquals(List.of(inLib), project.diagnostics(
 				path("lib/common.glsl")));
-		assertEquals(List.of(inMain), project.diagnostics(path("main.glsl")));
+		assertEquals(List.of(inMain), project.diagnostics(path("main.frag")));
 		assertEquals(List.of(), project.diagnostics(path("other.glsl")));
 		assertEquals(List.of(), project.diagnostics(null));
 		assertEquals(List.of(inMain, inLib, nowhere), project.diagnostics());
@@ -3098,13 +3100,24 @@ public class OpenProjectTest {
 
 	@Test
 	public void opensOnlyTextOfAtMost16MiBInTheEditor() throws IOException {
-		write("image.png", "not really");
+		// A picture named like a shader, a shader named like a picture.
+		Files.write(new File(root, "image.frag").toPath(), Pictures.png(1));
+		write("shader.png", "void main() {}");
 		Files.write(new File(root, "data.bin").toPath(), new byte[]{0, 1, 2});
 		write("notes.txt", "notes");
 		write("big.glsl", "// " + "x".repeat(2 * 1024 * 1024));
+		byte[] large = java.util.Arrays.copyOf(Pictures.png(),
+				(int) Document.MAX_BYTES + 1);
+		Files.write(new File(root, "large").toPath(), large);
 		OpenProject project = open();
 
-		assertNotNull(load(project, "image.png"));
+		assertEquals("image.frag is a picture, not text",
+				load(project, "image.frag"));
+		assertEquals("void main() {}", text(project, "shader.png"));
+		// Told from its first bytes, without reading it.
+		assertEquals("large is a picture, not text",
+				this.<String>await(done -> project.load(path("large"),
+						Document.MAX_BYTES + 1, done)));
 		assertNotNull(load(project, "data.bin"));
 		assertNotNull(load(project, "missing.glsl"));
 		assertEquals("notes", text(project, "notes.txt"));
@@ -3145,18 +3158,18 @@ public class OpenProjectTest {
 
 	@Test
 	public void keepsTheProjectFilesWhenOpening() throws IOException {
-		write("main.glsl", SHADER);
-		byte[] before = Files.readAllBytes(new File(root, "main.glsl")
+		write("main.frag", SHADER);
+		byte[] before = Files.readAllBytes(new File(root, "main.frag")
 				.toPath());
 
 		OpenProject project = open();
-		document(project, "main.glsl");
+		document(project, "main.frag");
 		project.persist();
 		refresh(project);
 
 		assertArrayEquals(before, Files.readAllBytes(
-				new File(root, "main.glsl").toPath()));
-		assertEquals(Set.of("main.glsl"), Set.of(root.list()));
+				new File(root, "main.frag").toPath()));
+		assertEquals(Set.of("main.frag"), Set.of(root.list()));
 	}
 
 	private OpenProject editedElsewhere() throws IOException {

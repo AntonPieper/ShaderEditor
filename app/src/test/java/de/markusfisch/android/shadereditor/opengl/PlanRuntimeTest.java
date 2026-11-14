@@ -18,7 +18,7 @@ public class PlanRuntimeTest {
 	// The backbuffer is declared but never read, so linking removes it.
 	@Test
 	public void initialWithoutAReadBackbufferWarnsAtLink() {
-		var preparation = prepare("main.glsl", lines(
+		var preparation = prepare("main.frag", lines(
 						"#pragma se target initial=\"seed.png\"",
 						"uniform sampler2D backbuffer;",
 						MAIN),
@@ -34,7 +34,7 @@ public class PlanRuntimeTest {
 
 	@Test
 	public void initialWarnsOnceWhenPreparationWarnedAlready() {
-		var preparation = prepare("main.glsl", lines(
+		var preparation = prepare("main.frag", lines(
 						"#pragma se target initial=\"seed.png\"",
 						MAIN),
 				"seed.png", "png");

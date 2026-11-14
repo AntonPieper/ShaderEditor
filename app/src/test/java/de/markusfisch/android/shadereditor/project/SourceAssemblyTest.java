@@ -11,12 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class SourceAssemblyTest {
-	private static final ProjectPath MAIN = path("main.glsl");
+	private static final ProjectPath MAIN = path("main.frag");
 
 	@Test
 	public void expandsNestedAndRepeatedIncludesWithGuards() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#version 300 es",
 						"#include \"lib/a.glsl\"",
 						"#include \"lib/a.glsl\"",
@@ -33,10 +33,10 @@ public class SourceAssemblyTest {
 		assertEquals("#version 300 es\n" + guarded + guarded +
 				"void main() {}\n", assembly.text());
 		assertLocation(assembly, 4, "lib/b.glsl", 1);
-		assertEquals(List.of("main.glsl:2", "lib/a.glsl:3"), chain(assembly, 4));
+		assertEquals(List.of("main.frag:2", "lib/a.glsl:3"), chain(assembly, 4));
 		assertLocation(assembly, 8, "lib/b.glsl", 1);
-		assertEquals(List.of("main.glsl:3", "lib/a.glsl:3"), chain(assembly, 8));
-		assertLocation(assembly, 10, "main.glsl", 4);
+		assertEquals(List.of("main.frag:3", "lib/a.glsl:3"), chain(assembly, 8));
+		assertLocation(assembly, 10, "main.frag", 4);
 		assertEquals(3, files.reads);
 		assertEquals(List.of(
 				new SourceAssembly.Dependency(MAIN, "r0"),
@@ -48,7 +48,7 @@ public class SourceAssemblyTest {
 	@Test
 	public void warnsAboutPragmaOnce() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", "#include \"a.glsl\"\n")
+				.put("main.frag", "#include \"a.glsl\"\n")
 				.put("a.glsl", "float a;\n  #  pragma once\n"));
 		ProjectDiagnostic warning = single(assembly);
 		assertEquals(ProjectDiagnostic.Severity.WARNING, warning.severity());
@@ -62,11 +62,11 @@ public class SourceAssemblyTest {
 	@Test
 	public void requiresMissingIncludeInsideIfZero() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#if 0",
 						"#include \"missing.glsl\"",
 						"#endif")));
-		assertError(single(assembly), "main.glsl", 2, "missing.glsl");
+		assertError(single(assembly), "main.frag", 2, "missing.glsl");
 		assertEquals(List.of(
 				new SourceAssembly.Dependency(MAIN, "r0"),
 				new SourceAssembly.Dependency(path("missing.glsl"), null)),
@@ -76,7 +76,7 @@ public class SourceAssemblyTest {
 	@Test
 	public void rejectsGuardedCycleWithChain() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", "#include \"a.glsl\"\n")
+				.put("main.frag", "#include \"a.glsl\"\n")
 				.put("a.glsl", lines(
 						"#ifndef A",
 						"#define A",
@@ -85,40 +85,40 @@ public class SourceAssemblyTest {
 				.put("b.glsl", "#include \"a.glsl\"\n"));
 		ProjectDiagnostic error = single(assembly);
 		assertError(error, "b.glsl", 1,
-				"main.glsl -> a.glsl -> b.glsl -> a.glsl");
+				"main.frag -> a.glsl -> b.glsl -> a.glsl");
 		assertTrue(error.message().contains(
-				"included from a.glsl:3, main.glsl:1"));
+				"included from a.glsl:3, main.frag:1"));
 	}
 
 	@Test
 	public void rejectsMacroAndAngleIncludes() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#define LIB \"a.glsl\"",
 						"#include LIB",
 						"#include <a.glsl>",
 						"#include \"a.glsl\" extra")));
 		assertEquals(3, assembly.diagnostics().size());
-		assertError(assembly.diagnostics().get(0), "main.glsl", 2, "macros");
-		assertError(assembly.diagnostics().get(1), "main.glsl", 3, "Angle");
-		assertError(assembly.diagnostics().get(2), "main.glsl", 4, "extra");
+		assertError(assembly.diagnostics().get(0), "main.frag", 2, "macros");
+		assertError(assembly.diagnostics().get(1), "main.frag", 3, "Angle");
+		assertError(assembly.diagnostics().get(2), "main.frag", 4, "extra");
 	}
 
 	@Test
 	public void rejectsBlockCommentOnIncludeLine() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
 				.put("lib.glsl", "float x;\n");
-		assertError(single(assemble(files.put("main.glsl", lines(
+		assertError(single(assemble(files.put("main.frag", lines(
 						"/* hello",
 						"*/ #include \"lib.glsl\"",
 						"void main() {}")))),
-				"main.glsl", 2, "Block comments");
-		assertError(single(assemble(files.put("main.glsl", lines(
+				"main.frag", 2, "Block comments");
+		assertError(single(assemble(files.put("main.frag", lines(
 						"#include \"lib.glsl\" /* start",
 						"end */",
 						"void main() {}")))),
-				"main.glsl", 1, "Block comments");
-		assertTrue(assemble(files.put("main.glsl",
+				"main.frag", 1, "Block comments");
+		assertTrue(assemble(files.put("main.frag",
 				"#include \"lib.glsl\" // a /* comment\n"))
 				.diagnostics().isEmpty());
 	}
@@ -126,27 +126,27 @@ public class SourceAssemblyTest {
 	@Test
 	public void rejectsInvalidIncludePathAtIncludeLine() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", "\n#include \"../out.glsl\"\n"));
-		assertError(single(assembly), "main.glsl", 2, "leaves the project");
+				.put("main.frag", "\n#include \"../out.glsl\"\n"));
+		assertError(single(assembly), "main.frag", 2, "leaves the project");
 	}
 
 	@Test
 	public void rejectsConditionalCrossingFileBoundary() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#include \"a.glsl\"",
 						"float x;",
 						"#endif"))
 				.put("a.glsl", "#ifdef X\n"));
 		assertEquals(2, assembly.diagnostics().size());
-		assertError(assembly.diagnostics().get(0), "main.glsl", 3, "#endif");
+		assertError(assembly.diagnostics().get(0), "main.frag", 3, "#endif");
 		assertError(assembly.diagnostics().get(1), "a.glsl", 1, "not closed");
 	}
 
 	@Test
 	public void rejectsVersionInInclude() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", "#version 300 es\n#include \"a.glsl\"\n")
+				.put("main.frag", "#version 300 es\n#include \"a.glsl\"\n")
 				.put("a.glsl", "// lib\n#version 300 es\n"));
 		assertError(single(assembly), "a.glsl", 2, "#version");
 		assertEquals(1, assembly.versionLine());
@@ -155,7 +155,7 @@ public class SourceAssemblyTest {
 	@Test
 	public void insertsGeneratedLinesAfterVersion() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"// header",
 						"#version 300 es",
 						"#extension GL_EXT_shader_texture_lod : enable",
@@ -169,18 +169,18 @@ public class SourceAssemblyTest {
 				"#extension GL_OES_EGL_image_external_essl3 : require",
 				"#extension GL_EXT_shader_texture_lod : enable",
 				"void main() {}"), assembly.text());
-		assertLocation(assembly, 2, "main.glsl", 2);
+		assertLocation(assembly, 2, "main.frag", 2);
 		assertTrue(assembly.sourceMap().locate(3).isGenerated());
 		assertTrue(assembly.sourceMap().locate(4).isGenerated());
-		assertLocation(assembly, 5, "main.glsl", 3);
-		assertLocation(assembly, 6, "main.glsl", 4);
+		assertLocation(assembly, 5, "main.frag", 3);
+		assertLocation(assembly, 6, "main.frag", 4);
 		assertNull(assembly.sourceMap().locate(7));
 	}
 
 	@Test
 	public void insertsGeneratedLinesAfterCommentContinuingFromVersion() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#version 300 es /* note",
 						"still the note",
 						"*/",
@@ -194,37 +194,37 @@ public class SourceAssemblyTest {
 				"void main() {}"), assembly.withGeneratedLines(
 				List.of("#define SHADER_EDITOR 1")).text());
 		assertEquals(1, assemble(new MemoryProjectFiles()
-				.put("main.glsl", "#version 300 es /* a */\n/* b\n*/\n"))
+				.put("main.frag", "#version 300 es /* a */\n/* b\n*/\n"))
 				.versionLine());
 	}
 
 	@Test
 	public void insertsGeneratedLinesAtTopWithoutVersion() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", "void main() {}\n"))
+				.put("main.frag", "void main() {}\n"))
 				.withGeneratedLines(List.of("#define SHADER_EDITOR 1"));
 		assertEquals("#define SHADER_EDITOR 1\nvoid main() {}\n",
 				assembly.text());
 		assertTrue(assembly.sourceMap().locate(1).isGenerated());
-		assertLocation(assembly, 2, "main.glsl", 1);
+		assertLocation(assembly, 2, "main.frag", 1);
 	}
 
 	@Test
 	public void locatesErrorInsideNestedInclude() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", "#include \"a/a.glsl\"\nvoid main() {}\n")
+				.put("main.frag", "#include \"a/a.glsl\"\nvoid main() {}\n")
 				.put("a/a.glsl", "float a;\n#include \"../b/b.glsl\"\n")
 				.put("b/b.glsl", "float b;\n#include \"gone.glsl\"\n"));
 		assertError(single(assembly), "b/b.glsl", 2,
-				"included from a/a.glsl:2, main.glsl:1");
+				"included from a/a.glsl:2, main.frag:1");
 		assertLocation(assembly, 2, "b/b.glsl", 1);
-		assertEquals(List.of("main.glsl:1", "a/a.glsl:2"), chain(assembly, 2));
+		assertEquals(List.of("main.frag:1", "a/a.glsl:2"), chain(assembly, 2));
 	}
 
 	@Test
 	public void boundsIncludeDepth() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", "#include \"1.glsl\"\n")
+				.put("main.frag", "#include \"1.glsl\"\n")
 				.put("1.glsl", "#include \"2.glsl\"\n")
 				.put("2.glsl", "#include \"3.glsl\"\n")
 				.put("3.glsl", "float x;\n");
@@ -237,7 +237,7 @@ public class SourceAssemblyTest {
 	public void boundsExpandedSourceBytes() {
 		SourceAssembly assembly = SourceAssembly.assemble(
 				new MemoryProjectFiles()
-						.put("main.glsl", lines(
+						.put("main.frag", lines(
 								"#include \"a.glsl\"",
 								"#include \"a.glsl\"",
 								"#include \"a.glsl\""))
@@ -252,13 +252,13 @@ public class SourceAssemblyTest {
 	public void boundsFilesRead() {
 		ProjectLimits limits = new ProjectLimits(4, 1000, 100, 2, 16, 100);
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", "#include \"a.glsl\"\n" +
+				.put("main.frag", "#include \"a.glsl\"\n" +
 						"#include \"b.glsl\"\n")
 				.put("a.glsl", "float a;\n")
 				.put("b.glsl", "float b;\n");
 		SourceAssembly assembly = SourceAssembly.assemble(
 				new CapturedFiles(files, limits), MAIN, limits);
-		assertError(single(assembly), "main.glsl", 2,
+		assertError(single(assembly), "main.frag", 2,
 				"Could not read b.glsl: the build reads more than the " +
 						"limit of 2 files");
 		assertEquals(List.of(MAIN, path("a.glsl")), files.readPaths);
@@ -267,7 +267,7 @@ public class SourceAssemblyTest {
 	@Test
 	public void boundsIncludeExpansionsAlsoWithoutOutput() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", "#include \"a.glsl\"\n".repeat(3))
+				.put("main.frag", "#include \"a.glsl\"\n".repeat(3))
 				.put("a.glsl", "#include \"b.glsl\"\n".repeat(3))
 				.put("b.glsl", "");
 		SourceAssembly assembly = SourceAssembly.assemble(files, MAIN,
@@ -282,7 +282,7 @@ public class SourceAssemblyTest {
 	@Test(timeout = 10000)
 	public void boundsExponentialIncludesWithDefaultLimits() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", "#include \"i1.glsl\"\n".repeat(5))
+				.put("main.frag", "#include \"i1.glsl\"\n".repeat(5))
 				.put("i16.glsl", "");
 		for (int i = 1; i < 16; ++i) {
 			files.put("i" + i + ".glsl",
@@ -296,7 +296,7 @@ public class SourceAssemblyTest {
 	@Test
 	public void normalizesBomAndLineEndingsPerFile() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", "\uFEFF#version 300 es\r\n" +
+				.put("main.frag", "\uFEFF#version 300 es\r\n" +
 						"#include \"a.glsl\"\r\nvoid main() {}\r\n")
 				.put("a.glsl", "float a;\rfloat b;\r"));
 		assertEquals(lines(
@@ -306,14 +306,14 @@ public class SourceAssemblyTest {
 				"void main() {}"), assembly.text());
 		assertEquals(1, assembly.versionLine());
 		assertLocation(assembly, 3, "a.glsl", 2);
-		assertLocation(assembly, 4, "main.glsl", 3);
+		assertLocation(assembly, 4, "main.frag", 3);
 	}
 
 	@Test
 	public void resolvesUtf8PathInNfc() {
 		String decomposed = "lib/U\u0308bung.glsl";
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", "#include \"" + decomposed + "\"\n")
+				.put("main.frag", "#include \"" + decomposed + "\"\n")
 				.put("lib/\u00DCbung.glsl", "float \u00FC;\n"));
 		assertTrue(assembly.diagnostics().isEmpty());
 		assertEquals("float \u00FC;\n", assembly.text());
@@ -323,16 +323,16 @@ public class SourceAssemblyTest {
 	@Test
 	public void rejectsIncludeThatIsNotUtf8() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles()
-				.put("main.glsl", "#include \"a.glsl\"\n#include \"a.glsl\"\n")
+				.put("main.frag", "#include \"a.glsl\"\n#include \"a.glsl\"\n")
 				.put("a.glsl", new byte[]{(byte) 0xFF}));
 		assertEquals(2, assembly.diagnostics().size());
-		assertError(assembly.diagnostics().get(1), "main.glsl", 2, "UTF-8");
+		assertError(assembly.diagnostics().get(1), "main.frag", 2, "UTF-8");
 	}
 
 	@Test
 	public void reportsMissingEntry() {
 		SourceAssembly assembly = assemble(new MemoryProjectFiles());
-		assertError(single(assembly), "main.glsl", 0, "not found");
+		assertError(single(assembly), "main.frag", 0, "not found");
 		assertEquals("", assembly.text());
 	}
 

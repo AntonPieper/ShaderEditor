@@ -9,15 +9,10 @@ import java.util.regex.Pattern;
 
 /**
  * A normalized, case-sensitive path of a file inside a project root.
- * Segments are separated by '/' and stored in Unicode NFC.
+ * Segments are separated by '/' and stored in Unicode NFC. A path
+ * says where a file is, not what it is: see {@link FileKind}.
  */
 public final class ProjectPath {
-	public enum Kind {
-		SHADER,
-		IMAGE,
-		OTHER
-	}
-
 	private static final Pattern DRIVE = Pattern.compile("[A-Za-z]:");
 	private static final Pattern SCHEME = Pattern.compile(
 			"[A-Za-z][A-Za-z0-9+.-]*:");
@@ -48,18 +43,6 @@ public final class ProjectPath {
 				List.of(containingFile.path.split("/")));
 		segments.remove(segments.size() - 1);
 		return resolve(segments, reference, containingFile);
-	}
-
-	public Kind getKind() {
-		String name = getFileName().toLowerCase(Locale.ROOT);
-		if (name.endsWith(".glsl")) {
-			return Kind.SHADER;
-		} else if (name.endsWith(".png") ||
-				name.endsWith(".jpg") ||
-				name.endsWith(".jpeg")) {
-			return Kind.IMAGE;
-		}
-		return Kind.OTHER;
 	}
 
 	public String getFileName() {

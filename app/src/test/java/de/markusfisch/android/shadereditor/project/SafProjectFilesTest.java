@@ -31,25 +31,25 @@ public class SafProjectFilesTest {
 
 	@Test
 	public void readsContentAbsentAndFailed() {
-		documents.put("main.glsl", "void main() {}");
+		documents.put("main.frag", "void main() {}");
 		documents.folder("folder");
-		Content content = (Content) files.read(path("main.glsl"));
+		Content content = (Content) files.read(path("main.frag"));
 		assertEquals("void main() {}", text(content.bytes()));
 		assertTrue(content.revision().startsWith("sha256:"));
 		assertNull(files.read(path("missing.glsl")));
-		assertNull(files.read(path("missing/main.glsl")));
-		assertNull(files.read(path("main.glsl/main.glsl")));
+		assertNull(files.read(path("missing/main.frag")));
+		assertNull(files.read(path("main.frag/main.frag")));
 		assertEquals(new Failed("it is a folder"), files.read(path("folder")));
 	}
 
 	@Test
 	public void refusesAFileOverTheLimitAsked() {
-		documents.put("main.glsl", "void main() {}");
+		documents.put("main.frag", "void main() {}");
 
 		assertEquals(new Failed(ProjectFiles.TOO_LARGE),
-				files.read(path("main.glsl"), 13));
+				files.read(path("main.frag"), 13));
 		assertEquals("void main() {}", text(((Content) files.read(
-				path("main.glsl"), 14)).bytes()));
+				path("main.frag"), 14)).bytes()));
 	}
 
 	@Test
@@ -71,14 +71,14 @@ public class SafProjectFilesTest {
 		for (int i = 0; i < 100; ++i) {
 			documents.put("big/file" + i + ".glsl", "");
 		}
-		FakeDocuments.Node main = documents.put("a/b/main.glsl", "main");
+		FakeDocuments.Node main = documents.put("a/b/main.frag", "main");
 		String a = documents.folder("a").id;
 		String b = documents.folder("a/b").id;
 		documents.calls.clear();
 		SafProjectFiles opened = new SafProjectFiles(documents,
 				documents.root.id);
 		assertEquals(List.of(), documents.calls);
-		assertEquals("main", read(opened, "a/b/main.glsl"));
+		assertEquals("main", read(opened, "a/b/main.frag"));
 		assertEquals(List.of("children " + documents.root.id,
 				"children " + a, "children " + b, "read " + main.id),
 				documents.calls);
@@ -86,14 +86,14 @@ public class SafProjectFilesTest {
 
 	@Test
 	public void openingAListedFileIsOneCall() {
-		FakeDocuments.Node main = documents.put("a/b/main.glsl", "main");
+		FakeDocuments.Node main = documents.put("a/b/main.frag", "main");
 		FakeDocuments.Node c = documents.folder("a/b/c");
 		files.list(null);
 		files.list(path("a"));
 		files.list(path("a/b"));
 		documents.calls.clear();
 
-		assertEquals("main", read(files, "a/b/main.glsl"));
+		assertEquals("main", read(files, "a/b/main.frag"));
 		files.list(path("a/b/c"));
 
 		assertEquals(List.of("read " + main.id, "children " + c.id),
@@ -114,13 +114,13 @@ public class SafProjectFilesTest {
 
 	@Test
 	public void forgettingListingsFindsRenamesMadeElsewhere() {
-		FakeDocuments.Node main = documents.put("main.glsl", "main");
+		FakeDocuments.Node main = documents.put("main.frag", "main");
 		files.list(null);
 		main.name = "renamed.glsl";
 
 		files.forgetListings();
 
-		assertNull(files.read(path("main.glsl")));
+		assertNull(files.read(path("main.frag")));
 		assertEquals("main", read(files, "renamed.glsl"));
 	}
 
@@ -155,28 +155,28 @@ public class SafProjectFilesTest {
 
 	@Test
 	public void listsEntriesWithVersionControlFolders() {
-		documents.put("main.glsl", "");
+		documents.put("main.frag", "");
 		documents.put("assets/noise.png", "");
 		documents.put(".git/config", "");
 		documents.put(DECOMPOSED, "");
-		assertEquals(Set.of("main.glsl", "assets/", ".git/", COMPOSED),
+		assertEquals(Set.of("main.frag", "assets/", ".git/", COMPOSED),
 				names(null));
 		assertEquals(Set.of("noise.png"), names("assets"));
 		assertNull(files.list(path("missing")));
 		assertEquals(new Failed("it is not a folder"),
-				files.list(path("main.glsl")));
+				files.list(path("main.frag")));
 		assertFalse(ProjectPath.parse(".git/config").isSuccess());
 	}
 
 	@Test
 	public void listsSizeAndTimeOfLastChangeWithoutReading() {
-		documents.put("main.glsl", "void main() {}").modified = 1234;
+		documents.put("main.frag", "void main() {}").modified = 1234;
 		documents.put("lib/common.glsl", "");
 		documents.calls.clear();
 
 		Entries entries = (Entries) files.list(null);
 
-		assertEquals(Set.of(new Entry("main.glsl", false, 14, 1234),
+		assertEquals(Set.of(new Entry("main.frag", false, 14, 1234),
 						new Entry("lib", true)),
 				Set.copyOf(entries.entries()));
 		assertEquals(List.of("children " + documents.root.id),
@@ -185,11 +185,11 @@ public class SafProjectFilesTest {
 
 	@Test
 	public void namesDifferingInCaseAreDifferentPaths() {
-		documents.put("Main.glsl", "upper");
-		assertNull(files.read(path("main.glsl")));
-		documents.put("main.glsl", "lower");
-		assertEquals("upper", read(files, "Main.glsl"));
-		assertEquals("lower", read(files, "main.glsl"));
+		documents.put("Main.frag", "upper");
+		assertNull(files.read(path("main.frag")));
+		documents.put("main.frag", "lower");
+		assertEquals("upper", read(files, "Main.frag"));
+		assertEquals("lower", read(files, "main.frag"));
 	}
 
 	@Test
@@ -213,26 +213,26 @@ public class SafProjectFilesTest {
 
 	@Test
 	public void lostPermissionFails() {
-		documents.put("main.glsl", "");
+		documents.put("main.frag", "");
 		documents.failure = new SecurityException("revoked");
 		Failed lost = new Failed(SafProjectFiles.LOST_FOLDER);
-		assertEquals(lost, files.read(path("main.glsl")));
+		assertEquals(lost, files.read(path("main.frag")));
 		assertEquals(lost, files.list(null));
 		assertEquals(SafProjectFiles.LOST_FOLDER, files.check());
 	}
 
 	@Test
 	public void vanishedDocumentsFail() {
-		FakeDocuments.Node main = documents.put("main.glsl", "");
+		FakeDocuments.Node main = documents.put("main.frag", "");
 		documents.nodes.remove(main.id);
-		assertNull(files.read(path("main.glsl")));
+		assertNull(files.read(path("main.frag")));
 		documents.nodes.remove(documents.root.id);
 		Failed gone = new Failed("it is no longer available");
-		assertEquals(gone, files.read(path("main.glsl")));
+		assertEquals(gone, files.read(path("main.frag")));
 		assertEquals(gone, files.list(null));
 		assertEquals("it is no longer available", files.check());
 		documents.failure = new FileNotFoundException("doc1");
-		assertEquals(gone, files.read(path("main.glsl")));
+		assertEquals(gone, files.read(path("main.frag")));
 	}
 
 	@Test
@@ -241,7 +241,7 @@ public class SafProjectFilesTest {
 		assertEquals(new Failed("I/O error: disk"), files.list(null));
 		documents.failure = new IllegalStateException("crashed");
 		assertEquals(new Failed("the storage failed: crashed"),
-				files.read(path("main.glsl")));
+				files.read(path("main.frag")));
 		documents.failure = new UnsupportedOperationException();
 		assertEquals(new Failed("the storage failed"), files.list(null));
 	}
@@ -249,7 +249,7 @@ public class SafProjectFilesTest {
 	@Test
 	public void checksTheRoot() {
 		assertNull(files.check());
-		FakeDocuments.Node file = documents.put("main.glsl", "");
+		FakeDocuments.Node file = documents.put("main.frag", "");
 		assertEquals("it is not a folder", new SafProjectFiles(documents,
 				file.id).check());
 	}

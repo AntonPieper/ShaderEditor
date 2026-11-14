@@ -11,7 +11,7 @@ import de.markusfisch.android.shadereditor.project.ProjectLimits;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 
-// Projects in memory, prepared with main.glsl as the running shader.
+// Projects in memory, prepared with main.frag as the running shader.
 final class TestProjects {
 	private TestProjects() {
 	}
@@ -28,7 +28,7 @@ final class TestProjects {
 									StandardCharsets.UTF_8),
 					"r" + i));
 		}
-		return Preparation.prepare(files::get, path("main.glsl"),
+		return Preparation.prepare(files::get, path("main.frag"),
 				ProjectLimits.DEFAULT, BuiltinNames.ALL);
 	}
 

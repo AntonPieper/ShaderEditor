@@ -280,7 +280,7 @@ public class LegacySamplerSettingsTest {
 	private static Sampling sampling(String options) {
 		HostDirective directive = HostDirective.parse(
 				" se input \"t.png\" " + options,
-				new SourceLocation(path("main.glsl"), 1, null));
+				new SourceLocation(path("main.frag"), 1, null));
 		assertTrue(options, directive.diagnostics().isEmpty());
 		HostDirective.Input input = directive.input();
 		ProjectParseResult<Sampling> sampling = Sampling.of(input, true);

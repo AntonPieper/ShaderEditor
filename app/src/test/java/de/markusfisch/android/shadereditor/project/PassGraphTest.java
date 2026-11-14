@@ -16,27 +16,27 @@ public class PassGraphTest {
 	@Test
 	public void g01ReadsOnlyEntryDependencies() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", MAIN)
+				.put("main.frag", MAIN)
 				.put("broken.glsl", "#pragma se nonsense\n#include <x>\n")
 				.put("empty.glsl", "")
 				.put("notes.txt", new byte[]{(byte) 0xff});
 		PassGraph graph = discover(files);
 		assertTrue(graph.diagnostics.isEmpty());
-		assertEquals(List.of("main.glsl"), paths(graph.nodes));
-		assertEquals(List.of(path("main.glsl")), files.readPaths);
+		assertEquals(List.of("main.frag"), paths(graph.nodes));
+		assertEquals(List.of(path("main.frag")), files.readPaths);
 	}
 
 	@Test
 	public void g01KeepsDuplicateBasenamesApart() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						input("b/blur.glsl", "later"),
 						input("a/blur.glsl", "earlier"),
 						MAIN))
 				.put("a/blur.glsl", MAIN)
 				.put("b/blur.glsl", MAIN));
 		assertTrue(graph.diagnostics.isEmpty());
-		assertEquals(List.of("a/blur.glsl", "b/blur.glsl", "main.glsl"),
+		assertEquals(List.of("a/blur.glsl", "b/blur.glsl", "main.frag"),
 				paths(graph.nodes));
 		assertEquals("b/blur.glsl",
 				graph.entry.inputs.get(0).producer().file.toString());
@@ -47,7 +47,7 @@ public class PassGraphTest {
 	@Test
 	public void g02DiamondRunsSharedProducerOnceInPathOrder() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						input("c.glsl", "c"),
 						input("b.glsl", "b"),
 						input("d.glsl", "d"),
@@ -57,7 +57,7 @@ public class PassGraphTest {
 				.put("d.glsl", MAIN);
 		PassGraph graph = discover(files);
 		assertTrue(graph.diagnostics.isEmpty());
-		assertEquals(List.of("d.glsl", "b.glsl", "c.glsl", "main.glsl"),
+		assertEquals(List.of("d.glsl", "b.glsl", "c.glsl", "main.frag"),
 				paths(graph.nodes));
 		PassGraph.Node d = graph.nodes.get(0);
 		assertSame(d, graph.entry.inputs.get(2).producer());
@@ -68,13 +68,13 @@ public class PassGraphTest {
 	@Test
 	public void g02SameProducerReferencedTwiceIsOnePass() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						input("p.glsl", "now"),
 						previous("./sub/../p.glsl", "then"),
 						MAIN))
 				.put("p.glsl", MAIN));
 		assertTrue(graph.diagnostics.isEmpty());
-		assertEquals(List.of("p.glsl", "main.glsl"), paths(graph.nodes));
+		assertEquals(List.of("p.glsl", "main.frag"), paths(graph.nodes));
 		assertSame(graph.entry.inputs.get(0).producer(),
 				graph.entry.inputs.get(1).producer());
 	}
@@ -82,20 +82,20 @@ public class PassGraphTest {
 	@Test
 	public void g03RejectsCurrentSelfRead() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"precision mediump float;",
-						input("main.glsl", "self"),
+						input("main.frag", "self"),
 						MAIN)));
-		assertEquals(List.of("ERROR main.glsl:2 Current-frame cycle: " +
-						"main.glsl -> main.glsl (main.glsl:2 reads " +
-						"main.glsl), read one of them with frame=previous"),
+		assertEquals(List.of("ERROR main.frag:2 Current-frame cycle: " +
+						"main.frag -> main.frag (main.frag:2 reads " +
+						"main.frag), read one of them with frame=previous"),
 				messages(graph));
 	}
 
 	@Test
 	public void g03RejectsMultiNodeCycleWithItsInputs() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(input("pass/a.glsl", "a"), MAIN))
+				.put("main.frag", lines(input("pass/a.glsl", "a"), MAIN))
 				.put("pass/a.glsl", lines(
 						"// a",
 						input("b.glsl", "b"),
@@ -116,23 +116,23 @@ public class PassGraphTest {
 	@Test
 	public void g04SelfPreviousIsValidHistory() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
-						previous("main.glsl", "last"),
+				.put("main.frag", lines(
+						previous("main.frag", "last"),
 						MAIN)));
 		assertTrue(graph.diagnostics.isEmpty());
 		assertTrue(graph.entry.history);
-		assertEquals(List.of("main.glsl"), paths(graph.nodes));
+		assertEquals(List.of("main.frag"), paths(graph.nodes));
 	}
 
 	@Test
 	public void g04TwoPassPreviousCycleTerminates() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(input("a.glsl", "a"), MAIN))
+				.put("main.frag", lines(input("a.glsl", "a"), MAIN))
 				.put("a.glsl", lines(previous("b.glsl", "b"), MAIN))
 				.put("b.glsl", lines(previous("a.glsl", "a"), MAIN));
 		PassGraph graph = discover(files);
 		assertTrue(graph.diagnostics.isEmpty());
-		assertEquals(List.of("a.glsl", "b.glsl", "main.glsl"),
+		assertEquals(List.of("a.glsl", "b.glsl", "main.frag"),
 				paths(graph.nodes));
 		assertTrue(graph.nodes.get(0).history);
 		assertTrue(graph.nodes.get(1).history);
@@ -143,10 +143,10 @@ public class PassGraphTest {
 	@Test
 	public void g05ProducerReachedOnlyThroughPreviousRunsEveryFrame() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(previous("state.glsl", "s"), MAIN))
+				.put("main.frag", lines(previous("state.glsl", "s"), MAIN))
 				.put("state.glsl", MAIN));
 		assertTrue(graph.diagnostics.isEmpty());
-		assertEquals(List.of("main.glsl", "state.glsl"), paths(graph.nodes));
+		assertEquals(List.of("main.frag", "state.glsl"), paths(graph.nodes));
 		PassGraph.Node state = graph.nodes.get(1);
 		assertTrue(state.perFrame);
 		assertTrue(state.history);
@@ -155,14 +155,14 @@ public class PassGraphTest {
 	@Test
 	public void g06PreviousReadGivesProducerHistoryWithoutBackbuffer() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						input("now.glsl", "now"),
 						previous("then.glsl", "then"),
 						MAIN))
 				.put("now.glsl", MAIN)
 				.put("then.glsl", MAIN));
 		assertTrue(graph.diagnostics.isEmpty());
-		assertEquals(List.of("main.glsl", "now.glsl", "then.glsl"),
+		assertEquals(List.of("main.frag", "now.glsl", "then.glsl"),
 				paths(sorted(graph.nodes)));
 		assertFalse(graph.entry.inputs.get(0).producer().history);
 		assertTrue(graph.entry.inputs.get(1).producer().history);
@@ -171,7 +171,7 @@ public class PassGraphTest {
 	@Test
 	public void annotatedBackbufferGivesOwnHistory() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se input filter=linear",
 						"uniform sampler2D backbuffer;",
 						MAIN)));
@@ -182,40 +182,40 @@ public class PassGraphTest {
 	@Test
 	public void g07UnusedInputWithMissingSourceIsAnError() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						input("gone.glsl", "unused"),
 						input("gone.png", "alsoUnused"),
 						MAIN));
 		PassGraph graph = discover(files);
 		assertEquals(List.of(
-						"ERROR main.glsl:1 File not found: gone.glsl",
-						"ERROR main.glsl:3 File not found: gone.png"),
+						"ERROR main.frag:1 File not found: gone.glsl",
+						"ERROR main.frag:3 File not found: gone.png"),
 				messages(graph));
-		assertEquals(List.of(path("main.glsl"), path("gone.glsl"),
+		assertEquals(List.of(path("main.frag"), path("gone.glsl"),
 				path("gone.png")), files.readPaths);
 	}
 
 	@Test
 	public void g07UnusedInputInCurrentCycleIsAnError() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(input("a.glsl", "unused"), MAIN))
-				.put("a.glsl", lines(input("main.glsl", "unusedToo"), MAIN)));
+				.put("main.frag", lines(input("a.glsl", "unused"), MAIN))
+				.put("a.glsl", lines(input("main.frag", "unusedToo"), MAIN)));
 		assertEquals(1, graph.diagnostics.size());
 		assertTrue(graph.diagnostics.get(0).message().startsWith(
-				"Current-frame cycle: a.glsl -> main.glsl -> a.glsl"));
+				"Current-frame cycle: a.glsl -> main.frag -> a.glsl"));
 	}
 
 	@Test
 	public void reportsMissingEntry() {
 		PassGraph graph = discover(new MemoryProjectFiles());
-		assertEquals(List.of("ERROR main.glsl:0 File not found: main.glsl"),
+		assertEquals(List.of("ERROR main.frag:0 File not found: main.frag"),
 				messages(graph));
 	}
 
 	@Test
 	public void g09InitialImageIsReadAndReset() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se target initial=\"seed.png\"",
 						"uniform sampler2D backbuffer;",
 						MAIN))
@@ -223,17 +223,17 @@ public class PassGraphTest {
 		PassGraph graph = discover(files);
 		assertTrue(graph.diagnostics.isEmpty());
 		assertEquals(path("seed.png"), graph.entry.initialImage);
-		assertEquals(List.of("main.glsl"), paths(graph.reset));
-		assertEquals(List.of(path("main.glsl"), path("seed.png")),
+		assertEquals(List.of("main.frag"), paths(graph.reset));
+		assertEquals(List.of(path("main.frag"), path("seed.png")),
 				files.readPaths);
 	}
 
 	@Test
 	public void g09InitialShaderIsDrawnOnlyOnReset() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se target initial=\"seed.glsl\"",
-						previous("main.glsl", "last"),
+						previous("main.frag", "last"),
 						MAIN))
 				.put("seed.glsl", MAIN));
 		assertTrue(graph.diagnostics.isEmpty());
@@ -241,15 +241,15 @@ public class PassGraphTest {
 		assertEquals(path("seed.glsl"), seed.file);
 		assertFalse(seed.perFrame);
 		assertTrue(graph.entry.perFrame);
-		assertEquals(List.of("main.glsl"), paths(graph.reset));
+		assertEquals(List.of("main.frag"), paths(graph.reset));
 	}
 
 	@Test
 	public void g09InitialShaderReadingPassWithInitialShaderResetsItFirst() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se target initial=\"i.glsl\"",
-						previous("main.glsl", "last"),
+						previous("main.frag", "last"),
 						input("p.glsl", "p"),
 						MAIN))
 				.put("i.glsl", lines(input("p.glsl", "p"), MAIN))
@@ -259,14 +259,14 @@ public class PassGraphTest {
 						MAIN))
 				.put("j.glsl", MAIN));
 		assertTrue(graph.diagnostics.isEmpty());
-		assertEquals(List.of("p.glsl", "main.glsl"), paths(graph.reset));
+		assertEquals(List.of("p.glsl", "main.frag"), paths(graph.reset));
 		assertEquals(List.of("i.glsl", "j.glsl"), perFrame(graph, false));
 	}
 
 	@Test
 	public void g09PassesThatAreEachOthersInitialSourceAreACycle() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(input("a.glsl", "a"), MAIN))
+				.put("main.frag", lines(input("a.glsl", "a"), MAIN))
 				.put("a.glsl", lines(
 						"#pragma se target initial=\"b.glsl\"",
 						previous("a.glsl", "last"),
@@ -286,14 +286,14 @@ public class PassGraphTest {
 	@Test
 	public void g09InitialWithoutHistoryReadersWarns() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"// seed",
 						"#pragma se target initial=\"seed.png\"",
 						MAIN))
 				.put("seed.png", Pictures.png(1)));
-		assertEquals(List.of("WARNING main.glsl:2 initial has no effect " +
+		assertEquals(List.of("WARNING main.frag:2 initial has no effect " +
 						"because nothing reads the previous frame of " +
-						"main.glsl, read it with frame=previous or remove " +
+						"main.frag, read it with frame=previous or remove " +
 						"initial"),
 				messages(graph));
 	}
@@ -301,7 +301,7 @@ public class PassGraphTest {
 	@Test
 	public void g09InitialReadByAnInitialShaderDoesNotWarn() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se target initial=\"i.glsl\"",
 						"uniform sampler2D backbuffer;",
 						input("p.glsl", "p"),
@@ -312,17 +312,17 @@ public class PassGraphTest {
 						MAIN))
 				.put("seed.png", Pictures.png(1)));
 		assertTrue(graph.diagnostics.isEmpty());
-		assertEquals(List.of("p.glsl", "main.glsl"), paths(graph.reset));
+		assertEquals(List.of("p.glsl", "main.frag"), paths(graph.reset));
 	}
 
 	@Test
 	public void missingInitialSourceIsAnError() {
 		PassGraph graph = discover(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"uniform sampler2D backbuffer;",
 						"#pragma se target initial=\"seed.glsl\"",
 						MAIN)));
-		assertEquals(List.of("ERROR main.glsl:2 File not found: seed.glsl"),
+		assertEquals(List.of("ERROR main.frag:2 File not found: seed.glsl"),
 				messages(graph));
 	}
 
@@ -331,11 +331,11 @@ public class PassGraphTest {
 		ProjectLimits limits = new ProjectLimits(16, 1000, 100, 64, 2, 100);
 		PassGraph graph = PassGraph.discover(new CapturedFiles(
 						new MemoryProjectFiles()
-								.put("main.glsl", lines(input("a.glsl", "a"),
+								.put("main.frag", lines(input("a.glsl", "a"),
 										MAIN))
 								.put("a.glsl", lines(input("b.glsl", "b"), MAIN))
 								.put("b.glsl", MAIN), limits),
-				path("main.glsl"), limits, BuiltinNames.ALL);
+				path("main.frag"), limits, BuiltinNames.ALL);
 		assertEquals(List.of("ERROR a.glsl:1 Project has more than the " +
 				"limit of 2 passes"), messages(graph));
 	}
@@ -356,7 +356,7 @@ public class PassGraphTest {
 
 	private static PassGraph discover(MemoryProjectFiles files) {
 		return PassGraph.discover(new CapturedFiles(files,
-				ProjectLimits.DEFAULT), path("main.glsl"), ProjectLimits.DEFAULT,
+				ProjectLimits.DEFAULT), path("main.frag"), ProjectLimits.DEFAULT,
 				BuiltinNames.ALL);
 	}
 

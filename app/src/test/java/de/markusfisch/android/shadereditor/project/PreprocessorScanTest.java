@@ -9,7 +9,7 @@ import java.util.List;
 
 public class PreprocessorScanTest {
 	private static final ProjectPath FILE =
-			ProjectPath.parse("main.glsl").value();
+			ProjectPath.parse("main.frag").value();
 
 	@Test
 	public void recognizesDirectivesWithWhitespaceAroundHash() {

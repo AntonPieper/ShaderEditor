@@ -38,7 +38,8 @@ import de.markusfisch.android.shadereditor.syntax.Style;
  * listener hears when what the screens mark changes.
  */
 public final class OpenProject {
-	public static final ProjectPath MAIN = ProjectPath.parse("main.glsl")
+	/** The file that runs when nothing else was chosen. */
+	public static final ProjectPath MAIN = ProjectPath.parse("main.frag")
 			.value();
 
 	/**
@@ -1429,9 +1430,12 @@ public final class OpenProject {
 				for (SourceAssembly.Dependency dependency :
 						preparation.uses()) {
 					ProjectPath path = dependency.path();
-					if (dependency.revision() != null) {
-						read.add(new Used(path,
-								path.getKind() == ProjectPath.Kind.IMAGE));
+					ProjectFiles.Content content =
+							preparation.files().get(path);
+					if (dependency.revision() != null && content != null) {
+						// By its bytes, as the build told it.
+						read.add(new Used(path, FileKind.picture(
+								content.bytes()) != null));
 					}
 				}
 			}
@@ -1467,15 +1471,14 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Return whether path, open in the editor, can run: a .glsl file
-	 * whose own text defines main. Until that is known for its text,
+	 * Return whether path, open in the editor, can run: a text file,
+	 * whatever its name, whose own text defines main. Until that is
+	 * known for its text,
 	 * UNKNOWN, and the text is read on the worker, once per revision;
 	 * the listener hears when it is known.
 	 */
 	public Runs runs(ProjectPath path) {
-		FileRecord record = path.getKind() == ProjectPath.Kind.SHADER
-				? loaded(path)
-				: null;
+		FileRecord record = loaded(path);
 		if (record == null) {
 			return Runs.NO;
 		}
@@ -2003,7 +2006,8 @@ public final class OpenProject {
 
 	// Find what runs by the one rule: the file last chosen with Run this
 	// file if it still exists, else the entry of a valid manifest, else
-	// main.glsl when present, else nothing. On the worker.
+	// main.frag when present, else nothing. It asks only whether a file
+	// exists, never what is in it. On the worker.
 	private ProjectPath findRunning(Map<ProjectPath, Text> snapshot,
 			Set<ProjectPath> journaled) {
 		if (lone != null) {

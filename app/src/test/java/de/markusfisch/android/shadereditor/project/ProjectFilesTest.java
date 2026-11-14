@@ -8,11 +8,11 @@ import org.junit.Test;
 
 public class ProjectFilesTest {
 	private final MemoryProjectFiles files = new MemoryProjectFiles()
-			.put("main.glsl", "void main() {}");
+			.put("main.frag", "void main() {}");
 
 	@Test
 	public void readOnlyStoreRefusesEveryChange() {
-		ProjectPath main = path("main.glsl");
+		ProjectPath main = path("main.frag");
 		assertUnsupported(files.write(main, new byte[0],
 				files.read(main).revision()));
 		assertUnsupported(files.write(path("new.glsl"), new byte[0], null));

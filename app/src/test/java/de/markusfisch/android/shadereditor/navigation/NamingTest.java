@@ -7,12 +7,12 @@ import org.junit.Test;
 import java.util.List;
 
 public class NamingTest {
-	private final Naming naming = new Naming(List.of("main.glsl",
+	private final Naming naming = new Naming(List.of("main.frag",
 			"Untitled.glsl", "lib"));
 
 	@Test
 	public void aNameThatDiffersOnlyInCaseIsTaken() {
-		assertEquals(Naming.Problem.TAKEN, naming.check("MAIN.glsl"));
+		assertEquals(Naming.Problem.TAKEN, naming.check("MAIN.frag"));
 		assertEquals(Naming.Problem.TAKEN, naming.check("lib"));
 		assertEquals(Naming.Problem.NONE, naming.check("common.glsl"));
 	}
@@ -40,9 +40,9 @@ public class NamingTest {
 
 	@Test
 	public void aCopyKeepsItsExtension() {
-		assertEquals("main copy.glsl", naming.copyOf("main.glsl"));
+		assertEquals("main copy.frag", naming.copyOf("main.frag"));
 		assertEquals("lib copy", naming.copyOf("lib"));
-		assertEquals("main copy 2.glsl", new Naming(List.of("main.glsl",
-				"main copy.glsl")).copyOf("main.glsl"));
+		assertEquals("main copy 2.frag", new Naming(List.of("main.frag",
+				"main copy.frag")).copyOf("main.frag"));
 	}
 }

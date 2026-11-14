@@ -36,7 +36,7 @@ public class HostDirectivesTest {
 		assertEquals("noise", input.uniform());
 		assertEquals("sampler2D", input.samplerType());
 		assertEquals(path("shaders/assets/noise.png"), input.source());
-		assertEquals(path("shaders/main.glsl"), input.file());
+		assertEquals(path("shaders/main.frag"), input.file());
 		assertEquals(2, input.line());
 		assertNull(input.frame());
 		assertNull(input.min());
@@ -352,9 +352,9 @@ public class HostDirectivesTest {
 		assertEquals(path("shaders/a.png"), single(result.inputs()).source());
 		assertEquals(List.of(
 				new HostDirectives.Reference(path("shaders/b.png"),
-						path("shaders/main.glsl"), 3),
+						path("shaders/main.frag"), 3),
 				new HostDirectives.Reference(path("shaders/seed.png"),
-						path("shaders/main.glsl"), 5)),
+						path("shaders/main.frag"), 5)),
 				result.references());
 	}
 
@@ -399,17 +399,17 @@ public class HostDirectivesTest {
 	public void rejectsDirectiveFromIncludedFile() {
 		HostDirectives result = HostDirectives.parse(SourceAssembly.assemble(
 				new MemoryProjectFiles()
-						.put("shaders/main.glsl", "#include \"lib.glsl\"\n")
+						.put("shaders/main.frag", "#include \"lib.glsl\"\n")
 						.put("shaders/lib.glsl", lines(
 								"float a;",
 								"#pragma se input \"a.png\"",
 								TEX)),
-				path("shaders/main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
+				path("shaders/main.frag"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 		ProjectDiagnostic error = singleError(result);
 		assertEquals(path("shaders/lib.glsl"), error.file());
 		assertEquals(2, error.line());
 		assertTrue(error.message().contains("included from " +
-				"shaders/main.glsl:1"));
+				"shaders/main.frag:1"));
 		assertEquals("", result.lines().get(1));
 	}
 
@@ -417,11 +417,11 @@ public class HostDirectivesTest {
 	public void rejectsDeclarationInIncludedFile() {
 		HostDirectives result = HostDirectives.parse(SourceAssembly.assemble(
 				new MemoryProjectFiles()
-						.put("main.glsl", lines(
+						.put("main.frag", lines(
 								"#pragma se input \"a.png\"",
 								"#include \"decl.glsl\""))
 						.put("decl.glsl", TEX + "\n"),
-				path("main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
+				path("main.frag"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 		assertTrue(singleError(result).message().contains("same file"));
 	}
 
@@ -429,12 +429,12 @@ public class HostDirectivesTest {
 	public void emptyIncludeSeparatesInputFromDeclaration() {
 		HostDirectives result = HostDirectives.parse(SourceAssembly.assemble(
 				new MemoryProjectFiles()
-						.put("main.glsl", lines(
+						.put("main.frag", lines(
 								"#pragma se input \"a.png\"",
 								"#include \"empty.glsl\"",
 								TEX))
 						.put("empty.glsl", ""),
-				path("main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
+				path("main.frag"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 		ProjectDiagnostic error = singleError(result);
 		assertEquals(1, error.line());
 		assertTrue(error.message().contains("#include"));
@@ -444,10 +444,10 @@ public class HostDirectivesTest {
 	@Test
 	public void keepsAssemblyDiagnostics() {
 		HostDirectives result = HostDirectives.parse(SourceAssembly.assemble(
-				new MemoryProjectFiles().put("main.glsl", lines(
+				new MemoryProjectFiles().put("main.frag", lines(
 						"#include \"missing.glsl\"",
 						"#pragma se target size=0x0")),
-				path("main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
+				path("main.frag"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 		assertEquals(2, result.diagnostics().size());
 		assertTrue(result.diagnostics().get(0).message()
 				.contains("missing.glsl"));
@@ -494,7 +494,7 @@ public class HostDirectivesTest {
 				"float v = 1\uff0b2;");
 		ProjectDiagnostic error = singleError(result);
 		assertEquals(2, error.line());
-		assertEquals(path("shaders/main.glsl"), error.file());
+		assertEquals(path("shaders/main.frag"), error.file());
 		assertTrue(error.message(), error.message().contains("U+FF0B"));
 		assertEquals(List.of(), parse("// caf\u00e9",
 				"/* \u2603 */ float a;").diagnostics());
@@ -554,7 +554,7 @@ public class HostDirectivesTest {
 		HostDirectives result = parse(source);
 		ProjectDiagnostic error = singleError(result);
 		assertTrue(error.message(), error.message().contains(expected));
-		assertEquals(path("shaders/main.glsl"), error.file());
+		assertEquals(path("shaders/main.frag"), error.file());
 		assertTrue(result.inputs().isEmpty());
 		assertNull(result.target());
 	}
@@ -572,9 +572,9 @@ public class HostDirectivesTest {
 
 	private static HostDirectives parse(String... source) {
 		return HostDirectives.parse(SourceAssembly.assemble(
-				new MemoryProjectFiles().put("shaders/main.glsl",
+				new MemoryProjectFiles().put("shaders/main.frag",
 						lines(source)),
-				path("shaders/main.glsl"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
+				path("shaders/main.frag"), ProjectLimits.DEFAULT), BuiltinNames.ALL);
 	}
 
 	private static String lines(String... lines) {

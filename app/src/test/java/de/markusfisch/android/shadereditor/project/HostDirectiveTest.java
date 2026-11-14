@@ -20,13 +20,13 @@ import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 
 public class HostDirectiveTest {
 	private static final SourceLocation AT = new SourceLocation(
-			path("shaders/main.glsl"), 3, null);
+			path("shaders/main.frag"), 3, null);
 
 	@Test
 	public void parsesInputWithoutOptions() {
 		Input input = input("\"assets/noise.png\" // noise");
 		assertEquals(path("shaders/assets/noise.png"), input.source());
-		assertEquals(path("shaders/main.glsl"), input.file());
+		assertEquals(path("shaders/main.frag"), input.file());
 		assertEquals(3, input.line());
 		assertNull(input.uniform());
 		assertNull(input.samplerType());
@@ -240,7 +240,7 @@ public class HostDirectiveTest {
 		ProjectDiagnostic error = directive.diagnostics().get(0);
 		assertEquals(ProjectDiagnostic.Severity.ERROR, error.severity());
 		assertTrue(error.message(), error.message().contains(expected));
-		assertEquals(path("shaders/main.glsl"), error.file());
+		assertEquals(path("shaders/main.frag"), error.file());
 		assertEquals(3, error.line());
 		assertNull(directive.target());
 	}

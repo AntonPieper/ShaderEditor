@@ -11,7 +11,7 @@ public record ProjectManifest(int projectVersion, ProjectPath entry) {
 			"shader-project.json").value();
 	/** What a missing manifest means, permanently. */
 	public static final ProjectManifest DEFAULT = new ProjectManifest(
-			1, ProjectPath.parse("main.glsl").value());
+			1, OpenProject.MAIN);
 
 	private static final String VERSION_KEY = "projectVersion";
 	private static final String ENTRY_KEY = "entry";
@@ -49,11 +49,6 @@ public record ProjectManifest(int projectVersion, ProjectPath entry) {
 					if (!path.isSuccess()) {
 						return ProjectParseResult.error(
 								"Invalid entry: " + path.diagnostic().message(),
-								FILE, value.line);
-					}
-					if (path.value().getKind() != ProjectPath.Kind.SHADER) {
-						return ProjectParseResult.error(
-								"Entry must be a .glsl file: " + value.text,
 								FILE, value.line);
 					}
 					entry = path.value();

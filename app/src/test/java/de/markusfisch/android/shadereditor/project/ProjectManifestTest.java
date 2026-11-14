@@ -10,7 +10,7 @@ public class ProjectManifestTest {
 	@Test
 	public void absentManifestIsVersionOneWithMainEntry() {
 		assertEquals(1, ProjectManifest.DEFAULT.projectVersion());
-		assertEquals("main.glsl", ProjectManifest.DEFAULT.entry().toString());
+		assertEquals("main.frag", ProjectManifest.DEFAULT.entry().toString());
 		assertEquals("shader-project.json", ProjectManifest.FILE.toString());
 	}
 
@@ -49,7 +49,7 @@ public class ProjectManifestTest {
 	public void rejectsNonObject() {
 		assertError("", "The manifest must be a JSON object", 1);
 		assertError("[]", "The manifest must be a JSON object", 1);
-		assertError("\"main.glsl\"", "The manifest must be a JSON object", 1);
+		assertError("\"main.frag\"", "The manifest must be a JSON object", 1);
 	}
 
 	@Test
@@ -102,18 +102,24 @@ public class ProjectManifestTest {
 
 	@Test
 	public void rejectsEntryOutsideRoot() {
-		assertError("{\n\n\"entry\":\"../main.glsl\"}",
-				"Invalid entry: Path leaves the project folder: ../main.glsl", 3);
-		assertError("{\"entry\":\"/main.glsl\"}",
-				"Invalid entry: Path is absolute: /main.glsl", 1);
+		assertError("{\n\n\"entry\":\"../main.frag\"}",
+				"Invalid entry: Path leaves the project folder: ../main.frag", 3);
+		assertError("{\"entry\":\"/main.frag\"}",
+				"Invalid entry: Path is absolute: /main.frag", 1);
 		assertError("{\"entry\":\"a\\\\b.glsl\"}",
 				"Invalid entry: Path contains a backslash, use / instead: a\\b.glsl", 1);
 	}
 
 	@Test
-	public void rejectsNonShaderEntry() {
-		assertError("{\"entry\":\"noise.png\"}", "Entry must be a .glsl file: noise.png", 1);
-		assertError("{\"entry\":\"main\"}", "Entry must be a .glsl file: main", 1);
+	public void entryMayHaveAnyName() {
+		for (String name : new String[]{"noise.png", "main", "a/b.frag"}) {
+			ProjectParseResult<ProjectManifest> manifest =
+					ProjectManifest.parse("{\"entry\":\"" + name + "\"}");
+			assertTrue(name, manifest.isSuccess());
+			assertEquals(name, manifest.value().entry().toString());
+		}
+		assertEquals("main.frag", ProjectManifest.parse("{}").value()
+				.entry().toString());
 	}
 
 	@Test

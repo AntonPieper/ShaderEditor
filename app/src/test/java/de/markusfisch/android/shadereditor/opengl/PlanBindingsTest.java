@@ -68,7 +68,7 @@ public class PlanBindingsTest {
 				new ArrayList<>(bindings.imagePaths()));
 		assertEquals(List.of(new ProjectDiagnostic(Severity.WARNING,
 						"unused has an input but the shader does not use it, " +
-								"so nothing is bound to it", path("main.glsl"), 3)),
+								"so nothing is bound to it", path("main.frag"), 3)),
 				bindings.warnings);
 	}
 
@@ -89,7 +89,7 @@ public class PlanBindingsTest {
 
 	@Test
 	public void leavesEngineSamplersNextToImageInputsToTheEngine() {
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 						"#pragma se input \"a.png\"",
 						"uniform sampler2D a;",
 						"#pragma se input filter=linear",
@@ -117,7 +117,7 @@ public class PlanBindingsTest {
 
 	@Test
 	public void anUnannotatedBackbufferReadsThePreviousFrame() {
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 				"uniform sampler2D backbuffer;",
 				MAIN));
 		var bindings = PlanBindings.of(plan.passes().get(0), 0,
@@ -131,7 +131,7 @@ public class PlanBindingsTest {
 
 	@Test
 	public void aBackbufferOfAnotherTypeOrOptimizedAwayReadsNothing() {
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 				"uniform samplerCube backbuffer;",
 				MAIN));
 		assertTrue(PlanBindings.of(plan.passes().get(0), 0, List.of(
@@ -143,10 +143,10 @@ public class PlanBindingsTest {
 
 	@Test
 	public void annotatedInputsReadThePreviousFrameAsTheyAsk() {
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 				"#pragma se input filter=linear",
 				"uniform sampler2D backbuffer;",
-				"#pragma se input \"main.glsl\" frame=previous wrap=repeat",
+				"#pragma se input \"main.frag\" frame=previous wrap=repeat",
 				"uniform sampler2D self;",
 				MAIN));
 		var bindings = PlanBindings.of(plan.passes().get(0), 0, List.of(
@@ -165,11 +165,11 @@ public class PlanBindingsTest {
 
 	@Test
 	public void gles2CannotReadThePreviousFrameWithDifferentSettings() {
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 				"uniform sampler2D backbuffer;",
-				"#pragma se input \"main.glsl\" frame=previous filter=linear",
+				"#pragma se input \"main.frag\" frame=previous filter=linear",
 				"uniform sampler2D smooth;",
-				"#pragma se input \"main.glsl\" frame=previous",
+				"#pragma se input \"main.frag\" frame=previous",
 				"uniform sampler2D crisp;",
 				MAIN));
 		var bindings = PlanBindings.of(plan.passes().get(0), 0, List.of(
@@ -187,12 +187,12 @@ public class PlanBindingsTest {
 
 	@Test
 	public void anUnannotatedCameraKeepsItsDefaultSampling() {
-		var bindings = PlanBindings.of(plan("main.glsl", MAIN).passes().get(0), 0,
+		var bindings = PlanBindings.of(plan("main.frag", MAIN).passes().get(0), 0,
 				List.of(sampler("cameraBack", GLES11Ext.GL_SAMPLER_EXTERNAL_OES)
 						.withUnit(0)), MAIN);
 		assertEquals("cameraBack", bindings.camera.name());
 		assertSame(Sampling.CAMERA, bindings.cameraSampling);
-		var plain = PlanBindings.of(plan("main.glsl", MAIN).passes().get(0), 0,
+		var plain = PlanBindings.of(plan("main.frag", MAIN).passes().get(0), 0,
 				List.of(sampler("cameraBack", GLES20.GL_SAMPLER_2D).withUnit(0)),
 				"uniform sampler2D cameraBack;\n" + MAIN);
 		assertNull(plain.camera);
@@ -202,7 +202,7 @@ public class PlanBindingsTest {
 	public void aCameraTheDriverReportsAsSampler2DIsStillTheCamera() {
 		var reported = List.of(sampler("cameraBack", GLES20.GL_SAMPLER_2D)
 				.withUnit(0));
-		var pass = plan("main.glsl", MAIN).passes().get(0);
+		var pass = plan("main.frag", MAIN).passes().get(0);
 		var camera = PlanBindings.of(pass, 0, reported,
 				"uniform lowp samplerExternalOES cameraBack;\n" + MAIN);
 		assertEquals("cameraBack", camera.camera.name());
@@ -242,7 +242,7 @@ public class PlanBindingsTest {
 	// The old renderer gave the camera to the first one declared.
 	@Test
 	public void ofTwoCamerasTheOneDeclaredFirstGetsTheCamera() {
-		var pass = plan("main.glsl", MAIN).passes().get(0);
+		var pass = plan("main.frag", MAIN).passes().get(0);
 		var samplers = new GlProgram(1, List.of(
 				sampler("cameraBack", GLES11Ext.GL_SAMPLER_EXTERNAL_OES),
 				sampler("cameraFront", GLES11Ext.GL_SAMPLER_EXTERNAL_OES)))
@@ -263,7 +263,7 @@ public class PlanBindingsTest {
 	@Test
 	public void aCameraReportedAsSampler2DIsDeclaredAsTheCamera() {
 		var reported = sampler("cameraBack", GLES20.GL_SAMPLER_2D).withUnit(0);
-		var bindings = PlanBindings.of(plan("main.glsl", MAIN).passes().get(0),
+		var bindings = PlanBindings.of(plan("main.frag", MAIN).passes().get(0),
 				0, List.of(reported),
 				"uniform samplerExternalOES cameraBack;\n" + MAIN);
 		var declared = bindings.declared(Map.of("cameraBack", reported));
@@ -280,7 +280,7 @@ public class PlanBindingsTest {
 	// The running shader reads cameraBack, its initial shader cameraFront.
 	@Test
 	public void theRunningShadersCameraOpens() {
-		var pass = plan("main.glsl", MAIN).passes().get(0);
+		var pass = plan("main.frag", MAIN).passes().get(0);
 		var back = PlanBindings.of(pass, 0, List.of(sampler("cameraBack",
 				GLES11Ext.GL_SAMPLER_EXTERNAL_OES).withUnit(0)), MAIN);
 		var front = PlanBindings.of(pass, 0, List.of(sampler("cameraFront",
@@ -316,7 +316,7 @@ public class PlanBindingsTest {
 	@Test
 	public void gles2CannotSampleOneImageWithDifferentSettings() {
 		var bindings = twoSettingsOfOneImage();
-		assertEquals(List.of(error("crisp (main.glsl:1) and smooth read a.png " +
+		assertEquals(List.of(error("crisp (main.frag:1) and smooth read a.png " +
 						"with different settings, which needs OpenGL ES 3.0; " +
 						"this device only has OpenGL ES 2.0", 3)),
 				bindings.check(Map.of(path("a.png"), new Size(256, 128)), 2,
@@ -470,7 +470,7 @@ public class PlanBindingsTest {
 	}
 
 	private static PlanBindings cubeBindings(String main, String... active) {
-		RenderPlan plan = plan("main.glsl", main, "sky.png", PNG);
+		RenderPlan plan = plan("main.frag", main, "sky.png", PNG);
 		var uniforms = new ArrayList<GlUniform>();
 		for (int i = 0; i < active.length; ++i) {
 			uniforms.add(new GlUniform(active[i], "sky".equals(active[i])
@@ -495,10 +495,10 @@ public class PlanBindingsTest {
 				"crisp", "smooth");
 	}
 
-	// The main.glsl text with the images it names, and the sampler2D
+	// The main.frag text with the images it names, and the sampler2D
 	// uniforms the program keeps active.
 	private static PlanBindings bindings(String main, String... active) {
-		var files = new ArrayList<String>(List.of("main.glsl", main));
+		var files = new ArrayList<String>(List.of("main.frag", main));
 		for (String name : List.of("a.png", "b.png", "c.png", "d.png",
 				"big.png")) {
 			files.add(name);
@@ -523,6 +523,6 @@ public class PlanBindingsTest {
 
 	private static ProjectDiagnostic error(String message, int line) {
 		return new ProjectDiagnostic(Severity.ERROR, message,
-				path("main.glsl"), line);
+				path("main.frag"), line);
 	}
 }
