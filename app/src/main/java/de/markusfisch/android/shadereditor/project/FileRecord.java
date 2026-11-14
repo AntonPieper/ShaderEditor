@@ -97,6 +97,10 @@ final class FileRecord {
 	private List<Document.Change> changes = new ArrayList<>();
 	// Whether the journal of the file, not in memory, is to go.
 	private boolean retire;
+	// While the file is being deleted, the revision of the document
+	// whose text goes with it, -1 without a document; else KEPT.
+	private static final int KEPT = Integer.MIN_VALUE;
+	private int discarding = KEPT;
 	// Whether the journal holds text a reload replaced, as its header
 	// says; the state of the document that text was, which a history
 	// must lead back to before the journal may go, -1 when the text is
@@ -130,6 +134,45 @@ final class FileRecord {
 	 */
 	String expected() {
 		return !edited() && found == FileTexts.Found.MISSING ? null : base;
+	}
+
+	/**
+	 * Return what names the text the file has now for a deletion: the
+	 * revision of its document, -1 when it is not in memory.
+	 */
+	int stamp() {
+		return document != null ? document.revision() : -1;
+	}
+
+	/**
+	 * The file is being deleted with the text it has now, when deleting:
+	 * until that is over, this text is not written to the journal again,
+	 * whoever asks; text typed from now on is.
+	 */
+	void discard(boolean deleting) {
+		discarding = deleting ? stamp() : KEPT;
+	}
+
+	/**
+	 * Return whether the file is being deleted and still has the text
+	 * the deletion is for.
+	 */
+	boolean discarded() {
+		return discarding != KEPT && discarding == stamp();
+	}
+
+	/**
+	 * The stored file and the journal are gone, and the document has
+	 * text typed since the deletion was asked for: it is unsaved text
+	 * of a file that is not there, to be kept in a new journal.
+	 */
+	void orphan() {
+		discarding = KEPT;
+		journaled = false;
+		journal = -1;
+		retire = false;
+		replaced = false;
+		see(FileTexts.Found.MISSING, null);
 	}
 
 	/** Return the operation in flight, or null. */
@@ -426,6 +469,9 @@ final class FileRecord {
 	 * is sent again, the text whole.
 	 */
 	Flush flush(boolean fence) {
+		if (discarded()) {
+			return null;
+		}
 		boolean unsure = fence && acked != writes;
 		if (document == null) {
 			// The last write of a file not in memory is its removal.

@@ -247,6 +247,13 @@ public final class FileTexts {
 				change = move.to() != null
 						? store.rename(move.from(), move.to())
 						: store.delete(move.from());
+				if (move.to() == null && change instanceof
+						ProjectFiles.Refused refused && refused.refusal() ==
+						ProjectFiles.Refusal.ABSENT) {
+					// Gone already: what is left to delete is the
+					// project's part of it.
+					change = new ProjectFiles.Done(null);
+				}
 				if (change instanceof ProjectFiles.Done) {
 					if (move.to() == null) {
 						followed(move);
