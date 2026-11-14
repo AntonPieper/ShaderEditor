@@ -23,7 +23,7 @@ import de.markusfisch.android.shadereditor.resource.Resources;
 import de.markusfisch.android.shadereditor.widget.NewSheet;
 
 /**
- * Creates a shader or an empty file in a folder opened
+ * Creates a shader, an empty file or a folder in a folder opened
  * before, through the New sheet: the names in the folder are read off
  * the main thread, the file is written on the queue of the projects,
  * and what was created is opened. Call it on the main thread.
@@ -33,6 +33,9 @@ final class NewFile {
 	interface Created {
 		/** A file was written; open it as a tap does. */
 		void onFile(@NonNull String key, @NonNull ProjectPath path);
+
+		/** A folder was made; show it. */
+		void onFolder(@NonNull String key, @NonNull ProjectPath path);
 	}
 
 	private final Context context;
@@ -103,6 +106,9 @@ final class NewFile {
 		ProjectPath path = parsed.value();
 		Context app = context.getApplicationContext();
 		holds.projects().change(at, files -> {
+			if (kind == NewSheet.Kind.FOLDER) {
+				return files.createFolder(path);
+			}
 			byte[] bytes;
 			try {
 				bytes = kind == NewSheet.Kind.SHADER
@@ -124,7 +130,11 @@ final class NewFile {
 				return;
 			}
 			shown.dismiss();
-			created.onFile(at, path);
+			if (kind == NewSheet.Kind.FOLDER) {
+				created.onFolder(at, path);
+			} else {
+				created.onFile(at, path);
+			}
 		});
 	}
 

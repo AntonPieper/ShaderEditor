@@ -41,6 +41,14 @@
 			android:layout_height="wrap_content"
 			android:layout_weight="1"
 			android:text="@string/nav_new_empty" />
+
+		<Button
+			android:id="@+id/new_folder"
+			style="?attr/materialButtonOutlinedStyle"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:text="@string/nav_new_folder" />
 	</com.google.android.material.button.MaterialButtonToggleGroup>
 
 	<com.google.android.material.textfield.TextInputLayout
@@ -69,7 +77,8 @@
 		android:gravity="center_vertical"
 		android:minHeight="@dimen/se_row_height_two_line"
 		android:orientation="horizontal"
-		android:paddingHorizontal="@dimen/se_margin_sheet">
+		android:paddingStart="@dimen/se_margin_sheet"
+		android:paddingEnd="16dp">
 
 		<LinearLayout
 			android:layout_width="0dp"
@@ -93,6 +102,12 @@
 				android:textAppearance="?attr/textAppearanceBodyLarge" />
 		</LinearLayout>
 
+		<Button
+			android:id="@+id/new_change"
+			style="?attr/borderlessButtonStyle"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/nav_change" />
 	</LinearLayout>
 
 	<LinearLayout
