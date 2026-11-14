@@ -62,6 +62,7 @@
 		<item name="borderlessButtonStyle">@style/Widget.ShaderEditor.Button.TextButton</item>
 		<item name="materialAlertDialogTheme">@style/ThemeOverlay.ShaderEditor.MaterialAlertDialog</item>
 		<item name="alertDialogTheme">@style/ThemeOverlay.ShaderEditor.Dialog.Alert</item>
+		<item name="bottomSheetDialogTheme">@style/ThemeOverlay.ShaderEditor.BottomSheetDialog</item>
 	</style>
 
 	<!-- Only from Android 12, where the device has colours -->
@@ -229,5 +230,10 @@
 		<item name="buttonBarPositiveButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog</item>
 		<item name="buttonBarNegativeButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog</item>
 		<item name="buttonBarNeutralButtonStyle">@style/Widget.ShaderEditor.Button.TextButton.Dialog.Flush</item>
+	</style>
+
+	<!-- A sheet dims what is behind it as much as a dialog does -->
+	<style name="ThemeOverlay.ShaderEditor.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
+		<item name="android:backgroundDimAmount">@dimen/se_dialog_dim</item>
 	</style>
 </resources>
