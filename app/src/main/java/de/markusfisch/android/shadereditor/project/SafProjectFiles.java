@@ -161,6 +161,18 @@ public final class SafProjectFiles implements ProjectFiles {
 	}
 
 	@Override
+	public byte[] head(ProjectPath path, int count) {
+		try {
+			Document file = known(segments(path));
+			return file == null || file.folder()
+					? null
+					: resolver.head(file.id(), count);
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
+	}
+
+	@Override
 	public Listing list(ProjectPath folder) {
 		for (boolean retry = remembers(); ; retry = false) {
 			try {

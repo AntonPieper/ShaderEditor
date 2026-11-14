@@ -60,6 +60,32 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 	}
 
 	@Override
+	public byte[] head(ProjectPath path, int count) {
+		try {
+			File file = find(path);
+			if (file == null || file.isDirectory()) {
+				return null;
+			}
+			try (InputStream in = new FileInputStream(file)) {
+				return head(in, count);
+			}
+		} catch (IOException e) {
+			return null;
+		}
+	}
+
+	/** Return at most the first count bytes in has. */
+	static byte[] head(InputStream in, int count) throws IOException {
+		byte[] head = new byte[count];
+		int total = 0;
+		for (int n; total < count &&
+				(n = in.read(head, total, count - total)) > -1; ) {
+			total += n;
+		}
+		return java.util.Arrays.copyOf(head, total);
+	}
+
+	@Override
 	public Listing list(ProjectPath folder) {
 		try {
 			File dir = folder != null ? find(folder) : root();
