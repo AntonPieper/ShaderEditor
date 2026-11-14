@@ -38,6 +38,20 @@ public final class LineStyles {
 	private final Runs[] cache = new Runs[CACHE];
 	private final Document document;
 	private final int budget;
+	private final Document.Listener listener = new Document.Listener() {
+		@Override
+		public void onChange(Document.Change change, Text before) {
+			update(change, before);
+		}
+
+		@Override
+		public void onUpdate() {
+			if (walkPending) {
+				walkPending = false;
+				walk();
+			}
+		}
+	};
 	private Set<String> typeNames = Collections.emptySet();
 	// The state every line ends in, with a gap at the last edit.
 	private byte[] states;
@@ -67,20 +81,12 @@ public final class LineStyles {
 		gapEnd = states.length;
 		consistentFrom = lines;
 		walk();
-		document.addListener(new Document.Listener() {
-			@Override
-			public void onChange(Document.Change change, Text before) {
-				update(change, before);
-			}
+		document.addListener(listener);
+	}
 
-			@Override
-			public void onUpdate() {
-				if (walkPending) {
-					walkPending = false;
-					walk();
-				}
-			}
-		});
+	/** Stop following the document. */
+	public void close() {
+		document.removeListener(listener);
 	}
 
 	/**

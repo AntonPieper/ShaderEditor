@@ -30,6 +30,12 @@ public final class LineMarks {
 	private static final Severity[] SEVERITIES = Severity.values();
 
 	private final Document document;
+	private final Document.Listener listener = new Document.Listener() {
+		@Override
+		public void onChange(Document.Change change, Text before) {
+			move(change, before);
+		}
+	};
 	// Sorted by line, one entry per line.
 	private int[] lines = new int[0];
 	private Severity[] severities = new Severity[0];
@@ -41,12 +47,12 @@ public final class LineMarks {
 	/** Keep the marks of document. */
 	public LineMarks(Document document) {
 		this.document = document;
-		document.addListener(new Document.Listener() {
-			@Override
-			public void onChange(Document.Change change, Text before) {
-				move(change, before);
-			}
-		});
+		document.addListener(listener);
+	}
+
+	/** Stop following the document. */
+	public void close() {
+		document.removeListener(listener);
 	}
 
 	/**

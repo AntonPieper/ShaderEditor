@@ -173,6 +173,15 @@ public class LineMarksTest {
 		assertEquals(-1, marks.open());
 	}
 
+	@Test
+	public void staysWhereItIsOnceClosed() {
+		Document document = new Document(Text.of(TEXT));
+		LineMarks marks = marked(document, error(3));
+		marks.close();
+		document.replace(0, 0, Text.of("x\n"));
+		assertEquals("_ _ E _ _ _", marked(marks, document));
+	}
+
 	private static LineMarks marked(Document document,
 			ProjectDiagnostic... diagnostics) {
 		LineMarks marks = new LineMarks(document);
