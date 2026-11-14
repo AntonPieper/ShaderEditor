@@ -58,11 +58,11 @@ public class Preferences {
 	private static final Map<String, Integer> fontNameToResId = new HashMap<>();
 
 	static {
-		fontNameToResId.put("fira_code", R.font.fira_code_family);
-		fontNameToResId.put("ibm_plex_mono", R.font.ibm_plex_mono_family);
-		fontNameToResId.put("jetbrains_mono", R.font.jetbrains_mono_family);
-		fontNameToResId.put("roboto_mono", R.font.roboto_mono_family);
-		fontNameToResId.put("source_code_pro", R.font.source_code_pro_family);
+		fontNameToResId.put("fira_code", R.font.fira_code);
+		fontNameToResId.put("ibm_plex_mono", R.font.ibm_plex_mono);
+		fontNameToResId.put("jetbrains_mono", R.font.jetbrains_mono);
+		fontNameToResId.put("roboto_mono", R.font.roboto_mono);
+		fontNameToResId.put("source_code_pro", R.font.source_code_pro);
 	}
 
 	private SharedPreferences preferences;
