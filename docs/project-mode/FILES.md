@@ -280,6 +280,13 @@ A 20 KB shader is about 40 KB of text, and with a day's history under 200 KB. A 
 
 Late results, summarised: they can only be late relative to a closed or dropped record (R3 leaves no other way) and are discarded (R4). What a completed save did to the store stands. Its journal stays, because nobody adopted the save; the next open finds storage equal to the journal's text and deletes it, or, if the user had typed on, shows the newer text as unsaved against a file that "changed": a question too many, never a loss.
 
+### 5.1a Renaming and deleting
+
+A file the project holds cannot be renamed or deleted by changing only the stored file: the project's copy would stay behind, and a later save would write the old path again from memory. The journals, the undo histories and what the session shows and runs have to follow storage, also when the process dies in between.
+
+- **M2. A rename or deletion is noted before storage is touched, and the journals follow storage.** The worker first writes the change into the journal's folder, then asks storage. Storage is the commit point: when it refuses, the note is removed and nothing else happened. A deletion that storage made takes the journals and histories at and under the path with it in the same task. After a rename each journal is written whole under the new path, with its header naming it, and then the old one is removed; the histories are kept for the new paths. A journal found under the new path is the newer one and is never written over by one left behind.
+- **M3. Wherever it stops, the unsaved text is under exactly one path.** A project that opens while such a change is noted looks at storage before it looks at any journal: the target exists and the source does not, so the journals, the histories and the session's shown and running file follow now; the source still exists, so the note is dropped and nothing moved; storage cannot tell (unavailable), so everything stays as it is with the note, for the next time. No journal is read as two files, and none is read as a file that was "deleted elsewhere" because of a change the app itself made.
+
 ### 5.2 Checked with a model
 
 **[probe]** `file-lifecycle-probes/LifecycleProbe.java` beside this document is a 300-line model of the record with these rules: the real `Document` and `Text`, storage and journal as maps, worker and main as queues stepped by hand. It is not the implementation and its journal always sends whole texts. It ran these sequences, all with the expected result:

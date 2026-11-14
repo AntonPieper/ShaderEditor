@@ -352,4 +352,55 @@ public class JournalTest {
 		assertFalse(new Journal(dir).markReplaced(
 				ProjectPath.parse("none.glsl").value()));
 	}
+
+	@Test
+	public void journalsFollowARenameAndTheNewerOneStays()
+			throws IOException {
+		ProjectPath inner = ProjectPath.parse("lib/a.glsl").value();
+		ProjectPath beside = ProjectPath.parse("libs.glsl").value();
+		ProjectPath moved = ProjectPath.parse("shaders/a.glsl").value();
+		Header kept = new Header(inner, "sha256:2", true, "sha256:2", true);
+		assertTrue(journal.snapshot(kept, 7, Text.of("inner")));
+		assertTrue(journal.snapshot(new Header(beside, null, false, null),
+				1, Text.of("beside")));
+		Journal.Move move = new Journal.Move(
+				ProjectPath.parse("lib").value(),
+				ProjectPath.parse("shaders").value());
+		assertTrue(journal.setMove(move));
+		assertEquals(move, new Journal(dir).move());
+
+		assertTrue(journal.follow(move));
+
+		Recovered followed = new Journal(dir).read(moved);
+		assertEquals(new Header(moved, "sha256:2", true, "sha256:2", true),
+				followed.header());
+		assertEquals(7, followed.revision());
+		assertEquals("inner", followed.text().toString());
+		assertNull(journal.read(inner));
+		assertEquals("beside", journal.read(beside).text().toString());
+
+		// One written under the new path since is not written over by
+		// one left behind; one that cannot be read moves as it is.
+		assertTrue(journal.snapshot(kept, 7, Text.of("left behind")));
+		assertTrue(journal.follow(move));
+		assertEquals("inner", journal.read(moved).text().toString());
+		assertNull(journal.read(inner));
+		assertTrue(journal.snapshot(new Header(A, null, false, null), 1,
+				Text.of("damaged")));
+		File file = journal.file(A);
+		byte[] bytes = Files.readAllBytes(file.toPath());
+		bytes[bytes.length - 1] ^= 1;
+		Files.write(file.toPath(), bytes);
+		ProjectPath b = ProjectPath.parse("b.glsl").value();
+		assertTrue(journal.follow(new Journal.Move(A, b)));
+		assertFalse(file.exists());
+		assertNull(journal.read(b).text());
+
+		// A deletion takes them.
+		assertTrue(journal.follow(new Journal.Move(
+				ProjectPath.parse("shaders").value(), null)));
+		assertNull(journal.read(moved));
+		assertTrue(journal.setMove(null));
+		assertNull(journal.move());
+	}
 }

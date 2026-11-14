@@ -229,6 +229,92 @@ public final class FileTexts {
 	}
 
 	/**
+	 * Rename a file or folder in storage as move tells, or delete it,
+	 * as one task: note in the journal's folder that it is under way,
+	 * then change storage; done gets what storage did. A deletion takes
+	 * the journals and histories at and under the path with it at once.
+	 * After a rename they stay where they are until {@link #follow},
+	 * so what main writes before it knows still lands with them.
+	 */
+	void move(Journal.Move move, Callback<ProjectFiles.Change> done) {
+		worker.execute(() -> {
+			ProjectFiles.Change change;
+			if (!journal.setMove(move)) {
+				change = new ProjectFiles.Refused(
+						ProjectFiles.Refusal.FAILED,
+						"the journal cannot be written");
+			} else {
+				change = move.to() != null
+						? store.rename(move.from(), move.to())
+						: store.delete(move.from());
+				if (change instanceof ProjectFiles.Done) {
+					if (move.to() == null) {
+						followed(move);
+					}
+				} else if (((ProjectFiles.Refused) change).refusal() !=
+						ProjectFiles.Refusal.PARTIAL) {
+					// Nothing happened; half of it is looked at when
+					// the project opens again.
+					journal.setMove(null);
+				}
+			}
+			ProjectFiles.Change made = change;
+			main.execute(() -> done.done(made));
+		});
+	}
+
+	/**
+	 * Let the journals and histories follow a rename storage made, once
+	 * main knows of it.
+	 */
+	void follow(Journal.Move move) {
+		worker.execute(() -> followed(move));
+	}
+
+	/**
+	 * Finish or drop a move the process died in: when storage made it,
+	 * the journals and histories follow, when it did not, nothing is to
+	 * do; while storage cannot tell, it stays as it is. Return the move
+	 * that was finished now, else null. On the worker, before the
+	 * journals are looked at.
+	 */
+	Journal.Move recover() {
+		Journal.Move move = journal.move();
+		if (move == null) {
+			return null;
+		}
+		Boolean from = exists(move.from());
+		Boolean to = move.to() != null ? exists(move.to()) : Boolean.TRUE;
+		if (Boolean.FALSE.equals(from) && Boolean.TRUE.equals(to)) {
+			return followed(move) ? move : null;
+		} else if (Boolean.TRUE.equals(from)) {
+			journal.setMove(null);
+		}
+		return null;
+	}
+
+	private boolean followed(Journal.Move move) {
+		boolean followed = journal.follow(move);
+		histories.follow(move);
+		return followed && journal.setMove(null);
+	}
+
+	// Return whether storage has a file or folder at path, or null
+	// when it cannot tell.
+	private Boolean exists(ProjectPath path) {
+		Read read = store.read(path, 0);
+		if (read instanceof Content ||
+				read instanceof ProjectFiles.Failed failed &&
+						ProjectFiles.TOO_LARGE.equals(failed.reason())) {
+			return true;
+		}
+		ProjectFiles.Listing listing = store.list(path);
+		return listing instanceof ProjectFiles.Entries
+				? Boolean.TRUE
+				: read == null ? Boolean.FALSE : null;
+	}
+
+	/**
 	 * Let the journal go once everything given before is written: what
 	 * is asked of it later changes nothing.
 	 */

@@ -2350,6 +2350,66 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void renameTheProcessDiedInIsFinishedWhenTheProjectOpens()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		ProjectPath b = path("b.glsl");
+		Document document = shown(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		document.select(1, 2);
+		project.runThisFile(a);
+		flush(project);
+		// The rename was noted and storage made it; then the process
+		// died.
+		Journal journal = new ProjectSessions(sessionsDir).journal(id).own();
+		assertTrue(journal.setMove(new Journal.Move(a, b)));
+		assertTrue(new File(root, "a.glsl").renameTo(
+				new File(root, "b.glsl")));
+
+		OpenProject restarted = open();
+
+		assertEquals(Set.of(b), restarted.unsaved());
+		assertEquals(Set.of(b), kept());
+		assertTrue(restarted.conflicts().isEmpty());
+		assertEquals(b, restarted.shown());
+		assertEquals(b, restarted.running());
+		Document reopened = document(restarted, "b.glsl");
+		assertEquals("mine", reopened.text().toString());
+		assertEquals(new Document.Selection(1, 2), reopened.selection());
+		reopened.undo();
+		assertEquals("stored", reopened.text().toString());
+		assertNull(new ProjectSessions(sessionsDir).journal(id).move());
+	}
+
+	@Test
+	public void renameThatStorageDidNotMakeIsDroppedWhenTheProjectOpens()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		// The process died after noting the rename, before storage.
+		Journal journal = new ProjectSessions(sessionsDir).journal(id).own();
+		assertTrue(journal.setMove(new Journal.Move(a, path("b.glsl"))));
+
+		OpenProject restarted = open();
+
+		assertEquals(Set.of(a), restarted.unsaved());
+		assertEquals("mine", text(restarted, "a.glsl"));
+		assertNull(new ProjectSessions(sessionsDir).journal(id).move());
+
+		// A deletion that storage made takes the journal with it.
+		journal = new ProjectSessions(sessionsDir).journal(id).own();
+		assertTrue(journal.setMove(new Journal.Move(a, null)));
+		assertTrue(new File(root, "a.glsl").delete());
+		OpenProject after = open();
+		assertTrue(after.unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
+		assertNull(new ProjectSessions(sessionsDir).journal(id).move());
+	}
+
+	@Test
 	public void budgetIsAnEighthOfTheHeapWithinItsBounds() {
 		long mib = 1024 * 1024;
 

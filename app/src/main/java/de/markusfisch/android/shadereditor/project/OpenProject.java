@@ -323,6 +323,9 @@ public final class OpenProject {
 				sessions.histories(id), sessions.recent(id), worker, main,
 				later, lone, storage, budget);
 		journal.removeLeftovers();
+		// A rename or deletion the process died in is finished or
+		// dropped before the journals are looked at.
+		follow(sessions, id, project.texts.recover());
 		project.histories.trim();
 		Journal.Scan journals = journal.scan();
 		project.damaged = journals.damaged();
@@ -342,6 +345,23 @@ public final class OpenProject {
 		project.running = project.findRunning(Map.of(),
 				project.journaled());
 		return project;
+	}
+
+	// Let the file shown and the file chosen to run of session id
+	// follow move, when there was one. On the worker.
+	private static void follow(ProjectSessions sessions, String id,
+			Journal.Move move) {
+		if (move == null) {
+			return;
+		}
+		ProjectPath shown = sessions.shown(id);
+		if (shown != null && move.touches(shown)) {
+			sessions.setShown(id, move.moved(shown));
+		}
+		ProjectPath running = sessions.running(id);
+		if (running != null && move.touches(running)) {
+			sessions.setRunning(id, move.moved(running));
+		}
 	}
 
 	public String id() {
