@@ -80,4 +80,21 @@ public class ShaderToySourceTest {
 				"c = vec4(p / resolution.xy, sin(time) + float(frame), 1.0);"));
 		assertNull(ShaderToySource.convert(converted));
 	}
+
+	// A port names its own time: only what it uses is declared.
+	@Test
+	public void onlyTheUniformsOfUsedInputsAreDeclared() {
+		String converted = ShaderToySource.convert(
+				"float time = 2.0;\n" +
+						"void mainImage(out vec4 c, in vec2 p) {\n" +
+						"\tc = vec4(p / iResolution.xy, time, 1.0);\n}\n");
+		assertNotNull(converted);
+		assertTrue(converted.contains("uniform vec2 resolution;\n"));
+		assertFalse(converted.contains("uniform float time;"));
+		assertFalse(converted.contains("uniform vec4 mouse;"));
+		assertFalse(converted.contains("uniform vec4 date;"));
+		assertEquals("uniform float time;\n\n",
+				ShaderToySource.declarations("iTime + iGlobalTime"));
+		assertEquals("", ShaderToySource.declarations("myiTime iTimeDelta"));
+	}
 }
