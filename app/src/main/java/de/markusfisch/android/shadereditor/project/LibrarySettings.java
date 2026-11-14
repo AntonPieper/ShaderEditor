@@ -25,13 +25,16 @@ public final class LibrarySettings {
 	// What has not followed a rename or deletion yet, or null.
 	private final Following following;
 
+	private final StateFile.Gate gate;
+
 	LibrarySettings(File file) {
-		this(file, null);
+		this(file, null, StateFile.Gate.OPEN);
 	}
 
-	LibrarySettings(File file, Following following) {
+	LibrarySettings(File file, Following following, StateFile.Gate gate) {
 		this.file = file;
 		this.following = following;
+		this.gate = gate;
 	}
 
 	/** Return the quality of the shader at path, 1 when none is kept. */
@@ -211,7 +214,7 @@ public final class LibrarySettings {
 							quality.getValue()))
 					.append('\t').append(quality.getKey()).append('\n');
 		}
-		return StateFile.replace(file,
+		return gate.open() && StateFile.replace(file,
 				sb.toString().getBytes(StandardCharsets.UTF_8));
 	}
 }

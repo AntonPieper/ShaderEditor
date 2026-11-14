@@ -99,6 +99,31 @@ final class LiveProjects {
 				opener.kept(locator));
 	}
 
+	// How many openings are under way that have not come to open
+	// yet: asked for, and not here so far.
+	private int beginning;
+
+	/**
+	 * Tell that an opening was asked for that has not come here yet.
+	 * On main, as its {@link #end}.
+	 */
+	void begin() {
+		++beginning;
+	}
+
+	/** Tell that such an opening came here, or to nothing. */
+	void end() {
+		--beginning;
+	}
+
+	/**
+	 * Return whether an opening is under way whose session is not
+	 * known here yet. On main.
+	 */
+	boolean busy() {
+		return beginning > 0;
+	}
+
 	/**
 	 * Return whether session id is open or being opened. On main.
 	 */

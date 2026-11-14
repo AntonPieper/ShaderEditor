@@ -17,9 +17,15 @@ import java.util.List;
  */
 final class Following {
 	private final File file;
+	private final StateFile.Gate gate;
 
 	Following(File file) {
+		this(file, StateFile.Gate.OPEN);
+	}
+
+	Following(File file, StateFile.Gate gate) {
 		this.file = file;
+		this.gate = gate;
 	}
 
 	/**
@@ -56,6 +62,9 @@ final class Following {
 
 	/** Note move behind what is noted. Return whether it is kept. */
 	synchronized boolean add(Journal.Move move) {
+		if (!gate.open()) {
+			return false;
+		}
 		try {
 			List<Journal.Move> moves = read();
 			moves.add(move);
@@ -70,6 +79,9 @@ final class Following {
 	 * the first anymore.
 	 */
 	synchronized boolean done(Journal.Move move) {
+		if (!gate.open()) {
+			return false;
+		}
 		try {
 			List<Journal.Move> moves = read();
 			if (moves.isEmpty() || !moves.get(0).equals(move)) {

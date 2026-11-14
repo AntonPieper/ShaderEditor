@@ -138,7 +138,8 @@ public class LibrarySettingsTest {
 		Following following = new Following(new File(temp.getRoot(),
 				"library/following"));
 		LibrarySettings settings = new LibrarySettings(new File(
-				temp.getRoot(), "library/settings"), following);
+				temp.getRoot(), "library/settings"), following,
+				StateFile.Gate.OPEN);
 		assertTrue(settings.setQuality(path("a/One.frag"), .25f));
 		assertTrue(settings.setTemplate(path("Two.frag")));
 		assertTrue(following.add(new Journal.Move(path("a"), path("b"))));

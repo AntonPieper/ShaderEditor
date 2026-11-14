@@ -74,13 +74,14 @@ public final class Projects {
 	 * one it has, and list it among the recent projects.
 	 */
 	public void openTree(Uri tree, int resultFlags, Callback<Opened> done) {
+		Callback<Opened> answer = counted(done);
 		QUEUE.execute(() -> {
 			Locator locator = SafProjects.locate(context, tree);
 			if (locator != null && locator.kind() == Kind.TREE) {
 				SafProjects.keepGrant(context.getContentResolver(), tree,
 						resultFlags);
 			}
-			openNew(locator, done);
+			openNew(locator, answer);
 		});
 	}
 
@@ -91,10 +92,11 @@ public final class Projects {
 	 */
 	public void openDocument(Uri uri, int resultFlags,
 			Callback<Opened> done) {
+		Callback<Opened> answer = counted(done);
 		QUEUE.execute(() -> {
 			SafProjects.keepGrant(context.getContentResolver(), uri,
 					resultFlags);
-			openNew(new Locator(Kind.DOCUMENT, uri.toString()), done);
+			openNew(new Locator(Kind.DOCUMENT, uri.toString()), answer);
 		});
 	}
 
@@ -103,6 +105,7 @@ public final class Projects {
 	 * granted.
 	 */
 	public void openDirectory(File dir, Callback<Opened> done) {
+		Callback<Opened> answer = counted(done);
 		QUEUE.execute(() -> {
 			Locator locator;
 			try {
@@ -111,7 +114,7 @@ public final class Projects {
 			} catch (IOException e) {
 				locator = null;
 			}
-			openNew(locator, done);
+			openNew(locator, answer);
 		});
 	}
 
@@ -122,6 +125,7 @@ public final class Projects {
 	 * opened, and problem says why.
 	 */
 	public void openLibrary(Callback<Opened> done) {
+		Callback<Opened> answer = counted(done);
 		QUEUE.execute(() -> {
 			String barrier = guarded(() -> library().finishRedo(
 					this::relocated), problem -> problem);
@@ -131,9 +135,9 @@ public final class Projects {
 			}
 			main.post(() -> {
 				if (barrier != null) {
-					done.done(new Opened(null, null, barrier));
+					answer.done(new Opened(null, null, barrier));
 				} else {
-					openDirectory(folder, done);
+					openDirectory(folder, answer);
 				}
 			});
 		});
@@ -183,9 +187,11 @@ public final class Projects {
 			Callback<Redone> done) {
 		Locator locator = libraryLocator();
 		String id = locator != null ? sessions.find(locator) : null;
-		if (id != null && live().isOpen(id)) {
-			done.done(new Redone("the library is open; close it first",
-					null));
+		// An opening that was asked for and has not come to a session
+		// yet counts: it would get the folder that is put aside.
+		if (live().busy() || (id != null && live().isOpen(id))) {
+			done.done(new Redone("the library is open or being opened; " +
+					"close it first", null));
 			return;
 		}
 		QUEUE.execute(() -> {
@@ -244,9 +250,8 @@ public final class Projects {
 	 */
 	public void setQuality(ProjectPath path, float quality,
 			Callback<String> done) {
-		change(() -> library().settings().setQuality(path, quality)
-				? null
-				: "the settings of the library cannot be written", done);
+		change(() -> library().setQuality(path, quality, this::relocated),
+				done);
 	}
 
 	/**
@@ -265,9 +270,8 @@ public final class Projects {
 	 */
 	public void setPreview(ProjectPath path, String revision, byte[] png,
 			Callback<String> done) {
-		change(() -> library().previews().put(path, revision, png)
-				? null
-				: "the picture cannot be kept", done);
+		change(() -> library().setPreview(path, revision, png,
+				this::relocated), done);
 	}
 
 	/**
@@ -373,7 +377,40 @@ public final class Projects {
 		open(id, false, done);
 	}
 
+	// Every opening comes through here, so here the library is kept
+	// shut while a redo of the move is unfinished.
 	private void open(String id, boolean remember, Callback<Opened> done) {
+		Callback<Opened> answer = counted(done);
+		QUEUE.execute(() -> {
+			String barrier = guarded(() -> {
+				Locator locator = sessions.locator(id);
+				return locator != null && locator.equals(libraryLocator())
+						? library().finishRedo(this::relocated)
+						: null;
+			}, problem -> problem);
+			main.post(() -> {
+				if (barrier != null) {
+					answer.done(new Opened(id, null, barrier));
+				} else {
+					opened(id, remember, answer);
+				}
+			});
+		});
+	}
+
+	// On main: an opening that was asked for counts until it is
+	// answered, so that no redo of the move begins in the middle of
+	// one.
+	private Callback<Opened> counted(Callback<Opened> done) {
+		LiveProjects live = live();
+		live.begin();
+		return opened -> {
+			live.end();
+			done.done(opened);
+		};
+	}
+
+	private void opened(String id, boolean remember, Callback<Opened> done) {
 		live().open(id, new LiveProjects.Opener() {
 					@Override
 					public SafProjects.Opened open(Locator locator) {
@@ -472,6 +509,17 @@ public final class Projects {
 
 	// On the queue.
 	private void openNew(Locator locator, Callback<Opened> done) {
+		// Before a session is found for the library's folder: a redo
+		// that is finished here gives the old one to the folder that
+		// was put aside.
+		String barrier = locator != null && locator.equals(libraryLocator())
+				? guarded(() -> library().finishRedo(this::relocated),
+						problem -> problem)
+				: null;
+		if (barrier != null) {
+			main.post(() -> done.done(new Opened(null, null, barrier)));
+			return;
+		}
 		String[] description = locator != null
 				? SafProjects.describe(context, locator)
 				: null;
