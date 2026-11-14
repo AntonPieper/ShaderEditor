@@ -53,13 +53,15 @@ public final class ShaderEngine {
 	}
 
 	// What a host set: the shader to build, what the runtime belongs to,
-	// the runtime it starts at, and how its diagnostics are shown. A
-	// quality change keeps the latter three.
+	// the runtime it starts at, how its diagnostics are shown, and which
+	// picture it is a revision of. A quality change keeps the latter
+	// four.
 	private record Offer(
 			@NonNull PlanShader shader,
 			@NonNull Object origin,
 			long runtimeNanos,
-			@NonNull Reporting reporting) {
+			@NonNull Reporting reporting,
+			@NonNull Object picture) {
 	}
 
 	// The ceiling of PictureLimit a host asked for, of 1, and whether the
@@ -92,7 +94,8 @@ public final class ShaderEngine {
 	private final ShaderRenderPipeline renderPipeline =
 			new ShaderRenderPipeline(device);
 	private final EngineInputs inputs = new EngineInputs();
-	private final ShaderSwap<Offer, PlanRuntime> shaders = new ShaderSwap<>();
+	private final ShaderSwap<Offer, PlanRuntime> shaders = new ShaderSwap<>(
+			(a, b) -> a.picture().equals(b.picture()));
 	private final UniformSources sources;
 	private final Context context;
 	private final ThumbnailRequests<ThumbnailCallback> thumbnails =
@@ -132,12 +135,17 @@ public final class ShaderEngine {
 		sources = new UniformSources(host);
 	}
 
-	// Any thread. A prepared project at a quality; the diagnostics of its
-	// preparation come with those of its build. At a frame boundary, the
-	// GL thread builds the newest plan while the current one keeps
-	// drawing, and swaps it in once it links and its images are uploaded.
-	public void setPlan(@NonNull Preparation preparation, float quality) {
-		setPlan(request(), preparation, quality, AS_PREPARED, preparation, 0);
+	// Any thread. A prepared project at a quality, a revision of picture,
+	// which is equal for the revisions of what runs, such as the edits of
+	// one file; the diagnostics of its preparation come with those of its
+	// build. At a frame boundary, the GL thread builds the newest plan
+	// while the current one keeps drawing, and swaps it in once it links
+	// and its images are uploaded. If it fails, the current one keeps
+	// drawing when it is of the same picture, and goes otherwise.
+	public void setPlan(@NonNull Preparation preparation, float quality,
+			@NonNull Object picture) {
+		setPlan(request(), preparation, quality, AS_PREPARED, preparation, 0,
+				picture);
 	}
 
 	// Any thread. Starts a revision whose plan is still being prepared,
@@ -148,21 +156,22 @@ public final class ShaderEngine {
 		return shaders.request();
 	}
 
-	// Any thread. Like setPlan(preparation, quality), for the revision
-	// request() returned, with diagnostics shown as reporting says, and
-	// the runtime of owner, which starts at runtimeNanos once the plan
-	// replaces the one shown. Returns false and drops the plan when a
-	// newer revision was requested meanwhile.
+	// Any thread. Like setPlan(preparation, quality, picture), for the
+	// revision request() returned, with diagnostics shown as reporting
+	// says, and the runtime of owner, which starts at runtimeNanos once
+	// the plan replaces the one shown. Returns false and drops the plan
+	// when a newer revision was requested meanwhile.
 	public boolean setPlan(
 			int request,
 			@NonNull Preparation preparation,
 			float quality,
 			@NonNull Reporting reporting,
 			@NonNull Object owner,
-			long runtimeNanos) {
+			long runtimeNanos,
+			@NonNull Object picture) {
 		return shaders.offer(request, new Offer(
 				new PlanShader(preparation, quality, reporting.textureFix()),
-				owner, runtimeNanos, reporting));
+				owner, runtimeNanos, reporting, picture));
 	}
 
 	// Any thread. The runtime of the plan set with this owner while it is
@@ -178,7 +187,8 @@ public final class ShaderEngine {
 				offer.shader().withQuality(quality),
 				offer.origin(),
 				offer.runtimeNanos(),
-				offer.reporting()));
+				offer.reporting(),
+				offer.picture()));
 	}
 
 	// Any thread. The brightest a pixel of the picture may be on the
@@ -371,7 +381,12 @@ public final class ShaderEngine {
 		errors.addAll(targetErrors);
 		if (!ready) {
 			if (next.hasFailed() || next.isComplete()) {
+				var drawn = shaders.current();
 				report(shaders.nextFailed(), errors);
+				if (drawn != null && shaders.current() == null) {
+					// A failed build of another picture ended it.
+					clearConfiguration();
+				}
 			}
 			endCurrentWithoutTargets();
 			return;
@@ -437,7 +452,9 @@ public final class ShaderEngine {
 		var build = PlanRuntime.link(device, revision.shader().shader(),
 				formats, errors);
 		if (build == null) {
-			shaders.failed(revision);
+			if (shaders.failed(revision)) {
+				clearConfiguration();
+			}
 			report(revision, errors);
 			return;
 		}

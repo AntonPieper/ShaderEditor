@@ -78,10 +78,15 @@ public class ShaderViewManager {
 		showPicture(true);
 	}
 
-	/** Run a prepared project at quality. */
-	public void setPlan(@NonNull Preparation preparation, float quality) {
+	/**
+	 * Run a prepared project at quality, a revision of picture, which is
+	 * equal for the edits of what runs: if it fails, what is shown stays
+	 * only when it is of the same picture, and goes otherwise.
+	 */
+	public void setPlan(@NonNull Preparation preparation, float quality,
+			@NonNull Object picture) {
 		setQuality(quality);
-		shaderView.setPlan(preparation, quality);
+		shaderView.setPlan(preparation, quality, picture);
 		showPicture(true);
 	}
 

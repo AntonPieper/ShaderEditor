@@ -22,6 +22,7 @@ import com.google.android.material.snackbar.Snackbar;
 import org.jetbrains.annotations.Contract;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
@@ -158,6 +159,7 @@ public class MainActivity extends AppCompatActivity {
 					(preparation, nothingRuns, quality) -> {
 						if (preparation != null) {
 							ProjectFile file = files.file();
+							String key = files.key();
 							ProjectPath running = file != null
 									? file.getProject().running()
 									: null;
@@ -166,8 +168,12 @@ public class MainActivity extends AppCompatActivity {
 										if (file != null) {
 											file.setQuality(kept);
 										}
+										// The folder and the file that
+										// runs: what another one showed
+										// never stays when this fails.
 										shaderViewManager.setPlan(
-												preparation, kept);
+												preparation, kept,
+												Arrays.asList(key, running));
 										looks.ran(files.key(), running);
 									});
 						} else {

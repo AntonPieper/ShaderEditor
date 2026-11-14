@@ -8,7 +8,9 @@ import androidx.annotation.Nullable;
 // shader is still being made; a revision that a newer request supersedes
 // is not built and never replaces the current build. The newest one
 // builds as next while the current build keeps drawing, and replaces it
-// once it is complete.
+// once it is complete. A build that fails keeps the picture drawn only
+// when that is of the same picture, such as an earlier edit of the file
+// that runs; one of another picture that fails ends it.
 final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	interface Build {
 		// Whether everything it draws with is uploaded.
@@ -47,6 +49,15 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	record Revision<S>(@NonNull S shader, int number) {
 	}
 
+	// Whether two shaders are revisions of one picture. Not BiPredicate,
+	// which Android 6 does not have.
+	interface Pictures<S> {
+		boolean same(@NonNull S a, @NonNull S b);
+	}
+
+	@NonNull
+	private final Pictures<S> samePicture;
+
 	// Guarded by this.
 	// The number of the newest request.
 	private int requested;
@@ -78,6 +89,15 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	@Nullable
 	private B current;
 	private int reported;
+
+	// Every shader a revision of one picture.
+	ShaderSwap() {
+		this((a, b) -> true);
+	}
+
+	ShaderSwap(@NonNull Pictures<S> samePicture) {
+		this.samePicture = samePicture;
+	}
 
 	// Any thread. Starts a revision whose shader is still being made and
 	// returns its number. Revisions requested before it are superseded.
@@ -150,12 +170,35 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		return revision;
 	}
 
-	// GL thread. This revision did not build.
-	synchronized void failed(@NonNull Revision<S> revision) {
-		if (is(fallback, revision.number())) {
-			fallback = null;
+	// GL thread. This revision did not build. When it is the newest
+	// request and of another picture than the one drawn, or built again
+	// after the context was lost, that one goes too and nothing draws
+	// until a newer revision does; returns whether a build went.
+	boolean failed(@NonNull Revision<S> revision) {
+		B ended;
+		synchronized (this) {
+			if (is(fallback, revision.number())) {
+				fallback = null;
+			}
+			end(revision.number());
+			if (superseded(revision)) {
+				return false;
+			}
+			if (fallback != null &&
+					!samePicture.same(fallback.shader(), revision.shader())) {
+				fallback = null;
+			}
+			if (current == null || currentRevision == null ||
+					samePicture.same(currentRevision.shader(),
+							revision.shader())) {
+				return false;
+			}
+			ended = current;
+			current = null;
+			currentRevision = null;
 		}
-		end(revision.number());
+		ended.release();
+		return true;
 	}
 
 	// GL thread. The build of this revision supersedes a next build that
@@ -224,8 +267,8 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	}
 
 	// GL thread. The next build can never complete: it is released, the
-	// current build keeps drawing, and its revision is returned, or null
-	// without one.
+	// current build keeps drawing unless failed() ends it, and its
+	// revision is returned, or null without one.
 	@Nullable
 	Revision<S> nextFailed() {
 		var revision = nextRevision;
