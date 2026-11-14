@@ -583,6 +583,12 @@ public class MainActivity extends AppCompatActivity {
 		return new MainMenuManager.ShaderActions() {
 			@Override
 			public void onAddShader() {
+				// A file of a folder gets a new one beside it.
+				if (files != null && files.file() == open &&
+						shaderListManager instanceof NavigationDrawer drawer) {
+					drawer.showNew(files.key(), files.file().getPath());
+					return;
+				}
 				addShader(null);
 			}
 
@@ -618,6 +624,11 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onUpdateWallpaper() {
 				updateWallpaper();
+			}
+
+			@Override
+			public void onRunThisFile() {
+				open.runThisFile();
 			}
 
 			@Override

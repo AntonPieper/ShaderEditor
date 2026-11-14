@@ -18,7 +18,9 @@ public interface OpenItem {
 		SAVE_COPY,
 		DELETE,
 		SHARE,
-		WALLPAPER
+		WALLPAPER,
+		/** Run it from now on, in place of what runs. */
+		RUN_THIS_FILE
 	}
 
 	/** Return the toolbar's title. */
@@ -76,4 +78,8 @@ public interface OpenItem {
 
 	/** Save it and make it what the live wallpaper shows. */
 	void setAsWallpaper();
+
+	/** Run it from now on, in place of what runs. */
+	default void runThisFile() {
+	}
 }

@@ -103,6 +103,15 @@
 			app:icon="@drawable/ic_wallpaper" />
 
 		<Button
+			android:id="@+id/run_this_file"
+			style="@style/MenuItem"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/menu_item_height"
+			android:text="@string/nav_run_this_file"
+			android:visibility="gone"
+			app:icon="@drawable/ic_play_arrow" />
+
+		<Button
 			android:id="@+id/add_uniform"
 			style="@style/MenuItem"
 			android:layout_width="match_parent"
