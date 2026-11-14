@@ -320,14 +320,11 @@ The owner's phone uses Gboard as its keyboard (read from its settings, not chang
 
 ### 4.6 Accessibility
 
-`EditText` gives TalkBack everything for free, up to 100,000 characters (it trims what it reports, `TextUtils.trimToParcelableSize`). A custom view gives nothing until it is written. The minimum that makes the editor usable with TalkBack, planned before the switch:
+Decision D6 asks for parity with `EditText` before the switch. `EditText` gives TalkBack everything for free; a custom view gives nothing until it is written. `CodeView` does what `TextView` and `Editor` of API 36.1 do, through a `View.AccessibilityDelegate` (`CodeAccessibility`), except where this section says otherwise.
 
-- Report as an editable, multi-line text field (`getAccessibilityClassName` returns `android.widget.EditText`).
-- The node's text is a window: the visible lines, with the selection reported relative to it. Reporting the whole document is neither possible (binder size) nor what the stock widget does for large text.
-- Events: text changed (so typed characters are spoken), selection changed, and "traversed at movement granularity".
-- Actions: move by character, word, line and page; set selection; cut, copy, paste; scroll.
-
-Deferred: one virtual node per line for explore-by-touch, and anything for braille displays and Switch Access beyond what the above gives. This is the one area where the new editor will at first be worse than the old for some users, and it cannot be avoided cleanly (decision D6).
+- **One node**, of class `android.widget.EditText`: editable, multi-line, focusable, with the keyboard's input type, no hint and no maximum length, as `EditText`'s node. `TextView` has no virtual nodes, so explore by touch finds the one node, as it does today. The line numbers are not part of the text.
+- **The text is a window, never the whole document.** `TextView` reports the first 100,000 characters (`TextUtils.trimToParcelableSize`) and nothing past them, so a caret beyond them is outside its own text. `CodeView` reports a window that follows the caret, by this rule (`AccessibleText.window`): lines are counted in blocks of 128; the window is the block of the selection's head with the block before and the block after it, 256 to 384 lines. If those lines hold more than 32,768 characters, the window is the 32,768 characters from the quarter of that size before the head's quarter on (8,192-character steps), cut so that it never splits a surrogate pair. The window so moves only when the head leaves its block or its quarter, and indices a service holds stay valid while the caret moves inside it. The selection is reported as indices into the window; an end outside it counts as the window's nearer end, so a selection of the whole text shows as the whole window.
+- **Work for a service is bounded by the window:** at most 32,768 characters copied per node or event, and the copy is kept while the text and the window stay the same. Nothing runs while no service is enabled: the framework calls the delegate only for an enabled service.
 
 ### 4.7 Loading, saving and paste
 

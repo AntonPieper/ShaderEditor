@@ -31,6 +31,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EdgeEffect;
+import android.widget.EditText;
 import android.widget.Magnifier;
 import android.widget.OverScroller;
 import android.widget.Toast;
@@ -91,7 +92,8 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * From Android 10 on, the drawing of a line is recorded once and
  * replayed until the line's string or colours change. A frame records
  * at most a third of the lines on screen, draws the others directly and
- * leaves them to the frames after it.
+ * leaves them to the frames after it. Accessibility services see it as
+ * an EditText, through CodeAccessibility.
  */
 public class CodeView extends View {
 	/** Draws behind the text of each line on screen. */
@@ -297,6 +299,11 @@ public class CodeView extends View {
 				getResources().getDimension(R.dimen.se_tap_target));
 		setFocusable(true);
 		setFocusableInTouchMode(true);
+		if (getImportantForAccessibility() ==
+				IMPORTANT_FOR_ACCESSIBILITY_AUTO) {
+			setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
+		}
+		setAccessibilityDelegate(new CodeAccessibility(this));
 		scroller = new OverScroller(context);
 		edgeTop = new EdgeEffect(context);
 		edgeBottom = new EdgeEffect(context);
@@ -415,6 +422,11 @@ public class CodeView extends View {
 	@Nullable
 	public Document getDocument() {
 		return document;
+	}
+
+	/** Return the input type keyboards are given. */
+	int inputType() {
+		return inputType;
 	}
 
 	/**
@@ -633,6 +645,11 @@ public class CodeView extends View {
 			SelectionToolbar.fill(menu, offered(),
 					item -> contextMenuAction(item.getItemId()));
 		}
+	}
+
+	@Override
+	public CharSequence getAccessibilityClassName() {
+		return EditText.class.getName();
 	}
 
 	@Override
