@@ -71,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
 	private OpenItem open;
 	private ShaderList shaderListManager;
 	private ShaderViewManager shaderViewManager;
+	private ExtraKeysManager extraKeysManager;
 	private NavigationManager navigationManager;
 	// The files of folders, with project mode only, else null.
 	@Nullable
@@ -108,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
 				findViewById(R.id.preview),
 				findViewById(R.id.quality),
 				shaderViewListener);
-		ExtraKeysManager extraKeysManager = new ExtraKeysManager(this,
+		extraKeysManager = new ExtraKeysManager(this,
 				findViewById(android.R.id.content),
 				editorFragment::insert);
 		uiManager = new UIManager(this,
@@ -266,6 +267,9 @@ public class MainActivity extends AppCompatActivity {
 		}
 		if (shaderListManager != null) {
 			shaderListManager.destroy();
+		}
+		if (extraKeysManager != null) {
+			extraKeysManager.destroy();
 		}
 		super.onDestroy();
 	}
