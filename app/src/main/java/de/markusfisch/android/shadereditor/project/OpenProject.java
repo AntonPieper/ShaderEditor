@@ -215,6 +215,14 @@ public final class OpenProject {
 	private boolean choose;
 	private boolean keeping;
 	private String unkept;
+	// Whether the session is to keep yet that the project is the one
+	// open last, opened at this time; what the write on its way holds
+	// besides the file shown; and how many were sent.
+	private boolean last;
+	private long opened;
+	private boolean keepingChoice;
+	private boolean keepingLast;
+	private int selections;
 	private State announced;
 	private Executor executor;
 	private Runnable listener;
@@ -365,7 +373,7 @@ public final class OpenProject {
 		if (closed) {
 			return;
 		}
-		persist();
+		persist(true);
 		keepHistories();
 		texts.sync(synced -> {
 		});
@@ -563,46 +571,81 @@ public final class OpenProject {
 	 * could not keep is sent again by the next call.
 	 */
 	public void persist() {
-		keepSelection();
-		for (FileRecord record : records.values()) {
-			flush(record);
+		persist(false);
+	}
+
+	// At a fence, close and flush(done), everything is sent that is
+	// not acknowledged, also what is on its way: the fence does not
+	// depend on main having heard how an earlier write went.
+	private void persist(boolean fence) {
+		keepSelection(fence);
+		for (FileRecord record : new ArrayList<>(records.values())) {
+			flush(record, fence);
 		}
 	}
 
 	/**
-	 * Return why the file shown or the file chosen to run is not kept
-	 * for the next start, or null when they are.
+	 * Count the project as the one open last, opened now, for the list
+	 * of recent projects and the next start. A failure is told by
+	 * {@link #unkept} and sent again by the next {@link #persist}.
+	 */
+	public void remember() {
+		last = true;
+		opened = System.currentTimeMillis();
+		keepSelection(false);
+	}
+
+	/**
+	 * Return why the file shown, the file chosen to run or that this
+	 * project is the one open last is not kept for the next start, or
+	 * null when they are.
 	 */
 	public String unkept() {
 		return unkept;
 	}
 
-	// Keep the file shown and the file chosen to run in the session;
-	// each counts as kept once the worker says it is.
-	private void keepSelection() {
-		if (keeping) {
+	// Keep the file shown, the file chosen to run and that the project
+	// is the one open last in the session; each counts as kept once the
+	// worker says it is. One write at a time, except at a fence, which
+	// sends what is on its way again as it is now.
+	private void keepSelection(boolean fence) {
+		if (keeping && !fence) {
 			return;
 		}
 		ProjectPath show = shown;
 		ProjectPath run = chosen;
-		boolean showing = !Objects.equals(show, keptShown);
-		boolean choosing = choose;
-		if (!showing && !choosing) {
+		long time = opened;
+		boolean showing = keeping || !Objects.equals(show, keptShown);
+		boolean choosing = choose || keeping && keepingChoice;
+		boolean lasting = last || keeping && keepingLast;
+		if (!showing && !choosing && !lasting) {
 			return;
 		}
 		keeping = true;
-		choose = false;
+		keepingChoice = choosing;
+		keepingLast = lasting;
+		choose = last = false;
+		int sent = ++selections;
 		worker.execute(() -> {
 			boolean shownKept = !showing || sessions.setShown(id, show);
 			boolean chosenKept = !choosing ||
 					sessions.setRunning(id, run);
+			// A project that is not listed has no time to keep.
+			boolean lastKept = !lasting || sessions.setLast(id) &&
+					(sessions.recent(id) == null ||
+							sessions.touch(id, time));
 			main.execute(() -> {
+				// The answer to the last one sent tells.
+				if (sent != selections) {
+					return;
+				}
 				keeping = false;
 				if (shownKept) {
 					keptShown = show;
 				}
 				choose |= !chosenKept;
-				unkept = shownKept && chosenKept
+				last |= !lastKept;
+				unkept = shownKept && chosenKept && lastKept
 						? null
 						: "the session cannot be written";
 				changed();
@@ -617,7 +660,7 @@ public final class OpenProject {
 	 * the background.
 	 */
 	public void flush(Runnable done) {
-		persist();
+		persist(true);
 		keepHistories();
 		texts.sync(synced -> {
 			unsynced = synced ? null : "the journal cannot be synced";
@@ -1424,10 +1467,16 @@ public final class OpenProject {
 	// sent to the journal, or the removal of the journal once it has no
 	// unsaved text. It counts as kept once the journal took it.
 	private void flush(FileRecord record) {
+		flush(record, false);
+	}
+
+	// The same; at a fence also what a write on its way was to do,
+	// whose answer may never be heard.
+	private void flush(FileRecord record, boolean fence) {
 		++record.timer;
 		record.limit = 0;
 		FileRecord.Flush flush = records.get(record.path) == record
-				? record.flush()
+				? record.flush(fence)
 				: null;
 		if (flush == null) {
 			return;

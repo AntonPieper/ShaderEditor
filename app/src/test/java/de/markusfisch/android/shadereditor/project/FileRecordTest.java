@@ -123,6 +123,33 @@ public class FileRecordTest {
 	}
 
 	@Test
+	public void atAFenceWhatIsNotAcknowledgedIsSentAgainWhole() {
+		open("stored", "r1");
+		Document document = record.document();
+		document.replace(6, 6, Text.of("!"));
+		FileRecord.Flush sent = record.flush();
+
+		// Its answer is on its way, or lost: nothing more to send, but
+		// at a fence the text goes again, whole.
+		assertNull(record.flush());
+		FileRecord.Flush again = record.flush(true);
+		assertEquals(-1, again.from());
+		assertEquals("stored!", again.text().toString());
+		record.acknowledge(sent, false);
+		assertFalse(record.settled());
+		record.acknowledge(again, true);
+		assertTrue(record.settled());
+		assertNull(record.flush(true));
+
+		// The same for a removal.
+		document.undo();
+		FileRecord.Flush remove = record.flush();
+		assertTrue(remove.removes());
+		assertNull(record.flush());
+		assertTrue(record.flush(true).removes());
+	}
+
+	@Test
 	public void conflictIsWhatWasSeenOfStorageAgainstTheBase() {
 		open("stored", "r1");
 		Document document = record.document();

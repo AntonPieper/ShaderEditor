@@ -114,10 +114,7 @@ public final class Projects {
 								"it is not a known project"));
 						return;
 					}
-					QUEUE.execute(() -> {
-						sessions.touch(id, System.currentTimeMillis());
-						sessions.setLast(id);
-					});
+					project.remember();
 					done.done(new Opened(id, project,
 							project.storage().reason()));
 				});
