@@ -85,7 +85,14 @@ final class PlanPass {
 				source.sourceMap());
 		var program = result.getProgram();
 		if (!result.succeeded() || program == null) {
-			errors.addAll(result.getInfoLog());
+			// A driver may name no line; the pass file is still known.
+			var file = plan.programs().get(pass.program()).file();
+			for (var error : result.getInfoLog()) {
+				errors.add(error.file() != null
+						? error
+						: new ProjectDiagnostic(error.severity(),
+								error.message(), file, 0));
+			}
 			return null;
 		}
 		var bindings = PlanBindings.of(plan, index, program.getSamplers(),

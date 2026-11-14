@@ -368,6 +368,26 @@ public class PlanRuntimeTest {
 		}
 	}
 
+	// A driver may fail a link without naming a line; the error still
+	// names the pass file whose program it was.
+	@Test
+	public void aProgramErrorWithoutALineNamesItsPassFile() {
+		var device = new FakeGlDevice();
+		// The presentation shader links first, then blur.frag.
+		device.fail("createProgram", 2);
+		var engine = new FakeEngine(device, prepare("main.frag", lines(
+						"#pragma se input \"blur.frag\"",
+						"uniform sampler2D blur;",
+						MAIN),
+				"blur.frag", MAIN),
+				TargetFormats.of(3, "GL_EXT_color_buffer_float"));
+		assertNull(engine.runtime);
+		assertEquals(List.of(new ProjectDiagnostic(
+						ProjectDiagnostic.Severity.ERROR, "link failed",
+						path("blur.frag"), 0)),
+				errors(engine.diagnostics));
+	}
+
 	private static List<ProjectDiagnostic> checkInitial(
 			Preparation preparation,
 			boolean history) {
