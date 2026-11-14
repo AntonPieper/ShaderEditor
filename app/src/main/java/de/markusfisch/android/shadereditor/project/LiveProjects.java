@@ -93,6 +93,13 @@ final class LiveProjects {
 				sessions, worker, main, later, budget);
 	}
 
+	/**
+	 * Return whether session id is open or being opened. On main.
+	 */
+	boolean isOpen(String id) {
+		return live.containsKey(id) || opening.containsKey(id);
+	}
+
 	private void publish(String id, Opener opener, OpenProject project) {
 		List<FileTexts.Callback<OpenProject>> joined = opening.remove(id);
 		if (project != null) {

@@ -82,6 +82,33 @@ public class ShaderDao {
 		return shaders;
 	}
 
+	// Every shader in the order of the ids, without what is large.
+	public List<DataRecords.ShaderRow> getShaderRows() {
+		List<DataRecords.ShaderRow> rows = new ArrayList<>();
+		String size = "size";
+		String query = "SELECT " + DatabaseContract.ShaderColumns._ID + "," +
+				DatabaseContract.ShaderColumns.NAME + "," +
+				DatabaseContract.ShaderColumns.MODIFIED + "," +
+				DatabaseContract.ShaderColumns.QUALITY + "," +
+				"LENGTH(CAST(" + DatabaseContract.ShaderColumns.FRAGMENT_SHADER +
+				" AS BLOB)) AS " + size +
+				" FROM " + DatabaseContract.ShaderColumns.TABLE_NAME +
+				" ORDER BY " + DatabaseContract.ShaderColumns._ID;
+		SQLiteDatabase db = dbHelper.getReadableDatabase();
+		try (var cursor = db.rawQuery(query, null)) {
+			while (cursor.moveToNext()) {
+				rows.add(new DataRecords.ShaderRow(
+						CursorHelpers.getLong(cursor, DatabaseContract.ShaderColumns._ID),
+						CursorHelpers.getString(cursor, DatabaseContract.ShaderColumns.NAME),
+						CursorHelpers.getString(cursor,
+								DatabaseContract.ShaderColumns.MODIFIED),
+						CursorHelpers.getFloat(cursor, DatabaseContract.ShaderColumns.QUALITY),
+						CursorHelpers.getLong(cursor, size)));
+			}
+		}
+		return rows;
+	}
+
 	@Nullable
 	public DataRecords.Shader getRandomShader() {
 		String query =

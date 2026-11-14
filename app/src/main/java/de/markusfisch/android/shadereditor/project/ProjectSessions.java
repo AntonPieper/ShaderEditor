@@ -104,6 +104,28 @@ public final class ProjectSessions {
 				bytes.toByteArray()) ? id : null;
 	}
 
+	/**
+	 * Let the session of from, with its unsaved text, histories and
+	 * what it shows, be the session of to: the files it is about were
+	 * moved there. Return whether no session is of from now.
+	 */
+	public synchronized boolean relocate(Locator from, Locator to) {
+		String id = find(from);
+		if (id == null) {
+			return true;
+		}
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		try (DataOutputStream out = new DataOutputStream(bytes)) {
+			out.writeInt(MAGIC);
+			out.writeUTF(to.kind().name());
+			out.writeUTF(to.value());
+		} catch (IOException e) {
+			return false;
+		}
+		return Journal.replace(new File(root, id), LOCATOR,
+				bytes.toByteArray());
+	}
+
 	/** Return the id of the session of locator, or null when none. */
 	public synchronized String find(Locator locator) {
 		String[] names = root.list();
