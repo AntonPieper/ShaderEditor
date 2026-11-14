@@ -1,0 +1,17 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+// The first board, drawn once at the start and on every restart: a
+// random fifth of the cells alive. Same size as the board, so each
+// pixel is one cell.
+#pragma se target scale=0.125
+
+#include "../lib/noise.glsl"
+
+void main(void) {
+	float is = step(0.8, hash21(gl_FragCoord.xy));
+	gl_FragColor = vec4(is, is, 0.0, 1.0);
+}

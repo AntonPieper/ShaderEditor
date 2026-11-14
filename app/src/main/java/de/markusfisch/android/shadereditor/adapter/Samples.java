@@ -153,7 +153,7 @@ public final class Samples {
 					1f),
 			new Sample(Section.TECHNIQUES,
 					R.raw.sample_game_of_life,
-					"Game of Life.frag",
+					"Game of Life/main.frag",
 					R.drawable.thumbnail_game_of_life,
 					R.string.sample_game_of_life_name,
 					R.string.sample_game_of_life_rationale,
@@ -206,6 +206,13 @@ public final class Samples {
 					R.drawable.thumbnail_horizon,
 					R.string.sample_horizon_name,
 					R.string.sample_horizon_rationale,
+					1f),
+			new Sample(Section.WALLPAPERS,
+					NO_TEXT,
+					"Ink/main.frag",
+					R.drawable.thumbnail_ink,
+					R.string.sample_ink_name,
+					R.string.sample_ink_rationale,
 					1f));
 
 	private Samples() {
