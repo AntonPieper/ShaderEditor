@@ -35,6 +35,21 @@ public final class DataRecords {
 	}
 
 	/**
+	 * Holds what is small of a shader: no text and no thumbnail, but
+	 * how many bytes its text has.
+	 */
+	public record ShaderRow(
+			long id,
+			@Nullable
+			String name,
+			@Nullable
+			String modified,
+			float quality,
+			long size
+	) {
+	}
+
+	/**
 	 * Holds the complete data for a single shader.
 	 */
 	public record Shader(

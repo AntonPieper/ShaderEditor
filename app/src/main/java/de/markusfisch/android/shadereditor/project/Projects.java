@@ -9,12 +9,15 @@ import android.os.Looper;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
+import de.markusfisch.android.shadereditor.provider.UserFilesProvider;
 
 /**
  * The projects the app opened: folders granted through the system
@@ -35,6 +38,14 @@ public final class Projects {
 
 	/** An opened project with its session id, or why it is closed. */
 	public record Opened(String id, OpenProject project, String problem) {
+	}
+
+	/**
+	 * What a redo of the move did: why the library could not be put
+	 * aside, and then moved is null, or what the move into the new one
+	 * did.
+	 */
+	public record Redone(String problem, LibraryMove.Result moved) {
 	}
 
 	// The one queue every project of the process works on storage on.
@@ -102,6 +113,185 @@ public final class Projects {
 			}
 			openNew(locator, done);
 		});
+	}
+
+	/**
+	 * Open the library, the folder of the app's own files that holds
+	 * the user's shaders, like any folder; it is made when it is not
+	 * there. While a redo of the move is not finished it is not
+	 * opened, and problem says why.
+	 */
+	public void openLibrary(Callback<Opened> done) {
+		QUEUE.execute(() -> {
+			String barrier = guarded(() -> library().finishRedo(
+					this::relocated), problem -> problem);
+			File folder = library().folder();
+			if (barrier == null) {
+				folder.mkdirs();
+			}
+			main.post(() -> {
+				if (barrier != null) {
+					done.done(new Opened(null, null, barrier));
+				} else {
+					openDirectory(folder, done);
+				}
+			});
+		});
+	}
+
+	/**
+	 * Return the library, to read from off the main thread: where it
+	 * is, the settings and pictures of its files, and which file a
+	 * shader of the database became. What changes it are the calls
+	 * here, which run on the queue.
+	 */
+	public Library library() {
+		return new Library(UserFilesProvider.getUserFilesDir(context),
+				context.getFilesDir());
+	}
+
+	/**
+	 * Move the shaders of the database that are not moved yet into the
+	 * library, on the queue; done gets what became of every shader, or
+	 * why nothing could be moved. The database is only read. Asking
+	 * again, at every start, is cheap and moves nothing twice.
+	 *
+	 * @param reserved the names of the builtin uniforms
+	 * @param untitled the stem of the name of a shader without a title
+	 */
+	public void moveLibrary(DataSource database, Set<String> reserved,
+			String untitled, LibraryMove.Chosen chosen,
+			Callback<LibraryMove.Result> done) {
+		QUEUE.execute(() -> {
+			LibraryMove.Result result = guarded(() -> move(database,
+					reserved, untitled, chosen), LibraryMove.Result::blocked);
+			main.post(() -> done.done(result));
+		});
+	}
+
+	/**
+	 * Put the library aside under another name and move every shader
+	 * of the database into a new one; nothing is deleted. Call it on
+	 * main. It is refused while the library is open, also without
+	 * unsaved text: close its project first. The library that was put
+	 * aside keeps its session, with its undo histories, and its
+	 * settings and pictures lie beside it; the new one starts without
+	 * any.
+	 */
+	public void redoLibraryMove(DataSource database, Set<String> reserved,
+			String untitled, LibraryMove.Chosen chosen,
+			Callback<Redone> done) {
+		Locator locator = libraryLocator();
+		String id = locator != null ? sessions.find(locator) : null;
+		if (id != null && live().isOpen(id)) {
+			done.done(new Redone("the library is open; close it first",
+					null));
+			return;
+		}
+		QUEUE.execute(() -> {
+			Redone redone = guarded(() -> {
+				// A journal that cannot be read counts as text too.
+				ProjectSessions.Recent recent = id != null
+						? sessions.recent(id)
+						: null;
+				String problem = id != null && (recent == null
+						? !sessions.unsaved(id).isEmpty()
+						: recent.unsaved())
+						? "the library has unsaved text; open it and " +
+								"save or discard it first"
+						: library().putAside(this::relocated);
+				return new Redone(problem, problem == null
+						? move(database, reserved, untitled, chosen)
+						: null);
+			}, problem -> new Redone(problem, null));
+			main.post(() -> done.done(redone));
+		});
+	}
+
+	/**
+	 * Keep quality for the file of the library at path, on the queue;
+	 * done gets why it is not kept, or null.
+	 */
+	public void setQuality(ProjectPath path, float quality,
+			Callback<String> done) {
+		change(() -> library().settings().setQuality(path, quality)
+				? null
+				: "the settings of the library cannot be written", done);
+	}
+
+	/**
+	 * Keep png as the picture of the file of the library at path, made
+	 * from its content at revision, on the queue; done gets why it is
+	 * not kept, or null.
+	 */
+	public void setPreview(ProjectPath path, String revision, byte[] png,
+			Callback<String> done) {
+		change(() -> library().previews().put(path, revision, png)
+				? null
+				: "the picture cannot be kept", done);
+	}
+
+	// What a task of the queue answers; nothing it throws leaves the
+	// queue.
+	private interface Task<T> {
+		T run();
+	}
+
+	private interface Failure<T> {
+		T of(String problem);
+	}
+
+	private static <T> T guarded(Task<T> task, Failure<T> failure) {
+		try {
+			return task.run();
+		} catch (RuntimeException | OutOfMemoryError e) {
+			return failure.of(e instanceof OutOfMemoryError
+					? "it does not fit into memory"
+					: e.getMessage() != null
+							? e.getMessage()
+							: e.getClass().getSimpleName());
+		}
+	}
+
+	private void change(Task<String> task, Callback<String> done) {
+		QUEUE.execute(() -> {
+			String problem = guarded(task, reason -> reason);
+			main.post(() -> done.done(problem));
+		});
+	}
+
+	// On the queue.
+	private LibraryMove.Result move(DataSource database,
+			Set<String> reserved, String untitled,
+			LibraryMove.Chosen chosen) {
+		return library().move(new DatabaseBackup(database,
+				ProjectLimits.DEFAULT, reserved), untitled, chosen, path -> {
+			Locator locator = libraryLocator();
+			String id = locator != null ? sessions.open(locator) : null;
+			return id != null && sessions.setShown(id, path) &&
+					sessions.setRunning(id, path);
+		}, this::relocated);
+	}
+
+	// The session of the library goes with the folder that is put
+	// aside, so that the new library starts a session of its own.
+	private boolean relocated(File from, File to) {
+		try {
+			return sessions.relocate(
+					new Locator(Kind.DIRECTORY, from.getCanonicalPath()),
+					new Locator(Kind.DIRECTORY, to.getCanonicalPath()));
+		} catch (IOException e) {
+			return false;
+		}
+	}
+
+	private Locator libraryLocator() {
+		try {
+			return new Locator(Kind.DIRECTORY,
+					library().folder().getCanonicalPath());
+		} catch (IOException e) {
+			return null;
+		}
 	}
 
 	/**
