@@ -117,4 +117,36 @@ public class TouchSelectionTest {
 		assertTrue(touch.dragTo(text, 2));
 		assertEquals(2, touch.head());
 	}
+
+	@Test
+	public void handlesAndToolbarWaitForTheFingerToLiftAfterAWordDrag() {
+		Text text = Text.of("float alpha = beta;");
+		assertTrue(touch.showsHandles());
+		assertTrue(touch.showsToolbar());
+		touch.dragWords(text, 7);
+		touch.dragTo(text, 16);
+		assertFalse(touch.showsHandles());
+		assertFalse(touch.showsToolbar());
+		touch.drop();
+		assertTrue(touch.showsHandles());
+		assertTrue(touch.showsToolbar());
+	}
+
+	@Test
+	public void aDraggedHandleShowsButTheToolbarDoesNot() {
+		touch.dragHandle(0, 5);
+		assertTrue(touch.showsHandles());
+		assertFalse(touch.showsToolbar());
+		touch.drop();
+		assertTrue(touch.showsToolbar());
+	}
+
+	@Test
+	public void theMagnifierStaysOverTheLineAndHidesFarFromIt() {
+		assertEquals(50, TouchSelection.magnifierX(50, 20, 200, 40), 0);
+		assertEquals(20, TouchSelection.magnifierX(0, 20, 200, 40), 0);
+		assertEquals(200, TouchSelection.magnifierX(230, 20, 200, 40), 0);
+		assertTrue(Float.isNaN(TouchSelection.magnifierX(241, 20, 200, 40)));
+		assertTrue(Float.isNaN(TouchSelection.magnifierX(-21, 20, 200, 40)));
+	}
 }

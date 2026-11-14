@@ -13,9 +13,12 @@ import de.markusfisch.android.shadereditor.editor.Text;
  * as the platform's handles do: while the selection grows, a word joins
  * whole once the finger is past its middle; after the handle was moved
  * back into a word, it goes by character, keeping its distance to the
- * finger, until it is at the end of a word again. Offsets count into
- * the whole text; the work is that of one line, and a drag allocates
- * only when the selection changes.
+ * finger, until it is at the end of a word again. While a drag by word
+ * is in progress (after a long press or a double tap), the handles do
+ * not show, as the platform's do not; while any drag is in progress,
+ * the floating toolbar does not show. Offsets count into the whole
+ * text; the work is that of one line, and a drag allocates only when
+ * the selection changes.
  */
 final class TouchSelection {
 	/** Where the offsets of one line are, as its layout knows. */
@@ -41,6 +44,8 @@ final class TouchSelection {
 	private int reached;
 	// From the offset of the finger to the head a handle is at.
 	private int delta;
+	// Whether a drag is in progress, from its start to drop.
+	private boolean dragging;
 
 	TouchSelection(Motion motion) {
 		this.motion = motion;
@@ -84,6 +89,7 @@ final class TouchSelection {
 
 	/** Start a drag by character from anchor, the head at head. */
 	void dragChars(int anchor, int head) {
+		dragging = true;
 		unit = CHARS;
 		this.anchor = anchor;
 		this.head = head;
@@ -93,6 +99,7 @@ final class TouchSelection {
 	/** Start a drag by word from the word at offset, and select it. */
 	void dragWords(Text text, int offset) {
 		Selection word = motion.wordAt(text, offset);
+		dragging = true;
 		unit = WORDS;
 		anchor = wordStart = word.start();
 		head = wordEnd = word.end();
@@ -178,6 +185,39 @@ final class TouchSelection {
 		int line = text.lineOf(offset);
 		return !Character.isWhitespace(text.line(line).charAt(
 				word.start() - text.lineStart(line)));
+	}
+
+	/** The finger lifted: the drag is over. */
+	void drop() {
+		dragging = false;
+	}
+
+	/**
+	 * Return whether the handles show: not while a drag by word or by
+	 * character is in progress, only the handle being dragged.
+	 */
+	boolean showsHandles() {
+		return !dragging || unit == HANDLE || unit == CARET;
+	}
+
+	/** Return whether the toolbar shows: not while a drag is in progress. */
+	boolean showsToolbar() {
+		return !dragging;
+	}
+
+	/**
+	 * Return where the magnifier shows for a finger at x over a line
+	 * whose text, or its part beyond the other end of the selection,
+	 * spans from left to right: x kept inside, as the platform's text
+	 * views place it, or NaN if the finger is more than half the width
+	 * the magnifier shows away from that part, which hides it.
+	 */
+	static float magnifierX(float x, float left, float right,
+			float halfWidth) {
+		if (x < left - halfWidth || x > right + halfWidth) {
+			return Float.NaN;
+		}
+		return Math.max(left, Math.min(right, x));
 	}
 
 	int anchor() {
