@@ -1,6 +1,5 @@
 package de.markusfisch.android.shadereditor.project;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -17,7 +16,10 @@ import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
  * costs time in proportion to a file, reading, decoding, splitting into
  * lines, encoding and writing, runs on the worker; the main thread only
  * hands over and receives immutable values. The worker runs one task
- * at a time, in the order given; results are posted to main.
+ * at a time, in the order given; results are posted to main. A text is
+ * what a file holds when opening the file gives exactly that text,
+ * character for character: that is what saved means here, for a save
+ * as for a comparison, so a text a file cannot hold is never saved.
  */
 public final class FileTexts {
 	public interface Callback<T> {
@@ -256,9 +258,9 @@ public final class FileTexts {
 
 	/**
 	 * Return what storage holds of path compared with base; on the
-	 * worker. For unsaved text, mine or, when storage changed, that of
-	 * the journal when null, whether storage holds exactly that text;
-	 * else the stored text when it changed.
+	 * worker. For unsaved text, mine or that of the journal when null,
+	 * whether storage holds exactly that text; else the stored text when
+	 * it changed.
 	 */
 	Checked check(ProjectPath path, String base, Text mine,
 			boolean unsaved) {
@@ -284,9 +286,8 @@ public final class FileTexts {
 		}
 		String revision = content.revision();
 		if (revision.equals(base)) {
-			// Text typed back to what is stored is saved too; a journal
-			// is not read to find that.
-			return new Checked(Found.SAME, null, base, mine != null &&
+			// Text typed back to what is stored is saved too.
+			return new Checked(Found.SAME, null, base, unsaved &&
 					holds(content.bytes(), path, mine));
 		} else if (content.bytes().length > Document.MAX_BYTES) {
 			return new Checked(Found.TOO_LARGE, null, revision, false);
@@ -300,19 +301,59 @@ public final class FileTexts {
 				: new Checked(Found.NOT_TEXT, null, revision, false);
 	}
 
-	// Return whether bytes are exactly the unsaved text of path: mine,
-	// or that of its journal when null.
+	// Return whether a file of bytes holds the unsaved text of path:
+	// mine, or that of its journal when null.
 	private boolean holds(byte[] bytes, ProjectPath path, Text mine) {
 		Text text = mine;
 		if (text == null) {
 			Journal.Recovered recovered = journal.read(path);
 			text = recovered != null ? recovered.text() : null;
 		}
-		try {
-			return text != null && TextBytes.equal(text, bytes);
-		} catch (IOException e) {
+		return text != null && holds(bytes, text);
+	}
+
+	/**
+	 * Return whether a file of bytes holds text: opening it gives
+	 * exactly text. Not whether writing text gives bytes: a lone
+	 * surrogate is written as '?', which is another text.
+	 */
+	static boolean holds(byte[] bytes, Text text) {
+		Text stored = decode(bytes);
+		if (stored == null || stored.length() != text.length() ||
+				stored.lineCount() != text.lineCount()) {
 			return false;
 		}
+		for (int i = text.lineCount(); i-- > 0; ) {
+			if (!stored.line(i).equals(text.line(i))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Return why no file can hold text, so that opening it gives text
+	 * again, or null when one can: a surrogate without its pair is
+	 * written as '?', a NUL makes the file no text, and a byte order
+	 * mark at the start is not part of the text when it is read.
+	 */
+	static String unstorable(Text text) {
+		for (int n = 0, lines = text.lineCount(); n < lines; ++n) {
+			String line = text.line(n);
+			for (int i = 0, length = line.length(); i < length; ++i) {
+				char c = line.charAt(i);
+				boolean pair = Character.isHighSurrogate(c)
+						? i + 1 < length &&
+								Character.isLowSurrogate(line.charAt(i + 1))
+						: !Character.isLowSurrogate(c) || i > 0 &&
+								Character.isHighSurrogate(line.charAt(i - 1));
+				if (!pair || c == 0 || c == 0xfeff && n == 0 && i == 0) {
+					return "line " + (n + 1) + " has a character at " +
+							(i + 1) + " that a file cannot hold";
+				}
+			}
+		}
+		return null;
 	}
 
 	private Save save(ProjectPath path, Text text, String base, int state) {
@@ -327,6 +368,11 @@ public final class FileTexts {
 		}
 		if (written == null) {
 			return new Save(state, null, null);
+		}
+		// Not written as another text and then called saved.
+		String problem = unstorable(written);
+		if (problem != null) {
+			return new Save(state, new OpenProject.Failed(problem), null);
 		}
 		Text bytes = written;
 		ProjectFiles.Change change = store.write(path,
