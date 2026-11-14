@@ -73,6 +73,8 @@ public class EditorFragment extends Fragment {
 	// The file of the folder whose errors the editor marks, or null.
 	@Nullable
 	private ProjectPath errorsFile;
+	// Whether the picture is the last that worked, not of these errors.
+	private boolean showsLastPicture;
 	@Nullable
 	private ErrorAdapter.OnItemClickListener errorListener;
 
@@ -341,15 +343,24 @@ public class EditorFragment extends Fragment {
 		errorListener = listener;
 	}
 
+	/**
+	 * Whether the picture shown is the last that worked, while the
+	 * errors are of a newer build; the list of errors says so.
+	 */
+	public void setShowsLastPicture(boolean shows) {
+		showsLastPicture = shows;
+	}
+
 	public void showErrors() {
 		if (allErrors != null && errorListener != null) {
-			new ErrorListModal(allErrors, errorListener)
+			new ErrorListModal(allErrors, errorListener, showsLastPicture)
 					.show(getParentFragmentManager(), ErrorListModal.TAG);
 			return;
 		}
 		List<ProjectDiagnostic> errors = editor.getErrors();
 		// The editor shows a single file, so the file is ignored.
-		new ErrorListModal(errors, (file, lineNumber) -> navigateToLine(lineNumber))
+		new ErrorListModal(errors, (file, lineNumber) -> navigateToLine(lineNumber),
+				showsLastPicture)
 				.show(getParentFragmentManager(), ErrorListModal.TAG);
 	}
 

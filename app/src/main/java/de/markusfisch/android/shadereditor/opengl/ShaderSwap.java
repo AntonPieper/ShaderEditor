@@ -260,6 +260,13 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		return current;
 	}
 
+	// GL thread. Whether what draws is another revision than this one:
+	// the last that worked while this one, newer, did not.
+	boolean showsEarlier(@NonNull Revision<S> revision) {
+		return currentRevision != null &&
+				currentRevision.number() != revision.number();
+	}
+
 	@Nullable
 	Revision<S> currentRevision() {
 		return currentRevision;

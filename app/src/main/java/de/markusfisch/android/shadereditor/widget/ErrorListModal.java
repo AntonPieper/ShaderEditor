@@ -30,10 +30,19 @@ public class ErrorListModal extends BottomSheetDialogFragment {
 
 	@NonNull
 	final List<ProjectDiagnostic> errors;
+	// Whether the picture is the last that worked, not of these errors.
+	private final boolean lastPicture;
 
 	public ErrorListModal(@NonNull List<ProjectDiagnostic> errors,
 			@NonNull ErrorAdapter.OnItemClickListener onItemClickListener) {
+		this(errors, onItemClickListener, false);
+	}
+
+	public ErrorListModal(@NonNull List<ProjectDiagnostic> errors,
+			@NonNull ErrorAdapter.OnItemClickListener onItemClickListener,
+			boolean lastPicture) {
 		this.errors = errors;
+		this.lastPicture = lastPicture;
 		this.onItemClickListener = (file, lineNumber) -> {
 			onItemClickListener.onItemClick(file, lineNumber);
 			dismiss();
@@ -58,6 +67,9 @@ public class ErrorListModal extends BottomSheetDialogFragment {
 			@Nullable Bundle savedInstanceState) {
 		View view = inflater.inflate(R.layout.error_list_bottom_sheet_content,
 				container, false);
+		view.findViewById(R.id.last_picture).setVisibility(lastPicture
+				? View.VISIBLE
+				: View.GONE);
 		RecyclerView errorList = view.findViewById(R.id.error_list);
 		errorList.setLayoutManager(new LinearLayoutManager(requireContext()));
 		DividerItemDecoration divider = new DividerItemDecoration(errorList.getContext(),
