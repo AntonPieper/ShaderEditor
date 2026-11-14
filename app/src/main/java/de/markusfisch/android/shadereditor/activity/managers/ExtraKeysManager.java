@@ -1,12 +1,14 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.app.Activity;
-import android.graphics.Rect;
+import android.content.res.Configuration;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -18,7 +20,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.CompletionsAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 
-public class ExtraKeysManager implements ViewTreeObserver.OnGlobalLayoutListener {
+public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeListener {
 	public interface Editor {
 		void insert(@NonNull CharSequence text);
 	}
@@ -48,7 +50,11 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalLayoutListener
 		divider.setDrawable(Objects.requireNonNull(ContextCompat.getDrawable(
 				activity, R.drawable.divider_with_padding_vertical)));
 		completions.addItemDecoration(divider);
-		completions.getViewTreeObserver().addOnGlobalLayoutListener(this);
+		ViewCompat.setOnApplyWindowInsetsListener(extraKeysView, (v, insets) -> {
+			setVisible(ShaderEditorApp.preferences.showExtraKeys());
+			return insets;
+		});
+		extraKeysView.getViewTreeObserver().addOnGlobalFocusChangeListener(this);
 
 		updateVisibility();
 	}
@@ -59,37 +65,34 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalLayoutListener
 
 	public void updateVisibility() {
 		var preferences = ShaderEditorApp.preferences;
-		extraKeysView.setVisibility(
-				getVisibility(preferences.showExtraKeys()));
+		setVisible(preferences.showExtraKeys());
 		insertTabView.setVisibility(
 				getVisibility(preferences.doesShowInsertTab()));
 	}
 
 	public void setVisible(boolean visible) {
-		extraKeysView.setVisibility(getVisibility(visible));
+		extraKeysView.setVisibility(getVisibility(visible &&
+				(!ShaderEditorApp.preferences.autoHideExtraKeys() ||
+						isKeyboardOpen())));
 	}
 
 	@Override
-	public void onGlobalLayout() {
-		var preferences = ShaderEditorApp.preferences;
-		if (!preferences.autoHideExtraKeys()) {
-			return;
-		}
-		if (!preferences.showExtraKeys()) {
-			extraKeysView.setVisibility(View.GONE);
-			return;
-		}
+	public void onGlobalFocusChanged(View oldFocus, View newFocus) {
+		setVisible(ShaderEditorApp.preferences.showExtraKeys());
+	}
 
-		Rect r = new Rect();
-		extraKeysView.getWindowVisibleDisplayFrame(r);
-		int screenHeight = extraKeysView.getRootView().getHeight();
-
-		// r.bottom is the position above soft keypad or device button.
-		// if keypad is shown, the r.bottom is smaller than that before.
-		int keypadHeight = screenHeight - r.bottom;
-		// 0.15 ratio is perhaps enough to determine keypad height.
-		extraKeysView.setVisibility(getVisibility(
-				keypadHeight > screenHeight * 0.15));
+	// An on-screen keyboard is open (docked or floating), or a hardware
+	// keyboard is attached while text has the focus.
+	private boolean isKeyboardOpen() {
+		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(extraKeysView);
+		if (insets != null && insets.isVisible(WindowInsetsCompat.Type.ime())) {
+			return true;
+		}
+		Configuration config = extraKeysView.getResources().getConfiguration();
+		View focus = extraKeysView.getRootView().findFocus();
+		return config.keyboard != Configuration.KEYBOARD_NOKEYS &&
+				config.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO &&
+				focus != null && focus.onCheckIsTextEditor();
 	}
 
 	private static int getVisibility(boolean isVisible) {
