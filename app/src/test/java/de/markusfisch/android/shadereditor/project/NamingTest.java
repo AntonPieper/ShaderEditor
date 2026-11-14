@@ -1,4 +1,4 @@
-package de.markusfisch.android.shadereditor.navigation;
+package de.markusfisch.android.shadereditor.project;
 
 import static org.junit.Assert.assertEquals;
 

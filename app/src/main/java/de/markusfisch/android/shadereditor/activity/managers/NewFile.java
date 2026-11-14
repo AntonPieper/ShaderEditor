@@ -14,7 +14,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.navigation.Naming;
+import de.markusfisch.android.shadereditor.project.Naming;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectParseResult;
