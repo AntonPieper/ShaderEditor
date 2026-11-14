@@ -77,8 +77,17 @@ public class LibraryMoveTest {
 					settings, previews, (path, time) -> {
 				stamped.put(path.toString(), time);
 				new File(library, path.toString()).setLastModified(time);
-			}, this::select, "Untitled",
-					new LibraryMove.Chosen(template, lastOpened));
+			}, new LibraryMove.Selector() {
+				@Override
+				public boolean select(ProjectPath path) {
+					return Start.this.select(path);
+				}
+
+				@Override
+				public boolean shows() {
+					return new File(root, "shown").isFile();
+				}
+			}, "Untitled", new LibraryMove.Chosen(template, lastOpened));
 			move.between = () -> {
 				if (steps++ == die) {
 					throw new Death();
@@ -89,9 +98,12 @@ public class LibraryMoveTest {
 
 		// What a session keeps as the file it shows, as a file.
 		private boolean select(ProjectPath path) {
+			if (selectionFails) {
+				return false;
+			}
 			try {
 				write(new File(root, "shown"), path.toString());
-				return !selectionFails;
+				return true;
 			} catch (IOException e) {
 				return false;
 			}
@@ -582,6 +594,26 @@ public class LibraryMoveTest {
 		Start third = start(temp.getRoot(), 7);
 		third.move(database);
 		assertEquals("Sky.frag", third.everything().get("shown"));
+	}
+
+	// The session could not take the selection. Before the next start
+	// the user opens another shader: that is what the library shows,
+	// and the retry leaves it.
+	@Test
+	public void aFileTheUserPickedAfterAFailedSelectionStays()
+			throws IOException {
+		MoveDatabase database = database();
+		Start first = start(temp.getRoot(), 7);
+		first.selectionFails = true;
+		first.move(database);
+		assertEquals("none", first.everything().get("shown"));
+		assertEquals("false", first.everything().get("selected"));
+
+		write(new File(temp.getRoot(), "shown"), "Sky.frag");
+		Start second = start(temp.getRoot(), 7);
+		second.move(database);
+		assertEquals("Sky.frag", second.everything().get("shown"));
+		assertEquals("true", second.everything().get("selected"));
 	}
 
 	@Test

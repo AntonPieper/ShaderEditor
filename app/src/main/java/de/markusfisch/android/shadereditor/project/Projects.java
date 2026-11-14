@@ -328,12 +328,27 @@ public final class Projects {
 			Set<String> reserved, String untitled,
 			LibraryMove.Chosen chosen) {
 		return library().move(new DatabaseBackup(database,
-				ProjectLimits.DEFAULT, reserved), untitled, chosen, path -> {
-			Locator locator = libraryLocator();
-			String id = locator != null ? sessions.open(locator) : null;
-			return id != null && sessions.setShown(id, path) &&
-					sessions.setRunning(id, path);
-		}, this::relocated);
+				ProjectLimits.DEFAULT, reserved), untitled, chosen,
+				new LibraryMove.Selector() {
+					@Override
+					public boolean select(ProjectPath path) {
+						Locator locator = libraryLocator();
+						String id = locator != null
+								? sessions.open(locator)
+								: null;
+						return id != null && sessions.setShown(id, path) &&
+								sessions.setRunning(id, path);
+					}
+
+					@Override
+					public boolean shows() {
+						Locator locator = libraryLocator();
+						String id = locator != null
+								? sessions.find(locator)
+								: null;
+						return id != null && sessions.shown(id) != null;
+					}
+				}, this::relocated);
 	}
 
 	// The session of the library goes with the folder that is put
