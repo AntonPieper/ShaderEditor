@@ -26,15 +26,17 @@ final class EngineInputs {
 	private final RuntimeClock runtimeClock = new RuntimeClock();
 	private final FrameInputs frameInputs = new FrameInputs();
 	private final Object lock = new Object();
-	// Guarded by lock.
+	// Guarded by lock. Touches as the surface reports them, from its
+	// top left; a frame takes them to the render size it is drawn at.
 	private final float[] pointers = new float[FrameInputs.MAX_POINTERS * 3];
 	private int pointerCount;
 	private float touchX;
 	private float touchY;
 	private float touchStartX;
 	private float touchStartY;
-	private float mouseX;
-	private float mouseY;
+	// Until the first touch, and the first touch down, they read 0.
+	private boolean touched;
+	private boolean started;
 	private float offsetX;
 	private float offsetY;
 	private float quality = 1f;
@@ -76,15 +78,15 @@ final class EngineInputs {
 		synchronized (lock) {
 			float[] p = touch.pointers();
 			if (touch.count() > 0) {
-				touchX = p[0] * quality;
-				touchY = renderHeight - p[1] * quality;
-				mouseX = touchX / renderWidth;
-				mouseY = 1 - p[1] * quality / renderHeight;
+				touchX = p[0];
+				touchY = p[1];
+				touched = true;
 			}
 			switch (touch.action()) {
 				case MotionEvent.ACTION_DOWN:
 					touchStartX = touchX;
 					touchStartY = touchY;
+					started = touched;
 					break;
 				case MotionEvent.ACTION_UP:
 				case MotionEvent.ACTION_CANCEL:
@@ -94,11 +96,7 @@ final class EngineInputs {
 					break;
 			}
 			pointerCount = touch.count();
-			for (int i = 0, end = pointerCount * 3; i < end; i += 3) {
-				pointers[i] = p[i] * quality;
-				pointers[i + 1] = renderHeight - p[i + 1] * quality;
-				pointers[i + 2] = p[i + 2];
-			}
+			System.arraycopy(p, 0, pointers, 0, pointerCount * 3);
 		}
 	}
 
@@ -183,14 +181,22 @@ final class EngineInputs {
 		synchronized (lock) {
 			in.width = renderWidth;
 			in.height = renderHeight;
-			in.touchX = touchX;
-			in.touchY = touchY;
-			in.touchStartX = touchStartX;
-			in.touchStartY = touchStartY;
-			in.mouseX = mouseX;
-			in.mouseY = mouseY;
+			// From the bottom left, in render pixels, as the engine has
+			// always given them.
+			in.touchX = touched ? touchX * quality : 0;
+			in.touchY = touched ? renderHeight - touchY * quality : 0;
+			in.touchStartX = started ? touchStartX * quality : 0;
+			in.touchStartY = started
+					? renderHeight - touchStartY * quality
+					: 0;
+			in.mouseX = touched ? in.touchX / renderWidth : 0;
+			in.mouseY = touched ? 1 - touchY * quality / renderHeight : 0;
 			in.pointerCount = pointerCount;
-			System.arraycopy(pointers, 0, in.pointers, 0, pointerCount * 3);
+			for (int i = 0, end = pointerCount * 3; i < end; i += 3) {
+				in.pointers[i] = pointers[i] * quality;
+				in.pointers[i + 1] = renderHeight - pointers[i + 1] * quality;
+				in.pointers[i + 2] = pointers[i + 2];
+			}
 			in.offsetX = offsetX;
 			in.offsetY = offsetY;
 		}

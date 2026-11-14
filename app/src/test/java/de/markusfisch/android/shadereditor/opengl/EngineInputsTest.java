@@ -93,6 +93,44 @@ public class EngineInputsTest {
 		assertEquals(7.5f, inputs.capture(6500000000L, 3f).runtime, EPSILON);
 	}
 
+	// A touch stays where it was on the surface when the quality or the
+	// size changes without another touch event, and so does a pass's
+	// pixel coordinate of it: (50, 25) on a 100x100 surface is
+	// (128, 192) in a 256x256 pass at any quality.
+	@Test
+	public void aTouchKeepsItsPlaceWhenQualityOrSizeChange() {
+		var inputs = new EngineInputs();
+		inputs.resize(100, 100);
+		inputs.restart(1f, 0L);
+		var before = inputs.capture(0L, 3f);
+		assertEquals(0f, before.touchY, 0f);
+		assertEquals(0f, before.touchStartY, 0f);
+		assertEquals(0f, before.mouseY, 0f);
+		inputs.post(touch(MotionEvent.ACTION_DOWN, 50f, 25f, 5f));
+		var pass = new FrameInputs();
+		pass.scale(inputs.capture(0L, 3f), 256, 256);
+		assertEquals(128f, pass.touchX, 1e-4f);
+		assertEquals(192f, pass.touchY, 1e-4f);
+		inputs.restart(.5f, 0L);
+		var half = inputs.capture(0L, 3f);
+		assertEquals(25f, half.touchX, 1e-4f);
+		assertEquals(37.5f, half.touchY, 1e-4f);
+		assertEquals(.5f, half.mouseX, 1e-4f);
+		pass.scale(half, 256, 256);
+		assertEquals(128f, pass.touchX, 1e-4f);
+		assertEquals(192f, pass.touchY, 1e-4f);
+		assertEquals(128f, pass.touchStartX, 1e-4f);
+		assertEquals(192f, pass.touchStartY, 1e-4f);
+		assertEquals(128f, pass.pointers[0], 1e-4f);
+		assertEquals(192f, pass.pointers[1], 1e-4f);
+		inputs.restart(1f, 0L);
+		inputs.resize(100, 200);
+		var taller = inputs.capture(0L, 3f);
+		assertEquals(175f, taller.touchY, 1e-4f);
+		assertEquals(175f, taller.touchStartY, 1e-4f);
+		assertEquals(175f, taller.pointers[1], 1e-4f);
+	}
+
 	@Test
 	public void touchIsScaledToTheRenderTarget() {
 		var inputs = new EngineInputs();
