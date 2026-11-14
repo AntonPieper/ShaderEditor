@@ -106,7 +106,7 @@ Status: K keep, R rework, N new, X remove. Lengths are targets.
 | 23 | Techniques | Bloom | A second pass at quarter size, read in the same frame | shader input, `se target scale`, `filter=linear` | N, after Gate B |
 | 24 | Wallpapers | Ink | The technique kitchen sink: a simulation pass with history and a display pass | `frame=previous`, `initial` from a shader, `#include`, a texture, `touch`, `gravity` | N, after Gate B |
 
-Built: Blobs (X11); Skybox, whose strip `textures/sky.png` is drawn by `tools/examples/sky.py`, and Texture's floor in perspective with `filter`, `mipmap` and `wrap` (X12). Texture keeps its list picture and line, which release builds share.
+Built: Blobs (X11); Skybox, whose strip `textures/sky.png` is drawn by `tools/examples/sky.py`, and Texture's floor in perspective with `filter`, `mipmap` and `wrap` (X12). Texture keeps its list picture and line, which release builds share. Bloom (X13): four files in `Bloom/` (scene, a bright pass at `scale=0.25`, a 5 x 5 blur at `scale=0.125`, the composite); every target is `rgba8`, so it runs the same on every device, and the threshold lies below 1 because a pixel cannot be brighter.
 
 Rows 1 to 20 declare all 39 builtin names. With rows 21 to 24 the set uses every project feature except the manifest, a fixed target `size`, and `format=rgba16f`; those three stay with the tests.
 

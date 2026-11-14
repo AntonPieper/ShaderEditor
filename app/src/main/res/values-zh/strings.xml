@@ -223,6 +223,8 @@
 	<string name="samples_section_wallpapers">Wallpapers</string>
 	<string name="sample_battery_name">电池电量</string>
 	<string name="sample_battery_rationale">Plug in the charger; the level rises in pulses</string>
+	<string name="sample_bloom_name">Bloom</string>
+	<string name="sample_bloom_rationale">Only the brightest lamps glow; touch to add one</string>
 	<string name="sample_blobs_name">Blobs</string>
 	<string name="sample_blobs_rationale">Drag a finger; its blob melts into the others</string>
 	<string name="sample_camera_back_name">后置摄像头</string>

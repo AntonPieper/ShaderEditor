@@ -81,6 +81,7 @@ public class SamplesTest {
 				"GLES 3.frag",
 				"Blobs.frag",
 				"Skybox.frag",
+				"Bloom/main.frag",
 				"Horizon.frag"), paths());
 	}
 
@@ -105,6 +106,7 @@ public class SamplesTest {
 				Samples.Section.DEVICE_INPUTS,
 				Samples.Section.DEVICE_INPUTS,
 				Samples.Section.DEVICE_INPUTS,
+				Samples.Section.TECHNIQUES,
 				Samples.Section.TECHNIQUES,
 				Samples.Section.TECHNIQUES,
 				Samples.Section.TECHNIQUES,
