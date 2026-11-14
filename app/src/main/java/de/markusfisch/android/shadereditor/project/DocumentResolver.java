@@ -39,6 +39,13 @@ public interface DocumentResolver {
 	 */
 	byte[] read(String id, long limit) throws IOException;
 
+	/** Return at most the first count bytes of document id. */
+	default byte[] head(String id, int count) throws IOException {
+		byte[] bytes = read(id);
+		return java.util.Arrays.copyOf(bytes,
+				Math.min(count, bytes.length));
+	}
+
 	/**
 	 * Replace the content of a file.
 	 */

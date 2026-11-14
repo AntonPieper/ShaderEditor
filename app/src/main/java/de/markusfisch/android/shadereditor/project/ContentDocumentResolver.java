@@ -97,6 +97,16 @@ public final class ContentDocumentResolver implements DocumentResolver {
 	}
 
 	@Override
+	public byte[] head(String id, int count) throws IOException {
+		try (InputStream in = resolver.openInputStream(uri(id))) {
+			if (in == null) {
+				throw new FileNotFoundException(id);
+			}
+			return DirectoryProjectFiles.head(in, count);
+		}
+	}
+
+	@Override
 	public void write(String id, byte[] bytes) throws IOException {
 		try (OutputStream out = resolver.openOutputStream(uri(id), "wt")) {
 			if (out == null) {

@@ -148,6 +148,19 @@ public interface ProjectFiles {
 	}
 
 	/**
+	 * Return at most the first count bytes of the file at path, to tell
+	 * what it is without reading it whole, or null when there is no
+	 * such file or it cannot be read. A store that reads a stream stops
+	 * after them; one that cannot reads the file.
+	 */
+	default byte[] head(ProjectPath path, int count) {
+		return read(path) instanceof Content content
+				? java.util.Arrays.copyOf(content.bytes(),
+						Math.min(count, content.bytes().length))
+				: null;
+	}
+
+	/**
 	 * List a folder, the project root when folder is null: its entries,
 	 * why it could not be listed, or null when there is no such folder.
 	 */
