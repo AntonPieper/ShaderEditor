@@ -220,7 +220,7 @@ The existing whole-text types (`Tokens`, `Outline`, `GlslCompletion`) stay as th
 
 ### 4.4 Layout and drawing
 
-**No line wrapping; horizontal scrolling.** This is what the editor does today, so nothing changes for users. It is also the right default for code on a phone: indentation carries meaning, wrapped code hides it, and people who write shaders on a phone keep lines short or scroll. It makes layout trivial and exact: every line has the same height, so line n is at `n × lineHeight` and the line at a y position is a division. Soft wrap is not built. It could be added later without changing the modules (it needs a per-line count of visual rows, summed in the same tree as the line counts), and it would roughly double the layout code, so it should wait for someone to ask (decision D3).
+**No line wrapping; horizontal scrolling.** This is what the editor does today, so nothing changes for users. It is also the right default for code on a phone: indentation carries meaning, wrapped code hides it, and people who write shaders on a phone keep lines short or scroll. It makes layout trivial and exact: every line has the same height, so line n is at `n × lineHeight` and the line at a y position is a division. The one exception is the message row of a compile error (section 14): at most one row of its own height under one line, which moves the lines after it down by that height, so both stay one multiplication and one division plus a comparison. Every place of a line in the view (drawing, the gutter, touch, handles, the magnifier, the toolbar, scrolling to the caret, character bounds for services) comes from one class, `LineGeometry`. Soft wrap is not built. It could be added later without changing the modules (it needs a per-line count of visual rows, summed in the same tree as the line counts), and it would roughly double the layout code, so it should wait for someone to ask (decision D3).
 
 **One line, one layout.** `LineLayout` is the unit: for a line's text and colour runs it answers `xOf(column)`, `columnAt(x)`, `width()` and `draw(canvas)`. It has two implementations behind that interface:
 
@@ -248,7 +248,7 @@ The existing whole-text types (`Tokens`, `Outline`, `GlslCompletion`) stay as th
 - **Composing text:** an underline.
 - **Caret:** a rectangle, blinking twice a second, and it is the only thing that redraws when idle.
 
-**Scrolling.** The view is the size of its place on screen and scrolls itself with the `View` scroll offsets, an `OverScroller` for flings and the standard scroll bars. The vertical range is `lineCount × lineHeight` plus room below the last line. The horizontal range is the widest line laid out so far, never less than the tree's longest line in characters times the character width (the tree can keep the longest line length per node; the prototype does). Edge effects are standard `EdgeEffect`s.
+**Scrolling.** The view is the size of its place on screen and scrolls itself with the `View` scroll offsets, an `OverScroller` for flings and the standard scroll bars. The vertical range is `lineCount × lineHeight`, plus the message row's height while one is open, plus room below the last line. The horizontal range is the widest line laid out so far, never less than the tree's longest line in characters times the character width (the tree can keep the longest line length per node; the prototype does). Edge effects are standard `EdgeEffect`s.
 
 ### 4.5 Input
 
@@ -690,3 +690,20 @@ An independent review of the pure-Java core (T1 to T7, T14) found 29 issues, one
 - **Recording is an instrument, not a feature**: it is bounded, off by default, and meant for small texts.
 
 **Still to do on devices:** the Android shell must send a lone committed line break to the Enter command (Gboard sends Enter as text), build `replaceText` from the primitives, and close an old `TextInput` itself on Android 6, which has no `closeConnection`.
+
+## 14. Compile errors next to their lines (2026-11-14)
+
+The owner compared six places for the compiler's message (beside the toolbar's title, a row under the toolbar, a row under the failing line, after the end of the line, on demand from the line number, a strip above the extra keys) on the emulator, and a prototype of the row under the line in this editor. Decided: **two separate features.** The list of all errors stays where it is, behind the toolbar's error button. The new editor adds **one message row under a failing line**; today's editor keeps today's message over the toolbar.
+
+The rules:
+
+1. **One row, part of the line geometry.** The code view draws it directly under a failing line, as tall as its text; the lines after it move down by its height (4.4). One row at a time. Every failing line has the red background and a mark at its line number, a 48 dp touch target; tapping a mark opens the row there, tapping the open row's mark closes it. Warnings keep their amber background and get no row.
+2. **Which row opens by itself after a result:** the caret's line if it fails; otherwise the line of the row already open, if it still fails; otherwise the first failing line on screen; otherwise none, and only the marks show. A row the user opened or closed by tap stays so until the set of failing lines changes.
+3. **The caret's line never moves on screen because the row opened, closed, moved or changed height:** the scroll position is corrected in the same frame (when the caret is off screen, the first line on screen holds). The one exception is the very top of the text, where there is nothing above to scroll away.
+4. **Calm while typing.** A result replaces the row's text in place; the row closes only when a result has no error on its line. The app clears the errors before each run for today's editor; for this one it keeps the last result until the next one arrives.
+5. **At most three lines.** The messages of the line, in the compiler's order, each from a new line, wrapped beside the gutter. Text that does not fit ends in an ellipsis; errors that do not fit at all are counted at the end of the last line, "+2 more". The full list is behind the error button.
+6. **Look:** the error role on the surface role, body text, the one radius rule (STYLE.md 6.10).
+7. **Accessibility:** the row is not part of the text. After a result, the first error is announced once while it stays the same, and the error of the caret's line is the node's error (4.6).
+
+Why not the alternatives: a message that floats (the snackbar today, a popup) covers either the toolbar, exactly the controls one needs while the shader is broken, or the line being typed; a row under the toolbar or a strip above the keys moves all of the code, or the bottom edge, each time the shader breaks or recovers, far from the caret; the toolbar's second line holds about 15 characters in portrait, which says that something is wrong but not what; text after the end of the line shows nothing exactly when the line is long. The row under the line keeps the eyes at the line, and the scroll correction keeps the line being typed still.
+
