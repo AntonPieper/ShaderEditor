@@ -73,6 +73,17 @@ public final class Library {
 	}
 
 	/**
+	 * What follows the files of the library when its project renames
+	 * or deletes one: the settings and the pictures kept by path.
+	 */
+	FileTexts.Kept kept() {
+		return move -> {
+			boolean settings = settings().follow(move);
+			return previews().follow(move) && settings;
+		};
+	}
+
+	/**
 	 * Move every shader of source that is not moved yet into the
 	 * library, see {@link LibraryMove}. A redo that did not finish is
 	 * finished first, and while it cannot be, nothing is moved.

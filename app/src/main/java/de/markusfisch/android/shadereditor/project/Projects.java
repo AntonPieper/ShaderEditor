@@ -315,7 +315,21 @@ public final class Projects {
 	}
 
 	private void open(String id, boolean remember, Callback<Opened> done) {
-		live().open(id, locator -> SafProjects.open(context, locator),
+		live().open(id, new LiveProjects.Opener() {
+					@Override
+					public SafProjects.Opened open(Locator locator) {
+						return SafProjects.open(context, locator);
+					}
+
+					// The settings and pictures of the library follow
+					// its files.
+					@Override
+					public FileTexts.Kept kept(Locator locator) {
+						return locator.equals(libraryLocator())
+								? library().kept()
+								: null;
+					}
+				},
 				project -> {
 					if (project == null) {
 						done.done(new Opened(id, null,

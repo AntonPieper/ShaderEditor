@@ -355,6 +355,17 @@ public final class OpenProject {
 	static OpenProject open(String id, ProjectFiles store, ProjectPath lone,
 			String problem, ProjectSessions sessions, Executor worker,
 			Executor main, Later later, long budget) {
+		return open(id, store, lone, problem, sessions, worker, main, later,
+				budget, null);
+	}
+
+	/**
+	 * Open a project as above; kept follows its files when one is
+	 * renamed or deleted, or is null.
+	 */
+	static OpenProject open(String id, ProjectFiles store, ProjectPath lone,
+			String problem, ProjectSessions sessions, Executor worker,
+			Executor main, Later later, long budget, FileTexts.Kept kept) {
 		Journal journal = sessions.journal(id);
 		if (journal == null) {
 			return null;
@@ -388,6 +399,7 @@ public final class OpenProject {
 		OpenProject project = new OpenProject(id, store, sessions, journal,
 				sessions.histories(id), sessions.recent(id), worker, main,
 				later, lone, storage, budget);
+		project.texts.kept = kept;
 		journal.removeLeftovers();
 		// A rename or deletion the process died in is finished or
 		// dropped before the journals are looked at.
