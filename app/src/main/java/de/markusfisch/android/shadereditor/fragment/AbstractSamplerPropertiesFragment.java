@@ -12,9 +12,11 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
+
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -26,6 +28,7 @@ import de.markusfisch.android.shadereditor.activity.AddUniformActivity;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.legacy.LegacySamplerSettings;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
+import de.markusfisch.android.shadereditor.widget.Message;
 import de.markusfisch.android.shadereditor.widget.TextureParametersView;
 
 public abstract class AbstractSamplerPropertiesFragment extends Fragment {
@@ -150,18 +153,12 @@ public abstract class AbstractSamplerPropertiesFragment extends Fragment {
 				.comment(LegacySamplerSettings.TEXTURE);
 
 		if (name.trim().isEmpty()) {
-			Toast.makeText(
-					context,
-					R.string.missing_name,
-					Toast.LENGTH_SHORT).show();
+			showMessage(R.string.missing_name);
 
 			return;
 		} else if (!name.matches(TEXTURE_NAME_PATTERN) ||
 				name.equals(UniformTable.BACKBUFFER)) {
-			Toast.makeText(
-					context,
-					R.string.invalid_texture_name,
-					Toast.LENGTH_SHORT).show();
+			showMessage(R.string.invalid_texture_name);
 
 			return;
 		}
@@ -192,10 +189,7 @@ public abstract class AbstractSamplerPropertiesFragment extends Fragment {
 					}
 
 					if (messageId > 0) {
-						Toast.makeText(
-								activity,
-								messageId,
-								Toast.LENGTH_SHORT).show();
+						showMessage(messageId);
 
 						return;
 					}
@@ -212,6 +206,16 @@ public abstract class AbstractSamplerPropertiesFragment extends Fragment {
 			});
 		} finally {
 			executor.shutdown();
+		}
+	}
+
+	// Above the button that was pressed, so that it can be pressed again.
+	private void showMessage(@StringRes int text) {
+		Activity activity = getActivity();
+		if (activity != null) {
+			Message.make(activity, activity.getText(text), Snackbar.LENGTH_LONG)
+					.setAnchorView(R.id.save)
+					.show();
 		}
 	}
 

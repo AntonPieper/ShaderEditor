@@ -1,9 +1,9 @@
 package de.markusfisch.android.shadereditor.io;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.Environment;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -21,13 +21,14 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
+import de.markusfisch.android.shadereditor.widget.Message;
 
 public class ImportExportAsFiles {
 	private static final String IMPORT_EXPORT_DIRECTORY = "ShaderEditor";
 	private static final String SHADER_FILE_EXTENSION = ".glsl";
 	private static final String ILLEGAL_CHARACTER_REPLACEMENT = "_";
 
-	public static void importFromDirectory(Context context) {
+	public static void importFromDirectory(@NonNull Activity context) {
 		try {
 			DataSource dataSource = Database.getInstance(context).getDataSource();
 			File importDirectory = getImportExportDirectory(context, false);
@@ -65,17 +66,17 @@ public class ImportExportAsFiles {
 					str = res.getQuantityString(R.plurals.n_shaders_successfully_imported,
 							successCount, successCount);
 				}
-				Toast.makeText(context, str, Toast.LENGTH_LONG).show();
+				Message.show(context, str);
 			} else {
-				Toast.makeText(context, R.string.no_shaders_found, Toast.LENGTH_LONG).show();
+				Message.show(context, R.string.no_shaders_found);
 			}
 		} catch (IOException e) {
-			Toast.makeText(context, context.getString(R.string.import_failed, e.getMessage()),
-					Toast.LENGTH_LONG).show();
+			Message.show(context, context.getString(R.string.import_failed,
+					e.getMessage()));
 		}
 	}
 
-	public static void exportToDirectory(Context context) {
+	public static void exportToDirectory(@NonNull Activity context) {
 		try {
 			DataSource dataSource = Database.getInstance(context).getDataSource();
 			File exportDirectory = getImportExportDirectory(context, true);
@@ -124,11 +125,11 @@ public class ImportExportAsFiles {
 					str = res.getQuantityString(R.plurals.n_shaders_successfully_exported,
 							successCount, successCount);
 				}
-				Toast.makeText(context, str, Toast.LENGTH_LONG).show();
+				Message.show(context, str);
 			}
 		} catch (IOException e) {
-			Toast.makeText(context, context.getString(R.string.n_shaders_export_failed,
-					e.getMessage()), Toast.LENGTH_LONG).show();
+			Message.show(context, context.getString(
+					R.string.n_shaders_export_failed, e.getMessage()));
 		}
 	}
 

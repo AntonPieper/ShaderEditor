@@ -6,7 +6,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -30,6 +29,7 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.widget.Message;
 
 // A database shader open in the editor, or text that becomes one when
 // it is saved.
@@ -54,6 +54,7 @@ public class ShaderManager implements OpenItem {
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final Runnable titleListener;
+	private final Runnable savedListener;
 
 	private long selectedShaderId = NO_SHADER;
 	@NonNull
@@ -68,7 +69,8 @@ public class ShaderManager implements OpenItem {
 			NavigationManager navigationManager,
 			DataSource dataSource,
 			ShaderViewManager.Listener shaderViewManagerListener,
-			@NonNull Runnable titleListener) {
+			@NonNull Runnable titleListener,
+			@NonNull Runnable savedListener) {
 		this.activity = activity;
 		this.editorFragment = editorFragment;
 		this.shaderViewManager = shaderViewManager;
@@ -76,6 +78,7 @@ public class ShaderManager implements OpenItem {
 		this.navigationManager = navigationManager;
 		this.dataSource = dataSource;
 		this.titleListener = titleListener;
+		this.savedListener = savedListener;
 
 		addUniformLauncher = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -184,8 +187,12 @@ public class ShaderManager implements OpenItem {
 		setModified(true);
 	}
 
+	// The title shows whether there are unsaved changes.
 	public void setModified(boolean modified) {
-		this.isModified = modified;
+		if (isModified != modified) {
+			isModified = modified;
+			titleListener.run();
+		}
 		// The EditorFragment's modified state is managed internally by its
 		// UndoRedo helper. It cannot and should not be set from the outside.
 		// When a shader is loaded via `selectShader`,
@@ -271,8 +278,7 @@ public class ShaderManager implements OpenItem {
 			long newId = dataSource.shader.insertShader(
 					src, null, thumbnail, quality);
 			if (newId <= 0) {
-				Toast.makeText(activity, R.string.storage_not_writeable,
-						Toast.LENGTH_LONG).show();
+				Message.show(activity, R.string.storage_not_writeable);
 				return false;
 			}
 			selectedShaderId = newId;
@@ -286,8 +292,9 @@ public class ShaderManager implements OpenItem {
 		updatePendingCrashShaderId();
 		setModified(false);
 		shaderListManager.loadShadersAsync();
-		Toast.makeText(activity, R.string.shader_saved,
-				Toast.LENGTH_SHORT).show();
+		if (force) {
+			savedListener.run();
+		}
 		return true;
 	}
 
@@ -359,8 +366,7 @@ public class ShaderManager implements OpenItem {
 				return sb.toString();
 			}
 		} catch (IOException | SecurityException e) {
-			Toast.makeText(activity, R.string.unsuitable_text,
-					Toast.LENGTH_SHORT).show();
+			Message.show(activity, R.string.unsuitable_text);
 			return null;
 		}
 	}

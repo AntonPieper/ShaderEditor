@@ -9,7 +9,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -18,9 +17,12 @@ import androidx.core.view.MenuProvider;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Lifecycle;
 
+import com.google.android.material.snackbar.Snackbar;
+
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.AbstractSubsequentActivity;
 import de.markusfisch.android.shadereditor.widget.CubeMapView;
+import de.markusfisch.android.shadereditor.widget.Message;
 
 public class CubeMapFragment extends Fragment {
 	public interface CubeMapViewProvider {
@@ -106,10 +108,11 @@ public class CubeMapFragment extends Fragment {
 				if (activity == null) {
 					return;
 				}
-				Toast.makeText(
-						activity,
-						R.string.not_enough_faces,
-						Toast.LENGTH_SHORT).show();
+				Message.make(activity, activity.getText(
+								R.string.not_enough_faces),
+								Snackbar.LENGTH_LONG)
+						.setAnchorView(R.id.crop)
+						.show();
 				return;
 			}
 		}

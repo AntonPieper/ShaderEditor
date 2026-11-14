@@ -7,7 +7,8 @@ import androidx.annotation.Nullable;
  * What the editor of the main screen has open. The activity and its
  * managers ask it for the toolbar's text and let it save, copy, delete,
  * share and install itself, without knowing where it is stored. It
- * tells the activity when its title or second line changed. Every
+ * tells the activity when its title, second line or unsaved state
+ * changed, and when an explicit save succeeded. Every
  * method is called on the main thread.
  */
 public interface OpenItem {

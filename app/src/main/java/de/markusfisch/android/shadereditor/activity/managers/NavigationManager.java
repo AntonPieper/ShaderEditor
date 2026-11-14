@@ -5,7 +5,6 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
@@ -16,6 +15,7 @@ import de.markusfisch.android.shadereditor.activity.LoadSampleActivity;
 import de.markusfisch.android.shadereditor.activity.PreferencesActivity;
 import de.markusfisch.android.shadereditor.activity.PreviewActivity;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.widget.Message;
 
 public class NavigationManager {
 	@NonNull
@@ -76,8 +76,7 @@ public class NavigationManager {
 		try {
 			activity.startActivity(intent);
 		} catch (ActivityNotFoundException e) {
-			Toast.makeText(activity, R.string.cannot_open_content,
-					Toast.LENGTH_SHORT).show();
+			Message.show(activity, R.string.cannot_open_content);
 		}
 	}
 }

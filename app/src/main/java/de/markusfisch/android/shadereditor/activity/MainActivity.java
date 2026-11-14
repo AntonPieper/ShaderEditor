@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -44,10 +43,13 @@ import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.service.ShaderWallpaperService;
 import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
+import de.markusfisch.android.shadereditor.widget.Message;
 
 public class MainActivity extends AppCompatActivity {
 	private static final String CODE_VISIBLE = "code_visible";
 	private static final String TOOLBAR_TITLE = "toolbar_title";
+	// How long an explicit save is told in the toolbar's second line.
+	private static final long SAVED_NOTICE_MILLIS = 2000;
 	private static final String CRASH_RECOVERY_COMMENT = """
 			// Shader Editor disabled this shader because it caused a crash while loading.
 			// Fix the shader and remove the #if 0 wrapper to re-enable it.
@@ -105,7 +107,9 @@ public class MainActivity extends AppCompatActivity {
 				navigationManager,
 				dataSource,
 				createShaderViewListener(),
-				this::showOpenTitle);
+				this::showOpenTitle,
+				() -> uiManager.showNotice(getText(R.string.shader_saved),
+						SAVED_NOTICE_MILLIS));
 		open = shaderManager;
 
 		MainMenuManager mainMenuManager = new MainMenuManager(
@@ -198,7 +202,8 @@ public class MainActivity extends AppCompatActivity {
 				? state.getCharSequence(TOOLBAR_TITLE)
 				: uiManager.getToolbarTitle();
 		super.onPostCreate(state);
-		uiManager.setToolbarTitle(title, open.getSubtitle());
+		uiManager.setToolbarTitle(title, open.getSubtitle(),
+				open.isModified());
 		if (uiManager.drawerToggle != null) {
 			uiManager.drawerToggle.syncState();
 		}
@@ -333,7 +338,7 @@ public class MainActivity extends AppCompatActivity {
 			public void onFramesPerSecond(int fps) {
 				if (fps > 0) {
 					ShaderEditorApp.preferences.setPendingCrashShaderId(0);
-					uiManager.setToolbarSubtitle(fps + " fps");
+					uiManager.setFrameRate(fps + " fps");
 				}
 			}
 
@@ -530,7 +535,8 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 	private void showOpenTitle() {
-		uiManager.setToolbarTitle(open.getTitle(), open.getSubtitle());
+		uiManager.setToolbarTitle(open.getTitle(), open.getSubtitle(),
+				open.isModified());
 	}
 
 	private void updateWallpaper() {
@@ -553,7 +559,7 @@ public class MainActivity extends AppCompatActivity {
 				messageId = R.string.pick_live_wallpaper_manually;
 			}
 		}
-		Toast.makeText(this, messageId, Toast.LENGTH_SHORT).show();
+		Message.show(this, messageId);
 	}
 
 	private void runShader() {
@@ -585,8 +591,7 @@ public class MainActivity extends AppCompatActivity {
 		String recoveredSource = buildCrashRecoverySource(shader.fragmentShader());
 		dataSource.shader.updateShader(shaderId, recoveredSource, null, shader.quality());
 		preferences.setPendingCrashShaderId(0);
-		Toast.makeText(this, R.string.shader_disabled_after_crash,
-				Toast.LENGTH_LONG).show();
+		Message.show(this, R.string.shader_disabled_after_crash);
 	}
 
 	@NonNull
