@@ -79,6 +79,24 @@ final class LineGeometry {
 				offset(anchor, oldLine, oldHeight);
 	}
 
+	/**
+	 * Return the scroll position nearest scrollY that shows line n with
+	 * its row, if the row is under it, between visibleTop and
+	 * visibleBottom from the view's top, measured like scrollY from the
+	 * top of line 0; the line itself wins when both do not fit.
+	 */
+	int reveal(int scrollY, int n, float visibleTop, float visibleBottom) {
+		float top = top(n);
+		float bottom = top + lineHeight + (n == rowLine ? rowHeight : 0);
+		if (bottom > scrollY + visibleBottom) {
+			scrollY = (int) Math.ceil(bottom - visibleBottom);
+		}
+		if (top < scrollY + visibleTop) {
+			scrollY = (int) Math.floor(top - visibleTop);
+		}
+		return scrollY;
+	}
+
 	private static int offset(int n, int rowLine, int rowHeight) {
 		return rowLine >= 0 && n > rowLine ? rowHeight : 0;
 	}
