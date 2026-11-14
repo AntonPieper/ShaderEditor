@@ -165,6 +165,7 @@ public final class OpenProject {
 	private record State(Set<ProjectPath> unsaved, Set<ProjectPath> conflicts,
 			ProjectPath running, List<Used> used,
 			List<ProjectDiagnostic> diagnostics, String unprotected,
+			String unkept,
 			Map<ProjectPath, FileTexts.Found> found,
 			Map<ProjectPath, Runs> runs, Map<ProjectPath, String> unreadable) {
 	}
@@ -199,8 +200,14 @@ public final class OpenProject {
 	private List<Used> used = List.of();
 	private ProjectPath running;
 	private ProjectPath shown;
-	// The file shown as the session keeps it.
+	// The file shown as the session keeps it; the file chosen to run
+	// and whether the session is to keep it yet; whether the worker is
+	// keeping them, and why it could not, or null.
 	private ProjectPath keptShown;
+	private ProjectPath chosen;
+	private boolean choose;
+	private boolean keeping;
+	private String unkept;
 	private State announced;
 	private Executor executor;
 	private Runnable listener;
@@ -494,10 +501,14 @@ public final class OpenProject {
 
 	/**
 	 * Show path in the editor and return its document, or null when it
-	 * is not in memory; nothing else changes.
+	 * is not in memory. When another file was shown, everything typed
+	 * goes to the journal now.
 	 */
 	public Document show(ProjectPath path) {
-		shown = path;
+		if (!Objects.equals(path, shown)) {
+			shown = path;
+			persist();
+		}
 		if (loaded(path) != null) {
 			use(path);
 		}
@@ -519,26 +530,65 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Keep the text of every document and the file shown where they
-	 * changed since, now instead of after {@link #FLUSH_DELAY}: a
-	 * modified document in the journal, one without unsaved text by
-	 * removing its journal.
+	 * Keep the text of every document, the file shown and the file
+	 * chosen to run where they changed since, now instead of after
+	 * {@link #FLUSH_DELAY}: a modified document in the journal, one
+	 * without unsaved text by removing its journal. What the session
+	 * could not keep is sent again by the next call.
 	 */
 	public void persist() {
-		ProjectPath show = shown;
-		if (show == null ? keptShown != null : !show.equals(keptShown)) {
-			keptShown = show;
-			worker.execute(() -> sessions.setShown(id, show));
-		}
+		keepSelection();
 		for (FileRecord record : records.values()) {
 			flush(record);
 		}
 	}
 
 	/**
-	 * {@link #persist} and call done once everything typed is in the
-	 * journal and durable, or {@link #unprotected} tells why not; call
-	 * it when the app goes to the background.
+	 * Return why the file shown or the file chosen to run is not kept
+	 * for the next start, or null when they are.
+	 */
+	public String unkept() {
+		return unkept;
+	}
+
+	// Keep the file shown and the file chosen to run in the session;
+	// each counts as kept once the worker says it is.
+	private void keepSelection() {
+		if (keeping) {
+			return;
+		}
+		ProjectPath show = shown;
+		ProjectPath run = chosen;
+		boolean showing = !Objects.equals(show, keptShown);
+		boolean choosing = choose;
+		if (!showing && !choosing) {
+			return;
+		}
+		keeping = true;
+		choose = false;
+		worker.execute(() -> {
+			boolean shownKept = !showing || sessions.setShown(id, show);
+			boolean chosenKept = !choosing ||
+					sessions.setRunning(id, run);
+			main.execute(() -> {
+				keeping = false;
+				if (shownKept) {
+					keptShown = show;
+				}
+				choose |= !chosenKept;
+				unkept = shownKept && chosenKept
+						? null
+						: "the session cannot be written";
+				changed();
+			});
+		});
+	}
+
+	/**
+	 * {@link #persist} and call done once the journal acknowledged the
+	 * text every document has now and it is durable, or
+	 * {@link #unprotected} tells why not; call it when the app goes to
+	 * the background.
 	 */
 	public void flush(Runnable done) {
 		persist();
@@ -792,23 +842,27 @@ public final class OpenProject {
 
 	/**
 	 * Run path from now on, also after reopening, until another file is
-	 * chosen; the project's files stay as they are.
+	 * chosen; the project's files stay as they are. Everything typed
+	 * goes to the journal now.
 	 */
 	public void runThisFile(ProjectPath path) {
-		running = path;
+		running = chosen = path;
+		choose = true;
 		++choice;
 		++generation;
 		changed();
-		worker.execute(() -> sessions.setRunning(id, path));
+		persist();
 	}
 
 	/**
 	 * Prepare what runs from the text of the documents and the journal,
-	 * reading no file beyond the largest text a document may have,
+	 * which gets everything typed now, reading no file beyond the
+	 * largest text a document may have,
 	 * and keep the files it is made of as those of the last build. done
 	 * gets the preparation, or null when nothing runs.
 	 */
 	public void prepare(Map<String, String> reserved, Callback<Build> done) {
+		persist();
 		int generation = this.generation;
 		ProjectPath entry = running;
 		Edited edited = new Edited(snapshot(), journaled());
@@ -1273,9 +1327,8 @@ public final class OpenProject {
 	}
 
 	// Send what changed in the document of record since it was last
-	// sent to the journal: a snapshot first, then its changes, or the
-	// removal of the journal once it has no unsaved text. It counts as
-	// kept once the journal took it.
+	// sent to the journal, or the removal of the journal once it has no
+	// unsaved text. It counts as kept once the journal took it.
 	private void flush(FileRecord record) {
 		++record.timer;
 		record.limit = 0;
@@ -1285,10 +1338,8 @@ public final class OpenProject {
 		if (flush == null) {
 			return;
 		}
-		texts.journal(record.path, flush, appended -> {
-			if (record.acknowledge(flush, appended)) {
-				flush(record);
-			}
+		texts.journal(record.path, flush, written -> {
+			record.acknowledge(flush, written);
 			trim();
 			changed();
 		});
@@ -1417,7 +1468,7 @@ public final class OpenProject {
 			}
 		}
 		return new State(unsaved(), conflicts().keySet(), running, used,
-				diagnostics, unprotected(), found, runs, unreadable);
+				diagnostics, unprotected(), unkept, found, runs, unreadable);
 	}
 
 	// Call the listener, unless nothing it hears about changed or a call

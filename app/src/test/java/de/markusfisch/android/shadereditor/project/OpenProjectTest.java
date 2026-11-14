@@ -763,6 +763,91 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void closeKeepsAnEditTheJournalRewritesItsRecordsFor()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		edit(project, a, "mine");
+		project.persist();
+		settle();
+		String more = "x".repeat(20000);
+		edit(project, a, more);
+
+		project.close();
+		settle();
+
+		assertEquals(more, journaled("a.glsl"));
+	}
+
+	@Test
+	public void flushCompletesOnlyOnceTheJournalHoldsTheLastEdit()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		edit(project, a, "mine");
+		project.persist();
+		settle();
+		String more = "x".repeat(20000);
+		edit(project, a, more);
+		List<String> done = new ArrayList<>();
+
+		project.flush(() -> done.add(journaled("a.glsl") + " " +
+				project.unprotected()));
+		settle();
+
+		assertEquals(List.of(more + " null"), done);
+	}
+
+	@Test
+	public void switchingFilesAndRunningKeepTheTextAtOnce()
+			throws IOException {
+		write("main.glsl", SHADER);
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		project.show(path("a.glsl"));
+		settle();
+
+		edit(project, a, "shown");
+		project.show(path("main.glsl"));
+		settle();
+		assertEquals("shown", journaled("a.glsl"));
+
+		edit(project, a, "chosen");
+		project.runThisFile(path("main.glsl"));
+		settle();
+		assertEquals("chosen", journaled("a.glsl"));
+
+		edit(project, a, "built");
+		prepare(project);
+		assertEquals("built", journaled("a.glsl"));
+	}
+
+	@Test
+	public void selectionTheSessionCouldNotKeepIsSentAgain()
+			throws IOException {
+		write("main.glsl", SHADER);
+		OpenProject project = open();
+		ProjectSessions sessions = new ProjectSessions(sessionsDir);
+		// A file cannot be renamed onto a folder.
+		File shown = new File(new File(sessionsDir, id), "shown");
+		File running = new File(new File(sessionsDir, id), "running");
+		assertTrue(shown.mkdir() && running.mkdir());
+
+		project.show(path("main.glsl"));
+		project.runThisFile(path("main.glsl"));
+		settle();
+		assertNotNull(project.unkept());
+
+		assertTrue(shown.delete() && running.delete());
+		project.persist();
+		settle();
+
+		assertNull(project.unkept());
+		assertEquals(path("main.glsl"), sessions.shown(id));
+		assertEquals(path("main.glsl"), sessions.running(id));
+	}
+
+	@Test
 	public void failedJournalWriteIsReportedAndRetriedOnTheNextFlush()
 			throws IOException {
 		OpenProject project = open();

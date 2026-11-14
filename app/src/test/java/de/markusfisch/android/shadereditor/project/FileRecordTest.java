@@ -77,7 +77,7 @@ public class FileRecordTest {
 	}
 
 	@Test
-	public void flushesASnapshotThenChangesAndASnapshotWhenAsked() {
+	public void textIsHeldOnceTheLastWriteOfItIsAcknowledged() {
 		open("stored", "r1");
 		Document document = record.document();
 		document.addListener(new Document.Listener() {
@@ -89,29 +89,34 @@ public class FileRecordTest {
 		assertNull(record.flush());
 
 		document.replace(6, 6, Text.of("!"));
-		FileRecord.Flush snapshot = record.flush();
-		assertEquals(FileRecord.Write.SNAPSHOT, snapshot.write());
-		assertEquals("stored!", snapshot.text().toString());
-		assertEquals("r1", snapshot.header().base());
+		FileRecord.Flush first = record.flush();
+		assertEquals(-1, first.from());
+		assertEquals("stored!", first.text().toString());
+		assertEquals("r1", first.header().base());
 		document.replace(7, 7, Text.of("?"));
-		FileRecord.Flush append = record.flush();
-		assertEquals(FileRecord.Write.APPEND, append.write());
-		assertEquals(snapshot.to(), append.from());
-		assertEquals(1, append.changes().size());
+		FileRecord.Flush second = record.flush();
+		assertEquals(first.to(), second.from());
+		assertEquals(1, second.changes().size());
+		assertEquals("stored!?", second.text().toString());
 		assertNull(record.flush());
 
-		assertFalse(record.acknowledge(snapshot, Journal.Appended.DONE));
+		record.acknowledge(first, true);
 		assertFalse(record.settled());
-		assertTrue(record.acknowledge(append, Journal.Appended.SNAPSHOT));
+		record.acknowledge(second, false);
+		assertFalse(record.settled());
 		FileRecord.Flush again = record.flush();
-		assertEquals(FileRecord.Write.SNAPSHOT, again.write());
-		assertEquals("stored!?", again.text().toString());
-		assertFalse(record.acknowledge(again, Journal.Appended.DONE));
+		assertEquals(-1, again.from());
+		record.acknowledge(again, true);
 		assertTrue(record.settled());
+		document.replace(8, 8, Text.of("x"));
+		assertFalse(record.settled());
+		record.acknowledge(again, true);
+		assertFalse(record.settled());
 
 		document.undo();
 		document.undo();
-		assertEquals(FileRecord.Write.REMOVE, record.flush().write());
+		document.undo();
+		assertTrue(record.flush().removes());
 		assertFalse(record.journaled);
 	}
 

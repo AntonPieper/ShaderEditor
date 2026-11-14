@@ -129,12 +129,15 @@ public final class FileTexts {
 		});
 	}
 
-	/** Do what flush asks of the journal of path. */
+	/**
+	 * Do what flush asks of the journal of path; done gets whether the
+	 * journal holds what flush names now.
+	 */
 	void journal(ProjectPath path, FileRecord.Flush flush,
-			Callback<Journal.Appended> done) {
+			Callback<Boolean> done) {
 		worker.execute(() -> {
-			Journal.Appended appended = write(path, flush);
-			main.execute(() -> done.done(appended));
+			boolean written = write(path, flush);
+			main.execute(() -> done.done(written));
 		});
 	}
 
@@ -284,22 +287,25 @@ public final class FileTexts {
 				read instanceof Content content ? content.revision() : null);
 	}
 
-	private Journal.Appended write(ProjectPath path, FileRecord.Flush flush) {
-		if (flush.write() == FileRecord.Write.SNAPSHOT) {
-			return journal.snapshot(flush.header(), flush.to(), flush.text())
-					? Journal.Appended.DONE
-					: Journal.Appended.FAILED;
-		} else if (flush.write() == FileRecord.Write.REMOVE) {
-			return journal.remove(path)
-					? Journal.Appended.DONE
-					: Journal.Appended.FAILED;
+	// Append when the journal continues where flush says, else write the
+	// whole text, so the answer is final and nothing waits for main.
+	private boolean write(ProjectPath path, FileRecord.Flush flush) {
+		if (flush.removes()) {
+			return journal.remove(path);
 		}
-		List<Journal.Change> changes = new ArrayList<>();
-		for (Document.Change change : flush.changes()) {
-			changes.add(new Journal.Change(change.start(),
-					change.removed().length(), change.inserted().toString()));
+		if (flush.from() >= 0) {
+			List<Journal.Change> changes = new ArrayList<>();
+			for (Document.Change change : flush.changes()) {
+				changes.add(new Journal.Change(change.start(),
+						change.removed().length(),
+						change.inserted().toString()));
+			}
+			if (journal.append(path, flush.from(), flush.to(), changes) ==
+					Journal.Appended.DONE) {
+				return true;
+			}
 		}
-		return journal.append(path, flush.from(), flush.to(), changes);
+		return journal.snapshot(flush.header(), flush.to(), flush.text());
 	}
 
 	// Return opened with the history kept for its text, if there is one.
