@@ -433,9 +433,15 @@ final class FileRecord {
 	 * Take whether the journal did what flush asked. Only the answer to
 	 * the last write sent tells how the journal is: the text counts as
 	 * held once that write, which names its revision, is acknowledged.
+	 * An earlier write that failed counts as a failure until then.
 	 */
 	void acknowledge(Flush flush, boolean done) {
 		if (flush.to() != writes) {
+			// Until the last one sent is answered, one that failed is
+			// not forgotten: nobody is told the text is held meanwhile.
+			if (!done && flush.history() == null) {
+				failure = "the journal cannot be written";
+			}
 			return;
 		} else if (done) {
 			acked = writes;

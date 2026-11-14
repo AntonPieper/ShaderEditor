@@ -150,6 +150,23 @@ public class FileRecordTest {
 	}
 
 	@Test
+	public void anEarlierFailureCountsUntilTheLastWriteIsAnswered() {
+		open("stored", "r1");
+		record.document().replace(6, 6, Text.of("!"));
+		FileRecord.Flush first = record.flush();
+		FileRecord.Flush again = record.flush(true);
+
+		// The first failed; whether the second held is not known yet.
+		record.acknowledge(first, false);
+		assertEquals("the journal cannot be written", record.failure);
+		assertFalse(record.settled());
+
+		record.acknowledge(again, true);
+		assertNull(record.failure);
+		assertTrue(record.settled());
+	}
+
+	@Test
 	public void conflictIsWhatWasSeenOfStorageAgainstTheBase() {
 		open("stored", "r1");
 		Document document = record.document();
