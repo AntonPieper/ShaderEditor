@@ -13,14 +13,19 @@ import java.util.Locale;
 import de.markusfisch.android.shadereditor.project.HostDirective.Format;
 
 // What a context can do with the formats of targets, from its version
-// and the extensions it names, never from its version alone. Whether a
-// target of a format can be drawn into is only certain once its
-// framebuffer is complete.
+// and the extensions it names, never from its version alone. A device
+// may name an extension for drawing into half-float textures and still
+// not draw into them, so the device tries that once per context
+// (GlDevice.targetFormats) and a failure takes it back.
 record TargetFormats(
 		int glesVersion,
 		boolean halfFloatTextures,
-		boolean halfFloatRendering,
-		boolean halfFloatFiltering) {
+		boolean halfFloatFiltering,
+		// The extension that names drawing into half-float textures, or
+		// null.
+		@Nullable String drawingExtension,
+		// Whether drawing into a half-float texture failed all the same.
+		boolean drawingFailed) {
 	// OES_texture_half_float.
 	private static final int GL_HALF_FLOAT_OES = 0x8D61;
 
@@ -29,19 +34,43 @@ record TargetFormats(
 		var names = new HashSet<>(Arrays.asList(extensions.trim().split("\\s+")));
 		boolean es3 = glesVersion >= 3;
 		boolean textures = es3 || names.contains("GL_OES_texture_half_float");
+		String drawing = null;
+		if (textures && names.contains("GL_EXT_color_buffer_half_float")) {
+			drawing = "EXT_color_buffer_half_float";
+		} else if (es3 && names.contains("GL_EXT_color_buffer_float")) {
+			drawing = "EXT_color_buffer_float";
+		}
 		return new TargetFormats(glesVersion, textures,
-				textures && (names.contains("GL_EXT_color_buffer_half_float") ||
-						(es3 && names.contains("GL_EXT_color_buffer_float"))),
 				textures && (es3 ||
-						names.contains("GL_OES_texture_half_float_linear")));
+						names.contains("GL_OES_texture_half_float_linear")),
+				drawing, false);
+	}
+
+	// The same context, after drawing into a half-float texture failed.
+	@NonNull
+	TargetFormats withoutHalfFloatDrawing() {
+		return new TargetFormats(glesVersion, halfFloatTextures,
+				halfFloatFiltering, drawingExtension, true);
+	}
+
+	// Whether the context names drawing into half-float textures and did
+	// not fail at it.
+	boolean halfFloatRendering() {
+		return drawingExtension != null && !drawingFailed;
 	}
 
 	// Why this context cannot draw into a target of this format, or
 	// null.
 	@Nullable
 	String refusal(@NonNull Format format) {
-		if (format == Format.RGBA8 || halfFloatRendering) {
+		if (format == Format.RGBA8 || halfFloatRendering()) {
 			return null;
+		} else if (drawingFailed) {
+			return "format=" + name(format) + " needs a device that " +
+					"draws into half-float textures, which this device " +
+					"cannot do: it names " + drawingExtension + ", but " +
+					"drawing into a half-float texture failed; use " +
+					"format=rgba8";
 		}
 		return "format=" + name(format) + " needs " + (halfFloatTextures
 				? "a device that draws into half-float textures " +

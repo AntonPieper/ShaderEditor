@@ -42,6 +42,13 @@ class FakeGlDevice extends GlDevice {
 	final Map<Integer, GlProgram> programs = new HashMap<>();
 	int maxTextureSize = 4096;
 	int maxTextureUnits = 16;
+	// The extensions the context names.
+	String extensions = "";
+	// Whether a framebuffer with a half-float texture is complete. A
+	// device may name the extension for it and still answer no.
+	boolean drawsHalfFloat = true;
+	// The type each texture was allocated with, by name.
+	final Map<Integer, Integer> types = new HashMap<>();
 	// The name of the call that fails next, or null.
 	@Nullable
 	String failAt;
@@ -161,7 +168,14 @@ class FakeGlDevice extends GlDevice {
 	@Override
 	String allocateTexture2D(@NonNull GlTexture2D texture, int width,
 			int height, int internalFormat, int type) {
+		types.put(texture.getId(), type);
 		return allocate(texture, width, height);
+	}
+
+	@NonNull
+	@Override
+	String extensions() {
+		return extensions;
 	}
 
 	@Nullable
@@ -263,7 +277,12 @@ class FakeGlDevice extends GlDevice {
 			return 0;
 		}
 		bindFramebuffer(framebuffer);
-		return fails("checkFramebufferStatus")
+		var attached = framebuffer.getColorAttachment();
+		Integer type = attached != null ? types.get(attached.getId()) : null;
+		boolean halfFloat = type != null &&
+				type != GLES20.GL_UNSIGNED_BYTE;
+		return fails("checkFramebufferStatus") ||
+				(halfFloat && !drawsHalfFloat)
 				? GLES20.GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT
 				: GLES20.GL_FRAMEBUFFER_COMPLETE;
 	}

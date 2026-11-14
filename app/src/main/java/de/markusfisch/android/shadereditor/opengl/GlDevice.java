@@ -16,6 +16,7 @@ import java.util.List;
 import javax.microedition.khronos.opengles.GL11ExtensionPack;
 
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
+import de.markusfisch.android.shadereditor.project.HostDirective.Format;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 import de.markusfisch.android.shadereditor.project.SourceMap;
@@ -32,6 +33,8 @@ class GlDevice {
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_X};
 
 	private static final String NO_NAME = "GL gave the object no name";
+	// The side of the target that tries a format.
+	private static final int PROBE_SIZE = 4;
 
 	private int maxTextureUnits;
 	private int maxTextureSize;
@@ -205,12 +208,47 @@ class GlDevice {
 		return takeError("glTexImage2D");
 	}
 
-	// What the current context does with the formats of targets.
+	// What the current context does with the formats of targets. A
+	// device may name drawing into half-float textures and fail at it, so
+	// that is tried once here, on a small target; call it once per
+	// context.
 	@NonNull
 	TargetFormats targetFormats(int glesVersion) {
+		var named = TargetFormats.of(glesVersion, extensions());
+		return named.refusal(Format.RGBA16F) != null ||
+				drawsInto(named, Format.RGBA16F)
+				? named
+				: named.withoutHalfFloatDrawing();
+	}
+
+	// The extensions the current context names.
+	@NonNull
+	String extensions() {
 		String extensions = GLES20.glGetString(GLES20.GL_EXTENSIONS);
-		return TargetFormats.of(glesVersion,
-				extensions != null ? extensions : "");
+		return extensions != null ? extensions : "";
+	}
+
+	// Whether a small target in this format, made as PassTarget makes
+	// one, is complete. Nothing it makes is left behind.
+	private boolean drawsInto(@NonNull TargetFormats formats,
+			@NonNull Format format) {
+		var texture = createTexture2D();
+		var framebuffer = createFramebuffer();
+		try {
+			if (allocateTexture2D(texture, PROBE_SIZE, PROBE_SIZE,
+					formats.internalFormat(format),
+					formats.type(format)) != null) {
+				return false;
+			}
+			applySampling(texture, Sampling.PASS);
+			return attachColor(framebuffer, texture) == null &&
+					checkFramebufferStatus(framebuffer) ==
+							GLES20.GL_FRAMEBUFFER_COMPLETE;
+		} finally {
+			bindFramebuffer(null);
+			deleteFramebuffer(framebuffer);
+			deleteTexture(texture);
+		}
 	}
 
 	@Nullable
