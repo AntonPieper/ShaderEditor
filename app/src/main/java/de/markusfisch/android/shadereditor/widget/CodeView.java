@@ -37,7 +37,6 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EdgeEffect;
 import android.widget.EditText;
-import android.widget.Magnifier;
 import android.widget.OverScroller;
 import android.widget.Toast;
 
@@ -80,9 +79,10 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * document through one TextInput per connection; a tap shows it.
  * A tap places the caret; a double tap or a long press selects a word
  * and a drag after it extends the selection by words, scrolling while
- * the finger is near an edge. A selection made by touch has the
- * platform's handles, which drag its ends, by words while it grows, with
- * the platform's magnifier from Android 9 on; a tap shows the caret's
+ * the finger is near an edge, under the platform's magnifier from
+ * Android 9 on and without handles until the finger lifts. A selection
+ * made by touch has the platform's handles, which drag its ends, by
+ * words while it grows, with the magnifier; a tap shows the caret's
  * handle until a while has passed or the text changes. When the
  * finger lifts, the platform's floating toolbar offers the clipboard
  * for the selection; a tap inside the selection hides or shows it
@@ -252,7 +252,7 @@ public class CodeView extends View {
 	private float pointDx;
 	private float pointDy;
 	private boolean caretHandle;
-	// A Magnifier from Android 9 on, once a handle was dragged.
+	// A DragMagnifier from Android 9 on, once something was dragged.
 	private Object magnifier;
 	// When and where the last mouse click was that may become a double
 	// click.
@@ -1322,7 +1322,9 @@ public class CodeView extends View {
 
 	private void showToolbar() {
 		handler.removeCallbacks(hideCaretHandle);
-		toolbar.show();
+		if (touch.showsToolbar()) {
+			toolbar.show();
+		}
 	}
 
 	// Puts the part of the selection on screen, and the handles under
@@ -1673,7 +1675,9 @@ public class CodeView extends View {
 		boolean tapped = dragging == DRAG_HANDLE && !moved;
 		boolean pressed = dragging == DRAG_WORDS;
 		dragging = 0;
+		touch.drop();
 		dismissMagnifier();
+		invalidate();
 		if (touched == null) {
 			return;
 		}
@@ -1692,7 +1696,7 @@ public class CodeView extends View {
 		if (touch.dragTo(text, offsetAt(dragX + pointDx, dragY + pointDy))) {
 			select(touch.anchor(), touch.head());
 		}
-		if (dragging == DRAG_HANDLE && moved) {
+		if (dragging == DRAG_WORDS || (dragging == DRAG_HANDLE && moved)) {
 			magnify();
 		}
 		if (!edgeScrolling && (edgeStepX() != 0 || edgeStepY() != 0)) {
@@ -1702,32 +1706,49 @@ public class CodeView extends View {
 	}
 
 	// Shows the magnifier over the line of the dragged end, at the
-	// finger but not past the text of that line, from Android 9 on.
+	// finger, from Android 9 on, as the platform's text views do: kept
+	// over the text of that line beyond the other end, hidden when the
+	// finger is far from it, the line out of view or its text too tall.
 	private void magnify() {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
 			return;
 		}
-		Text text = document.text();
-		int n = text.lineOf(touch.head());
-		float left = textLeft(text.lineCount());
-		float x = Math.max(left, Math.min(dragX + pointDx,
-				left - getScrollX() + layoutOf(n).width()));
-		float y = lineTop(n) + appearance.lineHeight / 2f - getScrollY();
-		if (y < insets.top || y > getHeight() - insets.bottom) {
-			dismissMagnifier();
-			return;
-		}
 		if (magnifier == null) {
-			// With the defaults of the platform's text views.
-			magnifier = new Magnifier(this);
+			magnifier = new DragMagnifier(this);
 		}
-		((Magnifier) magnifier).show(x, y);
+		DragMagnifier m = (DragMagnifier) magnifier;
+		Text text = document.text();
+		int head = touch.head();
+		int anchor = touch.anchor();
+		int n = text.lineOf(head);
+		int start = text.lineStart(n);
+		LineLayout layout = layoutOf(n);
+		float visibleLeft = textLeft(text.lineCount());
+		float left = visibleLeft - getScrollX();
+		float right = left + layout.width();
+		if (anchor != head && text.lineOf(anchor) == n) {
+			float x = left + layout.xOf(anchor - start);
+			if (head > anchor) {
+				left = x;
+			} else {
+				right = x;
+			}
+		}
+		float x = TouchSelection.magnifierX(dragX, Math.max(left,
+				visibleLeft), right, m.halfWidth());
+		float y = lineTop(n) + appearance.lineHeight / 2f - getScrollY();
+		if (Float.isNaN(x) || !m.fits(appearance.lineHeight) ||
+				y < insets.top || y > getHeight() - insets.bottom) {
+			m.dismiss();
+		} else {
+			m.show(x, y);
+		}
 	}
 
 	private void dismissMagnifier() {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
 				magnifier != null) {
-			((Magnifier) magnifier).dismiss();
+			((DragMagnifier) magnifier).dismiss();
 		}
 	}
 
@@ -1770,6 +1791,7 @@ public class CodeView extends View {
 			case MotionEvent.ACTION_UP:
 			case MotionEvent.ACTION_CANCEL:
 				dragging = 0;
+				touch.drop();
 				return true;
 			default:
 				return false;
@@ -1903,7 +1925,7 @@ public class CodeView extends View {
 	private void drawHandles(Canvas canvas) {
 		handles.clear();
 		if (touched == null || (touched.isEmpty() && !caretHandle) ||
-				!isFocused()) {
+				!isFocused() || !touch.showsHandles()) {
 			return;
 		}
 		if (touched.isEmpty()) {
