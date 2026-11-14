@@ -1611,9 +1611,15 @@ public class OpenProjectTest {
 		OpenProject project = open();
 		List<Document> edited = new ArrayList<>();
 		for (int i = 0; i < 5; ++i) {
-			Document document = document(project, i + ".glsl", "" + i);
-			edit(project, document, "edited " + i);
-			edited.add(document);
+			ProjectPath file = path(i + ".glsl");
+			write(file.toString(), "" + i);
+			// Edited as soon as it is there.
+			project.load(file, ProjectFiles.UNKNOWN, problem -> {
+				Document document = project.document(file);
+				edit(project, document, "edited " + file);
+				edited.add(document);
+			});
+			settle();
 		}
 		project.show(path("4.glsl"));
 		// Kept while the journal does not hold them.
@@ -1633,17 +1639,18 @@ public class OpenProjectTest {
 	public void modifiedFileDroppedFromMemoryReopensAsItWas()
 			throws IOException {
 		budget = OpenProject.cost(new Document(Text.of("0")));
-		OpenProject project = editedElsewhere();
-		Document a = project.document(path("a.glsl"));
+		OpenProject project = open();
+		Document a = shown(project, "a.glsl", "stored");
+		edit(project, a, "mine");
+		write("a.glsl", "theirs");
+		refresh(project);
 		flush(project);
-		document(project, "b.glsl", "b");
-		project.show(path("b.glsl"));
-		document(project, "c.glsl", "c");
+		shown(project, "b.glsl", "b");
 
 		assertNull(project.document(path("a.glsl")));
 		assertEquals(Set.of(path("a.glsl")), project.unsaved());
 		assertEquals(Set.of(path("a.glsl")), project.conflicts().keySet());
-		Document reopened = document(project, "a.glsl");
+		Document reopened = shown(project, "a.glsl");
 		assertNotSame(a, reopened);
 		assertEquals("mine", reopened.text().toString());
 		assertTrue(reopened.isModified());
@@ -1657,18 +1664,15 @@ public class OpenProjectTest {
 			throws IOException {
 		budget = OpenProject.cost(new Document(Text.of("0")));
 		OpenProject project = open();
-		Document a = document(project, "a.glsl", "one");
+		Document a = shown(project, "a.glsl", "one");
 		edit(project, a, "two");
 		edit(project, a, "three");
 		a.select(1, 2);
 		flush(project);
-		document(project, "b.glsl", "b");
-		project.show(path("b.glsl"));
-		document(project, "c.glsl", "c");
-		settle();
+		shown(project, "b.glsl", "b");
 		assertNull(project.document(path("a.glsl")));
 
-		Document reopened = document(project, "a.glsl");
+		Document reopened = shown(project, "a.glsl");
 
 		assertEquals("three", reopened.text().toString());
 		assertEquals(new Document.Selection(1, 2), reopened.selection());
@@ -1805,55 +1809,79 @@ public class OpenProjectTest {
 	}
 
 	@Test
-	public void dropsTheCleanDocumentsUsedLeastRecentlyFirst()
-			throws IOException {
-		Document sample = new Document(Text.of("e"));
-		sample.replace(0, 1, Text.of("edited"));
-		budget = OpenProject.cost(sample) +
-				3 * OpenProject.cost(new Document(Text.of("0")));
+	public void dropsTheDocumentsUsedLeastRecentlyFirst() throws IOException {
+		budget = 3 * OpenProject.cost(new Document(Text.of("0")));
 		OpenProject project = open();
-		Document edited = document(project, "edited.glsl", "e");
-		edit(project, edited, "edited");
-		Document shown = document(project, "shown.glsl", "s");
-		project.show(path("shown.glsl"));
-		List<Document> clean = new ArrayList<>();
-		for (int i = 0; i <= 4; ++i) {
-			clean.add(document(project, i + ".glsl", "" + i));
+		Document shown = shown(project, "shown.glsl", "s");
+		List<Document> opened = new ArrayList<>();
+		for (int i = 0; i <= 3; ++i) {
+			opened.add(document(project, i + ".glsl", "" + i));
 		}
 
 		assertNull(project.document(path("0.glsl")));
-		for (int i = 1; i <= 4; ++i) {
-			assertSame(clean.get(i), project.document(path(i + ".glsl")));
+		for (int i = 1; i <= 3; ++i) {
+			assertSame(opened.get(i), project.document(path(i + ".glsl")));
 		}
-		assertSame(edited, project.document(path("edited.glsl")));
 		assertSame(shown, project.document(path("shown.glsl")));
-		Document reopened = document(project, "0.glsl");
-		assertNotSame(clean.get(0), reopened);
-		assertEquals("0", reopened.text().toString());
-		assertNull(project.document(path("1.glsl")));
-		assertEquals(Set.of(path("edited.glsl")), project.unsaved());
+		// One is used again before another comes.
+		assertSame(opened.get(1), document(project, "1.glsl"));
+		document(project, "4.glsl", "4");
+		assertNull(project.document(path("2.glsl")));
+		assertSame(opened.get(1), project.document(path("1.glsl")));
+		assertSame(opened.get(3), project.document(path("3.glsl")));
+	}
+
+	@Test
+	public void documentOpenedAndNotShownCountsAgainstTheBudget()
+			throws IOException {
+		budget = OpenProject.cost(new Document(Text.of("0")));
+		OpenProject project = open();
+		Document small = shown(project, "a.glsl", "a");
+		write("b.glsl", "larger than the budget");
+		ProjectPath b = path("b.glsl");
+		List<Document> told = new ArrayList<>();
+
+		// A caller that does not show it has it only for the call.
+		project.load(b, ProjectFiles.UNKNOWN,
+				problem -> told.add(project.document(b)));
+		settle();
+		assertNotNull(told.get(0));
+		assertNull(project.document(b));
+		assertSame(small, project.document(path("a.glsl")));
+
+		// One that shows it keeps it.
+		Document shown = shown(project, "b.glsl");
+		assertSame(shown, project.document(b));
+		assertNotSame(told.get(0), shown);
+		assertTrue(used(project) <= budget);
 	}
 
 	@Test
 	public void keepsACleanDocumentUntilItsJournalIsRemoved()
 			throws IOException {
-		budget = 2 * OpenProject.cost(new Document(Text.of("0")));
+		Document sample = new Document(Text.of("a"));
+		sample.replace(0, 1, Text.of("a!"));
+		budget = OpenProject.cost(sample);
 		OpenProject project = open();
 		Document a = document(project, "a.glsl", "a");
 		edit(project, a, "a!");
 		project.persist();
 		settle();
 		a.undo();
-		for (int i = 0; i <= 4; ++i) {
-			document(project, i + ".glsl", "" + i);
-		}
+		// Another one, edited as soon as it is there, takes the budget.
+		write("b.glsl", "b");
+		ProjectPath b = path("b.glsl");
+		project.load(b, ProjectFiles.UNKNOWN, problem -> edit(project,
+				project.document(b), "b!"));
+		settle();
 
 		assertSame(a, project.document(path("a.glsl")));
-		assertTrue(project.unsaved().isEmpty());
+		assertTrue(used(project) > budget);
 		project.persist();
 		settle();
 		assertNull(project.document(path("a.glsl")));
-		assertTrue(kept().isEmpty());
+		assertNotNull(project.document(b));
+		assertEquals(Set.of(b), kept());
 	}
 
 	@Test
@@ -2244,8 +2272,8 @@ public class OpenProjectTest {
 	// Return what the documents in memory besides the one shown take.
 	private static long used(OpenProject project) {
 		long used = 0;
-		for (int i = 0; i < 5; ++i) {
-			ProjectPath path = path(i + ".glsl");
+		for (String name : List.of("0", "1", "2", "3", "4", "a", "b")) {
+			ProjectPath path = path(name + ".glsl");
 			Document document = project.document(path);
 			if (document != null && !path.equals(project.shown())) {
 				used += OpenProject.cost(document);
@@ -2326,6 +2354,24 @@ public class OpenProjectTest {
 		project.flush(() -> flushed[0] = true);
 		settle();
 		assertTrue(flushed[0]);
+	}
+
+	// Load path and show it when it is there, as a screen does, so it
+	// stays whatever the budget.
+	private Document shown(OpenProject project, String path) {
+		ProjectPath file = path(path);
+		project.load(file, ProjectFiles.UNKNOWN, problem -> {
+			assertNull(problem);
+			project.show(file);
+		});
+		settle();
+		return project.document(file);
+	}
+
+	private Document shown(OpenProject project, String path, String text)
+			throws IOException {
+		write(path, text);
+		return shown(project, path);
 	}
 
 	// Return the files the journal keeps unsaved text of.

@@ -60,6 +60,8 @@ final class FileRecord {
 	// base.
 	FileTexts.Found found = FileTexts.Found.SAME;
 	String seen;
+	// How many callers are about to be told that the document is there.
+	int awaited;
 	// Whether the text at revision runs, and the revision asked for.
 	OpenProject.Runs runs = OpenProject.Runs.UNKNOWN;
 	int runsRevision = -1;
