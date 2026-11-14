@@ -129,6 +129,16 @@ final class EditTextSourceEditor implements SourceEditor {
 	}
 
 	@Override
+	public boolean keepsErrorsUntilResult() {
+		return false;
+	}
+
+	@Override
+	public boolean showsErrorMessages() {
+		return false;
+	}
+
+	@Override
 	public void updateHighlighting() {
 		shaderEditor.updateHighlighting();
 	}

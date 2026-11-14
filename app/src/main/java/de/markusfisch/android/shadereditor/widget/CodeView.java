@@ -48,6 +48,7 @@ import androidx.core.view.ViewConfigurationCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Analysis;
@@ -67,7 +68,10 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * Shows a Document: the lines on screen in the colours of its
  * LineStyles, their numbers in a gutter that stays in place when the
  * text scrolls sideways, the lines its LineMarks mark, the selection,
- * the composing region and a blinking caret. It owns no text. Keys
+ * the composing region and a blinking caret. Under the open line of the
+ * marks, a row shows the messages of its errors; it moves the lines
+ * after it down, and opening, closing or resizing it scrolls so that
+ * the caret's line stays where it is. It owns no text. Keys
  * become KeyCommands, and the caret is kept in view after each and
  * above the soft keyboard when that opens. The soft keyboard edits the
  * document through one TextInput per connection; a tap shows it.
@@ -144,6 +148,7 @@ public class CodeView extends View {
 		@Override
 		public void onChange(Document.Change change, Text before) {
 			accessibility.changed(change, before);
+			edited = true;
 			invalidate();
 		}
 
@@ -154,6 +159,8 @@ public class CodeView extends View {
 				touched = null;
 				toolbar.close();
 			}
+			placeRow();
+			edited = false;
 			toolbar.moved();
 			restartBlink();
 			scrollInside(getScrollX(), getScrollY());
@@ -295,6 +302,38 @@ public class CodeView extends View {
 	private int gutterLast = -1;
 	private int gutterDigits;
 	private int gutterMarks;
+	// The row under the open line of the marks: the messages it shows,
+	// the width it was laid out for, and its lines of text.
+	private final MessageRow.Style rowStyle = new MessageRow.Style() {
+		@Override
+		public float width(String text) {
+			return appearance.rowPaint.measureText(text);
+		}
+
+		@Override
+		public int fit(String text, int start, float width) {
+			return appearance.rowPaint.breakText(text, start, text.length(),
+					true, width, null);
+		}
+
+		@Override
+		public String ellipsis() {
+			return "\u2026";
+		}
+
+		@Override
+		public String more(int count) {
+			return getResources().getString(R.string.error_row_more, count);
+		}
+	};
+	private final RectF rowRect = new RectF();
+	private List<String> rowMessages;
+	private int rowWidth;
+	private String[] rowText = new String[0];
+	// Whether the document changed since the last update; a row that
+	// moved with its line then moved with the text, and the scroll
+	// position stays.
+	private boolean edited;
 	// The lines drawn by the last frame, from shownFirst on.
 	private LineCache.Line[] shown = new LineCache.Line[0];
 	private int shownFirst;
@@ -406,6 +445,8 @@ public class CodeView extends View {
 		touched = null;
 		dragging = 0;
 		forgetLines();
+		lines.setRow(-1, 0);
+		rowMessages = null;
 		scrollTo(0, 0);
 		if (isAttachedToWindow()) {
 			connect();
@@ -483,6 +524,7 @@ public class CodeView extends View {
 
 	public void setShowLineNumbers(boolean showLineNumbers) {
 		this.showLineNumbers = showLineNumbers;
+		placeRow();
 		invalidate();
 	}
 
@@ -511,6 +553,21 @@ public class CodeView extends View {
 
 	public void setLineBackdrop(@Nullable LineBackdrop backdrop) {
 		this.backdrop = backdrop;
+		invalidate();
+	}
+
+	/**
+	 * Show the marks after they were set from a result, with the row of
+	 * the line MessageRow.choose picks.
+	 */
+	public void marksChanged() {
+		if (document == null || marks == null) {
+			return;
+		}
+		marks.open(MessageRow.choose(marks.errorLines(), marks.open(),
+				document.text().lineOf(document.selection().head()),
+				firstShown(), lastShown()));
+		placeRow();
 		invalidate();
 	}
 
@@ -572,6 +629,7 @@ public class CodeView extends View {
 	@Override
 	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
+		placeRow();
 		if (caretIntoViewWhenLaidOut || (h < oldh && isFocused())) {
 			bringCaretIntoView();
 		} else {
@@ -1042,6 +1100,7 @@ public class CodeView extends View {
 			canvas.translate(-textLeft, -top);
 			lineStart = lineEnd + 1;
 		}
+		drawRow(canvas, clipLeft, right, textLeft);
 		canvas.restoreToCount(save);
 		if (showLineNumbers) {
 			drawLineNumbers(canvas, first, last, scrollX + gutterLeft(),
@@ -1920,7 +1979,9 @@ public class CodeView extends View {
 			if (marked) {
 				float top = lines.top(n) - firstTop;
 				canvas.drawRect(edge, top, edge + a.markWidth,
-						top + a.lineHeight, fill);
+						top + a.lineHeight +
+								(n == lines.rowLine() ? lines.rowHeight() : 0),
+						fill);
 			}
 			paint.setColor(marked ? a.markColor : a.lineNumberColor);
 			int start = digits.length;
@@ -1932,6 +1993,97 @@ public class CodeView extends View {
 					right - count * a.digitWidth,
 					lines.top(n) - firstTop + a.baseline, paint);
 		}
+	}
+
+	// Lays the row out under the open line of the marks, if it changed,
+	// with the scroll position that keeps the caret's line, or else the
+	// first line on screen, where it is.
+	private void placeRow() {
+		if (document == null) {
+			return;
+		}
+		int line = marks != null ? marks.open() : -1;
+		List<String> messages = line >= 0 ? marks.messages(line) : null;
+		int width = Math.round(getWidth() - insets.right -
+				textLeft(document.text().lineCount()) - appearance.rowPadding);
+		if (line == lines.rowLine() && messages == rowMessages &&
+				(line < 0 || width == rowWidth)) {
+			return;
+		}
+		int anchor = anchorLine();
+		int oldLine = lines.rowLine();
+		int oldHeight = lines.rowHeight();
+		rowMessages = messages;
+		rowWidth = width;
+		if (line < 0) {
+			lines.setRow(-1, 0);
+		} else {
+			CodeAppearance a = appearance;
+			rowText = MessageRow.lines(messages, Math.max(1, width),
+					rowStyle);
+			lines.setRow(line, rowText.length * a.rowLineHeight +
+					2 * a.rowPaddingVertical);
+		}
+		if (!edited || line == oldLine) {
+			scrollInside(getScrollX(), lines.keep(getScrollY(), anchor,
+					oldLine, oldHeight));
+		}
+		gutterLast = -1;
+		invalidate();
+	}
+
+	// Returns the caret's line if any of it is on screen, else the first
+	// line on screen.
+	private int anchorLine() {
+		int caret = document.text().lineOf(document.selection().head());
+		float top = lineTop(caret) - getScrollY();
+		if (top + appearance.lineHeight > insets.top &&
+				top < getHeight() - insets.bottom) {
+			return caret;
+		}
+		return lineAt(getScrollY() + insets.top);
+	}
+
+	// Draws the row under its line, from left to right, its text aligned
+	// with the code at textLeft; square where it touches the screen edge.
+	private void drawRow(Canvas canvas, float left, float right,
+			float textLeft) {
+		int line = lines.rowLine();
+		if (line < 0) {
+			return;
+		}
+		CodeAppearance a = appearance;
+		float top = lineTop(line) + a.lineHeight;
+		float bottom = top + lines.rowHeight();
+		int scrollY = getScrollY();
+		if (bottom <= scrollY || top >= scrollY + getHeight()) {
+			return;
+		}
+		float corner = showLineNumbers ? a.corner : 0;
+		fill.setColor(a.rowColor);
+		rowRect.set(left, top, right, bottom);
+		canvas.drawRoundRect(rowRect, corner, corner, fill);
+		canvas.drawRect(right - corner, top, right, bottom, fill);
+		float x = getScrollX() + textLeft;
+		float y = top + a.rowPaddingVertical + a.rowBaseline;
+		for (String text : rowText) {
+			canvas.drawText(text, x, y, a.rowPaint);
+			y += a.rowLineHeight;
+		}
+	}
+
+	// Returns the first line all of which is on screen.
+	private int firstShown() {
+		int top = getScrollY() + insets.top;
+		int n = lineAt(top);
+		return lineTop(n) < top ? n + 1 : n;
+	}
+
+	// Returns the last line all of which is on screen.
+	private int lastShown() {
+		int bottom = getScrollY() + getHeight() - insets.bottom;
+		int n = lineAt(bottom);
+		return lineTop(n) + appearance.lineHeight > bottom ? n - 1 : n;
 	}
 
 	private void connect() {
@@ -1974,6 +2126,7 @@ public class CodeView extends View {
 		appearance.measure();
 		lines.setLineHeight(appearance.lineHeight);
 		forgetLines();
+		placeRow();
 		gutterLast = -1;
 		invalidate();
 	}

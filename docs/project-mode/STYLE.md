@@ -430,7 +430,8 @@ Binding for the new editor view (EDITOR 4.4); the old widget gets the palette an
 | Selection | A dark blue that keeps text readable | `code_selection` `#B31F4E79` |
 | Handles | The platform's drawables, tinted | `colorPrimary` |
 | Composing text | A 1 dp underline in `colorOnSurface` | – |
-| Error line | A dark tint over the whole line, a 3 dp bar at the gutter's leading edge and the line number in `colorError` | `code_mark_error` `#8C5C0A14` |
+| Error line | A dark tint over the whole line, a 3 dp bar at the gutter's leading edge and the line number in `colorError`. | `code_mark_error` `#8C5C0A14`, `editor_mark_width` |
+| Message row | Under one line with errors at a time, as part of the code: the line's messages in the compiler's order, each from a new line, `?textAppearanceBodyMedium` in `colorError` on `colorSurface`, aligned with the code, at most three lines, ending in an ellipsis when text is cut and "+N more" for errors left out. From the gutter's edge to the screen's right edge: 8 dp corners on the left (`se_corner`), square on the right where it touches the edge, 4 dp above and below the text. The mark's bar runs down beside it. Opening, closing or growing it never moves the caret's line | `se_corner`, `se_row_padding_vertical` |
 | Warning line | The same in amber | `code_mark_warning` `#8C4A3000`, `se_warning` |
 | Selection toolbar | The platform's floating toolbar, dark (6.9) | – |
 | Extra-keys row | Bar level, 44 dp, a hairline on top | `se_level_bar`, `se_key_height` |
@@ -447,7 +448,7 @@ Binding for the new editor view (EDITOR 4.4); the old widget gets the palette an
 | Saved state | State, not a message: the unsaved dot (6.6) is there while the open shader has changes nobody saved and goes as soon as any save writes them (explicit, auto save, save on run) |
 | The success of an explicit save | "Shader saved" for 2 s in the toolbar's second line, in place of the frame rate, which then returns. Auto save and save on run say nothing: the dot going is the signal. One owner of the second line decides what it shows: a notice until its time, otherwise the line of what is open, otherwise the frame rate |
 | A failure, or a result with an action | Snackbar at the bottom, above the extra-keys row when it is shown, otherwise above the navigation bar and the keyboard; in a form, above the button that was pressed. `colorSurfaceInverse` (`se_surface_3`), 8 dp corners. An action only where it leads somewhere. Results of actions on other screens (Settings, the texture screens) are shown the same way |
-| The compile error | The same snackbar with a Details action, over the toolbar, where upstream put it so that it does not cover the line being edited. Where it should finally go is an open decision |
+| The compile error | In the new editor, the message row under the failing line (6.10); the list of all errors stays behind the toolbar's error button. Today's editor, and the new one while its code is hidden, keep the snackbar with a Details action over the toolbar, where upstream put it |
 | Rule for the editor | Nothing floats over the line being edited. With the keyboard up a snackbar at the bottom covers the caret's line when the caret is on the last visible line, so the editor sends there only failures, which are rare and must be read, and the few results of menu actions that are not a save (wallpaper set, a link that cannot be opened) |
 | Where no screen of the app is in front | A toast: the wallpaper service, filling the database on first start, and a screen that closes right after its message |
 | Something wrong that stays wrong | In place: the error button with its count, a bar in the file, a line in the list |

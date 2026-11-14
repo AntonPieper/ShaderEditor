@@ -53,6 +53,34 @@ public class LineGeometryTest {
 		assertEquals(4, lines.lineAt(80, 10));
 	}
 
+	@Test
+	public void keepsALineInPlaceWhenTheRowChanges() {
+		LineGeometry lines = lines(20);
+		// Opens above the anchor: everything above moves up.
+		lines.setRow(3, 50);
+		assertEquals(150, lines.keep(100, 9, -1, 0));
+		// Grows.
+		lines.setRow(3, 70);
+		assertEquals(120, lines.keep(100, 9, 3, 50));
+		// Moves below the anchor, then closes.
+		lines.setRow(12, 70);
+		assertEquals(30, lines.keep(100, 9, 3, 70));
+		lines.setRow(-1, 0);
+		assertEquals(100, lines.keep(100, 9, 12, 70));
+		// The anchor's own row does not move it.
+		lines.setRow(9, 50);
+		assertEquals(100, lines.keep(100, 9, -1, 0));
+		for (int scrollY = 0; scrollY < 200; scrollY += 37) {
+			LineGeometry before = lines(20);
+			before.setRow(2, 40);
+			float onScreen = before.top(9) - scrollY;
+			LineGeometry after = lines(20);
+			after.setRow(5, 90);
+			assertEquals(onScreen, after.top(9) - after.keep(scrollY, 9, 2,
+					40), 0);
+		}
+	}
+
 	private static LineGeometry lines(int lineHeight) {
 		LineGeometry lines = new LineGeometry();
 		lines.setLineHeight(lineHeight);

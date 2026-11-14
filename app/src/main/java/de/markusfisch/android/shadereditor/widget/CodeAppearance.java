@@ -7,6 +7,8 @@ import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.text.TextPaint;
+import android.text.style.TextAppearanceSpan;
+import android.util.TypedValue;
 
 import androidx.core.content.ContextCompat;
 
@@ -42,6 +44,16 @@ final class CodeAppearance {
 	// Of the bar and the number of a line with an error.
 	final int markColor;
 	final float markWidth;
+	// Of the row under a line that shows the messages of its errors,
+	// whose text is in markColor.
+	final TextPaint rowPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+	final int rowColor;
+	final float rowPadding;
+	final int rowPaddingVertical;
+	final int rowLineHeight;
+	final int rowBaseline;
+	final float corner;
+	final float tapTarget;
 	final int selectionColor;
 	final int caretColor;
 	final int handleColor;
@@ -74,6 +86,23 @@ final class CodeAppearance {
 		markColor = MaterialColors.getColor(context,
 				androidx.appcompat.R.attr.colorError, errorColor);
 		markWidth = res.getDimension(R.dimen.editor_mark_width);
+		rowColor = MaterialColors.getColor(context,
+				com.google.android.material.R.attr.colorSurface, textColor);
+		TypedValue body = new TypedValue();
+		if (context.getTheme().resolveAttribute(com.google.android.material
+				.R.attr.textAppearanceBodyMedium, body, true)) {
+			new TextAppearanceSpan(context, body.resourceId)
+					.updateMeasureState(rowPaint);
+		}
+		rowPaint.setColor(markColor);
+		Paint.FontMetricsInt rowMetrics = rowPaint.getFontMetricsInt();
+		rowLineHeight = rowMetrics.descent - rowMetrics.ascent;
+		rowBaseline = -rowMetrics.ascent;
+		rowPadding = res.getDimension(R.dimen.editor_padding);
+		rowPaddingVertical = res.getDimensionPixelSize(
+				R.dimen.se_row_padding_vertical);
+		corner = res.getDimension(R.dimen.se_corner);
+		tapTarget = res.getDimension(R.dimen.se_tap_target);
 		caretColor = ContextCompat.getColor(context, R.color.editor_caret);
 		selectionColor = ContextCompat.getColor(context,
 				R.color.code_selection);

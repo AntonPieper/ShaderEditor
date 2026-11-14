@@ -33,6 +33,7 @@
 	<string name="error">Error</string>
 	<string name="warning">Warning</string>
 	<string name="warning_message">Warning: %1$s</string>
+	<string name="error_row_more">+%1$d more</string>
 	<string name="shader_saved">Shader saved</string>
 	<string name="shader_disabled_after_crash">The previous shader crashed Shader Editor and was commented out.</string>
 

@@ -113,6 +113,19 @@ interface SourceEditor {
 	/** Mark the lines of the errors last set, and no others. */
 	void markErrors();
 
+	/**
+	 * Return whether the editor keeps showing the errors of the last
+	 * run until the result of the next one replaces them, instead of
+	 * having them cleared when an edit runs the text again.
+	 */
+	boolean keepsErrorsUntilResult();
+
+	/**
+	 * Return whether the editor shows the messages of errors next to
+	 * their lines now, so that the screen need not show them.
+	 */
+	boolean showsErrorMessages();
+
 	/** Colour the text again, after the settings changed. */
 	void updateHighlighting();
 

@@ -66,6 +66,9 @@ public class EditorFragment extends Fragment {
 	// folder, else null: then all are of the text shown.
 	@Nullable
 	private List<ProjectDiagnostic> allErrors;
+	// The file of the folder whose errors the editor marks, or null.
+	@Nullable
+	private ProjectPath errorsFile;
 	@Nullable
 	private ErrorAdapter.OnItemClickListener errorListener;
 
@@ -268,6 +271,7 @@ public class EditorFragment extends Fragment {
 
 	public void clearError() {
 		allErrors = null;
+		errorsFile = null;
 		editor.setErrors(Collections.emptyList());
 	}
 
@@ -279,8 +283,26 @@ public class EditorFragment extends Fragment {
 		editor.markErrors();
 	}
 
+	/**
+	 * Called when the text is run again after an edit: clear the errors
+	 * unless the editor keeps them until the result.
+	 */
+	public void runningEdit() {
+		if (hasErrors() && !editor.keepsErrorsUntilResult()) {
+			clearError();
+			highlightErrors();
+		}
+	}
+
+	/** Return whether the editor shows error next to its line now. */
+	public boolean showsErrorMessage(@NonNull ProjectDiagnostic error) {
+		return editor.showsErrorMessages() && error.line() > 0 &&
+				(errorsFile == null || errorsFile.equals(error.file()));
+	}
+
 	public void setErrors(@NonNull List<ProjectDiagnostic> errors) {
 		allErrors = null;
+		errorsFile = null;
 		editor.setErrors(errors);
 		highlightErrors();
 	}
@@ -299,6 +321,7 @@ public class EditorFragment extends Fragment {
 			}
 		}
 		allErrors = errors;
+		errorsFile = file;
 		editor.setErrors(inFile);
 		highlightErrors();
 	}
