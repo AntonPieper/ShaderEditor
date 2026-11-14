@@ -19,6 +19,8 @@ import de.markusfisch.android.shadereditor.widget.ShaderEditor;
 
 /** The editor built on EditText, with the app's undo history. */
 final class EditTextSourceEditor implements SourceEditor {
+	private static final String SELECTION = "edit_text_selection";
+
 	@NonNull
 	private final ShaderEditor shaderEditor;
 	@NonNull
@@ -63,8 +65,7 @@ final class EditTextSourceEditor implements SourceEditor {
 		undoRedo.listenForChanges();
 	}
 
-	// The undo history is the process's, and the view state keeps the
-	// selection.
+	// The undo history is the process's.
 	@Nullable
 	@Override
 	public Object getRetainedState() {
@@ -73,6 +74,9 @@ final class EditTextSourceEditor implements SourceEditor {
 
 	@Override
 	public void saveInstanceState(@NonNull Bundle state) {
+		state.putIntArray(SELECTION, new int[]{
+				shaderEditor.getSelectionStart(),
+				shaderEditor.getSelectionEnd()});
 	}
 
 	// Its text is the EditText's own.
@@ -91,10 +95,16 @@ final class EditTextSourceEditor implements SourceEditor {
 	@Override
 	public void restoreText(@NonNull String text, @Nullable Object retained,
 			@Nullable Bundle state) {
-		// Before the view state restores the selection, and without
-		// clearing the undo history, like EditText's own restore did.
-		// The undo listener only starts in resume().
+		// Without clearing the undo history, like EditText's own restore
+		// did. The undo listener only starts in resume().
 		shaderEditor.setTextHighlighted(text);
+		int[] selection = state != null ? state.getIntArray(SELECTION) : null;
+		int length = text.length();
+		if (selection != null && selection.length == 2 &&
+				selection[0] >= 0 && selection[0] <= length &&
+				selection[1] >= 0 && selection[1] <= length) {
+			shaderEditor.setSelection(selection[0], selection[1]);
+		}
 	}
 
 	@Override
