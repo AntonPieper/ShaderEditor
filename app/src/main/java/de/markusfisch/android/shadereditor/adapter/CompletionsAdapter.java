@@ -89,9 +89,12 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 
 		public void update(String item) {
 			this.item = item;
-			// The typed prefix stays regular, the part to insert is bold.
+			// The typed prefix stays regular, the part to insert is emphasised.
+			Object emphasis = ShaderEditorApp.preferences.emphasiseCompletionsWithOutline()
+					? new OutlineSpan()
+					: new FontSpan(boldFont);
 			SpannableString text = new SpannableString(item);
-			text.setSpan(new FontSpan(boldFont), prefixLength(), item.length(),
+			text.setSpan(emphasis, prefixLength(), item.length(),
 					Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 			btn.setText(text);
 		}
