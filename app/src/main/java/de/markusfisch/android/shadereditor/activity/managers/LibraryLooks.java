@@ -167,6 +167,7 @@ public final class LibraryLooks {
 			// replace it, nor it the run.
 			read(key, entry, fallback, quality -> projects.setWallpaper(
 					preparation, entry, quality, ofLibrary ? entry : null,
+					ofLibrary ? null : project.name(),
 					problem -> {
 						if (destroyed) {
 							return;

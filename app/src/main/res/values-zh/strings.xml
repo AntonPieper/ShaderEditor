@@ -45,6 +45,7 @@
 	<string name="sort_by_last_modification">按修改时间排序</string>
 	<string name="sensor_delay">传感器延迟</string>
 	<string name="no_shader_selected">未选择着色器</string>
+	<string name="file_in_folder">%1$s · %2$s</string>
 	<string name="shader">着色器</string>
 	<string name="keyboard">Keyboard</string>
 	<string name="running">运行</string>

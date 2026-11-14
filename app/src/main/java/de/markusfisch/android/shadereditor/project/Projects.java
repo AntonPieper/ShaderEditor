@@ -432,8 +432,19 @@ public final class Projects {
 	 */
 	public void setWallpaper(Preparation preparation, ProjectPath entry,
 			float quality, ProjectPath origin, Callback<String> done) {
+		setWallpaper(preparation, entry, quality, origin, null, done);
+	}
+
+	/**
+	 * As {@link #setWallpaper(Preparation, ProjectPath, float,
+	 * ProjectPath, Callback)}, keeping source, the name of the folder
+	 * the shader is from, to show where the wallpaper is from.
+	 */
+	public void setWallpaper(Preparation preparation, ProjectPath entry,
+			float quality, ProjectPath origin, String source,
+			Callback<String> done) {
 		change(() -> wallpaper().install(preparation, entry, quality,
-				origin), done);
+				origin, source), done);
 	}
 
 	/**
