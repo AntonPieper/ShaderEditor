@@ -51,6 +51,7 @@ public class ShaderManager implements OpenItem {
 	private final ShaderList shaderListManager;
 	private final NavigationManager navigationManager;
 	private final DataSource dataSource;
+	private final ShaderInserts inserts;
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final Runnable titleListener;
@@ -63,6 +64,8 @@ public class ShaderManager implements OpenItem {
 	private boolean isModified = false;
 	@Nullable
 	private Runnable shownListener;
+	@Nullable
+	private Runnable goneListener;
 
 	public ShaderManager(@NonNull AppCompatActivity activity,
 			EditorFragment editorFragment,
@@ -70,6 +73,7 @@ public class ShaderManager implements OpenItem {
 			ShaderList shaderListManager,
 			NavigationManager navigationManager,
 			DataSource dataSource,
+			boolean files,
 			ShaderViewManager.Listener shaderViewManagerListener,
 			@NonNull Runnable titleListener,
 			@NonNull Runnable savedListener) {
@@ -79,6 +83,7 @@ public class ShaderManager implements OpenItem {
 		this.shaderListManager = shaderListManager;
 		this.navigationManager = navigationManager;
 		this.dataSource = dataSource;
+		inserts = new ShaderInserts(dataSource.shader, files);
 		this.titleListener = titleListener;
 		this.savedListener = savedListener;
 
@@ -139,6 +144,15 @@ public class ShaderManager implements OpenItem {
 		shownListener = listener;
 	}
 
+	/**
+	 * Call listener when the shader in the editor is gone and no other
+	 * shader of the database comes in its place: where the shaders are
+	 * files, after it was deleted, or when one asked for is not there.
+	 */
+	public void setOnGoneListener(@Nullable Runnable listener) {
+		goneListener = listener;
+	}
+
 	/** Another item is in the editor now: no shader is selected. */
 	public void deselect() {
 		selectedShaderId = NO_SHADER;
@@ -159,8 +173,11 @@ public class ShaderManager implements OpenItem {
 
 	public void createShaderFromResource(@Nullable String name,
 			int sourceId, int thumbId, float quality) {
+		if (!inserts.possible()) {
+			return;
+		}
 		executor.execute(() -> {
-			long newId = dataSource.shader.insertShaderFromResource(
+			long newId = inserts.insertFromResource(
 					activity.getApplicationContext(), name, sourceId, thumbId, quality);
 			handler.post(() -> {
 				if (activity.isFinishing() || activity.isDestroyed()) {
@@ -225,6 +242,11 @@ public class ShaderManager implements OpenItem {
 		outState.putBoolean(MODIFIED, isModified);
 	}
 
+	/** Return the id of the shader state was saved with, or 0. */
+	public static long savedShaderId(@NonNull Bundle state) {
+		return state.getLong(SELECTED_SHADER_ID, NO_SHADER);
+	}
+
 	// The editor restores its text itself, keeping the undo history.
 	public void restoreState(@NonNull Bundle savedInstanceState) {
 		selectedShaderId = savedInstanceState.getLong(
@@ -244,7 +266,12 @@ public class ShaderManager implements OpenItem {
 
 		PreviewActivity.renderStatus.reset();
 		var shader = dataSource.shader.getShader(id);
-		if (shader == null) {
+		if (shader == null && !inserts.possible()) {
+			// No text without a row stands in for it: it could only
+			// be saved as a new row.
+			gone();
+			return;
+		} else if (shader == null) {
 			applyShader(
 					NO_SHADER,
 					activity.getString(R.string.new_shader_template),
@@ -290,7 +317,8 @@ public class ShaderManager implements OpenItem {
 		}
 
 		String src = editorFragment.getText();
-		if (src.trim().isEmpty() && selectedShaderId <= 0) {
+		if (selectedShaderId <= 0 && (src.trim().isEmpty() ||
+				!inserts.possible())) {
 			return true;
 		}
 
@@ -303,8 +331,7 @@ public class ShaderManager implements OpenItem {
 			dataSource.shader.updateShader(
 					selectedShaderId, src, thumbnail, quality);
 		} else {
-			long newId = dataSource.shader.insertShader(
-					src, null, thumbnail, quality);
+			long newId = inserts.insert(src, null, thumbnail, quality);
 			if (newId <= 0) {
 				Message.show(activity, R.string.storage_not_writeable);
 				return false;
@@ -424,7 +451,7 @@ public class ShaderManager implements OpenItem {
 			return NO_SHADER;
 		}
 		var thumbnail = dataSource.shader.getThumbnail(shaderId);
-		return dataSource.shader.insertShader(
+		return inserts.insert(
 				shader.fragmentShader(),
 				null,
 				thumbnail,
@@ -466,8 +493,20 @@ public class ShaderManager implements OpenItem {
 			return;
 		}
 		deleteShader(selectedShaderId);
-		selectShader(dataSource.shader.getFirstShaderId());
+		if (inserts.possible()) {
+			selectShader(dataSource.shader.getFirstShaderId());
+		} else {
+			// What comes next is not another row of the database.
+			gone();
+		}
 		shaderListManager.loadShadersAsync();
+	}
+
+	private void gone() {
+		deselect();
+		if (goneListener != null) {
+			goneListener.run();
+		}
 	}
 
 	// The shader with this id was given this name in the list.

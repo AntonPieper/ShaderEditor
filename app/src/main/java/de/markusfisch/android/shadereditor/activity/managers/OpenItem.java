@@ -82,4 +82,12 @@ public interface OpenItem {
 	/** Run it from now on, in place of what runs. */
 	default void runThisFile() {
 	}
+
+	/**
+	 * Return whether there is a text in the editor: to type in, to
+	 * undo in, to add a uniform to, to run.
+	 */
+	default boolean hasText() {
+		return true;
+	}
 }

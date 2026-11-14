@@ -47,6 +47,9 @@ public class MainMenuManager {
 
 		/** Whether the menu shows the entry for action. */
 		boolean offers(@NonNull OpenItem.Action action);
+
+		/** Whether there is a text open to add a uniform to. */
+		boolean hasText();
 	}
 
 	public interface NavigationActions {
@@ -162,6 +165,9 @@ public class MainMenuManager {
 		offer(menuView, R.id.share_shader, OpenItem.Action.SHARE);
 		offer(menuView, R.id.update_wallpaper, OpenItem.Action.WALLPAPER);
 		offer(menuView, R.id.run_this_file, OpenItem.Action.RUN_THIS_FILE);
+		// Without a text there is nothing to add a uniform to.
+		menuView.findViewById(R.id.add_uniform).setVisibility(
+				shaderActions.hasText() ? View.VISIBLE : View.GONE);
 	}
 
 	private void offer(@NonNull View menuView, int id,
