@@ -48,6 +48,8 @@ public class Preferences {
 	public static final String HIDE_NATIVE_SUGGESTIONS = "hide_native_suggestions";
 	public static final String LAST_OPENED_SHADER = "last_opened_shader";
 	public static final String PENDING_CRASH_SHADER = "pending_crash_shader";
+	public static final String PENDING_CRASH_FILE = "pending_crash_file";
+	public static final String HELD_FILE = "held_file";
 
 	private static final String WALLPAPER_RUNTIME = "wallpaper_runtime_";
 
@@ -96,6 +98,8 @@ public class Preferences {
 	private boolean hideNativeSuggestions = true;
 	private String defaultFont;
 	private long pendingCrashShaderId = 0;
+	private String pendingCrashFile = "";
+	private String heldFile = "";
 
 	public void init(Context context) {
 		PreferenceManager.setDefaultValues(
@@ -194,6 +198,10 @@ public class Preferences {
 		pendingCrashShaderId = preferences.getLong(
 				PENDING_CRASH_SHADER,
 				pendingCrashShaderId);
+		pendingCrashFile = preferences.getString(
+				PENDING_CRASH_FILE,
+				pendingCrashFile);
+		heldFile = preferences.getString(HELD_FILE, heldFile);
 	}
 
 	public boolean autoHideExtraKeys() {
@@ -212,6 +220,32 @@ public class Preferences {
 		pendingCrashShaderId = shaderId;
 		preferences.edit()
 				.putLong(PENDING_CRASH_SHADER, shaderId)
+				.apply();
+	}
+
+	/** Return the file that was handed to the engine and drew no frame yet. */
+	@NonNull
+	public String getPendingCrashFile() {
+		return pendingCrashFile;
+	}
+
+	public void setPendingCrashFile(@NonNull String file) {
+		pendingCrashFile = file;
+		preferences.edit()
+				.putString(PENDING_CRASH_FILE, file)
+				.apply();
+	}
+
+	/** Return the file that does not run by itself, as the app ended on it. */
+	@NonNull
+	public String getHeldFile() {
+		return heldFile;
+	}
+
+	public void setHeldFile(@NonNull String file) {
+		heldFile = file;
+		preferences.edit()
+				.putString(HELD_FILE, file)
 				.apply();
 	}
 
