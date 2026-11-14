@@ -111,9 +111,14 @@ final class NewFile {
 		String at = key;
 		ProjectParseResult<ProjectPath> parsed = ProjectPath.parse(
 				folder != null ? folder + "/" + name : name);
-		if (in == null || at == null || !parsed.isSuccess()) {
+		NewSheet asking = sheet;
+		if (in == null || at == null || !parsed.isSuccess() ||
+				asking == null) {
 			return;
-		} else if (kind == NewSheet.Kind.SHADER && folder == null &&
+		}
+		// One at a time: Create waits until this is made or failed.
+		asking.setBusy(true);
+		if (kind == NewSheet.Kind.SHADER && folder == null &&
 				at.equals(library)) {
 			newShader(in, at, name);
 			return;
@@ -140,6 +145,7 @@ final class NewFile {
 			if (shown == null || !at.equals(key)) {
 				return;
 			} else if (change instanceof ProjectFiles.Refused refused) {
+				shown.setBusy(false);
 				shown.fail(context.getString(R.string.nav_cannot_create,
 						name, refused.reason()));
 				return;
@@ -193,6 +199,7 @@ final class NewFile {
 			if (shown == null || !at.equals(key)) {
 				return;
 			} else if (made.path() == null) {
+				shown.setBusy(false);
 				shown.fail(context.getString(R.string.nav_cannot_create,
 						name, made.problem()));
 				return;
@@ -205,9 +212,16 @@ final class NewFile {
 							}
 						});
 			}
+			// Held until it has looked again: the sheet lets it go when
+			// dismissed, and nothing else may hold the library, as when
+			// an example is open.
+			holds.hold(in);
 			shown.dismiss();
 			// The library learns of the file as of one made elsewhere.
-			in.refresh(reread -> created.onFile(at, made.path()));
+			in.refresh(reread -> {
+				created.onFile(at, made.path());
+				holds.release(in);
+			});
 		});
 	}
 

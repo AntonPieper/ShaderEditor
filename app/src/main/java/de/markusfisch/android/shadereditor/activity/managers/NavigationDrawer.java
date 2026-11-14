@@ -162,6 +162,8 @@ public class NavigationDrawer implements ShaderList {
 	// files are shown in the level Examples.
 	@Nullable
 	private String examplesKey;
+	// Whether New shader was asked for before the library was known.
+	private boolean newShaderAsked;
 	// The folder opened before whose levels are shown, or null.
 	private FolderSource folder;
 	@Nullable
@@ -373,6 +375,9 @@ public class NavigationDrawer implements ShaderList {
 		if (!drawerLayout.isDrawerVisible(drawer)) {
 			go(home());
 		}
+		if (newShaderAsked) {
+			showNewShader();
+		}
 	}
 
 	// The library is listed like any folder; this reads it again.
@@ -448,10 +453,16 @@ public class NavigationDrawer implements ShaderList {
 
 	/** Shows the New sheet for a shader in the library's root. */
 	public void showNewShader() {
-		if (libraryKey != null) {
-			showNew(libraryKey, null, activity.getString(R.string.nav_shaders),
-					NewSheet.Kind.SHADER);
+		if (libraryKey == null) {
+			// The start's move runs: the sheet comes when the library is
+			// known.
+			newShaderAsked = true;
+			Message.show(activity, R.string.library_moving);
+			return;
 		}
+		newShaderAsked = false;
+		showNew(libraryKey, null, activity.getString(R.string.nav_shaders),
+				NewSheet.Kind.SHADER);
 	}
 
 	/**
@@ -460,7 +471,9 @@ public class NavigationDrawer implements ShaderList {
 	 * library's root, where its shaders are.
 	 */
 	public void showNew(@NonNull String key, @NonNull ProjectPath path) {
-		if (key.equals(libraryKey)) {
+		// Nothing can be made in the examples, which are read-only: a
+		// shader is made in the library.
+		if (key.equals(libraryKey) || key.equals(examplesKey)) {
 			showNewShader();
 			return;
 		}

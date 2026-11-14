@@ -60,6 +60,8 @@ public final class NewSheet {
 	// Whether the name is the one suggested, which follows the kind.
 	private boolean suggested = true;
 	private boolean filling;
+	// Whether what was asked is being made: Create waits for it.
+	private boolean busy;
 
 	// The sheet gives its content a parent only once it is set.
 	@SuppressLint("InflateParams")
@@ -136,6 +138,7 @@ public final class NewSheet {
 	 * {@link #setNames}.
 	 */
 	public void showFolder(@NonNull String where) {
+		busy = false;
 		naming = null;
 		ready = false;
 		location.setText(where);
@@ -152,6 +155,15 @@ public final class NewSheet {
 		} else {
 			check();
 		}
+	}
+
+	/**
+	 * While busy, what Create asked for is being made: Create waits, so
+	 * that a second tap makes nothing.
+	 */
+	public void setBusy(boolean busy) {
+		this.busy = busy;
+		check();
 	}
 
 	/** Says why creating failed; the sheet stays open. */
@@ -228,7 +240,7 @@ public final class NewSheet {
 				: naming.check(name);
 		String says = describe(context, problem, name);
 		nameLayout.setError(says != null && !says.isEmpty() ? says : null);
-		create.setEnabled(ready && problem == Naming.Problem.NONE &&
+		create.setEnabled(!busy && ready && problem == Naming.Problem.NONE &&
 				!name.isEmpty());
 	}
 }
