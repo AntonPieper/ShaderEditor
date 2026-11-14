@@ -366,4 +366,5 @@
 		<item quantity="other">%d files have unsaved changes. They stay until you open it again.</item>
 	</plurals>
 	<string name="copy_failed">Не удалось скопировать в буфер обмена</string>
+	<string name="file_not_saved">%1$s was not saved: %2$s</string>
 </resources>

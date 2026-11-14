@@ -50,6 +50,14 @@ public interface OpenItem {
 	boolean can(@NonNull Action action);
 
 	/**
+	 * Return whether the menu offers action at all, though it may not
+	 * be possible now; what is not offered is not shown.
+	 */
+	default boolean offers(@NonNull Action action) {
+		return true;
+	}
+
+	/**
 	 * Save the text; when not explicit, only if it has unsaved
 	 * changes.
 	 */

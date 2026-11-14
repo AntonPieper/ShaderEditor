@@ -501,6 +501,11 @@ public class MainActivity extends AppCompatActivity {
 			public boolean isWallpaper() {
 				return open.isWallpaper();
 			}
+
+			@Override
+			public boolean offers(@NonNull OpenItem.Action action) {
+				return open.offers(action);
+			}
 		};
 	}
 

@@ -42,6 +42,9 @@ public class MainMenuManager {
 		void onToggleExtraKeys();
 
 		boolean isWallpaper();
+
+		/** Whether the menu shows the entry for action. */
+		boolean offers(@NonNull OpenItem.Action action);
 	}
 
 	public interface NavigationActions {
@@ -140,6 +143,19 @@ public class MainMenuManager {
 
 		updateExtraKeysToggle(menuView.findViewById(R.id.show_extra_keys_box),
 				ShaderEditorApp.preferences.showExtraKeys());
+
+		offer(menuView, R.id.save_shader, OpenItem.Action.SAVE);
+		offer(menuView, R.id.duplicate_shader, OpenItem.Action.SAVE_COPY);
+		offer(menuView, R.id.delete_shader, OpenItem.Action.DELETE);
+		offer(menuView, R.id.share_shader, OpenItem.Action.SHARE);
+		offer(menuView, R.id.update_wallpaper, OpenItem.Action.WALLPAPER);
+	}
+
+	private void offer(@NonNull View menuView, int id,
+			@NonNull OpenItem.Action action) {
+		menuView.findViewById(id).setVisibility(shaderActions.offers(action)
+				? View.VISIBLE
+				: View.GONE);
 	}
 
 	public void updateExtraKeysToggle(@NonNull CompoundButton extraKeysToggle,

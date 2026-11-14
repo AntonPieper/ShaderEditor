@@ -4,7 +4,9 @@ import androidx.annotation.Nullable;
 
 /**
  * What the toolbar's second line shows: a notice until its time is up,
- * otherwise the line of what is open, otherwise the frame rate.
+ * otherwise the line of what is open, otherwise the frame rate. When
+ * what is open has a line of its own, the frame rate stands beside the
+ * quality instead.
  */
 final class SecondLine {
 	@Nullable
@@ -34,5 +36,10 @@ final class SecondLine {
 			return notice;
 		}
 		return own != null ? own : frameRate;
+	}
+
+	@Nullable
+	CharSequence besideQuality() {
+		return own != null ? frameRate : null;
 	}
 }
