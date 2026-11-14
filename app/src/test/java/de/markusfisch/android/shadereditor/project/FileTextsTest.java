@@ -270,6 +270,36 @@ public class FileTextsTest {
 		assertEquals(store.read(MAIN).revision(), checked[0].revision());
 	}
 
+	@Test
+	public void aFileHoldsATextWhenOpeningItGivesThatText() {
+		byte[] windows = "\uFEFFa\r\nb\u00a0c".getBytes(
+				java.nio.charset.StandardCharsets.UTF_8);
+		assertTrue(FileTexts.holds(windows, Text.of("a\nb c")));
+		assertFalse(FileTexts.holds(windows, Text.of("a\nb c\n")));
+		// Written, each of these is the '?' the file holds; none is it.
+		byte[] mark = "?".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+		assertTrue(FileTexts.holds(mark, Text.of("?")));
+		assertFalse(FileTexts.holds(mark, Text.of("\uD800")));
+		assertFalse(FileTexts.holds(mark, Text.of("\uDC00")));
+	}
+
+	@Test
+	public void aTextIsStorableExactlyWhenWritingAndOpeningGivesItBack()
+			throws java.io.IOException {
+		for (String text : List.of("", "plain\n", "\uD83D\uDE00 pair",
+				"\uD800", "a\uDC00", "\uDC00\uD800", "a\u0000b",
+				"\uFEFFstart", "inside\uFEFF", "one\n\ntwo\uD83D")) {
+			Text typed = Text.of(text);
+			java.io.ByteArrayOutputStream out =
+					new java.io.ByteArrayOutputStream();
+			TextBytes.write(typed, out);
+			assertEquals(text, FileTexts.holds(out.toByteArray(), typed),
+					FileTexts.unstorable(typed) == null);
+		}
+		assertTrue(FileTexts.unstorable(Text.of("ok\nbad \uD800"))
+				.contains("line 2"));
+	}
+
 	private Histories histories() {
 		return new Histories(new File(temp.getRoot(), "history"));
 	}

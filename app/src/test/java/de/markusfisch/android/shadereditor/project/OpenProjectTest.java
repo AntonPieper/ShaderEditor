@@ -1720,11 +1720,10 @@ public class OpenProjectTest {
 		ProjectPath a = path("a.glsl");
 		Document document = document(project, "a.glsl", "?");
 		edit(project, document, "\uD800");
-		assertTrue(save(project, true).get(a) instanceof Saved);
+		// The history is kept for the one lone surrogate.
 		flush(project);
-		assertEquals("?", read("a.glsl"));
 
-		// Only the journal learns of the other lone surrogate.
+		// Only the journal learns of the other.
 		edit(project, document, "\uDC00");
 		project.persist();
 		settle();
@@ -1733,10 +1732,78 @@ public class OpenProjectTest {
 
 		assertEquals("\uDC00", recovered.text().toString());
 		assertTrue(recovered.isModified());
+		assertFalse(recovered.canUndo());
 		assertEquals(Set.of(a), restarted.unsaved());
 		restarted.persist();
 		settle();
 		assertEquals("\uDC00", journaled("a.glsl"));
+	}
+
+	@Test
+	public void textAFileCannotHoldIsNeverSaved() throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "?");
+		edit(project, document, "\uD800");
+		project.persist();
+		settle();
+
+		// Written, the lone surrogate would be the '?' storage holds.
+		refresh(project);
+
+		assertTrue(document.isModified());
+		assertEquals(Set.of(a), project.unsaved());
+		assertEquals("\uD800", journaled("a.glsl"));
+		Outcome outcome = save(project, true).get(a);
+		assertTrue(outcome instanceof Failed);
+		assertTrue(((Failed) outcome).reason(),
+				((Failed) outcome).reason().contains("line 1"));
+		assertEquals("?", read("a.glsl"));
+		assertTrue(document.isModified());
+		MemoryProjectFiles copy = new MemoryProjectFiles();
+		copy.writable = true;
+		Map<ProjectPath, String> problems = await(done -> project.copyTo(
+				copy, List.of(a), done));
+		assertNotNull(problems.get(a));
+		assertNull(copy.text("a.glsl"));
+		assertEquals("\uD800", text(open(), "a.glsl"));
+
+		// With its pair, it is text a file holds.
+		OpenProject next = open();
+		edit(next, document(next, "a.glsl"), "\uD83D\uDE00");
+		assertTrue(save(next, true).get(a) instanceof Saved);
+		assertFalse(next.document(a).isModified());
+		assertEquals("\uD83D\uDE00", text(open(), "a.glsl"));
+	}
+
+	@Test
+	public void unsavedTextNotInMemoryThatStorageHoldsIsSaved()
+			throws IOException {
+		budget = 0;
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = shown(project, "a.glsl", "stored");
+		// Typed back, not undone.
+		edit(project, document, "other");
+		edit(project, document, "stored");
+		flush(project);
+		shown(project, "b.glsl", "b");
+		assertNull(project.document(a));
+		assertEquals(Set.of(a), project.unsaved());
+
+		refresh(project);
+
+		assertTrue(project.unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
+
+		// The same when the project opens.
+		Document again = shown(project, "a.glsl");
+		edit(project, again, "other");
+		edit(project, again, "stored");
+		flush(project);
+		assertEquals(Set.of(a), kept());
+		assertTrue(open().unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
 	}
 
 	@Test
@@ -1753,14 +1820,18 @@ public class OpenProjectTest {
 		edit(project, document, "saved");
 		project.persist();
 		settle();
+		// Storage does not hold that text anymore.
+		write("a.glsl", "theirs");
 
 		OpenProject restarted = open();
 		Document recovered = document(restarted, "a.glsl");
 
 		assertEquals("saved", recovered.text().toString());
 		assertTrue(recovered.isModified());
+		assertEquals(Set.of(a), restarted.conflicts().keySet());
 		assertEquals("saved", journaled("a.glsl"));
-		// Storage tells that it is the saved text, not the history.
+		// Storage tells when it is the saved text, not the history.
+		write("a.glsl", "saved");
 		refresh(restarted);
 		assertFalse(recovered.isModified());
 		assertTrue(kept().isEmpty());

@@ -60,24 +60,4 @@ final class TextBytes {
 		});
 		return length[0];
 	}
-
-	/** Return whether write writes exactly bytes. */
-	static boolean equal(Text text, byte[] bytes) throws IOException {
-		int[] at = {0};
-		write(text, new OutputStream() {
-			@Override
-			public void write(int b) {
-				at[0] = at[0] < 0 || at[0] >= bytes.length ||
-						bytes[at[0]] != (byte) b ? -1 : at[0] + 1;
-			}
-
-			@Override
-			public void write(byte[] b, int off, int len) {
-				for (int i = 0; i < len; ++i) {
-					write(b[off + i]);
-				}
-			}
-		});
-		return at[0] == bytes.length;
-	}
 }

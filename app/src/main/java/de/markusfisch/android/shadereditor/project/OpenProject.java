@@ -644,7 +644,10 @@ public final class OpenProject {
 	 * Save every file with unsaved text where it is, and mark each
 	 * document saved as it was when its text was taken. done gets the
 	 * outcome by path. A file changed elsewhere is saved only when
-	 * explicit and the user chose to keep their edits. When explicit, a
+	 * explicit and the user chose to keep their edits. A text no file
+	 * can hold, so that opening the file would give another text, as
+	 * one with half of a surrogate pair, fails with the place of the
+	 * character and stays unsaved; nothing is written for it. When explicit, a
 	 * document without unsaved text whose file was seen to be gone is
 	 * written too, creating the file again unless one is there.
 	 */
@@ -877,7 +880,8 @@ public final class OpenProject {
 	 * Write the current text of each of paths, as its document, else its
 	 * journal, else storage has it, to the same path in destination,
 	 * where it must not exist yet; nothing of this project changes. A
-	 * stored file larger than a document may be is not read. done gets
+	 * stored file larger than a document may be is not read, and a text
+	 * no file can hold, see {@link #save}, is not written as another. done gets
 	 * by path null when it was written, else why not.
 	 */
 	public void copyTo(ProjectFiles destination, Collection<ProjectPath> paths,
@@ -890,14 +894,20 @@ public final class OpenProject {
 			}
 		}
 		List<ProjectPath> copied = new ArrayList<>(paths);
-		ProjectFiles current = new Edited(Map.of(), journaled());
+		ProjectFiles current = new Edited(Map.of(), journaled(), true);
 		worker.execute(() -> {
 			Map<ProjectPath, String> problems = new LinkedHashMap<>();
 			for (ProjectPath path : copied) {
 				Text text = texts.get(path);
 				Read read = text == null ? current.read(path) : null;
+				String unstorable = text != null
+						? FileTexts.unstorable(text)
+						: null;
 				ProjectFiles.Change change;
-				if (text != null) {
+				if (unstorable != null) {
+					problems.put(path, unstorable);
+					continue;
+				} else if (text != null) {
 					change = destination.write(path,
 							out -> TextBytes.write(text, out), null);
 				} else if (read instanceof Content content) {
@@ -1657,11 +1667,20 @@ public final class OpenProject {
 	private final class Edited implements ProjectFiles {
 		private final Map<ProjectPath, Text> snapshot;
 		private final Set<ProjectPath> journaled;
+		// Whether a text no file can hold fails instead of being read
+		// as the bytes written for it.
+		private final boolean exact;
 
 		private Edited(Map<ProjectPath, Text> snapshot,
 				Set<ProjectPath> journaled) {
+			this(snapshot, journaled, false);
+		}
+
+		private Edited(Map<ProjectPath, Text> snapshot,
+				Set<ProjectPath> journaled, boolean exact) {
 			this.snapshot = snapshot;
 			this.journaled = journaled;
+			this.exact = exact;
 		}
 
 		@Override
@@ -1683,6 +1702,10 @@ public final class OpenProject {
 			}
 			if (text == null) {
 				return store.read(path, limit);
+			}
+			String unstorable = exact ? FileTexts.unstorable(text) : null;
+			if (unstorable != null) {
+				return new Failed(unstorable);
 			}
 			byte[] bytes = text.toString().getBytes(StandardCharsets.UTF_8);
 			if (bytes.length > limit) {
