@@ -38,6 +38,14 @@ public class UniformWarningsTest {
 	}
 
 	@Test
+	public void mouseFitsAsVec2AndAsVec4ButNotAsVec3() {
+		assertEquals(List.of(), names(find(Set.of(),
+				uniform("mouse", GLES20.GL_FLOAT_VEC4))));
+		assertEquals(List.of("mouse"), names(find(Set.of(),
+				uniform("mouse", GLES20.GL_FLOAT_VEC3))));
+	}
+
+	@Test
 	public void activeUniformsNothingProvidesAreReportedOncePerDeclaration() {
 		var findings = find(Set.of("noise"),
 				uniform("tmie", GLES20.GL_FLOAT),

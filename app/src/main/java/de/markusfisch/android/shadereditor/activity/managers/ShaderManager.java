@@ -127,7 +127,9 @@ public class ShaderManager implements OpenItem {
 					if (getSelectedShaderId() > 0 &&
 							status.getThumbnail() != null &&
 							ShaderEditorApp.preferences.doesSaveOnRun()) {
-						saveShader();
+						// Also when the text is saved already, for the
+						// thumbnail; the user did not ask to save.
+						saveShader(true, false);
 					}
 				});
 	}
@@ -279,6 +281,10 @@ public class ShaderManager implements OpenItem {
 	}
 
 	public boolean saveShader(boolean force) {
+		return saveShader(force, force);
+	}
+
+	private boolean saveShader(boolean force, boolean explicit) {
 		if (!force && !isModified()) {
 			return true;
 		}
@@ -314,7 +320,7 @@ public class ShaderManager implements OpenItem {
 		updatePendingCrashShaderId();
 		setModified(false);
 		shaderListManager.loadShadersAsync();
-		if (force) {
+		if (explicit) {
 			savedListener.run();
 		}
 		return true;
@@ -430,6 +436,7 @@ public class ShaderManager implements OpenItem {
 		dataSource.shader.removeShader(shaderId);
 		if (shaderId == selectedShaderId) {
 			selectedShaderId = NO_SHADER;
+			setModified(false);
 			updatePendingCrashShaderId();
 		}
 	}

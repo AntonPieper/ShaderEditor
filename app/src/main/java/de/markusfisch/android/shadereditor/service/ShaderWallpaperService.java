@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.service;
 
 import android.content.ComponentName;
+import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.opengl.GLSurfaceView;
@@ -14,6 +15,9 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LifecycleRegistry;
 
 import java.util.List;
 
@@ -67,7 +71,8 @@ public class ShaderWallpaperService extends WallpaperService {
 
 	private class ShaderWallpaperEngine
 			extends Engine
-			implements SharedPreferences.OnSharedPreferenceChangeListener {
+			implements SharedPreferences.OnSharedPreferenceChangeListener, LifecycleOwner {
+		private final LifecycleRegistry lifecycle = new LifecycleRegistry(this);
 		private final Handler mainHandler = new Handler(Looper.getMainLooper());
 		private ShaderWallpaperView view;
 		private long runtimeShaderId;
@@ -86,6 +91,7 @@ public class ShaderWallpaperService extends WallpaperService {
 		@Override
 		public void onCreate(SurfaceHolder holder) {
 			super.onCreate(holder);
+			lifecycle.setCurrentState(Lifecycle.State.CREATED);
 			view = new ShaderWallpaperView();
 			view.getEngine().setListener(new ShaderEngine.Listener() {
 				@Override
@@ -115,6 +121,13 @@ public class ShaderWallpaperService extends WallpaperService {
 				view.destroy();
 				view = null;
 			}
+			lifecycle.setCurrentState(Lifecycle.State.DESTROYED);
+		}
+
+		@NonNull
+		@Override
+		public Lifecycle getLifecycle() {
+			return lifecycle;
 		}
 
 		@Override
@@ -124,10 +137,12 @@ public class ShaderWallpaperService extends WallpaperService {
 				return;
 			}
 			if (visible) {
+				lifecycle.setCurrentState(Lifecycle.State.STARTED);
 				view.onResume();
 			} else {
 				view.onPause();
 				saveRuntime();
+				lifecycle.setCurrentState(Lifecycle.State.CREATED);
 			}
 		}
 
@@ -239,7 +254,7 @@ public class ShaderWallpaperService extends WallpaperService {
 
 		private class ShaderWallpaperView extends ShaderView {
 			public ShaderWallpaperView() {
-				super(ShaderWallpaperService.this,
+				super(new WallpaperContext(),
 						ShaderEditorApp.preferences.isBatteryLow()
 								? GLSurfaceView.RENDERMODE_WHEN_DIRTY
 								: GLSurfaceView.RENDERMODE_CONTINUOUSLY);
@@ -252,6 +267,18 @@ public class ShaderWallpaperService extends WallpaperService {
 
 			public void destroy() {
 				super.onDetachedFromWindow();
+			}
+		}
+
+		private class WallpaperContext extends ContextWrapper implements LifecycleOwner {
+			WallpaperContext() {
+				super(ShaderWallpaperService.this);
+			}
+
+			@NonNull
+			@Override
+			public Lifecycle getLifecycle() {
+				return lifecycle;
 			}
 		}
 	}

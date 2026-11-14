@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.opengl;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import android.opengl.GLES20;
@@ -63,6 +64,32 @@ public class ActiveBuiltinsTest {
 				"pointers", new GlUniform("pointers[0]", GLES20.GL_FLOAT_VEC3, 4, 6)));
 		assertEquals(List.of(6), out.locations);
 		assertEquals(List.of("vec3[1]"), out.calls);
+	}
+
+	@Test
+	public void mouseDeclaredAsVec4IsInPixelsAsShaderToyHasIt() {
+		var in = new FrameInputs();
+		in.mouseX = 0.5f;
+		in.touchX = 10;
+		in.touchY = 20;
+		in.touchStartX = 1;
+		in.touchStartY = 2;
+		in.pointerCount = 1;
+		var mouse = Map.of("mouse",
+				new GlUniform("mouse", GLES20.GL_FLOAT_VEC4, 1, 7));
+		var out = write(in, mouse);
+		assertEquals(List.of(7), out.locations);
+		assertEquals(List.of("vec4"), out.calls);
+		assertArrayEquals(new float[]{10, 20, 1, 2}, out.values.get(0), 0f);
+		// Released: where it started turns negative.
+		in.pointerCount = 0;
+		out = write(in, mouse);
+		assertArrayEquals(new float[]{10, 20, -1, -2}, out.values.get(0), 0f);
+		// The declaration the uniform list shows stays normalized.
+		out = write(in, Map.of("mouse",
+				new GlUniform("mouse", GLES20.GL_FLOAT_VEC2, 1, 7)));
+		assertEquals(List.of("vec2"), out.calls);
+		assertEquals(0.5f, out.values.get(0)[0], 0f);
 	}
 
 	private static final class CountingSource implements UniformSource {

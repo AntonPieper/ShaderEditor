@@ -48,7 +48,8 @@ public class PreviewActivity extends AppCompatActivity {
 
 	public static final String FRAGMENT_SHADER = "fragment_shader";
 	public static final String QUALITY = "quality";
-	public static final RenderStatus renderStatus = new RenderStatus();
+	public static volatile RenderStatus renderStatus = new RenderStatus();
+	private final RenderStatus status = new RenderStatus();
 
 	private final Runnable finishRunnable = this::finish;
 	private final Runnable thumbnailRunnable = new Runnable() {
@@ -59,7 +60,7 @@ public class PreviewActivity extends AppCompatActivity {
 			}
 
 			shaderView.getEngine().requestThumbnail(
-					renderStatus::setThumbnail);
+					status::setThumbnail);
 		}
 	};
 
@@ -69,26 +70,27 @@ public class PreviewActivity extends AppCompatActivity {
 	protected void onCreate(Bundle state) {
 		super.onCreate(state);
 
-		renderStatus.reset();
+		renderStatus = status;
 		shaderView = new ShaderView(this);
 
 		if (!setShaderFromIntent(getIntent())) {
 			finish();
 			return;
 		}
+		setResult(RESULT_OK);
 
 		shaderView.getEngine().setListener(
 				new ShaderEngine.Listener() {
 					@Override
 					public void onFramesPerSecond(int fps) {
 						// Invoked from the GL thread.
-						renderStatus.fps = fps;
+						status.fps = fps;
 					}
 
 					@Override
 					public void onDiagnostics(@NonNull List<ProjectDiagnostic> infoLog) {
 						// Invoked from the GL thread.
-						renderStatus.infoLog = infoLog;
+						status.infoLog = infoLog;
 						if (ProjectDiagnostic.anyError(infoLog)) {
 							runOnUiThread(finishRunnable);
 						}
@@ -109,10 +111,16 @@ public class PreviewActivity extends AppCompatActivity {
 	@Override
 	protected void onNewIntent(Intent intent) {
 		super.onNewIntent(intent);
+		setIntent(intent);
+		status.reset();
+		renderStatus = status;
 
 		if (!setShaderFromIntent(intent)) {
 			finish();
+			return;
 		}
+		shaderView.removeCallbacks(thumbnailRunnable);
+		shaderView.postDelayed(thumbnailRunnable, 500);
 	}
 
 	@Override
@@ -122,7 +130,6 @@ public class PreviewActivity extends AppCompatActivity {
 		super.onStart();
 
 		shaderView.onResume();
-		renderStatus.reset();
 		shaderView.postDelayed(thumbnailRunnable, 500);
 	}
 
@@ -130,6 +137,7 @@ public class PreviewActivity extends AppCompatActivity {
 	protected void onStop() {
 		super.onStop();
 
+		shaderView.removeCallbacks(thumbnailRunnable);
 		shaderView.onPause();
 	}
 
