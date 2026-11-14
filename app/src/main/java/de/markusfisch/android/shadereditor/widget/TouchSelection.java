@@ -33,6 +33,8 @@ final class TouchSelection {
 	private static final int CHARS = 1;
 	private static final int WORDS = 2;
 	private static final int HANDLE = 3;
+	// As Editor's DRAG_SHADOW_MAX_TEXT_LENGTH.
+	private static final int SHADOW_LENGTH = 20;
 
 	private final Motion motion;
 	private int unit;
@@ -230,6 +232,24 @@ final class TouchSelection {
 			return -1;
 		}
 		return offset > end ? offset - (end - start) : offset;
+	}
+
+	/**
+	 * Return what the shadow of a drag of [start, end) of text shows:
+	 * its first line that is not empty, and of that, as the platform's
+	 * text views, SHADOW_LENGTH characters and the one after them, cut
+	 * without an ellipsis.
+	 */
+	Selection shadowOf(Text text, int start, int end) {
+		int from = start;
+		while (from < end && from == motion.lineEnd(text, from)) {
+			++from;
+		}
+		int to = Math.min(end, motion.lineEnd(text, from));
+		if (to - from > SHADOW_LENGTH) {
+			to = Math.min(to, motion.nextChar(text, from + SHADOW_LENGTH));
+		}
+		return new Selection(from, to);
 	}
 
 	int anchor() {

@@ -158,4 +158,15 @@ public class TouchSelectionTest {
 		assertEquals(-1, TouchSelection.dropAt(2, 4, 3));
 		assertEquals(-1, TouchSelection.dropAt(2, 4, 4));
 	}
+
+	@Test
+	public void theShadowShowsTheFirstLineUpToTwentyOneCharacters() {
+		Text text = Text.of("\nvec3 color = mix(low, high, t);\nreturn;");
+		// The line break before it is skipped, the rest of the line cut.
+		assertEquals(new Selection(1, 22), touch.shadowOf(text, 0, 40));
+		// A short selection, all of it.
+		assertEquals(new Selection(6, 11), touch.shadowOf(text, 6, 11));
+		// Only the first line.
+		assertEquals(new Selection(17, 32), touch.shadowOf(text, 17, 40));
+	}
 }

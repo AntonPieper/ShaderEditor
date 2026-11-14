@@ -48,6 +48,11 @@ final class CodeAppearance {
 	// whose text is in markColor.
 	final TextPaint rowPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 	final int rowColor;
+	// Of things that float, such as the shadow of dragged text, and the
+	// hairline around them.
+	final int cardColor;
+	final int cardOutlineColor;
+	final float hairline;
 	final float rowPadding;
 	final int rowPaddingVertical;
 	final int rowLineHeight;
@@ -88,6 +93,11 @@ final class CodeAppearance {
 		markWidth = res.getDimension(R.dimen.editor_mark_width);
 		rowColor = MaterialColors.getColor(context,
 				com.google.android.material.R.attr.colorSurface, textColor);
+		cardColor = MaterialColors.getColor(context, com.google.android
+				.material.R.attr.colorSurfaceContainerHigh, rowColor);
+		cardOutlineColor = MaterialColors.getColor(context, com.google
+				.android.material.R.attr.colorOutlineVariant, lineNumberColor);
+		hairline = res.getDimension(R.dimen.se_hairline);
 		TypedValue body = new TypedValue();
 		if (context.getTheme().resolveAttribute(com.google.android.material
 				.R.attr.textAppearanceBodyMedium, body, true)) {

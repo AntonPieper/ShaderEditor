@@ -42,7 +42,6 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EdgeEffect;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.OverScroller;
 import android.widget.Toast;
 
@@ -157,8 +156,6 @@ public class CodeView extends View {
 	private static final int DRAG_MOUSE = 3;
 	// While text dragged by the system is over the view.
 	private static final int DRAG_DROP = 4;
-	// As Editor's DRAG_SHADOW_MAX_TEXT_LENGTH.
-	private static final int SHADOW_LENGTH = 20;
 
 	private final CodeAppearance appearance;
 	private final LineGeometry lines = new LineGeometry();
@@ -2080,27 +2077,23 @@ public class CodeView extends View {
 		}
 		int start = selection.start();
 		int end = selection.end();
-		String text = document.text().substring(start, end);
-		int shown = Math.min(text.length(), SHADOW_LENGTH);
-		if (shown < text.length() &&
-				Character.isHighSurrogate(text.charAt(shown - 1))) {
-			++shown;
-		}
-		TextView shadow = new TextView(getContext());
-		shadow.setTextAppearance(android.R.style.TextAppearance_Large);
-		shadow.setTextColor(appearance.textColor);
-		shadow.setText(text.substring(0, shown));
-		int unspecified = MeasureSpec.makeMeasureSpec(0,
-				MeasureSpec.UNSPECIFIED);
-		shadow.measure(unspecified, unspecified);
-		shadow.layout(0, 0, shadow.getMeasuredWidth(),
-				shadow.getMeasuredHeight());
+		Text all = document.text();
+		String text = all.substring(start, end);
+		Document.Selection shown = touch.shadowOf(all, start, end);
+		int n = all.lineOf(shown.start());
+		int lineStart = all.lineStart(n);
+		LineLayout layout = layoutOf(n);
+		DragShadowBuilder builder = new TextShadow(layout,
+				layout.xOf(shown.start() - lineStart),
+				layout.xOf(shown.end() - lineStart), appearance.lineHeight,
+				appearance);
 		toolbar.close();
 		ClipData clip = ClipData.newPlainText(null, text);
-		DragShadowBuilder builder = new DragShadowBuilder(shadow);
 		TextDrag drag = new TextDrag(document.text(), start, end);
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-			startDragAndDrop(clip, builder, drag, View.DRAG_FLAG_GLOBAL);
+			// Opaque: a card that lets the code through is hard to read.
+			startDragAndDrop(clip, builder, drag, View.DRAG_FLAG_GLOBAL |
+					View.DRAG_FLAG_OPAQUE);
 		} else {
 			startDrag(clip, builder, drag, 0);
 		}
