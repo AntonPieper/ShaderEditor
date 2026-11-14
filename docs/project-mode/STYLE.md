@@ -395,7 +395,7 @@ The library's defaults and nothing bespoke. Changes inside a surface (a drawer l
 
 1. **Sentence case** everywhere: "Show extra keys", "Sensor delay", "Insert code".
 2. **An action is a verb, without its object when the object is in view**: "Save", "Delete", "Share" in the toolbar menu. NAVIGATION 6.5 already lists the labels this way.
-3. **A dialog names the thing and its button is the verb**: "Delete sketch.glsl?" · Cancel · Delete. Never "OK", never "Are you sure".
+3. **A dialog names the thing and its button is the verb**: "Delete sketch.frag?" · Cancel · Delete. Never "OK", never "Are you sure".
 4. **A label is not a question and not a sentence.** "Add uniform to source", not "Add uniform sampler2D statement to source?". No full stop after a single sentence or a summary.
 5. **A summary says something the title does not**, or is absent.
 6. **One word per thing**: Settings (not Preferences), Examples, shader, folder, picture.

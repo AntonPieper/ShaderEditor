@@ -6,7 +6,7 @@ This records why the contract takes its present shape. SPEC.md and UX.md define 
 
 | User task | Minimum useful model |
 | --- | --- |
-| Write a shader immediately | New creates a valid `main.glsl` in a named folder at the displayed default location |
+| Write a shader immediately | New creates a valid `main.frag` in a named folder at the displayed default location |
 | Work in an existing repository/folder | Open the granted folder in place, then run a file; no initialization/import step |
 | Edit in another Android app | ShaderEditor user files appear in the native picker through DocumentsProvider |
 | Use an image or another shader's output | An adjacent annotation names its path; GLSL names the variable once |
@@ -84,8 +84,8 @@ The first request in issue #191 was a personal library of functions shared by ma
 ```text
 Shaders/                 <- open this folder
   lib/sdf.glsl
-  clouds/main.glsl       #include "../lib/sdf.glsl"
-  tunnel.glsl            #include "lib/sdf.glsl"
+  clouds/main.frag       #include "../lib/sdf.glsl"
+  tunnel.frag            #include "lib/sdf.glsl"
 ```
 
 Share and Set wallpaper collect only what the running shader depends on, so one large folder costs nothing. A shader folder opened on its own cannot reach a sibling `lib/`; the missing-file diagnostic says so. Library code bundled with the app, if it is ever added, follows the texture rule: inserting it copies it into the project.
@@ -142,7 +142,7 @@ Host directives are forbidden in include files, permanently. A library that need
 // lib/dither.glsl: takes the sampled value, not the sampler
 vec3 dither(vec3 color, float noise) { return color + (noise - 0.5) / 255.0; }
 
-// main.glsl
+// main.frag
 #pragma se input "textures/blue-noise.png" filter=nearest wrap=repeat
 uniform sampler2D blue;
 #include "lib/dither.glsl"

@@ -7,26 +7,31 @@ Status: proposed implementation contract. MUST, MUST NOT, and SHOULD describe re
 | Term | Meaning |
 | --- | --- |
 | Project root | The folder the user opened. It bounds every path reference. |
-| Running shader | The one `.glsl` file whose output is shown. Also called the entry. |
-| Pass file | A `.glsl` file compiled as its own program: the running shader, or any file named by a shader input. |
-| Include file | A file pulled into a pass file by `#include`. A file's role comes from how it is referenced, not from its folder or name. |
+| Running shader | The one text file whose output is shown. Also called the entry. |
+| Pass file | A text file compiled as its own program: the running shader, or any text file named by an input. |
+| Include file | A file pulled into a pass file by `#include`. |
+| Kind | What a file is, read from its bytes: a picture, text, or other (section 2.1). |
+| Role | What a file does in a build: running shader, pass, texture, include. It comes from how the file is referenced, never from its name, its folder or a guess at its content (section 2.1). |
+| Language | What a text file is written in. It comes from the file's name through one table; GLSL where the table says nothing (section 2.1). |
 | Input | A sampler uniform bound to an image, a pass output, or an engine sampler. |
 | Host directive | A `#pragma se ...` line. ShaderEditor consumes it; the GLSL compiler never sees it. |
 
 ## 1. Project and entry
 
-A native project is an ordinary folder used as a bounded logical file tree. Any folder granted by Android can be opened, including an empty, mixed-content, or read-only folder. Opening/browsing does not require a manifest or a runnable shader. The portable default entry is `main.glsl`. Only the selected entry and its dependencies participate in execution. Directory names such as `passes`, `include`, and `assets` are conveniences, not semantic namespaces.
+A native project is an ordinary folder used as a bounded logical file tree. Any folder granted by Android can be opened, including an empty, mixed-content, or read-only folder. Opening/browsing does not require a manifest or a runnable shader. The portable default entry is `main.frag`. Only the selected entry and its dependencies participate in execution. Directory names such as `passes`, `include`, and `assets` are conveniences, not semantic namespaces.
 
 An optional UTF-8 `shader-project.json` at the root supports exactly:
 
 ```json
 {
   "projectVersion": 1,
-  "entry": "main.glsl"
+  "entry": "main.frag"
 }
 ```
 
-Both fields are optional and default to the values shown. A missing manifest permanently means v1 with portable default `main.glsl`; it never means the latest format. This default does not prevent explicitly running another file. The manifest must be a JSON object. Duplicate keys, unknown keys, a version other than integer 1, or a non-string entry are errors. Entry resolves relative to the project root and must identify a `.glsl` file.
+Both fields are optional and default to the values shown. A missing manifest permanently means v1 with portable default `main.frag`; it never means the latest format. This default does not prevent explicitly running another file. The manifest must be a JSON object. Duplicate keys, unknown keys, a version other than integer 1, or a non-string entry are errors. Entry resolves relative to the project root and may name any file, whatever it is called; what the file must be is decided when it runs (section 2.1).
+
+A folder without a manifest is a complete project: nothing in this format needs one. The manifest exists only to make another file than `main.frag` the portable default.
 
 The project root is the folder the user opened. Only a manifest directly in that root is read; a `shader-project.json` deeper in the tree is an ordinary file. A file can therefore sit under different roots at different times, and a reference that leaves the current root is an error. Code shared by several shaders belongs in a folder that contains all of them (DECISIONS, Reusing code across shaders).
 
@@ -34,8 +39,10 @@ One rule selects the running shader, and it applies identically on open, reopen,
 
 1. the file the user last ran in this folder (by tapping it or with Run this file), if it still exists;
 2. otherwise the `entry` of a valid manifest;
-3. otherwise `main.glsl`, if present;
+3. otherwise `main.frag`, if present;
 4. otherwise nothing runs.
+
+The three sources are tried in this order and the first that names a file wins; there is exactly one default at any time. A folder that has both a manifest and a `main.frag` runs the manifest's entry, because the manifest is the explicit statement and `main.frag` only the convention. The only question the rule asks of a file is whether it exists. It never looks into a file, so the choice cannot change while a file is being edited: a remembered file that is no longer text, or has lost its `main`, is still the running shader, and that is a render diagnostic on it (section 2.1), not a reason to run something else. A remembered file that is gone falls through to the next line.
 
 The Run this file choice is app metadata remembered per folder. It never changes portable files. Set default shader writes the manifest entry and clears the remembered choice, so the two agree afterwards. An invalid manifest is a render diagnostic for every running shader in that folder, because its version may be unsupported; a configured entry that does not exist is a render diagnostic too. Neither blocks browsing or editing.
 
@@ -53,7 +60,45 @@ Different spellings that normalize to the same path identify the same resource. 
 
 Shader/manifest text uses UTF-8. Accept an initial UTF-8 BOM and normalize CRLF/CR to LF while retaining original source locations. Parse host paths before any driver-facing ASCII sanitization. Do not strip Unicode characters out of filenames or mutate tokens to make invalid GLSL appear valid. Preserve raw driver logs for diagnostic fallback.
 
-Recognize `.glsl`, `.png`, `.jpg`, and `.jpeg` extensions case-insensitively while keeping path lookup case-sensitive. Other files may be stored/shared but cannot be bound as native v1 inputs. `#include` accepts any file name; the content must be UTF-8 text. An unreachable source file is not compiled; a broken experiment does not prevent the selected entry from running.
+An unreachable source file is not compiled; a broken experiment does not prevent the selected entry from running.
+
+### 2.1 What a file is: kind, role and language
+
+Three questions are asked of a file, and each has one answer from one place. A file's name answers only the third.
+
+**Kind comes from the bytes.** A file is a *picture* when it starts with the signature of a supported image format, *text* when its bytes are valid UTF-8 within the size limit of a text file, and *other* in every remaining case. The signatures are one small table; adding a format is adding a row:
+
+| Format | The file starts with |
+| --- | --- |
+| PNG | `89 50 4E 47 0D 0A 1A 0A` |
+| JPEG | `FF D8 FF` |
+
+The signature is looked at first, so a picture is never text. The name plays no part: `noise.png` holding GLSL is text, and `photo.txt` holding a JPEG is a picture. A build learns the kind of each file from the bytes it reads for that file anyway, the one read of section 10; telling a picture needs only its first bytes, and nothing is decoded to plan a build. Every file whose kind was looked at is one of the build's dependencies. Where a file is not read whole, a store reads its first bytes alone.
+
+**Role comes from references.** Nothing is a shader, a texture or a library because of what it is called or where it lies:
+
+- The running shader is the file the rule of section 1 selects.
+- A file named by an input (`#pragma se input "..."`, or `initial="..."` of a target) is a texture when it is a picture and a pass when it is text. Anything else is an error on that line: `data.bin is neither a picture (PNG, JPEG) nor text`.
+- An include is whatever `#include` names; it must be text.
+
+A pass must have a `main`: an input that names a text file whose source, with its includes, never mentions `main` is an error on the input line that names the file, `lib/noise.glsl defines no main, so it cannot be an input; include it instead`, because nothing could be drawn and the driver's message would point at no line of the user's. The same holds for the running shader, reported on the file. Text that mentions `main` is left to the compiler, which is the only judge of whether it defines one.
+
+Options are checked against the kind once it is known: `frame=` on a picture, `mipmap=` on a pass, and a sampler type the source cannot be read as (section 3.1) are errors on the input line.
+
+**Language comes from the name, through one table.** A text file's language is looked up by its name; GLSL is the language of every text file the table does not list. The table has one language today:
+
+| The name ends in | Language |
+| --- | --- |
+| `.frag`, `.glsl`, `.fs`, `.fsh` | GLSL |
+| anything else | GLSL |
+
+This table is the only place where the ending of a file name has meaning, and it is consulted only for text. Endings are compared without regard to case; path lookup stays case-sensitive (section 2). The listed endings are also what the app offers itself for when another app opens a file, and what the folder list may use as a hint.
+
+**Names by convention.** None of this is enforced: a fragment shader that runs or is a pass is named `*.frag`, and code meant to be included is named `*.glsl`. The default name, the examples, the converter and the New sheet follow it. It matches what the common tools do: `.frag` is the stage extension of the Khronos tools and of most editors, and `.glsl` is what shader libraries use for files without a stage.
+
+**A hint is not the truth.** A list of files may show an icon from the type a provider reports or from the name, because reading the first bytes of every listed file is too slow on document providers. That hint decides nothing: when a file is opened or used, its kind is read from its bytes. A picture named like a shader shows a text icon in the list and opens as a picture.
+
+**Run this file** is offered on every text file whose own text defines `main`, whatever its name.
 
 ## 3. GLSL and host directives
 
@@ -98,7 +143,7 @@ declaration     := uniform [lowp|mediump|highp] sampler-type identifier ;
 
 The sampling options are three independent choices, as in GL: the base filter, the mipmap mode, and the wrap mode. `filter` sets minification and magnification together; `min` and `mag` set them separately and cannot be combined with `filter`. `wrap` with one value sets both axes; with two values it sets the horizontal axis, then the vertical one.
 
-For a shader source, sampler-type is `sampler2D`. For an image source it is `sampler2D`, or `samplerCube` to read the image as a cubemap (section 4). For source-less engine samplers, use their existing supported GLSL type (`sampler2D` for backbuffer, the supported camera sampler type for camera inputs). Validate capabilities through existing engine providers.
+For a pass, sampler-type is `sampler2D`. For a picture it is `sampler2D`, or `samplerCube` to read the image as a cubemap (section 4). For source-less engine samplers, use their existing supported GLSL type (`sampler2D` for backbuffer, the supported camera sampler type for camera inputs). Validate capabilities through existing engine providers.
 
 An input annotation applies to exactly one immediately following direct uniform declaration in the same file. Allow comments, whitespace, and a multiline declaration, but not another declaration, another directive, or a file boundary in between. Do not support annotated comma-separated declarations, arrays, structs, layout qualifiers, or macro-generated declarations in v1. Give a targeted error explaining the supported shape. Unannotated GLSL may use ordinary legal constructs independently of this attachment grammar.
 
@@ -108,14 +153,14 @@ The variable name appears only in the GLSL declaration. Named-target syntax, `se
 
 ### 3.2 Sources
 
-A quoted image path supplies an image texture. A quoted `.glsl` path supplies that file's default pass output. A shader output defaults to the current frame. `frame=previous` selects its previous completed frame. The `frame` key is invalid for images and for source-less annotations.
+A quoted path that names a picture supplies an image texture. A quoted path that names text supplies that file's default pass output (section 2.1). A shader output defaults to the current frame. `frame=previous` selects its previous completed frame. The `frame` key is invalid for images and for source-less annotations.
 
 With no quoted path, the attached uniform must be a recognized engine-provided sampler. Its source remains that engine provider; the annotation only customizes legal sampling settings. A bare input directive with neither path nor options is an error. Do not allow explicit file bindings to replace reserved builtin names.
 
 Examples:
 
 ```glsl
-#pragma se input "passes/state.glsl" frame=previous
+#pragma se input "passes/state.frag" frame=previous
 uniform sampler2D previousState;
 
 #pragma se input filter=linear
@@ -128,7 +173,7 @@ Each declared input path is a required static dependency, even if the GLSL compi
 
 ## 4. Image and sampler semantics
 
-PNG and JPEG are the v1 image formats. The import UI may decode other formats and copy a PNG into the project. HDR images, video files, and asset sidecars are out of scope. Camera inputs keep their existing engine contract.
+PNG and JPEG are the v1 image formats, told by their signatures (section 2.1). The import UI may decode other formats and copy a PNG into the project. HDR images, video files, and asset sidecars are out of scope. Camera inputs keep their existing engine contract.
 
 Decode to RGBA8 numeric channel values with straight alpha; do not implicitly linearize sRGB. JPEG alpha is 1. Honor supported image orientation metadata. Normalize upload orientation so `(0,0)` denotes the image's lower-left corner consistently with pass textures. Do not silently resize or reduce precision to fit GPU limits; report the limit and offer explicit user action. Imports may offer a deliberate resize before copying.
 
@@ -168,7 +213,7 @@ Every pass has one color output, no depth attachment, and no blending. Clear eve
 **Initial content.** A pass's history starts as `(0,0,0,1)` unless `initial` names a source. `initial` takes a path exactly as an input does:
 
 - An image is stretched over the target, sampled linearly.
-- A `.glsl` file is an ordinary pass file, with no restrictions: it may use inputs, includes, and its own `se target`. It is drawn once at start and after every reset (section 7), with `time` and `frame` at zero, and its output is stretched over the target. Whatever it reads from other passes shows their initial content, which is what "before the first frame" means.
+- A text file is an ordinary pass file, with no restrictions: it may use inputs, includes, and its own `se target`. It is drawn once at start and after every reset (section 7), with `time` and `frame` at zero, and its output is stretched over the target. Whatever it reads from other passes shows their initial content, which is what "before the first frame" means.
 
 Initial sources that are shaders form a graph of their own: a shader that is an initial source may read passes that have initial sources themselves. That graph must be acyclic, by the same rule as current-frame inputs (section 6). An initial source is a static dependency like an input. A shader reached only as an initial source is drawn at reset and not once per frame; if it is also a shader input, it is an ordinary per-frame pass as well. `initial` on a pass whose history nobody reads has no effect and is a warning; a reset-time read of the pass by another initial shader counts as a read. Whether a pass reads its own history through an unannotated `backbuffer` is only known after linking, so this warning is given then, not from source text.
 
@@ -233,7 +278,7 @@ Wallpaper application captures the selected dependency closure from the current 
 
 ## 11. Limits and feature scope
 
-Enforce explicit bounds on expanded source bytes, include depth, include expansions, files per build, passes, and decoded pixels per image. A limit is an admission bound: it is checked before the read, expansion or allocation it guards, in one place per resource, and a limit of zero is a usable policy that yields the same diagnostic, not a crash. GPU limits come from the context's reported texture size and unit counts; do not estimate GPU memory. The defaults are include depth 16, 1 MiB of assembled source per pass, 20,000 include expansions per pass, 64 files per build, 16 passes, and 16,777,216 decoded pixels per image (4096 by 4096). They are sized for phones: a build stays within a few megabytes of text and one full-size texture per image, and a small project cannot make preparation run for more than a moment. Keep limits in one documented policy location. Report the exceeded limit and avoid silently truncating input. Limits may be implementation/device-dependent; they are resource admission policy, not alternate format semantics. Choose conservative values from Android memory constraints and record them in HANDOFF plus user-facing diagnostics.
+Enforce explicit bounds on expanded source bytes, include depth, include expansions, files per build, passes, and decoded pixels per image. A limit is an admission bound: it is checked before the read, expansion or allocation it guards, in one place per resource, and a limit of zero is a usable policy that yields the same diagnostic, not a crash. GPU limits come from the context's reported texture size and unit counts; do not estimate GPU memory. The defaults are include depth 16, 1 MiB of assembled source per pass, 20,000 include expansions per pass, 64 files per build, 16 passes, and 16,777,216 decoded pixels per image (4096 by 4096). A file counts toward the files of a build once, whether it turns out to be a picture, a pass or an include. They are sized for phones: a build stays within a few megabytes of text and one full-size texture per image, and a small project cannot make preparation run for more than a moment. Keep limits in one documented policy location. Report the exceeded limit and avoid silently truncating input. Limits may be implementation/device-dependent; they are resource admission policy, not alternate format semantics. Choose conservative values from Android memory constraints and record them in HANDOFF plus user-facing diagnostics.
 
 V1 includes file projects, includes, local 2D and cubemap images, mipmaps, engine uniforms, basic multipass, history with initial content, targets, diagnostics, native editing/persistence, sharing, and wallpaper snapshots. It excludes generated declarations, source-name inference, asset sidecars, implicit global resources, arbitrary graph overrides, a graph editor, a script runtime, compute, SSBOs, multiple outputs, mipmaps for pass outputs, input-size uniforms (use `textureSize` with `#version 300 es`), and live cross-project package updates. Unsupported features fail explicitly.
 
@@ -243,7 +288,7 @@ The engine has no second dialect. Everything it renders is a project as defined 
 
 ### 12.1 The converter
 
-The converter is a pure function with no Android or GL dependency: given a DB shader's text and a way to look up library textures by name, it returns project files and a source map back to the original lines. It is the only code that knows the old conventions.
+The converter is a pure function with no Android or GL dependency: given a DB shader's text and a way to look up library textures by name, it returns project files and a source map back to the original lines. The shader is written as `main.frag`, and a shader it generates for a backbuffer preset as `<preset>.frag`, following the names of section 2.1. It is the only code that knows the old conventions.
 
 | Existing convention | Project form |
 | --- | --- |
@@ -281,7 +326,7 @@ Text in a database shader that is project syntax is read as project syntax: an `
 ### 12.2 Three phases
 
 1. **Convert in memory.** A DB shader is stored and edited as it is today. To render it, convert it and run the result through `prepare` like any project; a `ProjectFiles` view over the database supplies the converted text and the textures. Diagnostics map back to the stored text through the converter's source map. From this point every existing shader exercises the converter and the one pipeline.
-2. **Migrate.** One time, write every DB shader and every library texture into a single library folder in ShaderEditor's own storage (UX 8): shaders as `<title>.glsl`, textures once in `textures/`. Carry thumbnails, quality, and the wallpaper selection into app metadata. Write and verify each file before marking its shader as migrated, so an interrupted migration resumes and a failed one leaves the shader usable from the database. Keep the database as a read-only backup for at least one release.
+2. **Migrate.** One time, write every DB shader and every library texture into a single library folder in ShaderEditor's own storage (UX 8): shaders as `<title>.frag`, textures once in `textures/`. Carry thumbnails, quality, and the wallpaper selection into app metadata. Write and verify each file before marking its shader as migrated, so an interrupted migration resumes and a failed one leaves the shader usable from the database. Keep the database as a read-only backup for at least one release.
 3. **Remove.** Delete the database shader and texture code and the database view. The converter stays, for old shader text that arrives from outside.
 
 **Save as files** applies the converter to one shader on request at any time before migration, through the ordinary Name/Location flow, and leaves the original in place.
@@ -289,3 +334,11 @@ Text in a database shader that is project syntax is read as project syntax: an `
 ### 12.3 Old shader text from outside
 
 A file is always a project file; never choose a dialect per file at render time. Shader text written for the old conventions is helped by its diagnostics instead: an unprovided sampler whose name matches a library texture, or a trailing `///` sampler comment, offers **Convert**, which applies the converter to that file. Without that action the text is read as written, and a `///` comment is only a comment.
+
+## 13. Notes for later
+
+Nothing here is part of v1. These notes say where two likely additions attach, so that what v1 builds does not stand in their way.
+
+**A vertex shader.** A pass today is one fragment shader drawn over a full-screen rectangle with a vertex shader the engine supplies. A user's vertex shader would belong to a pass, and the pass file would name it, never the other way round: by default the sibling with the same stem (`X.vert` beside `X.frag`), or the file a line in the fragment shader names. The consumer names the producer, in one direction, as an input names its source. Nothing is found by scanning a folder, and a `.vert` file that no pass names has no role. What this needs from v1 is already there: role comes from references (section 2.1), a pass is identified by its fragment file's path (section 6), and an ending has meaning only through the language table, so a stage is not read out of a name anywhere else. The stem rule would be the one new place a name is looked at, and it only says where to look by default.
+
+**A second language.** A text file's language comes from the one table of section 2.1, so another language is a row there. A pass is compiled in the language of its file; a build would have to say what an `#include` of another language means (most likely an error) and which languages a device can run. Kind, role, the entry rule, inputs and the pass graph do not ask about language.

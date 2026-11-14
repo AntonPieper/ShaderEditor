@@ -456,7 +456,7 @@ PRs 2 to 5 are where the risk is; each is small because `FileRecord` has no I/O 
 
 **D5. What Save a copy is in the first version.**
 - (a) *Recommended:* one core operation `copyTo(destination, paths)` that never touches the source; the screen picks destination and paths (running shader's closure) and switches afterwards, as UX 5 says. Cost: PR 11 in the core; the picker flow is shared with New.
-- (b) Keep the sibling copy ("x copy.glsl" next to the file) under an honest name for conflicts only, and do the folder copy later. Cheapest; does nothing for read-only or unavailable folders, which is where UX 5 needs it.
+- (b) Keep the sibling copy ("x copy.frag" next to the file) under an honest name for conflicts only, and do the folder copy later. Cheapest; does nothing for read-only or unavailable folders, which is where UX 5 needs it.
 - (c) No Save a copy in the first version; conflicts offer Reload and Keep only. Cheapest of all; the journal still keeps the text, but a read-only folder is then a dead end until the user chooses a folder again.
 
 **D6. A clean file that was deleted elsewhere while shown.** (a) *Recommended:* keep showing its text with a notice, do not build it, Save re-creates it. (b) Close it. (a) costs state S4; (b) can surprise by closing what the user is looking at.
