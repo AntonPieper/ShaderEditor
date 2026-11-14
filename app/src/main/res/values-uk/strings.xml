@@ -362,6 +362,9 @@
 	<string name="nav_choose_folder_again">Choose folder again</string>
 	<string name="nav_choose_file_again">Choose file again</string>
 	<string name="nav_remove_from_list">Remove from list</string>
+	<string name="nav_name">Name</string>
+	<string name="nav_location">Location</string>
+	<string name="nav_create">Create</string>
 	<string name="nav_remove_title">Remove %s from the list?</string>
 	<string name="nav_remove">Remove</string>
 	<plurals name="nav_remove_unsaved">

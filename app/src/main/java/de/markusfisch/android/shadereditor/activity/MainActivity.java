@@ -289,8 +289,8 @@ public class MainActivity extends AppCompatActivity {
 				holds,
 				new NavigationDrawer.Host() {
 					@Override
-					public void onAddShader() {
-						shaderActions.onAddShader();
+					public void onAddShader(@NonNull String name) {
+						addShader(name.isEmpty() ? null : name);
 					}
 
 					@Override
@@ -583,13 +583,7 @@ public class MainActivity extends AppCompatActivity {
 		return new MainMenuManager.ShaderActions() {
 			@Override
 			public void onAddShader() {
-				long defaultId = ShaderEditorApp.preferences.getDefaultNewShader();
-				if (defaultId > 0 && dataSource.shader.getShader(defaultId) != null) {
-					shaderManager.selectCopy(defaultId);
-				} else {
-					shaderManager.createShaderFromResource(null,
-							R.raw.new_shader, R.drawable.thumbnail_new_shader, 1f);
-				}
+				addShader(null);
 			}
 
 			@Override
@@ -672,6 +666,24 @@ public class MainActivity extends AppCompatActivity {
 				navigationManager.goToFaq();
 			}
 		};
+	}
+
+	// A copy of the default shader, else the template, named name if
+	// not null.
+	private void addShader(@Nullable String name) {
+		long defaultId = ShaderEditorApp.preferences.getDefaultNewShader();
+		if (defaultId > 0 && dataSource.shader.getShader(defaultId) != null) {
+			shaderManager.selectCopy(defaultId);
+			long id = shaderManager.getSelectedShaderId();
+			if (name != null && id > 0) {
+				dataSource.shader.updateShaderName(id, name);
+				shaderManager.shaderRenamed(id, name);
+				shaderListManager.loadShadersAsync();
+			}
+		} else {
+			shaderManager.createShaderFromResource(name,
+					R.raw.new_shader, R.drawable.thumbnail_new_shader, 1f);
+		}
 	}
 
 	private void showOpenTitle() {
