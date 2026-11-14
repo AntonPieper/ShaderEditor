@@ -358,6 +358,13 @@
 	<string name="nav_name">Name</string>
 	<string name="nav_location">Location</string>
 	<string name="nav_create">Create</string>
+	<string name="nav_new_shader">Shader</string>
+	<string name="nav_new_empty">Empty file</string>
+	<string name="nav_name_invalid">A name cannot contain / \\ : * ? \" &lt; &gt; |</string>
+	<string name="nav_name_hidden">A name that starts with a dot is not shown</string>
+	<string name="nav_name_taken">%s is already here</string>
+	<string name="nav_cannot_create">%1$s cannot be created: %2$s</string>
+	<string name="nav_cannot_change_folder">Nothing can be created in this folder</string>
 	<string name="nav_remove_title">Remove %s from the list?</string>
 	<string name="nav_remove">Remove</string>
 	<plurals name="nav_remove_unsaved">

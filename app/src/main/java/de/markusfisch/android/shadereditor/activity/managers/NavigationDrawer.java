@@ -128,6 +128,7 @@ public class NavigationDrawer implements ShaderList {
 	private final ProjectHolds holds;
 	private final ActivityResultLauncher<Intent> pickFolder;
 	private final ActivityResultLauncher<Intent> pickFile;
+	private final NewFile newFile;
 	private final Map<Level, Source> sources = new HashMap<>();
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
 	// Folders are read on their own, so a slow one holds up no other
@@ -174,6 +175,13 @@ public class NavigationDrawer implements ShaderList {
 		pickFile = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(),
 				result -> onPicked(result, false));
+		newFile = new NewFile(activity, holds, listings, handler,
+				(key, path) -> {
+					reread(key, path);
+					if (host.onOpenFile(key, path, false)) {
+						close();
+					}
+				});
 
 		// Takes the place of the old drawer, from the top edge to the
 		// bottom edge.
@@ -696,24 +704,57 @@ public class NavigationDrawer implements ShaderList {
 		}
 	}
 
-	// New makes a database shader in the library.
+	// New in the library makes a database shader; in a folder, a file
+	// or folder there.
 	private void showNew() {
-		sheet = new NewSheet(activity, new NewSheet.Listener() {
+		String key = level.key();
+		if (key == null) {
+			sheet = newSheet(NewSheet.Kind.SHADER);
+			sheet.showLibrary(activity.getString(R.string.nav_shaders));
+			return;
+		}
+		String path = level.path();
+		showNew(key, path != null ? ProjectPath.parse(path).value() : null,
+				listing.title(), NewSheet.Kind.SHADER);
+	}
+
+	private void showNew(@NonNull String key, @Nullable ProjectPath in,
+			@NonNull String where, @NonNull NewSheet.Kind kind) {
+		if (sheet != null) {
+			sheet.dismiss();
+		}
+		sheet = newSheet(kind);
+		newFile.show(sheet, key, in, where);
+	}
+
+	@NonNull
+	private NewSheet newSheet(@NonNull NewSheet.Kind kind) {
+		return new NewSheet(activity, kind, new NewSheet.Listener() {
 			@Override
-			public void onCreate(@NonNull String name) {
-				if (sheet != null) {
+			public void onCreate(@NonNull NewSheet.Kind kind,
+					@NonNull String name) {
+				if (newFile.isShowing()) {
+					newFile.create(kind, name);
+				} else if (sheet != null) {
 					sheet.dismiss();
+					host.onAddShader(name);
+					close();
 				}
-				host.onAddShader(name);
-				close();
 			}
 
 			@Override
 			public void onDismissed() {
+				newFile.dismissed();
 				sheet = null;
 			}
 		});
-		sheet.showLibrary(activity.getString(R.string.nav_shaders));
+	}
+
+	// The folder that holds what was created is read again.
+	private void reread(@NonNull String key, @NonNull ProjectPath path) {
+		if (folder != null && folder.key().equals(key)) {
+			folder.retry(Item.Place.file(key, path.toString()).level());
+		}
 	}
 
 	private void showOrderMenu() {

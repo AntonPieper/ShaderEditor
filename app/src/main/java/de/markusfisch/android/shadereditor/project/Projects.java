@@ -28,6 +28,11 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
  * main. Nothing waits for the queue.
  */
 public final class Projects {
+	/** A change of the files of a project, made on the queue. */
+	public interface Change {
+		ProjectFiles.Change make(ProjectFiles files);
+	}
+
 	/** An opened project with its session id, or why it is closed. */
 	public record Opened(String id, OpenProject project, String problem) {
 	}
@@ -164,6 +169,37 @@ public final class Projects {
 			boolean removed = sessions.remove(id);
 			main.post(() -> done.done(removed));
 		});
+	}
+
+	/**
+	 * Make change to the files of session id on the queue, after what
+	 * was asked of its project before, so that it is one storage
+	 * operation of its own; done gets what it did on main. Its project
+	 * sees the change once it looks again, as with any change made
+	 * elsewhere: {@link OpenProject#refresh}.
+	 */
+	public void change(String id, Change change,
+			Callback<ProjectFiles.Change> done) {
+		QUEUE.execute(() -> {
+			ProjectFiles.Change made = change.make(files(id));
+			main.post(() -> done.done(made));
+		});
+	}
+
+	// On the queue. Files that cannot be reached refuse every change.
+	private ProjectFiles files(String id) {
+		Locator locator = sessions.locator(id);
+		SafProjects.Opened opened = locator != null
+				? SafProjects.open(context, locator)
+				: null;
+		return opened != null && opened.files() != null
+				? opened.files()
+				: new ProjectFiles() {
+					@Override
+					public Read read(ProjectPath path) {
+						return new Failed("it cannot be opened");
+					}
+				};
 	}
 
 	// On the queue.

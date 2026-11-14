@@ -17,7 +17,34 @@
 		android:text="@string/nav_new"
 		android:textAppearance="?attr/textAppearanceTitleLarge" />
 
+	<com.google.android.material.button.MaterialButtonToggleGroup
+		android:id="@+id/new_kind"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="@dimen/se_margin_sheet"
+		android:layout_marginTop="@dimen/se_margin_screen"
+		app:selectionRequired="true"
+		app:singleSelection="true">
+
+		<Button
+			android:id="@+id/new_shader"
+			style="?attr/materialButtonOutlinedStyle"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:text="@string/nav_new_shader" />
+
+		<Button
+			android:id="@+id/new_empty"
+			style="?attr/materialButtonOutlinedStyle"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:text="@string/nav_new_empty" />
+	</com.google.android.material.button.MaterialButtonToggleGroup>
+
 	<com.google.android.material.textfield.TextInputLayout
+		android:id="@+id/new_name_layout"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:layout_marginHorizontal="@dimen/se_margin_sheet"

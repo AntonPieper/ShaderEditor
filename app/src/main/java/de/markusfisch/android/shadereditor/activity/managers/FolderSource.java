@@ -223,7 +223,7 @@ final class FolderSource {
 				false,
 				false,
 				// A single file's folder can be opened to load the rest.
-				file ? Listing.Bar.OPEN_FOLDER : Listing.Bar.NONE,
+				file ? Listing.Bar.OPEN_FOLDER : Listing.Bar.NEW,
 				List.of(new Listing.Section(null, FileMarks.unsaved(
 						reading.rows(level,
 								context.getString(R.string.nav_show_more),
