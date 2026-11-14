@@ -479,6 +479,7 @@ public class CodeView extends View {
 		this.marks = marks;
 		commands = new EditCommands(document);
 		commands.setTabWidth(appearance.tabWidth);
+		commands.setIndentation(styles.syntax().indentation());
 		keys = new KeyCommands(document, commands, clipboard);
 		deadChar = 0;
 		composingStart = composingEnd = -1;

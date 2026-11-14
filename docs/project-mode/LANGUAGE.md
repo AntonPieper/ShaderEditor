@@ -176,6 +176,19 @@ Whether colours are applied after the pause, as today, or as soon as tokens arri
 
 The editor holds one `Syntax`, chosen where a file is opened from the language of the file. The language comes from the file's name through the one table of SPEC 2.1, which today gives GLSL for every text file. That is one lookup, not a registry. A JSON syntax for the manifest would be about fifty lines if someone wants it; I would not write it now. A script language gets a lexer and a word list of its own and reuses `Tokens`, `Style` and all of the editor. Nothing else should be built for file types that do not exist.
 
+**As built.** The editor came to colour line by line (EDITOR.md), so the seam is the line lexer and what hangs off it, not the sketch above. `syntax/Syntax` is an interface of four methods, and the editor knows a language only through it:
+
+| Method | What the editor does with it |
+| --- | --- |
+| `lexLine(line, breakFollows, state, out)` | `LineStyles` colours the visible lines with it and continues in the background; the state a line passes on is one byte, so a language has 256 states |
+| `outline(max, maxChars)` | `Analysis` reads the whole text with the builder it returns, off the main thread; `null` means the language collects nothing and the text is not tokenized for it |
+| `complete(line, column, lineStart, declared, current, extraWords, offer)` | the strip above the keyboard; the words reach the host through `offer`, so there is no result type per language |
+| `indentation()` | `AutoIndent`: the line comment a new line continues, the characters that add a level at the end of a line, and those that open and close one anywhere |
+
+`LineStyles` holds the file's one syntax; `Analysis`, completion and the indentation of `EditCommands` take it from there. The tokens of a line (`LineTokens`, `LexedLine`), the styles (`Style`) and the declarations (`Outline`) are shared by every language. `GlslSyntax` is GLSL's implementation; it hands each call to the classes that existed before (`GlslLexer`, `Outline.builder`, `GlslCompletion`). The characters of a word, for double-tap selection and the completion prefix, are the same for every language today (letters, digits, `_`) and are not part of the seam. A test keeps the generic classes free of GLSL names. A database shader is always GLSL; a file of a folder gets the syntax of its language.
+
+The seam costs no allocation per line: a line was tokenized into the same reused `LineTokens` before, through one static call, and now through one interface call. Measured on a desktop JVM before and after, for 50,855 lines (bundled samples repeated): colouring all of them in the background 18 ms both times, colouring 5,000 visible lines 2 ms, one keypress in the middle with 50 lines shown 0.08 ms, the analysis 25 ms.
+
 ### How the project-mode scanner relates to it: one shared layer
 
 With the fix that is in review now (fork PR 39 and the `prepare-fix-*` PRs stacked on it), the build decides host directives from one scan of each file, in `PreprocessorScan`, and carries a record per line through assembly instead of scanning assembled text again. That is the right shape, and it leaves exactly one place in `project/` that decides what a comment and a directive are: about 70 lines in `PreprocessorScan` (`stripComments` and `parse`).

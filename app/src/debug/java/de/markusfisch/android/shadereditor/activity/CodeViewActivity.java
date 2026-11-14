@@ -45,6 +45,7 @@ import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 
 /**
@@ -308,7 +309,8 @@ public class CodeViewActivity extends Activity {
 	private void show(Text text, long loadMicros) {
 		long start = System.nanoTime();
 		document = new Document(text);
-		LineStyles styles = new LineStyles(document, 200);
+		LineStyles styles = new LineStyles(document, GlslSyntax.INSTANCE,
+				200);
 		LineMarks marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
 		long shown = System.nanoTime();

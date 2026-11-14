@@ -4,13 +4,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 
-import de.markusfisch.android.shadereditor.syntax.GlslLexer;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
 import de.markusfisch.android.shadereditor.syntax.Style;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 /**
- * The colours of the lines of a document, kept current as it changes.
+ * The colours of the lines of a document, kept current as it changes,
+ * as the syntax of its language gives them; the editor asks that
+ * syntax through this class for everything else of the language too.
  * The colours of a line follow from its text and the lexer state it
  * starts in, which is the state the line above ends in; that state is
  * kept for every line, one byte each. After an edit the changed lines
@@ -37,6 +39,7 @@ public final class LineStyles {
 	private final int[] changedLines = new int[HISTORY];
 	private final Runs[] cache = new Runs[CACHE];
 	private final Document document;
+	private final Syntax syntax;
 	private final int budget;
 	private final Document.Listener listener = new Document.Listener() {
 		@Override
@@ -68,12 +71,13 @@ public final class LineStyles {
 	private int shownTo;
 
 	/**
-	 * Keep the colours of document, tokenizing at most budget lines per
-	 * edit: the lines on screen and a margin. The first budget lines are
-	 * tokenized now, the rest by continuations.
+	 * Keep the colours of document as syntax gives them, tokenizing at
+	 * most budget lines per edit: the lines on screen and a margin. The
+	 * first budget lines are tokenized now, the rest by continuations.
 	 */
-	public LineStyles(Document document, int budget) {
+	public LineStyles(Document document, Syntax syntax, int budget) {
 		this.document = document;
+		this.syntax = syntax;
 		this.budget = budget;
 		lines = document.text().lineCount();
 		states = new byte[lines + 64];
@@ -82,6 +86,11 @@ public final class LineStyles {
 		consistentFrom = lines;
 		walk();
 		document.addListener(listener);
+	}
+
+	/** Return the syntax of the document's language. */
+	public Syntax syntax() {
+		return syntax;
 	}
 
 	/** Stop following the document. */
@@ -138,8 +147,8 @@ public final class LineStyles {
 	 */
 	public Continuation continuation() {
 		return staleFrom < lines
-				? new Continuation(document.text(), document.revision(),
-						staleFrom, startState(staleFrom))
+				? new Continuation(syntax, document.text(),
+						document.revision(), staleFrom, startState(staleFrom))
 				: null;
 	}
 
@@ -175,7 +184,7 @@ public final class LineStyles {
 	}
 
 	int startState(int line) {
-		return line == 0 ? GlslLexer.TEXT_START : get(line - 1);
+		return line == 0 ? Syntax.TEXT_START : get(line - 1);
 	}
 
 	private void update(Document.Change change, Text before) {
@@ -216,7 +225,7 @@ public final class LineStyles {
 		int from = staleFrom;
 		int state = startState(staleFrom);
 		for (int n = limit; staleFrom < lines && n-- > 0; ) {
-			state = GlslLexer.lexLine(text.line(staleFrom),
+			state = syntax.lexLine(text.line(staleFrom),
 					staleFrom < lines - 1, state, tokens);
 			settle(state);
 		}
@@ -237,8 +246,8 @@ public final class LineStyles {
 	}
 
 	private Runs lex(String line, int key) {
-		LexedLine lexed = LexedLine.of(line, (key & BREAK_FOLLOWS) != 0,
-				key & 0xff, tokens);
+		LexedLine lexed = LexedLine.of(syntax, line,
+				(key & BREAK_FOLLOWS) != 0, key & 0xff, tokens);
 		int[] runs = new int[lexed.size() * 3];
 		int size = 0;
 		for (int i = 0, n = lexed.size(); i < n; ++i) {
@@ -343,12 +352,15 @@ public final class LineStyles {
 	 * holds only immutable values, so it may run on any thread.
 	 */
 	public static final class Continuation {
+		private final Syntax syntax;
 		private final Text text;
 		private final int revision;
 		private final int from;
 		private final int state;
 
-		private Continuation(Text text, int revision, int from, int state) {
+		private Continuation(Syntax syntax, Text text, int revision,
+				int from, int state) {
+			this.syntax = syntax;
 			this.text = text;
 			this.revision = revision;
 			this.from = from;
@@ -365,7 +377,7 @@ public final class LineStyles {
 			byte[] states = new byte[end - from];
 			LineTokens tokens = new LineTokens();
 			for (int line = from, s = state; line < end; ++line) {
-				s = GlslLexer.lexLine(text.line(line), line < lines - 1, s,
+				s = syntax.lexLine(text.line(line), line < lines - 1, s,
 						tokens);
 				states[line - from] = (byte) s;
 			}

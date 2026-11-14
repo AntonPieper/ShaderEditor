@@ -1,7 +1,7 @@
 package de.markusfisch.android.shadereditor.syntax;
 
 /**
- * One line as {@link GlslLexer#lexLine} tokenized it: its text, the state
+ * One line as a {@link Syntax} tokenized it: its text, the state
  * it started in and its tokens, with UTF-16 offsets into the line. It is
  * immutable, so it may be handed to any thread.
  */
@@ -22,12 +22,12 @@ public final class LexedLine {
 	}
 
 	/**
-	 * Tokenize line, which starts in state, with scratch as the lexer's
-	 * working space.
+	 * Tokenize line, which starts in state, as syntax does, with scratch
+	 * as the lexer's working space.
 	 */
-	public static LexedLine of(String line, boolean breakFollows, int state,
-			LineTokens scratch) {
-		int endState = GlslLexer.lexLine(line, breakFollows, state, scratch);
+	public static LexedLine of(Syntax syntax, String line,
+			boolean breakFollows, int state, LineTokens scratch) {
+		int endState = syntax.lexLine(line, breakFollows, state, scratch);
 		int size = scratch.size();
 		int[] tokens = new int[size * 3];
 		for (int i = 0; i < size; ++i) {

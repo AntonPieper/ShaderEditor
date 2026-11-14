@@ -18,6 +18,7 @@ import de.markusfisch.android.shadereditor.editor.Text;
  * does.
  */
 public class LineCompletionTest {
+	private static final Syntax GLSL = GlslSyntax.INSTANCE;
 	private static final List<String> EXTRA = List.of("resolution", "time");
 	private static final String[] TRICKY = {
 			"/* a\n*/ fl",
@@ -56,7 +57,7 @@ public class LineCompletionTest {
 		String text = "float tim";
 		Outline outline = Outline.of(GlslLexer.lex(text), text);
 		assertEquals(new GlslCompletion.Completions(List.of("time"), 3),
-				GlslCompletion.atColumn(LexedLine.of(text, false,
+				GlslCompletion.atColumn(LexedLine.of(GLSL, text, false,
 						GlslLexer.TEXT_START, new LineTokens()), 9, 0,
 						GlslCompletion.Names.of(outline), true, EXTRA));
 	}
@@ -67,7 +68,7 @@ public class LineCompletionTest {
 		GlslCompletion.Names names = GlslCompletion.Names.of(
 				Outline.of(GlslLexer.lex(text), text));
 		// The declaration started at 6, where "ta" starts now.
-		LexedLine line = LexedLine.of("      ta", false,
+		LexedLine line = LexedLine.of(GLSL, "      ta", false,
 				GlslLexer.TEXT_START, new LineTokens());
 		assertEquals(List.of("target", "tan", "tanh"),
 				GlslCompletion.atColumn(line, 8, 0, names, false,
@@ -86,9 +87,9 @@ public class LineCompletionTest {
 		String text = sb.toString();
 		GlslCompletion.Names names = GlslCompletion.Names.of(
 				Outline.of(GlslLexer.lex(text), text));
-		List<String> words = GlslCompletion.atColumn(LexedLine.of("v", false,
-				GlslLexer.TEXT_START, new LineTokens()), 1, 0, names, true,
-				List.of()).words();
+		List<String> words = GlslCompletion.atColumn(LexedLine.of(GLSL, "v",
+				false, GlslLexer.TEXT_START, new LineTokens()), 1, 0, names,
+				true, List.of()).words();
 		assertEquals(50, words.size());
 		assertEquals("v0", words.get(0));
 		assertEquals("v1", words.get(1));
@@ -100,7 +101,7 @@ public class LineCompletionTest {
 		String text = "/* a\nb */ fl";
 		Tokens tokens = GlslLexer.lex(text);
 		Outline outline = Outline.of(tokens, text);
-		LexedLine line = new LineStyles(new Document(Text.of(text)), 10)
+		LexedLine line = new LineStyles(new Document(Text.of(text)), GLSL, 10)
 				.runs(1).line();
 		assertEquals(GlslLexer.BLOCK_COMMENT,
 				line.state() & GlslLexer.BLOCK_COMMENT);
@@ -122,7 +123,7 @@ public class LineCompletionTest {
 		for (int n = 0; n < lines.length; ++n) {
 			String line = lines[n];
 			boolean breakFollows = n + 1 < lines.length;
-			LexedLine lexed = LexedLine.of(line, breakFollows, state,
+			LexedLine lexed = LexedLine.of(GLSL, line, breakFollows, state,
 					lineTokens);
 			for (int column = 0; column <= line.length(); ++column) {
 				int offset = lineStart + column;

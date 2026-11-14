@@ -10,9 +10,13 @@ import org.junit.Test;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
+import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
 import de.markusfisch.android.shadereditor.syntax.Style;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 public class ColumnsTest {
+	private static final Syntax GLSL = GlslSyntax.INSTANCE;
+
 	@Test
 	public void tabsReachTheNextTabStop() {
 		String line = "\ta\tbc\td";
@@ -52,7 +56,7 @@ public class ColumnsTest {
 	@Test
 	public void drawsOneColourRunPerPieceWithoutTabsOrBlanks() {
 		String line = "\tfloat a = 1.0;\t// x";
-		LineStyles.Runs runs = new LineStyles(new Document(Text.of(line)),
+		LineStyles.Runs runs = new LineStyles(new Document(Text.of(line)), GLSL,
 				200).runs(0);
 		int[] colors = new int[Style.values().length];
 		for (int i = 0; i < colors.length; ++i) {
