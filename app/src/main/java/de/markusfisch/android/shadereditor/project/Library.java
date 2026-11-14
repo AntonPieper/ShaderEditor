@@ -70,11 +70,12 @@ public final class Library {
 	}
 
 	public LibrarySettings settings() {
-		return new LibrarySettings(new File(state(), "settings"));
+		return new LibrarySettings(new File(state(), "settings"),
+				following());
 	}
 
 	public Previews previews() {
-		return new Previews(new File(state(), "previews"));
+		return new Previews(new File(state(), "previews"), following());
 	}
 
 	/**
@@ -103,10 +104,55 @@ public final class Library {
 	 * or deletes one: the settings and the pictures kept by path.
 	 */
 	FileTexts.Kept kept() {
+		// Those that could not even be noted, for as long as the
+		// project is open.
+		List<Journal.Move> unnoted = new ArrayList<>();
+		follow();
 		return move -> {
-			boolean settings = settings().follow(move);
-			return previews().follow(move) && settings;
+			synchronized (unnoted) {
+				unnoted.add(move);
+				Following following = following();
+				while (!unnoted.isEmpty() &&
+						following.add(unnoted.get(0))) {
+					unnoted.remove(0);
+				}
+				if (!unnoted.isEmpty()) {
+					return false;
+				}
+			}
+			// Noted, it is not lost when it cannot follow now.
+			follow();
+			return true;
 		};
+	}
+
+	/**
+	 * Let the settings and pictures follow the renames and deletions
+	 * that are noted for them, in their order. Return whether none is
+	 * left to follow.
+	 */
+	boolean follow() {
+		Following following = following();
+		List<Journal.Move> noted;
+		try {
+			noted = following.read();
+		} catch (IOException e) {
+			return false;
+		}
+		LibrarySettings settings = new LibrarySettings(
+				new File(state(), "settings"));
+		Previews previews = new Previews(new File(state(), "previews"));
+		for (Journal.Move move : noted) {
+			if (!settings.follow(move) || !previews.follow(move) ||
+					!following.done(move)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private Following following() {
+		return new Following(new File(state(), "following"));
 	}
 
 	/**

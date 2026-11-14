@@ -45,11 +45,15 @@ public class LibrarySettingsTest {
 	@Test
 	public void followsARenamedFileAndFolder() {
 		LibrarySettings settings = settings();
-		settings.setTemplate(path("old/Base.frag"));
+		settings.setTemplate(path("Base.frag"));
 		settings.setQuality(path("old/Base.frag"), .5f);
 		settings.setQuality(path("older.frag"), .25f);
 		assertTrue(settings.follow(new Journal.Move(path("old"), path("new"))));
-		assertEquals(path("new/Base.frag"), settings.template());
+		// The template is a file of the root, and follows there.
+		assertEquals(path("Base.frag"), settings.template());
+		assertTrue(settings.follow(new Journal.Move(path("Base.frag"),
+				path("Top.frag"))));
+		assertEquals(path("Top.frag"), settings.template());
 		assertEquals(.5f, settings.quality(path("new/Base.frag")), 0f);
 		assertEquals(1f, settings.quality(path("old/Base.frag")), 0f);
 		// A name that only starts alike is another file.
@@ -61,10 +65,12 @@ public class LibrarySettingsTest {
 	@Test
 	public void forgetsADeletedFileAndFolder() {
 		LibrarySettings settings = settings();
-		settings.setTemplate(path("gone/Base.frag"));
+		settings.setTemplate(path("Base.frag"));
 		settings.setQuality(path("gone/Base.frag"), .5f);
 		settings.setQuality(path("stays.frag"), .25f);
 		assertTrue(settings.follow(new Journal.Move(path("gone"), null)));
+		assertEquals(path("Base.frag"), settings.template());
+		assertTrue(settings.follow(new Journal.Move(path("Base.frag"), null)));
 		assertNull(settings.template());
 		assertEquals(1f, settings.quality(path("gone/Base.frag")), 0f);
 		assertEquals(.25f, settings.quality(path("stays.frag")), 0f);
@@ -109,6 +115,50 @@ public class LibrarySettingsTest {
 		assertEquals(.25f, settings().quality(path("Alpha.frag")), 0f);
 		assertEquals(path("Alpha.frag"), settings().template());
 		assertEquals(1f, settings().quality(path("Beta.frag")), 0f);
+	}
+
+	// What was left at the target, of a file that went without the
+	// app knowing, does not win over what came with the renamed file.
+	@Test
+	public void whatFollowedARenameWinsOverWhatWasLeftAtItsTarget() {
+		LibrarySettings settings = settings();
+		assertTrue(settings.setQuality(path("Alpha.frag"), .25f));
+		assertTrue(settings.setQuality(path("Beta.frag"), .5f));
+		assertTrue(settings.follow(new Journal.Move(path("Alpha.frag"),
+				path("Beta.frag"))));
+		assertEquals(.25f, settings().quality(path("Beta.frag")), 0f);
+		assertEquals(1f, settings().quality(path("Alpha.frag")), 0f);
+	}
+
+	// Nothing stored is changed for a reader while a rename has not
+	// been followed: it is told where to look, and where not.
+	@Test
+	public void whileARenameIsNotFollowedReadersAreToldWhereThingsAre()
+			throws IOException {
+		Following following = new Following(new File(temp.getRoot(),
+				"library/following"));
+		LibrarySettings settings = new LibrarySettings(new File(
+				temp.getRoot(), "library/settings"), following);
+		assertTrue(settings.setQuality(path("a/One.frag"), .25f));
+		assertTrue(settings.setTemplate(path("Two.frag")));
+		assertTrue(following.add(new Journal.Move(path("a"), path("b"))));
+		assertTrue(following.add(new Journal.Move(path("Two.frag"),
+				path("Three.frag"))));
+		assertTrue(following.add(new Journal.Move(path("b/One.frag"),
+				path("b/Uno.frag"))));
+
+		assertEquals(.25f, settings.quality(path("b/Uno.frag")), 0f);
+		assertEquals(1f, settings.quality(path("b/One.frag")), 0f);
+		assertEquals(1f, settings.quality(path("a/One.frag")), 0f);
+		assertEquals(path("Three.frag"), settings.template());
+		// Deleted, nothing is kept for it, and a later file of the
+		// name has nothing.
+		assertTrue(following.add(new Journal.Move(path("Three.frag"),
+				null)));
+		assertNull(settings.template());
+		// The note is read again by the next start.
+		assertEquals(4, new Following(new File(temp.getRoot(),
+				"library/following")).read().size());
 	}
 
 	private LibrarySettings settings() {

@@ -32,14 +32,26 @@ public final class Previews {
 	private static final char[] HEX = "0123456789abcdef".toCharArray();
 
 	private final File folder;
+	// What has not followed a rename or deletion yet, or null.
+	private final Following following;
 
 	Previews(File folder) {
+		this(folder, null);
+	}
+
+	Previews(File folder, Following following) {
 		this.folder = folder;
+		this.following = following;
 	}
 
 	/** Return the picture kept for path, or null when there is none. */
 	public Picture get(ProjectPath path) {
-		File file = file(path);
+		// Where it is kept while a rename has not been followed; a
+		// path a file left has no picture.
+		if (following != null) {
+			path = following.stored(path);
+		}
+		File file = path != null ? file(path) : null;
 		if (file == null || !file.isFile()) {
 			return null;
 		}
@@ -105,8 +117,8 @@ public final class Previews {
 				bytes = StateFile.read(file);
 				path = bytes != null ? path(bytes) : null;
 			} catch (IOException e) {
-				// Whose picture it is cannot be told.
-				followed = false;
+				// Whose picture it is cannot be told, and it is shown
+				// for nobody; it holds nothing up.
 				continue;
 			}
 			if (path == null || !move.touches(path)) {
