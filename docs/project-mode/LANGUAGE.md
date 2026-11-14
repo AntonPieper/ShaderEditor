@@ -174,7 +174,7 @@ Whether colours are applied after the pause, as today, or as soon as tokens arri
 
 ### How a second file type plugs in
 
-The editor holds one `Syntax`, chosen by file name where a file is opened: `.glsl` gets GLSL, everything else gets a `Syntax` that returns no tokens. That is one `switch`, not a registry. A JSON syntax for the manifest would be about fifty lines if someone wants it; I would not write it now. A script language gets a lexer and a word list of its own and reuses `Tokens`, `Style` and all of the editor. Nothing else should be built for file types that do not exist.
+The editor holds one `Syntax`, chosen where a file is opened from the language of the file. The language comes from the file's name through the one table of SPEC 2.1, which today gives GLSL for every text file. That is one lookup, not a registry. A JSON syntax for the manifest would be about fifty lines if someone wants it; I would not write it now. A script language gets a lexer and a word list of its own and reuses `Tokens`, `Style` and all of the editor. Nothing else should be built for file types that do not exist.
 
 ### How the project-mode scanner relates to it: one shared layer
 

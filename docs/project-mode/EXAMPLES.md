@@ -42,12 +42,14 @@ No tabs, search, tags or difficulty levels; 24 rows do not need them. The descri
 
 ```text
 examples/
-  tilt.glsl
-  blobs.glsl            #include "lib/sdf.glsl"
-  ink/main.glsl         passes, includes
+  tilt.frag
+  blobs.frag            #include "lib/sdf.glsl"
+  ink/main.frag         passes, includes
   lib/sdf.glsl  lib/noise.glsl  lib/color.glsl
   textures/noise.png  textures/sky.png
 ```
+
+The names follow SPEC 2.1: a shader that runs, and every pass, is `*.frag`; code that is included is `*.glsl`. A reader can tell from a listing what to tap and what is a library, although nothing depends on the names.
 
 A tap opens the example in place from a read-only store and runs it. UX 5 already defines the rest: on read-only storage the user keeps editing locally and is offered Save a copy, which copies the running shader and its dependencies. Nothing is written until the user wants to keep something, edits belong to the copy, and an app update replaces the bundled tree without touching any copy. There is no example versioning and no update prompt.
 

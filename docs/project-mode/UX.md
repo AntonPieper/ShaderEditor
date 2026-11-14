@@ -12,7 +12,7 @@ ShaderEditor publishes a `DocumentsProvider` root named **ShaderEditor** contain
 
 **Examples** is a folder at the top of the drawer, and the menu entry is a shortcut to it. It holds the bundled examples, one read-only project inside the app. Tapping an example opens and runs it in place; edits stay local until the user chooses Save a copy, exactly as for any read-only folder (section 5). An app update replaces the bundled examples and never touches a copy. EXAMPLES.md describes the set and its sections.
 
-Use the native picker to choose folders, standalone documents, new locations, and external resources. The drawer shows the folders the user has opened and, inside each, its files. It never shows storage the user has not granted; choosing a location stays with Android's picker. Do not build a second device-wide storage browser. Android/provider restrictions still apply: accept any directory the picker grants, including empty folders and folders with unrelated files. A manifest or `main.glsl` is never required just to open/browse a folder. Handle read-only folders without rejecting the open action.
+Use the native picker to choose folders, standalone documents, new locations, and external resources. The drawer shows the folders the user has opened and, inside each, its files. It never shows storage the user has not granted; choosing a location stays with Android's picker. Do not build a second device-wide storage browser. Android/provider restrictions still apply: accept any directory the picker grants, including empty folders and folders with unrelated files. A manifest or `main.frag` is never required just to open/browse a folder. Handle read-only folders without rejecting the open action.
 
 Opening a folder edits its files in place. There is no `import versus link` question and no automatic copy into private storage. Expose copying as the familiar explicit **Save a copy** action. Archive opening extracts to a user-chosen folder; it is an operation, not a persistent project type.
 
@@ -25,7 +25,7 @@ Global **New** uses one small creation sheet:
 - A **Change** location action that opens Android's native directory picker.
 - **Create**.
 
-Location defaults to the folder the drawer shows, and on first use to the library folder `ShaderEditor / Shaders` (section 8). Show the result succinctly, for example `ShaderEditor / Shaders / Untitled.glsl`. Create that file from a valid template, make it the running shader, and focus the editor. A new shader is a file, not a folder, so shaders in one folder can share textures and included code. No project-type, renderer, manifest, or storage-mode choices. A separate folder is one step away: Change opens the picker, which can create one, and any writable provider folder works with the identical flow. Remember the last explicitly selected creation parent as a convenience; first use defaults to ShaderEditor, and an unavailable remembered parent returns to that default with a visible location row.
+Location defaults to the folder the drawer shows, and on first use to the library folder `ShaderEditor / Shaders` (section 8). Show the result succinctly, for example `ShaderEditor / Shaders / Untitled.frag`. Create that file from a valid template, make it the running shader, and focus the editor. A new shader is a file, not a folder, so shaders in one folder can share textures and included code. No project-type, renderer, manifest, or storage-mode choices. A separate folder is one step away: Change opens the picker, which can create one, and any writable provider folder works with the identical flow. Remember the last explicitly selected creation parent as a convenience; first use defaults to ShaderEditor, and an unavailable remembered parent returns to that default with a visible location row.
 
 **New** in the drawer offers **Shader** or **Empty file** in the same sheet. A shader has `main` and runs; an empty file opens beside what runs, for include files and passes. Keep optional templates in that action rather than a required wizard. Existing content is never overwritten silently. Suggest an unused name automatically.
 
@@ -33,11 +33,11 @@ The provider location details should state that ShaderEditor's own app files are
 
 ## 3. Open and decide what runs
 
-Open folder uses `ACTION_OPEN_DOCUMENT_TREE`. It shows the folder in the drawer, listed lazily. Entering a folder, from the picker or from the drawer, starts nothing: looking is free. The shader that the one rule in SPEC 1 picks (the file last run in that folder, else a valid manifest entry, else `main.glsl`) is the first row, and a tap opens and runs it. If none applies, the folder says **Nothing here runs yet. Tap a shader to open and run it.** Do not recursively scan/compile every GLSL file to guess an entry.
+Open folder uses `ACTION_OPEN_DOCUMENT_TREE`. It shows the folder in the drawer, listed lazily. Entering a folder, from the picker or from the drawer, starts nothing: looking is free. The shader that the one rule in SPEC 1 picks (the file last run in that folder, else a valid manifest entry, else `main.frag`) is the first row, and a tap opens and runs it. If none applies, the folder says **Nothing here runs yet. Tap a shader to open and run it.** Do not recursively scan/compile every GLSL file to guess an entry.
 
 **Open file** remains available through the system picker and incoming Android open/share intents. It opens the document directly as a one-file project, which is enough for a standalone shader. When the shader references another file, the diagnostic says **Open this shader's folder to load its other files**, with one **Open folder** action. That folder then opens like any other; the same document is selected in it when the provider can identify it, and otherwise the user picks it from the file list. Unsaved edits to the document carry over. There is no conversion/import wizard for this permission boundary, and no attempt to prove which granted folder a lone document belongs to.
 
-The toolbar's title is the file in the editor. Its second line names the running shader when that is another file, then the folder, for example `▶ main.glsl · aurora`; the frame rate sits in the quality control. A tap on a file that can run and that the running shader does not use opens it and selects it as the running entry, remembered locally for that folder. A tap on a file the running shader uses, an include or another pass, only opens it; the shader keeps running. The usual Run button rebuilds the running shader. **Run this file** does the same selection on request for any file, in the row's menu. It does not silently rewrite `shader-project.json`.
+The toolbar's title is the file in the editor. Its second line names the running shader when that is another file, then the folder, for example `▶ main.frag · aurora`; the frame rate sits in the quality control. A tap on a file that can run and that the running shader does not use opens it and selects it as the running entry, remembered locally for that folder. A tap on a file the running shader uses, an include or another pass, only opens it; the shader keeps running. The usual Run button rebuilds the running shader. **Run this file** does the same selection on request for any file, in the row's menu. It does not silently rewrite `shader-project.json`.
 
 If a manifest has an unsupported format or invalid content, opening/browsing still succeeds; rendering gives a located config error rather than ignoring that file. The remembered Run this file choice wins over the manifest entry, on every open and refresh, until the user picks another file or uses Set default shader. **Set default shader** is an optional advanced action that writes the minimal manifest when the user wants a portable default, and clears the remembered choice. Most users never need it.
 
@@ -90,7 +90,7 @@ Delete uses the provider capability and warns about known dependent files. Remov
 
 ## 7. Share the shader, not unrelated folder contents
 
-Default **Share** packages the selected running shader and the transitive closure of its shader inputs, literal includes, and local images. A dependency-free standalone shader can be shared as a `.glsl` file. A multi-file shader is shared as a ZIP retaining relative paths. If its selected entry differs from the folder's portable default, generate/adjust the entry manifest IN THE COPY. Do not modify the source folder to share it.
+Default **Share** packages the selected running shader and the transitive closure of its shader inputs, literal includes, and local images. A dependency-free standalone shader can be shared as its one file. A multi-file shader is shared as a ZIP retaining relative paths. If its selected entry differs from the folder's portable default, generate/adjust the entry manifest IN THE COPY. Do not modify the source folder to share it.
 
 Invalid/unsupported manifests can be preserved in an explicitly incomplete source export; do not silently replace them with a supported manifest.
 
@@ -112,8 +112,8 @@ Existing shaders go through three steps (SPEC 12.2), and users notice only the s
 ```text
 ShaderEditor/
   Shaders/
-    Plasma.glsl
-    Clouds.glsl
+    Plasma.frag
+    Clouds.frag
     textures/
       noise.png
 ```

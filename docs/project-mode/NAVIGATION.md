@@ -13,7 +13,7 @@ Three things in it are new compared with the accepted `UX.md` and need a decisio
 | Trip, made many times per session | Today | First attempt | Recommended |
 | --- | --- | --- | --- |
 | Open another of my shaders | 2 | 2 for a database shader; 5 for a shader file in a folder (menu, Files, row, menu, Run this file) | 2 |
-| Back to the file I had before (main.glsl ⇄ lib/common.glsl) | not possible; 2 between two shaders | 4 into `lib`, 3 back out; +1 per folder level | 2, at any depth |
+| Back to the file I had before (main.frag ⇄ lib/common.glsl) | not possible; 2 between two shaders | 4 into `lib`, 3 back out; +1 per folder level | 2, at any depth |
 | To another file of the folder while the shader runs | not possible | 3 at the root, +1 per level | 2 if the running shader uses it; else 2 at the same level, +1 per level |
 | From seeing an error to standing on it, in a file that is not open | 2 (one file only) | 2 | 2 |
 | Read which file runs | 0 | 0, but the text is cut off ("Preview: main.…") | 0 |
@@ -121,7 +121,7 @@ The owner's first idea taken literally, everything else as today.
 - **Tablet, landscape:** the drawer can stay open on a wide screen.
 - **Accessibility:** one list, read top to bottom; good.
 - **Cost on the existing activity:** the smallest. The drawer exists; its list and adapter are replaced.
-- **Worst at:** the trip back. From `lib/common.glsl` to `main.glsl` is three taps, one more per level (frame A3), and closed it says no more than today's toolbar can hold.
+- **Worst at:** the trip back. From `lib/common.glsl` to `main.frag` is three taps, one more per level (frame A3), and closed it says no more than today's toolbar can hold.
 
 ### Model B: a home screen; the editor is the second level (`sheet-model-b-home-screen.png`)
 
@@ -244,7 +244,7 @@ Why the others lose:
 ├ bar ─ New ───────────────────────────────────────────────┤   60 dp
 ```
 
-**A row**: a 40 dp place for a thumbnail (a shader that has one, an image) or an icon (folder, file, image); the name, with its folder in front in dimmer type where the row is not in its folder; an optional second line; marks at the end. 48 dp high, 56 dp with a second line, 44 dp for the files under the running shader.
+**A row**: a 40 dp place for a thumbnail (a shader that has one, an image) or an icon (folder, file, image), chosen from a hint, the type the provider reports or the name, and never from the file's bytes (SPEC 2.1: a hint is not the truth; what a file is, is read when it is opened); the name, with its folder in front in dimmer type where the row is not in its folder; an optional second line; marks at the end. 48 dp high, 56 dp with a second line, 44 dp for the files under the running shader.
 
 **Marks**, in this order at the end of a row, each with a spoken text:
 
@@ -294,7 +294,7 @@ The file in the editor has the selected background and is announced as selected.
 
 Transitions: a level change slides the list by its width, in the direction of travel, 200 ms, and is instant when the system's animations are off. The header and the bar do not move. Opening a file closes the drawer; opening a folder does not.
 
-After Android's picker returns a folder, the drawer is open on that folder's root. If it was open before, "Last opened" is on top; if the rule of SPEC 1 finds a shader (a manifest entry or `main.glsl`), it is the first row under **Default shader**; otherwise the hint of 6.8 (`r-10`). Nothing runs until a file is tapped (decision D2).
+After Android's picker returns a folder, the drawer is open on that folder's root. If it was open before, "Last opened" is on top; if the rule of SPEC 1 finds a shader (a manifest entry or `main.frag`), it is the first row under **Default shader**; otherwise the hint of 6.8 (`r-10`). Nothing runs until a file is tapped (decision D2).
 
 With a hardware keyboard: Ctrl+O opens the drawer with the filter focused, arrows move, Enter opens, Escape closes, Ctrl+S saves, Ctrl+Enter runs. Not drawn.
 
@@ -414,7 +414,7 @@ From `.foreman/proposals/first-ui-lessons.md`.
 
 | Lesson | Here |
 | --- | --- |
-| The title area is crushed; "Preview: main.glsl" and the error count are cut off; the project's name is never visible | The frame rate leaves the second line (D3). The second line is "▶ file · folder" and is cut from the end, so the folder goes first and the running file last. The error count is on the error button |
+| The title area is crushed; "Preview: main.frag" and the error count are cut off; the project's name is never visible | The frame rate leaves the second line (D3). The second line is "▶ file · folder" and is cut from the end, so the folder goes first and the running file last. The error count is on the error button |
 | Switching files takes three taps and the sheet reopens at the root | Two taps for the files in use, at any depth. The drawer opens on the folder of the edited file |
 | Run this file is buried in the menu | A tap on a shader runs it (D1). The entry remains on long press and, when it applies, in the toolbar menu |
 | With no file shown the editor is empty and swallows typing | The editor is replaced by an empty state that is not a text field. And it is rare: entering a folder does not empty the editor (D2) |
@@ -450,7 +450,7 @@ The mock-ups use the app's own material: colours from `colors.xml` and `syntax_c
 | UX 2 | "Location, defaulting to the open folder." | Location, defaulting to the folder the drawer shows |
 | UX 2 | "**New file** in the file list does the same without changing the running shader, for include files and passes." | New in the drawer offers Shader or Empty file. A shader runs; an empty file opens beside what runs |
 | UX 3 | "It loads the file list lazily and picks the running shader by the one rule in SPEC 1 … If none applies, open the folder with nothing running and show **Open a shader, then Run**." | It shows the folder in the drawer. The shader the rule picks is the first row; a tap opens and runs it. Nothing runs before that (D2) |
-| UX 3 | "Keep the running shader visible in the preview title, for example `Preview: main.glsl`." | The toolbar's second line names the running shader when it is not the file in the editor: "▶ main.glsl · aurora" |
+| UX 3 | "Keep the running shader visible in the preview title, for example `Preview: main.frag`." | The toolbar's second line names the running shader when it is not the file in the editor: "▶ main.frag · aurora" |
 | UX 3 | "**Run this file** is a file/editor action that selects a different GLSL file as the running entry, remembered locally for that folder." | A tap on a file that can run and that the running shader does not use selects it as the running entry, remembered for that folder. Run this file does the same on request for any file that can run (D1) |
 | UX 3 | "For a folder with nothing running, opening a GLSL file can focus the file; Run then selects it. … No hidden heuristics that classify arbitrary source text as a complete shader." | A file can run when it defines `main`. That is read from the one file being opened, never from a scan; a file without it opens for editing only |
 | UX 6 | "Rename a file in the open-folder list using one name field." | Unchanged; the place is the row's menu |
@@ -536,7 +536,7 @@ Each with my recommendation first.
 **D5. What Back does.**
 - **a (recommended).** It closes what is on top, then leaves the app.
 - b. With the drawer open it goes up one level first. Familiar from file managers; leaving the drawer from a deep folder takes several presses.
-- c. It also returns to the previous file. One-tap "back to main.glsl" for free; leaving the app then takes as many presses as files were visited.
+- c. It also returns to the previous file. One-tap "back to main.frag" for free; leaving the app then takes as many presses as files were visited.
 
 **D6. Where Examples is reached.**
 - **a (recommended).** A folder at the top of the drawer, and the menu entry stays as a shortcut to it. Two taps as today.
@@ -552,7 +552,7 @@ Each with my recommendation first.
 - b. A grid of 108 dp pictures. Eight per screen, better for recognising, a second list design.
 
 **D9. File names in the library after the migration.**
-- **a (recommended).** As files are named: "Plasma.glsl". The same everywhere.
+- **a (recommended).** As files are named: "Plasma.frag". The same everywhere.
 - b. Without the ending in the library only. Looks exactly as before the migration; two rules for showing a name.
 
 ## 10. Not verified
@@ -583,6 +583,6 @@ The owner took every open decision as recommended (option a in each):
 | D6 | Where Examples is reached | A folder at the top of the drawer, plus the menu entry as a shortcut |
 | D7 | Wide screens | The drawer stays open from 840 dp |
 | D8 | Library rows | A list with a 40 dp picture, name and date |
-| D9 | File names in the library after migration | As the files are named, for example `Plasma.glsl` |
+| D9 | File names in the library after migration | As the files are named, for example `Plasma.frag` |
 
 D1, D2 and D3 change sentences of UX.md; UX.md is to be edited accordingly before the first screen is built. The mock-ups this document refers to are not part of the repository.

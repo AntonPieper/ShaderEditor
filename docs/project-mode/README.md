@@ -43,7 +43,8 @@ uniform sampler2D noise;
 - `se target` configures a pass file's output: size, format, initial content, and how the running shader is scaled to the screen (nearest by default).
 - Programs, input bindings, and pass instances are separate internal concepts. File authoring creates one default instance per shader path; this is not a restriction on the runtime data model.
 - Native v1 includes basic multipass and previous-frame reads, and the format specifies them from the start. Implementation reaches a complete single-pass workflow first (Gate A after M14) and adds multipass in M15.
-- One rule selects the running shader: the remembered Run this file choice, else the manifest entry, else `main.glsl`.
+- One rule selects the running shader: the remembered Run this file choice, else the manifest entry, else `main.frag`.
+- What a file is comes from its bytes (a picture by its signature, text by being UTF-8), what it does from how it is referenced, and only its language from its name. A folder needs no manifest.
 - Three seams carry the implementation: `ProjectFiles`, `prepare`, and `PlanRuntime` (ARCHITECTURE 2).
 - The engine has one dialect. Existing DB shaders are converted to project files in memory from the start, migrated to one library folder later, and the database code is then removed. A small pure converter is the only code that knows the old conventions; nothing carries a legacy flag.
 - Every old setting has an exact project form: separate min/mag filters, mipmaps, per-axis wrap, cubemaps (a six-face strip), and initial backbuffer content (`se target initial`, from an image or any shader).

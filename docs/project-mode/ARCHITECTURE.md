@@ -28,6 +28,10 @@ There is one dialect and one producer of plans. A database shader is converted t
 | Pass description | Instance identity, program reference, input bindings, output target | Storage origin |
 | Executable plan | Linked programs, ordered passes, per-program bindings, target/history allocations | UI drafts or SAF access |
 
+### What a file is
+
+Three questions, three places (SPEC 2.1). *Kind* (picture, text, other) is read from bytes by one class with one signature table; a store can hand out the first bytes of a file alone, for the cases where a file is not read whole. *Role* is decided where references are followed, the pass graph and the entry rule, and nowhere else. *Language* is one table from name to language in one class. A hint for a list icon is a separate function from the kind, and takes a name or a reported type, never bytes. No other code may look at the ending of a file name.
+
 ### Seams
 
 Three seams carry the design. `prepare` is `Preparation.prepare` and `ProjectFiles` is the interface of that name, both in `project/`; `PlanRuntime` is in `opengl/`, and ENGINE.md is its design. Keep everything else private to its module. Names are conceptual; the shapes are not.
