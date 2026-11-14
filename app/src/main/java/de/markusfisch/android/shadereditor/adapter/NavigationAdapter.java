@@ -21,6 +21,7 @@ import java.util.WeakHashMap;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.navigation.Item;
+import de.markusfisch.android.shadereditor.navigation.Notice;
 import de.markusfisch.android.shadereditor.navigation.Row;
 
 public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -32,29 +33,36 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 		void onNewShader();
 
 		void onShowExamples();
+
+		void onNotice(@NonNull Notice.Action action);
 	}
 
 	private static final int HEADING = 0;
 	private static final int ROW = 1;
 	private static final int EMPTY = 2;
+	private static final int NOTICE = 3;
 
 	private final Listener listener;
 	// Decoded thumbnails, for as long as the listing holds their bytes.
 	private final WeakHashMap<byte[], Bitmap> bitmaps = new WeakHashMap<>();
 	private List<Item> items = List.of();
 	private boolean empty;
+	private Notice notice;
 
 	public NavigationAdapter(@NonNull Listener listener) {
 		this.listener = listener;
 	}
 
 	/**
-	 * @param empty whether to say that there is nothing, when there is
-	 *              nothing to show
+	 * @param empty  whether to say that there is nothing, when there is
+	 *               nothing to show and no notice
+	 * @param notice what stands under the items, or null
 	 */
-	public void setItems(@NonNull List<Item> items, boolean empty) {
+	public void setItems(@NonNull List<Item> items, boolean empty,
+			Notice notice) {
 		this.items = items;
-		this.empty = empty && items.isEmpty();
+		this.notice = notice;
+		this.empty = empty && items.isEmpty() && notice == null;
 		notifyDataSetChanged();
 	}
 
@@ -70,13 +78,15 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
 	@Override
 	public int getItemCount() {
-		return empty ? 1 : items.size();
+		return empty ? 1 : items.size() + (notice != null ? 1 : 0);
 	}
 
 	@Override
 	public int getItemViewType(int position) {
 		if (empty) {
 			return EMPTY;
+		} else if (position == items.size()) {
+			return NOTICE;
 		}
 		return items.get(position).row() == null ? HEADING : ROW;
 	}
@@ -96,6 +106,10 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			return new RecyclerView.ViewHolder(view) {
 			};
 		}
+		if (viewType == NOTICE) {
+			return new NoticeHolder(inflater.inflate(
+					R.layout.row_navigation_notice, parent, false));
+		}
 		if (viewType == HEADING) {
 			return new HeadingHolder(inflater.inflate(
 					R.layout.row_navigation_heading, parent, false));
@@ -107,7 +121,9 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 	@Override
 	public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder,
 			int position) {
-		if (holder instanceof RowHolder rowHolder) {
+		if (holder instanceof NoticeHolder noticeHolder) {
+			noticeHolder.bind(notice);
+		} else if (holder instanceof RowHolder rowHolder) {
 			rowHolder.bind(items.get(position));
 		} else if (holder instanceof HeadingHolder headingHolder) {
 			headingHolder.line.setVisibility(position > 0
@@ -125,6 +141,51 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			super(view);
 			line = view.findViewById(R.id.navigation_heading_line);
 			heading = view.findViewById(R.id.navigation_heading);
+		}
+	}
+
+	private final class NoticeHolder extends RecyclerView.ViewHolder {
+		private final View progress;
+		private final TextView title;
+		private final TextView reason;
+		private final TextView action;
+
+		private NoticeHolder(@NonNull View view) {
+			super(view);
+			progress = view.findViewById(R.id.navigation_notice_progress);
+			title = view.findViewById(R.id.navigation_notice_title);
+			reason = view.findViewById(R.id.navigation_notice_reason);
+			action = view.findViewById(R.id.navigation_notice_action);
+		}
+
+		private void bind(@NonNull Notice notice) {
+			Notice.Kind kind = notice.kind();
+			progress.setVisibility(kind == Notice.Kind.READING ||
+					kind == Notice.Kind.SLOW ? View.VISIBLE : View.GONE);
+			int text = switch (kind) {
+				case SLOW -> R.string.nav_still_reading;
+				case STOPPED -> R.string.nav_stopped;
+				case EMPTY -> R.string.nav_empty_folder;
+				case FAILED -> R.string.nav_cannot_read;
+				default -> 0;
+			};
+			title.setVisibility(text != 0 ? View.VISIBLE : View.GONE);
+			if (text != 0) {
+				title.setText(text);
+			}
+			reason.setVisibility(notice.reason() != null
+					? View.VISIBLE
+					: View.GONE);
+			reason.setText(notice.reason());
+			List<Notice.Action> actions = notice.actions();
+			action.setVisibility(actions.isEmpty() ? View.GONE : View.VISIBLE);
+			if (!actions.isEmpty()) {
+				Notice.Action first = actions.get(0);
+				action.setText(first == Notice.Action.STOP
+						? R.string.nav_stop
+						: R.string.nav_try_again);
+				action.setOnClickListener(v -> listener.onNotice(first));
+			}
 		}
 	}
 

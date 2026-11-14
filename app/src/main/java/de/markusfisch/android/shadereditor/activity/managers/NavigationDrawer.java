@@ -61,6 +61,7 @@ import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
+import de.markusfisch.android.shadereditor.navigation.Notice;
 import de.markusfisch.android.shadereditor.navigation.Order;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
@@ -298,6 +299,17 @@ public class NavigationDrawer implements ShaderList {
 					public void onShowExamples() {
 						go(Level.EXAMPLES);
 					}
+
+					@Override
+					public void onNotice(@NonNull Notice.Action action) {
+						if (folder == null) {
+							return;
+						}
+						switch (action) {
+							case STOP -> folder.stop(level);
+							case TRY_AGAIN -> folder.retry(level);
+						}
+					}
 				}));
 		return recyclerView;
 	}
@@ -488,8 +500,7 @@ public class NavigationDrawer implements ShaderList {
 	private void show(@NonNull RecyclerView list) {
 		// What runs is what is open while shaders come from the database.
 		adapter(list).setItems(Item.of(listing, level, open, open,
-				Collections.emptySet()),
-				loaded && listing.notice() == null);
+				Collections.emptySet()), loaded, listing.notice());
 	}
 
 	private void showHeader() {
