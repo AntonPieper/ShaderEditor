@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.view.UndoRedo;
@@ -72,6 +73,19 @@ final class EditTextSourceEditor implements SourceEditor {
 
 	@Override
 	public void saveInstanceState(@NonNull Bundle state) {
+	}
+
+	// Its text is the EditText's own.
+	@Override
+	public boolean showDocument(@NonNull Document document,
+			@Nullable Object state) {
+		return false;
+	}
+
+	@Nullable
+	@Override
+	public Object getDocumentState() {
+		return null;
 	}
 
 	@Override

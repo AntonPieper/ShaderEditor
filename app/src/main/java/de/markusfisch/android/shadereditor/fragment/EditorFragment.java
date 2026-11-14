@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.CodeView;
@@ -42,6 +43,11 @@ public class EditorFragment extends Fragment {
 	// that started the activity.
 	@Nullable
 	private String pendingText;
+	// A document to show once the view exists, and its view state.
+	@Nullable
+	private Document pendingDocument;
+	@Nullable
+	private Object pendingDocumentState;
 
 	@Nullable
 	private ShaderEditor.OnEditPausedListener editPausedListener;
@@ -118,6 +124,11 @@ public class EditorFragment extends Fragment {
 		} else if (pendingText != null) {
 			setText(pendingText);
 			pendingText = null;
+		}
+		if (pendingDocument != null) {
+			editor.showDocument(pendingDocument, pendingDocumentState);
+			pendingDocument = null;
+			pendingDocumentState = null;
 		}
 
 		return view;
@@ -280,10 +291,37 @@ public class EditorFragment extends Fragment {
 	public void setText(String text) {
 		if (editor == null) {
 			pendingText = text;
+			pendingDocument = null;
 			return;
 		}
 		clearError();
 		editor.setText(text == null ? "" : text);
+	}
+
+	/**
+	 * Show document itself, with its undo history and selection, without
+	 * telling the listeners of a change; state is what getDocumentState
+	 * returned for it before, or null. Return false when the editor in
+	 * use cannot show a document.
+	 */
+	public boolean showDocument(@NonNull Document document,
+			@Nullable Object state) {
+		if (editor == null) {
+			if (!ShaderEditorApp.preferences.useNewEditor()) {
+				return false;
+			}
+			pendingText = null;
+			pendingDocument = document;
+			pendingDocumentState = state;
+			return true;
+		}
+		return editor.showDocument(document, state);
+	}
+
+	/** Return what the view keeps of the document shown, or null. */
+	@Nullable
+	public Object getDocumentState() {
+		return editor != null ? editor.getDocumentState() : null;
 	}
 
 	public void insert(@NonNull CharSequence text) {
