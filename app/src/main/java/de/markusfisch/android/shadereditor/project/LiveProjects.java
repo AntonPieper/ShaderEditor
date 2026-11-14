@@ -20,6 +20,11 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 final class LiveProjects {
 	interface Opener {
 		SafProjects.Opened open(Locator locator);
+
+		/** Return what follows the files of the project at locator. */
+		default FileTexts.Kept kept(Locator locator) {
+			return null;
+		}
 	}
 
 	private final Map<String, OpenProject> live = new HashMap<>();
@@ -90,7 +95,8 @@ final class LiveProjects {
 				opened.problem() != null
 						? opened.problem()
 						: "it cannot be opened",
-				sessions, worker, main, later, budget);
+				sessions, worker, main, later, budget,
+				opener.kept(locator));
 	}
 
 	/**

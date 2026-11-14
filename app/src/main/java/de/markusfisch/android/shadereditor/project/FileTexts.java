@@ -95,6 +95,21 @@ public final class FileTexts {
 	private final Executor worker;
 	private final Executor main;
 
+	/**
+	 * What the app keeps by path about the files of a project beside
+	 * their journals and histories, such as the settings and pictures
+	 * of the library. It follows a rename and goes with a deletion in
+	 * the same task, and when a project opens after the process died
+	 * in one.
+	 */
+	interface Kept {
+		/** Return whether nothing is left behind under the old path. */
+		boolean follow(Journal.Move move);
+	}
+
+	// Set before anything is asked of this; null for none.
+	Kept kept;
+
 	FileTexts(ProjectFiles store, Journal journal, Histories histories,
 			Executor worker, Executor main) {
 		this.store = store;
@@ -303,6 +318,10 @@ public final class FileTexts {
 	private boolean followed(Journal.Move move) {
 		boolean followed = journal.follow(move);
 		histories.follow(move);
+		if (kept != null && !kept.follow(move)) {
+			// Noted still, so that the next opening tries again.
+			followed = false;
+		}
 		return followed && journal.setMove(null);
 	}
 
