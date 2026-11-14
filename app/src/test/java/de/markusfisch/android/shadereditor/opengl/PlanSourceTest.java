@@ -159,6 +159,21 @@ public class PlanSourceTest {
 				source.fragment());
 	}
 
+	// A shader written by hand with more than ASCII compiles: every
+	// such character is a space for the compiler, on its own line.
+	@Test
+	public void blanksNonAsciiCharactersOfCodeToo() {
+		var source = source(2, plan("main.frag", lines(
+				"// Gr\u00fc\u00dfe \u4e16\u754c",
+				"void main() {\u00a0",
+				"\tgl_FragColor = vec4(1.0); // \ud83d\ude00",
+				"}")));
+		assertEquals(lines("#define SHADER_EDITOR 1", "// Gr  e   ",
+				"void main() { ", "\tgl_FragColor = vec4(1.0); //  ",
+				"}"), source.fragment());
+		assertEquals(4, source.sourceMap().locate(5).line());
+	}
+
 	// The comment names a camera, but the shader reads none.
 	@Test
 	public void commentsRequireNoExtension() {

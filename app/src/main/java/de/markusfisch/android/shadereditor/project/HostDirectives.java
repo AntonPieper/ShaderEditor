@@ -158,9 +158,10 @@ public record HostDirectives(
 			checkCharacters();
 		}
 
-		// Shader compilers read ASCII, and some crash on other characters;
-		// in a comment or a consumed directive, such as a path, they are
-		// allowed.
+		// Shader compilers read ASCII, and some crash on other characters,
+		// so the engine hands them a space for each. In a comment or a
+		// consumed directive, such as a path, that changes nothing; in
+		// code the author is told, and the stored text stays as it is.
 		private void checkCharacters() {
 			for (int i = 0; i < source.size(); ++i) {
 				String code = source.get(i).code();
@@ -168,12 +169,17 @@ public record HostDirectives(
 					int character = code.codePointAt(c);
 					if (character > 0x7e || (character < 0x20 &&
 							WHITESPACE.indexOf(character) < 0)) {
-						error(source.get(i).at(), String.format(Locale.ROOT,
-								"Character %s (U+%04X) outside a comment, " +
-										"shader compilers read only ASCII " +
-										"code; replace it",
-								new String(Character.toChars(character)),
-								character));
+						diagnostics.add(new ProjectDiagnostic(
+								ProjectDiagnostic.Severity.WARNING,
+								String.format(Locale.ROOT,
+										"Character %s (U+%04X) outside a " +
+												"comment is read as a space: " +
+												"shader compilers read only " +
+												"ASCII code; replace it",
+										new String(Character.toChars(
+												character)), character),
+								source.get(i).at().file(),
+								source.get(i).at().line()));
 						break;
 					}
 					c += Character.charCount(character);
