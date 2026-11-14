@@ -51,6 +51,9 @@ public final class LibraryStart {
 		/** The library has no file to show. */
 		void onEmpty(@NonNull String key);
 
+		/** The library could not be opened, for message. */
+		void onFailed(@NonNull String message);
+
 		/** Tell once what the move did, as message. */
 		void onMoved(@NonNull String message);
 
@@ -127,11 +130,21 @@ public final class LibraryStart {
 					if (told != null) {
 						listener.onMoved(told);
 					}
-					listener.onNotMoved(result != null
-							? result.failed()
-							: List.of());
+					// Refused, the shaders that were not moved are
+					// those they were.
+					if (result != null) {
+						listener.onNotMoved(result.failed());
+					}
 					open(true);
 				});
+	}
+
+	/**
+	 * Show the file the library showed last, as a start does after
+	 * the move.
+	 */
+	public void show() {
+		open(true);
 	}
 
 	public void destroy() {
@@ -151,9 +164,17 @@ public final class LibraryStart {
 		projects.openLibrary(opened -> {
 			if (destroyed) {
 				return;
+			} else if (opened.project() == null || opened.id() == null) {
+				// Never swallowed: without the library the screen
+				// has to say why it shows none.
+				listener.onFailed(activity.getString(
+						R.string.library_not_opened,
+						opened.problem() != null
+								? opened.problem()
+								: ""));
 			} else if (show) {
 				show(opened);
-			} else if (opened.id() != null) {
+			} else {
 				listener.onLibrary(opened.id());
 			}
 		});

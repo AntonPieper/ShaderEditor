@@ -345,7 +345,7 @@ All of them need the Russian, Ukrainian and both Chinese files (AGENTS 15); unti
 | Situation | What is shown | Picture |
 | --- | --- | --- |
 | No shader in the library | "No shaders yet. A new shader is saved here, in ShaderEditor / Shaders." · New shader · Examples | `r-19` |
-| No file in the editor | The editor is replaced by "No file open. Create a shader or pick an example." It is not a text field, so nothing can be typed into nowhere | `r-19` |
+| No file in the editor | The editor is replaced by "No file open. Create a shader or pick an example." It is not a text field, so nothing can be typed into nowhere. Nothing open is a state of its own, not a shader without a name: the toolbar says **Shaders**, its menu offers New shader, Examples, Settings and the help, and nothing that needs a text (no Save, Save a copy, Delete, Share, Set as wallpaper or Add uniform; Undo and Redo are off). Run and the code button answer "No file open". Where the shaders are files, the editor has no way to make a shader of the database, so nothing typed or saved in any state can turn up later as a file nobody made | `r-19` |
 | An empty folder | "Nothing in this folder" · New | — |
 | A folder where nothing runs | "Nothing here runs yet. Tap a shader to open and run it." | `r-10` |
 | Filter finds nothing | "No name here contains “…”" | — |
@@ -582,7 +582,7 @@ Where project mode is on, the shaders of the database have moved into the librar
 
 ### 11.2 The shaders that did not move
 
-The library's root ends with a section **Not moved (N)**, only while there are any. Each row is a database shader the move could not write as a file: its title (or `Untitled`), and as its second line the reason, cut to one line ("a character outside ASCII stands between two characters of code"). The picture is its database thumbnail. A tap opens it as before the move: read, run, edit, and Save writes it to the database. Its menu offers nothing: it is not a file. The section goes when a later start moves the last of them. Nothing asks about it at start; the section is where it is said.
+The library's root ends with a section **Not moved (N)**, only while there are any. Each row is a database shader the move could not write as a file: its title (or `Untitled`), and as its second line the reason, cut to one line ("a character outside ASCII stands between two characters of code"). The picture is its database thumbnail. A tap opens it as before the move: read, run, edit, and Save writes it to its row of the database; it never makes another row. Save a copy makes a file of the library from it. Delete removes its row, and then the file the library showed last is shown, or nothing: never another shader of the database. The section goes when a later start moves the last of them. Nothing asks about it at start; the section is where it is said.
 
 ### 11.3 New, from each place
 
@@ -602,8 +602,8 @@ Code pasted into a shader of the library's root that defines `mainImage` and no 
 
 At every start, in this order, without asking anything:
 
-1. **The move** (SPEC 12.2) runs on the projects' queue. On most starts it finds nothing to move and takes milliseconds. While it runs the editor shows nothing (the picture behind the code is empty, the code view is empty and not editable) and the toolbar says **Shaders** with the second line **Moving shaders into files…**; that line appears only when the move takes longer than half a second, so a start that moves nothing does not flash it. The old picture is not shown meanwhile: it would be a database shader, and showing it means reading the database list on screen, which this design ends. A big database (300 shaders) takes a few seconds once, on the first start of a build with project mode; then never again.
-2. **The library opens**, and its session's file is shown and run: the file last shown, which the move set to the shader that was last opened. A file that is gone shows the newest file of the library instead. An empty library opens the drawer on it with its empty state (6.7).
+1. **The move** (SPEC 12.2) runs on the projects' queue. On most starts it finds nothing to move and takes milliseconds. While it runs the editor shows nothing (the picture behind the code is empty, the code view is empty and not editable) and the toolbar says **Shaders** with the second line **Moving shaders into files…**; that line appears only when the move takes longer than half a second, so a start that moves nothing does not flash it. The old picture is not shown meanwhile: it would be a database shader, and showing it means reading the database list on screen, which this design ends. A big database (300 shaders) takes a few seconds once, on the first start of a build with project mode; then never again. Nothing is open meanwhile (6.7), so the menu offers nothing that needs a text.
+2. **The library opens**, and its session's file is shown and run: the file last shown, which the move set to the shader that was last opened. A file that is gone shows the newest file of the library instead. An empty library opens the drawer on it with its empty state (6.7). A library that cannot be opened is said in the bottom message with its reason, and the screen shows "No file open": the drawer, the examples and the settings stay within reach.
 3. **Once, after a start that moved shaders**, a message at the bottom: **"%d shaders are now files in ShaderEditor / Shaders"** (singular "1 shader is now a file …"), for 4 s, no action. Shaders that failed are not in the message; they are in the section Not moved. A move that could not begin at all is the only failure told at start, by the same bottom message with its reason; the list then shows what the library holds.
 
 ### 11.5 The toolbar for a library file

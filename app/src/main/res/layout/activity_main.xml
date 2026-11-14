@@ -41,6 +41,8 @@
 						android:layout_width="match_parent"
 						android:layout_height="match_parent"
 						android:background="?attr/colorSurface"
+						android:clickable="true"
+						android:focusable="false"
 						android:gravity="center"
 						android:padding="@dimen/se_margin_screen"
 						android:text="@string/no_file_open"
