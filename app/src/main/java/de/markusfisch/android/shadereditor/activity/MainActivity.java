@@ -112,7 +112,14 @@ public class MainActivity extends AppCompatActivity {
 		if (getResources().getBoolean(R.bool.project_mode)) {
 			holds = new ProjectHolds(new Projects(this));
 			files = new ProjectFileManager(this, editorFragment, holds,
-					createProjectFileListener());
+					createProjectFileListener(), shaderViewManager::setPlan);
+			editorFragment.setOnErrorSelectedListener((file, line) -> {
+				if (file != null) {
+					files.openAt(file, line);
+				} else {
+					editorFragment.navigateToLine(line);
+				}
+			});
 		}
 		MainMenuManager.ShaderActions shaderActions =
 				createShaderActions(extraKeysManager);
@@ -152,10 +159,14 @@ public class MainActivity extends AppCompatActivity {
 		isInitialLoad = state == null && !openedText;
 
 		editorFragment.setOnEditPausedListener(text -> {
-			if (open instanceof ProjectFile) {
-				return;
-			}
-			if (ShaderEditorApp.preferences.doesRunOnChange()) {
+			if (ShaderEditorApp.preferences.doesRunOnChange() &&
+					open instanceof ProjectFile) {
+				if (editorFragment.hasErrors()) {
+					editorFragment.clearError();
+					editorFragment.highlightErrors();
+				}
+				files.run();
+			} else if (ShaderEditorApp.preferences.doesRunOnChange()) {
 				if (editorFragment.hasErrors()) {
 					editorFragment.clearError();
 					editorFragment.highlightErrors();
@@ -402,7 +413,9 @@ public class MainActivity extends AppCompatActivity {
 					shaderManager.deselect();
 				}
 				open = file;
-				editorFragment.clearError();
+				// The last build's, until the next one reports.
+				editorFragment.setErrors(file.getProject().diagnostics(),
+						file.getPath());
 				onChanged();
 			}
 
@@ -462,7 +475,12 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
 				runOnUiThread(() -> {
-					editorFragment.setErrors(infoLog);
+					if (open instanceof ProjectFile file) {
+						files.onDiagnostics(infoLog);
+						editorFragment.setErrors(infoLog, file.getPath());
+					} else {
+						editorFragment.setErrors(infoLog);
+					}
 					showErrors.setVisibility(infoLog.isEmpty()
 							? View.GONE
 							: View.VISIBLE);
@@ -686,6 +704,7 @@ public class MainActivity extends AppCompatActivity {
 
 	private void runShader() {
 		if (open instanceof ProjectFile) {
+			runFile();
 			return;
 		}
 		String src = editorFragment.getText();
@@ -699,6 +718,19 @@ public class MainActivity extends AppCompatActivity {
 		} else {
 			navigationManager.showPreview(src, open.getQuality(),
 					shaderManager.previewShaderLauncher);
+		}
+	}
+
+	// The project of a file runs only behind the code.
+	private void runFile() {
+		editorFragment.clearError();
+		if (ShaderEditorApp.preferences.doesSaveOnRun()) {
+			open.save(false);
+		}
+		if (ShaderEditorApp.preferences.doesRunInBackground()) {
+			files.run();
+		} else {
+			Message.show(this, R.string.file_runs_behind_code);
 		}
 	}
 

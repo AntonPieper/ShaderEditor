@@ -13,15 +13,18 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.adapter.ErrorAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
@@ -59,6 +62,12 @@ public class EditorFragment extends Fragment {
 	private EditorDraft draft;
 	@Nullable
 	private DraftHolder draftHolder;
+	// The diagnostics of every file while the editor shows a file of a
+	// folder, else null: then all are of the text shown.
+	@Nullable
+	private List<ProjectDiagnostic> allErrors;
+	@Nullable
+	private ErrorAdapter.OnItemClickListener errorListener;
 
 	/**
 	 * The text at the last onSaveInstanceState(), kept in memory over a
@@ -252,10 +261,13 @@ public class EditorFragment extends Fragment {
 	}
 
 	public boolean hasErrors() {
-		return ProjectDiagnostic.anyError(editor.getErrors());
+		return ProjectDiagnostic.anyError(allErrors != null
+				? allErrors
+				: editor.getErrors());
 	}
 
 	public void clearError() {
+		allErrors = null;
 		editor.setErrors(Collections.emptyList());
 	}
 
@@ -268,11 +280,44 @@ public class EditorFragment extends Fragment {
 	}
 
 	public void setErrors(@NonNull List<ProjectDiagnostic> errors) {
+		allErrors = null;
 		editor.setErrors(errors);
 		highlightErrors();
 	}
 
+	/**
+	 * Set the diagnostics of every file of a folder; the editor marks
+	 * the lines of those of file, the one it shows, and the list offers
+	 * them all.
+	 */
+	public void setErrors(@NonNull List<ProjectDiagnostic> errors,
+			@NonNull ProjectPath file) {
+		List<ProjectDiagnostic> inFile = new ArrayList<>();
+		for (ProjectDiagnostic error : errors) {
+			if (file.equals(error.file())) {
+				inFile.add(error);
+			}
+		}
+		allErrors = errors;
+		editor.setErrors(inFile);
+		highlightErrors();
+	}
+
+	/**
+	 * Call listener for an error chosen in the list while the editor
+	 * shows a file of a folder.
+	 */
+	public void setOnErrorSelectedListener(
+			@Nullable ErrorAdapter.OnItemClickListener listener) {
+		errorListener = listener;
+	}
+
 	public void showErrors() {
+		if (allErrors != null && errorListener != null) {
+			new ErrorListModal(allErrors, errorListener)
+					.show(getParentFragmentManager(), ErrorListModal.TAG);
+			return;
+		}
 		List<ProjectDiagnostic> errors = editor.getErrors();
 		// The editor shows a single file, so the file is ignored.
 		new ErrorListModal(errors, (file, lineNumber) -> navigateToLine(lineNumber))
