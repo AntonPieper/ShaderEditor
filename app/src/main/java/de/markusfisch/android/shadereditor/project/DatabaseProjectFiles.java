@@ -16,6 +16,7 @@ import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.dao.TextureDao;
 import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
 import de.markusfisch.android.shadereditor.project.legacy.CubemapAtlas;
+import de.markusfisch.android.shadereditor.project.legacy.KeptText;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.LibraryTexture;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter.TextureFile;
@@ -35,6 +36,9 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 	private final TextureDao textures;
 	@NonNull
 	private final LegacyShaderConverter.Result conversion;
+	// The text the conversion was made of.
+	@NonNull
+	private final String text;
 	@NonNull
 	private final Map<ProjectPath, TextureFile> textureFiles = new HashMap<>();
 	// The library textures the conversion used, by name.
@@ -46,10 +50,12 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 	private DatabaseProjectFiles(
 			@NonNull TextureDao textures,
 			@NonNull LegacyShaderConverter.Result conversion,
+			@NonNull String text,
 			@NonNull Map<String, Stored> used,
 			@NonNull ProjectLimits limits) {
 		this.textures = textures;
 		this.conversion = conversion;
+		this.text = text;
 		this.used = used;
 		this.limits = limits;
 		for (TextureFile file : conversion.textures()) {
@@ -106,13 +112,23 @@ public final class DatabaseProjectFiles implements ProjectFiles {
 						return DatabaseProjectFiles.find(textures, used, id);
 					}
 				}, reserved);
-		return new DatabaseProjectFiles(textures, conversion, used, limits);
+		return new DatabaseProjectFiles(textures, conversion, text, used,
+				limits);
 	}
 
 	/** The conversion, with its line map and diagnostics. */
 	@NonNull
 	public LegacyShaderConverter.Result conversion() {
 		return conversion;
+	}
+
+	/**
+	 * The converted shader as a file holds it: with every character
+	 * the user wrote, also those the old renderer dropped.
+	 */
+	@NonNull
+	public KeptText.Kept kept() {
+		return KeptText.of(text, conversion);
 	}
 
 	@Override
