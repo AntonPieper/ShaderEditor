@@ -219,16 +219,19 @@ public final class ShaderEngine {
 		long now = System.nanoTime();
 		lastRender = now;
 		refreshRate = getRefreshRate(context);
-		boolean renderSizeChanged = inputs.resize(width, height, now);
+		boolean renderSizeChanged = inputs.resize(width, height);
 		sources.setDeviceRotation(getDeviceRotation(context));
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
 		var camera = sources.get(CameraSource.KEY);
 		if (camera != null) {
 			camera.reopen();
 		}
+		// Time and frame number start again with the histories.
 		if (renderSizeChanged) {
 			thumbnails.onFramesLost();
-			createCurrentTargets();
+			if (createCurrentTargets()) {
+				inputs.restart(now);
+			}
 		}
 
 		resetFps();
@@ -396,20 +399,26 @@ public final class ShaderEngine {
 		report(shown, sources.withWarnings(built));
 	}
 
-	// After a resize, the build drawing starts again with cleared targets.
-	private void createCurrentTargets() {
+	// After a resize, the build drawing starts again with cleared targets
+	// unless none of them changes its size. Returns false when they keep
+	// what they hold.
+	private boolean createCurrentTargets() {
 		var build = shaders.current();
 		if (build == null) {
-			return;
+			return true;
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
-		if (build.createTargets(
+		var allocation = build.createTargets(
 				inputs.getRenderWidth(),
 				inputs.getRenderHeight(),
-				errors) != ShaderSwap.Allocation.MADE) {
+				errors);
+		if (allocation == ShaderSwap.Allocation.KEPT) {
+			return false;
+		} else if (allocation != ShaderSwap.Allocation.MADE) {
 			report(shaders.currentRevision(), errors);
 			endCurrentWithoutTargets();
 		}
+		return true;
 	}
 
 	// The error state: a current build without targets can no longer

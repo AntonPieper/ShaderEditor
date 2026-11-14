@@ -26,10 +26,11 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		S apply(@NonNull S shader);
 	}
 
-	// Whether the targets of a build were made, are invalid for its
-	// plan, or could not be allocated.
+	// Whether the targets of a build were made, were there at these
+	// sizes already, are invalid for its plan, or could not be allocated.
 	enum Allocation {
 		MADE,
+		KEPT,
 		INVALID,
 		FAILED
 	}
@@ -182,7 +183,8 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 				targets.release(current)) {
 			allocation = targets.make(next);
 		}
-		return allocation == Allocation.MADE;
+		return allocation == Allocation.MADE ||
+				allocation == Allocation.KEPT;
 	}
 
 	// GL thread. Swaps the next build in once it is complete and still

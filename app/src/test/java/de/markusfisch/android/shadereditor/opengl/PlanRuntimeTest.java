@@ -2,10 +2,13 @@ package de.markusfisch.android.shadereditor.opengl;
 
 import static de.markusfisch.android.shadereditor.opengl.TestProjects.lines;
 import static de.markusfisch.android.shadereditor.opengl.TestProjects.path;
+import static de.markusfisch.android.shadereditor.opengl.TestProjects.plan;
 import static de.markusfisch.android.shadereditor.opengl.TestProjects.prepare;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -15,6 +18,7 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.RenderPlan.Size;
 
 public class PlanRuntimeTest {
 	private static final String MAIN = "void main() {}";
@@ -202,6 +206,118 @@ public class PlanRuntimeTest {
 			}
 		}
 		return errors;
+	}
+
+	// Turning the phone swaps the render size; a fixed size stays, and
+	// so do the histories when every size stays.
+	@Test
+	public void fixedTargetsKeepTheirSizeAtAnotherRenderSize() {
+		var plan = plan("main.frag", lines(
+						"#pragma se input \"sim.frag\"",
+						"uniform sampler2D sim;",
+						"#pragma se target scale=0.5",
+						MAIN),
+				"sim.frag", lines(
+						"#pragma se input \"sim.frag\" frame=previous",
+						"uniform sampler2D state;",
+						"#pragma se target size=256x256",
+						MAIN));
+		var schedule = PassSchedule.of(plan, new boolean[2]);
+		var errors = new ArrayList<ProjectDiagnostic>();
+		var portrait = PlanRuntime.targetSizes(plan, schedule, 1080, 2400,
+				4096, errors);
+		var landscape = PlanRuntime.targetSizes(plan, schedule, 2400, 1080,
+				4096, errors);
+		int main = plan.output();
+		int sim = 1 - main;
+		assertEquals(new Size(256, 256), portrait[sim]);
+		assertEquals(portrait[sim], landscape[sim]);
+		assertEquals(new Size(540, 1200), portrait[main]);
+		assertEquals(new Size(1200, 540), landscape[main]);
+		var fixed = plan("main.frag", lines(
+				"#pragma se target size=512x512",
+				"uniform sampler2D backbuffer;",
+				MAIN));
+		var fixedSchedule = PassSchedule.of(fixed, new boolean[]{true});
+		assertArrayEquals(
+				PlanRuntime.targetSizes(fixed, fixedSchedule, 1080, 2400, 4096,
+						errors),
+				PlanRuntime.targetSizes(fixed, fixedSchedule, 2400, 1080, 4096,
+						errors));
+		assertEquals(List.of(), errors);
+	}
+
+	@Test
+	public void aTargetLargerThanTheDeviceAllowsIsAnErrorOnItsLine() {
+		var plan = plan("main.frag", lines(
+				"#pragma se target size=8192x16",
+				MAIN));
+		var errors = new ArrayList<ProjectDiagnostic>();
+		assertNull(PlanRuntime.targetSizes(plan,
+				PassSchedule.of(plan, new boolean[1]), 100, 100, 4096, errors));
+		assertEquals(1, errors.size());
+		assertEquals(1, errors.get(0).line());
+	}
+
+	// Only targets are allocated, so only they are bounded by the
+	// largest texture; the render size is not.
+	@Test
+	public void targetsThatFitAreMadeAtARenderSizeThatDoesNot() {
+		var errors = new ArrayList<ProjectDiagnostic>();
+		var fixed = plan("main.frag", lines(
+				"#pragma se target size=16x16",
+				MAIN));
+		assertArrayEquals(new Size[]{new Size(16, 16)},
+				PlanRuntime.targetSizes(fixed, PassSchedule.of(fixed,
+						new boolean[1]), 4097, 100, 4096, errors));
+		var half = plan("main.frag", lines(
+				"#pragma se target scale=0.5",
+				MAIN));
+		assertArrayEquals(new Size[]{new Size(2048, 50)},
+				PlanRuntime.targetSizes(half, PassSchedule.of(half,
+						new boolean[1]), 4097, 100, 4096, errors));
+		assertEquals(List.of(), errors);
+		var full = plan("main.frag", lines(
+				"#pragma se target scale=1",
+				MAIN));
+		assertNull(PlanRuntime.targetSizes(full, PassSchedule.of(full,
+				new boolean[1]), 4097, 100, 4096, errors));
+		assertEquals(1, errors.size());
+		assertEquals(path("main.frag"), errors.get(0).file());
+		assertEquals(1, errors.get(0).line());
+	}
+
+	// A resize that changes no target keeps the targets and what they
+	// hold: the frame after it reads the frame before it.
+	@Test
+	public void aResizeThatChangesNoTargetKeepsTheHistory() {
+		var engine = new FakeEngine(prepare("main.frag", lines(
+				"#pragma se target size=64x64",
+				"uniform sampler2D backbuffer;",
+				MAIN)), 3);
+		engine.device.maxTextureSize = 4096;
+		assertEquals(ShaderSwap.Allocation.MADE, engine.resize(100, 200));
+		engine.draw(0);
+		engine.draw(1);
+		int allocations = count(engine.device.calls, "allocateTexture2D");
+		assertEquals(ShaderSwap.Allocation.KEPT, engine.resize(5000, 100));
+		assertEquals(allocations, count(engine.device.calls,
+				"allocateTexture2D"));
+		engine.draw(2);
+		var draws = engine.draws("main.frag");
+		assertEquals(draws.get(1).target(), (int) draws.get(2).units()
+				.get(engine.unit("main.frag", "backbuffer")));
+		assertTrue(engine.stretched().isEmpty());
+	}
+
+	private static int count(List<String> calls, String call) {
+		int count = 0;
+		for (var c : calls) {
+			if (c.equals(call)) {
+				++count;
+			}
+		}
+		return count;
 	}
 
 	private static List<ProjectDiagnostic> checkInitial(

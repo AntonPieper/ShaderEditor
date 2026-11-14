@@ -6,6 +6,7 @@ import androidx.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -67,6 +68,9 @@ final class PlanRuntime implements ShaderSwap.Build {
 	// needs none, and all null before they are made.
 	@NonNull
 	private final PassTarget[] targets;
+	// The sizes of the targets, or null while there are none.
+	@Nullable
+	private RenderPlan.Size[] madeSizes;
 	// Whether the targets were made since the last frame.
 	private boolean reset;
 	private boolean complete;
@@ -343,44 +347,33 @@ final class PlanRuntime implements ShaderSwap.Build {
 	// GL thread, before it replaces the current build and whenever the
 	// render size changed: makes the targets the schedule needs at the
 	// sizes the plan says, the render size times scale or a fixed size,
-	// with a second texture where the previous frame is read. Adds why
-	// when it cannot; it has nothing to draw into then.
+	// with a second texture where the previous frame is read. Targets
+	// that keep their sizes keep what they hold. Adds why when it cannot;
+	// it has nothing to draw into then.
 	@NonNull
 	ShaderSwap.Allocation createTargets(
 			int width,
 			int height,
 			@NonNull List<ProjectDiagnostic> errors) {
-		releaseTargets();
-		// The render size is already scaled by the quality.
-		int max = device.getMaxTextureSize();
-		var project = RenderPlan.Size.project(width, height, 1, max);
-		if (!project.isSuccess()) {
-			errors.add(project.diagnostic());
-			return ShaderSwap.Allocation.INVALID;
-		}
-		var sizes = new RenderPlan.Size[targets.length];
 		var invalid = new ArrayList<ProjectDiagnostic>();
-		for (int i = 0; i < targets.length && invalid.isEmpty(); ++i) {
-			if (!schedule.hasTarget(i)) {
-				continue;
-			}
-			var size = plan.passes().get(i).target().size(project.value(), max);
-			if (size.isSuccess()) {
-				sizes[i] = size.value();
-			} else {
-				invalid.add(size.diagnostic());
-			}
-		}
-		for (int i = 0; i < targets.length && invalid.isEmpty(); ++i) {
+		var sizes = targetSizes(plan, schedule, width, height,
+				device.getMaxTextureSize(), invalid);
+		for (int i = 0; sizes != null && i < sizes.length &&
+				invalid.isEmpty(); ++i) {
 			if (sizes[i] != null) {
 				invalid.addAll(passes.get(i).bindings.checkPasses(sizes,
 						glesVersion));
 			}
 		}
-		if (!invalid.isEmpty()) {
+		if (sizes == null || !invalid.isEmpty()) {
+			releaseTargets();
 			errors.addAll(invalid);
 			return ShaderSwap.Allocation.INVALID;
+		} else if (Arrays.equals(sizes, madeSizes)) {
+			return ShaderSwap.Allocation.KEPT;
 		}
+		releaseTargets();
+		madeSizes = sizes;
 		for (int i = 0; i < targets.length; ++i) {
 			if (sizes[i] == null) {
 				continue;
@@ -394,6 +387,42 @@ final class PlanRuntime implements ShaderSwap.Build {
 		}
 		reset = true;
 		return ShaderSwap.Allocation.MADE;
+	}
+
+	// The size of every target the schedule needs at a render size,
+	// which is already scaled by the quality, by pass and null for a pass
+	// without one. Returns null and adds why when one cannot be made with
+	// textures of at most maxSize.
+	@Nullable
+	static RenderPlan.Size[] targetSizes(
+			@NonNull RenderPlan plan,
+			@NonNull PassSchedule schedule,
+			int width,
+			int height,
+			int maxSize,
+			@NonNull List<ProjectDiagnostic> errors) {
+		// Only targets are allocated: a render size larger than a texture
+		// is fine while every target fits.
+		var project = RenderPlan.Size.project(width, height, 1,
+				Integer.MAX_VALUE);
+		if (!project.isSuccess()) {
+			errors.add(project.diagnostic());
+			return null;
+		}
+		var sizes = new RenderPlan.Size[plan.passes().size()];
+		for (int i = 0; i < sizes.length; ++i) {
+			if (!schedule.hasTarget(i)) {
+				continue;
+			}
+			var size = plan.passes().get(i).target().size(project.value(),
+					maxSize);
+			if (!size.isSuccess()) {
+				errors.add(size.diagnostic());
+				return null;
+			}
+			sizes[i] = size.value();
+		}
+		return sizes;
 	}
 
 	boolean hasTargets() {
@@ -468,10 +497,12 @@ final class PlanRuntime implements ShaderSwap.Build {
 				targets[i] = null;
 			}
 		}
+		madeSizes = null;
 	}
 
 	// GL thread. Releases what it draws into; false when it had nothing.
 	boolean releaseTargets() {
+		madeSizes = null;
 		boolean had = false;
 		for (int i = 0; i < targets.length; ++i) {
 			if (targets[i] != null) {
