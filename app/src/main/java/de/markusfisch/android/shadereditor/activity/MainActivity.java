@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.activity.managers.DatabaseScreen;
 import de.markusfisch.android.shadereditor.activity.managers.ExtraKeysManager;
 import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
 import de.markusfisch.android.shadereditor.activity.managers.LibraryAdd;
@@ -43,14 +45,12 @@ import de.markusfisch.android.shadereditor.activity.managers.ProjectFileManager;
 import de.markusfisch.android.shadereditor.activity.managers.ProjectHolds;
 import de.markusfisch.android.shadereditor.activity.managers.RunGuard;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderList;
-import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderScreen;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderViewManager;
 import de.markusfisch.android.shadereditor.activity.managers.UIManager;
 import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
-import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
@@ -66,10 +66,7 @@ import de.markusfisch.android.shadereditor.widget.Message;
 
 public class MainActivity extends AppCompatActivity {
 	private static final String OPEN = "open";
-	private static final String CODE_VISIBLE = "code_visible";
 	private static final String TOOLBAR_TITLE = "toolbar_title";
-	// How long an explicit save is told in the toolbar's second line.
-	private static final long SAVED_NOTICE_MILLIS = 2000;
 	private static final int NEEDS_NEW_EDITOR_MILLIS = 10000;
 	private static final String CRASH_RECOVERY_COMMENT = """
 			// Shader Editor disabled this shader because it caused a crash while loading.
@@ -96,7 +93,6 @@ public class MainActivity extends AppCompatActivity {
 	@Nullable
 	private ProjectFileManager files;
 	private DataSource dataSource;
-	private boolean isInitialLoad = false;
 	@Nullable
 	private LibraryStart libraryStart;
 	@Nullable
@@ -171,7 +167,9 @@ public class MainActivity extends AppCompatActivity {
 		// The one place that decides which world this screen is in.
 		screen = getResources().getBoolean(R.bool.project_mode)
 				? new FileScreen(shaderViewListener)
-				: new DatabaseScreen();
+				: new DatabaseScreen(this, editorFragment, uiManager,
+						shaderViewManager, navigationManager, dataSource,
+						createShaderViewListener(), createScreenHost());
 
 		MainMenuManager mainMenuManager = new MainMenuManager(
 				this,
@@ -427,64 +425,6 @@ public class MainActivity extends AppCompatActivity {
 
 	@NonNull
 	@Contract(" -> new")
-	private ShaderListManager.Listener createShaderListListener() {
-		return new ShaderListManager.Listener() {
-			@Override
-			public void onShaderSelected(long id) {
-				isInitialLoad = false;
-				if (ShaderEditorApp.preferences.autoSave()) {
-					open.save(false);
-				}
-				uiManager.closeDrawers();
-				shaderManager.selectShader(id);
-			}
-
-			@Override
-			public void onShaderRenamed(long id, @NonNull String name) {
-				shaderManager.shaderRenamed(id, name);
-				shaderListManager.loadShadersAsync();
-			}
-
-			@Override
-			public void onAllShadersDeleted() {
-				isInitialLoad = false;
-				shaderManager.selectShader(0);
-			}
-
-			@Override
-			public void onShadersLoaded(@NonNull List<DataRecords.ShaderInfo> shaders) {
-				if (isInitialLoad && !shaders.isEmpty()) {
-					// Try to load the last opened shader.
-					// NOTE: This assumes a method like `getLastOpenedShader()` exists
-					// in your SharedPreferences helper class.
-					long lastOpenedId = ShaderEditorApp.preferences.getLastOpenedShader();
-					long idToLoad = 0;
-
-					// Check if the last opened shader still exists in the list.
-					if (lastOpenedId > 0) {
-						for (DataRecords.ShaderInfo shader : shaders) {
-							if (shader.id() == lastOpenedId) {
-								idToLoad = lastOpenedId;
-								break;
-							}
-						}
-					}
-
-					// If no last-opened shader was found (or it was deleted),
-					// fall back to the first shader in the list.
-					if (idToLoad == 0) {
-						idToLoad = shaders.get(0).id();
-					}
-
-					shaderManager.selectShader(idToLoad);
-				}
-				isInitialLoad = false;
-			}
-		};
-	}
-
-	@NonNull
-	@Contract(" -> new")
 	private ProjectFileManager.Listener createProjectFileListener() {
 		return new ProjectFileManager.Listener() {
 			@Override
@@ -545,7 +485,7 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onSaved() {
 				uiManager.showNotice(getText(R.string.shader_saved),
-						SAVED_NOTICE_MILLIS);
+						ShaderScreen.SAVED_NOTICE_MILLIS);
 				ProjectFile file = files.file();
 				if (file != null) {
 					looks.saved(files.key(),
@@ -982,8 +922,26 @@ public class MainActivity extends AppCompatActivity {
 		Message.show(this, messageId);
 	}
 
+	// What a screen asks the activity for, whichever world it is.
+	@NonNull
+	private ShaderScreen.Host createScreenHost() {
+		return new ShaderScreen.Host() {
+			@Override
+			public void showWallpaper() {
+				MainActivity.this.showWallpaper();
+			}
+
+			@Override
+			public void runText(@NonNull OpenItem open,
+					@NonNull ActivityResultLauncher<Intent> preview) {
+				MainActivity.this.runText(open, preview);
+			}
+		};
+	}
+
 	// Run the text of a shader of the database.
-	private void runText() {
+	private void runText(@NonNull OpenItem open,
+			@NonNull ActivityResultLauncher<Intent> preview) {
 		String src = editorFragment.getText();
 		clearErrors();
 		if (ShaderEditorApp.preferences.doesSaveOnRun()) {
@@ -993,8 +951,7 @@ public class MainActivity extends AppCompatActivity {
 		if (ShaderEditorApp.preferences.doesRunInBackground()) {
 			shaderViewManager.setShader(src, open.getQuality());
 		} else {
-			navigationManager.showPreview(src, open.getQuality(),
-					shaderManager.previewShaderLauncher);
+			navigationManager.showPreview(src, open.getQuality(), preview);
 		}
 	}
 
@@ -1092,174 +1049,6 @@ public class MainActivity extends AppCompatActivity {
 		}
 		builder.append("#endif\n");
 		return builder.toString();
-	}
-
-	// The shaders are rows of the database, as in release builds.
-	private final class DatabaseScreen implements ShaderScreen {
-		DatabaseScreen() {
-			shaderListManager = new ShaderListManager(MainActivity.this,
-					findViewById(R.id.shaders),
-					dataSource,
-					createShaderListListener());
-			shaderManager = new ShaderManager(MainActivity.this,
-					editorFragment,
-					shaderViewManager,
-					shaderListManager,
-					navigationManager,
-					dataSource,
-					false,
-					createShaderViewListener(),
-					this::showTitle,
-					() -> uiManager.showNotice(getText(R.string.shader_saved),
-							SAVED_NOTICE_MILLIS));
-			open = shaderManager;
-		}
-
-		@Override
-		public void start(@Nullable Bundle state, @Nullable Intent intent) {
-			// Only load the last shader when no incoming text was opened,
-			// or it would replace that text.
-			boolean openedText = shaderManager.handleSendText(intent);
-			isInitialLoad = state == null && !openedText;
-		}
-
-		@Override
-		public void onRestoreInstanceState(@NonNull Bundle state) {
-			shaderManager.restoreState(state);
-			if (!state.getBoolean(CODE_VISIBLE, true)) {
-				uiManager.toggleCodeVisibility();
-			}
-		}
-
-		@Override
-		public void onSaveInstanceState(@NonNull Bundle state) {
-			shaderManager.saveState(state);
-			state.putBoolean(CODE_VISIBLE, editorFragment.isCodeVisible());
-		}
-
-		@Override
-		public void onPostCreate() {
-		}
-
-		@Override
-		public void onStart() {
-		}
-
-		@Override
-		public void onStop() {
-		}
-
-		@Override
-		public void onResume() {
-			shaderListManager.loadShadersAsync();
-		}
-
-		@Override
-		public void onPause() {
-		}
-
-		@Override
-		public void onDestroy(boolean finishing) {
-			shaderManager.destroy();
-			shaderListManager.destroy();
-		}
-
-		@Override
-		public void onNewIntent(@Nullable Intent intent) {
-			shaderManager.handleSendText(intent);
-		}
-
-		@NonNull
-		@Override
-		public OpenItem open() {
-			return open;
-		}
-
-		@Override
-		public void newShader() {
-			long defaultId = ShaderEditorApp.preferences.getDefaultNewShader();
-			if (defaultId > 0 &&
-					dataSource.shader.getShader(defaultId) != null) {
-				shaderManager.selectCopy(defaultId);
-			} else {
-				shaderManager.createShaderFromResource(null,
-						R.raw.new_shader, R.drawable.thumbnail_new_shader,
-						1f);
-			}
-		}
-
-		@Override
-		public void saveCopy() {
-			open.saveCopy();
-		}
-
-		@Override
-		public void delete() {
-			open.delete();
-		}
-
-		@Override
-		public void updateWallpaper() {
-			open.setAsWallpaper();
-			showWallpaper();
-		}
-
-		@Override
-		public boolean isWallpaper() {
-			return open.isWallpaper();
-		}
-
-		@Override
-		public void showExamples() {
-			navigationManager.goToLoadSample(shaderManager.loadSampleLauncher);
-		}
-
-		@Override
-		public void moveLibraryAgain() {
-		}
-
-		@Override
-		public void run() {
-			runText();
-		}
-
-		@Override
-		public void toggleCode() {
-			uiManager.toggleCodeVisibility();
-		}
-
-		@Override
-		public void addUniform() {
-			navigationManager.goToAddUniform(
-					shaderManager.addUniformLauncher);
-		}
-
-		@Override
-		public void onEditPaused(@NonNull String text) {
-			if (ShaderEditorApp.preferences.doesRunOnChange()) {
-				editorFragment.runningEdit();
-				shaderViewManager.setShader(text, open.getQuality());
-			}
-		}
-
-		@Override
-		public void onQualityChanged(float quality) {
-			open.setQuality(quality);
-		}
-
-		@Override
-		public void onFrame() {
-		}
-
-		@Override
-		public void showErrors(@NonNull List<ProjectDiagnostic> infoLog) {
-			editorFragment.setErrors(infoLog);
-		}
-
-		private void showTitle() {
-			uiManager.setToolbarTitle(open.getTitle(), open.getSubtitle(),
-					open.isModified());
-		}
 	}
 
 	// The shaders are files, of the library and of other folders.
@@ -1378,7 +1167,7 @@ public class MainActivity extends AppCompatActivity {
 					createShaderViewListener(),
 					activity::showOpenTitle,
 					() -> uiManager.showNotice(getText(R.string.shader_saved),
-							SAVED_NOTICE_MILLIS));
+							ShaderScreen.SAVED_NOTICE_MILLIS));
 			nothing = new NothingOpen(getString(R.string.nav_shaders));
 			// Where the shaders are files, nothing is open until the start
 			// shows a file: no shader of the database stands in for it.
@@ -1440,7 +1229,7 @@ public class MainActivity extends AppCompatActivity {
 				showOpen();
 			}
 			// Not that far yet: the start shows what the library shows.
-			if (!state.getBoolean(CODE_VISIBLE, true)) {
+			if (!state.getBoolean(ShaderScreen.CODE_VISIBLE, true)) {
 				if (open.hasText()) {
 					uiManager.toggleCodeVisibility();
 				} else {
@@ -1453,7 +1242,7 @@ public class MainActivity extends AppCompatActivity {
 		public void onSaveInstanceState(@NonNull Bundle state) {
 			state.putString(OPEN, openState().encode());
 			// With nothing open the editor's view is gone for that reason.
-			state.putBoolean(CODE_VISIBLE, open.hasText()
+			state.putBoolean(ShaderScreen.CODE_VISIBLE, open.hasText()
 					? editorFragment.isCodeVisible()
 					: !hideCodeOnShow);
 		}
@@ -1581,7 +1370,7 @@ public class MainActivity extends AppCompatActivity {
 			} else if (!open.hasText()) {
 				sayNothingIsOpen();
 			} else {
-				runText();
+				runText(open, shaderManager.previewShaderLauncher);
 			}
 		}
 

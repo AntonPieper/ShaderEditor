@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.activity.managers;
 import android.content.Intent;
 import android.os.Bundle;
 
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -23,6 +24,24 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * Call it on the main thread.
  */
 public interface ShaderScreen {
+	/** Kept of a screen: whether the code is shown. */
+	String CODE_VISIBLE = "code_visible";
+	/** How long an explicit save is told in the toolbar's second line. */
+	long SAVED_NOTICE_MILLIS = 2000;
+
+	/** What a screen asks of the activity that shows it. */
+	interface Host {
+		/** Pick the live wallpaper if it is not picked, else say it is set. */
+		void showWallpaper();
+
+		/**
+		 * Run the text in the editor as the shader open: behind the
+		 * code, or in the preview that preview launches.
+		 */
+		void runText(@NonNull OpenItem open,
+				@NonNull ActivityResultLauncher<Intent> preview);
+	}
+
 	/**
 	 * Show what the screen starts with, once the toolbar and the menu
 	 * are set up: text another app shared with intent, what state says
