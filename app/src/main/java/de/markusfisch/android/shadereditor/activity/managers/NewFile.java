@@ -170,11 +170,11 @@ final class NewFile {
 				} catch (IOException e) {
 					builtIn = new byte[0];
 				}
-				byte[] picture = Resources.loadBitmapResource(app,
-						R.drawable.thumbnail_new_shader);
 				byte[] template = builtIn;
+				// No picture until it runs: the list shows the file
+				// icon for it, as for every file without one.
 				handler.post(() -> newShader(in, at, name, template,
-						picture));
+						null));
 			});
 		} catch (RejectedExecutionException e) {
 			// The drawer is gone.

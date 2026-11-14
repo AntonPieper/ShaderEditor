@@ -24,6 +24,7 @@ import de.markusfisch.android.shadereditor.activity.managers.LibraryLooks;
 import de.markusfisch.android.shadereditor.adapter.ShaderAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
+import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.DirectoryProjectFiles;
@@ -81,7 +82,7 @@ final class LibraryChoice {
 		String none = context.getString(R.string.no_shader_selected);
 		READING.execute(() -> {
 			Projects projects = projects(context);
-			Choice choice = read(projects, wallpaper, id, none);
+			Choice choice = read(context, projects, wallpaper, id, none);
 			MAIN.post(() -> {
 				if (fragment.isAdded()) {
 					show(fragment, projects, wallpaper, choice, changed);
@@ -96,6 +97,8 @@ final class LibraryChoice {
 		Context context = fragment.requireContext();
 		ShaderAdapter adapter = new ShaderAdapter(context,
 				R.layout.row_shader_choice);
+		// A file without a picture shows the file icon, as in the drawer.
+		adapter.setPlaceholder(R.drawable.ic_draft);
 		adapter.setData(choice.rows());
 		adapter.setSelectedId(choice.chosen() >= 0
 				? choice.rows().get(choice.chosen()).id()
@@ -185,7 +188,8 @@ final class LibraryChoice {
 	// The files of the root, last changed first; the choice of none
 	// first where none can be chosen. Off the main thread.
 	@NonNull
-	private static Choice read(@NonNull Projects projects, boolean wallpaper,
+	private static Choice read(@NonNull Context context,
+			@NonNull Projects projects, boolean wallpaper,
 			long id, @NonNull String none) {
 		Library library = projects.library();
 		ProjectPath chosen = chosen(projects, wallpaper, id);
@@ -214,8 +218,9 @@ final class LibraryChoice {
 			}
 			Previews.Picture picture = previews.get(path);
 			rows.add(new DataRecords.ShaderInfo(paths.size(),
-					file.getName(), null,
-					picture != null ? picture.png() : null));
+					file.getName(), null, picture != null
+							? OldPlaceholder.real(context, picture.png())
+							: null));
 			paths.add(path);
 		}
 		return new Choice(paths, rows, at);

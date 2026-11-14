@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -12,10 +13,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.Preparation;
+import de.markusfisch.android.shadereditor.project.Previews;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
 
@@ -34,6 +37,7 @@ public final class LibraryLooks {
 		void run(float quality);
 	}
 
+	private final Context context;
 	private final Projects projects;
 	private final ShaderViewManager view;
 	private final Runnable kept;
@@ -52,9 +56,10 @@ public final class LibraryLooks {
 	 * @param kept called when something was kept that a list shows
 	 * @param told called with why something could not be kept
 	 */
-	public LibraryLooks(@NonNull Projects projects,
+	public LibraryLooks(@NonNull Context context, @NonNull Projects projects,
 			@NonNull ShaderViewManager view, @NonNull Runnable kept,
 			@NonNull Consumer<String> told) {
+		this.context = context.getApplicationContext();
 		this.projects = projects;
 		this.view = view;
 		this.kept = kept;
@@ -103,8 +108,11 @@ public final class LibraryLooks {
 			return;
 		}
 		execute(() -> {
-			boolean missing = projects.library().previews()
-					.get(path) == null;
+			Previews.Picture picture = projects.library().previews()
+					.get(path);
+			// The database's grey square is no picture either.
+			boolean missing = picture == null ||
+					OldPlaceholder.real(context, picture.png()) == null;
 			handler.post(() -> {
 				if (missing && !destroyed) {
 					capture(path);
