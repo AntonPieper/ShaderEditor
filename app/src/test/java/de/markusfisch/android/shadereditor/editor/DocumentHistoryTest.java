@@ -53,8 +53,8 @@ public class DocumentHistoryTest {
 			now[0] += random.nextInt(5) == 0 ? 1000 : random.nextInt(300);
 			step(random, original);
 		}
-		original.markSaved(original.state());
 		original.undo();
+		original.markSaved(original.state());
 		Document restored = document(original.text().toString());
 
 		assertTrue(restored.restore(original.history()));
@@ -80,6 +80,32 @@ public class DocumentHistoryTest {
 		original.undo();
 		restored.undo();
 		assertSame(original, restored);
+	}
+
+	@Test
+	public void historyDoesNotTellWhichTextIsSaved() {
+		Document original = document("stored");
+		original.replace(0, 6, Text.of("edited"));
+		original.markSaved(original.state());
+		original.replace(0, 6, Text.of("more"));
+
+		// Unsaved text stays unsaved wherever undo and redo lead.
+		Document unsaved = document("more");
+		unsaved.markSaved(-1);
+		assertTrue(unsaved.restore(original.history()));
+		assertTrue(unsaved.isModified());
+		unsaved.undo();
+		assertEquals("edited", unsaved.text().toString());
+		assertTrue(unsaved.isModified());
+
+		// Saved text is the saved state, and only that.
+		Document saved = document("more");
+		assertTrue(saved.restore(original.history()));
+		assertFalse(saved.isModified());
+		saved.undo();
+		assertTrue(saved.isModified());
+		saved.redo();
+		assertFalse(saved.isModified());
 	}
 
 	@Test

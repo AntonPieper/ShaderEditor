@@ -36,11 +36,11 @@ public final class FileTexts {
 	 * its journal could not be read, so the stored text was opened
 	 * instead, else null; and the undo history kept for this text, else
 	 * null. A document of unsaved text starts modified, with
-	 * {@code markSaved(-1)}, unless its history says better.
+	 * {@code markSaved(-1)}, whatever its history.
 	 */
 	public record Opened(Text text, boolean unsaved, String revision,
 			int journal, long bytes, String unreadable,
-			Histories.Kept history) implements Opening {
+			Document.History history) implements Opening {
 	}
 
 	/** A file that cannot be edited; reason tells the user why. */
@@ -146,15 +146,15 @@ public final class FileTexts {
 	}
 
 	/**
-	 * Keep history, of text based on the stored revision base, for path;
-	 * nothing depends on it being written.
+	 * Keep history, of text, for path; nothing but undo depends on it
+	 * being written.
 	 */
-	void keepHistory(ProjectPath path, Text text, String base,
+	void keepHistory(ProjectPath path, Text text,
 			Document.History history) {
 		worker.execute(() -> {
 			String hash = Histories.hash(text);
 			if (hash != null) {
-				histories.write(path, hash, base, history);
+				histories.write(path, hash, history);
 			}
 		});
 	}
@@ -232,9 +232,9 @@ public final class FileTexts {
 
 	/**
 	 * Return what storage holds of path compared with base; on the
-	 * worker. When it changed: for unsaved text, mine or that of the
-	 * journal when null, whether storage holds exactly that text, else
-	 * the stored text.
+	 * worker. For unsaved text, mine or, when storage changed, that of
+	 * the journal when null, whether storage holds exactly that text;
+	 * else the stored text when it changed.
 	 */
 	Checked check(ProjectPath path, String base, Text mine,
 			boolean unsaved) {
@@ -251,7 +251,10 @@ public final class FileTexts {
 		}
 		String revision = content.revision();
 		if (revision.equals(base)) {
-			return new Checked(Found.SAME, null, base, false);
+			// Text typed back to what is stored is saved too; a journal
+			// is not read to find that.
+			return new Checked(Found.SAME, null, base, mine != null &&
+					holds(content.bytes(), path, mine));
 		} else if (content.bytes().length > Document.MAX_BYTES) {
 			return new Checked(Found.TOO_LARGE, null, revision, false);
 		} else if (unsaved) {
@@ -335,7 +338,9 @@ public final class FileTexts {
 			return opening;
 		}
 		String hash = Histories.hash(opened.text());
-		Histories.Kept kept = hash != null ? histories.read(path, hash) : null;
+		Document.History kept = hash != null
+				? histories.read(path, hash)
+				: null;
 		return kept == null ? opened : new Opened(opened.text(),
 				opened.unsaved(), opened.revision(), opened.journal(),
 				opened.bytes(), opened.unreadable(), kept);

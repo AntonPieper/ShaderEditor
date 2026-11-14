@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.project;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -38,17 +39,15 @@ public class HistoriesTest {
 		document.replace(0, 0, Text.of("// "));
 		document.undo();
 		hash = Histories.hash(document.text());
-		assertTrue(new Histories(dir).write(A, hash, "sha256:base",
-				document.history()));
+		assertTrue(new Histories(dir).write(A, hash, document.history()));
 	}
 
 	@Test
 	public void roundTripsAHistoryForItsTextOnly() {
-		Histories.Kept kept = new Histories(dir).read(A, hash);
+		Document.History kept = new Histories(dir).read(A, hash);
 		Document restored = new Document(document.text());
 
-		assertEquals("sha256:base", kept.base());
-		assertTrue(restored.restore(kept.history()));
+		assertTrue(restored.restore(kept));
 		assertEquals(document.selection(), restored.selection());
 		restored.redo();
 		document.redo();
@@ -79,5 +78,40 @@ public class HistoriesTest {
 		}
 		Files.write(file.toPath(), full);
 		assertTrue(new Histories(dir).read(A, hash) != null);
+	}
+
+	@Test
+	public void namesTextsThatDifferOnlyInWhatAFileCannotHoldApart() {
+		String high = Histories.hash(Text.of("\uD800"));
+		String low = Histories.hash(Text.of("\uDC00"));
+
+		assertNotEquals(high, low);
+		assertNotEquals(high, Histories.hash(Text.of("?")));
+		assertNotEquals(Histories.hash(Text.of("a\nb")),
+				Histories.hash(Text.of("a\n\nb")));
+		assertEquals(high, Histories.hash(Text.of("\uD800")));
+		Histories histories = new Histories(dir);
+		assertTrue(histories.write(A, high, document.history()));
+		assertNull(histories.read(A, low));
+	}
+
+	@Test
+	public void keepsTheNewestHistoriesWithinTheBytesOfASession()
+			throws IOException {
+		File[] files = new File[4];
+		for (int i = 0; i < files.length; ++i) {
+			files[i] = new File(dir, i + ".history");
+			try (java.io.RandomAccessFile file =
+					new java.io.RandomAccessFile(files[i], "rw")) {
+				file.setLength(Histories.MAX_BYTES / 4);
+			}
+			assertTrue(files[i].setLastModified(1_000_000L * (i + 1)));
+		}
+
+		new Histories(dir).trim();
+
+		assertFalse(files[0].exists());
+		assertTrue(files[1].exists() && files[2].exists() &&
+				files[3].exists());
 	}
 }
