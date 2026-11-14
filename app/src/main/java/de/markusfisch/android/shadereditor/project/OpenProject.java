@@ -624,7 +624,9 @@ public final class OpenProject {
 	 * Save every file with unsaved text where it is, and mark each
 	 * document saved as it was when its text was taken. done gets the
 	 * outcome by path. A file changed elsewhere is saved only when
-	 * explicit and the user chose to keep their edits.
+	 * explicit and the user chose to keep their edits. When explicit, a
+	 * document without unsaved text whose file was seen to be gone is
+	 * written too, creating the file again unless one is there.
 	 */
 	public void save(boolean explicit, Callback<Map<ProjectPath, Outcome>> done) {
 		persist();
@@ -639,7 +641,9 @@ public final class OpenProject {
 		};
 		for (FileRecord record : new ArrayList<>(records.values())) {
 			ProjectPath path = record.path;
-			if (!record.edited()) {
+			if (!record.edited() && !(explicit &&
+					record.document() != null &&
+					record.found == FileTexts.Found.MISSING)) {
 				continue;
 			} else if (record.conflict() != null) {
 				outcomes.put(path, new Conflict(record.conflict()));
@@ -710,12 +714,39 @@ public final class OpenProject {
 	/**
 	 * Read path again from storage into its document, as one change that
 	 * can be undone, and drop its unsaved text once the document took
-	 * the stored text; text typed after the call is kept instead. done
+	 * the stored text; text typed after the call is kept instead, also
+	 * when the read waits for a save or a check of the file. Unsaved
+	 * text not in memory is opened first, so undo brings it back. done
 	 * gets null when done, or why it cannot be read.
 	 */
 	public void reload(ProjectPath path, Callback<String> done) {
+		reload(path, false, null, done);
+	}
+
+	private void reload(ProjectPath path, boolean expect, String seen,
+			Callback<String> done) {
 		FileRecord record = record(path);
-		record.whenIdle(() -> reload(record, false, null, done));
+		if (record.document() == null && record.journaled) {
+			load(path, ProjectFiles.UNKNOWN, problem -> {
+				if (problem != null) {
+					done.done(problem);
+				} else {
+					reload(record, expect, seen, done);
+				}
+			});
+		} else {
+			reload(record, expect, seen, done);
+		}
+	}
+
+	// The user consents to losing the text the document has now: what
+	// is typed from here on stays, however long the read waits.
+	private void reload(FileRecord record, boolean expect, String seen,
+			Callback<String> done) {
+		Document asked = record.document();
+		int at = asked != null ? asked.revision() : -1;
+		record.whenIdle(() -> reload(record, asked, at, expect, seen,
+				done));
 	}
 
 	/**
@@ -730,8 +761,8 @@ public final class OpenProject {
 				!Objects.equals(seen, record.seen)) {
 			return;
 		} else if (choice == Choice.RELOAD) {
-			record.whenIdle(() -> reload(record, true, seen, problem -> {
-			}));
+			reload(path, true, seen, problem -> {
+			});
 			return;
 		}
 		record.consent(seen);
@@ -1127,11 +1158,12 @@ public final class OpenProject {
 	// Save the text the document of record or its journal has now;
 	// done gets the save, or null when there was nothing to save.
 	private void save(FileRecord record, Callback<FileTexts.Save> done) {
+		String expected = record.expected();
 		FileRecord.Request request = record.start(FileRecord.Kind.SAVE);
 		ProjectPath path = record.path;
 		Document document = request.document();
 		texts.save(path, document != null ? document.text() : null,
-				request.state(), request.base(), save -> {
+				request.state(), expected, save -> {
 					if (records.get(path) != record) {
 						// Closed since.
 					} else if (save.outcome() instanceof Saved saved) {
@@ -1161,7 +1193,8 @@ public final class OpenProject {
 			} else if (checked.equal()) {
 				record.adoptSaved(request, checked.revision());
 			} else if (checked.text() != null && record.adoptStored(
-					request, checked.text(), checked.revision())) {
+					request, request.document(), request.revision(),
+					checked.text(), checked.revision())) {
 				reread.add(path);
 			} else {
 				record.observe(request, checked.found(),
@@ -1181,9 +1214,10 @@ public final class OpenProject {
 		}
 	}
 
-	// Reload record; when expect, only if storage is still at seen.
-	private void reload(FileRecord record, boolean expect, String seen,
-			Callback<String> done) {
+	// Reload record when its document is still asked at revision at;
+	// when expect, only if storage is still at seen.
+	private void reload(FileRecord record, Document asked, int at,
+			boolean expect, String seen, Callback<String> done) {
 		FileRecord.Request request = record.start(FileRecord.Kind.RELOAD);
 		ProjectPath path = record.path;
 		texts.openStored(path, opening -> {
@@ -1198,10 +1232,10 @@ public final class OpenProject {
 			} else {
 				// Typing that came after the request stays, with its
 				// journal.
-				took = record.document() == null
+				took = asked == null && record.document() == null
 						? take(record, request, opened)
-						: record.adoptStored(request, opened.text(),
-								opened.revision());
+						: record.adoptStored(request, asked, at,
+								opened.text(), opened.revision());
 			}
 			// What was read and not taken is what storage was seen to
 			// hold.

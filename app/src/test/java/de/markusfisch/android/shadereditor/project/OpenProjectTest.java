@@ -1172,6 +1172,81 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void reloadThatWaitsKeepsTypingThatCameAfterItWasAsked()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		project.persist();
+		project.save(true, outcomes -> {
+		});
+
+		// The reload waits for the save; the user types meanwhile.
+		project.reload(a, problem -> {
+		});
+		edit(project, document, "later");
+		settle();
+
+		assertEquals("later", document.text().toString());
+		assertTrue(document.isModified());
+		assertEquals("mine", read("a.glsl"));
+		project.persist();
+		settle();
+		assertEquals("later", journaled("a.glsl"));
+	}
+
+	@Test
+	public void reloadOfUnsavedTextNotInMemoryCanBeUndone()
+			throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		OpenProject restarted = open();
+		ProjectPath a = path("a.glsl");
+		assertNull(restarted.document(a));
+
+		String problem = await(done -> restarted.reload(a, done));
+		assertNull(problem);
+
+		Document document = restarted.document(a);
+		assertEquals("stored", document.text().toString());
+		assertFalse(document.isModified());
+		assertTrue(kept().isEmpty());
+		document.undo();
+		assertEquals("mine", document.text().toString());
+		assertTrue(document.isModified());
+	}
+
+	@Test
+	public void explicitSaveCreatesACleanFileDeletedElsewhereAgain()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		assertTrue(new File(root, "a.glsl").delete());
+		refresh(project);
+		assertEquals(FileTexts.Found.MISSING, project.found(a));
+
+		assertTrue(save(project, false).isEmpty());
+		assertFalse(new File(root, "a.glsl").exists());
+		assertTrue(save(project, true).get(a) instanceof Saved);
+
+		assertEquals("stored", read("a.glsl"));
+		assertEquals(FileTexts.Found.SAME, project.found(a));
+		assertFalse(document.isModified());
+
+		// A file that is there again is not written over.
+		assertTrue(new File(root, "a.glsl").delete());
+		refresh(project);
+		write("a.glsl", "theirs");
+		assertTrue(save(project, true).get(a) instanceof Conflict);
+		assertEquals("theirs", read("a.glsl"));
+		refresh(project);
+		assertEquals("theirs", document.text().toString());
+	}
+
+	@Test
 	public void closeKeepsTheTextAndIgnoresWhatArrivesLater()
 			throws IOException {
 		OpenProject project = open();

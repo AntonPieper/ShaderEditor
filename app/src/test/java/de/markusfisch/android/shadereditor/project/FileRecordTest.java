@@ -39,7 +39,8 @@ public class FileRecordTest {
 		Request check = record.start(Kind.CHECK);
 		record.document().replace(0, 6, Text.of("mine"));
 
-		assertFalse(record.adoptStored(check, Text.of("theirs"), "r2"));
+		assertFalse(record.adoptStored(check, check.document(),
+				check.revision(), Text.of("theirs"), "r2"));
 
 		assertEquals("mine", record.document().text().toString());
 		assertTrue(record.document().isModified());
@@ -57,8 +58,9 @@ public class FileRecordTest {
 			}
 		});
 
-		assertTrue(record.adoptStored(record.start(Kind.CHECK),
-				Text.of("theirs"), "r2"));
+		Request check = record.start(Kind.CHECK);
+		assertTrue(record.adoptStored(check, check.document(),
+				check.revision(), Text.of("theirs"), "r2"));
 
 		assertEquals(List.of("theirs at r2"), heard);
 		assertFalse(record.document().isModified());
@@ -150,6 +152,24 @@ public class FileRecordTest {
 		assertFalse(record.observe(check, FileTexts.Found.SAME, "r2"));
 		assertEquals("the file was deleted", record.conflict());
 		assertNull(record.seen);
+	}
+
+	@Test
+	public void keepingEditsLeavesNoStateOfTheDocumentSaved() {
+		open("stored", "r1");
+		Document document = record.document();
+		document.replace(0, 6, Text.of("mine"));
+		Request check = record.start(Kind.CHECK);
+		record.observe(check, FileTexts.Found.CHANGED, "r2");
+		record.end(check);
+
+		record.consent("r2");
+		document.undo();
+
+		// The text first opened is not what storage holds at r2.
+		assertEquals("stored", document.text().toString());
+		assertTrue(document.isModified());
+		assertTrue(record.edited());
 	}
 
 	private void open(String text, String revision) {
