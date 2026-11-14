@@ -11,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.Preparation;
@@ -51,6 +52,13 @@ final class PlanRuntime implements ShaderSwap.Build {
 			new HashMap<>();
 	private final TextureHandOver<DecodedImages> decoded =
 			new TextureHandOver<>();
+	// What a pass reads in a frame: the frame another pass drew before
+	// it, or a previous frame.
+	@NonNull
+	private final PlanPass.Outputs inFrame;
+	// What a pass drawn on reset reads: what every pass starts as.
+	@NonNull
+	private final PlanPass.Outputs onReset;
 	@Nullable
 	private final CameraSource.Binding camera;
 	// By the index of the pass in the plan; null where the schedule
@@ -74,7 +82,15 @@ final class PlanRuntime implements ShaderSwap.Build {
 		this.plan = plan;
 		this.passes = passes;
 		this.glesVersion = glesVersion;
-		targets = new PassTarget[passes.size()];
+		var targets = this.targets = new PassTarget[passes.size()];
+		inFrame = (pass, frame) -> targets[pass] == null
+				? null
+				: frame == Frame.PREVIOUS
+						? targets[pass].completed()
+						: targets[pass].drawn();
+		onReset = (pass, frame) -> targets[pass] == null
+				? null
+				: targets[pass].completed();
 		var backbuffer = new boolean[passes.size()];
 		// The running pass first: its camera opens.
 		var bindings = new ArrayList<PlanBindings>();
@@ -232,9 +248,13 @@ final class PlanRuntime implements ShaderSwap.Build {
 			errors.add(locate(problem.getKey(), problem.getValue()));
 		}
 		int maxSize = device.getMaxTextureSize();
-		for (var linked : passes) {
-			errors.addAll(linked.bindings.check(images.sizes(), glesVersion,
+		for (int i = 0; i < passes.size(); ++i) {
+			var bindings = passes.get(i).bindings;
+			errors.addAll(bindings.check(images.sizes(), glesVersion,
 					maxSize, device.getMaxCubemapSize()));
+			if (schedule.isDrawnOnReset(i)) {
+				errors.addAll(bindings.checkOnReset(glesVersion));
+			}
 		}
 		var keys = new LinkedHashSet<PlanBindings.Texture>();
 		for (var linked : passes) {
@@ -343,10 +363,14 @@ final class PlanRuntime implements ShaderSwap.Build {
 			var size = plan.passes().get(i).target().size(project.value(), max);
 			if (size.isSuccess()) {
 				sizes[i] = size.value();
-				invalid.addAll(passes.get(i).bindings.checkHistory(sizes[i],
-						glesVersion));
 			} else {
 				invalid.add(size.diagnostic());
+			}
+		}
+		for (int i = 0; i < targets.length && invalid.isEmpty(); ++i) {
+			if (sizes[i] != null) {
+				invalid.addAll(passes.get(i).bindings.checkPasses(sizes,
+						glesVersion));
 			}
 		}
 		if (!invalid.isEmpty()) {
@@ -498,14 +522,13 @@ final class PlanRuntime implements ShaderSwap.Build {
 		var linked = passes.get(pass);
 		target.clear();
 		passFrame.scale(frame, target.size().width(), target.size().height());
+		passFrame.fTimeMax = linked.fTimeMax;
 		if (initializing) {
 			passFrame.time = 0;
 			passFrame.frame = 0;
 		}
 		builtins.write(pass, passFrame);
-		linked.bind(textures, camera, schedule.keepsHistory(pass)
-				? target.completed()
-				: null);
+		linked.bind(textures, camera, initializing ? onReset : inFrame);
 		device.draw(quad);
 		linked.unbind();
 	}

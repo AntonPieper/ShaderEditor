@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 
@@ -15,6 +16,13 @@ import de.markusfisch.android.shadereditor.project.RenderPlan;
 // its active samplers read, what it warns about, and on GLES3 a sampler
 // object per input.
 final class PlanPass {
+	// The textures that hold the frames of the passes of a plan, null
+	// for a pass without one.
+	interface Outputs {
+		@Nullable
+		GlTexture2D get(int pass, @NonNull Frame frame);
+	}
+
 	@NonNull
 	final RenderPlan.Pass pass;
 	@NonNull
@@ -32,11 +40,11 @@ final class PlanPass {
 	private final GlDevice device;
 	@NonNull
 	private final PlanSource source;
-	// Per image and per history binding on a GLES3 context, else null.
+	// Per image and per pass binding on a GLES3 context, else null.
 	@Nullable
 	private int[] samplers;
 	@Nullable
-	private int[] historySamplers;
+	private int[] passSamplers;
 
 	private PlanPass(
 			@NonNull GlDevice device,
@@ -80,7 +88,7 @@ final class PlanPass {
 			errors.addAll(result.getInfoLog());
 			return null;
 		}
-		var bindings = PlanBindings.of(pass, index, program.getSamplers(),
+		var bindings = PlanBindings.of(plan, index, program.getSamplers(),
 				source.fragment());
 		var uniforms = bindings.declared(program.getUniforms());
 		var warnings = new ArrayList<>(bindings.warnings);
@@ -112,21 +120,21 @@ final class PlanPass {
 		for (int i = 0; i < samplers.length; ++i) {
 			samplers[i] = device.createSampler(images.get(i).sampling());
 		}
-		var previous = bindings.history;
-		historySamplers = new int[previous.size()];
-		for (int i = 0; i < historySamplers.length; ++i) {
-			historySamplers[i] = device.createSampler(previous.get(i).sampling());
+		var passes = bindings.passes;
+		passSamplers = new int[passes.size()];
+		for (int i = 0; i < passSamplers.length; ++i) {
+			passSamplers[i] = device.createSampler(passes.get(i).sampling());
 		}
 		return device.takeError("glGenSamplers");
 	}
 
 	// Binds what each input reads, sampled as it asks: its image, the
-	// camera that is open when it is the one it reads, and the previous
-	// frame. Unbound samplers read black.
+	// camera that is open when it is the one it reads, and a frame of a
+	// pass. Unbound samplers read black.
 	void bind(
 			@NonNull Map<PlanBindings.Texture, GlTexture> textures,
 			@Nullable CameraSource.Binding camera,
-			@Nullable GlTexture2D previous) {
+			@NonNull Outputs outputs) {
 		device.bindEmptyTextures(bindings.samplers);
 		var images = bindings.images;
 		for (int i = 0; i < images.size(); ++i) {
@@ -142,15 +150,18 @@ final class PlanPass {
 				device.applySampling(unit, texture, binding.sampling());
 			}
 		}
-		var history = bindings.history;
-		for (int i = 0; previous != null && i < history.size(); ++i) {
-			var binding = history.get(i);
+		var passes = bindings.passes;
+		for (int i = 0; i < passes.size(); ++i) {
+			var binding = passes.get(i);
+			var texture = outputs.get(binding.pass(), binding.frame());
 			int unit = binding.sampler().unit();
-			if (historySamplers != null) {
-				device.bindTexture(unit, previous);
-				device.bindSampler(unit, historySamplers[i]);
+			if (texture == null) {
+				continue;
+			} else if (passSamplers != null) {
+				device.bindTexture(unit, texture);
+				device.bindSampler(unit, passSamplers[i]);
 			} else {
-				device.applySampling(unit, previous, binding.sampling());
+				device.applySampling(unit, texture, binding.sampling());
 			}
 		}
 		// Another program may read the camera with other settings.
@@ -171,24 +182,24 @@ final class PlanPass {
 		for (var binding : bindings.images) {
 			device.bindSampler(binding.sampler().unit(), 0);
 		}
-		for (var binding : bindings.history) {
+		for (var binding : bindings.passes) {
 			device.bindSampler(binding.sampler().unit(), 0);
 		}
 	}
 
 	void release() {
 		device.deleteProgram(program);
-		if (samplers != null && historySamplers != null) {
+		if (samplers != null && passSamplers != null) {
 			device.deleteSamplers(samplers);
-			device.deleteSamplers(historySamplers);
+			device.deleteSamplers(passSamplers);
 		}
 		samplers = null;
-		historySamplers = null;
+		passSamplers = null;
 	}
 
 	void discard() {
 		program.invalidate();
 		samplers = null;
-		historySamplers = null;
+		passSamplers = null;
 	}
 }
