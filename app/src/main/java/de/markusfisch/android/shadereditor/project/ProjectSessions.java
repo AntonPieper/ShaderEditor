@@ -36,7 +36,9 @@ public final class ProjectSessions {
 		/** A lone granted document, by document URI. */
 		DOCUMENT,
 		/** A shader of the database, by id. */
-		DATABASE
+		DATABASE,
+		/** The examples that come with the app, by folder of its assets. */
+		EXAMPLES
 	}
 
 	/**

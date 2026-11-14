@@ -593,6 +593,31 @@ public class LibraryTest {
 		assertFalse(new File(library.folder(), "Plasma 3.frag").exists());
 	}
 
+	@Test
+	public void aCopyLiesAsInItsFolderAndSharesWhatIsThere()
+			throws IOException {
+		Library library = library();
+		File folder = library.folder();
+		new File(folder, "Ink").mkdirs();
+		new File(folder, "lib").mkdirs();
+		Files.write(new File(folder, "Tilt.frag").toPath(),
+				MAIN.getBytes(StandardCharsets.UTF_8));
+		Files.write(new File(folder, "lib/noise.glsl").toPath(),
+				new byte[]{1});
+
+		ProjectPath tilt = path("Tilt.frag");
+		ProjectPath sdf = path("lib/sdf.glsl");
+		assertEquals(Map.of(tilt, path("Tilt 2.frag"), sdf, sdf),
+				library.places(tilt, List.of(tilt, sdf)));
+
+		ProjectPath ink = path("Ink/main.frag");
+		ProjectPath pass = path("Ink/ink.frag");
+		ProjectPath noise = path("lib/noise.glsl");
+		assertEquals(Map.of(ink, path("Ink 2/main.frag"),
+						pass, path("Ink 2/ink.frag")),
+				library.places(ink, List.of(ink, pass, noise)));
+	}
+
 	private Library library() {
 		return library(temp.getRoot());
 	}

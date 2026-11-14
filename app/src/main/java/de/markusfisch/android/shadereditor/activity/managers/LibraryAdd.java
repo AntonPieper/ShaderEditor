@@ -1,16 +1,11 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
+import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.database.DataSource;
@@ -18,15 +13,15 @@ import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
-import de.markusfisch.android.shadereditor.resource.Resources;
 import de.markusfisch.android.shadereditor.widget.ShaderToySource;
 
 /**
  * Makes a shader in the library from a text the app did not read from
- * a file of it: an example, text another app shared, a copy of a
- * shader that is still in the database. The text is converted as the
- * move converts, with its textures. Call it on the main thread;
- * nothing it hears after it was destroyed does anything.
+ * a file of it: text another app shared, a copy of a shader that is
+ * still in the database, which are converted as the move converts,
+ * with their textures, and copies of files of a read-only folder,
+ * such as an example. Call it on the main thread; nothing it hears
+ * after it was destroyed does anything.
  */
 public final class LibraryAdd {
 	/** What becomes of a shader asked for. */
@@ -42,9 +37,6 @@ public final class LibraryAdd {
 	private final Projects projects;
 	private final DataSource database;
 	private final Listener listener;
-	private final Handler handler = new Handler(Looper.getMainLooper());
-	private final ExecutorService reading =
-			Executors.newSingleThreadExecutor();
 	private boolean destroyed;
 
 	public LibraryAdd(@NonNull Context context, @NonNull Projects projects,
@@ -55,25 +47,28 @@ public final class LibraryAdd {
 		this.listener = listener;
 	}
 
-	/** Make a copy of a bundled example, with its picture. */
-	public void addExample(@NonNull String title, int text, int picture,
-			float quality) {
-		try {
-			reading.execute(() -> {
-				String source;
-				try {
-					source = Resources.loadRawResource(context, text);
-				} catch (IOException e) {
-					String problem = e.getMessage();
-					handler.post(() -> failed(problem));
-					return;
-				}
-				byte[] png = Resources.loadBitmapResource(context, picture);
-				handler.post(() -> add(title, source, quality, png));
-			});
-		} catch (RejectedExecutionException e) {
-			// Destroyed.
-		}
+	/**
+	 * Save a copy of paths of project, a read-only folder, in the
+	 * library, where entry is the file to show; see
+	 * {@link Projects#saveCopy}. The unsaved text of project goes with
+	 * the copy: project is read from storage again.
+	 */
+	public void saveCopy(@NonNull OpenProject project,
+			@NonNull ProjectPath entry, @NonNull List<ProjectPath> paths) {
+		projects.saveCopy(project, entry, paths, made -> {
+			if (destroyed) {
+				return;
+			} else if (made.path() == null) {
+				listener.onFailed(context.getString(R.string.copy_not_saved,
+						made.problem()));
+				return;
+			}
+			for (ProjectPath unsaved : project.unsaved()) {
+				project.reload(unsaved, problem -> {
+				});
+			}
+			show(made.path());
+		});
 	}
 
 	/**
@@ -101,36 +96,37 @@ public final class LibraryAdd {
 						failed(made.problem());
 						return;
 					}
-					ProjectPath path = made.path();
 					if (made.problem() != null) {
 						// The file is there; its quality or picture not.
 						listener.onFailed(context.getString(
 								R.string.library_not_kept, made.problem()));
 					}
-					// The library learns of the file as of one made
-					// elsewhere, then shows it.
-					projects.openLibrary(opened -> {
-						OpenProject project = opened.project();
-						String key = opened.id();
-						if (destroyed) {
-							return;
-						} else if (project == null || key == null) {
-							failed(opened.problem());
-							return;
-						}
-						project.refresh(reread -> {
-							if (!destroyed) {
-								listener.onAdded(key, path);
-							}
-						});
-					});
+					show(made.path());
 				});
+	}
+
+	// The library learns of the file as of one made elsewhere, then
+	// shows it.
+	private void show(@NonNull ProjectPath path) {
+		projects.openLibrary(opened -> {
+			OpenProject project = opened.project();
+			String key = opened.id();
+			if (destroyed) {
+				return;
+			} else if (project == null || key == null) {
+				failed(opened.problem());
+				return;
+			}
+			project.refresh(reread -> {
+				if (!destroyed) {
+					listener.onAdded(key, path);
+				}
+			});
+		});
 	}
 
 	public void destroy() {
 		destroyed = true;
-		handler.removeCallbacksAndMessages(null);
-		reading.shutdownNow();
 	}
 
 	private void failed(@Nullable String problem) {

@@ -137,6 +137,7 @@ final class FoldersSource implements Source {
 		for (ProjectSessions.Recent session : sessions) {
 			ProjectSessions.Kind kind = session.locator().kind();
 			if (kind != ProjectSessions.Kind.DATABASE &&
+					kind != ProjectSessions.Kind.EXAMPLES &&
 					!session.id().equals(library)) {
 				recent.add(new Recent(session.id(),
 						kind == ProjectSessions.Kind.DOCUMENT,

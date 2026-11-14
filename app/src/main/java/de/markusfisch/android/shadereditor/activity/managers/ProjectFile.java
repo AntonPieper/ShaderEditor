@@ -33,6 +33,15 @@ public final class ProjectFile implements OpenItem {
 
 		/** Something failed, for the reason given. */
 		void onFailed(@NonNull String message);
+
+		/**
+		 * The file was changed for the first time, where it cannot be
+		 * saved: offer to save a copy.
+		 */
+		void onReadOnly(@NonNull ProjectFile file);
+
+		/** Save a copy of the file, with what it reads, elsewhere. */
+		void onSaveCopy(@NonNull ProjectFile file);
 	}
 
 	@NonNull
@@ -47,6 +56,8 @@ public final class ProjectFile implements OpenItem {
 	private final Listener listener;
 	private final boolean single;
 	private float quality = 1f;
+	// Whether the user was told that a change cannot be saved here.
+	private boolean toldReadOnly;
 
 	/**
 	 * @param single whether the project is a single file rather than a
@@ -103,6 +114,15 @@ public final class ProjectFile implements OpenItem {
 	@Override
 	public void onTextModified() {
 		listener.onChanged();
+		if (isReadOnly() && !toldReadOnly && isModified()) {
+			toldReadOnly = true;
+			listener.onReadOnly(this);
+		}
+	}
+
+	/** Return whether its folder can be read but not changed. */
+	public boolean isReadOnly() {
+		return project.storage().access() == OpenProject.Access.READ_ONLY;
 	}
 
 	@Override
@@ -116,9 +136,13 @@ public final class ProjectFile implements OpenItem {
 		this.quality = quality;
 	}
 
+	// Read-only files are kept with Save a copy instead of Save.
 	@Override
 	public boolean can(@NonNull Action action) {
-		return action == Action.SAVE || action == Action.DELETE && !single ||
+		boolean readOnly = isReadOnly();
+		return action == Action.SAVE && !readOnly ||
+				action == Action.SAVE_COPY && readOnly ||
+				action == Action.DELETE && !single && !readOnly ||
 				action == Action.WALLPAPER && project.running() != null ||
 				action == Action.RUN_THIS_FILE && FileActions.offersRun(
 						path.equals(project.running()), project.runs(path));
@@ -127,13 +151,23 @@ public final class ProjectFile implements OpenItem {
 	// Run this file only when it can run and does not.
 	@Override
 	public boolean offers(@NonNull Action action) {
-		return action == Action.SAVE || action == Action.DELETE && !single ||
-				action == Action.WALLPAPER ||
-				action == Action.RUN_THIS_FILE && can(action);
+		return action == Action.SAVE || action == Action.SAVE_COPY ||
+				action == Action.DELETE
+				? can(action)
+				: action == Action.WALLPAPER ||
+						action == Action.RUN_THIS_FILE && can(action);
 	}
 
+	// Unsaved text of a read-only file stays where it is, journaled,
+	// until it is copied or reloaded.
 	@Override
 	public void save(boolean explicit) {
+		if (isReadOnly()) {
+			if (explicit && isModified()) {
+				listener.onReadOnly(this);
+			}
+			return;
+		}
 		project.save(explicit, outcomes -> {
 			List<String> failures = failures(outcomes);
 			if (failures.isEmpty()) {
@@ -178,6 +212,9 @@ public final class ProjectFile implements OpenItem {
 
 	@Override
 	public void saveCopy() {
+		if (can(Action.SAVE_COPY)) {
+			listener.onSaveCopy(this);
+		}
 	}
 
 	// With the project, which asks before unsaved text goes; the

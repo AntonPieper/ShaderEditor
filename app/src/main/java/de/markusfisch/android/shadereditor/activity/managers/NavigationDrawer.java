@@ -158,6 +158,10 @@ public class NavigationDrawer implements ShaderList {
 	// The library's session, or null until the start opened it.
 	@Nullable
 	private String libraryKey;
+	// The session of the examples, or null until it is known: their
+	// files are shown in the level Examples.
+	@Nullable
+	private String examplesKey;
 	// The folder opened before whose levels are shown, or null.
 	private FolderSource folder;
 	@Nullable
@@ -173,6 +177,8 @@ public class NavigationDrawer implements ShaderList {
 		sources.put(Level.FOLDERS, folders);
 		this.holds = holds;
 		projects = holds.projects();
+		projects.examples(activity.getString(R.string.load_sample),
+				key -> examplesKey = key);
 		libraryLooks = new FolderSource.Looks() {
 			@Nullable
 			@Override
@@ -735,9 +741,13 @@ public class NavigationDrawer implements ShaderList {
 
 	@NonNull
 	private Level home() {
-		return open != null
-				? open.level()
-				: libraryKey != null ? Level.root(libraryKey) : Level.FOLDERS;
+		if (open != null) {
+			return open.level().key() != null &&
+					open.level().key().equals(examplesKey)
+					? Level.EXAMPLES
+					: open.level();
+		}
+		return libraryKey != null ? Level.root(libraryKey) : Level.FOLDERS;
 	}
 
 	private void refresh() {

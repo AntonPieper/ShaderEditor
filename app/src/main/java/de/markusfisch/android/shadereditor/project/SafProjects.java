@@ -116,6 +116,9 @@ public final class SafProjects {
 			return openFolder(context, Uri.parse(locator.value()));
 		} else if (locator.kind() == Kind.DOCUMENT) {
 			return openDocument(context, Uri.parse(locator.value()));
+		} else if (locator.kind() == Kind.EXAMPLES) {
+			return new Opened(AssetProjectFiles.of(context.getAssets(),
+					locator.value()), null, null);
 		} else if (locator.kind() != Kind.DIRECTORY) {
 			return closed("only folders and documents open here");
 		}
