@@ -355,7 +355,7 @@ Spacing is 4, 8, 12, 16 or 24 dp; nothing else.
 | `se_drawer_max_width` | 328 dp | The drawer: the smaller of this and the screen minus 56 dp |
 | `se_hairline` | 1 dp | Dividers, in `colorOutlineVariant`. Between groups, not between rows |
 
-Settings use the library's preference rows as they are, title over current value, with `iconSpaceReserved` off. The frame-rate and quality control is a 36 dp filled chip (14 % white on the bar) with a dropdown arrow.
+Settings use the library's preference rows as they are, title over current value, with `iconSpaceReserved` off. The frame-rate and quality control is a 36 dp filled chip (14 % white on the bar) with a dropdown arrow. For a shader in the database the frame rate is in the toolbar's second line and the chip shows the quality; for a file of a folder the frame rate stands in the chip ("22 fps · 1/1", NAVIGATION D3) only while the title then keeps the width it needs, at most 108 dp (`toolbar_title_min`: "common.glsl" and the unsaved mark). Otherwise the chip shows the quality alone until there is room: the title, the unsaved mark and the error button come first.
 
 Toolbars and menus are never a fixed size: the toolbar is at least `?actionBarSize`, which is 64 dp in Material 3 (the mock-ups assumed 56), and grows with the text; a menu is between 200 and 280 dp wide.
 

@@ -126,6 +126,25 @@ public class ShaderViewManager {
 		}
 	}
 
+	/**
+	 * Return the width of the quality chip with frameRate in it, or -1
+	 * before it was laid out. It is measured with the widest quality, so
+	 * that choosing another quality does not move the frame rate.
+	 */
+	public int chipWidth(@NonNull CharSequence frameRate) {
+		if (!(qualitySpinner.getSelectedView() instanceof TextView chip)) {
+			return -1;
+		}
+		float widest = 0;
+		for (int i = adapter.getCount(); i-- > 0; ) {
+			widest = Math.max(widest, chip.getPaint().measureText(
+					chip.getContext().getString(R.string.frame_rate_quality,
+							frameRate, adapter.getItem(i))));
+		}
+		return Math.round(widest) + chip.getTotalPaddingLeft() +
+				chip.getTotalPaddingRight();
+	}
+
 	public void setQuality(float quality) {
 		for (int i = 0; i < qualityValues.length; ++i) {
 			if (qualityValues[i] == quality) {
