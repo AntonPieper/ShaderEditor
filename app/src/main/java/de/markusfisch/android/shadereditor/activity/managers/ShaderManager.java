@@ -182,6 +182,10 @@ public class ShaderManager {
 	public void restoreState(@NonNull Bundle savedInstanceState) {
 		selectedShaderId = savedInstanceState.getLong(
 				SELECTED_SHADER_ID, NO_SHADER);
+		if (!editorFragment.isTextRestored()) {
+			selectShader(selectedShaderId);
+			return;
+		}
 		if (savedInstanceState.getSerializable(PROJECT_SESSION) instanceof
 				ShaderProjectSession savedSession) {
 			ShaderProjectSession projectSession =

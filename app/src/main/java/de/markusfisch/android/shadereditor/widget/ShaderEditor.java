@@ -417,6 +417,9 @@ public class ShaderEditor extends LineNumberEditText {
 	private void init(@NonNull Context context) {
 		// Setting this through XML does not work
 		setHorizontallyScrolling(true);
+		// EditorFragment saves text and selection because the view state
+		// would include all spans and the undo history and get too big.
+		setSaveEnabled(false);
 
 		setFilters(new InputFilter[]{(source,
 				start, end,
