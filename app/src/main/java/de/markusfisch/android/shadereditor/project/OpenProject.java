@@ -174,7 +174,7 @@ public final class OpenProject {
 			String unkept,
 			Map<ProjectPath, FileTexts.Found> found,
 			Map<ProjectPath, Runs> runs, Map<ProjectPath, String> unreadable,
-			int damaged) {
+			Set<ProjectPath> replaced, int damaged) {
 	}
 
 	// The files opened, being opened or worked on in storage.
@@ -906,6 +906,46 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Return whether the unsaved text of path is text a reload replaced
+	 * with the stored one, which came back: the journal that held it is
+	 * kept until an undo history holds it, and the app ended, or no
+	 * history could be stored, before. It stays so until the text is
+	 * edited, saved, reloaded again or kept by {@link #keepReplaced}.
+	 */
+	public boolean replaced(ProjectPath path) {
+		FileRecord record = records.get(path);
+		// As the journal gave it back: an edit makes it the user's.
+		return record != null && record.replaced() && record.edited() &&
+				(record.document() == null ||
+						record.document().revision() == record.opened());
+	}
+
+	/**
+	 * Keep the text of path that a reload replaced, see
+	 * {@link #replaced}, as unsaved text like any other.
+	 */
+	public void keepReplaced(ProjectPath path) {
+		FileRecord record = records.get(path);
+		if (record == null || !replaced(path)) {
+			return;
+		}
+		record.keepReplaced();
+		if (record.document() != null) {
+			flush(record);
+		} else {
+			String base = record.base();
+			texts.header(new Journal.Header(path, base, record.kept,
+					record.kept ? base : null), kept -> {
+				record.failure = kept
+						? null
+						: "the journal cannot be written";
+				changed();
+			});
+		}
+		changed();
+	}
+
+	/**
 	 * Return how many journals of the session have a header that cannot
 	 * be read, so their unsaved text is lost and the file it was of is
 	 * not known: each stays until its file is opened, which then tells
@@ -1240,7 +1280,7 @@ public final class OpenProject {
 		Document document = opened.document();
 		if (records.get(record.path) != record ||
 				!record.adoptOpened(request, document, opened.revision(),
-						opened.journal())) {
+						opened.journal(), opened.replaced())) {
 			return false;
 		}
 		record.historyAt = document.revision();
@@ -1342,7 +1382,13 @@ public final class OpenProject {
 			boolean expect, String seen, Callback<String> done) {
 		FileRecord.Request request = record.start(FileRecord.Kind.RELOAD);
 		ProjectPath path = record.path;
-		texts.openStored(path, opening -> {
+		// A journal of text that would be replaced, or that waits for a
+		// history since an earlier reload, is marked before main is told.
+		boolean mark = record.document() != null
+				? record.document().isModified() || record.replaced()
+				: record.journaled;
+		texts.reload(path, mark, expect, seen, reloaded -> {
+			FileTexts.Opening opening = reloaded.opening();
 			boolean took = false;
 			String problem = null;
 			if (opening instanceof FileTexts.Unopened unopened) {
@@ -1379,6 +1425,11 @@ public final class OpenProject {
 				record.kept = false;
 				flush(record);
 				keepHistory(record);
+			} else if (reloaded.marked() && records.get(path) == record &&
+					record.edited()) {
+				// Not replaced after all: its journal says so again.
+				record.keepReplaced();
+				flush(record);
 			}
 			changed();
 			done.done(problem);
@@ -1635,13 +1686,19 @@ public final class OpenProject {
 				unreadable.put(record.path, record.unreadable);
 			}
 		}
+		Set<ProjectPath> replaced = new HashSet<>();
+		for (ProjectPath path : records.keySet()) {
+			if (replaced(path)) {
+				replaced.add(path);
+			}
+		}
 		Map<ProjectPath, String> conflicts = new HashMap<>();
 		for (ProjectPath path : conflicts().keySet()) {
 			conflicts.put(path, seen(path));
 		}
 		return new State(unsaved(), conflicts, running, used,
 				diagnostics, unprotected(), unkept, found, runs, unreadable,
-				damaged);
+				replaced, damaged);
 	}
 
 	// Call the listener, unless nothing it hears about changed or a call

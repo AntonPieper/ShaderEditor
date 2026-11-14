@@ -329,4 +329,27 @@ public class JournalTest {
 		assertEquals(2, recovered.revision());
 		assertEquals(text.length() + 120_000, recovered.text().length());
 	}
+
+	@Test
+	public void headerKeepsThatAReloadReplacedTheText() throws IOException {
+		assertTrue(journal.snapshot(HEADER, 3, Text.of("mine")));
+		assertFalse(journal.header(A).replaced());
+		// A header of before, which ends after the revision, says no.
+		File file = journal.file(A);
+		byte[] bytes = Files.readAllBytes(file.toPath());
+		assertEquals(HEADER, new Journal(dir).headers().get(A));
+
+		assertTrue(journal.markReplaced(A));
+
+		Header marked = new Journal(dir).header(A);
+		assertTrue(marked.replaced());
+		assertEquals(HEADER.base(), marked.base());
+		Recovered recovered = new Journal(dir).read(A);
+		assertEquals(marked, recovered.header());
+		assertEquals(3, recovered.revision());
+		assertEquals("mine", recovered.text().toString());
+		assertEquals(bytes.length, file.length());
+		assertFalse(new Journal(dir).markReplaced(
+				ProjectPath.parse("none.glsl").value()));
+	}
 }

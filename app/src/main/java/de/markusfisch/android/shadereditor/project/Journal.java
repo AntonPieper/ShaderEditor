@@ -41,9 +41,16 @@ final class Journal {
 	 * Where a file's text came from: the stored revision it was last
 	 * equal to, null for none, and whether the user chose to overwrite
 	 * the stored revision keptOver, null for a file that was absent.
+	 * replaced tells that a reload replaced the text with the stored
+	 * one: the journal is kept until a history holds the text, and the
+	 * text comes back with this mark when the app ends before.
 	 */
 	record Header(ProjectPath path, String base, boolean kept,
-			String keptOver) {
+			String keptOver, boolean replaced) {
+		Header(ProjectPath path, String base, boolean kept,
+				String keptOver) {
+			this(path, base, kept, keptOver, false);
+		}
 	}
 
 	/** A change: length removed at start, and the text inserted. */
@@ -249,6 +256,41 @@ final class Journal {
 				snapshot(header, recovered.revision(), recovered.text());
 	}
 
+	/**
+	 * Mark the journal of path as holding text a reload replaced, see
+	 * {@link Header#replaced}. Return whether there is one that says so
+	 * now.
+	 */
+	boolean markReplaced(ProjectPath path) {
+		Recovered recovered = read(path);
+		if (recovered == null || recovered.text() == null) {
+			return false;
+		}
+		Header header = recovered.header();
+		return header.replaced() || snapshot(new Header(path,
+				header.base(), header.kept(), header.keptOver(), true),
+				recovered.revision(), recovered.text());
+	}
+
+	/**
+	 * Return the header of the journal of path without reading its
+	 * text, or null when there is none that can be read.
+	 */
+	Header header(ProjectPath path) {
+		File file = file(path);
+		if (!file.isFile()) {
+			return null;
+		}
+		try (DataInputStream in = new DataInputStream(
+				new BufferedInputStream(new FileInputStream(file)))) {
+			byte[] head = readMagic(in) ? readBlock(in, MAX_HEAD) : null;
+			return head != null ? header(new DataInputStream(
+					new ByteArrayInputStream(head))) : null;
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
+	}
+
 	/** Return what the journal of path holds, or null when none. */
 	Recovered read(ProjectPath path) {
 		File file = file(path);
@@ -266,7 +308,8 @@ final class Journal {
 			try (DataInputStream fields = new DataInputStream(
 					new ByteArrayInputStream(head))) {
 				header = header(fields);
-				revision = fields.readInt();
+				fields.reset();
+				revision = revision(fields);
 			}
 			if (!path.equals(header.path())) {
 				return damaged(path, "it belongs to " + header.path());
@@ -495,12 +538,15 @@ final class Journal {
 			out.writeBoolean(header.kept());
 			writeRevision(out, header.keptOver());
 			out.writeInt(revision);
+			out.writeBoolean(header.replaced());
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
 		return bytes.toByteArray();
 	}
 
+	// Read the header of a header block; one written before the mark
+	// of a reload was kept ends after the revision.
 	private static Header header(DataInputStream in) throws IOException {
 		ProjectParseResult<ProjectPath> path = ProjectPath.parse(
 				in.readUTF());
@@ -509,7 +555,19 @@ final class Journal {
 		}
 		String base = readRevision(in);
 		boolean kept = in.readBoolean();
-		return new Header(path.value(), base, kept, readRevision(in));
+		String keptOver = readRevision(in);
+		in.readInt();
+		return new Header(path.value(), base, kept, keptOver,
+				in.available() > 0 && in.readBoolean());
+	}
+
+	// Return the revision a header block names.
+	private static int revision(DataInputStream in) throws IOException {
+		in.readUTF();
+		readRevision(in);
+		in.readBoolean();
+		readRevision(in);
+		return in.readInt();
 	}
 
 	private static byte[] record(int from, int to, List<Change> changes) {

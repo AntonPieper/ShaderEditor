@@ -26,10 +26,10 @@ public class FileRecordTest {
 		Request again = record.start(Kind.OPEN);
 
 		assertFalse(record.adoptOpened(open, new Document(Text.of("old")),
-				"r1", -1));
+				"r1", -1, false));
 		assertNull(record.document());
 		assertTrue(record.adoptOpened(again, new Document(Text.of("new")),
-				"r2", -1));
+				"r2", -1, false));
 		assertEquals("r2", record.base());
 	}
 
@@ -219,7 +219,7 @@ public class FileRecordTest {
 	private void open(String text, String revision) {
 		Request open = record.start(Kind.OPEN);
 		assertTrue(record.adoptOpened(open, new Document(Text.of(text)),
-				revision, -1));
+				revision, -1, false));
 		record.end(open);
 	}
 }
