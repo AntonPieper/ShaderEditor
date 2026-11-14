@@ -59,6 +59,15 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		updateVisibility();
 	}
 
+	// A screen made again by recreate() keeps its window, and with it
+	// this observer: stop listening, or it keeps the old screen alive.
+	public void destroy() {
+		ViewTreeObserver observer = extraKeysView.getViewTreeObserver();
+		if (observer.isAlive()) {
+			observer.removeOnGlobalFocusChangeListener(this);
+		}
+	}
+
 	public void setCompletions(List<String> completions, int position) {
 		completionsAdapter.submitCompletions(completions, position);
 	}
