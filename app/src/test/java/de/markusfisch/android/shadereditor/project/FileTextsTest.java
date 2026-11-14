@@ -127,13 +127,14 @@ public class FileTextsTest {
 		save(document);
 
 		assertTrue(saves.get(0).outcome() instanceof Conflict);
-		assertEquals(store.read(MAIN).revision(), saves.get(0).seen());
+		assertEquals(store.read(MAIN).revision(),
+				saves.get(0).found().revision());
 		assertTrue(document.isModified());
 		assertEquals("elsewhere", store.text("main.glsl"));
 	}
 
 	@Test
-	public void journalIsReopenedAsUnsavedTextAndGoesWhenSaved() {
+	public void journalIsReopenedAsUnsavedTextAndStaysForMainToRemove() {
 		store.put("main.glsl", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of("\r\ntwo"));
@@ -153,7 +154,8 @@ public class FileTextsTest {
 		main.run();
 		assertTrue(saves.get(0).outcome() instanceof Saved);
 		assertEquals("one\ntwo", store.text("main.glsl"));
-		assertNull(new Journal(drafts).own().read(MAIN));
+		assertEquals("one\ntwo", new Journal(drafts).read(MAIN).text()
+				.toString());
 	}
 
 	@Test
@@ -244,6 +246,28 @@ public class FileTextsTest {
 
 		assertTrue(saves.get(0).outcome() instanceof Conflict);
 		assertEquals("two", store.text("main.glsl"));
+	}
+
+	@Test
+	public void compareTellsWhenStorageHoldsExactlyTheUnsavedText() {
+		store.put("main.glsl", "one");
+		document = new Document(opened(MAIN, 3));
+		document.replace(0, 3, Text.of("mine\n\u00e9"));
+		store.put("main.glsl", "theirs");
+		FileTexts.Checked[] checked = {null};
+
+		texts.compare(MAIN, base, document.text(), c -> checked[0] = c);
+		worker.run();
+		main.run();
+		assertEquals(FileTexts.Found.CHANGED, checked[0].found());
+		assertFalse(checked[0].equal());
+
+		store.put("main.glsl", "mine\n\u00e9");
+		texts.compare(MAIN, base, document.text(), c -> checked[0] = c);
+		worker.run();
+		main.run();
+		assertTrue(checked[0].equal());
+		assertEquals(store.read(MAIN).revision(), checked[0].revision());
 	}
 
 	private Histories histories() {

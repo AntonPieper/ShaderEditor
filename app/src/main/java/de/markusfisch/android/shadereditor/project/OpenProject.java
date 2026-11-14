@@ -162,7 +162,8 @@ public final class OpenProject {
 	}
 
 	// What the listener hears about.
-	private record State(Set<ProjectPath> unsaved, Set<ProjectPath> conflicts,
+	private record State(Set<ProjectPath> unsaved,
+			Map<ProjectPath, String> conflicts,
 			ProjectPath running, List<Used> used,
 			List<ProjectDiagnostic> diagnostics, String unprotected,
 			String unkept,
@@ -258,7 +259,8 @@ public final class OpenProject {
 	 * journal kept, the file shown last and its name and location among
 	 * the recent projects, and find what runs; return null when there
 	 * is no such session. A file whose stored text changed since its
-	 * unsaved text was based on it is in conflict. Storage work runs on
+	 * unsaved text was based on it is in conflict, unless storage holds
+	 * exactly that text: then it is not unsaved anymore. Storage work runs on
 	 * worker, one task at a time, results are posted to main, and later
 	 * runs the timers that keep unsaved text in the journal; call it on
 	 * worker, so it reads after what was written there before. lone is
@@ -306,12 +308,16 @@ public final class OpenProject {
 				later, lone, storage, budget);
 		journal.removeLeftovers();
 		for (Journal.Header header : journal.headers().values()) {
-			FileRecord record = project.record(header.path());
-			record.recover(header);
 			FileTexts.Checked checked = project.texts.check(header.path(),
-					header.base(), false);
-			record.conflict = conflict(header.base(), checked);
-			record.seen = checked.revision();
+					header.base(), null, true);
+			if (checked.equal()) {
+				// Storage holds the text: saved before the process died,
+				// or written elsewhere.
+				journal.remove(header.path());
+			} else {
+				project.record(header.path()).recover(header,
+						checked.found(), checked.revision());
+			}
 		}
 		project.shown = project.keptShown = sessions.shown(id);
 		project.running = project.findRunning(Map.of(),
@@ -635,8 +641,8 @@ public final class OpenProject {
 			ProjectPath path = record.path;
 			if (!record.edited()) {
 				continue;
-			} else if (record.conflict != null) {
-				outcomes.put(path, new Conflict(record.conflict));
+			} else if (record.conflict() != null) {
+				outcomes.put(path, new Conflict(record.conflict()));
 				continue;
 			} else if (!explicit && record.kept) {
 				outcomes.put(path, new Conflict("the file changed elsewhere"));
@@ -663,8 +669,9 @@ public final class OpenProject {
 	public Map<ProjectPath, String> conflicts() {
 		Map<ProjectPath, String> conflicts = new HashMap<>();
 		for (FileRecord record : records.values()) {
-			if (record.conflict != null) {
-				conflicts.put(record.path, record.conflict);
+			String conflict = record.conflict();
+			if (conflict != null) {
+				conflicts.put(record.path, conflict);
 			}
 		}
 		return conflicts;
@@ -672,27 +679,30 @@ public final class OpenProject {
 
 	/**
 	 * Look for changes made elsewhere: keep the unsaved text, forget
-	 * what listings told, find conflicts, give documents without
-	 * unsaved text the stored text when it changed, as one change that
-	 * can be undone, and find what runs. done gets the files read
-	 * again.
+	 * what listings told, and see what storage holds of every file in
+	 * memory or with unsaved text: unsaved text storage does not hold
+	 * the base of anymore is in conflict, at the revision seen now;
+	 * unsaved text storage holds exactly is saved; a document without
+	 * unsaved text gets the stored text when it changed, as one change
+	 * that can be undone. Then find what runs. A build prepared before
+	 * is not of this storage anymore. done gets the files read again.
 	 */
 	public void refresh(Callback<Set<ProjectPath>> done) {
 		persist();
+		++generation;
 		worker.execute(store::forgetListings);
 		Set<ProjectPath> reread = new HashSet<>();
 		// What runs is found once every check was taken.
 		int[] left = {1};
 		Runnable checked = () -> {
 			if (--left[0] == 0) {
+				++generation;
 				updateRunning(() -> done.done(reread));
 			}
 		};
 		for (FileRecord record : new ArrayList<>(records.values())) {
-			if (record.document() != null || record.conflict == null) {
-				++left[0];
-				record.whenIdle(() -> check(record, reread, checked));
-			}
+			++left[0];
+			record.whenIdle(() -> check(record, reread, checked));
 		}
 		afterWorker(checked);
 	}
@@ -716,7 +726,7 @@ public final class OpenProject {
 	 */
 	public void resolve(ProjectPath path, Choice choice, String seen) {
 		FileRecord record = records.get(path);
-		if (record == null || record.conflict == null ||
+		if (record == null || record.conflict() == null ||
 				!Objects.equals(seen, record.seen)) {
 			return;
 		} else if (choice == Choice.RELOAD) {
@@ -773,13 +783,13 @@ public final class OpenProject {
 	}
 
 	/**
-	 * Return the revision storage held when path was last found in
-	 * conflict, null when the file was absent or path is not in
-	 * conflict.
+	 * Return the revision storage was last seen to hold of path while
+	 * it is in conflict, null when the file was absent or path is not
+	 * in conflict. The listener hears when it moves.
 	 */
 	public String seen(ProjectPath path) {
 		FileRecord record = records.get(path);
-		return record != null && record.conflict != null
+		return record != null && record.conflict() != null
 				? record.seen
 				: null;
 	}
@@ -1119,18 +1129,16 @@ public final class OpenProject {
 	private void save(FileRecord record, Callback<FileTexts.Save> done) {
 		FileRecord.Request request = record.start(FileRecord.Kind.SAVE);
 		ProjectPath path = record.path;
-		Document document = record.document();
+		Document document = request.document();
 		texts.save(path, document != null ? document.text() : null,
-				document != null ? document.state() : -1, request.base(),
-				save -> {
-					if (records.get(path) == record) {
-						if (save.outcome() instanceof Saved saved) {
-							record.adoptSaved(request, save.state(),
-									saved.revision());
-						} else if (save.outcome() instanceof Conflict c) {
-							record.adoptConflict(request, c.reason(),
-									save.seen());
-						}
+				request.state(), request.base(), save -> {
+					if (records.get(path) != record) {
+						// Closed since.
+					} else if (save.outcome() instanceof Saved saved) {
+						record.adoptSaved(request, saved.revision());
+					} else if (save.found() != null) {
+						record.observe(request, save.found().found(),
+								save.found().revision());
 					}
 					end(record, request);
 					flush(record);
@@ -1138,48 +1146,39 @@ public final class OpenProject {
 				});
 	}
 
-	// Give the document of record the stored text when it changed and
-	// the document is not edited before it arrives; find whether the
-	// unsaved text of record is in conflict with storage.
+	// See what storage holds of record: give its document the stored
+	// text when it changed and the document has no unsaved text and is
+	// not edited before it arrives; mark unsaved text storage holds
+	// exactly as saved; else keep what was seen.
 	private void check(FileRecord record, Set<ProjectPath> reread,
 			Runnable then) {
 		FileRecord.Request request = record.start(FileRecord.Kind.CHECK);
-		Document document = record.document();
-		if (record.edited() && record.conflict == null) {
-			texts.compare(record.path, request.base(), checked -> {
-				if (records.get(record.path) == record) {
-					record.adoptConflict(request,
-							conflict(request.base(), checked),
-							checked.revision());
-				}
-				end(record, request);
-				changed();
-				then.run();
-			});
-			return;
-		} else if (document == null || document.isModified()) {
-			end(record, request);
-			then.run();
-			return;
-		}
-		texts.reread(record.path, request.base(), checked -> {
-			if (records.get(record.path) != record) {
-				end(record, request);
-				then.run();
-				return;
-			}
-			if (checked.found() != FileTexts.Found.CHANGED) {
-				record.adoptFound(request, checked.found());
-			} else if (record.adoptStored(request, checked.text(),
-					checked.revision())) {
-				reread.add(record.path);
+		ProjectPath path = record.path;
+		boolean unsaved = record.edited();
+		Callback<FileTexts.Checked> adopt = checked -> {
+			if (records.get(path) != record) {
+				// Closed since.
+			} else if (checked.equal()) {
+				record.adoptSaved(request, checked.revision());
+			} else if (checked.text() != null && record.adoptStored(
+					request, checked.text(), checked.revision())) {
+				reread.add(path);
 			} else {
-				record.adoptFound(request, checked.found());
+				record.observe(request, checked.found(),
+						checked.revision());
 			}
 			end(record, request);
+			flush(record);
 			changed();
 			then.run();
-		});
+		};
+		if (unsaved) {
+			texts.compare(path, request.base(), request.document() != null
+					? request.document().text()
+					: null, adopt);
+		} else {
+			texts.reread(path, request.base(), adopt);
+		}
 	}
 
 	// Reload record; when expect, only if storage is still at seen.
@@ -1190,24 +1189,29 @@ public final class OpenProject {
 		texts.openStored(path, opening -> {
 			boolean took = false;
 			String problem = null;
-			if (opening instanceof FileTexts.Opened opened && expect &&
-					!Objects.equals(seen, opened.revision())) {
+			if (!(opening instanceof FileTexts.Opened opened)) {
+				problem = ((FileTexts.Unopened) opening).reason();
+			} else if (records.get(path) != record) {
+				// Closed since.
+			} else if (expect && !Objects.equals(seen, opened.revision())) {
 				problem = "the file changed again";
-			} else if (opening instanceof FileTexts.Opened opened) {
+			} else {
 				// Typing that came after the request stays, with its
 				// journal.
 				took = record.document() == null
 						? take(record, request, opened)
-						: records.get(path) == record &&
-								record.adoptStored(request, opened.text(),
-										opened.revision());
-			} else {
-				problem = ((FileTexts.Unopened) opening).reason();
+						: record.adoptStored(request, opened.text(),
+								opened.revision());
+			}
+			// What was read and not taken is what storage was seen to
+			// hold.
+			if (!took && opening instanceof FileTexts.Opened opened) {
+				record.observe(request, FileTexts.Found.CHANGED,
+						opened.revision());
 			}
 			end(record, request);
 			// The journal goes only now that the stored text is taken.
 			if (took) {
-				record.conflict = null;
 				record.kept = false;
 				flush(record);
 			}
@@ -1340,6 +1344,9 @@ public final class OpenProject {
 		}
 		texts.journal(record.path, flush, written -> {
 			record.acknowledge(flush, written);
+			if (!record.needed() && records.get(record.path) == record) {
+				records.remove(record.path);
+			}
 			trim();
 			changed();
 		});
@@ -1363,18 +1370,6 @@ public final class OpenProject {
 			}
 		}
 		return journaled;
-	}
-
-	// Return why storage is not at base anymore as checked found it, or
-	// null when it is or cannot be read.
-	private static String conflict(String base, FileTexts.Checked checked) {
-		return switch (checked.found()) {
-			case SAME, UNAVAILABLE -> null;
-			case MISSING -> base != null ? "the file was deleted" : null;
-			default -> base == null
-					? "the file exists"
-					: "the file has changed";
-		};
 	}
 
 	private Map<ProjectPath, Text> snapshot() {
@@ -1467,7 +1462,11 @@ public final class OpenProject {
 				unreadable.put(record.path, record.unreadable);
 			}
 		}
-		return new State(unsaved(), conflicts().keySet(), running, used,
+		Map<ProjectPath, String> conflicts = new HashMap<>();
+		for (ProjectPath path : conflicts().keySet()) {
+			conflicts.put(path, seen(path));
+		}
+		return new State(unsaved(), conflicts, running, used,
 				diagnostics, unprotected(), unkept, found, runs, unreadable);
 	}
 

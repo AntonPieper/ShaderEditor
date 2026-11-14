@@ -1020,6 +1020,158 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void refreshMakesABuildPreparedBeforeStale() throws IOException {
+		write("main.glsl", "#include \"lib.glsl\"\n" + SHADER);
+		write("lib.glsl", "float one() { return 1.0; }\n");
+		OpenProject project = open();
+		document(project, "main.glsl");
+		OpenProject.Build build = build(project);
+
+		assertTrue(new File(root, "lib.glsl").delete());
+		refresh(project);
+		project.setDiagnostics(build, List.of(ProjectDiagnostic.error("e")));
+
+		assertEquals(0, project.errors());
+	}
+
+	@Test
+	public void conflictFollowsWhatStorageHoldsNow() throws IOException {
+		OpenProject project = editedElsewhere();
+		ProjectPath a = path("a.glsl");
+		String theirs = project.seen(a);
+		List<String> heard = new ArrayList<>();
+		project.setListener(Runnable::run, () -> heard.add(project.seen(a)));
+
+		write("a.glsl", "newer");
+		refresh(project);
+		String newer = project.seen(a);
+
+		assertNotEquals(theirs, newer);
+		assertEquals(List.of(newer), heard);
+		// A dialog drawn for the revision before does nothing.
+		project.resolve(a, OpenProject.Choice.RELOAD, theirs);
+		settle();
+		assertEquals("mine", project.document(a).text().toString());
+
+		// A reload that finds yet another revision shows that one.
+		write("a.glsl", "newest");
+		project.resolve(a, OpenProject.Choice.RELOAD, newer);
+		settle();
+		String newest = project.seen(a);
+		assertEquals("mine", project.document(a).text().toString());
+		assertNotEquals(newer, newest);
+		project.resolve(a, OpenProject.Choice.RELOAD, newest);
+		settle();
+		assertEquals("newest", project.document(a).text().toString());
+		assertTrue(project.conflicts().isEmpty());
+	}
+
+	@Test
+	public void refreshSeesWhatStorageHoldsOfUnsavedFilesNotInMemory()
+			throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		write("a.glsl", "theirs");
+		OpenProject restarted = open();
+		ProjectPath a = path("a.glsl");
+		String theirs = restarted.seen(a);
+		assertEquals(Set.of(a), restarted.conflicts().keySet());
+
+		write("a.glsl", "newer");
+		refresh(restarted);
+
+		assertNotEquals(theirs, restarted.seen(a));
+		assertNull(restarted.document(a));
+		write("a.glsl", "stored");
+		refresh(restarted);
+		assertTrue(restarted.conflicts().isEmpty());
+		assertEquals(Set.of(a), restarted.unsaved());
+	}
+
+	@Test
+	public void unsavedTextStorageHoldsExactlyIsSaved() throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		edit(project, a, "mine");
+		flush(project);
+
+		write("a.glsl", "mine");
+		refresh(project);
+
+		assertFalse(a.isModified());
+		assertTrue(project.conflicts().isEmpty());
+		assertTrue(project.unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
+		write("a.glsl", "theirs");
+		refresh(project);
+		assertEquals("theirs", a.text().toString());
+
+		// The same after the process died between the save and its
+		// adoption, also for a file not opened again.
+		edit(project, a, "mine again");
+		flush(project);
+		write("a.glsl", "mine again");
+		OpenProject restarted = open();
+		assertTrue(restarted.unsaved().isEmpty());
+		assertTrue(restarted.conflicts().isEmpty());
+		assertTrue(kept().isEmpty());
+		Document reopened = document(restarted, "a.glsl");
+		assertEquals("mine again", reopened.text().toString());
+		assertFalse(reopened.isModified());
+	}
+
+	@Test
+	public void savedFileNotInMemoryLosesItsJournalOnMainsWord()
+			throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		OpenProject restarted = open();
+
+		Map<ProjectPath, Outcome> outcomes = save(restarted, true);
+
+		assertTrue(outcomes.get(path("a.glsl")) instanceof Saved);
+		assertEquals("mine", read("a.glsl"));
+		assertTrue(restarted.unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
+		assertNull(restarted.unprotected());
+	}
+
+	@Test
+	public void typingBeforeAReadArrivesIsInConflictWithWhatItRead()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		write("a.glsl", "theirs");
+		String theirs = ((ProjectFiles.Content) new DirectoryProjectFiles(
+				root).read(a)).revision();
+
+		project.refresh(reread -> {
+		});
+		worker.run();
+		edit(project, document, "mine");
+		settle();
+
+		assertEquals("mine", document.text().toString());
+		assertEquals(Set.of(a), project.conflicts().keySet());
+		assertEquals(theirs, project.seen(a));
+
+		// The same for a reload the user typed into.
+		write("a.glsl", "newer");
+		String newer = ((ProjectFiles.Content) new DirectoryProjectFiles(
+				root).read(a)).revision();
+		project.reload(a, problem -> {
+		});
+		worker.run();
+		edit(project, document, "mine too");
+		settle();
+		assertEquals("mine too", document.text().toString());
+		assertEquals(newer, project.seen(a));
+	}
+
+	@Test
 	public void closeKeepsTheTextAndIgnoresWhatArrivesLater()
 			throws IOException {
 		OpenProject project = open();
