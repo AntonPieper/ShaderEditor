@@ -29,8 +29,7 @@ final class CameraSource implements UniformSource {
 		this.host = host;
 		this.sources = sources;
 		if (host.cameraOwner() == null) {
-			sources.warn("The camera is only available in the app, " +
-					"not in a live wallpaper");
+			sources.warn("The camera is not available here");
 		}
 		reopen();
 	}

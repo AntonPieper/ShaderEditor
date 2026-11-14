@@ -158,9 +158,11 @@ public class CameraListener {
 		Camera camera;
 		try {
 			camera = cameraProvider.bindToLifecycle(owner, cameraSelector, preview);
-		} catch (IllegalArgumentException | IllegalStateException e) {
-			// No such lens, or the owner cannot take the use case. The
-			// client it displaced gets the camera back.
+		} catch (IllegalArgumentException | IllegalStateException |
+				SecurityException e) {
+			// No such lens, no permission any more, or the owner cannot
+			// take the use case. The client it displaced gets the camera
+			// back.
 			synchronized (this) {
 				failure = (facing == CameraSelector.LENS_FACING_FRONT
 						? "The front camera"

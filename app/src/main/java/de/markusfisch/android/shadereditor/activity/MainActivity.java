@@ -310,10 +310,6 @@ public class MainActivity extends AppCompatActivity {
 					@Override
 					public void onDeleteShader(long id) {
 						boolean wasOpen = id == shaderManager.getSelectedShaderId();
-						if (wasOpen) {
-							// Or selecting another one saves it again.
-							shaderManager.setModified(false);
-						}
 						shaderManager.deleteShader(id);
 						if (wasOpen) {
 							shaderManager.selectShader(

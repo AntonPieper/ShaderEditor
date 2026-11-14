@@ -117,20 +117,20 @@ public class PlanSourceTest {
 				"void main() {}\n")).fTimeMax(), 0f);
 	}
 
-	// The old renderer divided by it, so ftime was NaN.
 	@Test
-	public void zeroFTimePeriodKeepsItsMeaning() {
-		var source = source(2, plan("main.frag", lines(
-				"#define FTIME_PERIOD 0",
-				"void main() {}")));
-		assertEquals(0f, source.fTimeMax(), 0f);
-		var in = new FrameInputs();
-		in.time = 1f;
-		in.fTimeMax = source.fTimeMax();
-		var out = new UniformTableTest.RecordingOutput();
-		UniformTable.get("ftime").write(in, null, out);
-		assertEquals(List.of("float"), out.calls);
-		assertTrue(Float.isNaN(out.values.get(0)[0]));
+	public void fTimePeriodsKeepTheirValue() {
+		assertEquals(1.5f, fTimeMax("1.5"), 0f);
+		assertEquals(0.25f, fTimeMax(".25"), 0f);
+		assertEquals(12f, fTimeMax("12"), 0f);
+	}
+
+	// Each would make ftime NaN.
+	@Test
+	public void zeroOrOverflowingFTimePeriodsUseTheDefault() {
+		for (String period : new String[]{"0", "0.0", "9".repeat(100),
+				"0." + "0".repeat(100) + "1"}) {
+			assertEquals(period, 3f, fTimeMax(period), 0f);
+		}
 	}
 
 	@Test
@@ -193,5 +193,11 @@ public class PlanSourceTest {
 
 	private static int lineOf(String text, String line) {
 		return List.of(text.split("\n")).indexOf(line) + 1;
+	}
+
+	private static float fTimeMax(String period) {
+		return source(2, plan("main.frag", lines(
+				"#define FTIME_PERIOD " + period,
+				"void main() {}"))).fTimeMax();
 	}
 }

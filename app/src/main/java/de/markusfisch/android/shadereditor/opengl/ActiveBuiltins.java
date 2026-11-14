@@ -136,16 +136,18 @@ final class ActiveBuiltins {
 			active.add(program);
 			for (var uniform : table) {
 				GlUniform uniformSlot = uniforms.get(uniform.getName());
-				if (uniformSlot == null ||
-						uniformSlot.location() < 0 ||
-						!uniform.fits(uniformSlot)) {
+				UniformDef fitting = uniformSlot != null &&
+						uniformSlot.location() >= 0
+						? uniform.fitting(uniformSlot)
+						: null;
+				if (fitting == null) {
 					continue;
 				}
-				if (uniform.getSource() != null) {
-					keys.add(uniform.getSource());
+				if (fitting.getSource() != null) {
+					keys.add(fitting.getSource());
 				}
-				if (!uniform.isDeclarationOnly()) {
-					program.add(new Slot(uniform, uniformSlot.location(), null));
+				if (!fitting.isDeclarationOnly()) {
+					program.add(new Slot(fitting, uniformSlot.location(), null));
 				}
 			}
 		}

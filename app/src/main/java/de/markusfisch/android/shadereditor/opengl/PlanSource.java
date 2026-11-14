@@ -86,15 +86,19 @@ record PlanSource(
 		return 100;
 	}
 
-	// The default without a period, NaN when it is not a number. A period
-	// of 0 keeps its meaning: ftime is NaN.
+	// NaN when the period is not a number, the default without a period
+	// and for one that is zero or too large, which would make ftime NaN.
 	private static float fTimeMax(@NonNull String text) {
 		Matcher matcher = FTIME.matcher(text);
 		if (matcher.find()) {
+			float value;
 			try {
-				return Float.parseFloat(matcher.group(1));
+				value = Float.parseFloat(matcher.group(1));
 			} catch (NumberFormatException e) {
 				return Float.NaN;
+			}
+			if (value > 0f && value < Float.POSITIVE_INFINITY) {
+				return value;
 			}
 		}
 		return DEFAULT_FTIME_MAX;
