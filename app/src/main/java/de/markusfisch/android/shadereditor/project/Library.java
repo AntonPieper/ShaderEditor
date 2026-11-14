@@ -332,15 +332,19 @@ public final class Library {
 
 	/**
 	 * Return where Save a copy puts files of a read-only folder in the
-	 * library, by their path there: entry alone goes to the root, named
-	 * as a new shader of its name is; entry with the files it reads
-	 * goes into a new folder named after it, or after its folder when
-	 * it is a main.frag, where they keep their paths. Return null when
-	 * the root cannot be listed.
+	 * library, by their path there, as they lie in that folder: entry
+	 * in its root becomes a file of the library's root named as a new
+	 * shader of its name is ("Tilt 2.frag" when "Tilt.frag" is taken);
+	 * entry in a folder takes that whole folder along under an unused
+	 * name ("Ink 2/main.frag"). The other files keep their paths, so
+	 * that a shared lib/ or textures/ is reached as before; one that
+	 * is in the library already is used as it is and left out here,
+	 * never written over. Return null when the root cannot be listed.
 	 */
 	Map<ProjectPath, ProjectPath> places(ProjectPath entry,
 			Collection<ProjectPath> paths) {
-		ProjectFiles.Listing listing = files().list(null);
+		ProjectFiles files = files();
+		ProjectFiles.Listing listing = files.list(null);
 		if (!(listing instanceof ProjectFiles.Entries entries)) {
 			return null;
 		}
@@ -349,23 +353,30 @@ public final class Library {
 			names.add(listed.name());
 		}
 		Naming naming = new Naming(names);
-		String name = entry.getFileName();
-		Map<ProjectPath, ProjectPath> places = new LinkedHashMap<>();
-		if (paths.size() == 1 && paths.contains(entry)) {
-			places.put(entry, ProjectPath.parse(naming.unused(
-					Naming.stem(name, "Untitled"),
-					ShaderLanguage.PASS)).value());
-			return places;
-		}
 		String path = entry.toString();
-		int slash = path.lastIndexOf('/');
-		String folder = naming.unused(Naming.stem(OpenProject.MAIN.toString()
-				.equals(name) && slash > 0
-				? path.substring(path.lastIndexOf('/', slash - 1) + 1, slash)
-				: name, "Untitled"), "");
+		int slash = path.indexOf('/');
+		String folder = slash > 0 ? path.substring(0, slash + 1) : null;
+		String renamed = folder != null
+				? naming.unused(folder.substring(0, slash), "") + "/"
+				: null;
+		Map<ProjectPath, ProjectPath> places = new LinkedHashMap<>();
 		for (ProjectPath copied : paths) {
-			places.put(copied, ProjectPath.parse(folder + "/" + copied)
-					.value());
+			String at = copied.toString();
+			ProjectParseResult<ProjectPath> place;
+			if (copied.equals(entry) && folder == null) {
+				place = ProjectPath.parse(naming.unused(Naming.stem(
+						entry.getFileName(), "Untitled"), ShaderLanguage.PASS));
+			} else if (folder != null && at.startsWith(folder)) {
+				place = ProjectPath.parse(renamed + at.substring(folder.length()));
+			} else if (files.head(copied, 1) != null ||
+					files.list(copied) != null) {
+				continue;
+			} else {
+				place = ProjectParseResult.success(copied);
+			}
+			if (place.isSuccess()) {
+				places.put(copied, place.value());
+			}
 		}
 		return places;
 	}

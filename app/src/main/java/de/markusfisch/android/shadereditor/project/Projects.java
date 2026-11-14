@@ -167,7 +167,8 @@ public final class Projects {
 	/**
 	 * Save a copy of paths of project, a read-only folder, in the
 	 * library, where {@link Library#places} says, with the text each
-	 * has now; nothing of project changes. done gets the path of the
+	 * has now; a file the library has already is used as it is.
+	 * Nothing of project changes. done gets the path of the
 	 * copy of entry, or why not all was copied. To show it, as for
 	 * {@link #newShader}.
 	 */
@@ -205,7 +206,7 @@ public final class Projects {
 							String expected) {
 						return library.write(places.get(path), bytes, null);
 					}
-				}, paths, problems -> {
+				}, places.keySet(), problems -> {
 					for (Map.Entry<ProjectPath, String> problem :
 							problems.entrySet()) {
 						if (problem.getValue() != null) {
