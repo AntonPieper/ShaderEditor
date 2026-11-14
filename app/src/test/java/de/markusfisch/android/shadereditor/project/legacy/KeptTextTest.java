@@ -70,8 +70,55 @@ public class KeptTextTest {
 		Kept kept = keep("uniform sampler2D noise; ///min:l;mag:l; ☃\n" +
 				"void main() {}\n");
 		assertNull(kept.shader());
-		assertEquals("a comment the conversion rewrites holds characters " +
-				"outside ASCII", kept.loss());
+		assertEquals("line 1 has the character \u2603 in a comment the " +
+				"conversion takes away", kept.loss());
+	}
+
+	// Two rewrites on a line are two, not one from the first to the
+	// last: what lies between them is the user's.
+	@Test
+	public void aCharacterBetweenTwoRenamedUsesIsKept() {
+		Kept kept = keep("uniform sampler2D time;\nvoid main(){\n" +
+				" gl_FragColor = texture2D(time, vec2(0.)) \u00e9 + " +
+				"texture2D(time, vec2(1.));\n}\n");
+		assertNull(kept.loss());
+		assertTrue(kept.shader(), kept.shader().contains(
+				" gl_FragColor = texture2D(time_texture, vec2(0.)) \u00e9 + " +
+						"texture2D(time_texture, vec2(1.));\n"));
+	}
+
+	// A refusal says which character, on which line.
+	@Test
+	public void aCharacterInsideARewriteIsRefusedWithItsLine() {
+		Kept kept = keep("void main() {}\nuniform sampler2D noise; " +
+				"///min:l;\u00e4mag:l;\n");
+		assertNull(kept.shader());
+		assertEquals("line 2 has the character \u00e4 in text the " +
+				"conversion rewrites", kept.loss());
+	}
+
+	// The old renderer dropped the character and the line went on. A
+	// file keeps it, and the compiler is handed the line without it.
+	@Test
+	public void aCharacterBehindAContinuationBackslashIsKept() {
+		String text = "#version 300 es\n#define A 1.0 + \\\u00e9\n 2.0\n" +
+				"out vec4 c;\nvoid main(){c=vec4(A);}\n";
+		Kept kept = keep(text);
+		assertNull(kept.loss());
+		assertEquals(text, kept.shader());
+	}
+
+	// In a comment the compiler is handed a space, so the comment
+	// would end where it went on for the old renderer.
+	@Test
+	public void aCommentThatWentOnBehindADroppedCharacterIsRefused() {
+		Kept kept = keep("// note \\\u00e9\nfloat hidden;\nvoid main() {}\n");
+		assertNull(kept.shader());
+		assertEquals("line 1 ends a comment in a backslash and the " +
+				"character \u00e9, which the old renderer dropped, so that " +
+				"the comment went on in the next line", kept.loss());
+		// Not at the end of the line, it is a comment like any other.
+		assertNull(keep("// a \\\u00e9 b\nvoid main() {}\n").loss());
 	}
 
 	private record Kept(String shader, String loss) {

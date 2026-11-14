@@ -174,6 +174,24 @@ public class PlanSourceTest {
 		assertEquals(4, source.sourceMap().locate(5).line());
 	}
 
+	// A space behind the backslash would end the line. Left out, the
+	// line goes on as it was written to, and no line is lost.
+	@Test
+	public void aLineOfCodeGoesOnBehindCharactersTheCompilerCannotRead() {
+		var source = source(3, plan("main.frag", lines(
+				"#version 300 es",
+				"#define A 1.0 + \\\u00e9\u00a0",
+				" 2.0",
+				"// in a comment \\\u00e9",
+				"out vec4 c;",
+				"void main() { c = vec4(A); }")));
+		assertEquals(lines("#version 300 es", "#define SHADER_EDITOR 1",
+				"#define A 1.0 + \\", " 2.0", "// in a comment \\ ",
+				"out vec4 c;", "void main() { c = vec4(A); }"),
+				source.fragment());
+		assertEquals(6, source.sourceMap().locate(7).line());
+	}
+
 	// The comment names a camera, but the shader reads none.
 	@Test
 	public void commentsRequireNoExtension() {

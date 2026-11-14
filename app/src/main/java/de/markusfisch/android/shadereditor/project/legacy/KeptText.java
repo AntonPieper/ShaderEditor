@@ -23,6 +23,9 @@ public final class KeptText {
 	public record Kept(String shader, String loss) {
 	}
 
+	// The most cells of a table that aligns two lines.
+	private static final long MOST_CELLS = 1_000_000;
+
 	private KeptText() {
 	}
 
@@ -58,22 +61,29 @@ public final class KeptText {
 					pieces.add(j);
 				}
 			}
-			if (!keep(lines.get(line - 1), out, pieces)) {
-				return lost("line " + line + " has characters outside " +
-						"ASCII in text the conversion rewrites");
+			String lost = keep(lines.get(line - 1), out, pieces);
+			if (lost != null) {
+				return lost("line " + line + " has the character " + lost +
+						" in text the conversion rewrites");
 			}
 		}
 		for (int line = 1; line <= lines.size(); ++line) {
 			if (!placed[line] && !ascii(lines.get(line - 1))) {
-				return lost("line " + line + " has characters outside " +
-						"ASCII and is not part of the converted shader");
+				return lost("line " + line + " has the character " +
+						first(lines.get(line - 1)) + " and is not part " +
+						"of the converted shader");
 			}
 		}
 		// A comment the conversion takes away must not leave what it
 		// held behind as code.
-		if (outsideComments(List.of(out)) != outsideComments(lines)) {
-			return lost("a comment the conversion rewrites holds " +
-					"characters outside ASCII");
+		int[] before = outsideComments(lines, null, lines.size());
+		int[] after = outsideComments(List.of(out), origins, lines.size());
+		for (int line = 1; line <= lines.size(); ++line) {
+			if (before[line] != after[line]) {
+				return lost("line " + line + " has the character " +
+						first(lines.get(line - 1)) + " in a comment the " +
+						"conversion takes away");
+			}
 		}
 		StringBuilder sb = new StringBuilder();
 		for (String line : out) {
@@ -89,12 +99,12 @@ public final class KeptText {
 		return new Kept(null, why);
 	}
 
-	// Put the original line in place of the pieces made of it; false
-	// when a character of it would be lost.
-	private static boolean keep(String original, String[] out,
+	// Put the original line in place of the pieces made of it. Return
+	// a character of it that would be lost, or null.
+	private static String keep(String original, String[] out,
 			List<Integer> pieces) {
 		if (ascii(original)) {
-			return true;
+			return null;
 		}
 		// Where each character the conversion saw is in the original.
 		int[] at = new int[original.length() + 1];
@@ -113,50 +123,121 @@ public final class KeptText {
 			joined.append(out[piece]);
 		}
 		String now = joined.toString();
-		int prefix = 0;
-		int most = Math.min(count, now.length());
-		while (prefix < most && seen.charAt(prefix) == now.charAt(prefix)) {
-			++prefix;
+		int[] match = align(seen, now);
+		StringBuilder merged = new StringBuilder();
+		// Where each character of the converted line is in the merged.
+		int[] pos = new int[now.length() + 1];
+		int i = 0;
+		int j = 0;
+		int o = 0;
+		while (i < count || j < now.length()) {
+			int ni = i;
+			while (ni < count && match[ni] < 0) {
+				++ni;
+			}
+			int nj = ni < count ? match[ni] : now.length();
+			int end = at[ni];
+			int first = end;
+			int last = end;
+			if (ni > i) {
+				// What the conversion took away here: a character it
+				// did not see in the middle of that would go with it.
+				first = at[i];
+				last = at[ni - 1] + 1;
+				if (!ascii(original.substring(first, last))) {
+					return first(original.substring(first, last));
+				}
+			}
+			// What it did not see around a rewrite stays around it.
+			merged.append(original, o, first);
+			for (; j < nj; ++j) {
+				pos[j] = merged.length();
+				merged.append(now.charAt(j));
+			}
+			merged.append(original, last, end);
+			o = end;
+			i = ni;
+			if (ni < count) {
+				pos[nj] = merged.length();
+				merged.append(original.charAt(end));
+				o = end + 1;
+				i = ni + 1;
+				j = nj + 1;
+			}
 		}
-		int suffix = 0;
-		while (suffix < most - prefix && seen.charAt(count - 1 - suffix) ==
-				now.charAt(now.length() - 1 - suffix)) {
-			++suffix;
-		}
-		// What was rewritten of the original: from the first to the
-		// last character the conversion saw there.
-		int first = at[prefix];
-		int last = count - suffix > prefix
-				? at[count - suffix - 1] + 1
-				: first;
-		if (!ascii(original.substring(first, last))) {
-			return false;
-		}
-		int middle = now.length() - suffix - prefix;
-		String merged = original.substring(0, first) +
-				now.substring(prefix, prefix + middle) +
-				original.substring(last);
+		// What it did not see behind the last character it saw.
+		merged.append(original, o, original.length());
+		pos[now.length()] = merged.length();
 		// Each piece gets its share of the line; a dropped character
 		// goes with what is before it.
 		int from = 0;
 		int start = 0;
-		for (int i = 0; i < pieces.size(); ++i) {
-			from += out[pieces.get(i)].length();
-			int end;
-			if (i == pieces.size() - 1) {
-				end = merged.length();
-			} else if (from <= prefix) {
-				end = at[from];
-			} else if (from >= prefix + middle) {
-				end = first + middle +
-						at[count - (now.length() - from)] - last;
-			} else {
-				end = first + from - prefix;
-			}
-			out[pieces.get(i)] = merged.substring(start, end);
+		for (int k = 0; k < pieces.size(); ++k) {
+			from += out[pieces.get(k)].length();
+			int end = k == pieces.size() - 1 ? merged.length() : pos[from];
+			out[pieces.get(k)] = merged.substring(start, end);
 			start = end;
 		}
-		return true;
+		return null;
+	}
+
+	// For every character of seen, the character of now it stayed as,
+	// or -1 where the conversion rewrote it: what is alike at both
+	// ends, and the longest run of alike characters in between, so
+	// that two rewrites on a line do not make one of what lies
+	// between them.
+	private static int[] align(CharSequence seen, String now) {
+		int n = seen.length();
+		int m = now.length();
+		int[] match = new int[n];
+		java.util.Arrays.fill(match, -1);
+		int prefix = 0;
+		int most = Math.min(n, m);
+		while (prefix < most && seen.charAt(prefix) == now.charAt(prefix)) {
+			match[prefix] = prefix;
+			++prefix;
+		}
+		int suffix = 0;
+		while (suffix < most - prefix && seen.charAt(n - 1 - suffix) ==
+				now.charAt(m - 1 - suffix)) {
+			match[n - 1 - suffix] = m - 1 - suffix;
+			++suffix;
+		}
+		int a = n - prefix - suffix;
+		int b = m - prefix - suffix;
+		if (a == 0 || b == 0 || (long) a * b > MOST_CELLS) {
+			return match;
+		}
+		short[][] longest = new short[a + 1][b + 1];
+		for (int i = a - 1; i >= 0; --i) {
+			for (int j = b - 1; j >= 0; --j) {
+				longest[i][j] = seen.charAt(prefix + i) ==
+						now.charAt(prefix + j)
+						? (short) (longest[i + 1][j + 1] + 1)
+						: (short) Math.max(longest[i + 1][j],
+								longest[i][j + 1]);
+			}
+		}
+		for (int i = 0, j = 0; i < a && j < b; ) {
+			if (seen.charAt(prefix + i) == now.charAt(prefix + j)) {
+				match[prefix + i++] = prefix + j++;
+			} else if (longest[i + 1][j] >= longest[i][j + 1]) {
+				++i;
+			} else {
+				++j;
+			}
+		}
+		return match;
+	}
+
+	// The first character of text outside ASCII, to name it.
+	private static String first(String text) {
+		for (int i = 0; i < text.length(); ++i) {
+			if (!kept(text.charAt(i))) {
+				return new String(Character.toChars(text.codePointAt(i)));
+			}
+		}
+		return "";
 	}
 
 	// The engine reads a character outside ASCII in code as a space,
@@ -166,6 +247,22 @@ public final class KeptText {
 		List<String> code = PreprocessorScan.scan(lines, null).code();
 		for (int n = 0; n < code.size(); ++n) {
 			String line = code.get(n);
+			// A // comment that ends in a backslash went on in the
+			// next line for the old renderer. With a character it
+			// dropped behind the backslash, it does not in a file.
+			String raw = lines.get(n);
+			int tail = raw.length();
+			while (tail > 0 && !kept(raw.charAt(tail - 1))) {
+				--tail;
+			}
+			if (tail < raw.length() && tail > line.length() &&
+					raw.charAt(tail - 1) == '\\') {
+				return "line " + (n + 1) + " ends a comment in a " +
+						"backslash and the character " +
+						first(raw.substring(tail)) + ", which the old " +
+						"renderer dropped, so that the comment went on " +
+						"in the next line";
+			}
 			for (int i = 0; i < line.length(); ++i) {
 				if (kept(line.charAt(i))) {
 					continue;
@@ -189,15 +286,22 @@ public final class KeptText {
 		return null;
 	}
 
-	// How many characters outside ASCII lines have outside comments.
-	private static int outsideComments(List<String> lines) {
-		int count = 0;
-		for (String line : PreprocessorScan.scan(lines, null).code()) {
-			for (int i = 0; i < line.length(); ++i) {
-				count += kept(line.charAt(i)) ? 0 : 1;
+	// How many characters outside ASCII each original line has
+	// outside comments, by its 1-based number; origins tell for lines
+	// of the converted shader which original line each is of.
+	private static int[] outsideComments(List<String> lines,
+			List<Integer> origins, int originals) {
+		int[] counts = new int[originals + 1];
+		List<String> code = PreprocessorScan.scan(lines, null).code();
+		for (int n = 0; n < code.size(); ++n) {
+			int line = origins != null ? origins.get(n) : n + 1;
+			String text = code.get(n);
+			for (int i = 0; line > 0 && line <= originals &&
+					i < text.length(); ++i) {
+				counts[line] += kept(text.charAt(i)) ? 0 : 1;
 			}
 		}
-		return count;
+		return counts;
 	}
 
 	private static boolean blank(char c) {

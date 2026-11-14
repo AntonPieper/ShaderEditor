@@ -169,11 +169,18 @@ public record HostDirectives(
 					int character = code.codePointAt(c);
 					if (character > 0x7e || (character < 0x20 &&
 							WHITESPACE.indexOf(character) < 0)) {
+						int tail = SourceText.afterContinuation(
+								source.get(i).raw(), code);
 						diagnostics.add(new ProjectDiagnostic(
 								ProjectDiagnostic.Severity.WARNING,
 								String.format(Locale.ROOT,
 										"Character %s (U+%04X) outside a " +
-												"comment is read as a space: " +
+												"comment is " + (tail > -1 &&
+												c >= tail
+												? "left out, so that the " +
+														"line goes on behind " +
+														"its backslash: "
+												: "read as a space: ") +
 												"shader compilers read only " +
 												"ASCII code; replace it",
 										new String(Character.toChars(

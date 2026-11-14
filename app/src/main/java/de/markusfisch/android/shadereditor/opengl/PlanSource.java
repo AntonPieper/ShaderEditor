@@ -13,6 +13,7 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.SourceLocation;
 import de.markusfisch.android.shadereditor.project.SourceMap;
+import de.markusfisch.android.shadereditor.project.SourceText;
 
 // What a program of a plan compiles to: its text with the lines the
 // engine generates after #version, a vertex shader of the same version,
@@ -61,7 +62,16 @@ record PlanSource(
 					? "#extension GL_OES_EGL_image_external_essl3 : require"
 					: "#extension GL_OES_EGL_image_external : require");
 		}
-		var lines = new ArrayList<>(program.lines());
+		// A line of code that ends behind a backslash in characters
+		// a compiler cannot read goes on in the next line, as it was
+		// written to: they are left out, where a space would end it.
+		var lines = new ArrayList<String>();
+		for (int i = 0; i < program.lines().size(); ++i) {
+			String line = program.lines().get(i);
+			int tail = SourceText.afterContinuation(line,
+					scan.code().get(i));
+			lines.add(tail < 0 ? line : line.substring(0, tail));
+		}
 		lines.addAll(program.head(), generated);
 		return new PlanSource(
 				removeNonAscii(String.join("\n", lines) + "\n"),
