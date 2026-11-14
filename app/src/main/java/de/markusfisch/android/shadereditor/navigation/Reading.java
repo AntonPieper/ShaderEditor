@@ -5,6 +5,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 
+import de.markusfisch.android.shadereditor.project.FileKind;
+
 /**
  * How far the files of one folder are read: being read, read, or not,
  * and how many of its rows are shown. A result that comes after
@@ -96,9 +98,13 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 		for (Entry entry : visible.subList(0, Math.min(shown,
 				visible.size()))) {
 			String name = entry.name;
+			// A hint from the name, for the icon: what the file is, is
+			// read from its bytes when it is opened or used.
 			Row.Kind kind = entry.folder
 					? Row.Kind.FOLDER
-					: isImage(name) ? Row.Kind.IMAGE : Row.Kind.TEXT;
+					: FileKind.hint(name, null) == FileKind.PICTURE
+					? Row.Kind.IMAGE
+					: Row.Kind.TEXT;
 			rows.add(new Row(path != null ? path + "/" + name : name,
 					kind,
 					Row.Picture.of(switch (kind) {
@@ -157,9 +163,4 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 		return visible;
 	}
 
-	private static boolean isImage(String name) {
-		String lower = name.toLowerCase(Locale.ROOT);
-		return lower.endsWith(".png") || lower.endsWith(".jpg") ||
-				lower.endsWith(".jpeg");
-	}
 }

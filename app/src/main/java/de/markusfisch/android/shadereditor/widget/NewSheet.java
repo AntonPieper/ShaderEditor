@@ -19,6 +19,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.TextInputLayout;
 
+import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.navigation.Naming;
 
@@ -201,7 +202,13 @@ public final class NewSheet {
 			check();
 			return;
 		}
-		String extension = kind() == Kind.FOLDER ? "" : ".glsl";
+		// Names by convention only: a shader that runs is .frag, a file
+		// that starts empty is taken for code to include.
+		String extension = switch (kind()) {
+			case FOLDER -> "";
+			case SHADER -> ShaderLanguage.PASS;
+			default -> ShaderLanguage.INCLUDE;
+		};
 		fill(naming.unused(untitled, extension));
 	}
 
