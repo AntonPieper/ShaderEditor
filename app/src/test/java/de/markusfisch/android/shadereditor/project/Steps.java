@@ -45,6 +45,11 @@ final class Steps {
 			return tasks.size();
 		}
 
+		// Forget what was given, as when the process dies.
+		void clear() {
+			tasks.clear();
+		}
+
 		// Run the task given first; return whether there was one.
 		boolean step() {
 			Runnable task = tasks.poll();

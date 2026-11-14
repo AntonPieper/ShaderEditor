@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.project;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 
 import de.markusfisch.android.shadereditor.editor.Document;
@@ -42,12 +43,14 @@ public final class FileTexts {
 	 * it is based on, null for none; the revision of the journal it came
 	 * from, -1 for none; and why its journal could not be read, so the
 	 * stored text was opened instead, else null. A document of unsaved
-	 * text starts modified, whatever its history. It is made on the
-	 * worker, so a device without the memory for it is told there.
+	 * text starts modified, whatever its history; replaced tells that
+	 * it is text a reload replaced, see {@link Journal.Header}. It is
+	 * made on the worker, so a device without the memory for it is told
+	 * there.
 	 */
 	public record Opened(Document document, boolean unsaved,
-			String revision, int journal, String unreadable)
-			implements Opening {
+			String revision, int journal, String unreadable,
+			boolean replaced) implements Opening {
 		public Text text() {
 			return document.text();
 		}
@@ -128,8 +131,22 @@ public final class FileTexts {
 		});
 	}
 
-	/** Open path for the editor as storage has it. */
-	public void openStored(ProjectPath path, Callback<Opening> done) {
+	/**
+	 * What a reload read, and whether the journal of the file says now
+	 * that a reload replaced its text.
+	 */
+	public record Reloaded(Opening opening, boolean marked) {
+	}
+
+	/**
+	 * Open path for the editor as storage has it, to take the place of
+	 * its unsaved text when mark; when expect, only if storage is at
+	 * seen. Before main is told, so before it takes the stored text,
+	 * the journal is marked as holding text a reload replaced: from
+	 * then on it goes only into a history, whatever happens to main.
+	 */
+	public void reload(ProjectPath path, boolean mark, boolean expect,
+			String seen, Callback<Reloaded> done) {
 		worker.execute(() -> {
 			Opening opening;
 			try {
@@ -137,8 +154,11 @@ public final class FileTexts {
 			} catch (OutOfMemoryError e) {
 				opening = tooLargeHere(path, null);
 			}
-			Opening opened = opening;
-			main.execute(() -> done.done(opened));
+			Reloaded reloaded = new Reloaded(opening, mark &&
+					opening instanceof Opened opened && (!expect ||
+					Objects.equals(seen, opened.revision())) &&
+					journal.markReplaced(path));
+			main.execute(() -> done.done(reloaded));
 		});
 	}
 
@@ -401,13 +421,18 @@ public final class FileTexts {
 	// whole text, so the answer is final and nothing waits for main.
 	private boolean write(ProjectPath path, FileRecord.Flush flush) {
 		if (flush.removes()) {
-			// What a reload replaced is given up to its history only.
+			// What a reload replaced is given up to its history only:
+			// here, where the journal goes, whoever asks and whatever
+			// they remember. Without a history it goes only when
+			// storage holds its text.
 			if (flush.history() != null) {
 				String hash = Histories.hash(flush.text());
 				if (hash == null ||
 						!histories.write(path, hash, flush.history())) {
 					return false;
 				}
+			} else if (!removable(path)) {
+				return false;
 			}
 			return journal.remove(path);
 		}
@@ -424,6 +449,20 @@ public final class FileTexts {
 			}
 		}
 		return journal.snapshot(flush.header(), flush.to(), flush.text());
+	}
+
+	// Return whether the journal of path may go without a history: it
+	// does not hold text a reload replaced, or storage holds that text.
+	private boolean removable(ProjectPath path) {
+		Journal.Header header = journal.header(path);
+		if (header == null || !header.replaced()) {
+			return true;
+		}
+		Journal.Recovered recovered = journal.read(path);
+		Read read = store.read(path, Document.MAX_BYTES);
+		return recovered == null || recovered.text() != null &&
+				read instanceof Content content &&
+				holds(content.bytes(), recovered.text());
 	}
 
 	// Give the document of opened the history kept for its text, if
@@ -455,7 +494,8 @@ public final class FileTexts {
 		}
 		Text text = recovered.text();
 		return new Opened(new Document(text, Document.bytes(text)), true,
-				recovered.header().base(), recovered.revision(), null);
+				recovered.header().base(), recovered.revision(), null,
+				recovered.header().replaced());
 	}
 
 	// Return the stored text of path, telling unreadable, why its
@@ -489,7 +529,7 @@ public final class FileTexts {
 					Found.NOT_TEXT, content.revision());
 		}
 		return new Opened(new Document(text, Document.bytes(text)), false,
-				content.revision(), -1, unreadable);
+				content.revision(), -1, unreadable, false);
 	}
 
 	// Return the text of bytes, or null when they are not text the

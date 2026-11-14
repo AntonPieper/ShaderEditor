@@ -1549,6 +1549,120 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void journalThatWaitsForAHistoryWaitsThroughWhateverMakesTheFileSaved()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		flush(project);
+		File history = new File(new File(sessionsDir, id), "history");
+		assertTrue(delete(history));
+		Files.write(history.toPath(), new byte[]{1});
+		String first = await(done -> project.reload(a, done));
+		assertNull(first);
+		assertEquals("mine", journaled("a.glsl"));
+
+		// Reloaded again, the document is saved already.
+		String second = await(done -> project.reload(a, done));
+		assertNull(second);
+		assertEquals("mine", journaled("a.glsl"));
+
+		// A refresh takes what was written elsewhere.
+		write("a.glsl", "theirs");
+		refresh(project);
+		assertEquals("theirs", document.text().toString());
+		assertEquals("mine", journaled("a.glsl"));
+
+		// Flushing, at a fence too, removes nothing.
+		flush(project);
+		assertEquals("mine", journaled("a.glsl"));
+		assertFalse(project.replaced(a));
+		assertTrue(project.unsaved().isEmpty());
+
+		// What a restart finds is the text, and that a reload replaced
+		// it.
+		OpenProject restarted = open();
+		assertEquals("mine", text(restarted, "a.glsl"));
+		assertTrue(restarted.replaced(a));
+	}
+
+	@Test
+	public void textAReloadReplacedComesBackSayingSo() throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		assertFalse(project.replaced(a));
+
+		// The stored text is taken; the process dies before the worker
+		// wrote the history.
+		project.reload(a, problem -> {
+		});
+		worker.run();
+		main.run();
+		assertEquals("stored", project.document(a).text().toString());
+
+		OpenProject restarted = open();
+		List<Boolean> heard = new ArrayList<>();
+		restarted.setListener(Runnable::run,
+				() -> heard.add(restarted.replaced(a)));
+		assertEquals(Set.of(a), restarted.unsaved());
+		assertTrue(restarted.replaced(a));
+		Document recovered = document(restarted, "a.glsl");
+		assertEquals("mine", recovered.text().toString());
+		assertTrue(recovered.isModified());
+		assertTrue(restarted.replaced(a));
+
+		// Kept as it is, it still says so; edited, it is the user's.
+		flush(restarted);
+		assertTrue(open().replaced(a));
+		OpenProject edited = open();
+		Document typed = document(edited, "a.glsl");
+		edit(edited, typed, "mine, and more");
+		assertFalse(edited.replaced(a));
+		flush(edited);
+		OpenProject after = open();
+		assertFalse(after.replaced(a));
+		assertEquals("mine, and more", text(after, "a.glsl"));
+	}
+
+	@Test
+	public void textAReloadReplacedStopsSayingSoWhenKeptSavedOrReloaded()
+			throws IOException {
+		ProjectPath a = path("a.glsl");
+		// Kept, without the file in memory.
+		OpenProject kept = replacedAndRestarted();
+		assertTrue(kept.replaced(a));
+		kept.keepReplaced(a);
+		settle();
+		assertFalse(kept.replaced(a));
+		assertEquals(Set.of(a), kept.unsaved());
+		OpenProject next = open();
+		assertFalse(next.replaced(a));
+		assertEquals("mine", text(next, "a.glsl"));
+		assertTrue(save(next, true).get(a) instanceof Saved);
+
+		// Saved.
+		OpenProject saved = replacedAndRestarted();
+		document(saved, "a.glsl");
+		assertTrue(save(saved, true).get(a) instanceof Saved);
+		assertFalse(saved.replaced(a));
+		assertEquals("mine", read("a.glsl"));
+		assertTrue(kept().isEmpty());
+
+		// Reloaded again, with a history this time.
+		OpenProject reloaded = replacedAndRestarted();
+		String problem = await(done -> reloaded.reload(a, done));
+		assertNull(problem);
+		assertFalse(reloaded.replaced(a));
+		assertTrue(kept().isEmpty());
+		Document document = reloaded.document(a);
+		document.undo();
+		assertEquals("mine", document.text().toString());
+	}
+
+	@Test
 	public void reloadKeepsTheJournalOfTextTooLargeForAHistory()
 			throws IOException {
 		OpenProject project = open();
@@ -2723,6 +2837,24 @@ public class OpenProjectTest {
 			throws IOException {
 		write(path, text);
 		return shown(project, path);
+	}
+
+	// Type "mine" over what a.glsl holds, reload, and let the process
+	// die before the history is written; return the project opened
+	// then.
+	private OpenProject replacedAndRestarted() throws IOException {
+		OpenProject project = open();
+		write("a.glsl", "stored");
+		refresh(project);
+		edit(project, document(project, "a.glsl"), "mine");
+		flush(project);
+		project.reload(path("a.glsl"), problem -> {
+		});
+		worker.run();
+		main.run();
+		steps.worker.clear();
+		steps.main.clear();
+		return open();
 	}
 
 	private static boolean delete(File file) {

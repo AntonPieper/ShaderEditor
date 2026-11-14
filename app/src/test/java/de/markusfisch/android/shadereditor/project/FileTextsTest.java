@@ -300,6 +300,38 @@ public class FileTextsTest {
 				.contains("line 2"));
 	}
 
+	@Test
+	public void journalOfReloadedTextGoesOnlyWithAHistoryOrWhenStored() {
+		store.put("main.glsl", "stored");
+		document = new Document(opened(MAIN, 6));
+		document.replace(0, 6, Text.of("mine"));
+		Journal journal = new Journal(drafts).own();
+		texts = new FileTexts(store, journal, histories(), worker, main);
+		assertTrue(journal.snapshot(new Journal.Header(MAIN, base, false,
+				null), 1, document.text()));
+		List<Boolean> done = new ArrayList<>();
+		FileRecord.Flush remove = new FileRecord.Flush(null, null, -1, 2,
+				List.of(), null);
+
+		// Whoever asks to remove it, and whatever they remember.
+		texts.reload(MAIN, true, false, null, reloaded -> done.add(
+				reloaded.marked()));
+		texts.journal(MAIN, remove, done::add);
+		worker.run();
+		main.run();
+		assertEquals(List.of(true, false), done);
+		assertTrue(journal.header(MAIN).replaced());
+		assertEquals("mine", journal.read(MAIN).text().toString());
+
+		// With the history that holds it, or once storage holds it.
+		store.put("main.glsl", "mine");
+		texts.journal(MAIN, remove, done::add);
+		worker.run();
+		main.run();
+		assertEquals(List.of(true, false, true), done);
+		assertNull(journal.read(MAIN));
+	}
+
 	private Histories histories() {
 		return new Histories(new File(temp.getRoot(), "history"));
 	}

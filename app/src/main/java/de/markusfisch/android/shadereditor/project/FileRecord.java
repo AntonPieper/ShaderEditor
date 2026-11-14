@@ -96,9 +96,13 @@ final class FileRecord {
 	private List<Document.Change> changes = new ArrayList<>();
 	// Whether the journal of the file, not in memory, is to go.
 	private boolean retire;
-	// Whether the journal holds the text a reload replaced, which only
-	// undo brings back now; and the revision the document was opened at.
+	// Whether the journal holds text a reload replaced, as its header
+	// says; the state of the document that text was, which a history
+	// must lead back to before the journal may go, -1 when the text is
+	// the document's again after a restart; and the revision the
+	// document was opened at.
 	private boolean replaced;
+	private int replacedState = -1;
 	private int opened;
 
 	FileRecord(ProjectPath path) {
@@ -199,7 +203,26 @@ final class FileRecord {
 		base = header.base();
 		kept = header.kept();
 		journaled = true;
+		replaced = header.replaced();
 		see(found, revision);
+	}
+
+	/**
+	 * Return whether the journal holds text a reload replaced. While
+	 * the file has unsaved text, that is this text: it came back.
+	 */
+	boolean replaced() {
+		return replaced;
+	}
+
+	/**
+	 * Take the text a reload replaced as unsaved text like any other,
+	 * as the user decided; the journal says so by its next write.
+	 */
+	void keepReplaced() {
+		replaced = false;
+		replacedState = -1;
+		journal = -1;
 	}
 
 	/**
@@ -242,11 +265,12 @@ final class FileRecord {
 
 	/**
 	 * Take document, opened from storage at revision, or from the
-	 * journal at revision journal based on it, -1 for none, for
-	 * request; return whether it was taken.
+	 * journal at revision journal based on it, -1 for none, whose text
+	 * a reload replaced when replaced, for request; return whether it
+	 * was taken.
 	 */
 	boolean adoptOpened(Request request, Document document,
-			String revision, int journal) {
+			String revision, int journal, boolean replaced) {
 		if (request != op || this.document != null) {
 			return false;
 		}
@@ -260,7 +284,8 @@ final class FileRecord {
 		writes = acked = Math.max(journal, 0);
 		flushed = opened = document.revision();
 		changes = new ArrayList<>();
-		replaced = false;
+		this.replaced = replaced;
+		replacedState = -1;
 		return true;
 	}
 
@@ -287,8 +312,12 @@ final class FileRecord {
 		}
 		Document.Selection selection = document.selection();
 		// Unsaved text goes from the screen; its journal stays until a
-		// history holds it.
-		replaced = document.isModified() && journaled;
+		// history holds it. One that waits for that already goes on
+		// waiting, whatever is taken from storage meanwhile.
+		if (document.isModified() && journaled) {
+			replaced = true;
+			replacedState = document.state();
+		}
 		document.beginBatch();
 		document.replace(0, document.text().length(), text);
 		document.select(Math.min(selection.anchor(), text.length()),
@@ -359,8 +388,14 @@ final class FileRecord {
 		// The journal header names the new base.
 		journal = -1;
 		if (document != null) {
+			// Unsaved text that is stored now needs no history; a
+			// journal that waits for one beside a saved document does.
+			if (document.isModified()) {
+				replaced = false;
+			}
 			document.markSaved(request.state());
 		} else if (journaled) {
+			replaced = false;
 			// Its journal is the text stored, and goes by the next flush.
 			journaled = false;
 			retire = true;
@@ -406,8 +441,7 @@ final class FileRecord {
 			flushed = revision;
 			if (!journaled && !unsure) {
 				return null;
-			} else if (replaced &&
-					document.historyChars() > Histories.MAX_CHARS) {
+			} else if (replaced && !undoable()) {
 				// No history can hold what the journal holds.
 				return null;
 			}
@@ -421,8 +455,11 @@ final class FileRecord {
 		changes = new ArrayList<>();
 		flushed = revision;
 		journaled = true;
+		// The journal holds the text typed now: whole, so that its
+		// header does not go on saying a reload replaced it.
+		int from = unsure || replaced ? -1 : journal;
 		replaced = false;
-		int from = unsure ? -1 : journal;
+		replacedState = -1;
 		journal = ++writes;
 		return new Flush(new Journal.Header(path, base, kept,
 				kept ? base : null), document.text(), from, writes, changed,
@@ -462,6 +499,19 @@ final class FileRecord {
 		if (flush.history() == null) {
 			failure = "the journal cannot be written";
 		}
+	}
+
+	// Return whether a history of the document, kept now, leads back
+	// to the text the reload replaced.
+	private boolean undoable() {
+		if (document.historyChars() <= Histories.MAX_CHARS) {
+			for (Document.History.Step step : document.history().undo()) {
+				if (step.stateBefore() == replacedState) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/** Forget the document and return it. */
