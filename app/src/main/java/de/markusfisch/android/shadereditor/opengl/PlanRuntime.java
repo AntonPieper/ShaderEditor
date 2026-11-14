@@ -313,6 +313,10 @@ final class PlanRuntime implements ShaderSwap.Build {
 			}
 		}
 		images.recycle();
+		if (camera != null && !camera.texture().isValid()) {
+			errors.add(ProjectDiagnostic.error("Cannot make the texture of " +
+					camera.sampler() + ": GL gave it no name"));
+		}
 		for (int i = 0; glesVersion >= 3 && errors.isEmpty() &&
 				i < passes.size(); ++i) {
 			var linked = passes.get(i);

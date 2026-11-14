@@ -31,6 +31,8 @@ class GlDevice {
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_X};
 
+	private static final String NO_NAME = "GL gave the object no name";
+
 	private int maxTextureUnits;
 	private int maxTextureSize;
 	private int maxCubemapSize;
@@ -59,15 +61,19 @@ class GlDevice {
 		ByteBuffer black = ByteBuffer.allocateDirect(4);
 		black.put(3, (byte) 0xff);
 		emptyTexture2D = createTexture2D();
-		bindTexture(0, emptyTexture2D);
-		fillEmpty(GLES20.GL_TEXTURE_2D, black);
-		setNearest(GLES20.GL_TEXTURE_2D);
-		emptyCubemap = createCubemap();
-		bindTexture(0, emptyCubemap);
-		for (int target : CUBE_MAP_TARGETS) {
-			fillEmpty(target, black);
+		if (emptyTexture2D.isValid()) {
+			bindTexture(0, emptyTexture2D);
+			fillEmpty(GLES20.GL_TEXTURE_2D, black);
+			setNearest(GLES20.GL_TEXTURE_2D);
 		}
-		setNearest(GLES20.GL_TEXTURE_CUBE_MAP);
+		emptyCubemap = createCubemap();
+		if (emptyCubemap.isValid()) {
+			bindTexture(0, emptyCubemap);
+			for (int target : CUBE_MAP_TARGETS) {
+				fillEmpty(target, black);
+			}
+			setNearest(GLES20.GL_TEXTURE_CUBE_MAP);
+		}
 		// Without an image, an external texture samples as opaque black.
 		emptyExternalTexture = createExternalTexture();
 	}
@@ -112,25 +118,22 @@ class GlDevice {
 		GLES20.glViewport(x, y, width, height);
 	}
 
+	// An object whose name could not be made is not valid, and every
+	// call here refuses it before touching GL, so nothing is ever done to
+	// whatever happens to be bound instead.
 	@NonNull
 	GlTexture2D createTexture2D() {
-		int[] textures = new int[1];
-		GLES20.glGenTextures(1, textures, 0);
-		return new GlTexture2D(textures[0]);
+		return new GlTexture2D(genTexture());
 	}
 
 	@NonNull
 	GlCubemap createCubemap() {
-		int[] textures = new int[1];
-		GLES20.glGenTextures(1, textures, 0);
-		return new GlCubemap(textures[0]);
+		return new GlCubemap(genTexture());
 	}
 
 	@NonNull
 	GlExternalTexture createExternalTexture() {
-		int[] textures = new int[1];
-		GLES20.glGenTextures(1, textures, 0);
-		return new GlExternalTexture(textures[0]);
+		return new GlExternalTexture(genTexture());
 	}
 
 	void deleteTexture(@Nullable GlTexture texture) {
@@ -157,6 +160,9 @@ class GlDevice {
 	// Leaves the texture bound to unit.
 	void applySampling(int unit, @NonNull GlTexture texture,
 			@NonNull Sampling sampling) {
+		if (!texture.isValid()) {
+			return;
+		}
 		bindTexture(unit, texture);
 		int target = texture.getTarget();
 		int minFilter = GlSampling.minFilter(sampling);
@@ -197,8 +203,11 @@ class GlDevice {
 	@Nullable
 	String allocateTexture2D(@NonNull GlTexture2D texture, int width,
 			int height, int internalFormat, int type) {
-		bindTexture(0, texture);
+		if (!texture.isValid()) {
+			return NO_NAME;
+		}
 		clearGlErrors();
+		bindTexture(0, texture);
 		GLES20.glTexImage2D(
 				GLES20.GL_TEXTURE_2D,
 				0,
@@ -225,6 +234,10 @@ class GlDevice {
 	String uploadTexture2D(@NonNull GlTexture2D texture,
 			@NonNull Bitmap bitmap,
 			boolean flipY) {
+		if (!texture.isValid()) {
+			return NO_NAME;
+		}
+		clearGlErrors();
 		bindTexture(0, texture);
 		String message = uploadBitmapInternal(
 				GLES20.GL_TEXTURE_2D,
@@ -242,6 +255,10 @@ class GlDevice {
 			int width,
 			int height,
 			@NonNull Buffer rgba) {
+		if (!texture.isValid()) {
+			return NO_NAME;
+		}
+		clearGlErrors();
 		bindTexture(0, texture);
 		String message = uploadRgba(GLES20.GL_TEXTURE_2D, width, height, rgba);
 		if (message == null) {
@@ -253,6 +270,10 @@ class GlDevice {
 	// Takes the faces in CUBE_MAP_TARGETS order.
 	@Nullable
 	String uploadCubemap(@NonNull GlCubemap cubemap, @NonNull Bitmap[] faces) {
+		if (!cubemap.isValid()) {
+			return NO_NAME;
+		}
+		clearGlErrors();
 		bindTexture(0, cubemap);
 		for (int i = 0; i < CUBE_MAP_TARGETS.length; ++i) {
 			String message = uploadBitmapInternal(
@@ -274,6 +295,10 @@ class GlDevice {
 			int face,
 			int side,
 			@NonNull Buffer rgba) {
+		if (!cubemap.isValid()) {
+			return NO_NAME;
+		}
+		clearGlErrors();
 		bindTexture(0, cubemap);
 		String message = uploadRgba(GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
 				side, side, rgba);
@@ -286,11 +311,13 @@ class GlDevice {
 	// Returns why it could not, or null.
 	@Nullable
 	String generateMipmap(@NonNull GlTexture texture) {
-		bindTexture(0, texture);
-		if (texture.getTarget() == GLES11Ext.GL_TEXTURE_EXTERNAL_OES) {
+		if (!texture.isValid()) {
+			return NO_NAME;
+		} else if (texture.getTarget() == GLES11Ext.GL_TEXTURE_EXTERNAL_OES) {
 			return null;
 		}
 		clearGlErrors();
+		bindTexture(0, texture);
 		GLES20.glGenerateMipmap(texture.getTarget());
 		return takeError("glGenerateMipmap");
 	}
@@ -322,10 +349,15 @@ class GlDevice {
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	// A sampler object of a GLES3 context that samples as asked.
+	// A sampler object of a GLES3 context that samples as asked, or 0
+	// when none could be made.
 	int createSampler(@NonNull Sampling sampling) {
 		int[] sampler = new int[1];
+		clearGlErrors();
 		GLES30.glGenSamplers(1, sampler, 0);
+		if (getLastGlError() != GLES20.GL_NO_ERROR || sampler[0] == 0) {
+			return 0;
+		}
 		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MIN_FILTER,
 				GlSampling.minFilter(sampling));
 		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MAG_FILTER,
@@ -349,7 +381,12 @@ class GlDevice {
 	@NonNull
 	GlFramebuffer createFramebuffer() {
 		int[] framebuffers = new int[1];
+		clearGlErrors();
 		GLES20.glGenFramebuffers(1, framebuffers, 0);
+		if (getLastGlError() != GLES20.GL_NO_ERROR) {
+			GLES20.glDeleteFramebuffers(1, framebuffers, 0);
+			return new GlFramebuffer(0);
+		}
 		return new GlFramebuffer(framebuffers[0]);
 	}
 
@@ -368,8 +405,14 @@ class GlDevice {
 		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebufferId);
 	}
 
-	void attachColor(@NonNull GlFramebuffer framebuffer,
+	// Returns why it could not, or null.
+	@Nullable
+	String attachColor(@NonNull GlFramebuffer framebuffer,
 			@NonNull GlTexture2D texture) {
+		if (!framebuffer.isValid() || !texture.isValid()) {
+			return NO_NAME;
+		}
+		clearGlErrors();
 		bindFramebuffer(framebuffer);
 		GLES20.glFramebufferTexture2D(
 				GLES20.GL_FRAMEBUFFER,
@@ -378,11 +421,21 @@ class GlDevice {
 				texture.getId(),
 				0);
 		framebuffer.setColorAttachment(texture);
+		return takeError("glFramebufferTexture2D");
 	}
 
+	// The status of this framebuffer, or 0 when it is not the one bound:
+	// the window's framebuffer is complete whatever failed.
 	int checkFramebufferStatus(@NonNull GlFramebuffer framebuffer) {
+		if (!framebuffer.isValid()) {
+			return 0;
+		}
 		bindFramebuffer(framebuffer);
-		return GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER);
+		int[] bound = new int[1];
+		GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, bound, 0);
+		return bound[0] == framebuffer.getId()
+				? GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER)
+				: 0;
 	}
 
 	@NonNull
@@ -586,6 +639,18 @@ class GlDevice {
 		shader.invalidate();
 	}
 
+	// A texture name, or 0 when none could be made.
+	private static int genTexture() {
+		int[] textures = new int[1];
+		clearGlErrors();
+		GLES20.glGenTextures(1, textures, 0);
+		if (getLastGlError() != GLES20.GL_NO_ERROR) {
+			GLES20.glDeleteTextures(1, textures, 0);
+			return 0;
+		}
+		return textures[0];
+	}
+
 	private static void fillEmpty(int target, @NonNull ByteBuffer pixel) {
 		GLES20.glTexImage2D(
 				target,
@@ -616,7 +681,7 @@ class GlDevice {
 			int width,
 			int height,
 			@NonNull Buffer rgba) {
-		clearGlErrors();
+		// The caller cleared the errors before it bound the texture.
 		GLES20.glTexImage2D(
 				target,
 				0,

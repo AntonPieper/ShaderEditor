@@ -356,7 +356,10 @@ public final class GpuBitmapTransformer {
 				framebufferHeight = dstHeight;
 			}
 
-			device.attachColor(framebuffer, framebufferTexture);
+			String message = device.attachColor(framebuffer, framebufferTexture);
+			if (message != null) {
+				throw new IllegalStateException(message);
+			}
 			int status = device.checkFramebufferStatus(framebuffer);
 			if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
 				throw new IllegalStateException(
