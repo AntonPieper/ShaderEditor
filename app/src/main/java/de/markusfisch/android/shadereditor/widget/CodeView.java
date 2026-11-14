@@ -23,6 +23,7 @@ import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.ContextMenu;
+import android.view.DragEvent;
 import android.view.GestureDetector;
 import android.view.HapticFeedbackConstants;
 import android.view.InputDevice;
@@ -41,6 +42,7 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EdgeEffect;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.OverScroller;
 import android.widget.Toast;
 
@@ -100,7 +102,10 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * handle, or a long press past the end of a line, shows it for the
  * caret. Cut, copy and paste of the toolbar, the
  * keyboard's context menu and the keys are the same KeyCommands; a copy
- * the clipboard refuses says so. A mouse click places the caret, a
+ * the clipboard refuses says so. A long press inside the selection
+ * while its toolbar shows drags its text: a drop here moves it, other
+ * apps may take a copy, and text dragged from elsewhere is inserted
+ * where it is dropped. A mouse click places the caret, a
  * double click selects a word, Shift extends the selection, a drag
  * selects by character or by word, the secondary button opens the
  * context menu and the wheel scrolls; over the text the pointer is the
@@ -150,6 +155,10 @@ public class CodeView extends View {
 	private static final int DRAG_WORDS = 1;
 	private static final int DRAG_HANDLE = 2;
 	private static final int DRAG_MOUSE = 3;
+	// While text dragged by the system is over the view.
+	private static final int DRAG_DROP = 4;
+	// As Editor's DRAG_SHADOW_MAX_TEXT_LENGTH.
+	private static final int SHADOW_LENGTH = 20;
 
 	private final CodeAppearance appearance;
 	private final LineGeometry lines = new LineGeometry();
@@ -428,7 +437,9 @@ public class CodeView extends View {
 							// After a double tap.
 							return;
 						}
-						if (onText(e.getX(), e.getY())) {
+						if (toolbar.isShown() && inSelection(e.getX(), e.getY())) {
+							dragText();
+						} else if (onText(e.getX(), e.getY())) {
 							dragWords(e.getX(), e.getY(), true);
 						} else {
 							dragCaret(e.getX(), e.getY());
@@ -727,6 +738,10 @@ public class CodeView extends View {
 			return mouse(event) || super.onTouchEvent(event);
 		}
 		int action = event.getActionMasked();
+		if (dragging == DRAG_DROP && action != MotionEvent.ACTION_DOWN) {
+			// The touch that started a drag of text ends under it.
+			return true;
+		}
 		if (action == MotionEvent.ACTION_DOWN) {
 			dragging = 0;
 			moved = false;
@@ -820,6 +835,48 @@ public class CodeView extends View {
 	@Override
 	public CharSequence getAccessibilityClassName() {
 		return EditText.class.getName();
+	}
+
+	// Takes text dragged over the view, as TextView does: the caret
+	// follows it, the text scrolls near an edge, and a drop moves text
+	// dragged from here and inserts text from elsewhere, as one step.
+	@Override
+	public boolean onDragEvent(DragEvent event) {
+		if (document == null) {
+			return false;
+		}
+		switch (event.getAction()) {
+			case DragEvent.ACTION_DRAG_STARTED:
+				return event.getClipDescription() != null &&
+						event.getClipDescription().hasMimeType("text/*");
+			case DragEvent.ACTION_DRAG_ENTERED:
+				requestFocus();
+				// A caret without its handle follows the drag.
+				handler.removeCallbacks(hideCaretHandle);
+				caretHandle = false;
+				int offset = offsetAt(event.getX(), event.getY());
+				touch.dragHandle(offset, offset);
+				startDrag(DRAG_DROP, event.getX(), event.getY());
+				return true;
+			case DragEvent.ACTION_DRAG_LOCATION:
+				if (dragging == DRAG_DROP) {
+					dragX = event.getX();
+					dragY = event.getY();
+					dragSelection();
+				}
+				return true;
+			case DragEvent.ACTION_DROP:
+				dragging = 0;
+				touch.drop();
+				drop(event);
+				return true;
+			default:
+				if (dragging == DRAG_DROP) {
+					dragging = 0;
+					touch.drop();
+				}
+				return true;
+		}
 	}
 
 	@Override
@@ -2015,6 +2072,89 @@ public class CodeView extends View {
 				: at > high - zone ? at - high + zone : 0;
 		return Math.round(Math.max(-1, Math.min(1, depth / zone)) *
 				appearance.lineHeight);
+	}
+
+	// Starts a drag of the selection, as TextView does on a long press
+	// inside it while its toolbar shows: other apps may take a copy, and
+	// a drop into this view moves it.
+	private void dragText() {
+		Document.Selection selection = document.selection();
+		if (tooLargeToSend(selection)) {
+			return;
+		}
+		int start = selection.start();
+		int end = selection.end();
+		String text = document.text().substring(start, end);
+		int shown = Math.min(text.length(), SHADOW_LENGTH);
+		if (shown < text.length() &&
+				Character.isHighSurrogate(text.charAt(shown - 1))) {
+			++shown;
+		}
+		TextView shadow = new TextView(getContext());
+		shadow.setTextAppearance(android.R.style.TextAppearance_Large);
+		shadow.setTextColor(appearance.textColor);
+		shadow.setText(text.substring(0, shown));
+		int unspecified = MeasureSpec.makeMeasureSpec(0,
+				MeasureSpec.UNSPECIFIED);
+		shadow.measure(unspecified, unspecified);
+		shadow.layout(0, 0, shadow.getMeasuredWidth(),
+				shadow.getMeasuredHeight());
+		toolbar.close();
+		ClipData clip = ClipData.newPlainText(null, text);
+		DragShadowBuilder builder = new DragShadowBuilder(shadow);
+		TextDrag drag = new TextDrag(document.text(), start, end);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+			startDragAndDrop(clip, builder, drag, View.DRAG_FLAG_GLOBAL);
+		} else {
+			startDrag(clip, builder, drag, 0);
+		}
+	}
+
+	// Moves text dragged from this document to the drop, or inserts
+	// what another drag carries there, as one step with the caret
+	// behind, as TextView does; a drop the document refuses changes
+	// nothing.
+	private void drop(DragEvent event) {
+		int offset = offsetAt(event.getX(), event.getY());
+		if (event.getLocalState() instanceof TextDrag drag &&
+				drag.text() == document.text()) {
+			int to = TouchSelection.dropAt(drag.start(), drag.end(), offset);
+			if (to < 0) {
+				return;
+			}
+			Text moved = document.text().slice(drag.start(), drag.end());
+			int caret = to + moved.length();
+			document.beginBatch();
+			try {
+				document.replace(drag.start(), drag.end(), Text.EMPTY);
+				document.replace(to, to, moved);
+				document.select(caret, caret);
+			} finally {
+				document.endBatch();
+			}
+		} else {
+			ClipData clip = event.getClipData();
+			StringBuilder text = new StringBuilder();
+			for (int i = 0; clip != null && i < clip.getItemCount(); ++i) {
+				if (i > 0) {
+					text.append('\n');
+				}
+				text.append(clip.getItemAt(i).coerceToText(getContext()));
+			}
+			if (text.length() == 0 || keys == null) {
+				return;
+			}
+			select(offset, offset);
+			keys.paste(Text.of(text));
+		}
+		touched = null;
+		bringCaretIntoView();
+	}
+
+	// What a drag of text started here carries: the text it was taken
+	// from, which the document still has if nothing changed it since,
+	// and where.
+	private record TextDrag(Text text, int start, int end) {
 	}
 
 	// Returns whether x and y of the view are inside the selection the

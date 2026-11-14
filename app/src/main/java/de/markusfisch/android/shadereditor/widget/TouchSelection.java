@@ -220,6 +220,18 @@ final class TouchSelection {
 		return Math.max(left, Math.min(right, x));
 	}
 
+	/**
+	 * Return where text dragged from [start, end) goes when it is dropped
+	 * at offset, counted after it was taken out, or -1 if the drop is
+	 * inside it, which moves nothing.
+	 */
+	static int dropAt(int start, int end, int offset) {
+		if (offset >= start && offset <= end) {
+			return -1;
+		}
+		return offset > end ? offset - (end - start) : offset;
+	}
+
 	int anchor() {
 		return anchor;
 	}

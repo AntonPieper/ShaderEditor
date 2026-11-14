@@ -149,4 +149,13 @@ public class TouchSelectionTest {
 		assertTrue(Float.isNaN(TouchSelection.magnifierX(241, 20, 200, 40)));
 		assertTrue(Float.isNaN(TouchSelection.magnifierX(-21, 20, 200, 40)));
 	}
+
+	@Test
+	public void droppedTextMovesUnlessDroppedInsideItself() {
+		// "ab[cd]ef": cd dragged.
+		assertEquals(0, TouchSelection.dropAt(2, 4, 0));
+		assertEquals(4, TouchSelection.dropAt(2, 4, 6));
+		assertEquals(-1, TouchSelection.dropAt(2, 4, 3));
+		assertEquals(-1, TouchSelection.dropAt(2, 4, 4));
+	}
 }
