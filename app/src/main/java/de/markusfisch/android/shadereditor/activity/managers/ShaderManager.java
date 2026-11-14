@@ -341,12 +341,37 @@ public class ShaderManager implements OpenItem {
 	}
 
 	public boolean handleSendText(@Nullable Intent intent) {
-		if (intent == null || intent.getAction() == null) {
+		Shared shared = readShared(intent);
+		if (shared == null) {
 			return false;
+		}
+		if (isModified() && !saveShader()) {
+			return false;
+		}
+
+		PreviewActivity.renderStatus.reset();
+		applyShader(NO_SHADER, shared.text(), 1f,
+				shared.name() != null ? shared.name() : DEFAULT_TITLE);
+		setModified(true);
+		return true;
+	}
+
+	/** Text another app shared or opened, and its name, or null. */
+	public record Shared(@NonNull String text, @Nullable String name) {
+	}
+
+	/**
+	 * Return the text of intent when another app shared or opened text
+	 * with it, and mark the intent as handled; else return null.
+	 */
+	@Nullable
+	public Shared readShared(@Nullable Intent intent) {
+		if (intent == null || intent.getAction() == null) {
+			return null;
 		}
 		if (!Intent.ACTION_SEND.equals(intent.getAction()) &&
 				!Intent.ACTION_VIEW.equals(intent.getAction())) {
-			return false;
+			return null;
 		}
 
 		Uri uri = intent.getData();
@@ -364,17 +389,11 @@ public class ShaderManager implements OpenItem {
 			text = null;
 		}
 		if (text == null) {
-			return false;
+			return null;
 		}
-		if (isModified() && !saveShader()) {
-			return false;
-		}
-
-		PreviewActivity.renderStatus.reset();
 		intent.setAction(null);
-		applyShader(NO_SHADER, text, 1f, getDisplayName(uri));
-		setModified(true);
-		return true;
+		// Text without a file has no name.
+		return new Shared(text, uri != null ? getDisplayName(uri) : null);
 	}
 
 	@Nullable

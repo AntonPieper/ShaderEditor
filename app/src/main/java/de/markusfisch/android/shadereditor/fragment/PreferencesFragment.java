@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.activity.managers.LibraryStart;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
@@ -36,8 +37,11 @@ import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.io.DatabaseExporter;
 import de.markusfisch.android.shadereditor.io.DatabaseImporter;
 import de.markusfisch.android.shadereditor.io.ImportExportAsFiles;
+import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.preference.ShaderListPreference;
+import de.markusfisch.android.shadereditor.project.LibraryMove;
+import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.receiver.BatteryLevelReceiver;
 import de.markusfisch.android.shadereditor.widget.Message;
 
@@ -68,7 +72,7 @@ public class PreferencesFragment
 							Context appContext = context.getApplicationContext();
 							var uri = result.getData().getData();
 							runDatabaseOperation(() -> DatabaseImporter.importDatabase(
-									appContext, uri), R.string.import_failed);
+									appContext, uri), R.string.import_failed, true);
 						}
 					}
 				});
@@ -78,6 +82,7 @@ public class PreferencesFragment
 				isGranted -> {
 					if (isGranted) {
 						ImportExportAsFiles.importFromDirectory(requireActivity());
+						moveImported(null);
 					} else {
 						Message.show(requireActivity(),
 								R.string.read_access_required);
@@ -315,6 +320,12 @@ public class PreferencesFragment
 	}
 
 	private void runDatabaseOperation(Callable<String> operation, int failureMessageId) {
+		runDatabaseOperation(operation, failureMessageId, false);
+	}
+
+	/** @param imports whether it puts shaders into the database */
+	private void runDatabaseOperation(Callable<String> operation,
+			int failureMessageId, boolean imports) {
 		if (databaseOperationInProgress) {
 			return;
 		}
@@ -335,8 +346,46 @@ public class PreferencesFragment
 				}
 				setDatabaseOperationInProgress(false);
 				setSummaries(getPreferenceScreen());
-				Message.show(requireActivity(), result);
+				if (imports) {
+					moveImported(result);
+				} else {
+					Message.show(requireActivity(), result);
+				}
 			});
+		});
+	}
+
+	/**
+	 * Where the shaders are files, what an import put into the database
+	 * becomes files at once, and the move says so, as at a start. Else,
+	 * or when the move moved nothing, imported is told.
+	 */
+	private void moveImported(@Nullable String imported) {
+		if (!getResources().getBoolean(R.bool.project_mode)) {
+			if (imported != null) {
+				Message.show(requireActivity(), imported);
+			}
+			return;
+		}
+		Context app = requireContext().getApplicationContext();
+		DataSource database = dataSource;
+		databaseExecutor.execute(() -> {
+			// Made here: making it reads the disk.
+			Projects projects = new Projects(app);
+			handler.post(() -> projects.moveLibrary(database,
+					UniformTable.builtins().names(),
+					app.getString(R.string.nav_untitled),
+					new LibraryMove.Chosen(
+							ShaderEditorApp.preferences.getDefaultNewShader(),
+							ShaderEditorApp.preferences.getLastOpenedShader()),
+					result -> {
+						String told = LibraryStart.describe(app,
+								result.problem(), result.moved());
+						String shown = told != null ? told : imported;
+						if (shown != null && isAdded()) {
+							Message.show(requireActivity(), shown);
+						}
+					}));
 		});
 	}
 

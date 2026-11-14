@@ -15,6 +15,7 @@ import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
+import de.markusfisch.android.shadereditor.project.legacy.KeptText;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 import de.markusfisch.android.shadereditor.provider.UserFilesProvider;
@@ -229,6 +230,38 @@ public final class Projects {
 			Library.Created created = guarded(() -> library().create(
 					title, untitled, builtIn, picture, this::relocated),
 					problem -> new Library.Created(null, problem));
+			main.post(() -> done.done(created));
+		});
+	}
+
+	/**
+	 * Make a new shader in the library from the text of a shader as the
+	 * database held it, on the queue: an example, text another app
+	 * shared, or a copy of a shader that is still in the database. It
+	 * is converted as the move converts, with the textures it reads
+	 * from the database's textures: see {@link Library#add}. done gets
+	 * its path, or why it was not made, and what of its quality and
+	 * picture could not be kept. To show it, as for {@link #newShader}.
+	 *
+	 * @param reserved the names of the builtin uniforms
+	 * @param title    its title, null for none
+	 * @param untitled the stem of the name of a shader without a title
+	 * @param picture  its picture as a PNG, or null
+	 */
+	public void addShader(DataSource database, Set<String> reserved,
+			String title, String untitled, String text, float quality,
+			byte[] picture, Callback<Library.Created> done) {
+		QUEUE.execute(() -> {
+			Library.Created created = guarded(() -> {
+				DatabaseProjectFiles files = DatabaseProjectFiles.convert(
+						database.texture, text, ProjectLimits.DEFAULT,
+						reserved);
+				KeptText.Kept kept = files.kept();
+				return library().add(title, untitled,
+						new LibraryMove.Converted(files.conversion(),
+								kept.shader(), kept.loss(), files, picture),
+						quality, this::relocated);
+			}, problem -> new Library.Created(null, problem));
 			main.post(() -> done.done(created));
 		});
 	}

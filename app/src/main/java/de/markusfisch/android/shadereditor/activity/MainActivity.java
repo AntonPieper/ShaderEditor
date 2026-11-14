@@ -27,6 +27,7 @@ import java.util.List;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.managers.ExtraKeysManager;
 import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
+import de.markusfisch.android.shadereditor.activity.managers.LibraryAdd;
 import de.markusfisch.android.shadereditor.activity.managers.LibraryLooks;
 import de.markusfisch.android.shadereditor.activity.managers.LibraryStart;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationDrawer;
@@ -87,6 +88,8 @@ public class MainActivity extends AppCompatActivity {
 	private LibraryStart libraryStart;
 	@Nullable
 	private LibraryLooks looks;
+	@Nullable
+	private LibraryAdd libraryAdd;
 	// The editor was given back the text of a file of a folder that the
 	// old editor cannot show; it is not a shader to run.
 	private boolean holdsUnshownFile = false;
@@ -125,6 +128,23 @@ public class MainActivity extends AppCompatActivity {
 				shaderViewManager);
 		if (getResources().getBoolean(R.bool.project_mode)) {
 			holds = new ProjectHolds(new Projects(this));
+			libraryAdd = new LibraryAdd(this, holds.projects(), dataSource,
+					new LibraryAdd.Listener() {
+						@Override
+						public void onAdded(@NonNull String key,
+								@NonNull ProjectPath path) {
+							if (ShaderEditorApp.preferences.autoSave()) {
+								open.save(false);
+							}
+							files.open(key, path, false);
+							shaderListManager.loadShadersAsync();
+						}
+
+						@Override
+						public void onFailed(@NonNull String message) {
+							Message.show(MainActivity.this, message);
+						}
+					});
 			looks = new LibraryLooks(this, holds.projects(), shaderViewManager,
 					() -> shaderListManager.loadShadersAsync(),
 					problem -> Message.show(this, getString(
@@ -198,7 +218,9 @@ public class MainActivity extends AppCompatActivity {
 
 		// Only load the last shader when no incoming text was opened,
 		// or it would replace that text.
-		boolean openedText = shaderManager.handleSendText(getIntent());
+		boolean openedText = libraryAdd != null
+				? addShared(getIntent())
+				: shaderManager.handleSendText(getIntent());
 		// Where the shaders are files, the start opens the library.
 		isInitialLoad = state == null && !openedText && files == null;
 		holdsUnshownFile = state != null && files != null &&
@@ -372,6 +394,9 @@ public class MainActivity extends AppCompatActivity {
 		if (libraryStart != null) {
 			libraryStart.destroy();
 		}
+		if (libraryAdd != null) {
+			libraryAdd.destroy();
+		}
 		if (looks != null) {
 			looks.destroy();
 		}
@@ -390,7 +415,22 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onNewIntent(Intent intent) {
 		super.onNewIntent(intent);
-		shaderManager.handleSendText(intent);
+		if (libraryAdd != null) {
+			addShared(intent);
+		} else {
+			shaderManager.handleSendText(intent);
+		}
+	}
+
+	// Where the shaders are files, text another app shares or opens
+	// becomes a file of the library.
+	private boolean addShared(@Nullable Intent intent) {
+		ShaderManager.Shared shared = shaderManager.readShared(intent);
+		if (shared == null) {
+			return false;
+		}
+		libraryAdd.addShared(shared.name(), shared.text());
+		return true;
 	}
 
 	@Override
@@ -440,6 +480,13 @@ public class MainActivity extends AppCompatActivity {
 
 					@Override
 					public void onOpenExample(@NonNull Samples.Sample sample) {
+						// A copy in the library, as New shader makes one.
+						if (libraryAdd != null) {
+							libraryAdd.addExample(getString(sample.nameId()),
+									sample.resId(), sample.thumbId(),
+									sample.quality());
+							return;
+						}
 						if (shaderManager.isModified()) {
 							shaderManager.saveShader();
 						}
@@ -759,6 +806,14 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onDuplicateShader() {
+				// A shader that was not moved is copied into the library.
+				if (libraryAdd != null && open == shaderManager &&
+						open.can(OpenItem.Action.SAVE_COPY)) {
+					libraryAdd.add(shaderManager.getTitle(),
+							editorFragment.getText(),
+							shaderManager.getQuality(), null);
+					return;
+				}
 				open.saveCopy();
 			}
 

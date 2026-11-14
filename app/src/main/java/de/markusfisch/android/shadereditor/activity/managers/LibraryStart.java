@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -90,7 +91,8 @@ public final class LibraryStart {
 					if (destroyed) {
 						return;
 					}
-					String told = tell(result.problem(), result.moved());
+					String told = describe(activity, result.problem(),
+							result.moved());
 					if (told != null) {
 						listener.onMoved(told);
 					}
@@ -111,7 +113,7 @@ public final class LibraryStart {
 						return;
 					}
 					LibraryMove.Result result = redone.moved();
-					String told = tell(redone.problem() != null
+					String told = describe(activity, redone.problem() != null
 									? redone.problem()
 									: result != null ? result.problem() : null,
 							result != null ? result.moved() : List.of());
@@ -154,14 +156,14 @@ public final class LibraryStart {
 	// it could not begin. Shaders that failed are listed in the
 	// library, not told.
 	@Nullable
-	private String tell(@Nullable String problem,
-			@NonNull List<LibraryMove.Moved> files) {
+	public static String describe(@NonNull Context context,
+			@Nullable String problem, @NonNull List<LibraryMove.Moved> files) {
 		if (problem != null) {
-			return activity.getString(R.string.library_not_moved, problem);
+			return context.getString(R.string.library_not_moved, problem);
 		}
 		int moved = files.size();
 		return moved > 0
-				? activity.getResources().getQuantityString(
+				? context.getResources().getQuantityString(
 						R.plurals.library_moved, moved, moved)
 				: null;
 	}

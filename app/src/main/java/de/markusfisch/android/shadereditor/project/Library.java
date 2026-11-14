@@ -4,9 +4,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 
 /**
@@ -272,6 +275,68 @@ public final class Library {
 			return new Created(null, barrier);
 		}
 		ProjectFiles files = files();
+		Template template;
+		try {
+			template = template(files);
+		} catch (IOException e) {
+			return new Created(null, e.getMessage());
+		}
+		return write(files, Naming.stem(title, untitled),
+				template != null ? template.bytes : builtIn,
+				path -> dress(path, template, builtIn, picture));
+	}
+
+	/**
+	 * Make a new shader in the library's root from the text of a shader
+	 * as the database held it, such as an example or text another app
+	 * shared, converted as the move converts: the textures it reads
+	 * are written to textures/, where one with the same bytes is used
+	 * and another is never written over, and the file gets quality and
+	 * the converted shader's picture. The file is named as by
+	 * {@link #create}.
+	 */
+	Created add(String title, String untitled, LibraryMove.Converted converted,
+			float quality, Relocation relocation) {
+		String barrier = enter(relocation);
+		if (barrier != null) {
+			return new Created(null, barrier);
+		} else if (converted.text() == null) {
+			return new Created(null, converted.loss() != null
+					? converted.loss()
+					: "it has no text");
+		}
+		byte[] bytes = converted.text().getBytes(StandardCharsets.UTF_8);
+		if (bytes.length > Document.MAX_BYTES) {
+			return new Created(null, "it is larger than " +
+					(Document.MAX_BYTES >> 20) + " MiB, the most text a " +
+					"file may hold");
+		}
+		ProjectFiles files = files();
+		String problem = dependencies(files, converted);
+		if (problem != null) {
+			return new Created(null, problem);
+		}
+		byte[] picture = converted.thumbnail();
+		return write(files, Naming.stem(title, untitled), bytes, path -> {
+			boolean kept = settings().setQuality(path, quality);
+			boolean drawn = picture == null || previews().put(path,
+					StoredFiles.revision(bytes), picture);
+			return kept && drawn
+					? null
+					: "the quality or the picture of " + path +
+							" could not be kept";
+		});
+	}
+
+	// What is kept of a file just written; why something is not, or null.
+	private interface Dress {
+		String of(ProjectPath path);
+	}
+
+	// Write bytes to an unused name of stem in the root; a name another
+	// writer took meanwhile is passed over.
+	private static Created write(ProjectFiles files, String stem,
+			byte[] bytes, Dress dress) {
 		ProjectFiles.Listing listing = files.list(null);
 		if (!(listing instanceof ProjectFiles.Entries entries)) {
 			return new Created(null, "the library cannot be listed" +
@@ -279,20 +344,11 @@ public final class Library {
 							? ": " + failed.reason()
 							: ""));
 		}
-		Template template;
-		try {
-			template = template(files);
-		} catch (IOException e) {
-			return new Created(null, e.getMessage());
-		}
 		List<String> names = new ArrayList<>();
 		for (ProjectFiles.Entry entry : entries.entries()) {
 			names.add(entry.name());
 		}
 		Naming naming = new Naming(names);
-		byte[] bytes = template != null ? template.bytes : builtIn;
-		String stem = Naming.stem(title, untitled);
-		// A name another writer took meanwhile is passed over.
 		for (int tries = 0; tries < 16; ++tries) {
 			String name = naming.unused(stem, ShaderLanguage.PASS);
 			ProjectParseResult<ProjectPath> path = ProjectPath.parse(name);
@@ -302,18 +358,66 @@ public final class Library {
 			ProjectFiles.Change change = files.write(path.value(), bytes,
 					null);
 			if (change instanceof ProjectFiles.Done) {
-				return new Created(path.value(), dress(path.value(),
-						template, builtIn, picture));
-			}
-			ProjectFiles.Refused refused = (ProjectFiles.Refused) change;
-			if (refused.refusal() != ProjectFiles.Refusal.EXISTS &&
-					refused.refusal() != ProjectFiles.Refusal.CONFLICT) {
+				return new Created(path.value(), dress.of(path.value()));
+			} else if (!exists((ProjectFiles.Refused) change)) {
 				return new Created(null, name + " cannot be written: " +
-						refused.reason());
+						((ProjectFiles.Refused) change).reason());
 			}
 			naming.take(name);
 		}
 		return new Created(null, "no unused name was found for " + stem);
+	}
+
+	// The textures and generated files the converted shader reads.
+	private static String dependencies(ProjectFiles files,
+			LibraryMove.Converted converted) {
+		LegacyShaderConverter.Result conversion = converted.conversion();
+		for (Map.Entry<ProjectPath, String> file :
+				conversion.files().entrySet()) {
+			if (!file.getKey().equals(LegacyShaderConverter.SHADER)) {
+				String problem = dependency(files, file.getKey(),
+						file.getValue().getBytes(StandardCharsets.UTF_8));
+				if (problem != null) {
+					return problem;
+				}
+			}
+		}
+		for (LegacyShaderConverter.TextureFile texture :
+				conversion.textures()) {
+			ProjectFiles.Read read = converted.files().read(texture.path());
+			if (!(read instanceof ProjectFiles.Content content)) {
+				return read instanceof ProjectFiles.Failed failed
+						? failed.reason()
+						: "the texture \"" + texture.name() + "\" is gone";
+			}
+			String problem = dependency(files, texture.path(),
+					content.bytes());
+			if (problem != null) {
+				return problem;
+			}
+		}
+		return null;
+	}
+
+	// One that is there with these bytes is used; another stays.
+	private static String dependency(ProjectFiles files, ProjectPath path,
+			byte[] bytes) {
+		ProjectFiles.Change change = files.write(path, bytes, null);
+		if (!(change instanceof ProjectFiles.Refused refused)) {
+			return null;
+		} else if (!exists(refused)) {
+			return path + " cannot be written: " + refused.reason();
+		}
+		return files.read(path) instanceof ProjectFiles.Content content &&
+				Arrays.equals(content.bytes(), bytes)
+				? null
+				: path + " is another file than the one this shader " +
+						"reads; rename it and try again";
+	}
+
+	private static boolean exists(ProjectFiles.Refused refused) {
+		return refused.refusal() == ProjectFiles.Refusal.EXISTS ||
+				refused.refusal() == ProjectFiles.Refusal.CONFLICT;
 	}
 
 	/**
