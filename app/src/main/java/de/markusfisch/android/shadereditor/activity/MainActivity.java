@@ -777,7 +777,7 @@ public class MainActivity extends AppCompatActivity {
 			return;
 		}
 		String src = editorFragment.getText();
-		editorFragment.clearError();
+		clearErrors();
 		if (ShaderEditorApp.preferences.doesSaveOnRun()) {
 			PreviewActivity.renderStatus.reset();
 			open.save(false);
@@ -792,7 +792,7 @@ public class MainActivity extends AppCompatActivity {
 
 	// The project of a file runs only behind the code.
 	private void runFile() {
-		editorFragment.clearError();
+		clearErrors();
 		if (ShaderEditorApp.preferences.doesSaveOnRun()) {
 			open.save(false);
 		}
@@ -801,6 +801,13 @@ public class MainActivity extends AppCompatActivity {
 		} else {
 			Message.show(this, R.string.file_runs_behind_code);
 		}
+	}
+
+	// What an earlier run reported is gone, also when this run reports
+	// nothing back, as a preview in a new task does.
+	private void clearErrors() {
+		editorFragment.clearError();
+		findViewById(R.id.show_errors).setVisibility(View.GONE);
 	}
 
 	private void recoverFromCrashIfNeeded() {
