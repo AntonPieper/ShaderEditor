@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.widget;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Build;
 import android.view.ActionMode;
@@ -13,9 +14,12 @@ import android.window.OnBackInvokedDispatcher;
 
 import androidx.annotation.RequiresApi;
 
+import de.markusfisch.android.shadereditor.R;
+
 /**
  * The platform's floating toolbar over the selection or the caret of a
- * view, with the actions its host offers under the platform's names.
+ * view, with the actions its host offers under the platform's names
+ * and, in its overflow, what other apps offer for the selected text.
  * It hides while the host moves what it points at and comes back a
  * moment after; moving the content rectangle hides it for as long as
  * that moves. Back closes it, as the user's dismissal.
@@ -34,6 +38,15 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 
 		/** Do action id; return whether the toolbar is done. */
 		boolean act(int id);
+
+		/** Add what other apps offer for the selection to menu. */
+		void addProcessText(Menu menu);
+
+		/**
+		 * Start intent, from addProcessText, with the selected text;
+		 * return whether it started.
+		 */
+		boolean process(Intent intent);
 
 		/** The toolbar closed; dismissed if the user closed it (Back). */
 		void closed(boolean dismissed);
@@ -75,11 +88,17 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 			} else if (id == android.R.id.paste) {
 				item = menu.add(Menu.NONE, id, i, android.R.string.paste)
 						.setAlphabeticShortcut('v');
+			} else if (id == android.R.id.shareText) {
+				item = menu.add(Menu.NONE, id, i, R.string.share_selection);
 			} else {
 				item = menu.add(Menu.NONE, id, i, android.R.string.selectAll)
 						.setAlphabeticShortcut('a');
 			}
-			item.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+			// Share and select all go to the overflow first.
+			item.setShowAsAction(id == android.R.id.shareText ||
+					id == android.R.id.selectAll
+					? MenuItem.SHOW_AS_ACTION_IF_ROOM
+					: MenuItem.SHOW_AS_ACTION_ALWAYS);
 			if (listener != null) {
 				item.setOnMenuItemClickListener(listener);
 			}
@@ -181,19 +200,20 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 		mode.setTitle(null);
 		mode.setSubtitle(null);
 		mode.setTitleOptionalHint(true);
-		fill(menu, host.actions(), null);
-		return true;
+		return onPrepareActionMode(mode, menu);
 	}
 
 	@Override
 	public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
 		fill(menu, host.actions(), null);
+		host.addProcessText(menu);
 		return true;
 	}
 
 	@Override
 	public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-		if (host.act(item.getItemId())) {
+		Intent intent = item.getIntent();
+		if (intent != null ? host.process(intent) : host.act(item.getItemId())) {
 			close();
 		}
 		return true;
