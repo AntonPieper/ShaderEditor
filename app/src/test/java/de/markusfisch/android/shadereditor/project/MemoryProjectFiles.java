@@ -90,4 +90,27 @@ final class MemoryProjectFiles implements ProjectFiles {
 		files.put(path, new Content(bytes.toByteArray(), revision));
 		return new Done(revision);
 	}
+
+	@Override
+	public Change rename(ProjectPath from, ProjectPath to) {
+		if (!writable) {
+			return ProjectFiles.super.rename(from, to);
+		} else if (!files.containsKey(from)) {
+			return new Refused(Refusal.ABSENT, "there is no " + from);
+		} else if (files.containsKey(to)) {
+			return new Refused(Refusal.EXISTS, to + " exists");
+		}
+		files.put(to, files.remove(from));
+		return new Done(null);
+	}
+
+	@Override
+	public Change delete(ProjectPath path) {
+		if (!writable) {
+			return ProjectFiles.super.delete(path);
+		}
+		return files.remove(path) != null
+				? new Done(null)
+				: new Refused(Refusal.ABSENT, "there is no " + path);
+	}
 }
