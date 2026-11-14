@@ -401,6 +401,7 @@
 	<string name="library_moving">Moving shaders into files…</string>
 	<string name="library_not_moved">The shaders could not be moved into files: %s</string>
 	<string name="library_not_kept">This could not be kept: %s</string>
+	<string name="cannot_install_wallpaper">The wallpaper was not set: %s</string>
 	<plurals name="nav_delete_unsaved">
 		<item quantity="one">%1$d file has unsaved changes, which are deleted too: %2$s</item>
 		<item quantity="few">%1$d files have unsaved changes, which are deleted too: %2$s</item>
