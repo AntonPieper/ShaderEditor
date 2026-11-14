@@ -430,7 +430,7 @@ Binding for the new editor view (EDITOR 4.4); the old widget gets the palette an
 | Selection | A dark blue that keeps text readable | `code_selection` `#B31F4E79` |
 | Handles | The platform's drawables, tinted | `colorPrimary` |
 | Composing text | A 1 dp underline in `colorOnSurface` | – |
-| Error line | A dark tint over the whole line, a 3 dp bar at the gutter's leading edge and the line number in `colorError`. | `code_mark_error` `#8C5C0A14`, `editor_mark_width` |
+| Error line | A dark tint over the whole line, a 3 dp bar at the gutter's leading edge and the line number in `colorError`. The bar and the number are the line's mark: a touch target 48 dp tall, centred on the line, and as wide as the gutter (the numbers and their padding), so that a tap on the text always places the caret, that opens and closes the line's message row. With line numbers off there is no mark; the row still opens by itself | `code_mark_error` `#8C5C0A14`, `editor_mark_width` |
 | Message row | Under one line with errors at a time, as part of the code: the line's messages in the compiler's order, each from a new line, `?textAppearanceBodyMedium` in `colorError` on `colorSurface`, aligned with the code, at most three lines, ending in an ellipsis when text is cut and "+N more" for errors left out. From the gutter's edge to the screen's right edge: 8 dp corners on the left (`se_corner`), square on the right where it touches the edge, 4 dp above and below the text. The mark's bar runs down beside it. Opening, closing or growing it never moves the caret's line | `se_corner`, `se_row_padding_vertical` |
 | Warning line | The same in amber | `code_mark_warning` `#8C4A3000`, `se_warning` |
 | Selection toolbar | The platform's floating toolbar, dark (6.9) | – |
