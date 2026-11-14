@@ -61,6 +61,8 @@ public class ShaderManager implements OpenItem {
 	private String title = "";
 	private float quality = 1f;
 	private boolean isModified = false;
+	@Nullable
+	private Runnable shownListener;
 
 	public ShaderManager(@NonNull AppCompatActivity activity,
 			EditorFragment editorFragment,
@@ -128,6 +130,20 @@ public class ShaderManager implements OpenItem {
 						saveShader();
 					}
 				});
+	}
+
+	/** Call listener before a shader or a new text is put in the editor. */
+	public void setOnShownListener(@Nullable Runnable listener) {
+		shownListener = listener;
+	}
+
+	/** Another item is in the editor now: no shader is selected. */
+	public void deselect() {
+		selectedShaderId = NO_SHADER;
+		title = "";
+		isModified = false;
+		shaderListManager.setSelectedShaderId(NO_SHADER);
+		updatePendingCrashShaderId();
 	}
 
 	public long getSelectedShaderId() {
@@ -457,6 +473,9 @@ public class ShaderManager implements OpenItem {
 			@NonNull String text,
 			float quality,
 			@NonNull String toolbarTitle) {
+		if (shownListener != null) {
+			shownListener.run();
+		}
 		selectedShaderId = shaderId;
 		this.quality = quality;
 		editorFragment.setText(text);

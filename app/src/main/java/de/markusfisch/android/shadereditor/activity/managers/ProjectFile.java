@@ -44,6 +44,7 @@ public final class ProjectFile implements OpenItem {
 	private final String folder;
 	@NonNull
 	private final Listener listener;
+	private final boolean single;
 	private float quality = 1f;
 
 	/**
@@ -57,6 +58,7 @@ public final class ProjectFile implements OpenItem {
 		this.project = project;
 		this.path = path;
 		this.listener = listener;
+		this.single = single;
 		String name = project.name();
 		folder = single || name == null
 				? context.getString(R.string.nav_single_file)
@@ -71,6 +73,11 @@ public final class ProjectFile implements OpenItem {
 	@NonNull
 	public ProjectPath getPath() {
 		return path;
+	}
+
+	/** Return whether its project is a single file. */
+	public boolean isSingle() {
+		return single;
 	}
 
 	@NonNull

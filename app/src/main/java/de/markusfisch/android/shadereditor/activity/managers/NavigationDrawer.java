@@ -69,6 +69,7 @@ import de.markusfisch.android.shadereditor.navigation.Order;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.widget.Message;
@@ -87,6 +88,14 @@ public class NavigationDrawer implements ShaderList {
 		void onDeleteShader(long id);
 
 		void onOpenExample(@NonNull Samples.Sample sample);
+
+		/**
+		 * Open the file at path of the folder or single file opened
+		 * before with key in the editor; return whether it is being
+		 * opened.
+		 */
+		boolean onOpenFile(@NonNull String key, @NonNull ProjectPath path,
+				boolean single);
 	}
 
 	private static final String STATE = "navigation_drawer";
@@ -473,7 +482,9 @@ public class NavigationDrawer implements ShaderList {
 				folder.close();
 			}
 			folder = new FolderSource(activity, holds, listings, handler,
-					key, folders, () -> {
+					key, folders,
+					(path, single) -> host.onOpenFile(key, path, single),
+					() -> {
 				if (folder != null && folder.key().equals(level.key())) {
 					refresh();
 				}
