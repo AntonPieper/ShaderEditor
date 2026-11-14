@@ -96,7 +96,7 @@ final class FolderSource {
 	private final FoldersSource folders;
 	private final Runnable changed;
 	@Nullable
-	private final Looks looks;
+	private Looks looks;
 	// The pictures of the files read, by path, and the wallpaper's file.
 	private final Map<String, byte[]> pictures = new HashMap<>();
 	private String wallpaper;
@@ -268,6 +268,18 @@ final class FolderSource {
 	}
 
 	/** Forgets every folder read, so that each is read again. */
+	/**
+	 * Takes what its rows show besides names, or null for names only,
+	 * when it is known only after the source was made, as the library
+	 * is after a start: what was read is read again, with pictures.
+	 */
+	void setLooks(@Nullable Looks looks) {
+		if (this.looks != looks) {
+			this.looks = looks;
+			forget();
+		}
+	}
+
 	void forget() {
 		readings.clear();
 		changed.run();
