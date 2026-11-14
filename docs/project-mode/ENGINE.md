@@ -145,7 +145,7 @@ requestThumbnail(callback)
 listener: diagnostics, fps
 ```
 
-`ShaderView` holds the `GLSurfaceView.Renderer` adapter, a few lines that call the engine. A new plan is built on the GL thread while the old one keeps drawing, and it replaces the old one only when it links. The EGL context survives edits. All engine state is touched on the GL thread only.
+`ShaderView` holds the `GLSurfaceView.Renderer` adapter, a few lines that call the engine. A new plan is built on the GL thread while the old one keeps drawing, and it replaces the old one only when it links. The plan that becomes current is the newest requested revision at the moment it becomes current, or nothing changes: whether it is still the newest and the swap are one step under the lock that a new request takes, and the plan it replaces is released only after that step. The EGL context survives edits. All engine state is touched on the GL thread only.
 
 A plan is the `RenderPlan` of ARCHITECTURE 2, and `prepare` is its only producer. A DB shader is converted to project files in memory first (SPEC 12), so the engine has one dialect: name-based texture lookup, `///` comments, and backbuffer presets are known to the converter and to nothing else. Images are decoded before the plan reaches the GL thread.
 
