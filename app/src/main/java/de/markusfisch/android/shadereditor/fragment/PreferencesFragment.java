@@ -150,6 +150,14 @@ public class PreferencesFragment
 
 			return;
 		}
+		if (preference instanceof ListPreference) {
+			DialogFragment f = ListPreferenceDialogFragment.newInstance(
+					preference.getKey());
+			// noinspection deprecation
+			f.setTargetFragment(this, 0);
+			f.show(getParentFragmentManager(), "ListPreferenceDialogFragment");
+			return;
+		}
 
 		super.onDisplayPreferenceDialog(preference);
 	}
