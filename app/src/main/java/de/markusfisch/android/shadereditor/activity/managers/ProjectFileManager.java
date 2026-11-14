@@ -73,12 +73,19 @@ public final class ProjectFileManager {
 	private static final String SINGLE = "project_file_single";
 	private static final String TAPPED = "project_file_tapped";
 	private static final String ASKED = "project_file_asked";
+	private static final String QUALITY = "project_file_quality";
 
 	// A file asked for while the old editor was in use, opened once the
 	// screen is made again with the new one; a shader of the library is
 	// in the editor until then.
 	private record Asked(@NonNull String key, @NonNull ProjectPath path,
 			boolean single, boolean tapped) {
+	}
+
+	// The quality of the file that was in the editor before the screen was
+	// made again, for that file once it shows.
+	private record Kept(@NonNull String key, @NonNull ProjectPath path,
+			float quality) {
 	}
 
 	@NonNull
@@ -109,6 +116,8 @@ public final class ProjectFileManager {
 	private String library;
 	@Nullable
 	private Asked askedFor;
+	@Nullable
+	private Kept keptQuality;
 	// The file tapped last until it is known whether it can run.
 	@Nullable
 	private ProjectPath deciding;
@@ -262,6 +271,12 @@ public final class ProjectFileManager {
 		this.key = key;
 		ProjectFile shown = new ProjectFile(activity, project, path, single,
 				listener);
+		Kept kept = keptQuality;
+		keptQuality = null;
+		if (kept != null && kept.key().equals(key) &&
+				kept.path().equals(path)) {
+			shown.setQuality(kept.quality());
+		}
 		file = shown;
 		heard = last(project.events(0));
 		project.setListener(ContextCompat.getMainExecutor(activity),
@@ -390,6 +405,8 @@ public final class ProjectFileManager {
 		state.putString(KEY, key);
 		state.putString(PATH, saved.getPath().toString());
 		state.putBoolean(SINGLE, saved.isSingle());
+		// Outside the library nothing else keeps it.
+		state.putFloat(QUALITY, saved.getQuality());
 	}
 
 	/**
@@ -409,6 +426,10 @@ public final class ProjectFileManager {
 		ProjectPath path = savedPath(state);
 		String restored = state.getString(KEY);
 		if (path != null && restored != null) {
+			if (state.containsKey(QUALITY)) {
+				keptQuality = new Kept(restored, path,
+						state.getFloat(QUALITY));
+			}
 			open(restored, path, state.getBoolean(SINGLE),
 					state.getBoolean(TAPPED));
 		}
