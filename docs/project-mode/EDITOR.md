@@ -35,7 +35,7 @@ The owner's words: a keystroke "must take milliseconds, not 10s, not 100s and de
 | R2 | Paste N characters | 5,000 lines (235 KB): ≤ 8 ms, one frame. 1 MB: ≤ 30 ms. The cost follows the pasted size, not the document size | O(N + log n + visible) |
 | R3 | Open a file of N lines | Main thread ≤ 8 ms in total, at any size. Text on screen, coloured and editable ≤ 100 ms after the request for 5,000 lines and ≤ 300 ms for 50,000, storage time included for a local file | O(visible); the O(N) part is off the main thread |
 | R4 | Scroll and fling | Every frame inside the display's frame time. Main thread ≤ 3 ms per frame at any size | O(visible) |
-| R5 | Select all | ≤ 2 ms | O(visible) |
+| R5 | Select all | the command ≤ 2 ms; the view then scrolls to the end, which is one jump (R3's bound) | O(visible) |
 | R6 | Undo or redo a change of any size, for example a 5,000-line paste | ≤ 4 ms | O(log n + visible) |
 | R7 | Idle | No frames and no main-thread work except the caret blink (≤ 1 ms twice a second) | O(visible) |
 | R8 | Switch to another open file | ≤ 8 ms | O(visible) |
@@ -515,7 +515,7 @@ Two facts the traces added to the design: `getSurroundingText` is the first thin
 | R2 | Paste 235 KB ≤ 8 ms; 1 MB ≤ 30 ms | 2 to 12 ms in total (call 0.7 to 8.6, frame 1.3 to 3.9). 1 MB not measured on the phone | **Met in the faster runs, missed by up to 4 ms in the slower.** Most of the call is splitting the clip into lines. Design change: a paste from the clipboard builds its text on a background thread, which leaves the insert (microseconds) and the frame on the main thread. Not rebuilt and re-measured |
 | R3 | Open: main thread ≤ 8 ms; on screen ≤ 100 ms at 5,000 lines, ≤ 300 ms at 50,000 | Main thread 2.0 to 2.7 ms at both sizes; first frame 30 to 59 ms and 104 to 128 ms after the activity was created, from a file inside the app | **Met** |
 | R4 | Fling: every frame inside the frame time; main thread ≤ 3 ms | Main thread: median ≤ 1.3 ms, slowest 3.1 ms. Whole frame: 90th percentile ≤ 6.5 ms, slowest frame of a run 6.8 to 16.8 ms | **Main thread met. "Every frame" not shown:** a run's slowest frame was above 8.3 ms in about half of the nine runs, and I have each run's maximum, not the count |
-| R5 | Select all ≤ 2 ms | The command is under 0.1 ms. The prototype also scrolls to the end, so its frame is a new screenful (1.1 to 8.7 ms); the design does not scroll | **Command met; the designed frame not measured** |
+| R5 | Select all ≤ 2 ms | The command is under 0.1 ms. The prototype also scrolls to the end, so its frame is a new screenful (1.1 to 8.7 ms); the design scrolls too (owner's decision, 2026-11-14: every Android editor tested scrolls to the end on Select all) | **Met: command under 0.1 ms; the jump measured 2.0 to 4.1 ms on the phone at 50,000 lines** |
 | R6 | Undo a large change ≤ 4 ms | 1.1 to 7.7 ms (call 0.05 to 2.5, frame 1.0 to 7.3) | **Met in the faster runs, missed in the slower,** for the same reason as R2: the frame after it shows a screenful that has to be recorded |
 | R7 | Idle: nothing but the caret | A caret blink is one frame of 0.3 to 1.1 ms on the main thread; nothing else ran | **Met** |
 | R8 | Switch file ≤ 8 ms | Not built. It is one screenful: 1.0 to 8.7 ms | **Likely, not measured** |
