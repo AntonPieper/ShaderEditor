@@ -147,6 +147,33 @@ public class WallpaperSnapshotsTest {
 				ProjectLimits.DEFAULT, BuiltinNames.ALL).plan());
 	}
 
+	// A shader of the database is set after a file was: the database
+	// shader shows, and a reader keeps the files it was told of.
+	@Test
+	public void anUninstalledSnapshotGivesWayToTheDatabaseShader()
+			throws IOException {
+		Library library = library();
+		library.move(database(), "Untitled", new LibraryMove.Chosen(0, 0),
+				null, null);
+		WallpaperSnapshots snapshots = snapshots();
+		assertNull(snapshots.uninstall());
+		assertNull(snapshots.install(prepare(library, "Plasma.frag"),
+				path("Plasma.frag"), 1f, path("Plasma.frag")));
+		WallpaperSnapshots.Snapshot told = snapshots.current();
+
+		assertNull(snapshots.uninstall());
+		assertNull(snapshots.current());
+		assertEquals(path("Clouds.frag"), library.wallpaperFile(
+				snapshots.current(), 2));
+		assertNotNull(Preparation.prepare(told.files(), told.entry(),
+				ProjectLimits.DEFAULT, BuiltinNames.ALL).plan());
+
+		// And a file again after that.
+		assertNull(snapshots.install(prepare(library, "Clouds.frag"),
+				path("Clouds.frag"), 1f, path("Clouds.frag")));
+		assertEquals(path("Clouds.frag"), snapshots.current().entry());
+	}
+
 	@Test
 	public void aReferenceNothingWroteIsNoSnapshot() throws IOException {
 		write(new File(temp.getRoot(), "files/wallpaper/current"),

@@ -161,6 +161,27 @@ public final class LibraryLooks {
 		});
 	}
 
+	/**
+	 * Make a shader of the database what the wallpaper shows: the
+	 * snapshot a file installed, which the service would show first,
+	 * is removed, then set sets the shader. done gets why it was not,
+	 * or null.
+	 */
+	public void setDatabaseWallpaper(@NonNull Runnable set,
+			@NonNull FileTexts.Callback<String> done) {
+		projects.clearWallpaper(problem -> {
+			if (destroyed) {
+				return;
+			}
+			if (problem == null) {
+				set.run();
+				wallpaper = null;
+				kept.run();
+			}
+			done.done(problem);
+		});
+	}
+
 	public void destroy() {
 		destroyed = true;
 		handler.removeCallbacksAndMessages(null);

@@ -133,6 +133,19 @@ public final class WallpaperSnapshots {
 		return null;
 	}
 
+	/**
+	 * Have no snapshot installed, so that the wallpaper shows the
+	 * shader of the database again. The files of the one that was
+	 * installed stay for who is reading them, until the next install.
+	 * Return why it is still installed, or null when none is.
+	 */
+	public String uninstall() {
+		File current = new File(root, CURRENT);
+		return !current.exists() || current.delete()
+				? null
+				: "the snapshot of the wallpaper cannot be removed";
+	}
+
 	private static byte[] readOrNull(File file) {
 		try {
 			return StateFile.read(file);
