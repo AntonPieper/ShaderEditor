@@ -266,6 +266,8 @@
 	<string name="sample_notifications_rationale">Get a notification; a dot appears (notifications)</string>
 	<string name="sample_shapes_name">Shapes</string>
 	<string name="sample_shapes_rationale">Touch the screen; the orbit moves to your finger</string>
+	<string name="sample_skybox_name">Skybox</string>
+	<string name="sample_skybox_rationale">Turn around; the sun stays in the east</string>
 	<string name="sample_sound_name">Sound</string>
 	<string name="sample_sound_rationale">Make a sound; the ring swells (microphone)</string>
 	<string name="sample_swirl_name">Вир</string>
