@@ -3,6 +3,8 @@ package de.markusfisch.android.shadereditor.widget;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public final class ShaderToySource {
@@ -17,13 +19,15 @@ public final class ShaderToySource {
 	// float, iFrame counts frames from 0, iMouse is mouse in its vec4
 	// form, iDate is year, month from 0, day and seconds of the day.
 	// iResolution is a vec3 there and a vec2 here; .xy works.
+	// Each with the declaration of its uniform, which is only made when
+	// the source uses the input: a port may name its own frame or time.
 	private static final String[][] INPUTS = {
-			{"iResolution", "resolution"},
-			{"iGlobalTime", "time"},
-			{"iTime", "time"},
-			{"iFrame", "frame"},
-			{"iMouse", "mouse"},
-			{"iDate", "date"},
+			{"iResolution", "resolution", "uniform vec2 resolution;"},
+			{"iGlobalTime", "time", "uniform float time;"},
+			{"iTime", "time", "uniform float time;"},
+			{"iFrame", "frame", "uniform int frame;"},
+			{"iMouse", "mouse", "uniform vec4 mouse;"},
+			{"iDate", "date", "uniform vec4 date;"},
 	};
 
 	private ShaderToySource() {
@@ -44,17 +48,30 @@ public final class ShaderToySource {
 				"#else\n" +
 				"precision mediump float;\n" +
 				"#endif\n\n" +
-				"uniform vec2 resolution;\n" +
-				"uniform float time;\n" +
-				"uniform int frame;\n" +
-				"uniform vec4 mouse;\n" +
-				"uniform vec4 date;\n\n" +
+				declarations(src) +
 				rename(src) +
 				"\n\nvoid main() {\n" +
 				"\tvec4 fragment_color;\n" +
 				"\tmainImage(fragment_color, gl_FragCoord.xy);\n" +
 				"\tgl_FragColor = fragment_color;\n" +
 				"}\n";
+	}
+
+	// The uniforms of the inputs src uses, each once, and a blank line.
+	@NonNull
+	static String declarations(@NonNull String src) {
+		Set<String> declared = new LinkedHashSet<>();
+		for (String[] input : INPUTS) {
+			if (Pattern.compile("\\b" + input[0] + "\\b").matcher(src)
+					.find()) {
+				declared.add(input[2]);
+			}
+		}
+		StringBuilder sb = new StringBuilder();
+		for (String declaration : declared) {
+			sb.append(declaration).append('\n');
+		}
+		return sb.length() > 0 ? sb.append('\n').toString() : "";
 	}
 
 	// Whole names only: iTimeDelta is not iTime.
