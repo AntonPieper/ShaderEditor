@@ -107,6 +107,15 @@ final class FileRecord {
 		return base;
 	}
 
+	/**
+	 * Return the revision a save expects storage to hold: the base, or
+	 * none for a file without unsaved text that storage was seen not to
+	 * hold, which a save creates again.
+	 */
+	String expected() {
+		return !edited() && found == FileTexts.Found.MISSING ? null : base;
+	}
+
 	/** Return the operation in flight, or null. */
 	Request pending() {
 		return op;
@@ -246,13 +255,14 @@ final class FileRecord {
 	/**
 	 * Give the document text, stored at revision, as one change that
 	 * can be undone, keeping the selection where it can; only when the
-	 * document is as it was when request was asked. Return whether it
-	 * took the text.
+	 * document is still asked, at revision at: as it was when the user
+	 * asked for the stored text, or when a check started. Return
+	 * whether it took the text.
 	 */
-	boolean adoptStored(Request request, Text text, String revision) {
-		if (request != op || document == null ||
-				document != request.document() ||
-				document.revision() != request.revision()) {
+	boolean adoptStored(Request request, Document asked, int at, Text text,
+			String revision) {
+		if (request != op || document == null || document != asked ||
+				document.revision() != at) {
 			return false;
 		}
 		Document.Selection selection = document.selection();
@@ -301,6 +311,10 @@ final class FileRecord {
 	void consent(String revision) {
 		base = revision;
 		kept = true;
+		// No text the document had is what storage holds there.
+		if (document != null) {
+			document.markSaved(-1);
+		}
 		see(revision != null
 				? FileTexts.Found.SAME
 				: FileTexts.Found.MISSING, revision);
