@@ -1,9 +1,9 @@
 precision mediump float;
 
-#pragma se input "passes/state.glsl"
+#pragma se input "passes/state.frag"
 uniform sampler2D nowState;
 
-#pragma se input "passes/state.glsl" frame=previous
+#pragma se input "passes/state.frag" frame=previous
 uniform sampler2D oldState;
 
 uniform vec2 resolution;

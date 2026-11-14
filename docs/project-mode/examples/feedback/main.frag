@@ -1,6 +1,6 @@
 precision mediump float;
 
-#pragma se input "passes/state.glsl"
+#pragma se input "passes/state.frag"
 uniform sampler2D state;
 
 #include "include/palette.glsl"

@@ -1,4 +1,4 @@
 {
   "projectVersion": 1,
-  "entry": "effects/main.glsl"
+  "entry": "effects/main.frag"
 }
