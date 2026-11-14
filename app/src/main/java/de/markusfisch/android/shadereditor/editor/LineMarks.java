@@ -29,6 +29,7 @@ public final class LineMarks {
 	private int[] lines = new int[0];
 	private Severity[] severities = new Severity[0];
 	private int size;
+	private int changes;
 
 	/** Keep the marks of document. */
 	public LineMarks(Document document) {
@@ -67,11 +68,20 @@ public final class LineMarks {
 		lines = new int[count];
 		severities = new Severity[count];
 		size = 0;
+		++changes;
 		for (int i = 0; i < count; ++i) {
 			add(keys[i] / SEVERITIES.length,
 					SEVERITIES[keys[i] % SEVERITIES.length]);
 		}
 		return true;
+	}
+
+	/**
+	 * Return a number that changes whenever a mark is set, moves or is
+	 * dropped.
+	 */
+	public int changes() {
+		return changes;
 	}
 
 	/** Return the severity line is marked with, or null. */
@@ -99,6 +109,7 @@ public final class LineMarks {
 				(after == first && start > before.lineStart(first));
 		int count = size;
 		size = 0;
+		boolean moved = false;
 		for (int i = 0; i < count; ++i) {
 			int line = lines[i];
 			if (line > last) {
@@ -108,11 +119,16 @@ public final class LineMarks {
 				int lineEnd = lineStart + before.line(line).length();
 				if ((start < end && start <= lineStart && lineEnd <= end) ||
 						(lineStart > start && joined)) {
+					moved = true;
 					continue;
 				}
 				line = lineStart < start ? first : after;
 			}
+			moved |= line != lines[i];
 			add(line, severities[i]);
+		}
+		if (moved || size != count) {
+			++changes;
 		}
 	}
 

@@ -10,6 +10,8 @@ import android.text.TextPaint;
 
 import androidx.core.content.ContextCompat;
 
+import com.google.android.material.color.MaterialColors;
+
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.highlighter.Highlight;
@@ -37,6 +39,9 @@ final class CodeAppearance {
 	final int lineNumberColor;
 	final int errorColor;
 	final int warningColor;
+	// Of the bar and the number of a line with an error.
+	final int markColor;
+	final float markWidth;
 	final int selectionColor;
 	final int caretColor;
 	final int handleColor;
@@ -66,6 +71,9 @@ final class CodeAppearance {
 		errorColor = ContextCompat.getColor(context, R.color.syntax_error);
 		warningColor = ContextCompat.getColor(context,
 				R.color.syntax_warning);
+		markColor = MaterialColors.getColor(context,
+				androidx.appcompat.R.attr.colorError, errorColor);
+		markWidth = res.getDimension(R.dimen.editor_mark_width);
 		caretColor = ContextCompat.getColor(context, R.color.editor_caret);
 		selectionColor = ContextCompat.getColor(context,
 				R.color.code_selection);
