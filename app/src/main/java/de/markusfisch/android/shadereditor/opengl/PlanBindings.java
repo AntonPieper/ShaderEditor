@@ -57,12 +57,21 @@ final class PlanBindings {
 		}
 	}
 
-	// An input that reads the previous frame of its own pass, or with a
-	// null input the active backbuffer that no input annotates.
-	record HistoryBinding(
+	// An input that reads a frame of a pass, its own included, or with a
+	// null input the active backbuffer that no input annotates. file is
+	// the pass file of that pass.
+	record PassBinding(
 			@NonNull GlUniform sampler,
 			@NonNull Sampling sampling,
-			@Nullable RenderPlan.Input input) {
+			@Nullable RenderPlan.Input input,
+			int pass,
+			@NonNull Frame frame,
+			@NonNull ProjectPath file) {
+		// The texture it reads in a frame.
+		@NonNull
+		String output() {
+			return pass + " " + frame;
+		}
 	}
 
 	// The active samplers as the text declares them, in unit order.
@@ -72,7 +81,7 @@ final class PlanBindings {
 	final List<ImageBinding> images;
 	// The unannotated backbuffer first.
 	@NonNull
-	final List<HistoryBinding> history;
+	final List<PassBinding> passes;
 	// The active camera sampler declared first, or null.
 	@Nullable
 	final GlUniform camera;
@@ -89,14 +98,14 @@ final class PlanBindings {
 			@NonNull List<GlUniform> samplers,
 			@NonNull Set<String> external,
 			@NonNull List<ImageBinding> images,
-			@NonNull List<HistoryBinding> history,
+			@NonNull List<PassBinding> passes,
 			@Nullable GlUniform camera,
 			@NonNull Sampling cameraSampling,
 			@NonNull List<ProjectDiagnostic> warnings) {
 		this.samplers = List.copyOf(samplers);
 		this.external = external;
 		this.images = List.copyOf(images);
-		this.history = List.copyOf(history);
+		this.passes = List.copyOf(passes);
 		this.camera = camera;
 		this.cameraSampling = cameraSampling;
 		this.warnings = List.copyOf(warnings);
@@ -106,7 +115,7 @@ final class PlanBindings {
 	// compiles.
 	@NonNull
 	static PlanBindings of(
-			@NonNull RenderPlan.Pass pass,
+			@NonNull RenderPlan plan,
 			int self,
 			@NonNull List<GlUniform> reflected,
 			@NonNull String text) {
@@ -120,11 +129,11 @@ final class PlanBindings {
 		}
 		var camera = camera(external, samplers, active);
 		var images = new ArrayList<ImageBinding>();
-		var history = new ArrayList<HistoryBinding>();
+		var passes = new ArrayList<PassBinding>();
 		var declared = new HashSet<String>();
 		var warnings = new ArrayList<ProjectDiagnostic>();
 		var cameraSampling = Sampling.CAMERA;
-		for (var input : pass.inputs()) {
+		for (var input : plan.passes().get(self).inputs()) {
 			declared.add(input.uniform());
 			var source = input.source();
 			var sampler = active.get(input.uniform());
@@ -136,9 +145,9 @@ final class PlanBindings {
 						input.file(), input.line()));
 			} else if (source.kind() == Source.Kind.IMAGE) {
 				images.add(new ImageBinding(sampler, input));
-			} else if (source.kind() == Source.Kind.PASS &&
-					source.pass() == self && input.frame() == Frame.PREVIOUS) {
-				history.add(new HistoryBinding(sampler, input.sampling(), input));
+			} else if (source.kind() == Source.Kind.PASS) {
+				passes.add(new PassBinding(sampler, input.sampling(), input,
+						source.pass(), input.frame(), file(plan, source.pass())));
 			} else if (sampler == camera) {
 				cameraSampling = input.sampling();
 			}
@@ -146,9 +155,10 @@ final class PlanBindings {
 		var backbuffer = active.get(UniformTable.BACKBUFFER);
 		if (backbuffer != null && !declared.contains(backbuffer.name()) &&
 				backbuffer.textureTarget() == GLES20.GL_TEXTURE_2D) {
-			history.add(0, new HistoryBinding(backbuffer, Sampling.PASS, null));
+			passes.add(0, new PassBinding(backbuffer, Sampling.PASS, null, self,
+					Frame.PREVIOUS, file(plan, self)));
 		}
-		return new PlanBindings(samplers, external, images, history, camera,
+		return new PlanBindings(samplers, external, images, passes, camera,
 				cameraSampling, warnings);
 	}
 
@@ -180,7 +190,7 @@ final class PlanBindings {
 	// Whether an active backbuffer that no input annotates reads the
 	// previous frame.
 	boolean readsBackbuffer() {
-		return !history.isEmpty() && history.get(0).input() == null;
+		return !passes.isEmpty() && passes.get(0).input() == null;
 	}
 
 	// The images that active samplers read, each once.
@@ -267,40 +277,72 @@ final class PlanBindings {
 						"settings of " + binding.input().uniform()));
 			}
 		}
-		for (int i = 1; glesVersion < 3 && i < history.size(); ++i) {
-			var earlier = history.get(0);
-			var input = history.get(i).input();
-			if (input != null &&
-					!earlier.sampling().equals(history.get(i).sampling())) {
+		var outputs = new HashMap<String, PassBinding>();
+		for (var binding : passes) {
+			var earlier = outputs.get(binding.output());
+			var input = binding.input();
+			if (earlier == null) {
+				outputs.put(binding.output(), binding);
+			} else if (glesVersion < 3 && input != null &&
+					!earlier.sampling().equals(binding.sampling())) {
 				errors.add(error(input, describe(earlier) + " and " +
-						input.uniform() + " read the previous frame with " +
-						"different settings, which needs OpenGL ES 3.0; this " +
-						"device only has OpenGL ES 2.0"));
+						input.uniform() + " read " + read(binding) +
+						" with different settings, which needs OpenGL ES " +
+						"3.0; this device only has OpenGL ES 2.0"));
 			}
 		}
 		return errors;
 	}
 
-	// Why the previous frame cannot be read as the inputs ask from a
-	// target of this size on a context of this version; empty when it
-	// can. OpenGL ES 2.0 wraps a texture that is not a power of two only
-	// by clamping.
+	// Why, on a context of this version, the inputs cannot read the
+	// passes as they start when a reset draws this pass: the current and
+	// the previous frame of a pass are one texture then, which OpenGL ES
+	// 2.0 samples with one setting. Empty when they can.
 	@NonNull
-	List<ProjectDiagnostic> checkHistory(
-			@NonNull RenderPlan.Size size,
+	List<ProjectDiagnostic> checkOnReset(int glesVersion) {
+		var errors = new ArrayList<ProjectDiagnostic>();
+		var first = new HashMap<Integer, PassBinding>();
+		for (var binding : passes) {
+			var earlier = first.get(binding.pass());
+			var input = binding.input();
+			if (earlier == null) {
+				first.put(binding.pass(), binding);
+			} else if (glesVersion < 3 && input != null &&
+					earlier.frame() != binding.frame() &&
+					!earlier.sampling().equals(binding.sampling())) {
+				errors.add(error(input, describe(earlier) + " and " +
+						input.uniform() + " read " + binding.file() +
+						" with different settings when a reset draws " +
+						input.file() + ", where the current and previous " +
+						"frame of " + binding.file() + " are one texture, " +
+						"which needs OpenGL ES 3.0; this device only has " +
+						"OpenGL ES 2.0"));
+			}
+		}
+		return errors;
+	}
+
+	// Why the outputs of passes cannot be read as the inputs ask from
+	// targets of these sizes, by pass and null where a pass has none, on
+	// a context of this version; empty when they can. OpenGL ES 2.0 wraps
+	// a texture that is not a power of two only by clamping.
+	@NonNull
+	List<ProjectDiagnostic> checkPasses(
+			@NonNull RenderPlan.Size[] sizes,
 			int glesVersion) {
 		var errors = new ArrayList<ProjectDiagnostic>();
-		if (glesVersion >= 3 ||
-				(isPowerOfTwo(size.width()) && isPowerOfTwo(size.height()))) {
-			return errors;
-		}
-		for (var binding : history) {
+		for (var binding : passes) {
 			var input = binding.input();
+			var size = sizes[binding.pass()];
 			var sampling = binding.sampling();
-			if (input != null && (sampling.wrapS() != Wrap.CLAMP ||
-					sampling.wrapT() != Wrap.CLAMP)) {
-				errors.add(error(input, input.uniform() + " reads the " +
-						"previous frame of a target of " + describe(size) +
+			if (glesVersion < 3 && input != null && size != null &&
+					!(isPowerOfTwo(size.width()) &&
+							isPowerOfTwo(size.height())) &&
+					(sampling.wrapS() != Wrap.CLAMP ||
+							sampling.wrapT() != Wrap.CLAMP)) {
+				errors.add(error(input, input.uniform() + " reads " +
+						read(binding) + (readsOwnHistory(binding) ? " of" : ",") +
+						" a target of " + describe(size) +
 						", not a power of two, so OpenGL ES 2.0 reads it " +
 						"only with wrap=clamp, and this device has no " +
 						"OpenGL ES 3.0; change the settings of " +
@@ -393,11 +435,35 @@ final class PlanBindings {
 	}
 
 	@NonNull
-	private static String describe(@NonNull HistoryBinding binding) {
+	private static String describe(@NonNull PassBinding binding) {
 		var input = binding.input();
 		return input == null
 				? binding.sampler().name()
 				: input.uniform() + " (" + input.file() + ":" + input.line() + ")";
+	}
+
+	// What an input reads: the previous frame of its own pass, or a
+	// frame of another pass.
+	@NonNull
+	private static String read(@NonNull PassBinding binding) {
+		if (readsOwnHistory(binding)) {
+			return "the previous frame";
+		}
+		return binding.frame() == Frame.PREVIOUS
+				? "the previous frame of " + binding.file()
+				: binding.file().toString();
+	}
+
+	// An input is in the file of its pass.
+	private static boolean readsOwnHistory(@NonNull PassBinding binding) {
+		var input = binding.input();
+		return binding.frame() == Frame.PREVIOUS && input != null &&
+				binding.file().equals(input.file());
+	}
+
+	@NonNull
+	private static ProjectPath file(@NonNull RenderPlan plan, int pass) {
+		return plan.programs().get(plan.passes().get(pass).program()).file();
 	}
 
 	@NonNull

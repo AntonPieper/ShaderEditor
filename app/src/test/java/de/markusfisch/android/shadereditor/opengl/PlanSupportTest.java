@@ -12,7 +12,6 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic.Severity;
-import de.markusfisch.android.shadereditor.project.RenderPlan;
 
 public class PlanSupportTest {
 	private static final String MAIN = "void main() {}";
@@ -35,17 +34,18 @@ public class PlanSupportTest {
 	}
 
 	@Test
-	public void refusesInputsFromOtherPasses() {
-		var plan = plan("main.frag", lines(
-						"#pragma se input \"b.glsl\"",
+	public void acceptsInputsFromOtherPassesAndTheirPreviousFrames() {
+		assertTrue(PlanSupport.refusals(plan("main.frag", lines(
+						"#pragma se input \"b.frag\"",
 						"uniform sampler2D b;",
-						"#pragma se input \"main.frag\" frame=previous",
-						"uniform sampler2D self;",
+						"#pragma se input \"c.frag\" frame=previous",
+						"uniform sampler2D c;",
 						MAIN),
-				"b.glsl", MAIN);
-		assertEquals(List.of(
-				error("Reading the output of b.glsl needs a newer version " +
-						"of ShaderEditor", 1)), PlanSupport.refusals(plan));
+				"b.frag", MAIN,
+				"c.frag", lines(
+						"#pragma se input \"b.frag\" frame=previous",
+						"uniform sampler2D b;",
+						MAIN))).isEmpty());
 	}
 
 	@Test
@@ -107,31 +107,22 @@ public class PlanSupportTest {
 	}
 
 	@Test
-	public void refusesWhatAnInitialShaderCannotHaveYet() {
-		assertEquals(List.of(new ProjectDiagnostic(Severity.ERROR,
-						"se target initial needs a newer version of " +
-								"ShaderEditor", path("seed.glsl"), 1)),
-				PlanSupport.refusals(plan("main.frag", lines(
-								"#pragma se target initial=\"seed.glsl\"",
-								"uniform sampler2D backbuffer;",
-								MAIN),
-						"seed.glsl", lines(
-								"#pragma se target initial=\"seed.png\"",
-								"uniform sampler2D backbuffer;",
-								MAIN),
-						"seed.png", PNG)));
-		assertEquals(List.of(new ProjectDiagnostic(Severity.ERROR,
-						"Reading the output of b.glsl needs a newer version " +
-								"of ShaderEditor", path("seed.glsl"), 1)),
-				PlanSupport.refusals(plan("main.frag", lines(
-								"#pragma se target initial=\"seed.glsl\"",
-								"uniform sampler2D backbuffer;",
-								MAIN),
-						"seed.glsl", lines(
-								"#pragma se input \"b.glsl\"",
-								"uniform sampler2D b;",
-								MAIN),
-						"b.glsl", MAIN)));
+	public void acceptsInitialContentOfAnyPass() {
+		assertTrue(PlanSupport.refusals(plan("main.frag", lines(
+						"#pragma se input \"state.frag\" frame=previous",
+						"uniform sampler2D state;",
+						MAIN),
+				"state.frag", lines(
+						"#pragma se target initial=\"seed.frag\"",
+						"uniform sampler2D backbuffer;",
+						MAIN),
+				"seed.frag", lines(
+						"#pragma se input \"b.frag\"",
+						"uniform sampler2D b;",
+						"#pragma se target initial=\"seed.png\"",
+						MAIN),
+				"b.frag", MAIN,
+				"seed.png", PNG)).isEmpty());
 	}
 
 	@Test
@@ -142,18 +133,6 @@ public class PlanSupportTest {
 						"uniform samplerCube sky;"),
 				"sky.png", PNG);
 		assertTrue(PlanSupport.refusals(plan).isEmpty());
-	}
-
-	@Test
-	public void refusesMoreThanOnePass() {
-		var plan = plan("main.frag", MAIN);
-		var pass = plan.passes().get(0);
-		var twoPasses = new RenderPlan(plan.programs(), List.of(pass, pass),
-				1, List.of());
-		assertEquals(List.of(new ProjectDiagnostic(Severity.ERROR,
-						"Projects with more than one pass need a newer " +
-								"version of ShaderEditor", null, 0)),
-				PlanSupport.refusals(twoPasses));
 	}
 
 	private static ProjectDiagnostic error(String message, int line) {

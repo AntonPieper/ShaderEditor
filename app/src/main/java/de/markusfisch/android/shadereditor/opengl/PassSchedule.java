@@ -37,6 +37,8 @@ final class PassSchedule {
 	private final boolean[] history;
 	@NonNull
 	private final boolean[] initialized;
+	@NonNull
+	private final boolean[] drawnOnReset;
 
 	private PassSchedule(
 			@NonNull int[] frame,
@@ -44,13 +46,15 @@ final class PassSchedule {
 			@NonNull boolean[] draws,
 			@NonNull boolean[] target,
 			@NonNull boolean[] history,
-			@NonNull boolean[] initialized) {
+			@NonNull boolean[] initialized,
+			@NonNull boolean[] drawnOnReset) {
 		this.frame = frame;
 		this.reset = reset;
 		this.draws = draws;
 		this.target = target;
 		this.history = history;
 		this.initialized = initialized;
+		this.drawnOnReset = drawnOnReset;
 	}
 
 	// backbuffer tells for every pass whether its program reads its
@@ -129,13 +133,20 @@ final class PassSchedule {
 			history[i] = read[i] || (drawnOnReset[i] && readOnReset[i]);
 		}
 		return new PassSchedule(order(passes), reset, draws, target, history,
-				initialized);
+				initialized, drawnOnReset);
 	}
 
 	// Whether entry i of reset draws its initial shader; a later entry
 	// with the same shader stretches what that one drew.
 	boolean drawsInitial(int i) {
 		return draws[i];
+	}
+
+	// Whether a reset draws the pass as an initial shader, which reads
+	// every pass as it starts: its current and its previous frame are
+	// then the same texture.
+	boolean isDrawnOnReset(int pass) {
+		return drawnOnReset[pass];
 	}
 
 	// Whether the pass draws, or holds what it starts as.

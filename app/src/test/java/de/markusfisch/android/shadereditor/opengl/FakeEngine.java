@@ -80,6 +80,28 @@ final class FakeEngine {
 		return device.drawsOf(program(file));
 	}
 
+	// The draws of the presentation shader into a target: the initial
+	// content stretched over a history.
+	@NonNull
+	List<FakeGlDevice.Draw> stretched() {
+		var passes = new java.util.HashSet<Integer>();
+		for (var pass : runtime.passes()) {
+			passes.add(pass.program.getId());
+		}
+		var stretched = new ArrayList<FakeGlDevice.Draw>();
+		for (var draw : device.draws) {
+			if (draw.target() != 0 && !passes.contains(draw.program())) {
+				stretched.add(draw);
+			}
+		}
+		return stretched;
+	}
+
+	// The unit the presentation shader of a draw reads.
+	int stretchUnit(@NonNull FakeGlDevice.Draw draw) {
+		return device.programs.get(draw.program()).getTextureUnit("frame");
+	}
+
 	// The draws onto the surface.
 	@NonNull
 	List<FakeGlDevice.Draw> presented() {
