@@ -105,6 +105,18 @@ final class FolderSource {
 		}
 	}
 
+	void stop(@NonNull Level level) {
+		Reading reading = readings.get(path(level));
+		if (reading != null) {
+			put(path(level), reading.stopped());
+		}
+	}
+
+	void retry(@NonNull Level level) {
+		readings.remove(path(level));
+		changed.run();
+	}
+
 	/**
 	 * Forgets the folders that are not level or above it, so that they
 	 * are read again when entered again.
