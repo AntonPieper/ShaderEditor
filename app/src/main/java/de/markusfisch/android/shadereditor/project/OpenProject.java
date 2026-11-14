@@ -43,11 +43,9 @@ public final class OpenProject {
 
 	/**
 	 * The fewest and the most bytes the documents in memory may take
-	 * besides the one shown and the one used last, see {@link #budget}.
-	 * Beyond them documents are dropped with their undo history and
-	 * opened again on demand: those without unsaved text first, then
-	 * those whose unsaved text the journal holds, each the one used
-	 * least recently first.
+	 * besides the one shown, see {@link #budget}. Beyond them documents
+	 * are dropped with their undo history and opened again on demand,
+	 * the one used least recently first, with unsaved text or without.
 	 */
 	static final long MIN_BUDGET = 8L * 1024 * 1024;
 	static final long MAX_BUDGET = 32L * 1024 * 1024;
@@ -278,7 +276,7 @@ public final class OpenProject {
 	 * runs, else null. A store of null cannot be reached for problem:
 	 * the project opens with its unsaved text and tells that through
 	 * {@link #storage}. budget is how many bytes the documents in
-	 * memory may take besides the one shown and the one used last.
+	 * memory may take besides the one shown.
 	 */
 	static OpenProject open(String id, ProjectFiles store, ProjectPath lone,
 			String problem, ProjectSessions sessions, Executor worker,
@@ -465,12 +463,21 @@ public final class OpenProject {
 	 * kept, which starts unsaved, or of its stored text, unless it is
 	 * in memory already. size is its size as the listing told it, or
 	 * {@link ProjectFiles#UNKNOWN}. done gets null once
-	 * {@link #document} has it, or why it cannot be edited.
+	 * {@link #document} has it, or why it cannot be edited. The
+	 * document stays at least until done returns: {@link #show} it
+	 * there, or it may leave memory again for the budget.
 	 */
 	public void load(ProjectPath path, long size, Callback<String> done) {
-		if (loaded(path) != null) {
-			use(path);
-			main.execute(() -> done.done(null));
+		FileRecord present = loaded(path);
+		if (present != null) {
+			recent.remove(path);
+			recent.add(path);
+			++present.awaited;
+			main.execute(() -> {
+				--present.awaited;
+				done.done(null);
+				trim();
+			});
 			return;
 		}
 		List<Callback<String>> joined = opening.get(path);
@@ -1140,6 +1147,8 @@ public final class OpenProject {
 					done.done(problem);
 				}
 			}
+			// Only now: a callback may have shown the document.
+			trim();
 		});
 	}
 
@@ -1184,7 +1193,8 @@ public final class OpenProject {
 			}
 		};
 		document.addListener(record.listener);
-		use(record.path);
+		recent.remove(record.path);
+		recent.add(record.path);
 		return true;
 	}
 
@@ -1289,6 +1299,7 @@ public final class OpenProject {
 			}
 			changed();
 			done.done(problem);
+			trim();
 		});
 	}
 
@@ -1300,38 +1311,31 @@ public final class OpenProject {
 		trim();
 	}
 
-	// Drop documents while those in memory besides the one shown and
-	// the one used last take more than the budget: those without
-	// unsaved text first, then those whose unsaved text the journal
-	// holds, each the one used least recently first. One with an
-	// operation in flight waits for its outcome, one the journal does
-	// not hold as it is yet for the journal.
+	// Drop documents while those in memory besides the one shown take
+	// more than the budget, the one used least recently first. One with
+	// an operation in flight waits for its outcome, one the journal does
+	// not hold as it is yet for the journal, one a caller is about to be
+	// told of for that call.
 	private void trim() {
 		List<ProjectPath> paths = new ArrayList<>(recent);
-		ProjectPath last = paths.isEmpty() ? null : paths.get(
-				paths.size() - 1);
 		long used = 0;
 		for (ProjectPath path : paths) {
 			FileRecord record = loaded(path);
-			if (record != null && !path.equals(shown) &&
-					!path.equals(last)) {
+			if (record != null && !path.equals(shown)) {
 				used += cost(record.document());
 			}
 		}
-		for (int pass = 0; pass < 2 && used > budget; ++pass) {
-			for (ProjectPath path : paths) {
-				FileRecord record = loaded(path);
-				if (used <= budget) {
-					break;
-				} else if (record == null || path.equals(shown) ||
-						path.equals(last) || record.pending() != null ||
-						!record.settled() ||
-						record.document().isModified() != (pass > 0)) {
-					continue;
-				}
-				used -= cost(record.document());
-				drop(record);
+		for (ProjectPath path : paths) {
+			FileRecord record = loaded(path);
+			if (used <= budget) {
+				break;
+			} else if (record == null || path.equals(shown) ||
+					record.awaited > 0 || record.pending() != null ||
+					!record.settled()) {
+				continue;
 			}
+			used -= cost(record.document());
+			drop(record);
 		}
 	}
 

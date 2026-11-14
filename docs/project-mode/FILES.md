@@ -244,9 +244,9 @@ A 20 KB shader is about 40 KB of text, and with a day's history under 200 KB. A 
 
 **The rule.**
 
-1. The shown document always stays, whatever its size (bounded by the 16 MiB open limit).
-2. A document is pinned while it has an operation in flight or changes the journal has not acknowledged (seconds).
-3. All other loaded documents, clean or modified, share a budget of `memoryClass / 8`, at least 8 MB and at most 32 MB, counted as `2 × characters + lines + 2 × history characters` (the table above; three integers the document already has). When over, the least recently shown is dropped first. Checked at the end of every transition (so finding 36 cannot recur).
+1. The shown document always stays, whatever its size (bounded by the 16 MiB open limit). It is the only one that is exempt: a document that was opened and not shown counts like any other.
+2. A document is pinned while it has an operation in flight or changes the journal has not acknowledged (seconds), and from the moment it is opened until the caller that asked for it was told, so that caller can show it.
+3. All other loaded documents, clean or modified, share a budget of `memoryClass / 8`, at least 8 MB and at most 32 MB, counted as `2 × characters + lines + 2 × history characters` (the table above; three integers the document already has). When over, the least recently used is dropped first, in one order for documents with and without unsaved text. Checked at the end of every transition (so finding 36 cannot recur).
 4. Whole-file analysis (up to 1 MB each, and recomputable) is kept for the shown document only and dropped when another file is shown.
 5. A file with unsaved text that is not loaded costs nothing: today every draft's whole `Text` is built at open and kept **[code]** `EditingSession.restore`.
 
