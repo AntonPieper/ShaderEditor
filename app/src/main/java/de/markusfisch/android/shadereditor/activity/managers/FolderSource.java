@@ -32,6 +32,7 @@ import de.markusfisch.android.shadereditor.navigation.Tap;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
+import de.markusfisch.android.shadereditor.project.SafProjects;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.provider.UserFilesProvider;
 
@@ -292,8 +293,11 @@ final class FolderSource {
 				location == null || location.isEmpty() ? null : location,
 				false,
 				false,
-				// A single file's folder can be opened to load the rest.
-				file ? Listing.Bar.OPEN_FOLDER : Listing.Bar.NEW,
+				// A single file's folder can be opened to load the rest;
+				// nothing can be created in a folder that is lost.
+				file ? Listing.Bar.OPEN_FOLDER : reading.isLost()
+						? Listing.Bar.NONE
+						: Listing.Bar.NEW,
 				List.of(new Listing.Section(null, FileMarks.unsaved(
 						FileActions.of(rows, running(), runs(rows),
 								!file && writable.contains(path)),
@@ -399,7 +403,10 @@ final class FolderSource {
 			granted |= permission.getUri().equals(uri) &&
 					permission.isReadPermission();
 		}
-		return new Access(granted,
+		// A folder or file deleted under a project that opened before
+		// keeps its grant; it is lost all the same.
+		return new Access(granted && SafProjects.open(context, locator)
+				.problem() == null,
 				locator.kind() == ProjectSessions.Kind.DOCUMENT, uri);
 	}
 
