@@ -686,6 +686,17 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Return whether the journal of path is, as the worker acknowledged,
+	 * as it should be now: holding exactly the unsaved text the file
+	 * has, or gone when it has none. False while typing waits for its
+	 * flush, while a write is on its way, and after one failed.
+	 */
+	public boolean settled(ProjectPath path) {
+		FileRecord record = records.get(path);
+		return record == null || record.settled();
+	}
+
+	/**
 	 * Save every file with unsaved text where it is, and mark each
 	 * document saved as it was when its text was taken. done gets the
 	 * outcome by path. A file changed elsewhere is saved only when
