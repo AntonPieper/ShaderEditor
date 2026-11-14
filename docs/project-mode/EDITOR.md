@@ -35,7 +35,7 @@ The owner's words: a keystroke "must take milliseconds, not 10s, not 100s and de
 | R2 | Paste N characters | 5,000 lines (235 KB): ≤ 8 ms, one frame. 1 MB: ≤ 30 ms. The cost follows the pasted size, not the document size | O(N + log n + visible) |
 | R3 | Open a file of N lines | Main thread ≤ 8 ms in total, at any size. Text on screen, coloured and editable ≤ 100 ms after the request for 5,000 lines and ≤ 300 ms for 50,000, storage time included for a local file | O(visible); the O(N) part is off the main thread |
 | R4 | Scroll and fling | Every frame inside the display's frame time. Main thread ≤ 3 ms per frame at any size | O(visible) |
-| R5 | Select all | the command ≤ 2 ms; the view then scrolls to the end, which is one jump (R3's bound) | O(visible) |
+| R5 | Select all | the command ≤ 2 ms; the view then scrolls to the end, one new screenful, ≤ 8 ms as for a file switch (R8) | O(visible) |
 | R6 | Undo or redo a change of any size, for example a 5,000-line paste | ≤ 4 ms | O(log n + visible) |
 | R7 | Idle | No frames and no main-thread work except the caret blink (≤ 1 ms twice a second) | O(visible) |
 | R8 | Switch to another open file | ≤ 8 ms | O(visible) |
