@@ -105,7 +105,14 @@
 				<data android:mimeType="text/plain"/>
 				<data android:mimeType="application/octet-stream"/>
 				<data android:mimeType="application/glsl"/>
+				<!-- The names shaders usually have, as in
+					ShaderLanguage. No type is registered for any of
+					them, so a provider reports plain text or bytes,
+					and the name in the path is all there is to go by. -->
 				<data android:pathPattern=".*\\.glsl"/>
+				<data android:pathPattern=".*\\.frag"/>
+				<data android:pathPattern=".*\\.fs"/>
+				<data android:pathPattern=".*\\.fsh"/>
 			</intent-filter>
 			<intent-filter>
 				<action android:name="android.intent.action.VIEW"/>
@@ -113,8 +120,22 @@
 				<data
 					android:scheme="file"
 					android:mimeType="*/*"
-					android:pathPattern=".*\\.glsl"
 					android:host="*"/>
+				<data android:pathPattern=".*\\.glsl"/>
+				<data android:pathPattern=".*\\.frag"/>
+				<data android:pathPattern=".*\\.fs"/>
+				<data android:pathPattern=".*\\.fsh"/>
+			</intent-filter>
+			<!-- A provider that says the file is a shader, whatever its
+				URI looks like. -->
+			<intent-filter>
+				<action android:name="android.intent.action.VIEW"/>
+				<category android:name="android.intent.category.DEFAULT"/>
+				<data android:scheme="content"/>
+				<data android:mimeType="application/glsl"/>
+				<data android:mimeType="application/x-glsl"/>
+				<data android:mimeType="text/x-glsl"/>
+				<data android:mimeType="text/x-glslsrc"/>
 			</intent-filter>
 			<intent-filter>
 				<action android:name="android.intent.action.SEND"/>
