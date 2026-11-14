@@ -148,14 +148,13 @@ public final class ProjectFile implements OpenItem {
 						path.equals(project.running()), project.runs(path));
 	}
 
-	// Run this file only when it can run and does not.
+	// Run this file only when it can run and does not; the wallpaper
+	// only when something runs, since it is what runs.
 	@Override
 	public boolean offers(@NonNull Action action) {
-		return action == Action.SAVE || action == Action.SAVE_COPY ||
-				action == Action.DELETE
-				? can(action)
-				: action == Action.WALLPAPER ||
-						action == Action.RUN_THIS_FILE && can(action);
+		return (action == Action.SAVE || action == Action.SAVE_COPY ||
+				action == Action.DELETE || action == Action.WALLPAPER ||
+				action == Action.RUN_THIS_FILE) && can(action);
 	}
 
 	// Unsaved text of a read-only file stays where it is, journaled,

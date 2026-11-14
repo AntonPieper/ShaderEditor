@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 
+import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
@@ -74,21 +75,32 @@ public final class LibraryLooks {
 
 	/**
 	 * Hand run the quality to run running of the folder key at: the one
-	 * the library keeps for it, else fallback. Of several asked, only
-	 * the last is answered.
+	 * the library keeps for it, else fallback. Of several runs asked,
+	 * only the last is answered: an older run is replaced by a newer.
 	 */
 	public void quality(@Nullable String key, @Nullable ProjectPath running,
 			float fallback, @NonNull Quality run) {
 		int asked = ++runs;
+		read(key, running, fallback, quality -> {
+			if (asked == runs) {
+				run.run(quality);
+			}
+		});
+	}
+
+	// The quality the library keeps for running of the folder key, else
+	// fallback; every request is answered, unless destroyed first.
+	private void read(@Nullable String key, @Nullable ProjectPath running,
+			float fallback, @NonNull Quality answer) {
 		if (!inLibrary(key) || running == null) {
-			run.run(fallback);
+			answer.run(fallback);
 			return;
 		}
 		execute(() -> {
 			float quality = projects.library().settings().quality(running);
 			handler.post(() -> {
-				if (!destroyed && asked == runs) {
-					run.run(quality);
+				if (!destroyed) {
+					answer.run(quality);
 				}
 			});
 		});
@@ -146,6 +158,7 @@ public final class LibraryLooks {
 			@NonNull FileTexts.Callback<String> done) {
 		ProjectPath entry = project.running();
 		if (entry == null) {
+			done.done(context.getString(R.string.nothing_runs_here));
 			return;
 		}
 		boolean ofLibrary = inLibrary(key);
@@ -153,7 +166,9 @@ public final class LibraryLooks {
 			Preparation preparation = build != null
 					? build.preparation()
 					: null;
-			quality(key, entry, fallback, quality -> projects.setWallpaper(
+			// A request of its own: a run asked for meanwhile must not
+			// replace it, nor it the run.
+			read(key, entry, fallback, quality -> projects.setWallpaper(
 					preparation, entry, quality, ofLibrary ? entry : null,
 					problem -> {
 						if (destroyed) {
