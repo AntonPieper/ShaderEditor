@@ -2587,6 +2587,161 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void deleteAsksBeforeUnsavedTextGoesAndThenNothingBringsItBack()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = shown(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		flush(project);
+		File histories = new File(new File(sessionsDir, id), "history");
+		assertEquals(1, histories.list().length);
+
+		// Not without being asked, and not for a text shown before.
+		OpenProject.Moved first = await(done -> project.delete(a, Map.of(),
+				done));
+		Map<ProjectPath, Integer> texts =
+				((OpenProject.Unsaved) first).texts();
+		assertEquals(Set.of(a), texts.keySet());
+		assertSame(document, project.document(a));
+		assertEquals("stored", read("a.glsl"));
+		edit(project, document, "mine, and more");
+		OpenProject.Moved stale = await(done -> project.delete(a, texts,
+				done));
+		assertTrue(stale instanceof OpenProject.Unsaved);
+		assertNotEquals(texts, ((OpenProject.Unsaved) stale).texts());
+		assertEquals("stored", read("a.glsl"));
+		flush(project);
+		assertEquals("mine, and more", journaled("a.glsl"));
+
+		OpenProject.Moved deleted = await(done -> project.delete(a,
+				((OpenProject.Unsaved) stale).texts(), done));
+
+		assertEquals(new OpenProject.Deleted(a), deleted);
+		assertEquals(List.of(new OpenProject.Event(1, deleted)),
+				project.events(0));
+		assertFalse(new File(root, "a.glsl").exists());
+		assertNull(project.document(a));
+		assertNull(project.shown());
+		assertTrue(project.unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
+		assertEquals(0, histories.list().length);
+		// Neither a document someone kept, nor a timer, a fence or the
+		// closing of the project.
+		edit(project, document, "typed into what was closed");
+		steps.later.run();
+		project.persist();
+		flush(project);
+		project.close();
+		settle();
+		assertTrue(kept().isEmpty());
+		OpenProject restarted = open();
+		assertTrue(restarted.unsaved().isEmpty());
+		assertNull(restarted.shown());
+		assertNotNull(load(restarted, "a.glsl"));
+	}
+
+	@Test
+	public void deleteClosesWhatHasNoUnsavedTextAndKeepsWhatIsTypedSince()
+			throws IOException {
+		write("lib/clean.glsl", "c");
+		write("lib/unsaved.glsl", "u");
+		write("lib/other.glsl", "o");
+		OpenProject first = open();
+		edit(first, document(first, "lib/other.glsl"), "other, unsaved");
+		flush(first);
+		OpenProject project = open();
+		ProjectPath clean = path("lib/clean.glsl");
+		ProjectPath unsaved = path("lib/unsaved.glsl");
+		ProjectPath other = path("lib/other.glsl");
+		Document cleanDocument = shown(project, "lib/clean.glsl");
+		Document unsavedDocument = document(project, "lib/unsaved.glsl");
+		edit(project, unsavedDocument, "mine");
+		List<Integer> heard = new ArrayList<>();
+		project.setListener(Runnable::run,
+				() -> heard.add(project.events(0).size()));
+
+		// A file without unsaved text needs no asking.
+		OpenProject.Moved one = await(done -> project.delete(clean,
+				Map.of(), done));
+		assertEquals(new OpenProject.Deleted(clean), one);
+		assertNull(project.document(clean));
+		assertTrue(heard.contains(1));
+		assertFalse(new File(root, "lib/clean.glsl").exists());
+
+		// A folder asks for every file with unsaved text under it, in
+		// memory or not.
+		OpenProject.Moved asked = await(done -> project.delete(path("lib"),
+				Map.of(), done));
+		Map<ProjectPath, Integer> texts =
+				((OpenProject.Unsaved) asked).texts();
+		assertEquals(Set.of(unsaved, other), texts.keySet());
+
+		// Storage deleted it; before main knows, the user types.
+		project.delete(path("lib"), texts, moved -> {
+		});
+		worker.step();
+		edit(project, unsavedDocument, "later");
+		settle();
+
+		assertFalse(new File(root, "lib").exists());
+		assertSame(unsavedDocument, project.document(unsaved));
+		assertEquals(Set.of(unsaved), project.unsaved());
+		assertEquals(FileTexts.Found.MISSING, project.found(unsaved));
+		flush(project);
+		assertEquals(Set.of(unsaved), kept());
+		assertEquals("later", journaled("lib/unsaved.glsl"));
+		assertNotSame(cleanDocument, project.document(clean));
+	}
+
+	@Test
+	public void deleteOfAFileGoneAlreadyTakesTheProjectsPartOfIt()
+			throws IOException {
+		OpenProject project = editedElsewhere();
+		ProjectPath a = path("a.glsl");
+		flush(project);
+		assertTrue(new File(root, "a.glsl").delete());
+		refresh(project);
+		assertEquals("the file was deleted", project.conflicts().get(a));
+
+		OpenProject.Moved asked = await(done -> project.delete(a, Map.of(),
+				done));
+		OpenProject.Moved deleted = await(done -> project.delete(a,
+				((OpenProject.Unsaved) asked).texts(), done));
+
+		assertEquals(new OpenProject.Deleted(a), deleted);
+		assertTrue(project.unsaved().isEmpty());
+		assertTrue(project.conflicts().isEmpty());
+		assertTrue(kept().isEmpty());
+	}
+
+	@Test
+	public void deleteThatStorageRefusesLeavesEverythingAsItWas()
+			throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open(new FailingFiles(
+				new DirectoryProjectFiles(root)));
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl");
+		edit(project, document, "mine");
+		OpenProject.Moved asked = await(done -> project.delete(a, Map.of(),
+				done));
+
+		OpenProject.Moved refused = await(done -> project.delete(a,
+				((OpenProject.Unsaved) asked).texts(), done));
+
+		assertEquals(ProjectFiles.Refusal.UNSUPPORTED,
+				((OpenProject.Refused) refused).refusal());
+		assertSame(document, project.document(a));
+		assertTrue(project.events(0).isEmpty());
+		assertEquals("stored", read("a.glsl"));
+		edit(project, document, "mine still");
+		flush(project);
+		assertEquals("mine still", journaled("a.glsl"));
+		assertNull(new ProjectSessions(sessionsDir).journal(id).move());
+	}
+
+	@Test
 	public void renameTheProcessDiedInIsFinishedWhenTheProjectOpens()
 			throws IOException {
 		OpenProject project = open();

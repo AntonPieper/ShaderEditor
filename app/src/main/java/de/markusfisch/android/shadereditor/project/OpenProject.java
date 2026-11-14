@@ -132,8 +132,8 @@ public final class OpenProject {
 	}
 
 	/**
-	 * What renaming or deleting a file or folder did: {@link Renamed}
-	 * or {@link Refused}.
+	 * What renaming or deleting a file or folder did: {@link Renamed},
+	 * {@link Deleted}, {@link Unsaved} or {@link Refused}.
 	 */
 	public interface Moved {
 	}
@@ -144,6 +144,25 @@ public final class OpenProject {
 	 * the new paths, with their unsaved text and undo.
 	 */
 	public record Renamed(ProjectPath from, ProjectPath to)
+			implements Moved {
+	}
+
+	/**
+	 * The file or folder at path is deleted, in storage and for the
+	 * project: the documents of the files it held there are closed and
+	 * their unsaved text, as far as its deletion was asked for, is gone
+	 * with its journal and undo history.
+	 */
+	public record Deleted(ProjectPath path) implements Moved {
+	}
+
+	/**
+	 * Nothing was deleted: these files at or under the path have
+	 * unsaved text, or unsaved text that cannot be read. texts names
+	 * for each the text it has now; passed to {@link #delete} as it is,
+	 * it deletes them with that text, unless one changed meanwhile.
+	 */
+	public record Unsaved(Map<ProjectPath, Integer> texts)
 			implements Moved {
 	}
 
@@ -1123,6 +1142,111 @@ public final class OpenProject {
 				}
 			});
 		});
+	}
+
+	/**
+	 * Delete the file or folder at path, in storage and for the
+	 * project, whether the project holds files there or not. A save, a
+	 * reload or a check of a held file that is under way is finished
+	 * first. Unsaved text is not deleted without being asked for: when a
+	 * file at or under path has some that discard does not name as it
+	 * is now, nothing is deleted and done gets {@link Unsaved}; show
+	 * those files to the user and pass its texts as discard to delete
+	 * them. Then the journals and undo histories go with the stored
+	 * files, in the same task, and the documents are closed; one that
+	 * was typed in after the call stays, as unsaved text of a file that
+	 * is not there. A file that is gone already is deleted for the
+	 * project all the same. done gets {@link Deleted}, {@link Unsaved}
+	 * or {@link Refused}; everyone else learns of a deletion through
+	 * the listener and {@link #events}.
+	 */
+	public void delete(ProjectPath path, Map<ProjectPath, Integer> discard,
+			Callback<Moved> done) {
+		Journal.Move move = new Journal.Move(path, null);
+		Refused refused = refusal(move);
+		if (refused != null) {
+			main.execute(() -> done.done(refused));
+			return;
+		}
+		persist();
+		Map<FileRecord, FileRecord.Request> held = new LinkedHashMap<>();
+		hold(move, held, () -> {
+			Map<ProjectPath, Integer> unsaved = new LinkedHashMap<>();
+			boolean asked = true;
+			for (FileRecord record : held.keySet()) {
+				if (record.unsaved()) {
+					unsaved.put(record.path, record.stamp());
+					asked &= Integer.valueOf(record.stamp()).equals(
+							discard.get(record.path));
+				}
+			}
+			if (!asked) {
+				release(held, null);
+				done.done(new Unsaved(unsaved));
+				return;
+			}
+			// From here on none of this text is written again.
+			for (FileRecord record : held.keySet()) {
+				record.discard(true);
+			}
+			texts.move(move, change -> {
+				if (change instanceof ProjectFiles.Refused failed) {
+					for (FileRecord record : held.keySet()) {
+						record.discard(false);
+					}
+					release(held, null);
+					done.done(new Refused(failed.refusal(),
+							failed.reason()));
+				} else {
+					deleted(move, held, done);
+				}
+			});
+		});
+	}
+
+	// Storage made the deletion and the journals went with it: the
+	// files held are closed, but for those typed in since.
+	private void deleted(Journal.Move move,
+			Map<FileRecord, FileRecord.Request> held,
+			Callback<Moved> done) {
+		for (Map.Entry<FileRecord, FileRecord.Request> entry :
+				held.entrySet()) {
+			FileRecord record = entry.getKey();
+			if (record.discarded()) {
+				Document document = record.document();
+				if (document != null) {
+					document.removeListener(record.listener);
+					record.drop();
+				}
+				record.discard(false);
+				record.journaled = false;
+				record.unreadable = null;
+				records.remove(record.path);
+				recent.remove(record.path);
+				// What waited for it finds no file.
+				record.end(entry.getValue());
+			} else {
+				record.orphan();
+				end(record, entry.getValue());
+				flush(record);
+			}
+		}
+		if (shown != null && move.touches(shown)) {
+			// The session forgets it; a document that stayed is shown.
+			keptShown = null;
+			shown = loaded(shown) != null ? shown : null;
+		}
+		if (chosen != null && move.touches(chosen)) {
+			chosen = null;
+		}
+		++generation;
+		worker.execute(() -> follow(sessions, id, move));
+		Deleted deleted = new Deleted(move.from());
+		event(deleted);
+		keepSelection(false);
+		changed();
+		trim();
+		updateRunning(() -> done.done(deleted));
 	}
 
 	/**
