@@ -1,11 +1,9 @@
 package de.markusfisch.android.shadereditor.adapter;
 
 import android.annotation.SuppressLint;
-import android.graphics.Typeface;
 import android.text.SpannableString;
 import android.text.Spanned;
-import android.text.TextPaint;
-import android.text.style.MetricAffectingSpan;
+import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -16,6 +14,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.color.MaterialColors;
 
 import java.util.List;
 
@@ -65,16 +65,15 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 
 	public class ViewHolder extends RecyclerView.ViewHolder {
 		private final Button btn;
-		private final Typeface boldFont;
+		private final int typedColor;
 		private String item = "";
 
 		public ViewHolder(@NonNull View itemView) {
 			super(itemView);
 			btn = itemView.findViewById(R.id.btn);
-			Typeface font = ShaderEditorApp.preferences.getFont();
-			btn.setTypeface(font);
-			// A bundled font's family holds its real bold weight.
-			boldFont = Typeface.create(font, Typeface.BOLD);
+			btn.setTypeface(ShaderEditorApp.preferences.getFont());
+			typedColor = MaterialColors.getColor(btn,
+					androidx.appcompat.R.attr.colorPrimary);
 			btn.setOnClickListener((v) -> {
 				onInsertListener.onInsert(item.substring(prefixLength()));
 			});
@@ -89,36 +88,16 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 
 		public void update(String item) {
 			this.item = item;
-			// The typed prefix stays regular, the part to insert is emphasised.
-			Object emphasis = ShaderEditorApp.preferences.emphasiseCompletionsWithOutline()
-					? new OutlineSpan()
-					: new FontSpan(boldFont);
+			// The typed prefix is marked in the accent, the rest keeps the
+			// row's text colour; one face, so both parts share a baseline.
 			SpannableString text = new SpannableString(item);
-			text.setSpan(emphasis, prefixLength(), item.length(),
+			text.setSpan(new ForegroundColorSpan(typedColor), 0, prefixLength(),
 					Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 			btn.setText(text);
 		}
 
 		private int prefixLength() {
 			return Math.min(position, item.length());
-		}
-	}
-
-	private static final class FontSpan extends MetricAffectingSpan {
-		private final Typeface typeface;
-
-		private FontSpan(@NonNull Typeface typeface) {
-			this.typeface = typeface;
-		}
-
-		@Override
-		public void updateDrawState(@NonNull TextPaint paint) {
-			paint.setTypeface(typeface);
-		}
-
-		@Override
-		public void updateMeasureState(@NonNull TextPaint paint) {
-			paint.setTypeface(typeface);
 		}
 	}
 }

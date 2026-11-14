@@ -13,7 +13,6 @@ import androidx.preference.PreferenceManager;
 import java.util.HashMap;
 import java.util.Map;
 
-import de.markusfisch.android.shadereditor.BuildConfig;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.PictureLimit;
 
@@ -44,7 +43,6 @@ public class Preferences {
 	public static final String EXPORT_DATABASE = "export_database";
 	public static final String SHOW_LINE_NUMBERS = "show_line_numbers";
 	public static final String NEW_EDITOR = "new_editor";
-	public static final String COMPLETION_EMPHASIS = "completion_emphasis";
 	public static final String SHOW_EXTRA_KEYS = "show_extra_keys";
 	public static final String AUTO_HIDE_EXTRA_KEYS = "auto_hide_extra_keys";
 	public static final String HIDE_NATIVE_SUGGESTIONS = "hide_native_suggestions";
@@ -93,7 +91,6 @@ public class Preferences {
 	private boolean autoSave = true;
 	private boolean showLineNumbers = true;
 	private boolean newEditor = false;
-	private boolean completionOutline = false;
 	private boolean showExtraKeys = true;
 	private boolean autoHideExtraKeys = true;
 	private boolean hideNativeSuggestions = true;
@@ -180,10 +177,6 @@ public class Preferences {
 		newEditor = preferences.getBoolean(
 				NEW_EDITOR,
 				newEditor);
-		if (BuildConfig.DEBUG) {
-			completionOutline = "outline".equals(
-					preferences.getString(COMPLETION_EMPHASIS, null));
-		}
 		showExtraKeys = preferences.getBoolean(
 				SHOW_EXTRA_KEYS,
 				showExtraKeys);
@@ -402,10 +395,6 @@ public class Preferences {
 
 	public boolean useNewEditor() {
 		return newEditor;
-	}
-
-	public boolean emphasiseCompletionsWithOutline() {
-		return BuildConfig.DEBUG && completionOutline;
 	}
 
 	public boolean showExtraKeys() {

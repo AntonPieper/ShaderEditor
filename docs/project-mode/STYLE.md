@@ -436,7 +436,7 @@ Binding for the new editor view (EDITOR 4.4); the old widget gets the palette an
 | Selection toolbar | The platform's floating toolbar, dark (6.9) | – |
 | Extra-keys row | Bar level, 44 dp, a hairline on top | `se_level_bar`, `se_key_height` |
 | Tab key | 44 × 40 dp, `se_corner`, `ic_keyboard_tab` | `se_surface_3` |
-| Keys and completions | Code font 14 sp, at least 44 dp wide, hairlines between completions, all in `colorOnSurface`; nothing is dimmed. The part already typed is regular, the part a tap inserts is bold, in the real bold face each bundled code font ships | – |
+| Keys and completions | Code font 14 sp, regular, at least 44 dp wide, hairlines between completions, in `colorOnSurface`; nothing is dimmed. In a completion the part already typed is in `colorPrimary` (8.6 : 1 on the bar with the fixed blue), as code editors mark matched letters; the part a tap inserts keeps `colorOnSurface`. One face for the whole completion: a weight difference was not visible on a phone, and a bold face set the text slightly higher than the regular one beside it | `colorPrimary` |
 
 ### 6.11 Which surface for what
 
