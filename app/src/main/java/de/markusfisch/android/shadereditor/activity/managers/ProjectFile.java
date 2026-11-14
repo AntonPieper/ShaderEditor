@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.navigation.FileActions;
 import de.markusfisch.android.shadereditor.navigation.FileLine;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -118,9 +119,8 @@ public final class ProjectFile implements OpenItem {
 	@Override
 	public boolean can(@NonNull Action action) {
 		return action == Action.SAVE || action == Action.DELETE && !single ||
-				action == Action.RUN_THIS_FILE &&
-				!path.equals(project.running()) &&
-				project.runs(path) == OpenProject.Runs.YES;
+				action == Action.RUN_THIS_FILE && FileActions.offersRun(
+						path.equals(project.running()), project.runs(path));
 	}
 
 	// Run this file only when it can run and does not.

@@ -32,6 +32,7 @@ import de.markusfisch.android.shadereditor.navigation.Tap;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
+import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.provider.UserFilesProvider;
 
 /**
@@ -284,6 +285,9 @@ final class FolderSource {
 				}
 			}, Reading.SLOW_MILLIS);
 		}
+		List<Row> rows = reading.rows(level,
+				context.getString(R.string.nav_show_more),
+				context.getString(R.string.nav_shown_of));
 		return new Listing(title(level),
 				location == null || location.isEmpty() ? null : location,
 				false,
@@ -291,12 +295,31 @@ final class FolderSource {
 				// A single file's folder can be opened to load the rest.
 				file ? Listing.Bar.OPEN_FOLDER : Listing.Bar.NEW,
 				List.of(new Listing.Section(null, FileMarks.unsaved(
-						FileActions.of(reading.rows(level,
-								context.getString(R.string.nav_show_more),
-								context.getString(R.string.nav_shown_of)),
-								running(), !file && writable.contains(path)),
+						FileActions.of(rows, running(), runs(rows),
+								!file && writable.contains(path)),
 						unsaved()))),
 				reading.notice());
+	}
+
+	// What is known of whether the files of rows can run: a name of a
+	// language that does not run says so, and the text of a file in
+	// memory does; of any other file it is told when it runs.
+	@NonNull
+	private Map<String, OpenProject.Runs> runs(@NonNull List<Row> rows) {
+		Map<String, OpenProject.Runs> runs = new HashMap<>();
+		for (Row row : rows) {
+			var path = ProjectPath.parse(row.key());
+			if (row.kind() == Row.Kind.FOLDER || !path.isSuccess()) {
+				continue;
+			} else if (ShaderLanguage.listed(row.name()) ==
+					ShaderLanguage.UNSUPPORTED) {
+				runs.put(row.key(), OpenProject.Runs.NO);
+			} else if (project != null &&
+					project.document(path.value()) != null) {
+				runs.put(row.key(), project.runs(path.value()));
+			}
+		}
+		return runs;
 	}
 
 	@Nullable
