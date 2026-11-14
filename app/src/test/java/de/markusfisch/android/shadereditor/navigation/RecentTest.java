@@ -40,6 +40,14 @@ public class RecentTest {
 	}
 
 	@Test
+	public void aTapGoesIntoWhatWasOpened() {
+		Row row = Recent.rows(List.of(folder("abcd1234", "Kept", 0,
+				false)), "single file").get(0);
+		assertEquals(Tap.ENTER, Tap.of(row.kind(), false));
+		assertEquals(Level.root("abcd1234"), row.enters());
+	}
+
+	@Test
 	public void aFolderWithoutAPlaceHasNoSecondLine() {
 		assertNull(Recent.rows(List.of(new Recent("a", false, "Files", "",
 				0, false)), "single file").get(0).detail());

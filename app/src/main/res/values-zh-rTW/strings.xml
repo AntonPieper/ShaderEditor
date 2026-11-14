@@ -313,5 +313,7 @@
 	<string name="nav_cannot_pick">No app on this device can choose files</string>
 	<string name="nav_cannot_open_folder">This folder cannot be opened</string>
 	<string name="nav_cannot_open_file">This file cannot be opened</string>
+	<string name="nav_show_more">Show more</string>
+	<string name="nav_shown_of">%1$d of %2$d</string>
 	<string name="copy_failed">無法複製到剪貼簿</string>
 </resources>
