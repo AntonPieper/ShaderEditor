@@ -12,6 +12,19 @@ public final class ShaderToySource {
 			"void\\s+mainImage\\s*\\(");
 	private static final Pattern PATTERN_MAIN = Pattern.compile(
 			"void\\s+main\\s*\\(");
+	// ShaderToy's inputs that are one of the app's uniforms, of the
+	// same type and value: iTime and iGlobalTime are seconds as a
+	// float, iFrame counts frames from 0, iMouse is mouse in its vec4
+	// form, iDate is year, month from 0, day and seconds of the day.
+	// iResolution is a vec3 there and a vec2 here; .xy works.
+	private static final String[][] INPUTS = {
+			{"iResolution", "resolution"},
+			{"iGlobalTime", "time"},
+			{"iTime", "time"},
+			{"iFrame", "frame"},
+			{"iMouse", "mouse"},
+			{"iDate", "date"},
+	};
 
 	private ShaderToySource() {
 	}
@@ -33,17 +46,24 @@ public final class ShaderToySource {
 				"#endif\n\n" +
 				"uniform vec2 resolution;\n" +
 				"uniform float time;\n" +
+				"uniform int frame;\n" +
 				"uniform vec4 mouse;\n" +
 				"uniform vec4 date;\n\n" +
-				src.replaceAll("iResolution", "resolution")
-						.replaceAll("iGlobalTime", "time")
-						.replaceAll("iMouse", "mouse")
-						.replaceAll("iDate", "date") +
+				rename(src) +
 				"\n\nvoid main() {\n" +
 				"\tvec4 fragment_color;\n" +
 				"\tmainImage(fragment_color, gl_FragCoord.xy);\n" +
 				"\tgl_FragColor = fragment_color;\n" +
 				"}\n";
+	}
+
+	// Whole names only: iTimeDelta is not iTime.
+	@NonNull
+	static String rename(@NonNull String src) {
+		for (String[] input : INPUTS) {
+			src = src.replaceAll("\\b" + input[0] + "\\b", input[1]);
+		}
+		return src;
 	}
 
 	/**
