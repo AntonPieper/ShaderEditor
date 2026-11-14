@@ -42,8 +42,7 @@ public class LifecycleSequencesTest {
 		WORKER,
 		/**
 		 * The same, while nothing can be written: neither journal nor
-		 * history from a saved file, the history alone after unsaved
-		 * text, where a reload depends on it.
+		 * history, or the history alone, see {@link Start}.
 		 */
 		FAIL,
 		/** The main thread takes what was posted to it. */
@@ -60,11 +59,39 @@ public class LifecycleSequencesTest {
 		REOPEN
 	}
 
-	// How many steps a sequence has at most, from a file that is saved
-	// and from one with unsaved text the journal holds; steps that would
-	// change nothing where they stand are left out.
-	private static final int LENGTH = 5;
-	private static final int LENGTH_HELD = 4;
+	// Where the sequences start, how many steps one has at most, and how
+	// many sequences that makes; steps that would change nothing where
+	// they stand are left out. The number changes when a step becomes
+	// possible or impossible somewhere: then say why, and set it again.
+	private enum Start {
+		/**
+		 * A saved file; FAIL fails journal and history. Without RELOAD,
+		 * which the other starts take further in fewer steps.
+		 */
+		SAVED(5, SAVED_SEQUENCES),
+		/** The same; what is typed has a character no file can hold. */
+		UNSTORABLE(4, UNSTORABLE_SEQUENCES),
+		/** Unsaved text the journal holds; FAIL fails the history. */
+		HELD(4, HELD_SEQUENCES),
+		/**
+		 * The same, replaced by a reload whose history could not be
+		 * written: the journal waits for one.
+		 */
+		RELOADED(4, RELOADED_SEQUENCES);
+
+		private final int length;
+		private final int sequences;
+
+		Start(int length, int sequences) {
+			this.length = length;
+			this.sequences = sequences;
+		}
+	}
+
+	private static final int SAVED_SEQUENCES = 3371;
+	private static final int UNSTORABLE_SEQUENCES = 1340;
+	private static final int HELD_SEQUENCES = 1925;
+	private static final int RELOADED_SEQUENCES = 1931;
 	private static final ProjectPath A = ProjectPath.parse("a.glsl").value();
 
 	@Rule
@@ -98,27 +125,32 @@ public class LifecycleSequencesTest {
 
 	@Test
 	public void reopeningGivesWhatWasHeldOrWhatWasTyped() {
-		explore(false, LENGTH, new ArrayList<>());
-		explore(true, LENGTH_HELD, new ArrayList<>());
+		List<String> counted = new ArrayList<>();
+		List<String> expected = new ArrayList<>();
+		for (Start start : Start.values()) {
+			sequences = 0;
+			explore(start, new ArrayList<>());
+			counted.add(start + " " + sequences);
+			expected.add(start + " " + start.sequences);
+		}
 
-		// 8458 and 1925 when this was written.
-		assertTrue("sequences: " + sequences, sequences > 5000);
+		assertEquals(expected, counted);
 	}
 
-	private void explore(boolean held, int length, List<Step> prefix) {
-		World world = new World(held);
-		String name = (held ? "held, " : "") + prefix;
+	private void explore(Start start, List<Step> prefix) {
+		World world = new World(start);
+		String name = start + " " + prefix;
 		for (Step step : prefix) {
 			world.take(step, name);
 		}
-		List<Step> next = prefix.size() < length
+		List<Step> next = prefix.size() < start.length
 				? world.possible(prefix)
 				: List.of();
 		world.die(name);
 		++sequences;
 		for (Step step : next) {
 			prefix.add(step);
-			explore(held, length, prefix);
+			explore(start, prefix);
 			prefix.remove(prefix.size() - 1);
 		}
 	}
@@ -163,11 +195,16 @@ public class LifecycleSequencesTest {
 		private int floor;
 		private int typed;
 		private boolean closed;
+		// Whether the user ever asked for a reload.
+		private boolean reloaded;
+		private final Start start;
 		private final File[] failing;
 		// Whether everything close asked for could be written so far.
 		private boolean fence;
 
-		private World(boolean held) {
+		private World(Start start) {
+			this.start = start;
+			boolean held = start == Start.HELD || start == Start.RELOADED;
 			failing = held
 					? new File[]{history}
 					: new File[]{drafts, history};
@@ -189,6 +226,15 @@ public class LifecycleSequencesTest {
 				steps.settle();
 				see(Step.MAIN, "held");
 				assertEquals(1, floor);
+			}
+			if (start == Start.RELOADED) {
+				for (Step step : List.of(Step.RELOAD, Step.WORKER, Step.MAIN,
+						Step.FAIL, Step.MAIN)) {
+					take(step, "reloaded");
+				}
+				assertEquals("stored", text);
+				assertEquals("typed 1", journaled());
+				assertEquals("typed 1", replaced);
 			}
 		}
 
@@ -214,8 +260,9 @@ public class LifecycleSequencesTest {
 			for (Step step : Step.values()) {
 				if (switch (step) {
 					// The same twice in a row is as good as once.
-					case TYPE, RELOAD, SAVE, BACKGROUND -> !closed &&
-							step != last;
+					case TYPE, SAVE, BACKGROUND -> !closed && step != last;
+					case RELOAD -> !closed && step != last &&
+							start != Start.SAVED;
 					case CLOSE -> !closed;
 					case TIMER -> !closed && steps.later.size() > 0;
 					case WORKER, FAIL -> steps.worker.size() > 0;
@@ -231,7 +278,8 @@ public class LifecycleSequencesTest {
 		private void take(Step step, String sequence) {
 			switch (step) {
 				case TYPE -> document.replace(0, document.text().length(),
-						Text.of("typed " + ++typed));
+						Text.of("typed " + ++typed +
+								(start == Start.UNSTORABLE ? " \uD800" : "")));
 				case TIMER -> steps.later.run();
 				case WORKER -> steps.worker.run();
 				case MAIN -> steps.main.run();
@@ -241,8 +289,11 @@ public class LifecycleSequencesTest {
 					setWritable(true, failing);
 					fence = false;
 				}
-				case RELOAD -> project.reload(A, problem -> {
-				});
+				case RELOAD -> {
+					reloaded = true;
+					project.reload(A, problem -> {
+					});
+				}
 				case SAVE -> project.save(true, outcomes -> {
 				});
 				case BACKGROUND -> {
@@ -302,9 +353,12 @@ public class LifecycleSequencesTest {
 			assertEquals(sequence, 0, project.damagedJournals());
 			if (!document.isModified() &&
 					project.found(A) == FileTexts.Found.SAME) {
-				assertEquals(sequence + ": saved, but stored otherwise",
-						now, new String(store.read(A).bytes(),
-								StandardCharsets.UTF_8));
+				// Exactly: not what its bytes would be.
+				assertTrue(sequence + ": saved, but stored \"" +
+								new String(store.read(A).bytes(),
+										StandardCharsets.UTF_8) + "\"",
+						FileTexts.holds(store.read(A).bytes(),
+								document.text()));
 			}
 		}
 
@@ -320,6 +374,15 @@ public class LifecycleSequencesTest {
 					"\", but the user had " + may + " of " + texts,
 					may.contains(found));
 			assertNull(sequence, project.unreadable(A));
+			// Text that comes back after a reload says so, where its
+			// journal could be written; no other text does.
+			if (found.equals(replaced) && failing.length == 1) {
+				assertTrue(sequence + ": came back without saying so",
+						project.replaced(A));
+			} else if (!reloaded) {
+				assertTrue(sequence + ": says a reload replaced it",
+						!project.replaced(A));
+			}
 			if (replaced != null && !found.equals(replaced)) {
 				assertTrue(sequence + ": no undo to what was reloaded",
 						document.canUndo());
