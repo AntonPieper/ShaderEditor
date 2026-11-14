@@ -141,6 +141,13 @@ public class ShaderView extends GLSurfaceView {
 		}
 	}
 
+	// Shows a prepared project at this quality.
+	public void setPlan(@NonNull Preparation preparation, float quality) {
+		runtimeOwner = preparation;
+		engine.setPlan(preparation, quality);
+		requestRender();
+	}
+
 	// The runtime of the shader set last while it is shown, or -1.
 	public long getRuntimeNanos() {
 		var owner = runtimeOwner;

@@ -16,6 +16,7 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
+import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
@@ -68,6 +69,12 @@ public class ShaderViewManager {
 	public void setShader(@NonNull String text, float quality) {
 		setQuality(quality);
 		shaderView.setShader(text, quality);
+	}
+
+	/** Run a prepared project at quality. */
+	public void setPlan(@NonNull Preparation preparation, float quality) {
+		setQuality(quality);
+		shaderView.setPlan(preparation, quality);
 	}
 
 	public void setVisibility(boolean visible) {

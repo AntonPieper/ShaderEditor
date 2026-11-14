@@ -7,7 +7,9 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
@@ -15,7 +17,10 @@ import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Tap;
+import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.OpenProject;
+import de.markusfisch.android.shadereditor.project.Preparation;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 
@@ -36,6 +41,11 @@ public final class ProjectFileManager {
 		void onNotRestored();
 	}
 
+	/** Runs what a project runs. */
+	public interface Runner {
+		void run(@NonNull Preparation preparation, float quality);
+	}
+
 	private static final String KEY = "project_file_key";
 	private static final String PATH = "project_file_path";
 	private static final String SINGLE = "project_file_single";
@@ -48,8 +58,19 @@ public final class ProjectFileManager {
 	private final ProjectHolds holds;
 	@NonNull
 	private final Listener listener;
+	@NonNull
+	private final Runner runner;
 	@Nullable
 	private ProjectFile file;
+	// The build of what runs asked for last, of which project and file.
+	@Nullable
+	private OpenProject.Build build;
+	@Nullable
+	private OpenProject built;
+	@Nullable
+	private ProjectPath builtEntry;
+	// The line to go to once the file asked for last is shown, or 0.
+	private int line;
 	@Nullable
 	private String key;
 	// The file tapped last until it is known whether it can run.
@@ -61,8 +82,9 @@ public final class ProjectFileManager {
 
 	public ProjectFileManager(@NonNull AppCompatActivity activity,
 			@NonNull EditorFragment editor, @NonNull ProjectHolds holds,
-			@NonNull Listener listener) {
+			@NonNull Listener listener, @NonNull Runner runner) {
 		this.activity = activity;
+		this.runner = runner;
 		this.editor = editor;
 		this.holds = holds;
 		this.listener = listener;
@@ -90,6 +112,24 @@ public final class ProjectFileManager {
 		return open(key, path, single, true);
 	}
 
+	/**
+	 * Show the file at path of the project of the file in the editor at
+	 * line, from 1, as an error does that the list leads to; what runs
+	 * stays.
+	 */
+	public void openAt(@NonNull ProjectPath path, int line) {
+		ProjectFile shown = file;
+		if (shown == null) {
+			return;
+		} else if (path.equals(shown.getPath())) {
+			editor.navigateToLine(line);
+			return;
+		}
+		if (open(key, path, shown.isSingle(), false)) {
+			this.line = line;
+		}
+	}
+
 	private boolean open(@NonNull String key, @NonNull ProjectPath path,
 			boolean single, boolean tapped) {
 		if (!ShaderEditorApp.preferences.useNewEditor()) {
@@ -100,6 +140,7 @@ public final class ProjectFileManager {
 			return tapped;
 		}
 		int ask = ++asked;
+		line = 0;
 		holds.open(key, opened -> {
 			OpenProject project = opened.project();
 			if (project == null) {
@@ -153,8 +194,49 @@ public final class ProjectFileManager {
 		if (unreadable != null) {
 			listener.onFailed(problem(path, unreadable));
 		}
+		if (line > 0) {
+			editor.navigateToLine(line);
+			line = 0;
+		}
 		deciding = tapped ? path : null;
 		decide();
+		if (project != built ||
+				!Objects.equals(project.running(), builtEntry)) {
+			run();
+		}
+	}
+
+	/**
+	 * Run what the project of the file in the editor runs, prepared
+	 * from the text its documents have now.
+	 */
+	public void run() {
+		ProjectFile shown = file;
+		if (shown == null) {
+			return;
+		}
+		OpenProject project = shown.getProject();
+		built = project;
+		builtEntry = project.running();
+		project.prepare(UniformTable.types(), prepared -> {
+			ProjectFile now = file;
+			if (now == null || now.getProject() != project) {
+				return;
+			}
+			build = prepared;
+			Preparation preparation = prepared.preparation();
+			if (preparation != null) {
+				runner.run(preparation, now.getQuality());
+			}
+		});
+	}
+
+	/** Keep what the build run last reported, by file. */
+	public void onDiagnostics(@NonNull List<ProjectDiagnostic> diagnostics) {
+		if (file != null && build != null &&
+				file.getProject() == built) {
+			file.getProject().setDiagnostics(build, diagnostics);
+		}
 	}
 
 	/** Let the file in the editor go, as another item is shown there. */
@@ -165,6 +247,9 @@ public final class ProjectFileManager {
 		}
 		file = null;
 		deciding = null;
+		build = null;
+		built = null;
+		builtEntry = null;
 		OpenProject project = left.getProject();
 		project.setEditorState(left.getPath(), editor.getDocumentState());
 		project.setListener(null, null);
@@ -192,6 +277,7 @@ public final class ProjectFileManager {
 			if (unprotected != null) {
 				listener.onFailed(unprotected);
 			}
+			run();
 			listener.onChanged();
 		});
 	}
@@ -236,6 +322,11 @@ public final class ProjectFileManager {
 
 	private void changed() {
 		decide();
+		// Another file was chosen to run, or found to run.
+		if (file != null && file.getProject() == built &&
+				!Objects.equals(built.running(), builtEntry)) {
+			run();
+		}
 		listener.onChanged();
 	}
 
