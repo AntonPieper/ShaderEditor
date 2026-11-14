@@ -20,19 +20,29 @@ import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LifecycleRegistry;
 
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
+import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
+import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
+import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectLimits;
+import de.markusfisch.android.shadereditor.project.WallpaperSnapshots;
 import de.markusfisch.android.shadereditor.receiver.BatteryLevelReceiver;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
 public class ShaderWallpaperService extends WallpaperService {
 	private static final String TAG = "ShaderWallpaper";
+	// Reads an installed snapshot off the main thread.
+	private static final Executor LOADER =
+			Executors.newSingleThreadExecutor();
 
 	private static ShaderWallpaperEngine engine;
 
@@ -76,6 +86,10 @@ public class ShaderWallpaperService extends WallpaperService {
 		private final Handler mainHandler = new Handler(Looper.getMainLooper());
 		private ShaderWallpaperView view;
 		private long runtimeShaderId;
+		// Whether an installed snapshot is shown, and the last time one
+		// was looked for.
+		private boolean snapshotShown;
+		private int snapshotRequest;
 		// GL thread only.
 		private String shownDiagnostics = "";
 
@@ -182,7 +196,7 @@ public class ShaderWallpaperService extends WallpaperService {
 
 		// Saves the runtime of the shader set last while it is shown.
 		private void saveRuntime() {
-			if (view == null || isPreview()) {
+			if (view == null || isPreview() || snapshotShown) {
 				return;
 			}
 			long nanos = view.getRuntimeNanos();
@@ -192,10 +206,67 @@ public class ShaderWallpaperService extends WallpaperService {
 			}
 		}
 
+		// A wallpaper that was set from a file shows the snapshot
+		// installed for it; any other the shader of the database.
 		private void setShader() {
+			if (view == null ||
+					!getResources().getBoolean(R.bool.project_mode)) {
+				setDatabaseShader();
+				return;
+			}
+			int request = ++snapshotRequest;
+			WallpaperSnapshots snapshots = WallpaperSnapshots.of(
+					getFilesDir());
+			LOADER.execute(() -> {
+				WallpaperSnapshots.Snapshot first = snapshots.current();
+				Preparation prepared = prepare(first);
+				if (first != null && prepared.plan() == null) {
+					// Its files may have gone while they were read,
+					// because another was installed: that one, then.
+					first = snapshots.current();
+					prepared = prepare(first);
+				}
+				WallpaperSnapshots.Snapshot snapshot = first;
+				Preparation preparation = prepared;
+				mainHandler.post(() -> {
+					if (view == null || request != snapshotRequest) {
+						return;
+					} else if (snapshot == null) {
+						setDatabaseShader();
+					} else if (preparation.plan() == null) {
+						// What is shown stays; a build that failed
+						// is never what the wallpaper is set to.
+						String text = WallpaperDiagnostics.text(
+								preparation.diagnostics());
+						Log.e(TAG, "snapshot: " + text);
+						if (!text.isEmpty()) {
+							Toast.makeText(ShaderWallpaperService.this,
+									text, Toast.LENGTH_LONG).show();
+						}
+					} else {
+						saveRuntime();
+						snapshotShown = true;
+						view.setPlan(preparation, snapshot.quality());
+					}
+				});
+			});
+		}
+
+		// LOADER thread. Null when there is no snapshot.
+		@Nullable
+		private Preparation prepare(
+				@Nullable WallpaperSnapshots.Snapshot snapshot) {
+			return snapshot != null
+					? Preparation.prepare(snapshot.files(), snapshot.entry(),
+							ProjectLimits.DEFAULT, UniformTable.builtins())
+					: null;
+		}
+
+		private void setDatabaseShader() {
 			DataRecords.Shader shader = getWallpaperShader();
 			if (view != null && shader != null) {
 				saveRuntime();
+				snapshotShown = false;
 				runtimeShaderId = ShaderEditorApp.preferences.getWallpaperShader();
 				view.setShader(shader.fragmentShader(), shader.quality(),
 						isPreview()

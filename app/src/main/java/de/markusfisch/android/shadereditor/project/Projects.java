@@ -270,6 +270,26 @@ public final class Projects {
 				: "the picture cannot be kept", done);
 	}
 
+	/**
+	 * Return what the live wallpaper shows when it was set from a
+	 * file, to read from off the main thread.
+	 */
+	public WallpaperSnapshots wallpaper() {
+		return WallpaperSnapshots.of(context.getFilesDir());
+	}
+
+	/**
+	 * Make the shader of a build what the live wallpaper shows, on the
+	 * queue: see {@link WallpaperSnapshots#install}. done gets why it
+	 * was not installed, or null. The wallpaper service looks again
+	 * when the preference of the wallpaper shader changes.
+	 */
+	public void setWallpaper(Preparation preparation, ProjectPath entry,
+			float quality, ProjectPath origin, Callback<String> done) {
+		change(() -> wallpaper().install(preparation, entry, quality,
+				origin), done);
+	}
+
 	// What a task of the queue answers; nothing it throws leaves the
 	// queue.
 	private interface Task<T> {
