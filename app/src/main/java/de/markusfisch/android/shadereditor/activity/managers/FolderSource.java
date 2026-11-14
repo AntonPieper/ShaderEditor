@@ -310,11 +310,13 @@ final class FolderSource {
 				}
 			}, Reading.SLOW_MILLIS);
 		}
+		// A level that is sorted is sorted whole, then cut into pages.
 		List<Row> rows = reading.rows(level,
 				context.getString(R.string.nav_show_more),
-				context.getString(R.string.nav_shown_of));
+				context.getString(R.string.nav_shown_of),
+				looks != null ? order : null);
 		if (looks != null) {
-			rows = order.sort(dressed(rows));
+			rows = dressed(rows);
 		}
 		return new Listing(title(level),
 				location == null || location.isEmpty() ? null : location,

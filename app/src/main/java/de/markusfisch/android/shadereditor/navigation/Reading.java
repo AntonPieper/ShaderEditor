@@ -96,11 +96,20 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 	 *                 "%1$d of %2$d"
 	 */
 	public List<Row> rows(Level level, String more, String shownOf) {
+		return rows(level, more, shownOf, null);
+	}
+
+	/**
+	 * The rows as {@link #rows(Level, String, String)}, in order when
+	 * it is not null: all of them are ordered before the first are
+	 * shown, so that the newest file is never behind Show more.
+	 */
+	public List<Row> rows(Level level, String more, String shownOf,
+			Order order) {
 		List<Entry> visible = visible();
 		List<Row> rows = new ArrayList<>();
 		String path = level.path();
-		for (Entry entry : visible.subList(0, Math.min(shown,
-				visible.size()))) {
+		for (Entry entry : visible) {
 			String name = entry.name;
 			// A hint from the name, for the icon: what the file is, is
 			// read from its bytes when it is opened or used.
@@ -123,6 +132,11 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 					EnumSet.noneOf(Row.Mark.class),
 					EnumSet.noneOf(Row.Action.class)));
 		}
+		if (order != null) {
+			rows = order.sort(rows);
+		}
+		rows = new ArrayList<>(rows.subList(0, Math.min(shown,
+				rows.size())));
 		if (visible.size() > shown) {
 			rows.add(new Row("", Row.Kind.MORE, Row.Picture.of(
 					Row.Picture.Icon.SHADER), more,

@@ -62,6 +62,27 @@ public class ReadingTest {
 				"%1$d of %2$d").size());
 	}
 
+	// The newest of 300 files is listed in the directory's order last;
+	// sorted by change, it is the first row, not behind Show more.
+	@Test
+	public void aSortedLevelIsSortedWholeBeforeItIsPaged() {
+		List<Reading.Entry> entries = new ArrayList<>();
+		for (int i = 0; i < 300; ++i) {
+			entries.add(new Reading.Entry("f" + i + ".frag", false, i));
+		}
+		entries.add(new Reading.Entry("textures", true, 0));
+		Reading reading = Reading.started().listed(entries);
+		List<Row> rows = reading.rows(ROOT, "Show more", "%1$d of %2$d",
+				Order.CHANGED);
+		assertEquals(201, rows.size());
+		assertEquals("textures", rows.get(0).name());
+		assertEquals("f299.frag", rows.get(1).name());
+		assertEquals("f101.frag", rows.get(199).name());
+		assertEquals("200 of 301", rows.get(200).detail());
+		assertEquals("f0.frag", reading.more().rows(ROOT, "Show more",
+				"%1$d of %2$d", Order.CHANGED).get(300).name());
+	}
+
 	@Test
 	public void stopIsOfferedOnlyAfterReadingTakesLong() {
 		assertEquals(List.of(), Reading.started().notice().actions());
