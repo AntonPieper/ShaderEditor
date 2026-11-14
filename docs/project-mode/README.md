@@ -18,6 +18,7 @@ This folder is the design. The implementation plan, its ledger, and the prompts 
 | [NAVIGATION.md](NAVIGATION.md) | How people get around once there are projects: personas, user stories, five compared navigation models, the recommended drawer, and the decisions taken |
 | [STYLE.md](STYLE.md) | The visual language: an audit of today's screens, three compared directions, how code stays readable over the shader, the style guide (colour, shape, type, states), the path of small pull requests, and the decisions taken |
 | [FILES.md](FILES.md) | How a project file's truth is kept: one owner per file, the journal for unsaved text, undo that survives, the memory budget, the threading rules that close the review's text-losing sequences, the path of pull requests, and the decisions taken |
+| [NEUTRALITY.md](NEUTRALITY.md) | Where GLSL ES and OpenGL ES are assumed, which of those places leak into the format, the plan or the engine interface, and what is made neutral now |
 | [EXAMPLES.md](EXAMPLES.md) | The bundled examples and include library: purpose, structure, the set, quality bar |
 | [ACCEPTANCE.md](ACCEPTANCE.md) | Named, observable acceptance cases |
 | [examples/README.md](examples/README.md) | Small executable source fixtures and expected results |
