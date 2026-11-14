@@ -1,11 +1,14 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.content.Context;
+import android.content.UriPermission;
+import android.net.Uri;
 import android.os.Handler;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,20 +26,29 @@ import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
+import de.markusfisch.android.shadereditor.provider.UserFilesProvider;
 
 /**
  * The levels of one folder or file opened before. Its project opens
  * when a level is first listed, and each folder is read off the main
- * thread when it is entered; looking starts nothing else. Call it on
- * the main thread.
+ * thread when it is entered; looking starts nothing else. A folder that
+ * cannot be listed because its files are gone or its grant is lost is
+ * lost and has to be chosen again. Call it on the main thread.
  */
 final class FolderSource {
+	// Whether what was opened can still be read, whether it is a single
+	// file, and where it is, for choosing it again.
+	private record Access(boolean granted, boolean file, Uri uri) {
+	}
+
 	private final Context context;
 	private final Projects projects;
 	private final Executor listings;
 	private final Handler handler;
 	private final String key;
+	private final FoldersSource folders;
 	private final Runnable changed;
 	// How far each folder is read, by its path; the root is "".
 	private final Map<String, Reading> readings = new HashMap<>();
@@ -46,24 +58,30 @@ final class FolderSource {
 	private String problem;
 	private boolean opening;
 	private boolean closed;
+	private boolean file;
+	private Uri uri;
 
 	/**
-	 * @param known   how it is listed under Recent, or null
+	 * @param folders where it is listed under Recent and told when it
+	 *                is lost
 	 * @param changed called when what a level lists changed
 	 */
 	FolderSource(@NonNull Context context, @NonNull Projects projects,
 			@NonNull Executor listings, @NonNull Handler handler,
-			@NonNull String key, @Nullable Recent known,
+			@NonNull String key, @NonNull FoldersSource folders,
 			@NonNull Runnable changed) {
 		this.context = context;
 		this.projects = projects;
 		this.listings = listings;
 		this.handler = handler;
 		this.key = key;
+		this.folders = folders;
 		this.changed = changed;
+		Recent known = folders.find(key);
 		if (known != null) {
 			name = known.name();
 			location = known.location();
+			file = known.file();
 		}
 	}
 
@@ -72,8 +90,29 @@ final class FolderSource {
 		return key;
 	}
 
-	/** Takes the project the picker just opened, or why it is not. */
-	void adopt(@Nullable OpenProject project, @Nullable String problem) {
+	@NonNull
+	String name() {
+		return name != null ? name : "";
+	}
+
+	/** Whether it is a single file rather than a folder. */
+	boolean isFile() {
+		return file;
+	}
+
+	/** Where it was, to start choosing it again from, or null. */
+	@Nullable
+	Uri uri() {
+		return uri;
+	}
+
+	/**
+	 * Takes the project the picker just opened, or why it is not, and
+	 * whether it is a single file.
+	 */
+	void adopt(@Nullable OpenProject project, @Nullable String problem,
+			boolean file) {
+		this.file = file;
 		readings.clear();
 		opened(project, problem);
 	}
@@ -163,7 +202,8 @@ final class FolderSource {
 				location == null || location.isEmpty() ? null : location,
 				false,
 				false,
-				Listing.Bar.NONE,
+				// A single file's folder can be opened to load the rest.
+				file ? Listing.Bar.OPEN_FOLDER : Listing.Bar.NONE,
 				List.of(new Listing.Section(null, reading.rows(level,
 						context.getString(R.string.nav_show_more),
 						context.getString(R.string.nav_shown_of)))),
@@ -180,22 +220,47 @@ final class FolderSource {
 						opened.problem()));
 			}
 			return;
-		} else if (project == null) {
-			listed(path, new OpenProject.Folder(List.of(), problem));
-			return;
 		}
 		OpenProject listed = project;
+		String closedFor = problem;
+		boolean reachable = listed != null && listed.storage().access() !=
+				OpenProject.Access.UNAVAILABLE;
 		ProjectPath folder = path.isEmpty()
 				? null
 				: ProjectPath.parse(path).value();
 		try {
 			listings.execute(() -> {
-				OpenProject.Folder items = listed.list(folder);
-				handler.post(() -> listed(path, items));
+				OpenProject.Folder items = listed != null
+						? listed.list(folder)
+						: new OpenProject.Folder(List.of(), closedFor);
+				Access access = items.problem() != null ? access() : null;
+				handler.post(() -> listed(path, items, reachable, access));
 			});
 		} catch (RejectedExecutionException e) {
 			// Closed.
 		}
+	}
+
+	// Off the main thread.
+	@NonNull
+	private Access access() {
+		ProjectSessions.Locator locator = projects.sessions().locator(key);
+		if (locator == null) {
+			return new Access(false, false, null);
+		} else if (locator.kind() == ProjectSessions.Kind.DIRECTORY) {
+			return new Access(new File(locator.value()).isDirectory(),
+					false, null);
+		}
+		Uri uri = Uri.parse(locator.value());
+		boolean granted = UserFilesProvider.AUTHORITY.equals(
+				uri.getAuthority());
+		for (UriPermission permission :
+				context.getContentResolver().getPersistedUriPermissions()) {
+			granted |= permission.getUri().equals(uri) &&
+					permission.isReadPermission();
+		}
+		return new Access(granted,
+				locator.kind() == ProjectSessions.Kind.DOCUMENT, uri);
 	}
 
 	private void opened(@Nullable OpenProject project,
@@ -222,14 +287,21 @@ final class FolderSource {
 	}
 
 	private void listed(@NonNull String path,
-			@NonNull OpenProject.Folder folder) {
+			@NonNull OpenProject.Folder folder, boolean reachable,
+			@Nullable Access access) {
 		Reading reading = readings.get(path);
 		if (closed || reading == null) {
 			return;
-		} else if (folder.problem() != null) {
-			put(path, reading.failed(folder.problem()));
+		} else if (access != null) {
+			file = access.file();
+			uri = access.uri();
+			reading = reading.failed(folder.problem(), reachable,
+					access.granted(), file);
+			folders.setLost(key, reading.isLost());
+			put(path, reading);
 			return;
 		}
+		folders.setLost(key, false);
 		List<Reading.Entry> entries = new ArrayList<>();
 		for (OpenProject.Item item : folder.items()) {
 			entries.add(new Reading.Entry(item.path().getFileName(),

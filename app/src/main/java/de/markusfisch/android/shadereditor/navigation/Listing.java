@@ -18,7 +18,9 @@ public record Listing(String title, String subtitle, boolean readOnly,
 		NEW,
 		NEW_SHADER,
 		/** Open folder, and Open file beside it. */
-		OPEN
+		OPEN,
+		/** Open folder alone. */
+		OPEN_FOLDER
 	}
 
 	/** Rows under a heading; a section without heading shows none. */
