@@ -6,6 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
+
 /**
  * The library: the folder of the app's own user files that holds the
  * user's shaders, one file each in its root, and what the app keeps
@@ -20,6 +23,15 @@ import java.util.List;
 public final class Library {
 	/** The name of the library's folder in the user files. */
 	public static final String FOLDER = "Shaders";
+
+	/**
+	 * A new shader of the library. With a path the file is there, and
+	 * a problem then says what of its quality and picture could not be
+	 * kept: {@link #dress} tries that again for the same file. Without
+	 * a path no file was made, and problem says why.
+	 */
+	public record Created(ProjectPath path, String problem) {
+	}
 
 	/**
 	 * Follows the library when it is put aside: what was kept by the
@@ -102,6 +114,155 @@ public final class Library {
 				previews(), (path, time) -> new File(folder,
 						path.toString()).setLastModified(time),
 				selector, untitled, chosen).run();
+	}
+
+	/**
+	 * Keep path, a file in the library's root, as the shader new ones
+	 * are copied from, none when null. A file in a folder is refused:
+	 * a copy of it in the root would look for its includes and
+	 * textures in the wrong place. Return why it is not kept, or null.
+	 */
+	String setTemplate(ProjectPath path, Relocation relocation) {
+		String barrier = finishRedo(relocation);
+		if (barrier != null) {
+			return barrier;
+		} else if (path != null && path.toString().indexOf('/') > -1) {
+			return "the shader new ones are copied from must be in " +
+					"the library itself, not in a folder of it";
+		}
+		return settings().setTemplate(path)
+				? null
+				: "the settings of the library cannot be written";
+	}
+
+	/**
+	 * Make a new shader in the library's root, a copy of the shader
+	 * new ones are copied from with its quality and picture, or of the
+	 * built-in template when none is chosen, or the chosen file is
+	 * gone or is not text. The file is title made a file name, or
+	 * untitled when title is null, with a number when that is taken;
+	 * no file is written over.
+	 *
+	 * @param builtIn the text of the built-in template
+	 * @param picture the picture of the built-in template, or null
+	 */
+	Created create(String title, String untitled, byte[] builtIn,
+			byte[] picture, Relocation relocation) {
+		String barrier = finishRedo(relocation);
+		if (barrier != null) {
+			return new Created(null, barrier);
+		}
+		ProjectFiles files = files();
+		ProjectFiles.Listing listing = files.list(null);
+		if (!(listing instanceof ProjectFiles.Entries entries)) {
+			return new Created(null, "the library cannot be listed" +
+					(listing instanceof ProjectFiles.Failed failed
+							? ": " + failed.reason()
+							: ""));
+		}
+		Template template;
+		try {
+			template = template(files);
+		} catch (IOException e) {
+			return new Created(null, e.getMessage());
+		}
+		List<String> names = new ArrayList<>();
+		for (ProjectFiles.Entry entry : entries.entries()) {
+			names.add(entry.name());
+		}
+		Naming naming = new Naming(names);
+		byte[] bytes = template != null ? template.bytes : builtIn;
+		String stem = Naming.stem(title, untitled);
+		// A name another writer took meanwhile is passed over.
+		for (int tries = 0; tries < 16; ++tries) {
+			String name = naming.unused(stem, ShaderLanguage.PASS);
+			ProjectParseResult<ProjectPath> path = ProjectPath.parse(name);
+			if (!path.isSuccess()) {
+				return new Created(null, name + " is not a file name");
+			}
+			ProjectFiles.Change change = files.write(path.value(), bytes,
+					null);
+			if (change instanceof ProjectFiles.Done) {
+				return new Created(path.value(), dress(path.value(),
+						template, builtIn, picture));
+			}
+			ProjectFiles.Refused refused = (ProjectFiles.Refused) change;
+			if (refused.refusal() != ProjectFiles.Refusal.EXISTS &&
+					refused.refusal() != ProjectFiles.Refusal.CONFLICT) {
+				return new Created(null, name + " cannot be written: " +
+						refused.reason());
+			}
+			naming.take(name);
+		}
+		return new Created(null, "no unused name was found for " + stem);
+	}
+
+	/**
+	 * Give the shader at path, which {@link #create} made, its quality
+	 * and its picture again, after they could not be kept. No file is
+	 * made. Return what still could not be kept, or null.
+	 */
+	String dress(ProjectPath path, byte[] builtIn, byte[] picture,
+			Relocation relocation) {
+		String barrier = finishRedo(relocation);
+		if (barrier != null) {
+			return barrier;
+		}
+		try {
+			return dress(path, template(files()), builtIn, picture);
+		} catch (IOException e) {
+			return e.getMessage();
+		}
+	}
+
+	// The file new shaders are copied from, with what is kept of it.
+	private record Template(byte[] bytes, float quality,
+			Previews.Picture picture) {
+	}
+
+	// Return the template, or null for the built-in one: none is
+	// chosen, or the chosen file is gone or is not text.
+	private Template template(ProjectFiles files) throws IOException {
+		LibrarySettings.State settings;
+		try {
+			settings = settings().read();
+		} catch (IOException e) {
+			throw new IOException("the settings of the library cannot " +
+					"be read");
+		}
+		ProjectPath path = settings.template();
+		ProjectFiles.Read read = path != null
+				? files.read(path, Document.MAX_BYTES)
+				: null;
+		if (read instanceof ProjectFiles.Failed failed) {
+			throw new IOException(path + ", which new shaders are " +
+					"copied from, cannot be read: " + failed.reason());
+		}
+		return read instanceof ProjectFiles.Content content &&
+				FileKind.of(content.bytes()) == FileKind.TEXT
+				? new Template(content.bytes(), settings.quality(path),
+						previews().get(path))
+				: null;
+	}
+
+	// A copied picture stays a picture of what it was made from; the
+	// built-in one is of the built-in text.
+	private String dress(ProjectPath path, Template template,
+			byte[] builtIn, byte[] picture) {
+		Previews.Picture shown = template != null
+				? template.picture
+				: picture != null
+						? new Previews.Picture(picture,
+								StoredFiles.revision(builtIn))
+						: null;
+		boolean kept = settings().setQuality(path,
+				template != null ? template.quality : 1f);
+		boolean drawn = shown == null || previews().put(path,
+				shown.revision(), shown.png());
+		return kept && drawn ? null : "the " + (kept ? "picture" : drawn
+				? "quality"
+				: "quality and the picture") + " of " + path +
+				" could not be kept";
 	}
 
 	/**

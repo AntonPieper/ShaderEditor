@@ -214,6 +214,225 @@ public class LibraryTest {
 	}
 
 	@Test
+	public void aNewShaderIsAFileFromTheBuiltInTemplate()
+			throws IOException {
+		Library library = library();
+		byte[] builtIn = MAIN.getBytes(StandardCharsets.UTF_8);
+
+		Library.Created first = library.create(null, "Untitled", builtIn,
+				Pictures.png(7), null);
+		assertNull(first.problem());
+		assertEquals(path("Untitled.frag"), first.path());
+		assertEquals(MAIN, text(new File(library.folder(),
+				"Untitled.frag")));
+		Previews.Picture picture = library.previews().get(first.path());
+		assertArrayEquals(Pictures.png(7), picture.png());
+		assertEquals(((ProjectFiles.Content) library.files().read(
+				first.path())).revision(), picture.revision());
+		// It runs as it is.
+		assertNotNull(Preparation.prepare(library.files(), first.path(),
+				ProjectLimits.DEFAULT, BuiltinNames.ALL).plan());
+
+		// The next ones get the next names, whatever the case.
+		assertEquals(path("Untitled 2.frag"), library.create(null,
+				"Untitled", builtIn, null, null).path());
+		assertEquals(path("untitled 3.frag"), library.create("untitled",
+				"Untitled", builtIn, null, null).path());
+		assertEquals(path("a_b.frag"), library.create(" a/b.glsl ",
+				"Untitled", builtIn, null, null).path());
+		assertNull(library.previews().get(path("Untitled 2.frag")));
+		assertEquals(MAIN, text(new File(library.folder(),
+				"Untitled.frag")));
+	}
+
+	@Test
+	public void aNewShaderIsACopyOfTheOneChosenForIt() throws IOException {
+		Library library = library();
+		move(library, 2);
+		byte[] builtIn = "// built in\n".getBytes(StandardCharsets.UTF_8);
+
+		Library.Created created = library.create("Clouds", "Untitled",
+				builtIn, Pictures.png(7), null);
+		assertEquals(path("Clouds 2.frag"), created.path());
+		assertEquals(MAIN, text(new File(library.folder(),
+				"Clouds 2.frag")));
+		assertEquals(.5f, library.settings().quality(created.path()), 0f);
+		assertArrayEquals(Pictures.png(5),
+				library.previews().get(created.path()).png());
+		// The chosen file as it is now, not as it was moved.
+		write(new File(library.folder(), "Clouds.frag"), "// edited\n");
+		assertEquals("// edited\n", text(new File(library.folder(),
+				library.create(null, "Untitled", builtIn, null, null).path()
+						.toString())));
+
+		// Gone, or no text: the built-in one, as when the id was gone.
+		write(new File(library.folder(), "Clouds.frag"),
+				new String(Pictures.png(1), StandardCharsets.ISO_8859_1),
+				StandardCharsets.ISO_8859_1);
+		Library.Created plain = library.create("Plain", "Untitled",
+				builtIn, Pictures.png(7), null);
+		assertEquals("// built in\n", text(new File(library.folder(),
+				"Plain.frag")));
+		assertEquals(1f, library.settings().quality(plain.path()), 0f);
+		assertArrayEquals(Pictures.png(7),
+				library.previews().get(plain.path()).png());
+		assertTrue(new File(library.folder(), "Clouds.frag").delete());
+		assertEquals("// built in\n", text(new File(library.folder(),
+				library.create("Other", "Untitled", builtIn, null, null).path()
+						.toString())));
+	}
+
+	@Test
+	public void aLibraryThatTakesNoFileSaysWhy() {
+		Library library = library();
+		library.files();
+		assertTrue(library.folder().setWritable(false));
+		try {
+			Library.Created created = library.create(null, "Untitled",
+					MAIN.getBytes(StandardCharsets.UTF_8), null, null);
+			assertNull(created.path());
+			assertTrue(created.problem(), created.problem().startsWith(
+					"Untitled.frag cannot be written: "));
+		} finally {
+			library.folder().setWritable(true);
+		}
+	}
+
+	@Test
+	public void aRedoThatCannotBeFinishedStopsNewShadersToo()
+			throws IOException {
+		Library library = library();
+		move(library, 0);
+		write(new File(temp.getRoot(), "files/library-redo"), "Shaders b");
+		String blocked = "a redo of the move was begun, and its note " +
+				"says nothing";
+		Library.Created created = library.create(null, "Untitled",
+				MAIN.getBytes(StandardCharsets.UTF_8), null, null);
+		assertNull(created.path());
+		assertEquals(blocked, created.problem());
+		assertEquals(blocked, library.setTemplate(null, null));
+		assertEquals(blocked, library.dress(path("Plasma.frag"),
+				new byte[0], null, null));
+		assertFalse(new File(library.folder(), "Untitled.frag").exists());
+	}
+
+	// The limit of a template is the limit of any text file.
+	@Test
+	public void aLargeTemplateIsCopiedWhole() throws IOException {
+		Library library = library();
+		String source = "//" + "x".repeat((1 << 20) + 1) + "\n" + MAIN;
+		write(new File(library.folder(), "Template.frag"), source);
+		assertNull(library.setTemplate(path("Template.frag"), null));
+		Library.Created created = library.create(null, "Untitled",
+				"// built in\n".getBytes(StandardCharsets.UTF_8), null, null);
+		assertNull(created.problem());
+		assertEquals(source, text(new File(library.folder(),
+				created.path().toString())));
+	}
+
+	// Only a template that is gone or is no text gives way to the
+	// built-in one; one that cannot be read now is told.
+	@Test
+	public void aTemplateThatCannotBeReadIsToldNotReplaced()
+			throws IOException {
+		Library library = library();
+		File template = new File(library.folder(), "Template.frag");
+		write(template, MAIN);
+		assertNull(library.setTemplate(path("Template.frag"), null));
+		assertTrue(template.setReadable(false, false));
+		try {
+			assertFalse(template.canRead());
+			Library.Created created = library.create(null, "Untitled",
+					"// built in\n".getBytes(StandardCharsets.UTF_8), null,
+					null);
+			assertNull(created.path());
+			assertTrue(created.problem(), created.problem().startsWith(
+					"Template.frag, which new shaders are copied from, " +
+							"cannot be read: "));
+			assertFalse(new File(library.folder(), "Untitled.frag")
+					.exists());
+		} finally {
+			template.setReadable(true);
+		}
+	}
+
+	// A copy in the root of a shader in a folder would look for its
+	// includes and textures in the wrong place.
+	@Test
+	public void theTemplateMustBeInTheLibrarysRoot() throws IOException {
+		Library library = library();
+		write(new File(library.folder(), "sub/Template.frag"),
+				"#include \"helper.glsl\"\n" + MAIN);
+		write(new File(library.folder(), "sub/helper.glsl"), "// helper\n");
+		write(new File(library.folder(), "Root.frag"), MAIN);
+		assertNull(library.setTemplate(path("Root.frag"), null));
+		assertEquals("the shader new ones are copied from must be in the " +
+				"library itself, not in a folder of it",
+				library.setTemplate(path("sub/Template.frag"), null));
+		assertEquals(path("Root.frag"), library.settings().template());
+		Library.Created created = library.create(null, "Untitled",
+				"// built in\n".getBytes(StandardCharsets.UTF_8), null, null);
+		assertNotNull(Preparation.prepare(library.files(), created.path(),
+				ProjectLimits.DEFAULT, BuiltinNames.ALL).plan());
+	}
+
+	// The file is there, so it is told with what could not be kept,
+	// and trying that again makes no second file.
+	@Test
+	public void aNewShaderSaysWhatOfItsSettingsWasNotKept()
+			throws IOException {
+		Library library = library();
+		write(new File(library.folder(), "Template.frag"), MAIN);
+		assertNull(library.setTemplate(path("Template.frag"), null));
+		assertTrue(library.settings().setQuality(path("Template.frag"),
+				.25f));
+		assertTrue(library.previews().put(path("Template.frag"), "r",
+				Pictures.png(4)));
+		byte[] builtIn = "// built in\n".getBytes(StandardCharsets.UTF_8);
+		File state = new File(temp.getRoot(), "files/library");
+		File pictures = new File(state, "previews");
+		assertTrue(state.setWritable(false));
+		assertTrue(pictures.setWritable(false));
+		Library.Created created;
+		try {
+			created = library.create(null, "Untitled", builtIn, null, null);
+			assertEquals(path("Untitled.frag"), created.path());
+			assertEquals("the quality and the picture of Untitled.frag " +
+					"could not be kept", created.problem());
+			assertEquals(1f, library.settings().quality(created.path()),
+					0f);
+		} finally {
+			state.setWritable(true);
+			pictures.setWritable(true);
+		}
+		assertNull(library.dress(created.path(), builtIn, null, null));
+		assertEquals(.25f, library.settings().quality(created.path()), 0f);
+		assertArrayEquals(Pictures.png(4),
+				library.previews().get(created.path()).png());
+		assertFalse(new File(library.folder(), "Untitled 2.frag").exists());
+	}
+
+	// A picture copied from a file that changed since it was drawn
+	// is still a picture of what it was drawn from.
+	@Test
+	public void aCopiedPictureKeepsTheRevisionItWasMadeFrom()
+			throws IOException {
+		Library library = library();
+		move(library, 2);
+		String drawnFrom = library.previews().get(path("Clouds.frag"))
+				.revision();
+		write(new File(library.folder(), "Clouds.frag"),
+				"// edited since the picture\n" + MAIN);
+		Library.Created created = library.create(null, "Untitled",
+				MAIN.getBytes(StandardCharsets.UTF_8), null, null);
+		assertNull(created.problem());
+		assertEquals(drawnFrom,
+				library.previews().get(created.path()).revision());
+		assertFalse(drawnFrom.equals(((ProjectFiles.Content)
+				library.files().read(created.path())).revision()));
+	}
+
+	@Test
 	public void nothingToPutAsideIsNoFailure() {
 		Library library = library();
 		assertNull(library.putAside(null));

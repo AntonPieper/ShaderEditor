@@ -209,6 +209,36 @@ public final class Projects {
 	}
 
 	/**
+	 * Make a new shader in the library, on the queue: see
+	 * {@link Library#create}. done gets its path, and what of its
+	 * quality and picture could not be kept; {@link #dressNewShader}
+	 * tries that again and makes no second file. To show the shader,
+	 * open the library ({@link #openLibrary}), have its project look
+	 * again ({@link OpenProject#refresh}) when it was open before, and
+	 * show and run the path.
+	 */
+	public void newShader(String title, String untitled, byte[] builtIn,
+			byte[] picture, Callback<Library.Created> done) {
+		QUEUE.execute(() -> {
+			Library.Created created = guarded(() -> library().create(
+					title, untitled, builtIn, picture, this::relocated),
+					problem -> new Library.Created(null, problem));
+			main.post(() -> done.done(created));
+		});
+	}
+
+	/**
+	 * Give a shader {@link #newShader} made its quality and picture
+	 * again, on the queue; done gets what still could not be kept, or
+	 * null.
+	 */
+	public void dressNewShader(ProjectPath path, byte[] builtIn,
+			byte[] picture, Callback<String> done) {
+		change(() -> library().dress(path, builtIn, picture,
+				this::relocated), done);
+	}
+
+	/**
 	 * Keep quality for the file of the library at path, on the queue;
 	 * done gets why it is not kept, or null.
 	 */
@@ -217,6 +247,15 @@ public final class Projects {
 		change(() -> library().settings().setQuality(path, quality)
 				? null
 				: "the settings of the library cannot be written", done);
+	}
+
+	/**
+	 * Keep path, a file in the library's root, as the shader new ones
+	 * are copied from, none when null, on the queue; done gets why it
+	 * is not kept, or null.
+	 */
+	public void setTemplate(ProjectPath path, Callback<String> done) {
+		change(() -> library().setTemplate(path, this::relocated), done);
 	}
 
 	/**
