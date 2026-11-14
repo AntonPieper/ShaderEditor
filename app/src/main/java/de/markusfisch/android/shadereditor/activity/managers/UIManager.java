@@ -1,17 +1,22 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
+import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.ViewCompat;
+
+import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
@@ -25,6 +30,9 @@ public class UIManager {
 	private final ExtraKeysManager extraKeysManager;
 	private final ShaderViewManager shaderViewManager;
 	private final Toolbar toolbar;
+	private final TextView titleView;
+	private final TextView subtitleView;
+	private final Drawable unsavedDot;
 	private final TouchThruDrawerLayout drawerLayout;
 	private final Runnable showSubtitle = this::showSubtitle;
 
@@ -46,6 +54,20 @@ public class UIManager {
 
 		toolbar = activity.findViewById(R.id.toolbar);
 		activity.setSupportActionBar(toolbar);
+		// The toolbar's own title is replaced by titleView.
+		Objects.requireNonNull(activity.getSupportActionBar())
+				.setDisplayShowTitleEnabled(false);
+		titleView = toolbar.findViewById(R.id.toolbar_title);
+		subtitleView = toolbar.findViewById(R.id.toolbar_subtitle);
+		// Lay out where the toolbar lays out its own title, to the pixel.
+		var titleParams = (ViewGroup.MarginLayoutParams)
+				((View) titleView.getParent()).getLayoutParams();
+		titleParams.setMarginStart(toolbar.getTitleMarginStart());
+		titleParams.topMargin = toolbar.getTitleMarginTop();
+		titleParams.bottomMargin = toolbar.getTitleMarginBottom();
+		unsavedDot = Objects.requireNonNull(AppCompatResources.getDrawable(
+				activity, R.drawable.unsaved_dot)).mutate();
+		unsavedDot.setTintList(titleView.getTextColors());
 
 		drawerLayout = activity.findViewById(R.id.drawer_layout);
 		drawerToggle = new ActionBarDrawerToggle(
@@ -112,8 +134,9 @@ public class UIManager {
 	}
 
 	/**
-	 * Show the title, with a dot before it while there are unsaved
-	 * changes: before, so that an ellipsis never cuts it off.
+	 * Show the title, with a dot after it while there are unsaved
+	 * changes. The dot has a slot of its own: a long name is shortened
+	 * before it, and the name's start never moves.
 	 */
 	public void setToolbarTitle(@Nullable CharSequence title,
 			@Nullable CharSequence subtitle, boolean unsaved) {
@@ -125,15 +148,13 @@ public class UIManager {
 		}
 		this.title = title;
 		secondLine.setOwn(subtitle);
-		toolbar.setTitle(unsaved
-				? activity.getString(R.string.unsaved_title, title)
-				: title);
-		TextView titleView = findTitleView();
-		if (titleView != null) {
-			titleView.setContentDescription(unsaved
-					? title + ", " + activity.getString(R.string.unsaved_changes)
-					: null);
-		}
+		// The name never moves: the dot is an end drawable, after it.
+		titleView.setText(title);
+		titleView.setCompoundDrawablesRelativeWithIntrinsicBounds(
+				null, null, unsaved ? unsavedDot : null, null);
+		titleView.setContentDescription(unsaved
+				? title + ", " + activity.getString(R.string.unsaved_changes)
+				: null);
 		showSubtitle();
 	}
 
@@ -159,23 +180,12 @@ public class UIManager {
 
 	private void showSubtitle() {
 		CharSequence line = secondLine.shown(SystemClock.uptimeMillis());
-		if (!TextUtils.equals(line, toolbar.getSubtitle())) {
-			toolbar.setSubtitle(line);
+		if (!TextUtils.equals(line, subtitleView.getText())) {
+			subtitleView.setText(line);
 		}
-	}
-
-	// The toolbar keeps its title in a view of its own.
-	@Nullable
-	private TextView findTitleView() {
-		CharSequence shown = toolbar.getTitle();
-		for (int i = toolbar.getChildCount(); i-- > 0; ) {
-			View child = toolbar.getChildAt(i);
-			if (child instanceof TextView textView &&
-					TextUtils.equals(textView.getText(), shown)) {
-				return textView;
-			}
-		}
-		return null;
+		subtitleView.setVisibility(TextUtils.isEmpty(line)
+				? View.GONE
+				: View.VISIBLE);
 	}
 
 	// Code in front of the picture limits its brightness, so that the

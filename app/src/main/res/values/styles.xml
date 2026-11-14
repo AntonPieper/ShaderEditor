@@ -87,10 +87,10 @@
 		<item name="subtitleTextAppearance">?attr/textAppearanceBodySmall</item>
 	</style>
 
-	<!-- The editor's toolbar, over the picture -->
+	<!-- The editor's toolbar, over the picture; its title is its own
+	view in toolbar_main.xml -->
 	<style name="Widget.ShaderEditor.Toolbar.OverPicture">
 		<item name="android:background">@color/se_level_bar</item>
-		<item name="titleTextAppearance">?attr/textAppearanceTitleMedium</item>
 	</style>
 
 	<style name="FAB" parent="Widget.Material3.FloatingActionButton.Primary">

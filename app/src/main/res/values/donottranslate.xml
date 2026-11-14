@@ -1,5 +1,3 @@
 <resources>
 	<string name="default_font_value">monospace</string>
-	<!-- The toolbar title while there are unsaved changes -->
-	<string name="unsaved_title">• %1$s</string>
 </resources>
