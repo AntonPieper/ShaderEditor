@@ -21,6 +21,7 @@ import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
+import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
@@ -65,18 +66,16 @@ public class ProjectPreviewActivity extends PreviewActivity {
 						if (data != null && data.getData() != null) {
 							Uri tree = data.getData();
 							int flags = data.getFlags();
-							worker.execute(() -> {
-								use(projects().openTree(tree, flags));
-								runOnUiThread(() -> report(1f));
+							projects().openTree(tree, flags, opened -> {
+								use(opened);
+								report(1f);
 							});
 						}
 					});
 	private DialogFragment errorList;
-	// Worker thread only.
 	private Projects projects;
 	private OpenProject.Build build;
-	// Set on the worker thread, used on the main thread.
-	private volatile OpenProject project;
+	private OpenProject project;
 
 	@Override
 	protected void onCreate(Bundle state) {
@@ -115,40 +114,62 @@ public class ProjectPreviewActivity extends PreviewActivity {
 							Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
 							Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION));
 		}
-		worker.execute(() -> {
-			open(extras);
-			float quality = extras.getFloat(QUALITY, 1f);
-			runOnUiThread(() -> apply(extras,
-					() -> afterWorker(() -> report(quality))));
-		});
+		float quality = extras.getFloat(QUALITY, 1f);
+		open(extras, () -> apply(extras,
+				() -> afterWorker(() -> report(quality))));
 		return true;
 	}
 
-	// Opens or removes a project; on the worker thread.
-	private void open(Bundle extras) {
+	// Opens a project, then removes one and runs then; the projects
+	// answer on the main thread.
+	private void open(Bundle extras, Runnable then) {
 		String folder = extras.getString(FOLDER);
 		String session = extras.getString("session");
-		if (folder != null) {
-			var path = ProjectPath.parse(folder);
-			use(path.isSuccess()
-					? projects().openDirectory(new File(
-							UserFilesProvider.getUserFilesDir(this),
-							path.value().toString()))
-					: new Projects.Opened(null, null, folder + " is no path"));
+		FileTexts.Callback<Projects.Opened> opened = result -> {
+			use(result);
+			remove(extras, then);
+		};
+		var path = folder != null ? ProjectPath.parse(folder) : null;
+		if (path != null && path.isSuccess()) {
+			worker.execute(() -> {
+				File dir = new File(UserFilesProvider.getUserFilesDir(this),
+						path.value().toString());
+				runOnUiThread(() -> projects().openDirectory(dir, opened));
+			});
+		} else if (path != null) {
+			opened.done(new Projects.Opened(null, null,
+					folder + " is no path"));
 		} else if (session != null) {
-			use(projects().open(session));
+			projects().open(session, opened);
+		} else {
+			remove(extras, then);
 		}
+	}
+
+	private void remove(Bundle extras, Runnable then) {
 		String remove = extras.getString("remove");
 		if (remove != null) {
-			log("removed " + remove + ": " + projects().remove(remove));
+			projects().remove(remove, removed -> {
+				log("removed " + remove + ": " + removed);
+				recent(then);
+			});
+		} else {
+			recent(then);
 		}
-		List<String> recent = new ArrayList<>();
-		for (ProjectSessions.Recent kept : projects().sessions().recent()) {
-			recent.add(kept.id() + " " + kept.name() + " (" +
-					kept.location() + (kept.unsaved() ? ", unsaved" : "") +
-					")");
-		}
-		log("recent " + recent);
+	}
+
+	private void recent(Runnable then) {
+		ProjectSessions sessions = projects().sessions();
+		worker.execute(() -> {
+			List<String> recent = new ArrayList<>();
+			for (ProjectSessions.Recent kept : sessions.recent()) {
+				recent.add(kept.id() + " " + kept.name() + " (" +
+						kept.location() +
+						(kept.unsaved() ? ", unsaved" : "") + ")");
+			}
+			log("recent " + recent);
+			runOnUiThread(then);
+		});
 	}
 
 	// Drives the open project, then runs then; on the main thread, which

@@ -1,6 +1,8 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
@@ -8,11 +10,12 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 
 /**
  * The projects open in the process, one per session: opening a session
- * that is open returns the same project until it is closed. A session
+ * that is open gives the same project until it is closed. A session
  * whose files cannot be reached opens with its unsaved text all the
- * same. Projects are opened on the worker their storage work runs on,
+ * same. The registry belongs to the main thread and holds no lock: a
+ * project is opened by a task of the worker its storage work runs on,
  * so opening comes after what a project of the session that closed
- * still writes.
+ * still writes, and is handed over on main. Nothing here waits.
  */
 final class LiveProjects {
 	interface Opener {
@@ -20,6 +23,10 @@ final class LiveProjects {
 	}
 
 	private final Map<String, OpenProject> live = new HashMap<>();
+	// The callbacks of the sessions being opened, which later calls
+	// join.
+	private final Map<String, List<FileTexts.Callback<OpenProject>>>
+			opening = new HashMap<>();
 	private final ProjectSessions sessions;
 	private final Executor worker;
 	private final Executor main;
@@ -36,47 +43,68 @@ final class LiveProjects {
 	}
 
 	/**
-	 * Find the project of session id, opened through opener when it is
-	 * not open, on the worker after what it was given before; done gets
-	 * it there, or null when there is no such session or opening failed.
+	 * Find the project of session id, opened through opener on the
+	 * worker when it is not open. Call it on main; done gets the project
+	 * there, later, or null when there is no such session or opening
+	 * failed.
 	 */
 	void open(String id, Opener opener, FileTexts.Callback<OpenProject> done) {
+		OpenProject project = live.get(id);
+		if (project != null) {
+			main.execute(() -> {
+				// Closed meanwhile: open it again.
+				if (live.get(id) == project) {
+					done.done(project);
+				} else {
+					open(id, opener, done);
+				}
+			});
+			return;
+		}
+		List<FileTexts.Callback<OpenProject>> joined = opening.get(id);
+		if (joined != null) {
+			joined.add(done);
+			return;
+		}
+		joined = new ArrayList<>();
+		joined.add(done);
+		opening.put(id, joined);
 		worker.execute(() -> {
-			OpenProject project = null;
+			OpenProject[] opened = {null};
 			try {
-				project = open(id, opener);
+				opened[0] = open(id, opener);
 			} finally {
-				done.done(project);
+				main.execute(() -> publish(id, opened[0]));
 			}
 		});
 	}
 
-	private synchronized OpenProject open(String id, Opener opener) {
-		OpenProject project = live.get(id);
-		if (project != null) {
-			return project;
-		}
+	// On the worker; reads storage and touches nothing of the registry.
+	private OpenProject open(String id, Opener opener) {
 		Locator locator = sessions.locator(id);
 		if (locator == null) {
 			return null;
 		}
 		SafProjects.Opened opened = opener.open(locator);
-		project = OpenProject.open(id, opened.files(), opened.file(),
+		return OpenProject.open(id, opened.files(), opened.file(),
 				opened.problem() != null
 						? opened.problem()
 						: "it cannot be opened",
 				sessions, worker, main, later, budget);
-		if (project != null) {
-			OpenProject opening = project;
-			project.onClose(() -> close(id, opening));
-			live.put(id, project);
-		}
-		return project;
 	}
 
-	private synchronized void close(String id, OpenProject project) {
-		if (live.get(id) == project) {
-			live.remove(id);
+	private void publish(String id, OpenProject project) {
+		List<FileTexts.Callback<OpenProject>> joined = opening.remove(id);
+		if (project != null) {
+			live.put(id, project);
+			project.onClose(() -> {
+				if (live.get(id) == project) {
+					live.remove(id);
+				}
+			});
+		}
+		for (FileTexts.Callback<OpenProject> done : joined) {
+			done.done(project);
 		}
 	}
 }
