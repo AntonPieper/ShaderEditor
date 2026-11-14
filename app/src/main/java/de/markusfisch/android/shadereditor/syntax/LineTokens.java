@@ -1,5 +1,7 @@
 package de.markusfisch.android.shadereditor.syntax;
 
+import java.util.Arrays;
+
 /**
  * The tokens of one line, as {@link Syntax#lexLine} leaves them, with
  * UTF-16 offsets into that line. One instance is meant to be filled again
@@ -47,6 +49,23 @@ public final class LineTokens {
 			}
 		}
 		return high >= 0 && offset < ends[high] ? high : -1;
+	}
+
+	void clear() {
+		size = 0;
+	}
+
+	void add(int start, int end, Style style) {
+		if (size == starts.length) {
+			int capacity = size * 2;
+			starts = Arrays.copyOf(starts, capacity);
+			ends = Arrays.copyOf(ends, capacity);
+			kinds = Arrays.copyOf(kinds, capacity);
+		}
+		starts[size] = start;
+		ends[size] = end;
+		kinds[size] = style.ordinal();
+		++size;
 	}
 
 	void set(int[] starts, int[] ends, int[] kinds, int size) {

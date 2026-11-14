@@ -4,6 +4,10 @@ import java.util.Locale;
 
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
+import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
+import de.markusfisch.android.shadereditor.syntax.JsonSyntax;
+import de.markusfisch.android.shadereditor.syntax.PlainSyntax;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 /**
  * What a text file is written in, from its name: the one place where
@@ -12,18 +16,24 @@ import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
  * The names other shading languages are known by are listed as not
  * run, so that a file so named never means GLSL: a version that
  * runs such a language can then add it without changing what a
- * project of today means.
+ * project of today means. A language that is not a shader at all, such
+ * as JSON, is a row that does not run either.
  * Whether a file is text at all is not asked here, see
  * {@link FileKind}, and neither is what it is used as.
  * <p>
  * Whatever reads the text of a shader for a project asks its language
  * here: the pass graph, preparation and the files of an open project
- * know no shading language themselves.
+ * know no shading language themselves. The editor asks it for the
+ * {@link #syntax()} it colours, completes and indents a file with.
  */
 public enum ShaderLanguage {
-	GLSL,
-	/** A shading language this version does not run. */
-	UNSUPPORTED;
+	GLSL(GlslSyntax.INSTANCE, null),
+	/** A shading language this version does not run, as plain text. */
+	UNSUPPORTED(PlainSyntax.INSTANCE, null),
+	/** JSON, which is no shader. */
+	JSON(JsonSyntax.INSTANCE, "JSON"),
+	/** Markdown, which is no shader, edited as plain text. */
+	MARKDOWN(PlainSyntax.INSTANCE, "Markdown");
 
 	private record Row(String ending, ShaderLanguage language) {
 	}
@@ -39,12 +49,23 @@ public enum ShaderLanguage {
 			new Row(".sksl", UNSUPPORTED),
 			new Row(".hlsl", UNSUPPORTED),
 			new Row(".slang", UNSUPPORTED),
+			new Row(".json", JSON),
+			new Row(".md", MARKDOWN),
 	};
 
 	/** The ending a new shader that runs or is a pass is named with. */
 	public static final String PASS = ".frag";
 	/** The ending code that is meant to be included is named with. */
 	public static final String INCLUDE = ".glsl";
+
+	private final Syntax syntax;
+	// The name of a language that is no shader, or null.
+	private final String noun;
+
+	ShaderLanguage(Syntax syntax, String noun) {
+		this.syntax = syntax;
+		this.noun = noun;
+	}
 
 	/** Return the language of a text file named name. */
 	public static ShaderLanguage of(String name) {
@@ -57,9 +78,25 @@ public enum ShaderLanguage {
 	 * be included by one, or null when this version runs the language.
 	 */
 	String refusal(ProjectPath file) {
-		return this == GLSL ? null : file + " is named as a shader in " +
-				"another language than GLSL, which ShaderEditor does not " +
-				"run; rename it if it is GLSL";
+		if (this == GLSL) {
+			return null;
+		} else if (noun != null) {
+			return file + " is named as " + noun + ", which is not a " +
+					"shader; rename it if it is GLSL";
+		}
+		return file + " is named as a shader in another language than " +
+				"GLSL, which ShaderEditor does not run; rename it if it " +
+				"is GLSL";
+	}
+
+	/** Return whether this version runs a file in this language. */
+	public boolean runs() {
+		return this == GLSL;
+	}
+
+	/** Return how the editor treats a file in this language. */
+	public Syntax syntax() {
+		return syntax;
 	}
 
 	/**

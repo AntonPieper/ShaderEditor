@@ -25,6 +25,7 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
@@ -49,6 +50,8 @@ public class EditorFragment extends Fragment {
 	// A document to show once the view exists, and its view state.
 	@Nullable
 	private Document pendingDocument;
+	@Nullable
+	private Syntax pendingSyntax;
 	@Nullable
 	private Object pendingDocumentState;
 
@@ -138,8 +141,10 @@ public class EditorFragment extends Fragment {
 			pendingText = null;
 		}
 		if (pendingDocument != null) {
-			editor.showDocument(pendingDocument, pendingDocumentState);
+			editor.showDocument(pendingDocument, pendingSyntax,
+					pendingDocumentState);
 			pendingDocument = null;
+			pendingSyntax = null;
 			pendingDocumentState = null;
 		}
 
@@ -368,22 +373,24 @@ public class EditorFragment extends Fragment {
 
 	/**
 	 * Show document itself, with its undo history and selection, without
-	 * telling the listeners of a change; state is what getDocumentState
-	 * returned for it before, or null. Return false when the editor in
-	 * use cannot show a document.
+	 * telling the listeners of a change, with the syntax of its file's
+	 * language; state is what getDocumentState returned for it before,
+	 * or null. Return false when the editor in use cannot show a
+	 * document.
 	 */
 	public boolean showDocument(@NonNull Document document,
-			@Nullable Object state) {
+			@NonNull Syntax syntax, @Nullable Object state) {
 		if (editor == null) {
 			if (!ShaderEditorApp.preferences.useNewEditor()) {
 				return false;
 			}
 			pendingText = null;
 			pendingDocument = document;
+			pendingSyntax = syntax;
 			pendingDocumentState = state;
 			return true;
 		}
-		return editor.showDocument(document, state);
+		return editor.showDocument(document, syntax, state);
 	}
 
 	/** Return what the view keeps of the document shown, or null. */

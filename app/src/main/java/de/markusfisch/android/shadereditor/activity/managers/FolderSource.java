@@ -311,12 +311,13 @@ final class FolderSource {
 	@NonNull
 	private Map<String, OpenProject.Runs> runs(@NonNull List<Row> rows) {
 		Map<String, OpenProject.Runs> runs = new HashMap<>();
+		ShaderLanguage language;
 		for (Row row : rows) {
 			var path = ProjectPath.parse(row.key());
 			if (row.kind() == Row.Kind.FOLDER || !path.isSuccess()) {
 				continue;
-			} else if (ShaderLanguage.listed(row.name()) ==
-					ShaderLanguage.UNSUPPORTED) {
+			} else if ((language = ShaderLanguage.listed(row.name())) !=
+					null && !language.runs()) {
 				runs.put(row.key(), OpenProject.Runs.NO);
 			} else if (project != null &&
 					project.document(path.value()) != null) {

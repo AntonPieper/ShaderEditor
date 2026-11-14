@@ -24,6 +24,7 @@ import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 
 /**
  * Opens files of folders in the editor and keeps the one open: its
@@ -207,7 +208,9 @@ public final class ProjectFileManager {
 		heard = last(project.events(0));
 		project.setListener(ContextCompat.getMainExecutor(activity),
 				this::changed);
-		editor.showDocument(document, project.editorState(path));
+		editor.showDocument(document,
+				ShaderLanguage.of(path.toString()).syntax(),
+				project.editorState(path));
 		listener.onShown(shown);
 		String unreadable = project.unreadable(path);
 		if (unreadable != null) {

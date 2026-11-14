@@ -91,11 +91,13 @@ Options are checked against the kind once it is known: `frame=` on a picture, `m
 | --- | --- |
 | `.frag`, `.glsl`, `.fs`, `.fsh` | GLSL |
 | `.wgsl`, `.agsl`, `.sksl`, `.hlsl`, `.slang` | another shading language, which v1 does not run |
+| `.json` | JSON, which is no shader |
+| `.md` | Markdown, which is no shader |
 | anything else | GLSL |
 
-The names other shading languages are known by are reserved, so that a file so named never means GLSL. As the running shader, as a pass or as an include, such a text file is an error that says so and how to fix it: `fx/blur.wgsl is named as a shader in another language than GLSL, which ShaderEditor does not run; rename it if it is GLSL`. Run this file is not offered on it. It is still text: it can be browsed, edited and shared, and a picture with such a name is a picture, because kind comes first. This is what lets a later version add a row for such a language without a new `projectVersion` (section 1): no project that is valid today changes its meaning.
+The names other shading languages are known by are reserved, so that a file so named never means GLSL. As the running shader, as a pass or as an include, such a text file is an error that says so and how to fix it: `fx/blur.wgsl is named as a shader in another language than GLSL, which ShaderEditor does not run; rename it if it is GLSL`. Run this file is not offered on it. It is still text: it can be browsed, edited and shared, and a picture with such a name is a picture, because kind comes first. A text file named as JSON or Markdown is refused the same way, `data.json is named as JSON, which is not a shader; rename it if it is GLSL`. This is what lets a later version add a row for such a language without a new `projectVersion` (section 1): no project that is valid today changes its meaning.
 
-This table is the only place where the ending of a file name has meaning, and it is consulted only for text. Endings are compared without regard to case; path lookup stays case-sensitive (section 2). The listed endings are also what the app offers itself for when another app opens a file, and what the folder list may use as a hint.
+This table is the only place where the ending of a file name has meaning, and it is consulted only for text. Endings are compared without regard to case; path lookup stays case-sensitive (section 2). The endings of shading languages are also what the app offers itself for when another app opens a file, and what the folder list may use as a hint. The editor colours, completes and indents a file as the table's language says: GLSL as GLSL, JSON as JSON, and Markdown and the shading languages v1 does not run as plain text, never as GLSL.
 
 **Names by convention.** None of this is enforced: a fragment shader that runs or is a pass is named `*.frag`, and code meant to be included is named `*.glsl`. The default name, the examples, the converter and the New sheet follow it. It matches what the common tools do: `.frag` is the stage extension of the Khronos tools and of most editors, and `.glsl` is what shader libraries use for files without a stage.
 
