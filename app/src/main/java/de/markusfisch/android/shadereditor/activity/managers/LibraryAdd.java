@@ -26,8 +26,9 @@ import de.markusfisch.android.shadereditor.widget.ShaderToySource;
  * a file of it: text another app shared, a copy of a shader that is
  * still in the database, which are converted as the move converts,
  * with their textures, and copies of files of a read-only folder,
- * such as an example. Call it on the main thread; nothing it hears
- * after it was destroyed does anything.
+ * such as an example. Call it on the main thread. What it hears after
+ * it was destroyed goes to the one made after it, of the screen that
+ * is made again: the shader asked for is shown and told there.
  */
 public final class LibraryAdd {
 	/** What becomes of a shader asked for. */
@@ -46,8 +47,21 @@ public final class LibraryAdd {
 	private final DataSource database;
 	private final Listener listener;
 	private boolean destroyed;
-	// Whether a copy is being made.
-	private boolean copying;
+	// The one of the screen in front, and what became of a shader
+	// while there was none: the file made, the files a copy kept, or
+	// why there is none.
+	@Nullable
+	private static LibraryAdd current;
+	// How many shaders asked for are not made yet, and whether one of
+	// them is a copy: across screens, as they are made behind them.
+	private static int asking;
+	private static boolean copying;
+	@Nullable
+	private static ProjectPath lateAdded;
+	@Nullable
+	private static List<ProjectPath> lateKept;
+	@Nullable
+	private static String lateFailed;
 
 	public LibraryAdd(@NonNull Context context, @NonNull Projects projects,
 			@NonNull DataSource database, @NonNull Listener listener) {
@@ -56,6 +70,37 @@ public final class LibraryAdd {
 		this.projects = projects;
 		this.database = database;
 		this.listener = listener;
+		current = this;
+	}
+
+	/**
+	 * Return whether a shader the screen before this one asked for is
+	 * still to be shown: the start then shows no other file.
+	 */
+	public boolean awaits() {
+		return asking > 0 || lateAdded != null;
+	}
+
+	/**
+	 * Hear what became of a shader the screen before this one asked
+	 * for, once this screen can show it.
+	 */
+	public void resume() {
+		String failed = lateFailed;
+		ProjectPath added = lateAdded;
+		List<ProjectPath> kept = lateKept;
+		lateFailed = null;
+		lateAdded = null;
+		lateKept = null;
+		if (failed != null) {
+			listener.onFailed(failed);
+		}
+		if (added != null) {
+			show(added);
+		}
+		if (kept != null) {
+			tellKept(kept);
+		}
 	}
 
 	/**
@@ -72,6 +117,7 @@ public final class LibraryAdd {
 			return;
 		}
 		copying = true;
+		++asking;
 		Map<ProjectPath, Integer> revisions = new HashMap<>();
 		for (ProjectPath path : paths) {
 			Document document = project.document(path);
@@ -81,10 +127,9 @@ public final class LibraryAdd {
 		}
 		projects.saveCopy(project, entry, paths, made -> {
 			copying = false;
-			if (destroyed) {
-				return;
-			} else if (made.path() == null) {
-				listener.onFailed(context.getString(R.string.copy_not_saved,
+			--asking;
+			if (made.path() == null) {
+				tell(context.getString(R.string.copy_not_saved,
 						made.problem()));
 				return;
 			}
@@ -98,9 +143,9 @@ public final class LibraryAdd {
 					});
 				}
 			}
-			show(made.path());
+			added(made.path());
 			if (!made.kept().isEmpty()) {
-				tellKept(made.kept());
+				kept(made.kept());
 			}
 		});
 	}
@@ -121,21 +166,21 @@ public final class LibraryAdd {
 	 */
 	public void add(@Nullable String title, @NonNull String text,
 			float quality, @Nullable byte[] picture) {
+		++asking;
 		projects.addShader(database, UniformTable.builtins().names(), title,
 				context.getString(R.string.nav_untitled), text, quality,
 				picture, made -> {
-					if (destroyed) {
-						return;
-					} else if (made.path() == null) {
+					--asking;
+					if (made.path() == null) {
 						failed(made.problem());
 						return;
 					}
 					if (made.problem() != null) {
 						// The file is there; its quality or picture not.
-						listener.onFailed(context.getString(
+						tell(context.getString(
 								R.string.library_not_kept, made.problem()));
 					}
-					show(made.path());
+					added(made.path());
 				});
 	}
 
@@ -146,13 +191,16 @@ public final class LibraryAdd {
 			OpenProject project = opened.project();
 			String key = opened.id();
 			if (destroyed) {
+				added(path);
 				return;
 			} else if (project == null || key == null) {
 				failed(opened.problem());
 				return;
 			}
 			project.refresh(reread -> {
-				if (!destroyed) {
+				if (destroyed) {
+					added(path);
+				} else {
 					listener.onAdded(key, path);
 				}
 			});
@@ -161,6 +209,19 @@ public final class LibraryAdd {
 
 	public void destroy() {
 		destroyed = true;
+		if (current == this) {
+			current = null;
+		}
+	}
+
+	// The file was made: the screen in front shows it, or the next.
+	private void added(@NonNull ProjectPath path) {
+		LibraryAdd front = destroyed ? current : this;
+		if (front != null) {
+			front.show(path);
+		} else {
+			lateAdded = path;
+		}
 	}
 
 	// A dialog, not a bottom message: the copy may fail to compile
@@ -178,10 +239,29 @@ public final class LibraryAdd {
 				.show();
 	}
 
+	// The files a copy kept are named by the screen in front, or the
+	// next.
+	private void kept(@NonNull List<ProjectPath> kept) {
+		LibraryAdd front = destroyed ? current : this;
+		if (front != null) {
+			front.tellKept(kept);
+		} else {
+			lateKept = kept;
+		}
+	}
+
 	private void failed(@Nullable String problem) {
-		if (!destroyed) {
-			listener.onFailed(context.getString(R.string.library_not_added,
-					problem != null ? problem : ""));
+		tell(context.getString(R.string.library_not_added,
+				problem != null ? problem : ""));
+	}
+
+	// Never dropped: the screen in front says it, or the next.
+	private void tell(@NonNull String message) {
+		LibraryAdd front = destroyed ? current : this;
+		if (front != null) {
+			front.listener.onFailed(message);
+		} else {
+			lateFailed = message;
 		}
 	}
 }
