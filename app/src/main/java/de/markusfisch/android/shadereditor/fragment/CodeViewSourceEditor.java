@@ -28,8 +28,9 @@ import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
-import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
+import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.syntax.Outline;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.ShaderToySource;
 
@@ -46,6 +47,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 	private static final WindowInsets NO_INSETS =
 			new WindowInsetsCompat.Builder().build().toWindowInsets();
 	private static final List<String> BUILTIN_UNIFORMS = new ArrayList<>();
+	// A shader of the database is GLSL.
+	private static final Syntax DATABASE = ShaderLanguage.GLSL.syntax();
 
 	static {
 		for (UniformDef uniform : UniformTable.BUILTINS) {
@@ -93,7 +96,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 			return insets;
 		});
 		view.setAnalysisListener(this::analysed);
-		show(new Document(Text.EMPTY));
+		show(new Document(Text.EMPTY), DATABASE);
 	}
 
 	@NonNull
@@ -121,7 +124,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public void setText(@NonNull String text) {
-		show(new Document(Text.of(text)));
+		show(new Document(Text.of(text)), DATABASE);
 		convert = true;
 		if (listener != null) {
 			listener.onTextModified();
@@ -131,8 +134,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public boolean showDocument(@NonNull Document document,
-			@Nullable Object state) {
-		show(document);
+			@NonNull Syntax syntax, @Nullable Object state) {
+		show(document, syntax);
 		// Not the user's own text, which is not rewritten.
 		converting = null;
 		convert = false;
@@ -176,7 +179,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 				selection[1] >= 0 && selection[1] <= length) {
 			restored.select(selection[0], selection[1]);
 		}
-		show(restored);
+		show(restored, DATABASE);
 		convert = true;
 		view.bringCaretIntoView();
 	}
@@ -299,7 +302,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		release();
 	}
 
-	private void show(@NonNull Document document) {
+	private void show(@NonNull Document document, @NonNull Syntax syntax) {
 		view.removeCallbacks(editPaused);
 		if (this.document != null) {
 			release();
@@ -307,7 +310,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		this.document = document;
 		revision = document.revision();
 		errors = Collections.emptyList();
-		styles = new LineStyles(document, GlslSyntax.INSTANCE, STYLE_BUDGET);
+		styles = new LineStyles(document, syntax, STYLE_BUDGET);
 		marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
 		document.addListener(documentListener);

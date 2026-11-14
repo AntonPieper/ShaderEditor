@@ -11,6 +11,7 @@ import java.util.List;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 /**
  * What EditorFragment needs of the view that edits the shader's source.
@@ -56,13 +57,15 @@ interface SourceEditor {
 	/**
 	 * Show document itself, with its selection and undo history, in
 	 * place of the text shown, without telling the listener: showing it
-	 * is no edit. Edits go into document from then on.
+	 * is no edit. Edits go into document from then on. syntax is how
+	 * the language of its file is coloured, completed and indented.
 	 *
 	 * @param state what getDocumentState returned when it was shown
 	 *              before, or null
 	 * @return false when this editor cannot show a document
 	 */
-	boolean showDocument(@NonNull Document document, @Nullable Object state);
+	boolean showDocument(@NonNull Document document, @NonNull Syntax syntax,
+			@Nullable Object state);
 
 	/**
 	 * Return what the view keeps of the document shown besides the

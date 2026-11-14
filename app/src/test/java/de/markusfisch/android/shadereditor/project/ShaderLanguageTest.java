@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.project;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -14,6 +15,9 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
+import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
+import de.markusfisch.android.shadereditor.syntax.JsonSyntax;
+import de.markusfisch.android.shadereditor.syntax.PlainSyntax;
 
 public class ShaderLanguageTest {
 	@Test
@@ -44,6 +48,33 @@ public class ShaderLanguageTest {
 		// Not an ending: the name only contains it.
 		assertEquals(ShaderLanguage.GLSL, ShaderLanguage.of("wgsl"));
 		assertEquals(ShaderLanguage.GLSL, ShaderLanguage.of("a.wgsl.frag"));
+	}
+
+	@Test
+	public void jsonAndMarkdownAreNoShaders() {
+		assertEquals(ShaderLanguage.JSON, ShaderLanguage.of("a/b.JSON"));
+		assertEquals(ShaderLanguage.MARKDOWN, ShaderLanguage.of("README.md"));
+		assertFalse(ShaderLanguage.JSON.runs());
+		assertFalse(ShaderLanguage.MARKDOWN.runnable(
+				Text.of("void main() {}\n")));
+		assertEquals("data.json is named as JSON, which is not a shader; " +
+				"rename it if it is GLSL", ShaderLanguage.JSON.refusal(
+				ProjectPath.parse("data.json").value()));
+		assertEquals("README.md is named as Markdown, which is not a " +
+				"shader; rename it if it is GLSL", ShaderLanguage.MARKDOWN
+				.refusal(ProjectPath.parse("README.md").value()));
+	}
+
+	@Test
+	public void theLanguageSaysHowTheEditorTreatsAFile() {
+		assertSame(GlslSyntax.INSTANCE, ShaderLanguage.of("a.txt").syntax());
+		assertSame(JsonSyntax.INSTANCE, ShaderLanguage.of("a.json").syntax());
+		assertSame(PlainSyntax.INSTANCE, ShaderLanguage.of("a.md").syntax());
+		// Never coloured as GLSL, which it is not.
+		assertSame(PlainSyntax.INSTANCE,
+				ShaderLanguage.of("a.wgsl").syntax());
+		assertTrue(ShaderLanguage.GLSL.runs());
+		assertFalse(ShaderLanguage.UNSUPPORTED.runs());
 	}
 
 	@Test

@@ -14,6 +14,7 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.view.UndoRedo;
 import de.markusfisch.android.shadereditor.widget.ShaderEditor;
 
@@ -83,7 +84,7 @@ final class EditTextSourceEditor implements SourceEditor {
 	// Its text is the EditText's own.
 	@Override
 	public boolean showDocument(@NonNull Document document,
-			@Nullable Object state) {
+			@NonNull Syntax syntax, @Nullable Object state) {
 		return false;
 	}
 
