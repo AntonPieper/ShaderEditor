@@ -49,6 +49,12 @@ public final class ProjectFileManager {
 		 * deleted.
 		 */
 		void onMoved(@NonNull String key);
+
+		/**
+		 * A file was asked for while the old editor is in use, which
+		 * cannot show it: say so, with an action that runs turnOn.
+		 */
+		void onNeedsNewEditor(@NonNull Runnable turnOn);
 	}
 
 	/** Runs what a project runs. */
@@ -64,6 +70,15 @@ public final class ProjectFileManager {
 	private static final String KEY = "project_file_key";
 	private static final String PATH = "project_file_path";
 	private static final String SINGLE = "project_file_single";
+	private static final String TAPPED = "project_file_tapped";
+	private static final String ASKED = "project_file_asked";
+
+	// A file asked for while the old editor was in use, opened once the
+	// screen is made again with the new one; a shader of the library is
+	// in the editor until then.
+	private record Asked(@NonNull String key, @NonNull ProjectPath path,
+			boolean single, boolean tapped) {
+	}
 
 	@NonNull
 	private final AppCompatActivity activity;
@@ -88,6 +103,8 @@ public final class ProjectFileManager {
 	private int line;
 	@Nullable
 	private String key;
+	@Nullable
+	private Asked askedFor;
 	// The file tapped last until it is known whether it can run.
 	@Nullable
 	private ProjectPath deciding;
@@ -124,7 +141,8 @@ public final class ProjectFileManager {
 	/**
 	 * Open the file at path of the folder or single file opened before
 	 * with key, as a tap on it does; return whether the drawer closes.
-	 * Only the new editor can show it; the old one says so.
+	 * Only the new editor can show it; with the old one the file is not
+	 * opened, and a message offers to turn the new one on and open it.
 	 */
 	public boolean open(@NonNull String key, @NonNull ProjectPath path,
 			boolean single) {
@@ -152,11 +170,29 @@ public final class ProjectFileManager {
 	private boolean open(@NonNull String key, @NonNull ProjectPath path,
 			boolean single, boolean tapped) {
 		if (!ShaderEditorApp.preferences.useNewEditor()) {
-			listener.onFailed(activity.getString(
-					R.string.file_needs_new_editor));
-			// A tap closes the drawer all the same, so that this can be
-			// read.
-			return tapped;
+			Runnable turnOn = () -> {
+				ShaderEditorApp.preferences.setUseNewEditor(true);
+				// The screen is made again with the new editor, and
+				// opens the file from its saved state.
+				askedFor = new Asked(key, path, single, tapped);
+				activity.recreate();
+			};
+			if (tapped) {
+				listener.onNeedsNewEditor(turnOn);
+				// A tap closes the drawer all the same, so that this can
+				// be read.
+				return true;
+			}
+			// The file that was in the editor before the screen was made
+			// again: what comes for a lost one comes in its place, after
+			// the screen is made, and then the message.
+			ContextCompat.getMainExecutor(activity).execute(() -> {
+				if (!destroyed) {
+					listener.onGone();
+					listener.onNeedsNewEditor(turnOn);
+				}
+			});
+			return false;
 		}
 		int ask = ++asked;
 		line = 0;
@@ -319,6 +355,14 @@ public final class ProjectFileManager {
 	public void saveState(@NonNull Bundle state) {
 		ProjectFile saved = file;
 		if (saved == null) {
+			Asked asked = askedFor;
+			if (asked != null) {
+				state.putString(KEY, asked.key());
+				state.putString(PATH, asked.path().toString());
+				state.putBoolean(SINGLE, asked.single());
+				state.putBoolean(TAPPED, asked.tapped());
+				state.putBoolean(ASKED, true);
+			}
 			return;
 		}
 		saved.getProject().setEditorState(saved.getPath(),
@@ -329,16 +373,34 @@ public final class ProjectFileManager {
 	}
 
 	/**
-	 * Open the file that was in the editor before the screen was made
-	 * again; return whether there was one that is being opened.
+	 * Whether a file of a folder was in the editor before the screen was
+	 * made again; otherwise a shader of the library was.
 	 */
-	public boolean restoreState(@NonNull Bundle state) {
+	public boolean hadFile(@NonNull Bundle state) {
+		return savedPath(state) != null && !state.getBoolean(ASKED);
+	}
+
+	/**
+	 * Open the file that was in the editor before the screen was made
+	 * again, or the one asked for when the new editor was turned on;
+	 * call it after the library's shader is restored.
+	 */
+	public void restoreState(@NonNull Bundle state) {
+		ProjectPath path = savedPath(state);
 		String restored = state.getString(KEY);
+		if (path != null && restored != null) {
+			open(restored, path, state.getBoolean(SINGLE),
+					state.getBoolean(TAPPED));
+		}
+	}
+
+	@Nullable
+	private static ProjectPath savedPath(@NonNull Bundle state) {
 		String path = state.getString(PATH);
-		var parsed = path != null ? ProjectPath.parse(path) : null;
-		return restored != null && parsed != null && parsed.isSuccess() &&
-				open(restored, parsed.value(), state.getBoolean(SINGLE),
-						false);
+		var parsed = path != null && state.getString(KEY) != null
+				? ProjectPath.parse(path)
+				: null;
+		return parsed != null && parsed.isSuccess() ? parsed.value() : null;
 	}
 
 	public void destroy() {
