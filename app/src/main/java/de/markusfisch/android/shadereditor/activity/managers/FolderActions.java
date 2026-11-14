@@ -5,6 +5,8 @@ import android.app.Activity;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
@@ -15,11 +17,16 @@ import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
+import de.markusfisch.android.shadereditor.widget.NewSheet;
+import de.markusfisch.android.shadereditor.widget.RenameDialog;
 
 /**
- * Does what the menu of a row of a folder offers. A file is duplicated
- * with the text it has now, unsaved or not, on the queue of the
- * projects. Call it on the main thread.
+ * Does what the menu of a row of a folder offers. Files are renamed,
+ * duplicated and deleted on the queue of the projects, as one change
+ * each, and the project then looks at its files again. A file the
+ * project holds, open in the editor or with unsaved text, is neither
+ * renamed nor deleted, so no unsaved text is ever lost with it. Call
+ * it on the main thread.
  */
 final class FolderActions {
 	/** What the drawer does for the actions. */
@@ -67,6 +74,9 @@ final class FolderActions {
 					source.title(level) + " / " + row.name());
 			case DUPLICATE -> duplicate(key, project, path,
 					source.names(level));
+			case RENAME -> rename(key, project, path, row,
+					source.names(level));
+			case DELETE -> delete(key, project, path, row);
 			default -> {
 			}
 		}
@@ -105,6 +115,113 @@ final class FolderActions {
 			}
 			host.changed(key, copy);
 		});
+	}
+
+	private void rename(@NonNull String key, @NonNull OpenProject project,
+			@NonNull ProjectPath path, @NonNull Row row,
+			@NonNull List<String> names) {
+		if (refuse(project, path, row, R.string.nav_cannot_rename_held,
+				R.string.nav_cannot_rename_holding)) {
+			return;
+		}
+		names.remove(row.name());
+		Naming naming = new Naming(names);
+		RenameDialog.show(activity, R.string.nav_rename, row.name(), name ->
+						NewSheet.describe(activity, naming.check(name), name),
+				uses(project, path), name -> {
+			ProjectPath to = sibling(path, name);
+			if (to == null || name.equals(row.name())) {
+				return;
+			}
+			boolean ran = path.equals(project.running());
+			change(key, project, path, R.string.nav_cannot_rename,
+					files -> files.rename(path, to), () -> {
+						if (ran) {
+							project.runThisFile(to);
+						}
+					});
+		});
+	}
+
+	private void delete(@NonNull String key, @NonNull OpenProject project,
+			@NonNull ProjectPath path, @NonNull Row row) {
+		if (refuse(project, path, row, R.string.nav_cannot_delete_held,
+				R.string.nav_cannot_delete_holding)) {
+			return;
+		}
+		CharSequence uses = uses(project, path);
+		new MaterialAlertDialogBuilder(activity)
+				.setTitle(activity.getString(R.string.delete_shader_title,
+						row.name()))
+				.setMessage(uses != null
+						? uses
+						: row.kind() == Row.Kind.FOLDER
+						? activity.getString(R.string.nav_delete_folder)
+						: null)
+				.setPositiveButton(R.string.nav_delete, (d, which) ->
+						change(key, project, path, R.string.nav_cannot_delete,
+								files -> files.delete(path), null))
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
+	}
+
+	private void change(@NonNull String key, @NonNull OpenProject project,
+			@NonNull ProjectPath path, int failed,
+			@NonNull Projects.Change change, @Nullable Runnable done) {
+		projects.change(key, change, made -> {
+			if (made instanceof ProjectFiles.Refused refused) {
+				host.tell(activity.getString(failed, path.getFileName(),
+						refused.reason()));
+				return;
+			}
+			if (done != null) {
+				done.run();
+			}
+			// It sees the change as one made elsewhere.
+			project.refresh(reread -> {
+			});
+			host.changed(key, path);
+		});
+	}
+
+	// The project holds a file while it is open in the editor or kept
+	// in memory, or has unsaved text; changing it would leave the
+	// project's copy behind.
+	private boolean refuse(@NonNull OpenProject project,
+			@NonNull ProjectPath path, @NonNull Row row, int file,
+			int folder) {
+		boolean held;
+		if (row.kind() == Row.Kind.FOLDER) {
+			held = project.marks(path).unsaved() > 0 ||
+					under(project.shown(), path);
+		} else {
+			held = project.document(path) != null ||
+					project.unsaved().contains(path) ||
+					!project.settled(path);
+		}
+		if (held) {
+			host.tell(activity.getString(row.kind() == Row.Kind.FOLDER
+					? folder
+					: file, row.name()));
+		}
+		return held;
+	}
+
+	// What the running shader would miss, said before it happens.
+	@Nullable
+	private CharSequence uses(@NonNull OpenProject project,
+			@NonNull ProjectPath path) {
+		ProjectPath running = project.running();
+		return running != null && !running.equals(path) &&
+				project.uses(path)
+				? activity.getString(R.string.nav_used_by,
+						running.getFileName())
+				: null;
+	}
+
+	private static boolean under(@Nullable ProjectPath file,
+			@NonNull ProjectPath folder) {
+		return file != null && file.toString().startsWith(folder + "/");
 	}
 
 	@Nullable

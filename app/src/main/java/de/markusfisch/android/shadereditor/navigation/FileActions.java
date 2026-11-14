@@ -13,9 +13,9 @@ public final class FileActions {
 
 	/**
 	 * The rows with their menus: a shader file that is not the one
-	 * that runs can be run; a file can be duplicated and a folder
-	 * created in, but only where the folder they are in can be
-	 * changed.
+	 * that runs can be run; a file can be renamed, duplicated and
+	 * deleted, a folder renamed, deleted and created in, but only where
+	 * the folder they are in can be changed.
 	 *
 	 * @param running  the path of the file that runs, as the rows' keys
 	 *                 are, or null
@@ -29,7 +29,9 @@ public final class FileActions {
 			switch (row.kind()) {
 				case FOLDER -> {
 					if (writable) {
+						actions.add(Row.Action.RENAME);
 						actions.add(Row.Action.NEW_HERE);
+						actions.add(Row.Action.DELETE);
 					}
 				}
 				case SHADER, TEXT, IMAGE -> {
@@ -38,7 +40,9 @@ public final class FileActions {
 						actions.add(Row.Action.RUN);
 					}
 					if (writable) {
+						actions.add(Row.Action.RENAME);
 						actions.add(Row.Action.DUPLICATE);
+						actions.add(Row.Action.DELETE);
 					}
 				}
 				default -> {

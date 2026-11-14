@@ -212,18 +212,30 @@ public final class NewSheet {
 		check();
 	}
 
+	/**
+	 * Say why name cannot be taken, for problem: null when it can, empty
+	 * when nothing needs to be said.
+	 */
+	@Nullable
+	public static String describe(@NonNull Context context,
+			@NonNull Naming.Problem problem, @NonNull String name) {
+		return switch (problem) {
+			case NONE -> null;
+			case EMPTY -> "";
+			case INVALID_CHARACTER -> context.getString(
+					R.string.nav_name_invalid);
+			case HIDDEN -> context.getString(R.string.nav_name_hidden);
+			case TAKEN -> context.getString(R.string.nav_name_taken, name);
+		};
+	}
+
 	private void check() {
 		String name = nameView.getText().toString().trim();
 		Naming.Problem problem = !inFolder || naming == null
 				? Naming.Problem.NONE
 				: naming.check(name);
-		nameLayout.setError(switch (problem) {
-			case INVALID_CHARACTER -> context.getString(
-					R.string.nav_name_invalid);
-			case HIDDEN -> context.getString(R.string.nav_name_hidden);
-			case TAKEN -> context.getString(R.string.nav_name_taken, name);
-			default -> null;
-		});
+		String says = describe(context, problem, name);
+		nameLayout.setError(says != null && !says.isEmpty() ? says : null);
 		create.setEnabled(ready && problem == Naming.Problem.NONE &&
 				(!inFolder || !name.isEmpty()));
 	}
