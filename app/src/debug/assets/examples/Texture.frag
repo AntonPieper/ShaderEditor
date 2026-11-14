@@ -6,6 +6,8 @@ precision mediump float;
 
 uniform float time;
 uniform vec2 resolution;
+// The image is a file beside this shader; wrap=repeat tiles it.
+#pragma se input "textures/noise.png" wrap=repeat
 uniform sampler2D noise;
 
 void main(void) {

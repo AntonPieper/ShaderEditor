@@ -11,7 +11,9 @@ precision mediump float;
 uniform vec2 resolution;
 uniform int pointerCount;
 uniform vec3 pointers[10];
-uniform sampler2D backbuffer;///p:noise
+// One cell per 8 x 8 pixels; the cells start as the noise image.
+#pragma se target scale=0.125 initial="textures/noise.png"
+uniform sampler2D backbuffer;
 
 float oneIfZero(float value) {
 	return step(abs(value), 0.1);

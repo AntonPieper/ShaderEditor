@@ -4,10 +4,14 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import de.markusfisch.android.shadereditor.project.ExamplesTest;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -50,7 +54,7 @@ public class ExampleCoverageTest {
 				staleExemptions.add(name);
 			}
 		}
-		assertTrue("Builtin uniforms declared by no sample_*.glsl: " + uncovered
+		assertTrue("Builtin uniforms declared by no example: " + uncovered
 						+ ". Add an example or exempt them with a reason.",
 				uncovered.isEmpty());
 		assertTrue("Exempted uniforms are now declared by an example, "
@@ -59,10 +63,9 @@ public class ExampleCoverageTest {
 	}
 
 	private static Set<String> declaredInExamples() throws IOException {
-		var dir = findRawDirectory();
-		var files = dir.listFiles((d, name) ->
-				name.startsWith("sample_") && name.endsWith(".glsl"));
-		assertTrue("No sample_*.glsl files in " + dir, files != null && files.length > 0);
+		var files = new ArrayList<File>();
+		collect(ExamplesTest.folder(), files);
+		assertTrue("No examples in " + ExamplesTest.folder(), !files.isEmpty());
 		var names = new TreeSet<String>();
 		for (var file : files) {
 			var source = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
@@ -74,15 +77,17 @@ public class ExampleCoverageTest {
 		return names;
 	}
 
-	private static File findRawDirectory() {
-		var relative = "src/main/res/raw";
-		for (var base : new String[]{".", "app"}) {
-			var dir = new File(base, relative);
-			if (dir.isDirectory()) {
-				return dir;
+	private static void collect(File dir, List<File> found) {
+		var files = dir.listFiles();
+		if (files == null) {
+			return;
+		}
+		for (var file : files) {
+			if (file.isDirectory()) {
+				collect(file, found);
+			} else if (file.getName().endsWith(".frag") || file.getName().endsWith(".glsl")) {
+				found.add(file);
 			}
 		}
-		throw new AssertionError("Cannot find " + relative + " from working directory "
-				+ new File(".").getAbsolutePath());
 	}
 }

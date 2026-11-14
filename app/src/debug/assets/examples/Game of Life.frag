@@ -9,6 +9,9 @@ uniform int pointerCount;
 uniform vec3 pointers[10];
 uniform sampler2D backbuffer;
 
+// One cell per 8 x 8 pixels.
+#pragma se target scale=0.125
+
 float get(float x, float y) {
 	return texture2D(backbuffer,
 		(gl_FragCoord.xy + vec2(x, y)) / resolution).r;

@@ -10,7 +10,8 @@ precision mediump float;
 
 uniform vec2 resolution; // size of the surface in pixels
 uniform float time; // seconds since load
-uniform sampler2D noise; // the bundled grey noise image, 256 x 256
+#pragma se input "textures/noise.png"
+uniform sampler2D noise; // a grey noise image, 256 x 256
 
 // 3.00: the output is a variable you declare; gl_FragColor is gone.
 out vec4 fragColor;
