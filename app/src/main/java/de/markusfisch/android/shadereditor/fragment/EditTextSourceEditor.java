@@ -29,6 +29,7 @@ final class EditTextSourceEditor implements SourceEditor {
 	EditTextSourceEditor(@NonNull ShaderEditor shaderEditor) {
 		this.shaderEditor = shaderEditor;
 		undoRedo = new UndoRedo(shaderEditor, ShaderEditorApp.editHistory);
+		shaderEditor.setUndoRedo(undoRedo);
 	}
 
 	@NonNull

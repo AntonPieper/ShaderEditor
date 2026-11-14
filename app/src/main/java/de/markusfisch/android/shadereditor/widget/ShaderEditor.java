@@ -56,6 +56,7 @@ import de.markusfisch.android.shadereditor.syntax.GlslLexer;
 import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
+import de.markusfisch.android.shadereditor.view.UndoRedo;
 
 public class ShaderEditor extends LineNumberEditText {
 	private static final Pattern PATTERN_TRAILING_WHITE_SPACE = Pattern.compile(
@@ -105,6 +106,8 @@ public class ShaderEditor extends LineNumberEditText {
 	private OnEditPausedListener onEditPausedListener;
 	@Nullable
 	private CodeCompletionListener codeCompletionListener;
+	@Nullable
+	private UndoRedo undoRedo;
 	private int updateDelay = 1000;
 	@NonNull
 	private List<ProjectDiagnostic> shaderErrors = Collections.emptyList();
@@ -157,6 +160,42 @@ public class ShaderEditor extends LineNumberEditText {
 	public void setOnCompletionsListener(
 			@Nullable CodeCompletionListener listener) {
 		codeCompletionListener = listener;
+	}
+
+	/**
+	 * Use the app's undo history for Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y and
+	 * a keyboard's undo and redo, so they match the toolbar's.
+	 */
+	public void setUndoRedo(@Nullable UndoRedo undoRedo) {
+		this.undoRedo = undoRedo;
+	}
+
+	@Override
+	public boolean onKeyShortcut(int keyCode, KeyEvent event) {
+		if (keyCode == KeyEvent.KEYCODE_Z &&
+				event.hasModifiers(KeyEvent.META_CTRL_ON)) {
+			return onTextContextMenuItem(android.R.id.undo);
+		}
+		if ((keyCode == KeyEvent.KEYCODE_Z && event.hasModifiers(
+				KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON)) ||
+				(keyCode == KeyEvent.KEYCODE_Y &&
+						event.hasModifiers(KeyEvent.META_CTRL_ON))) {
+			return onTextContextMenuItem(android.R.id.redo);
+		}
+		return super.onKeyShortcut(keyCode, event);
+	}
+
+	@Override
+	public boolean onTextContextMenuItem(int id) {
+		if (undoRedo != null && id == android.R.id.undo) {
+			undoRedo.undo();
+			return true;
+		}
+		if (undoRedo != null && id == android.R.id.redo) {
+			undoRedo.redo();
+			return true;
+		}
+		return super.onTextContextMenuItem(id);
 	}
 
 	public void setUpdateDelay(int ms) {
