@@ -22,6 +22,18 @@ public class EngineInputsTest {
 		assertEquals(135, EngineInputs.renderSize(1080, .125f));
 	}
 
+	// At least one pixel per axis, however small the surface.
+	@Test
+	public void aTinySurfaceRendersAtLeastOnePixel() {
+		assertEquals(1, EngineInputs.renderSize(1, .25f));
+		assertEquals(1, EngineInputs.renderSize(3, .125f));
+		var inputs = new EngineInputs();
+		inputs.resize(1, 100);
+		inputs.restart(.25f, 0L);
+		assertEquals(1, inputs.getRenderWidth());
+		assertEquals(25, inputs.getRenderHeight());
+	}
+
 	@Test
 	public void resizeReportsOnlyChangedRenderSizes() {
 		var inputs = new EngineInputs();

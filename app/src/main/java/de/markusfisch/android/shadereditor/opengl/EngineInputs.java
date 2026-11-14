@@ -49,8 +49,9 @@ final class EngineInputs {
 	private int frame;
 	private float startRandom;
 
+	// At least one pixel, as a target has.
 	static int renderSize(int surfaceSize, float quality) {
-		return Math.round(surfaceSize * quality);
+		return Math.max(1, Math.round(surfaceSize * quality));
 	}
 
 	// Any thread. The runtime of this owner while it is shown, or -1.
