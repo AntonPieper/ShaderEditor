@@ -263,6 +263,12 @@ public class ShaderManager implements OpenItem {
 		return can(action, selectedShaderId);
 	}
 
+	// What is open is what runs.
+	@Override
+	public boolean offers(@NonNull Action action) {
+		return action != Action.RUN_THIS_FILE;
+	}
+
 	@Override
 	public void save(boolean explicit) {
 		saveShader(explicit);
@@ -493,6 +499,7 @@ public class ShaderManager implements OpenItem {
 		return switch (action) {
 			case SAVE, SHARE -> true;
 			case SAVE_COPY, DELETE, WALLPAPER -> shaderId > 0;
+			case RUN_THIS_FILE -> false;
 		};
 	}
 

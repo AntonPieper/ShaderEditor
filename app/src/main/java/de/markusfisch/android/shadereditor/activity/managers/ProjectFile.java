@@ -117,12 +117,16 @@ public final class ProjectFile implements OpenItem {
 
 	@Override
 	public boolean can(@NonNull Action action) {
-		return action == Action.SAVE;
+		return action == Action.SAVE || action == Action.RUN_THIS_FILE &&
+				!path.equals(project.running()) &&
+				project.runs(path) == OpenProject.Runs.YES;
 	}
 
+	// Run this file only when it can run and does not.
 	@Override
 	public boolean offers(@NonNull Action action) {
-		return action == Action.SAVE;
+		return action == Action.SAVE || action == Action.RUN_THIS_FILE &&
+				can(action);
 	}
 
 	@Override
@@ -188,5 +192,12 @@ public final class ProjectFile implements OpenItem {
 
 	@Override
 	public void setAsWallpaper() {
+	}
+
+	@Override
+	public void runThisFile() {
+		if (can(Action.RUN_THIS_FILE)) {
+			project.runThisFile(path);
+		}
 	}
 }

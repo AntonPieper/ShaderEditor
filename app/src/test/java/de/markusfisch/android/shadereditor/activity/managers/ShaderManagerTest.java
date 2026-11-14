@@ -46,5 +46,7 @@ public class ShaderManagerTest {
 			assertFalse(ShaderManager.can(action, 0));
 			assertTrue(ShaderManager.can(action, 42));
 		}
+		// What is open is what runs.
+		assertFalse(ShaderManager.can(OpenItem.Action.RUN_THIS_FILE, 42));
 	}
 }

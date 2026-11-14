@@ -69,6 +69,7 @@ import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Notice;
 import de.markusfisch.android.shadereditor.navigation.Order;
+import de.markusfisch.android.shadereditor.navigation.Recent;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
@@ -371,6 +372,22 @@ public class NavigationDrawer implements ShaderList {
 		} else if (listing != null) {
 			refresh();
 		}
+	}
+
+	/**
+	 * Shows the New sheet for the folder of the file at path of the
+	 * folder opened before with key.
+	 */
+	public void showNew(@NonNull String key, @NonNull ProjectPath path) {
+		Level in = Item.Place.file(key, path.toString()).level();
+		String folder = in.path();
+		Recent known = folders.find(key);
+		String where = known != null ? known.name() : "";
+		showNew(key, folder != null ? ProjectPath.parse(folder).value() : null,
+				folder != null
+						? where + " / " + folder.replace("/", " / ")
+						: where,
+				NewSheet.Kind.SHADER);
 	}
 
 	@Override

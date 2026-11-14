@@ -39,6 +39,8 @@ public class MainMenuManager {
 
 		void onUpdateWallpaper();
 
+		void onRunThisFile();
+
 		void onToggleExtraKeys();
 
 		boolean isWallpaper();
@@ -102,6 +104,7 @@ public class MainMenuManager {
 		setClickListener(R.id.delete_shader, shaderActions::onDeleteShader);
 		setClickListener(R.id.share_shader, shaderActions::onShareShader);
 		setClickListener(R.id.update_wallpaper, shaderActions::onUpdateWallpaper);
+		setClickListener(R.id.run_this_file, shaderActions::onRunThisFile);
 		setClickListener(R.id.add_uniform, navigationActions::onAddUniform);
 		setClickListener(R.id.load_sample, navigationActions::onLoadSample);
 		setClickListener(R.id.settings, navigationActions::onShowSettings);
@@ -149,6 +152,7 @@ public class MainMenuManager {
 		offer(menuView, R.id.delete_shader, OpenItem.Action.DELETE);
 		offer(menuView, R.id.share_shader, OpenItem.Action.SHARE);
 		offer(menuView, R.id.update_wallpaper, OpenItem.Action.WALLPAPER);
+		offer(menuView, R.id.run_this_file, OpenItem.Action.RUN_THIS_FILE);
 	}
 
 	private void offer(@NonNull View menuView, int id,
