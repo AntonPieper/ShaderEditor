@@ -45,6 +45,9 @@ public final class LibraryStart {
 
 		/** Tell once what the move did, as message. */
 		void onMoved(@NonNull String message);
+
+		/** The shaders of the database that could not be moved. */
+		void onNotMoved(@NonNull List<LibraryMove.Failed> failed);
 	}
 
 	// A move that takes less than this says nothing.
@@ -91,7 +94,34 @@ public final class LibraryStart {
 					if (told != null) {
 						listener.onMoved(told);
 					}
+					listener.onNotMoved(result.failed());
 					open(show);
+				});
+	}
+
+	/**
+	 * Put the library aside and move every shader of the database into
+	 * a new one, then show that. Nothing may hold the library open.
+	 */
+	public void redo(@NonNull DataSource database) {
+		projects.redoLibraryMove(database, UniformTable.builtins().names(),
+				activity.getString(R.string.nav_untitled), chosen(),
+				redone -> {
+					if (destroyed) {
+						return;
+					}
+					LibraryMove.Result result = redone.moved();
+					String told = tell(redone.problem() != null
+									? redone.problem()
+									: result != null ? result.problem() : null,
+							result != null ? result.moved() : List.of());
+					if (told != null) {
+						listener.onMoved(told);
+					}
+					listener.onNotMoved(result != null
+							? result.failed()
+							: List.of());
+					open(true);
 				});
 	}
 

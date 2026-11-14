@@ -46,6 +46,7 @@ import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.project.LibraryMove;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -268,8 +269,35 @@ public class MainActivity extends AppCompatActivity {
 					public void onMoved(@NonNull String message) {
 						Message.show(MainActivity.this, message);
 					}
+
+					@Override
+					public void onNotMoved(
+							@NonNull List<LibraryMove.Failed> failed) {
+						if (shaderListManager instanceof NavigationDrawer
+								drawer) {
+							drawer.setNotMoved(failed);
+						}
+					}
 				});
 		libraryStart.start(dataSource, show);
+	}
+
+	// Asks first: the library is put aside and made anew.
+	private void moveLibraryAgain() {
+		new MaterialAlertDialogBuilder(this)
+				.setTitle(R.string.library_move_again)
+				.setMessage(R.string.library_move_again_message)
+				.setPositiveButton(R.string.library_move_again, (d, w) -> {
+					// Nothing may hold the library open.
+					files.leave();
+					if (shaderListManager instanceof NavigationDrawer
+							drawer) {
+						drawer.closeLibrary();
+					}
+					libraryStart.redo(dataSource);
+				})
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
 	}
 
 	@Override
@@ -400,6 +428,14 @@ public class MainActivity extends AppCompatActivity {
 							open.save(false);
 						}
 						return files.open(key, path, single);
+					}
+
+					@Override
+					public void onOpenShader(long id) {
+						if (ShaderEditorApp.preferences.autoSave()) {
+							open.save(false);
+						}
+						shaderManager.selectShader(id);
 					}
 
 					@Override
@@ -803,11 +839,23 @@ public class MainActivity extends AppCompatActivity {
 			public void onShowFaq() {
 				navigationManager.goToFaq();
 			}
+
+			@Override
+			public void onMoveLibraryAgain() {
+				if (libraryStart != null) {
+					moveLibraryAgain();
+				}
+			}
 		};
 	}
 
 	private void showOpenTitle() {
-		uiManager.setToolbarTitle(open.getTitle(), open.getSubtitle(),
+		// Where the shaders are files, one of the database was not moved.
+		String subtitle = files != null && open == shaderManager &&
+				shaderManager.getSelectedShaderId() > 0
+				? getString(R.string.library_not_moved_line)
+				: open.getSubtitle();
+		uiManager.setToolbarTitle(open.getTitle(), subtitle,
 				open.isModified());
 	}
 

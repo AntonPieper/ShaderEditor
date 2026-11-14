@@ -150,6 +150,17 @@
 			android:text="@string/faq"
 			app:icon="@drawable/ic_help" />
 
+		<!-- Only where the shaders are files, which only debug builds
+			are yet. -->
+		<Button
+			android:id="@+id/move_library_again"
+			style="@style/MenuItem"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/menu_item_height"
+			android:text="@string/library_move_again"
+			android:visibility="gone"
+			app:icon="@drawable/ic_folder" />
+
 		<com.google.android.material.divider.MaterialDivider
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
