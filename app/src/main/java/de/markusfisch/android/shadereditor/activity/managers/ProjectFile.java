@@ -110,7 +110,7 @@ public final class ProjectFile implements OpenItem {
 		return quality;
 	}
 
-	// Not kept with the file.
+	// Kept by the library for its files, through the activity.
 	@Override
 	public void setQuality(float quality) {
 		this.quality = quality;
@@ -119,6 +119,7 @@ public final class ProjectFile implements OpenItem {
 	@Override
 	public boolean can(@NonNull Action action) {
 		return action == Action.SAVE || action == Action.DELETE && !single ||
+				action == Action.WALLPAPER && project.running() != null ||
 				action == Action.RUN_THIS_FILE && FileActions.offersRun(
 						path.equals(project.running()), project.runs(path));
 	}
@@ -127,6 +128,7 @@ public final class ProjectFile implements OpenItem {
 	@Override
 	public boolean offers(@NonNull Action action) {
 		return action == Action.SAVE || action == Action.DELETE && !single ||
+				action == Action.WALLPAPER ||
 				action == Action.RUN_THIS_FILE && can(action);
 	}
 
@@ -198,11 +200,13 @@ public final class ProjectFile implements OpenItem {
 	public void share() {
 	}
 
+	// The library knows what the wallpaper shows; the activity asks it.
 	@Override
 	public boolean isWallpaper() {
 		return false;
 	}
 
+	// The activity installs what runs, through the library.
 	@Override
 	public void setAsWallpaper() {
 	}

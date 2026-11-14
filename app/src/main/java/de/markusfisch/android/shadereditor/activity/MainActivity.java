@@ -135,11 +135,19 @@ public class MainActivity extends AppCompatActivity {
 					createProjectFileListener(),
 					(preparation, nothingRuns, quality) -> {
 						if (preparation != null) {
-							shaderViewManager.setPlan(preparation, quality);
 							ProjectFile file = files.file();
-							looks.ran(files.key(), file != null
+							ProjectPath running = file != null
 									? file.getProject().running()
-									: null);
+									: null;
+							looks.quality(files.key(), running, quality,
+									kept -> {
+										if (file != null) {
+											file.setQuality(kept);
+										}
+										shaderViewManager.setPlan(
+												preparation, kept);
+										looks.ran(files.key(), running);
+									});
 						} else {
 							// No build reports, so only the manifest
 							// can be wrong.
@@ -237,6 +245,11 @@ public class MainActivity extends AppCompatActivity {
 						}
 						looks.setLibrary(key);
 						files.setLibrary(key);
+						// A screen made again ran its file before the
+						// library was known: its quality is the library's.
+						if (key.equals(files.key())) {
+							files.run();
+						}
 					}
 
 					@Override
@@ -604,6 +617,10 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onQualityChanged(float quality) {
 				open.setQuality(quality);
+				if (open instanceof ProjectFile file) {
+					looks.keepQuality(files.key(),
+							file.getProject().running(), quality);
+				}
 			}
 
 			private void showError(String error) {
@@ -746,7 +763,10 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public boolean isWallpaper() {
-				return open.isWallpaper();
+				return open instanceof ProjectFile file
+						? looks.isWallpaper(files.key(),
+								file.getProject().running())
+						: open.isWallpaper();
 			}
 
 			@Override
@@ -795,8 +815,26 @@ public class MainActivity extends AppCompatActivity {
 		if (!open.can(OpenItem.Action.WALLPAPER)) {
 			return;
 		}
+		if (open instanceof ProjectFile file) {
+			// What the editor shows, as one build.
+			looks.setWallpaper(files.key(), file.getProject(),
+					file.getQuality(), problem -> {
+						if (problem != null) {
+							Message.show(this, getString(
+									R.string.cannot_install_wallpaper,
+									problem));
+						} else {
+							showWallpaper();
+						}
+					});
+			return;
+		}
 		open.setAsWallpaper();
+		showWallpaper();
+	}
 
+	// Pick the live wallpaper if it is not, else say it is set.
+	private void showWallpaper() {
 		int messageId = R.string.wallpaper_set;
 		if (!WallpaperManager.getInstance(this).isWallpaperSupported()) {
 			messageId = R.string.cannot_set_wallpaper;

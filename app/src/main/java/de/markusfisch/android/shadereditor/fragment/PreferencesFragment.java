@@ -150,6 +150,12 @@ public class PreferencesFragment
 
 	@Override
 	public void onDisplayPreferenceDialog(@NonNull Preference preference) {
+		if (preference instanceof ShaderListPreference &&
+				getResources().getBoolean(R.bool.project_mode)) {
+			LibraryChoice.show(this, preference.getKey(),
+					() -> setSummary(preference));
+			return;
+		}
 		if (preference instanceof ShaderListPreference listPreference) {
 			String key = listPreference.getKey();
 			DialogFragment f = ShaderListPreferenceDialogFragment.newInstance(key);
@@ -180,7 +186,10 @@ public class PreferencesFragment
 	}
 
 	private void setSummary(Preference preference) {
-		if (preference instanceof ShaderListPreference) {
+		if (preference instanceof ShaderListPreference &&
+				getResources().getBoolean(R.bool.project_mode)) {
+			LibraryChoice.summarize(this, preference);
+		} else if (preference instanceof ShaderListPreference) {
 			long id = Preferences.WALLPAPER_SHADER.equals(preference.getKey())
 					? ShaderEditorApp.preferences.getWallpaperShader()
 					: ShaderEditorApp.preferences.getDefaultNewShader();
