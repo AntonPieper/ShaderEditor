@@ -9,6 +9,7 @@ import org.junit.Test;
 import de.markusfisch.android.shadereditor.project.HostDirective.Filter;
 import de.markusfisch.android.shadereditor.project.HostDirective.Format;
 import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
+import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Size;
@@ -189,7 +190,7 @@ public class RenderPlanTest {
 			Mipmap mipmap,
 			Wrap wrapS,
 			Wrap wrapT) {
-		return new HostDirective.Input(MAIN, 3, uniform, "sampler2D",
+		return new HostDirective.Input(MAIN, 3, uniform, TextureKind.FLAT,
 				source != null ? path(source) : null, null, min, mag, mipmap,
 				wrapS, wrapT);
 	}

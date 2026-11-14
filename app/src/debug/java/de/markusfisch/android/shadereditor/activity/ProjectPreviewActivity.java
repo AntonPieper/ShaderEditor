@@ -246,7 +246,7 @@ public class ProjectPreviewActivity extends PreviewActivity {
 						: problem));
 			});
 		}
-		current.prepare(UniformTable.types(), build -> {
+		current.prepare(UniformTable.builtins(), build -> {
 			Preparation preparation = build.preparation();
 			this.build = build;
 			if (preparation == null) {

@@ -41,7 +41,7 @@ record PlanSource(
 		var scan = PreprocessorScan.scan(program.lines(), null);
 		int version = languageVersion(scan);
 		if (version >= 300 && glesVersion < 3) {
-			SourceLocation at = program.sourceMap().locate(program.versionLine());
+			SourceLocation at = program.sourceMap().locate(program.head());
 			errors.add(new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR,
 					"#version " + version + " es needs OpenGL ES 3.0, but " +
 							"this device only has OpenGL ES 2.0",
@@ -62,14 +62,14 @@ record PlanSource(
 					: "#extension GL_OES_EGL_image_external : require");
 		}
 		var lines = new ArrayList<>(program.lines());
-		lines.addAll(program.versionLine(), generated);
+		lines.addAll(program.head(), generated);
 		return new PlanSource(
 				removeNonAscii(String.join("\n", lines) + "\n"),
 				version >= 300
 						? "#version " + version + " es\n" +
 						FullScreenQuad.VERTEX_SHADER_3
 						: FullScreenQuad.VERTEX_SHADER,
-				program.sourceMap().insertGenerated(program.versionLine(),
+				program.sourceMap().insertGenerated(program.head(),
 						generated.size()),
 				fTimeMax);
 	}

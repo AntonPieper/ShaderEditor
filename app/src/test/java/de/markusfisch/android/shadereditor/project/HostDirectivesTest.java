@@ -13,6 +13,7 @@ import de.markusfisch.android.shadereditor.project.HostDirective.Format;
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.HostDirective.Input;
 import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
+import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
 import de.markusfisch.android.shadereditor.project.HostDirective.Target;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 
@@ -34,7 +35,7 @@ public class HostDirectivesTest {
 		assertTrue(result.diagnostics().isEmpty());
 		Input input = single(result.inputs());
 		assertEquals("noise", input.uniform());
-		assertEquals("sampler2D", input.samplerType());
+		assertEquals(TextureKind.FLAT, input.texture());
 		assertEquals(path("shaders/assets/noise.png"), input.source());
 		assertEquals(path("shaders/main.frag"), input.file());
 		assertEquals(2, input.line());
@@ -118,6 +119,7 @@ public class HostDirectivesTest {
 		assertTrue(result.diagnostics().isEmpty());
 		assertNull(result.inputs().get(0).source());
 		assertEquals("cameraBack", result.inputs().get(1).uniform());
+		assertEquals(TextureKind.EXTERNAL, result.inputs().get(1).texture());
 	}
 
 	@Test
@@ -126,7 +128,7 @@ public class HostDirectivesTest {
 				"#pragma se input \"sky.png\" mipmap=linear",
 				"uniform samplerCube sky;");
 		assertTrue(result.diagnostics().isEmpty());
-		assertEquals("samplerCube", single(result.inputs()).samplerType());
+		assertEquals(TextureKind.CUBE, single(result.inputs()).texture());
 	}
 
 	@Test

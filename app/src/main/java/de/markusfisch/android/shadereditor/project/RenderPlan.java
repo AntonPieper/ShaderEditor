@@ -8,6 +8,7 @@ import de.markusfisch.android.shadereditor.project.HostDirective.Filter;
 import de.markusfisch.android.shadereditor.project.HostDirective.Format;
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
+import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 
 /**
@@ -44,19 +45,19 @@ public record RenderPlan(
 	 * One pass file with its includes expanded and host directives
 	 * blanked.
 	 *
-	 * @param file        the pass file
-	 * @param lines       the source the compiler gets, without the
-	 *                    lines the engine generates
-	 * @param sourceMap   the origin of every line
-	 * @param versionLine 1-based line of {@code #version}, or of the end
-	 *                    of a block comment opened on it, or 0; the
-	 *                    engine's generated lines go after it
+	 * @param file      the pass file
+	 * @param lines     the source the compiler gets, without the lines
+	 *                  the engine generates
+	 * @param sourceMap the origin of every line
+	 * @param head      how many of the lines must stay first; an engine
+	 *                  adds the lines it generates after them, at the
+	 *                  top when 0
 	 */
 	public record Program(
 			ProjectPath file,
 			List<String> lines,
 			SourceMap sourceMap,
-			int versionLine) {
+			int head) {
 		public Program {
 			lines = List.copyOf(lines);
 		}
@@ -93,17 +94,19 @@ public record RenderPlan(
 	}
 
 	/**
-	 * A sampler uniform and what it reads. An annotated
+	 * A texture a program reads and where it comes from. An annotated
 	 * {@code backbuffer} reads the previous frame of its own pass.
 	 *
-	 * @param frame which frame of a pass source is read; images and
-	 *              engine samplers are always {@link Frame#CURRENT}
-	 * @param file  the file with the input directive
-	 * @param line  the 1-based line of the input directive
+	 * @param uniform the name the program's text declares it with
+	 * @param texture how it is read
+	 * @param frame   which frame of a pass source is read; images and
+	 *                engine samplers are always {@link Frame#CURRENT}
+	 * @param file    the file with the input directive
+	 * @param line    the 1-based line of the input directive
 	 */
 	public record Input(
 			String uniform,
-			String samplerType,
+			TextureKind texture,
 			Source source,
 			Frame frame,
 			Sampling sampling,

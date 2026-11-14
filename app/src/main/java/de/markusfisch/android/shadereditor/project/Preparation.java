@@ -49,16 +49,14 @@ public record Preparation(
 	 * name. Every file is read once, and only the manifest, its entry
 	 * and files the running shader depends on are read. What a file an
 	 * input names is, a picture or a pass, is told from those bytes;
-	 * images are not decoded. reserved are
-	 * the GLSL types of the engine's builtin uniforms by name: an input
-	 * with a path cannot use one, an input without a path must name an
-	 * engine sampler of its type.
+	 * images are not decoded. builtins are the uniforms the engine
+	 * provides.
 	 */
 	public static Preparation prepare(
 			ProjectFiles files,
 			ProjectPath entry,
 			ProjectLimits limits,
-			Map<String, String> reserved) {
+			Builtins builtins) {
 		CapturedFiles captured = new CapturedFiles(files, limits);
 		List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		ProjectParseResult<ProjectManifest> manifest = readManifest(captured);
@@ -67,7 +65,7 @@ public record Preparation(
 		}
 		int before = captured.dependencies().size();
 		PassGraph graph = PassGraph.discover(captured, entry, limits,
-				reserved);
+				builtins);
 		List<SourceAssembly.Dependency> read = captured.dependencies();
 		List<SourceAssembly.Dependency> uses = read.subList(before,
 				read.size());
@@ -171,7 +169,7 @@ public record Preparation(
 					frame = Frame.PREVIOUS;
 				}
 				inputs.add(new RenderPlan.Input(input.uniform(),
-						input.samplerType(), source, frame, sampling.value(),
+						input.texture(), source, frame, sampling.value(),
 						input.file(), input.line()));
 			}
 			Source initial = null;

@@ -24,6 +24,7 @@ import de.markusfisch.android.shadereditor.project.HostDirective.Filter;
 import de.markusfisch.android.shadereditor.project.HostDirective.Format;
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
+import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Pass;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Program;
@@ -66,13 +67,13 @@ public class PreparationTest {
 		Pass main = plan.passes().get(3);
 		assertEquals(3, main.program());
 		assertEquals(List.of(
-						new RenderPlan.Input("c", "sampler2D", Source.pass(2),
+						new RenderPlan.Input("c", TextureKind.FLAT, Source.pass(2),
 								Frame.CURRENT, NEAREST, path("main.frag"), 2),
-						new RenderPlan.Input("b", "sampler2D", Source.pass(1),
+						new RenderPlan.Input("b", TextureKind.FLAT, Source.pass(1),
 								Frame.CURRENT, new Sampling(Filter.LINEAR,
 								Filter.LINEAR, Mipmap.NONE, Wrap.CLAMP,
 								Wrap.CLAMP), path("main.frag"), 4),
-						new RenderPlan.Input("noise", "sampler2D",
+						new RenderPlan.Input("noise", TextureKind.FLAT,
 								Source.image(path("noise.png")), Frame.CURRENT,
 								new Sampling(Filter.LINEAR, Filter.LINEAR,
 										Mipmap.NONE, Wrap.REPEAT, Wrap.REPEAT),
@@ -94,7 +95,7 @@ public class PreparationTest {
 		}
 
 		Program program = plan.programs().get(3);
-		assertEquals(1, program.versionLine());
+		assertEquals(1, program.head());
 		assertTrue(program.text().startsWith("#version 300 es\n\n" +
 				"uniform sampler2D c;\n\n"));
 		assertEquals(9, program.sourceMap().locate(9).line());
@@ -223,6 +224,21 @@ public class PreparationTest {
 	}
 
 	@Test
+	public void planSaysHowATextureIsReadNotHowItIsDeclared() {
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.frag", lines(
+						"#pragma se input \"sky.png\"", "uniform samplerCube sky;",
+						"#pragma se input filter=linear",
+						"uniform samplerExternalOES cameraBack;", MAIN))
+				.put("sky.png", Pictures.png(1)));
+		assertTrue(preparation.diagnostics().isEmpty());
+		List<RenderPlan.Input> inputs =
+				preparation.plan().passes().get(0).inputs();
+		assertEquals(TextureKind.CUBE, inputs.get(0).texture());
+		assertEquals(TextureKind.EXTERNAL, inputs.get(1).texture());
+	}
+
+	@Test
 	public void quoteOnContinuedDirectiveLineOpensNoComment() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
 				.put("main.frag", lines("#define S \\", "\"a/*b\"",
@@ -230,7 +246,7 @@ public class PreparationTest {
 						MAIN))
 				.put("a.png", Pictures.png(1)));
 		assertTrue(preparation.diagnostics().isEmpty());
-		assertEquals(List.of(new RenderPlan.Input("a", "sampler2D",
+		assertEquals(List.of(new RenderPlan.Input("a", TextureKind.FLAT,
 						Source.image(path("a.png")), Frame.CURRENT,
 						new Sampling(Filter.LINEAR, Filter.LINEAR, Mipmap.NONE,
 								Wrap.CLAMP, Wrap.CLAMP), path("main.frag"), 3)),
