@@ -23,7 +23,8 @@ public class SamplesAdapter extends BaseAdapter {
 		for (Samples.Section section : Samples.Section.values()) {
 			boolean hasHeading = false;
 			for (Samples.Sample sample : Samples.ALL) {
-				if (sample.section() != section) {
+				if (sample.section() != section ||
+						sample.resId() == Samples.NO_TEXT) {
 					continue;
 				}
 				if (!hasHeading) {

@@ -32,10 +32,14 @@ public class SamplesTest {
 			}
 		}
 		Set<Integer> listed = new HashSet<>();
+		int count = 0;
 		for (Samples.Sample sample : Samples.ALL) {
-			listed.add(sample.resId());
+			if (sample.resId() != Samples.NO_TEXT) {
+				listed.add(sample.resId());
+				++count;
+			}
 		}
-		assertEquals(Samples.ALL.size(), listed.size());
+		assertEquals(count, listed.size());
 		assertEquals(bundled, listed);
 	}
 
@@ -56,26 +60,27 @@ public class SamplesTest {
 	@Test
 	public void samplesAreInLearningOrder() {
 		assertEquals(List.of(
-				R.raw.sample_shapes,
-				R.raw.sample_loop,
-				R.raw.sample_touch,
-				R.raw.sample_texture,
-				R.raw.sample_tilt,
-				R.raw.sample_compass,
-				R.raw.sample_window,
-				R.raw.sample_meters,
-				R.raw.sample_battery,
-				R.raw.sample_clock,
-				R.raw.sample_sound,
-				R.raw.sample_notifications,
-				R.raw.sample_camera_back,
-				R.raw.sample_mirror,
-				R.raw.sample_trails,
-				R.raw.sample_game_of_life,
-				R.raw.sample_electric_fade,
-				R.raw.sample_swirl,
-				R.raw.sample_gles_300,
-				R.raw.sample_horizon), resIds());
+				"Shapes.frag",
+				"Loop.frag",
+				"Touch.frag",
+				"Texture.frag",
+				"Tilt.frag",
+				"Compass.frag",
+				"Window.frag",
+				"Meters.frag",
+				"Battery.frag",
+				"Clock.frag",
+				"Sound.frag",
+				"Notifications.frag",
+				"Back camera.frag",
+				"Mirror.frag",
+				"Trails.frag",
+				"Game of Life.frag",
+				"Electric Fade.frag",
+				"Swirl.frag",
+				"GLES 3.frag",
+				"Blobs.frag",
+				"Horizon.frag"), paths());
 	}
 
 	@Test
@@ -104,14 +109,15 @@ public class SamplesTest {
 				Samples.Section.TECHNIQUES,
 				Samples.Section.TECHNIQUES,
 				Samples.Section.TECHNIQUES,
+				Samples.Section.TECHNIQUES,
 				Samples.Section.WALLPAPERS), sections);
 	}
 
-	private static List<Integer> resIds() {
-		List<Integer> ids = new ArrayList<>();
+	private static List<String> paths() {
+		List<String> paths = new ArrayList<>();
 		for (Samples.Sample sample : Samples.ALL) {
-			ids.add(sample.resId());
+			paths.add(sample.path());
 		}
-		return ids;
+		return paths;
 	}
 }

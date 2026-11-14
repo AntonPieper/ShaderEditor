@@ -3,12 +3,18 @@ package de.markusfisch.android.shadereditor.project;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ExamplesTest {
 	/** The folder of the bundled examples, as the app opens it. */
@@ -43,6 +49,44 @@ public class ExamplesTest {
 					preparation.diagnostics());
 			assertNotNull(shader.toString(), preparation.plan());
 		}
+	}
+
+	@Test
+	public void theIncludeLibraryIsPureAndUsed() throws IOException {
+		File[] files = new File(folder(), "lib").listFiles();
+		assertNotNull(files);
+		StringBuilder examples = new StringBuilder();
+		for (ProjectPath shader : shaders()) {
+			examples.append(text(new File(folder(), shader.toString())));
+		}
+		for (File file : files) {
+			// Library functions may call each other.
+			examples.append(text(file).replaceAll(
+					"(?m)^\\w+\\s+\\w+\\s*\\(", ""));
+		}
+		Pattern function = Pattern.compile(
+				"^\\w+\\s+(\\w+)\\s*\\(", Pattern.MULTILINE);
+		Pattern impure = Pattern.compile(
+				"\\buniform\\b|\\bprecision\\b|#\\s*version|#\\s*pragma|" +
+						"\\btexture(2D|Cube)?\\s*\\(");
+		for (File file : files) {
+			String text = text(file);
+			String code = text.replaceAll("//[^\\n]*", "");
+			assertFalse(file.getName(), impure.matcher(code).find());
+			assertTrue(file.getName(), code.trim().startsWith("#ifndef"));
+			Matcher m = function.matcher(code);
+			while (m.find()) {
+				assertTrue(m.group(1) + " of " + file.getName() +
+								" is called by no example",
+						Pattern.compile("\\b" + m.group(1) + "\\s*\\(")
+								.matcher(examples).find());
+			}
+		}
+	}
+
+	private static String text(File file) throws IOException {
+		return new String(Files.readAllBytes(file.toPath()),
+				StandardCharsets.UTF_8);
 	}
 
 	// A shader that runs is a .frag file that is not only a pass of

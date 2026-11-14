@@ -70,6 +70,8 @@ Rules that keep it from becoming a dumping ground:
 - Functions are added, not changed. A copy in a user's folder never updates.
 - Each file header states origin and licence. Contributions are welcome under the first rule.
 
+Built (X11): the three files and Blobs, which calls every function in them. The editor has no Add include action yet, so the second half (offering the bundled files, copied to `lib/`) waits for it.
+
 Most examples keep their helpers inline. On a phone, the function the learner wants to read should be on the same screen; only composition examples include the library.
 
 ## 4. The set
