@@ -34,6 +34,9 @@ import de.markusfisch.android.shadereditor.widget.Message;
  * was not moved, or nothing.
  */
 public final class LibraryScreen implements ShaderScreen {
+	// How long the notice that a folder is read-only stays.
+	private static final int READ_ONLY_MILLIS = 10000;
+
 	private static final String OPEN = "open";
 	private static final int NEEDS_NEW_EDITOR_MILLIS = 10000;
 
@@ -720,11 +723,14 @@ public final class LibraryScreen implements ShaderScreen {
 			@Override
 			public void onReadOnly(@NonNull ProjectFile file) {
 				String name = file.getProject().name();
+				// Its action is the way out of a folder that cannot be
+				// written: it stays long enough to be read and reached,
+				// which a long message's 2.75 s are not.
 				Message.make(activity, activity.getString(
 								R.string.file_read_only, name != null
 										? name
 										: file.getTitle()),
-						Snackbar.LENGTH_LONG)
+						READ_ONLY_MILLIS)
 						.setAction(R.string.duplicate_shader,
 								v -> file.saveCopy())
 						.show();
