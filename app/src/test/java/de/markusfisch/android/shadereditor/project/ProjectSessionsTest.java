@@ -250,8 +250,9 @@ public class ProjectSessionsTest {
 
 	private static void keep(Journal journal, String path, String text,
 			String base) {
-		assertTrue(journal.snapshot(new Journal.Header(path(path), base,
-				false, null), 0, Text.of(text)));
+		assertTrue(journal.own().snapshot(new Journal.Header(path(path),
+				base, false, null), 0, Text.of(text)));
+		journal.release();
 	}
 
 	private static String revision(ProjectFiles store, String path) {

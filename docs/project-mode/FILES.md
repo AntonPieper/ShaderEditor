@@ -183,9 +183,12 @@ How the journal stays correct without owning truth: the worker executes four com
 | snapshot(revision, text, base, kept) | writes a new journal file and renames it into place | — |
 | append(from, to, changes) | appends records | the journal is not at `from`: answered with "send a snapshot", and main sends the current text |
 | header(base, kept) | overwrites the header in place: after a save that the user typed through, and on Keep my edits | there is no journal of this generation |
-| retire(revision) | deletes the journal | the journal is not at that revision |
+| retire | deletes the journal | — |
+| dismiss | deletes a journal that cannot be read, for the user who gave it up | the journal can be read: a snapshot written since took its place |
 
 Every command is acknowledged or fails with a reason. Any confusion degrades to a full rewrite, never to a wrong append. The queue is first in, first out, so a command cannot overtake an earlier one; the revisions are a cheap second guard, not what correctness rests on.
+
+**Who may change a journal file.** Only the journal object of the project that is open on the session, checked on the worker when the command runs. A project takes the folder when it opens and gives it up as the last thing it asks of the worker when it closes; a project opened on the same session later takes it from one that never closed. Every command of a journal that does not own the folder is refused, so nothing a closed or replaced project still asks for can write or delete. A closed project also stops following its documents and asks the worker for nothing more. The same ownership decides whether a session may be forgotten: removing a recent deletes the session's folder only when no project owns its journal and the journal folder is empty, checked together.
 
 Failure handling: the record's `journal` advances only on the worker's acknowledgement. A failed write sets FAILED(reason), which the snapshot type exposes ("unsaved changes are not protected"), keeps the document pinned in memory, and is retried with a snapshot on the next flush. A journal whose snapshot fails its checksum is kept on disk untouched, reported once, and the file opens from storage.
 
@@ -264,7 +267,7 @@ A 20 KB shader is about 40 KB of text, and with a day's history under 200 KB. A 
 - **R9. Consent names a revision.** `resolve(path, choice, seen)` carries the revision the dialog displayed; it does nothing if the record's `seen` differs. Keep my edits sets `base := seen`, so the next explicit save writes with `expected = seen` and a later outside change is a new conflict.
 - **R10. One live owner per session.** `Projects.open(id)` returns the live instance if there is one; `OpenProject` has no public constructor. With R2, two owners of one journal cannot exist in a process. The app has a single process **[code]** (no `android:process` in the manifest).
 - **R11. Project-level results carry a generation.** The running selection and build results are tagged with a counter that every explicit choice and every adopted refresh increments; a result with an old tag is dropped.
-- **R12. A journal is deleted only when its text is safe elsewhere or the user gave it up**: after an adopted save of exactly that text, when a check or an open finds storage equal to it, after an adopted Reload, after undo back to the saved text, or by an explicit, confirmed discard. Only main commands it. Removing a recent hides the shortcut and deletes nothing.
+- **R12. A journal is deleted only when its text is safe elsewhere or the user gave it up**: after an adopted save of exactly that text, when a check or an open finds storage equal to it, after an adopted Reload, after undo back to the saved text, or by an explicit, confirmed discard. Only main commands it, and only the main of the project that owns the session's journal (2.5). Removing a recent hides the shortcut and deletes nothing that holds or may still receive unsaved text.
 
 Late results, summarised: they can only be late relative to a closed or dropped record (R3 leaves no other way) and are discarded (R4). What a completed save did to the store stands. Its journal stays, because nobody adopted the save; the next open finds storage equal to the journal's text and deletes it, or, if the user had typed on, shows the newer text as unsaved against a file that "changed": a question too many, never a loss.
 

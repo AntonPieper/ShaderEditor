@@ -308,7 +308,7 @@ public class OpenProjectTest {
 		assertEquals("a!", read("a.glsl"));
 		assertNull(restarted.document(path("a.glsl")));
 		assertNull(journaled("a.glsl"));
-		assertTrue(open().unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
 	}
 
 	@Test
@@ -397,12 +397,104 @@ public class OpenProjectTest {
 		OpenProject again = open();
 		assertEquals(Set.of(path("a.glsl")), again.unsaved());
 		assertTrue(save(again, true).get(path("a.glsl")) instanceof Failed);
+		assertNull(load(again, "a.glsl"));
+		again.dismiss(path("a.glsl"));
+		settle();
+		assertNull(again.unreadable(path("a.glsl")));
+		assertTrue(again.unsaved().isEmpty());
+		assertFalse(file.exists());
+		assertTrue(kept().isEmpty());
+	}
+
+	@Test
+	public void dismissLeavesTheJournalWrittenSince() throws IOException {
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		File file = new ProjectSessions(sessionsDir).journal(id)
+				.file(path("a.glsl"));
+		byte[] bytes = Files.readAllBytes(file.toPath());
+		bytes[bytes.length - 1] ^= 1;
+		Files.write(file.toPath(), bytes);
+		OpenProject restarted = open();
+		edit(restarted, document(restarted, "a.glsl"), "new work");
+
+		// The snapshot is on its way when the old notice is dismissed.
+		restarted.persist();
 		restarted.dismiss(path("a.glsl"));
 		settle();
+
+		assertEquals("new work", journaled("a.glsl"));
+		assertEquals(Set.of(path("a.glsl")), restarted.unsaved());
 		assertNull(restarted.unreadable(path("a.glsl")));
-		assertTrue(restarted.unsaved().isEmpty());
-		assertFalse(file.exists());
-		assertTrue(open().unsaved().isEmpty());
+		assertNull(restarted.unprotected());
+	}
+
+	@Test
+	public void closedProjectLeavesTheJournalOfTheNextOne()
+			throws IOException {
+		OpenProject first = open();
+		Document old = document(first, "a.glsl", "stored");
+		edit(first, old, "first");
+		first.close();
+		settle();
+		OpenProject second = open();
+		edit(second, document(second, "a.glsl"), "second");
+		second.persist();
+		settle();
+
+		// Whoever kept the document of the closed project undoes in it.
+		old.undo();
+		first.persist();
+		first.save(true, outcomes -> {
+		});
+		settle();
+		steps.later.run();
+		settle();
+
+		assertEquals("second", journaled("a.glsl"));
+		assertEquals("stored", read("a.glsl"));
+		assertNull(first.document(path("a.glsl")));
+	}
+
+	@Test
+	public void projectReplacedWithoutClosingWritesNoJournal()
+			throws IOException {
+		OpenProject first = open();
+		Document old = document(first, "a.glsl", "stored");
+		edit(first, old, "first");
+		flush(first);
+		OpenProject second = open();
+		edit(second, document(second, "a.glsl"), "second");
+		flush(second);
+
+		old.undo();
+		first.persist();
+		settle();
+
+		assertEquals("second", journaled("a.glsl"));
+		assertNotNull(first.unprotected());
+	}
+
+	@Test
+	public void removingTheRecentOfAnOpenProjectKeepsItsSession()
+			throws IOException {
+		ProjectSessions sessions = new ProjectSessions(sessionsDir);
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+
+		// Nothing is in the journal yet when the recent is removed.
+		project.persist();
+		assertTrue(sessions.remove(id));
+		settle();
+
+		assertNotNull(sessions.locator(id));
+		assertEquals(Set.of(path("a.glsl")), sessions.unsaved(id));
+		project.close();
+		settle();
+		assertTrue(sessions.remove(id));
+		assertNotNull(sessions.locator(id));
+		assertEquals("mine", text(open(), "a.glsl"));
 	}
 
 	@Test
@@ -464,7 +556,7 @@ public class OpenProjectTest {
 		assertFalse(a.isModified());
 		assertTrue(b.isModified());
 		assertEquals(Set.of(path("b.glsl")), project.unsaved());
-		assertEquals(Set.of(path("b.glsl")), open().unsaved());
+		assertEquals(Set.of(path("b.glsl")), kept());
 
 		store.failing = null;
 		outcomes = save(project, true);
@@ -472,7 +564,7 @@ public class OpenProjectTest {
 		assertEquals(Set.of(path("b.glsl")), outcomes.keySet());
 		assertEquals("b!", read("b.glsl"));
 		assertTrue(project.unsaved().isEmpty());
-		assertTrue(open().unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
 		edit(project, a, "a!!");
 		assertEquals(Set.of(path("a.glsl")), project.unsaved());
 		a.undo();
@@ -967,7 +1059,7 @@ public class OpenProjectTest {
 		assertTrue(save(restarted, true).get(path("a.glsl")) instanceof
 				Saved);
 		assertEquals("mine", read("a.glsl"));
-		assertTrue(open().unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
 	}
 
 	@Test
@@ -1207,7 +1299,7 @@ public class OpenProjectTest {
 		project.persist();
 		settle();
 		assertNull(project.document(path("a.glsl")));
-		assertTrue(open().unsaved().isEmpty());
+		assertTrue(kept().isEmpty());
 	}
 
 	@Test
@@ -1651,6 +1743,11 @@ public class OpenProjectTest {
 		project.flush(() -> flushed[0] = true);
 		settle();
 		assertTrue(flushed[0]);
+	}
+
+	// Return the files the journal keeps unsaved text of.
+	private Set<ProjectPath> kept() {
+		return new ProjectSessions(sessionsDir).unsaved(id);
 	}
 
 	// Return the text the journal keeps for path, or null.

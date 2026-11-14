@@ -316,10 +316,10 @@ public final class ProjectSessions {
 
 	/**
 	 * Remove session id from the recent projects. A session without
-	 * unsaved text is forgotten; one with unsaved text keeps its locator
-	 * and journal, unlisted, until the text is saved or discarded, and
-	 * opening its project again finds it by its locator. Return whether
-	 * it is no longer listed.
+	 * unsaved text that no project is open on is forgotten; any other
+	 * keeps its locator and journal, unlisted, until the text is saved
+	 * or discarded, and opening its project again finds it by its
+	 * locator. Return whether it is no longer listed.
 	 */
 	public synchronized boolean remove(String id) {
 		File dir = file(id, null);
@@ -333,9 +333,9 @@ public final class ProjectSessions {
 		if (recent.exists() && !recent.delete()) {
 			return false;
 		}
-		// Deleting the journal's folder fails while it holds any file.
-		File drafts = new File(dir, DRAFTS);
-		return drafts.exists() && !drafts.delete() || discard(id);
+		// A project open on the session may write its journal yet.
+		Journal.ifAbandoned(new File(dir, DRAFTS), () -> discard(id));
+		return true;
 	}
 
 	/**

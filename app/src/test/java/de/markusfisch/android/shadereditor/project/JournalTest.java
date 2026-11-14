@@ -39,7 +39,7 @@ public class JournalTest {
 	@Before
 	public void setUp() throws IOException {
 		dir = temp.newFolder("journal");
-		journal = new Journal(dir);
+		journal = new Journal(dir).own();
 	}
 
 	@Test
@@ -120,7 +120,7 @@ public class JournalTest {
 		Files.write(file.toPath(), new byte[]{0, 0, 1},
 				java.nio.file.StandardOpenOption.APPEND);
 
-		Journal reopened = new Journal(dir);
+		Journal reopened = new Journal(dir).own();
 		assertEquals(Appended.DONE, reopened.append(A, 1, 2,
 				List.of(new Change(2, 0, "c"))));
 
@@ -152,7 +152,7 @@ public class JournalTest {
 		assertNull(snapshot.text());
 		assertNotNull(snapshot.problem());
 		assertTrue(file.isFile());
-		assertEquals(Appended.SNAPSHOT, new Journal(dir).append(A, 0, 1,
+		assertEquals(Appended.SNAPSHOT, new Journal(dir).own().append(A, 0, 1,
 				List.of(new Change(0, 0, "x"))));
 	}
 
@@ -188,7 +188,7 @@ public class JournalTest {
 		assertEquals(Appended.DONE, journal.append(A, 0, 1,
 				List.of(new Change(4, 0, "!"))));
 
-		Journal reopened = new Journal(dir);
+		Journal reopened = new Journal(dir).own();
 		assertEquals(kept, reopened.headers().get(A));
 		assertEquals(kept, reopened.read(A).header());
 
@@ -213,5 +213,40 @@ public class JournalTest {
 		assertTrue(recovered.tooLarge());
 		assertEquals(text.length(), recovered.text().length());
 		assertTrue(journal.sync());
+	}
+
+	@Test
+	public void onlyTheJournalThatOwnsTheFolderWritesAndDeletes() {
+		assertTrue(journal.snapshot(HEADER, 0, Text.of("first")));
+		Journal next = new Journal(dir).own();
+		assertTrue(next.snapshot(HEADER, 0, Text.of("next")));
+
+		assertFalse(journal.remove(A));
+		assertFalse(journal.snapshot(HEADER, 1, Text.of("late")));
+		assertEquals(Appended.FAILED, journal.append(A, 0, 1,
+				List.of(new Change(0, 0, "x"))));
+		assertFalse(journal.setHeader(HEADER));
+		assertFalse(journal.dismiss(A));
+
+		assertEquals("next", journal.read(A).text().toString());
+		next.release();
+		assertFalse(next.remove(A));
+		assertEquals("next", next.read(A).text().toString());
+	}
+
+	@Test
+	public void dismissDeletesOnlyAJournalThatCannotBeRead()
+			throws IOException {
+		assertTrue(journal.snapshot(HEADER, 0, Text.of("mine")));
+		assertTrue(journal.dismiss(A));
+		assertEquals("mine", journal.read(A).text().toString());
+		File file = journal.file(A);
+		byte[] bytes = Files.readAllBytes(file.toPath());
+		bytes[bytes.length - 1] ^= 1;
+		Files.write(file.toPath(), bytes);
+
+		assertTrue(journal.dismiss(A));
+
+		assertFalse(file.exists());
 	}
 }
