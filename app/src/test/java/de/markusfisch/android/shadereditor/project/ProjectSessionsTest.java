@@ -245,6 +245,21 @@ public class ProjectSessionsTest {
 		assertEquals(List.of(), sessions.recent());
 	}
 
+	@Test
+	public void readsNoFileLargerThanItWrites() throws IOException {
+		String id = sessions.open(new Locator(Kind.DIRECTORY,
+				project.getPath()));
+		assertTrue(sessions.setShown(id, path("main.glsl")));
+		assertEquals(path("main.glsl"), sessions.shown(id));
+
+		try (java.io.RandomAccessFile file = new java.io.RandomAccessFile(
+				new File(root, id + "/shown"), "rw")) {
+			file.setLength(1024 * 1024 * 1024);
+		}
+
+		assertNull(sessions.shown(id));
+	}
+
 	private static List<String> ids(List<ProjectSessions.Recent> recent) {
 		List<String> ids = new ArrayList<>();
 		for (ProjectSessions.Recent session : recent) {

@@ -102,21 +102,34 @@ public final class FileTexts {
 	public void open(ProjectPath path, long size, Callback<Opening> done) {
 		worker.execute(() -> {
 			Journal.Recovered recovered = journal.read(path);
-			Opening opening = withHistory(path,
-					recovered != null && recovered.text() != null
-							? recovered(path, recovered)
-							: read(path, size, recovered != null
-									? recovered.problem()
-									: null));
-			main.execute(() -> done.done(opening));
+			String unreadable = recovered != null && recovered.text() == null
+					? recovered.problem()
+					: null;
+			Opening opening;
+			try {
+				opening = withHistory(path, unreadable == null &&
+						recovered != null
+						? recovered(path, recovered)
+						: read(path, size, unreadable));
+			} catch (OutOfMemoryError e) {
+				opening = tooLargeHere(path, unreadable);
+			}
+			Opening opened = opening;
+			main.execute(() -> done.done(opened));
 		});
 	}
 
 	/** Open path for the editor as storage has it. */
 	public void openStored(ProjectPath path, Callback<Opening> done) {
 		worker.execute(() -> {
-			Opening opening = read(path, ProjectFiles.UNKNOWN, null);
-			main.execute(() -> done.done(opening));
+			Opening opening;
+			try {
+				opening = read(path, ProjectFiles.UNKNOWN, null);
+			} catch (OutOfMemoryError e) {
+				opening = tooLargeHere(path, null);
+			}
+			Opening opened = opening;
+			main.execute(() -> done.done(opened));
 		});
 	}
 
@@ -248,6 +261,15 @@ public final class FileTexts {
 	 * else the stored text when it changed.
 	 */
 	Checked check(ProjectPath path, String base, Text mine,
+			boolean unsaved) {
+		try {
+			return compare(path, base, mine, unsaved);
+		} catch (OutOfMemoryError e) {
+			return new Checked(Found.TOO_LARGE, null, null, false);
+		}
+	}
+
+	private Checked compare(ProjectPath path, String base, Text mine,
 			boolean unsaved) {
 		Read read = store.read(path, Document.MAX_BYTES);
 		if (read == null) {
@@ -406,6 +428,13 @@ public final class FileTexts {
 				? SourceText.decode(bytes)
 				: null;
 		return text != null && text.indexOf('\0') < 0 ? Text.of(text) : null;
+	}
+
+	// A file within the limit that this device has no memory for.
+	private static Unopened tooLargeHere(ProjectPath path,
+			String unreadable) {
+		return new Unopened(path + " is too large for this device",
+				unreadable);
 	}
 
 	private static Unopened tooLarge(ProjectPath path, String unreadable) {

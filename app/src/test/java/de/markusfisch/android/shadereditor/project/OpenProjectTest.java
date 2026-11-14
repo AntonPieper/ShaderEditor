@@ -2170,6 +2170,35 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void fileTheDeviceHasNoMemoryForIsRefusedWithoutACrash()
+			throws IOException {
+		write("a.glsl", "stored");
+		write("big.glsl", "big");
+		ProjectPath big = path("big.glsl");
+		DirectoryProjectFiles files = new DirectoryProjectFiles(root);
+		OpenProject project = open(new ProjectFiles() {
+			@Override
+			public Read read(ProjectPath path) {
+				return read(path, Long.MAX_VALUE);
+			}
+
+			@Override
+			public Read read(ProjectPath path, long limit) {
+				if (big.equals(path)) {
+					throw new OutOfMemoryError();
+				}
+				return files.read(path, limit);
+			}
+		});
+
+		String problem = load(project, "big.glsl");
+
+		assertEquals("big.glsl is too large for this device", problem);
+		assertNull(project.document(big));
+		assertEquals("stored", text(project, "a.glsl"));
+	}
+
+	@Test
 	public void keepsTheProjectFilesWhenOpening() throws IOException {
 		write("main.glsl", SHADER);
 		byte[] before = Files.readAllBytes(new File(root, "main.glsl")

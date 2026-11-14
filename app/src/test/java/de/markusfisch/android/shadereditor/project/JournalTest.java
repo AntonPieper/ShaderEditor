@@ -204,14 +204,16 @@ public class JournalTest {
 	}
 
 	@Test
-	public void textOverTheLimitIsRecoveredButTooLarge() {
-		String text = "x".repeat((int) Document.MAX_BYTES + 1);
+	public void textGrownOverTheLimitByItsRecordsIsToldTooLarge() {
+		String text = "x".repeat((int) Document.MAX_BYTES);
 		assertTrue(journal.snapshot(HEADER, 0, Text.of(text)));
+		assertEquals(Appended.DONE, journal.append(A, 0, 1,
+				List.of(new Change(0, 0, "y"))));
 
 		Recovered recovered = new Journal(dir).read(A);
 
 		assertTrue(recovered.tooLarge());
-		assertEquals(text.length(), recovered.text().length());
+		assertEquals(text.length() + 1, recovered.text().length());
 		assertTrue(journal.sync());
 	}
 
@@ -248,5 +250,36 @@ public class JournalTest {
 		assertTrue(journal.dismiss(A));
 
 		assertFalse(file.exists());
+	}
+
+	@Test
+	public void readsNoMoreThanADocumentMayHold() throws IOException {
+		// A snapshot that claims more than any text takes is not taken
+		// into memory to find that out.
+		assertTrue(journal.snapshot(HEADER, 0, Text.of("x")));
+		File file = journal.file(A);
+		try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(
+				file, "rw")) {
+			raf.seek(4);
+			long at = 8 + raf.readInt() + 4;
+			long claimed = 2 * Document.MAX_BYTES + 1;
+			raf.seek(at);
+			raf.writeInt((int) claimed);
+			raf.setLength(at + 4 + claimed + 4);
+		}
+		Recovered claimed = new Journal(dir).read(A);
+		assertNull(claimed.text());
+		assertTrue(claimed.problem(), claimed.problem().contains("damaged"));
+
+		// A text over the limit of a document is not built.
+		assertTrue(journal.snapshot(HEADER, 0, Text.of("x".repeat(
+				(int) Document.MAX_BYTES + 1))));
+		Recovered large = new Journal(dir).read(A);
+		assertNull(large.text());
+		assertTrue(large.problem(), large.problem().contains("larger"));
+		assertTrue(journal.snapshot(HEADER, 0, Text.of("\uD83D\uDE00".repeat(
+				(int) Document.MAX_BYTES / 4))));
+		assertEquals(Document.MAX_BYTES / 2,
+				new Journal(dir).read(A).text().length());
 	}
 }

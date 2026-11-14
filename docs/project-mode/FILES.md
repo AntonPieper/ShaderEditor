@@ -312,6 +312,8 @@ Six mutations of the rules were run against it. Five made a sequence fail (text 
 | 18 | main blocked on the session monitor | impossible: R1, there is no shared monitor |
 | 19 | `canRun` lexes on main | still needs a per-case fix that fits the model: "runnable" is a fact computed on the worker per (path, revision) and cached in the record; the snapshot exposes yes / no / unknown |
 | 20 | 16 MiB limit not a bound, bypassed by drafts | still needs a per-case fix in the stores (bounded read at the stream). Journals are read by streaming and never built eagerly; a text may not grow past the limit by editing (open point: where the editor refuses) |
+
+**Every read from private storage is bounded before it allocates.** A journal header is read up to 256 KiB, a snapshot up to twice the size limit of a document (each character is encoded by itself, which takes at most twice its bytes in a file), a record and all records together up to the 128 KB the compaction rule allows; a snapshot whose text would exceed the limit of a document is reported as unreadable without being built. Session metadata files are read up to 256 KiB, a history file up to the limit of a document. A device that runs out of memory on a file within the limits answers "too large for this device" for that file, on the worker, and carries on.
 | 21 | drafting has no owner | impossible: the record's flush timer is the owner; `flush(done)` is the lifecycle fence |
 | 22 | serialization was a caller promise | impossible: R2 |
 | 34 | content check obsolete during a long save | per-case fix plus accepted limitation: `DirectoryProjectFiles` re-checks the revision immediately before the rename (window shrinks from encode time to microseconds); a provider cannot compare-and-swap, so SAF keeps a window. To be stated in SPEC 10 |
@@ -442,6 +444,8 @@ PRs 2 to 5 are where the risk is; each is small because `FileRecord` has no I/O 
 
 - Nothing ran on a device or emulator. Every time is from the desktop JVM; the phone factor is a guess.
 - Flash and file-system behaviour: physical bytes per append, the cost of a sync, how long unsynced data stays in the page cache, device endurance. All from memory. The conclusion "wear does not decide this" would survive being wrong by a factor of ten.
+- An external app that keeps a file descriptor it got through the app's document provider writes to the old file after a save replaced it by rename; those writes are lost. Accepted limit of saving atomically; the provider does not coordinate writers.
+- A journal in the format before this one is deleted when a project opens; that format was never in a release.
 - That written-but-unsynced data survives a process kill is standard kernel behaviour and I did not test it on Android; that an in-place overwrite of the journal's first block is atomic under power loss is an assumption (the header has its own checksum, and the text does not depend on it).
 - Whether the directory must be synced after a journal is created or renamed for it to survive power loss, and how to do that on API 23. Today's `DraftJournal` does not do it either.
 - That `onStop` always runs before Android may kill the process, and how long it may wait for the flush without an ANR. From memory.
