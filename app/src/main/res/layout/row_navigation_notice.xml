@@ -35,6 +35,13 @@
 		android:textColor="?attr/colorOnSurfaceVariant" />
 
 	<com.google.android.material.button.MaterialButton
+		android:id="@+id/navigation_notice_main"
+		style="@style/Widget.ShaderEditor.Button"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="12dp" />
+
+	<com.google.android.material.button.MaterialButton
 		android:id="@+id/navigation_notice_action"
 		style="@style/Widget.ShaderEditor.Button.TonalButton"
 		android:layout_width="wrap_content"

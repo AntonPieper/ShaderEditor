@@ -148,6 +148,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 		private final View progress;
 		private final TextView title;
 		private final TextView reason;
+		private final TextView main;
 		private final TextView action;
 
 		private NoticeHolder(@NonNull View view) {
@@ -155,6 +156,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			progress = view.findViewById(R.id.navigation_notice_progress);
 			title = view.findViewById(R.id.navigation_notice_title);
 			reason = view.findViewById(R.id.navigation_notice_reason);
+			main = view.findViewById(R.id.navigation_notice_main);
 			action = view.findViewById(R.id.navigation_notice_action);
 		}
 
@@ -167,6 +169,8 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 				case STOPPED -> R.string.nav_stopped;
 				case EMPTY -> R.string.nav_empty_folder;
 				case FAILED -> R.string.nav_cannot_read;
+				case LOST_FOLDER -> R.string.nav_lost_folder;
+				case LOST_FILE -> R.string.nav_lost_file;
 				default -> 0;
 			};
 			title.setVisibility(text != 0 ? View.VISIBLE : View.GONE);
@@ -177,14 +181,24 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 					? View.VISIBLE
 					: View.GONE);
 			reason.setText(notice.reason());
+			// Choosing again is the one main way out; the other is beside.
 			List<Notice.Action> actions = notice.actions();
-			action.setVisibility(actions.isEmpty() ? View.GONE : View.VISIBLE);
-			if (!actions.isEmpty()) {
-				Notice.Action first = actions.get(0);
-				action.setText(first == Notice.Action.STOP
-						? R.string.nav_stop
-						: R.string.nav_try_again);
-				action.setOnClickListener(v -> listener.onNotice(first));
+			main.setVisibility(View.GONE);
+			action.setVisibility(View.GONE);
+			for (Notice.Action way : actions) {
+				TextView button = way == Notice.Action.CHOOSE_AGAIN
+						? main
+						: action;
+				button.setVisibility(View.VISIBLE);
+				button.setText(switch (way) {
+					case STOP -> R.string.nav_stop;
+					case TRY_AGAIN -> R.string.nav_try_again;
+					case CHOOSE_AGAIN -> kind == Notice.Kind.LOST_FILE
+							? R.string.nav_choose_file_again
+							: R.string.nav_choose_folder_again;
+					case REMOVE -> R.string.nav_remove_from_list;
+				});
+				button.setOnClickListener(v -> listener.onNotice(way));
 			}
 		}
 	}

@@ -22,7 +22,9 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 		SLOW,
 		STOPPED,
 		LISTED,
-		FAILED
+		FAILED,
+		LOST_FOLDER,
+		LOST_FILE
 	}
 
 	/** A file or folder as the listing of its folder tells it. */
@@ -49,9 +51,29 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 	}
 
 	public Reading failed(String reason) {
+		return failed(reason, true, true, false);
+	}
+
+	/**
+	 * Reading ends without entries, for reason. When the files of what
+	 * was opened cannot be reached or the grant to them is gone, it is
+	 * lost and has to be chosen again; else reading can be tried again.
+	 *
+	 * @param file whether what was opened is a single file
+	 */
+	public Reading failed(String reason, boolean reachable, boolean granted,
+			boolean file) {
+		Phase phase = reachable && granted
+				? Phase.FAILED
+				: file ? Phase.LOST_FILE : Phase.LOST_FOLDER;
 		return isReading()
-				? new Reading(Phase.FAILED, List.of(), reason, shown)
+				? new Reading(phase, List.of(), reason, shown)
 				: this;
+	}
+
+	/** Whether what was opened has to be chosen again. */
+	public boolean isLost() {
+		return phase == Phase.LOST_FOLDER || phase == Phase.LOST_FILE;
 	}
 
 	/** Shows the next page of rows. */
@@ -109,6 +131,8 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 			case SLOW -> new Notice(Notice.Kind.SLOW, null);
 			case STOPPED -> new Notice(Notice.Kind.STOPPED, null);
 			case FAILED -> new Notice(Notice.Kind.FAILED, reason);
+			case LOST_FOLDER -> new Notice(Notice.Kind.LOST_FOLDER, reason);
+			case LOST_FILE -> new Notice(Notice.Kind.LOST_FILE, reason);
 			case LISTED -> visible().isEmpty()
 					? new Notice(Notice.Kind.EMPTY, null)
 					: null;

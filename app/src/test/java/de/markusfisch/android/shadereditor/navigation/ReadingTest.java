@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.navigation;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
@@ -83,6 +84,27 @@ public class ReadingTest {
 		assertEquals(Notice.Kind.FAILED, notice.kind());
 		assertEquals("I/O error", notice.reason());
 		assertEquals(List.of(Notice.Action.TRY_AGAIN), notice.actions());
+	}
+
+	@Test
+	public void aRevokedGrantOrGoneStorageAsksToChooseAgain() {
+		Notice revoked = Reading.started().failed("lost access", true,
+				false, false).notice();
+		assertEquals(Notice.Kind.LOST_FOLDER, revoked.kind());
+		assertEquals(List.of(Notice.Action.CHOOSE_AGAIN,
+				Notice.Action.REMOVE), revoked.actions());
+		assertEquals(Notice.Kind.LOST_FOLDER, Reading.started().failed(
+				"gone", false, true, false).notice().kind());
+		assertEquals(Notice.Kind.LOST_FILE, Reading.started().failed(
+				"gone", false, true, true).notice().kind());
+	}
+
+	@Test
+	public void aFailureWithTheGrantHeldOffersToTryAgain() {
+		Reading failed = Reading.started().failed("I/O error", true, true,
+				false);
+		assertFalse(failed.isLost());
+		assertEquals(Notice.Kind.FAILED, failed.notice().kind());
 	}
 
 	@Test

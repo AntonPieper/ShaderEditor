@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -24,33 +25,41 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions;
  * opened before.
  */
 final class FoldersSource implements Source {
+	interface Remover {
+		/** Asks whether to remove what was opened before from Recent. */
+		void remove(@NonNull String key, @NonNull String name);
+	}
+
 	private final Context context;
 	private final Source library;
-	private List<Recent> recent = List.of();
+	private final Remover remover;
+	// What was found to be lost when it was gone into.
+	private final Set<String> lost = new HashSet<>();
+	private List<ProjectSessions.Recent> sessions = List.of();
 
-	FoldersSource(@NonNull Context context, @NonNull Source library) {
+	FoldersSource(@NonNull Context context, @NonNull Source library,
+			@NonNull Remover remover) {
 		this.context = context;
 		this.library = library;
+		this.remover = remover;
 	}
 
 	/** Takes the recent projects, the one opened last first. */
 	void setRecent(@NonNull List<ProjectSessions.Recent> sessions) {
-		List<Recent> recent = new ArrayList<>();
-		for (ProjectSessions.Recent session : sessions) {
-			ProjectSessions.Kind kind = session.locator().kind();
-			if (kind != ProjectSessions.Kind.DATABASE) {
-				recent.add(new Recent(session.id(),
-						kind == ProjectSessions.Kind.DOCUMENT,
-						session.name(), session.location(),
-						session.opened(), session.unsaved()));
-			}
+		this.sessions = sessions;
+	}
+
+	void setLost(@NonNull String key, boolean isLost) {
+		if (isLost) {
+			lost.add(key);
+		} else {
+			lost.remove(key);
 		}
-		this.recent = recent;
 	}
 
 	/** The folder or file opened before with key, or null. */
 	Recent find(@NonNull String key) {
-		for (Recent opened : recent) {
+		for (Recent opened : recent()) {
 			if (opened.key().equals(key)) {
 				return opened;
 			}
@@ -71,11 +80,13 @@ final class FoldersSource implements Source {
 						context.getString(R.string.nav_examples_count,
 								Samples.ALL.size()),
 						EnumSet.of(Row.Mark.READ_ONLY)))));
+		List<Recent> recent = recent();
 		if (!recent.isEmpty()) {
 			sections.add(new Listing.Section(
 					context.getString(R.string.nav_recent),
 					Recent.rows(recent,
-							context.getString(R.string.nav_single_file))));
+							context.getString(R.string.nav_single_file),
+							context.getString(R.string.nav_cannot_be_opened))));
 		}
 		return new Listing(context.getString(R.string.nav_folders),
 				null,
@@ -93,6 +104,25 @@ final class FoldersSource implements Source {
 
 	@Override
 	public void act(Row row, Row.Action action) {
+		if (action == Row.Action.REMOVE) {
+			remover.remove(row.key(), row.name());
+		}
+	}
+
+	@NonNull
+	private List<Recent> recent() {
+		List<Recent> recent = new ArrayList<>();
+		for (ProjectSessions.Recent session : sessions) {
+			ProjectSessions.Kind kind = session.locator().kind();
+			if (kind != ProjectSessions.Kind.DATABASE) {
+				recent.add(new Recent(session.id(),
+						kind == ProjectSessions.Kind.DOCUMENT,
+						session.name(), session.location(),
+						session.opened(), session.unsaved(),
+						lost.contains(session.id())));
+			}
+		}
+		return recent;
 	}
 
 	@NonNull

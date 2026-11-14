@@ -346,5 +346,17 @@
 	<string name="nav_try_again">Try again</string>
 	<string name="nav_empty_folder">Nothing in this folder</string>
 	<string name="nav_cannot_read">This folder cannot be read</string>
+	<string name="nav_cannot_be_opened">Cannot be opened</string>
+	<string name="nav_lost_folder">Shader Editor can no longer open this folder</string>
+	<string name="nav_lost_file">Shader Editor can no longer open this file</string>
+	<string name="nav_choose_folder_again">Choose folder again</string>
+	<string name="nav_choose_file_again">Choose file again</string>
+	<string name="nav_remove_from_list">Remove from list</string>
+	<string name="nav_remove_title">Remove %s from the list?</string>
+	<string name="nav_remove">Remove</string>
+	<plurals name="nav_remove_unsaved">
+		<item quantity="one">%d file has unsaved changes. They stay until you open it again.</item>
+		<item quantity="other">%d files have unsaved changes. They stay until you open it again.</item>
+	</plurals>
 	<string name="copy_failed">Couldn\'t copy to clipboard</string>
 </resources>

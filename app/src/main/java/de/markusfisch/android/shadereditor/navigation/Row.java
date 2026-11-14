@@ -40,7 +40,9 @@ public record Row(String key, Kind kind, Picture picture, String name,
 	public enum Action {
 		RENAME,
 		DUPLICATE,
-		DELETE
+		DELETE,
+		/** Removes it from Recent; its files stay. */
+		REMOVE
 	}
 
 	/** What stands at the start of a row: a picture or an icon. */

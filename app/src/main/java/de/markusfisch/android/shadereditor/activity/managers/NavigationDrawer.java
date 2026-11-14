@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.DocumentsContract;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -30,6 +31,7 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.graphics.Insets;
@@ -43,6 +45,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -141,7 +144,7 @@ public class NavigationDrawer implements ShaderList {
 		library = new LibrarySource(activity, dataSource, listener, host);
 		sources.put(Level.LIBRARY, library);
 		sources.put(Level.EXAMPLES, new ExamplesSource(activity, host));
-		folders = new FoldersSource(activity, library);
+		folders = new FoldersSource(activity, library, this::remove);
 		sources.put(Level.FOLDERS, folders);
 		projects = new Projects(activity);
 		pickFolder = activity.registerForActivityResult(
@@ -178,7 +181,8 @@ public class NavigationDrawer implements ShaderList {
 		bar = drawer.findViewById(R.id.navigation_bar);
 		newButton = drawer.findViewById(R.id.navigation_new);
 		newButton.setOnClickListener(v -> {
-			if (listing.bar() == Listing.Bar.OPEN) {
+			if (listing.bar() == Listing.Bar.OPEN ||
+					listing.bar() == Listing.Bar.OPEN_FOLDER) {
 				pick(true);
 			} else {
 				addShader();
@@ -308,6 +312,10 @@ public class NavigationDrawer implements ShaderList {
 						switch (action) {
 							case STOP -> folder.stop(level);
 							case TRY_AGAIN -> folder.retry(level);
+							case CHOOSE_AGAIN -> pick(!folder.isFile(),
+									folder.uri());
+							case REMOVE -> remove(folder.key(),
+									folder.name());
 						}
 					}
 				}));
@@ -344,6 +352,11 @@ public class NavigationDrawer implements ShaderList {
 	}
 
 	private void pick(boolean folder) {
+		pick(folder, null);
+	}
+
+	// The picker starts where what is chosen again was, if it can.
+	private void pick(boolean folder, @Nullable Uri was) {
 		Intent intent = new Intent(folder
 				? Intent.ACTION_OPEN_DOCUMENT_TREE
 				: Intent.ACTION_OPEN_DOCUMENT)
@@ -352,6 +365,12 @@ public class NavigationDrawer implements ShaderList {
 						Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
 		if (!folder) {
 			intent.addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
+		}
+		if (was != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, folder
+					? DocumentsContract.buildDocumentUriUsingTree(was,
+					DocumentsContract.getTreeDocumentId(was))
+					: was);
 		}
 		try {
 			(folder ? pickFolder : pickFile).launch(intent);
@@ -366,6 +385,11 @@ public class NavigationDrawer implements ShaderList {
 		Uri uri = data != null ? data.getData() : null;
 		if (result.getResultCode() != Activity.RESULT_OK || uri == null) {
 			return;
+		}
+		// A folder chosen again opens anew, not as it was lost.
+		if (this.folder != null) {
+			this.folder.close();
+			this.folder = null;
 		}
 		if (folder) {
 			projects.openTree(uri, data.getFlags(),
@@ -390,10 +414,53 @@ public class NavigationDrawer implements ShaderList {
 					: R.string.nav_cannot_open_file);
 			return;
 		}
-		folderSource(opened.id()).adopt(opened.project(), opened.problem());
+		folderSource(opened.id()).adopt(opened.project(), opened.problem(),
+				!tree);
 		loadRecent();
 		go(Level.root(opened.id()));
 		drawerLayout.openDrawer(drawer);
+	}
+
+	// Removing only takes it from Recent; the question says when
+	// unsaved text stays behind.
+	private void remove(@NonNull String key, @NonNull String name) {
+		try {
+			executor.execute(() -> {
+				int unsaved = projects.sessions().unsaved(key).size();
+				handler.post(() -> {
+					if (!isActivityAlive()) {
+						return;
+					}
+					MaterialAlertDialogBuilder dialog =
+							new MaterialAlertDialogBuilder(activity)
+									.setTitle(activity.getString(
+											R.string.nav_remove_title, name))
+									.setPositiveButton(R.string.nav_remove,
+											(d, which) -> removeNow(key))
+									.setNegativeButton(
+											android.R.string.cancel, null);
+					if (unsaved > 0) {
+						dialog.setMessage(activity.getResources()
+								.getQuantityString(R.plurals.nav_remove_unsaved,
+										unsaved, unsaved));
+					}
+					dialog.show();
+				});
+			});
+		} catch (RejectedExecutionException e) {
+			// Destroyed.
+		}
+	}
+
+	private void removeNow(@NonNull String key) {
+		// Nothing of it may stay open, or its session would stay too.
+		if (key.equals(level.key())) {
+			go(Level.FOLDERS);
+		}
+		projects.remove(key, removed -> {
+			folders.setLost(key, false);
+			loadRecent();
+		});
 	}
 
 	@NonNull
@@ -403,7 +470,7 @@ public class NavigationDrawer implements ShaderList {
 				folder.close();
 			}
 			folder = new FolderSource(activity, projects, listings, handler,
-					key, folders.find(key), () -> {
+					key, folders, () -> {
 				if (folder != null && folder.key().equals(level.key())) {
 					refresh();
 				}
@@ -523,10 +590,11 @@ public class NavigationDrawer implements ShaderList {
 		Listing.Bar action = listing.bar();
 		newButton.setText(switch (action) {
 			case NEW_SHADER -> R.string.add_shader;
-			case OPEN -> R.string.nav_open_folder;
+			case OPEN, OPEN_FOLDER -> R.string.nav_open_folder;
 			default -> R.string.nav_new;
 		});
-		newButton.setIconResource(action == Listing.Bar.OPEN
+		newButton.setIconResource(action == Listing.Bar.OPEN ||
+				action == Listing.Bar.OPEN_FOLDER
 				? R.drawable.ic_folder_open
 				: R.drawable.ic_add);
 		openFile.setVisibility(action == Listing.Bar.OPEN
@@ -619,6 +687,8 @@ public class NavigationDrawer implements ShaderList {
 						.setIcon(R.drawable.ic_content_copy);
 				case DELETE -> addDestructive(rowMenu, action.ordinal(),
 						R.string.nav_delete, R.drawable.ic_delete);
+				case REMOVE -> rowMenu.add(Menu.NONE, action.ordinal(),
+						Menu.NONE, R.string.nav_remove_from_list);
 			}
 		}
 		Source source = source(level);
