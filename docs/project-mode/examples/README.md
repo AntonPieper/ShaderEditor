@@ -10,6 +10,8 @@ Each child directory is a separate project root. These are small native-v1 autho
 | `previous` | Two inputs referencing current/previous of the same pass | Current field, scaled difference, and previous field in RGB |
 | `explicit-entry` | Optional manifest and non-default entry | Same minimal gradient from a nested entry |
 
+The files are named as the format does by convention, which nothing depends on: a shader that runs, and a pass, is `*.frag`; code that is included is `*.glsl`. The picture is a picture by its bytes.
+
 All GLSL examples use GLSL ES 1.00 syntax with explicit declarations and precision. `se input` lines are host metadata consumed before driver compilation. Paths must be validated/resolved by the future host implementation. Do not send unexpanded `#include` directives directly to the GLES driver.
 
 The 2×2 PNG fixture is generated for this package and needs no external resource library. The temporal examples illustrate behavior; acceptance R05/R06 additionally require deterministic numeric fixtures with independently expected pixel values.
