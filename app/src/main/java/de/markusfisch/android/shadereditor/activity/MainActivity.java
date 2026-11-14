@@ -170,7 +170,9 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onRestoreInstanceState(@NonNull Bundle state) {
 		super.onRestoreInstanceState(state);
-		shaderManager.restoreState(state);
+		if (files == null || !files.restoreState(state)) {
+			shaderManager.restoreState(state);
+		}
 		if (!state.getBoolean(CODE_VISIBLE, true)) {
 			uiManager.toggleCodeVisibility();
 		}
@@ -179,9 +181,28 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onSaveInstanceState(@NonNull Bundle state) {
 		shaderManager.saveState(state);
+		if (files != null) {
+			files.saveState(state);
+		}
 		state.putBoolean(CODE_VISIBLE, editorFragment.isCodeVisible());
 		state.putCharSequence(TOOLBAR_TITLE, uiManager.getToolbarTitle());
 		super.onSaveInstanceState(state);
+	}
+
+	@Override
+	protected void onStart() {
+		super.onStart();
+		if (files != null) {
+			files.onStart();
+		}
+	}
+
+	@Override
+	protected void onStop() {
+		if (files != null) {
+			files.onStop();
+		}
+		super.onStop();
 	}
 
 	@Override
@@ -383,6 +404,12 @@ public class MainActivity extends AppCompatActivity {
 				open = file;
 				editorFragment.clearError();
 				onChanged();
+			}
+
+			@Override
+			public void onNotRestored() {
+				shaderManager.selectShader(
+						ShaderEditorApp.preferences.getLastOpenedShader());
 			}
 
 			@Override
