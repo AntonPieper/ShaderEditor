@@ -292,7 +292,7 @@ class FakeGlDevice extends GlDevice {
 					location));
 			location += size;
 		}
-		var program = new GlProgram(name("createProgram"), uniforms);
+		var program = new GlProgram(nextName++, uniforms);
 		programs.put(program.getId(), program);
 		return GlProgramBuildResult.success(program);
 	}
