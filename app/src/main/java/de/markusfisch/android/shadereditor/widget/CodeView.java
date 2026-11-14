@@ -48,6 +48,7 @@ import androidx.core.view.ViewConfigurationCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
@@ -71,7 +72,8 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * the composing region and a blinking caret. Under the open line of the
  * marks, a row shows the messages of its errors; it moves the lines
  * after it down, and opening, closing or resizing it scrolls so that
- * the caret's line stays where it is. It owns no text. Keys
+ * the caret's line stays where it is. A tap on the mark at a line's
+ * number opens its row or closes it. It owns no text. Keys
  * become KeyCommands, and the caret is kept in view after each and
  * above the soft keyboard when that opens. The soft keyboard edits the
  * document through one TextInput per connection; a tap shows it.
@@ -334,6 +336,9 @@ public class CodeView extends View {
 	// moved with its line then moved with the text, and the scroll
 	// position stays.
 	private boolean edited;
+	// The lines with errors when the user last opened or closed the row,
+	// while that choice stands.
+	private int[] chosenFor;
 	// The lines drawn by the last frame, from shownFirst on.
 	private LineCache.Line[] shown = new LineCache.Line[0];
 	private int shownFirst;
@@ -374,7 +379,10 @@ public class CodeView extends View {
 
 					@Override
 					public boolean onSingleTapUp(@NonNull MotionEvent e) {
-						if (inSelection(e.getX(), e.getY())) {
+						int mark = markAt(e.getX(), e.getY());
+						if (mark >= 0) {
+							toggleRow(mark);
+						} else if (inSelection(e.getX(), e.getY())) {
 							toggleToolbar();
 						} else {
 							placeCaret(e.getX(), e.getY());
@@ -447,6 +455,7 @@ public class CodeView extends View {
 		forgetLines();
 		lines.setRow(-1, 0);
 		rowMessages = null;
+		chosenFor = null;
 		scrollTo(0, 0);
 		if (isAttachedToWindow()) {
 			connect();
@@ -558,15 +567,20 @@ public class CodeView extends View {
 
 	/**
 	 * Show the marks after they were set from a result, with the row of
-	 * the line MessageRow.choose picks.
+	 * the line MessageRow.choose picks, unless the user opened or closed
+	 * one by tapping a mark while the lines with errors were the same.
 	 */
 	public void marksChanged() {
 		if (document == null || marks == null) {
 			return;
 		}
-		marks.open(MessageRow.choose(marks.errorLines(), marks.open(),
-				document.text().lineOf(document.selection().head()),
-				firstShown(), lastShown()));
+		int[] failing = marks.errorLines();
+		if (!Arrays.equals(failing, chosenFor)) {
+			chosenFor = null;
+			marks.open(MessageRow.choose(failing, marks.open(),
+					document.text().lineOf(document.selection().head()),
+					firstShown(), lastShown()));
+		}
 		placeRow();
 		invalidate();
 	}
@@ -1705,6 +1719,12 @@ public class CodeView extends View {
 				requestFocus();
 				toolbar.close();
 				touched = null;
+				int mark = markAt(x, y);
+				if (mark >= 0 &&
+						!event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)) {
+					toggleRow(mark);
+					return true;
+				}
 				startDrag(DRAG_MOUSE, x, y);
 				if (event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)) {
 					dragging = 0;
@@ -1995,6 +2015,14 @@ public class CodeView extends View {
 		}
 	}
 
+	// Opens or closes the row of line and keeps that choice while the
+	// lines with errors stay the same.
+	private void toggleRow(int line) {
+		marks.open(line == marks.open() ? -1 : line);
+		chosenFor = marks.errorLines();
+		placeRow();
+	}
+
 	// Lays the row out under the open line of the marks, if it changed,
 	// with the scroll position that keeps the caret's line, or else the
 	// first line on screen, where it is.
@@ -2042,6 +2070,31 @@ public class CodeView extends View {
 			return caret;
 		}
 		return lineAt(getScrollY() + insets.top);
+	}
+
+	// Returns the line with an error whose mark is nearest x and y of the
+	// view, inside a tap target as wide as the gutter, so that a tap on
+	// the text always places the caret, and a tap target tall around its
+	// number; -1 for none.
+	private int markAt(float x, float y) {
+		if (document == null || marks == null || !showLineNumbers ||
+				x >= textLeft(document.text().lineCount())) {
+			return -1;
+		}
+		float at = y + getScrollY();
+		float reach = appearance.tapTarget / 2;
+		int found = -1;
+		for (int n = lineAt(at - reach), last = lineAt(at + reach);
+				n <= last; ++n) {
+			float distance = Math.abs(lineTop(n) +
+					appearance.lineHeight / 2f - at);
+			if (distance <= reach &&
+					marks.severity(n) == ProjectDiagnostic.Severity.ERROR) {
+				reach = distance;
+				found = n;
+			}
+		}
+		return found;
 	}
 
 	// Draws the row under its line, from left to right, its text aligned
