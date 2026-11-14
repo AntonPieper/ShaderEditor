@@ -215,9 +215,10 @@ public class ShaderWallpaperService extends WallpaperService {
 				return;
 			}
 			int request = ++snapshotRequest;
-			WallpaperSnapshots snapshots = WallpaperSnapshots.of(
-					getFilesDir());
 			LOADER.execute(() -> {
+				// Where the files are is read from the disk too.
+				WallpaperSnapshots snapshots = WallpaperSnapshots.of(
+						getFilesDir());
 				WallpaperSnapshots.Snapshot first = snapshots.current();
 				Preparation prepared = prepare(first);
 				if (first != null && prepared.plan() == null) {
@@ -228,11 +229,16 @@ public class ShaderWallpaperService extends WallpaperService {
 				}
 				WallpaperSnapshots.Snapshot snapshot = first;
 				Preparation preparation = prepared;
+				// Without a snapshot, the shader of the database, read
+				// here as well.
+				DataRecords.Shader shader = snapshot == null
+						? getWallpaperShader()
+						: null;
 				mainHandler.post(() -> {
 					if (view == null || request != snapshotRequest) {
 						return;
 					} else if (snapshot == null) {
-						setDatabaseShader();
+						setDatabaseShader(shader);
 					} else if (preparation.plan() == null) {
 						// What is shown stays; a build that failed
 						// is never what the wallpaper is set to.
@@ -263,7 +269,10 @@ public class ShaderWallpaperService extends WallpaperService {
 		}
 
 		private void setDatabaseShader() {
-			DataRecords.Shader shader = getWallpaperShader();
+			setDatabaseShader(getWallpaperShader());
+		}
+
+		private void setDatabaseShader(@Nullable DataRecords.Shader shader) {
 			if (view != null && shader != null) {
 				saveRuntime();
 				snapshotShown = false;
