@@ -52,6 +52,9 @@ public class ShaderView extends GLSurfaceView {
 	}
 
 	// Converts and prepares the shaders of all views, one at a time.
+	// What the shaders set as text, and plans set without a picture, are
+	// revisions of: they keep what is shown when they fail.
+	private static final Object ONE_PICTURE = new Object();
 	private static final ExecutorService PREPARER =
 			Executors.newSingleThreadExecutor(runnable -> {
 				var thread = new Thread(runnable, "ShaderPreparer");
@@ -141,10 +144,18 @@ public class ShaderView extends GLSurfaceView {
 		}
 	}
 
-	// Shows a prepared project at this quality.
+	// Shows a prepared project at this quality. Its plans are revisions
+	// of one picture, as the shaders set as text are.
 	public void setPlan(@NonNull Preparation preparation, float quality) {
+		setPlan(preparation, quality, ONE_PICTURE);
+	}
+
+	// Shows a prepared project at this quality, a revision of picture:
+	// if it fails, what is shown stays only when it is of picture too.
+	public void setPlan(@NonNull Preparation preparation, float quality,
+			@NonNull Object picture) {
 		runtimeOwner = preparation;
-		engine.setPlan(preparation, quality);
+		engine.setPlan(preparation, quality, picture);
 		requestRender();
 	}
 
@@ -188,7 +199,7 @@ public class ShaderView extends GLSurfaceView {
 					List.of(), List.of(), Map.of());
 		}
 		if (engine.setPlan(request, preparation, quality,
-				new Stored(conversion), owner, runtimeNanos)) {
+				new Stored(conversion), owner, runtimeNanos, ONE_PICTURE)) {
 			requestRender();
 		}
 	}

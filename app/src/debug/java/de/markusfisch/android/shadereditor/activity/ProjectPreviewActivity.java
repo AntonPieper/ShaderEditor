@@ -252,7 +252,9 @@ public class ProjectPreviewActivity extends PreviewActivity {
 			if (preparation == null) {
 				log("nothing runs");
 			} else {
-				getShaderView().getEngine().setPlan(preparation, quality);
+				// One project, so one picture.
+				getShaderView().getEngine().setPlan(preparation, quality,
+						this);
 			}
 		});
 	}
