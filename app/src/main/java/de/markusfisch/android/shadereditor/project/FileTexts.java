@@ -50,9 +50,13 @@ public final class FileTexts {
 			Document.History history) implements Opening {
 	}
 
-	/** A file that cannot be edited; reason tells the user why. */
-	public record Unopened(String reason, String unreadable)
-			implements Opening {
+	/**
+	 * A file that cannot be edited; reason tells the user why, and
+	 * found, never SAME or CHANGED, what storage holds in its place,
+	 * at revision when one is known.
+	 */
+	public record Unopened(String reason, String unreadable, Found found,
+			String revision) implements Opening {
 	}
 
 	/**
@@ -394,6 +398,14 @@ public final class FileTexts {
 	// whole text, so the answer is final and nothing waits for main.
 	private boolean write(ProjectPath path, FileRecord.Flush flush) {
 		if (flush.removes()) {
+			// What a reload replaced is given up to its history only.
+			if (flush.history() != null) {
+				String hash = Histories.hash(flush.text());
+				if (hash == null ||
+						!histories.write(path, hash, flush.history())) {
+					return false;
+				}
+			}
 			return journal.remove(path);
 		}
 		if (flush.from() >= 0) {
@@ -429,7 +441,7 @@ public final class FileTexts {
 	private static Opening recovered(ProjectPath path,
 			Journal.Recovered recovered) {
 		if (recovered.tooLarge()) {
-			return tooLarge(path, null);
+			return tooLarge(path, null, null);
 		}
 		return new Opened(recovered.text(), true, recovered.header().base(),
 				recovered.revision(), Document.bytes(recovered.text()), null,
@@ -441,27 +453,30 @@ public final class FileTexts {
 	private Opening read(ProjectPath path, long size, String unreadable) {
 		if (path.getKind() == ProjectPath.Kind.IMAGE) {
 			return new Unopened(path + " is an image, not text",
-					unreadable);
+					unreadable, Found.NOT_TEXT, null);
 		}
 		if (size > Document.MAX_BYTES) {
-			return tooLarge(path, unreadable);
+			return tooLarge(path, unreadable, null);
 		}
 		Read read = store.read(path, Document.MAX_BYTES);
 		if (read instanceof ProjectFiles.Failed failed &&
 				ProjectFiles.TOO_LARGE.equals(failed.reason())) {
-			return tooLarge(path, unreadable);
+			return tooLarge(path, unreadable, null);
 		}
 		if (!(read instanceof Content content)) {
 			return new Unopened(CapturedFiles.problem(path, read),
-					unreadable);
+					unreadable, read == null
+							? Found.MISSING
+							: Found.UNAVAILABLE, null);
 		}
 		byte[] bytes = content.bytes();
 		if (bytes.length > Document.MAX_BYTES) {
-			return tooLarge(path, unreadable);
+			return tooLarge(path, unreadable, content.revision());
 		}
 		Text text = decode(bytes);
 		if (text == null) {
-			return new Unopened(path + " is not a text file", unreadable);
+			return new Unopened(path + " is not a text file", unreadable,
+					Found.NOT_TEXT, content.revision());
 		}
 		return new Opened(text, false, content.revision(), -1,
 				Document.bytes(text), unreadable, null);
@@ -480,11 +495,13 @@ public final class FileTexts {
 	private static Unopened tooLargeHere(ProjectPath path,
 			String unreadable) {
 		return new Unopened(path + " is too large for this device",
-				unreadable);
+				unreadable, Found.TOO_LARGE, null);
 	}
 
-	private static Unopened tooLarge(ProjectPath path, String unreadable) {
+	private static Unopened tooLarge(ProjectPath path, String unreadable,
+			String revision) {
 		return new Unopened(path + " is larger than " +
-				Document.MAX_BYTES / (1024 * 1024) + " MiB", unreadable);
+				Document.MAX_BYTES / (1024 * 1024) + " MiB", unreadable,
+				Found.TOO_LARGE, revision);
 	}
 }

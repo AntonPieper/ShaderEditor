@@ -36,12 +36,15 @@ final class FileRecord {
 	 * What the journal of the file is to do, in one task of the worker:
 	 * hold text at revision to, by appending changes when it is at
 	 * revision from and by a snapshot with header otherwise, or, when
-	 * text is null, go; to also tells the writes apart.
+	 * header is null, go; to also tells the writes apart. A journal
+	 * that goes with a history goes only once that history, of text,
+	 * is written: it holds what a reload replaced, and the history is
+	 * what brings that back from then on.
 	 */
 	record Flush(Journal.Header header, Text text, int from, int to,
-			List<Document.Change> changes) {
+			List<Document.Change> changes, Document.History history) {
 		boolean removes() {
-			return text == null;
+			return header == null;
 		}
 	}
 
@@ -93,6 +96,10 @@ final class FileRecord {
 	private List<Document.Change> changes = new ArrayList<>();
 	// Whether the journal of the file, not in memory, is to go.
 	private boolean retire;
+	// Whether the journal holds the text a reload replaced, which only
+	// undo brings back now; and the revision the document was opened at.
+	private boolean replaced;
+	private int opened;
 
 	FileRecord(ProjectPath path) {
 		this.path = path;
@@ -251,9 +258,18 @@ final class FileRecord {
 		journaled |= journal >= 0;
 		this.journal = journal;
 		writes = acked = Math.max(journal, 0);
-		flushed = document.revision();
+		flushed = opened = document.revision();
 		changes = new ArrayList<>();
+		replaced = false;
 		return true;
+	}
+
+	/**
+	 * Return the revision the document had when it was opened, before
+	 * anyone was told of it.
+	 */
+	int opened() {
+		return opened;
 	}
 
 	/**
@@ -270,6 +286,9 @@ final class FileRecord {
 			return false;
 		}
 		Document.Selection selection = document.selection();
+		// Unsaved text goes from the screen; its journal stays until a
+		// history holds it.
+		replaced = document.isModified() && journaled;
 		document.beginBatch();
 		document.replace(0, document.text().length(), text);
 		document.select(Math.min(selection.anchor(), text.length()),
@@ -378,7 +397,7 @@ final class FileRecord {
 				return null;
 			}
 			retire = false;
-			return new Flush(null, null, -1, ++writes, List.of());
+			return new Flush(null, null, -1, ++writes, List.of(), null);
 		}
 		int revision = document.revision();
 		List<Document.Change> changed = changes;
@@ -387,20 +406,27 @@ final class FileRecord {
 			flushed = revision;
 			if (!journaled && !unsure) {
 				return null;
+			} else if (replaced &&
+					document.historyChars() > Histories.MAX_CHARS) {
+				// No history can hold what the journal holds.
+				return null;
 			}
 			journaled = false;
 			journal = -1;
-			return new Flush(null, null, -1, ++writes, List.of());
+			return new Flush(null, document.text(), -1, ++writes,
+					List.of(), replaced ? document.history() : null);
 		} else if (journal >= 0 && revision == flushed && !unsure) {
 			return null;
 		}
 		changes = new ArrayList<>();
 		flushed = revision;
 		journaled = true;
+		replaced = false;
 		int from = unsure ? -1 : journal;
 		journal = ++writes;
 		return new Flush(new Journal.Header(path, base, kept,
-				kept ? base : null), document.text(), from, writes, changed);
+				kept ? base : null), document.text(), from, writes, changed,
+				null);
 	}
 
 	/**
@@ -417,6 +443,8 @@ final class FileRecord {
 			// A new snapshot took the place of one that was damaged.
 			if (!flush.removes()) {
 				unreadable = null;
+			} else if (document != null && !document.isModified()) {
+				replaced = false;
 			}
 			return;
 		}
@@ -424,7 +452,10 @@ final class FileRecord {
 		if (flush.removes()) {
 			journaled = true;
 		}
-		failure = "the journal cannot be written";
+		// Unsaved text is at stake only where the document has some.
+		if (flush.history() == null) {
+			failure = "the journal cannot be written";
+		}
 	}
 
 	/** Forget the document and return it. */
