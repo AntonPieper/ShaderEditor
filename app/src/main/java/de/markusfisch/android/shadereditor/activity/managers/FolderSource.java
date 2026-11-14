@@ -28,6 +28,7 @@ import de.markusfisch.android.shadereditor.navigation.Reading;
 import de.markusfisch.android.shadereditor.navigation.Recent;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
+import de.markusfisch.android.shadereditor.navigation.Tap;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
@@ -55,6 +56,9 @@ final class FolderSource {
 		 * @param single whether what was opened is a single file
 		 */
 		boolean open(@NonNull ProjectPath path, boolean single);
+
+		/** Say that the file named name is a picture, not text. */
+		void picture(@NonNull String name);
 	}
 
 	/** Does what the menu of a row offers. */
@@ -189,7 +193,25 @@ final class FolderSource {
 			public boolean open(Row row, boolean run) {
 				// Whether it runs is decided once its text is known.
 				var path = ProjectPath.parse(row.key());
-				return path.isSuccess() && opener.open(path.value(), file);
+				OpenProject in = project;
+				if (!path.isSuccess()) {
+					return false;
+				} else if (in == null) {
+					return opener.open(path.value(), file);
+				}
+				// What it is comes from its bytes; its name only chose the
+				// icon.
+				Tap hinted = Tap.of(row.kind(), false);
+				in.picture(path.value(), picture -> {
+					if (closed) {
+						return;
+					} else if (hinted.read(picture) == Tap.SHOW_IMAGE) {
+						opener.picture(row.name());
+					} else {
+						opener.open(path.value(), file);
+					}
+				});
+				return false;
 			}
 
 			@Override

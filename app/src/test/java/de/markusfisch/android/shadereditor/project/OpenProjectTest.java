@@ -81,6 +81,22 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void aPictureIsToldByItsBytesNotItsName() throws IOException {
+		write("shader.png", SHADER);
+		File photo = new File(root, "photo.frag");
+		Files.write(photo.toPath(), new byte[]{(byte) 0x89, 0x50, 0x4e, 0x47,
+				0x0d, 0x0a, 0x1a, 0x0a, 0});
+		OpenProject project = open();
+		List<Boolean> told = new ArrayList<>();
+
+		project.picture(path("shader.png"), told::add);
+		project.picture(path("photo.frag"), told::add);
+		steps.settle();
+
+		assertEquals(List.of(false, true), told);
+	}
+
+	@Test
 	public void runsMainWithoutManifestU10() throws IOException {
 		write("main.frag", SHADER);
 		write("other.glsl", SHADER);

@@ -207,11 +207,9 @@ public class NavigationDrawer implements ShaderList {
 						reread(key, path);
 					}
 
-					// Over the drawer, which would hide the bottom bar.
 					@Override
 					public void tell(@NonNull String message) {
-						Snackbar.make(drawer, message, Snackbar.LENGTH_LONG)
-								.show();
+						NavigationDrawer.this.tell(message);
 					}
 				});
 		newFile = new NewFile(activity, holds, listings, handler,
@@ -607,7 +605,25 @@ public class NavigationDrawer implements ShaderList {
 			}
 			folder = new FolderSource(activity, holds, listings, handler,
 					key, folders,
-					(path, single) -> host.onOpenFile(key, path, single),
+					new FolderSource.Opener() {
+						@Override
+						public boolean open(@NonNull ProjectPath path,
+								boolean single) {
+							boolean opening = host.onOpenFile(key, path,
+									single);
+							if (opening) {
+								close();
+							}
+							return opening;
+						}
+
+						// Until there is a sheet for pictures.
+						@Override
+						public void picture(@NonNull String name) {
+							tell(activity.getString(R.string.nav_is_picture,
+									name));
+						}
+					},
 					folderActions::act,
 					() -> {
 				if (folder != null && folder.key().equals(level.key())) {
@@ -766,7 +782,7 @@ public class NavigationDrawer implements ShaderList {
 	private void tap(@NonNull Item item) {
 		switch (item.tap()) {
 			case ENTER -> go(item.row().enters());
-			case OPEN, OPEN_AND_RUN -> {
+			case OPEN, OPEN_AND_RUN, SHOW_IMAGE -> {
 				if (source(level).open(item.row(),
 						item.tap() == Tap.OPEN_AND_RUN)) {
 					close();
@@ -940,6 +956,11 @@ public class NavigationDrawer implements ShaderList {
 		text.setSpan(new ForegroundColorSpan(error), 0, text.length(), 0);
 		MenuItem item = menu.add(1, id, Menu.NONE, text).setIcon(icon);
 		MenuItemCompat.setIconTintList(item, ColorStateList.valueOf(error));
+	}
+
+	// Over the drawer, which would hide the bottom bar.
+	private void tell(@NonNull String message) {
+		Snackbar.make(drawer, message, Snackbar.LENGTH_LONG).show();
 	}
 
 	private void scrollToSelected() {

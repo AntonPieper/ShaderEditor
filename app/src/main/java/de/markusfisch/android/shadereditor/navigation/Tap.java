@@ -31,4 +31,14 @@ public enum Tap {
 			case MORE -> MORE;
 		};
 	}
+
+	/**
+	 * What this tap, chosen from what a file's name hints at, does once
+	 * its first bytes told whether it is a picture: a picture shows as
+	 * one whatever its name, any other file opens as text does, also
+	 * when its name looked like a picture's.
+	 */
+	public Tap read(boolean picture) {
+		return picture ? SHOW_IMAGE : this == SHOW_IMAGE ? OPEN : this;
+	}
 }
