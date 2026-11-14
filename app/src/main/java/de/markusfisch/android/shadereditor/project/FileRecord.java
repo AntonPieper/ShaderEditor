@@ -360,8 +360,21 @@ final class FileRecord {
 	 * null when it is as it should be; it counts as sent.
 	 */
 	Flush flush() {
+		return flush(false);
+	}
+
+	/**
+	 * Return what {@link #flush()} returns; at a fence, where the text
+	 * is to be held whatever happens to the answers on their way, also
+	 * when the last write sent is not acknowledged: it may have failed
+	 * and the failure may never be heard, so what the journal is to be
+	 * is sent again, the text whole.
+	 */
+	Flush flush(boolean fence) {
+		boolean unsure = fence && acked != writes;
 		if (document == null) {
-			if (!retire) {
+			// The last write of a file not in memory is its removal.
+			if (!retire && !unsure) {
 				return null;
 			}
 			retire = false;
@@ -372,19 +385,19 @@ final class FileRecord {
 		if (!document.isModified()) {
 			changes = new ArrayList<>();
 			flushed = revision;
-			if (!journaled) {
+			if (!journaled && !unsure) {
 				return null;
 			}
 			journaled = false;
 			journal = -1;
 			return new Flush(null, null, -1, ++writes, List.of());
-		} else if (journal >= 0 && revision == flushed) {
+		} else if (journal >= 0 && revision == flushed && !unsure) {
 			return null;
 		}
 		changes = new ArrayList<>();
 		flushed = revision;
 		journaled = true;
-		int from = journal;
+		int from = unsure ? -1 : journal;
 		journal = ++writes;
 		return new Flush(new Journal.Header(path, base, kept,
 				kept ? base : null), document.text(), from, writes, changed);

@@ -882,6 +882,110 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void closeWritesWhatAFailedWriteDidNotWhoseAnswerNeverCame()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		// A file where the folder of the journal would be.
+		File drafts = new File(new File(sessionsDir, id), "drafts");
+		Files.write(drafts.toPath(), new byte[]{1});
+		edit(project, a, "mine");
+		project.persist();
+		// The write failed; main has not heard yet.
+		worker.run();
+		assertTrue(drafts.delete());
+
+		project.close();
+		settle();
+
+		assertEquals("mine", journaled("a.glsl"));
+	}
+
+	@Test
+	public void flushAnswersForAWriteThatFailedUnheard() throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		File drafts = new File(new File(sessionsDir, id), "drafts");
+		Files.write(drafts.toPath(), new byte[]{1});
+		edit(project, a, "mine");
+		project.persist();
+		worker.run();
+		assertTrue(drafts.delete());
+		List<String> done = new ArrayList<>();
+
+		project.flush(() -> done.add(journaled("a.glsl") + " " +
+				project.unprotected()));
+		settle();
+
+		assertEquals(List.of("mine null"), done);
+	}
+
+	@Test
+	public void closeRemovesTheJournalARemovalFailedToUnheard()
+			throws IOException {
+		OpenProject project = open();
+		Document a = document(project, "a.glsl", "stored");
+		edit(project, a, "mine");
+		project.persist();
+		settle();
+		a.undo();
+		// Nothing can be deleted from the folder now.
+		File drafts = new File(new File(sessionsDir, id), "drafts");
+		assertTrue(drafts.setWritable(false));
+		project.persist();
+		worker.run();
+		assertTrue(drafts.setWritable(true));
+		assertEquals(Set.of(path("a.glsl")), kept());
+
+		project.close();
+		settle();
+
+		assertTrue(kept().isEmpty());
+	}
+
+	@Test
+	public void closeKeepsTheSelectionMadeWhileAnotherWasOnItsWay()
+			throws IOException {
+		write("a.glsl", "a");
+		write("b.glsl", "b");
+		OpenProject project = open();
+		project.show(path("a.glsl"));
+		project.show(path("b.glsl"));
+		project.runThisFile(path("b.glsl"));
+
+		project.close();
+		settle();
+
+		ProjectSessions sessions = new ProjectSessions(sessionsDir);
+		assertEquals(path("b.glsl"), sessions.shown(id));
+		assertEquals(path("b.glsl"), sessions.running(id));
+	}
+
+	@Test
+	public void tellsAndRetriesWhenTheProjectCannotBeKeptAsTheLastOpen()
+			throws IOException {
+		ProjectSessions sessions = new ProjectSessions(sessionsDir);
+		assertTrue(sessions.remember(id, "name", "location", 1));
+		OpenProject project = open();
+		// A file cannot be renamed onto a folder.
+		File last = new File(sessionsDir, "last");
+		assertTrue(last.mkdir());
+
+		project.remember();
+		settle();
+		assertNotNull(project.unkept());
+		assertNull(sessions.last());
+
+		assertTrue(last.delete());
+		project.persist();
+		settle();
+
+		assertNull(project.unkept());
+		assertEquals(id, sessions.last());
+		assertTrue(sessions.recent(id).opened() > 1);
+	}
+
+	@Test
 	public void switchingFilesAndRunningKeepTheTextAtOnce()
 			throws IOException {
 		write("main.glsl", SHADER);
