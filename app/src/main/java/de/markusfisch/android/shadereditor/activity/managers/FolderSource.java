@@ -216,7 +216,7 @@ final class FolderSource {
 		} else if (project == null && problem == null) {
 			if (!opening) {
 				opening = true;
-				projects.open(key, opened -> opened(opened.project(),
+				projects.look(key, opened -> opened(opened.project(),
 						opened.problem()));
 			}
 			return;

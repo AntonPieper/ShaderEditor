@@ -107,6 +107,19 @@ public final class Projects {
 	 * why. It stays open until {@link OpenProject#close}.
 	 */
 	public void open(String id, Callback<Opened> done) {
+		open(id, true, done);
+	}
+
+	/**
+	 * Open the project of session id like {@link #open}, to look into
+	 * its folders: it keeps its place among the recent projects and is
+	 * not remembered as the one open last.
+	 */
+	public void look(String id, Callback<Opened> done) {
+		open(id, false, done);
+	}
+
+	private void open(String id, boolean remember, Callback<Opened> done) {
 		live().open(id, locator -> SafProjects.open(context, locator),
 				project -> {
 					if (project == null) {
@@ -114,7 +127,9 @@ public final class Projects {
 								"it is not a known project"));
 						return;
 					}
-					project.remember();
+					if (remember) {
+						project.remember();
+					}
 					done.done(new Opened(id, project,
 							project.storage().reason()));
 				});
@@ -162,7 +177,7 @@ public final class Projects {
 			main.post(() -> done.done(new Opened(null, null,
 					"this folder cannot be opened")));
 		} else {
-			main.post(() -> open(id, done));
+			main.post(() -> look(id, done));
 		}
 	}
 }
