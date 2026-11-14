@@ -268,7 +268,7 @@ The file in the editor has the selected background and is announced as selected.
 | Level | Header | List | Bar | Picture |
 | --- | --- | --- | --- | --- |
 | **Folders** | "Folders", no arrow | Shaders; Examples; then **Recent**: folders and single files opened before, newest first, each with where it is | Open folder; Open file | `r-03` |
-| **Shaders** (the library) | "Shaders", "23 shaders" | Every shader: thumbnail, name or date, date of last change. Before the migration these are the database shaders, afterwards the files of `ShaderEditor/Shaders`; the list is the same | New | `r-02` |
+| **Shaders** (the library) | "Shaders", "23 shaders" | Every shader: thumbnail, name or date, date of last change. Before the migration these are the database shaders, afterwards the files of `ShaderEditor/Shaders`; the list is the same. Section 11 says how it looks once the shaders are files | New | `r-02` |
 | **Examples** | "Examples", lock, "Read-only" | The four sections of EXAMPLES 2, each example with its line | New shader | `r-01` |
 | **A folder's root** | its name; where it is | Running or Last opened; All files | New | `r-04`, `r-29` |
 | **A folder inside** | the path from the root, last part bold, shortened at the start | the same | New | `r-06`, `r-07` |
@@ -568,6 +568,47 @@ Each with my recommendation first.
 - **Persona sizes.** There is no usage data; the tracker shows who writes issues, not who uses the app. `docs-site` was read by file name only.
 - **The size of N1.** How much of `ShaderManager` can move behind one adapter without behaviour change is an estimate from reading it, not from doing it.
 - **That a shader file "defines `main`" is always decidable from its own text.** A `main` that comes from an include, or a ShaderToy `mainImage`, would make a file runnable that the test calls not runnable; Run this file on long press covers it, by hand.
+
+## 11. One library on screen
+
+Where project mode is on, the shaders of the database have moved into the library (SPEC 12.2, UX 8), and the screens show the library only. Nothing on screen reads the list of database shaders any more, except the one section below for the shaders that could not move. This section says how the parts of section 6 apply to that. Pictures: `.foreman/show/library-ui-1/`.
+
+### 11.1 Where the library sits
+
+- **Folders stays the top of the column.** Its first row, **Shaders**, is the library folder, with the number of shaders as its second line; then Examples; then Recent. The library is never listed under Recent: it has its fixed row, and removing it from a list would mean nothing.
+- **The drawer opens where the file in the editor is** (6.3), and every shader is a file of the library now, so the library's root is where it opens nearly always: it is the home level in practice without being a level of its own. A folder the user opened sits where it did, under Recent, one level up from the library.
+- **The library's root is listed like any folder** (6.4): folders first, then files, in the order the drawer menu chooses, last changed first by default. Its folders `textures/` and `presets/` are shown like any folder: they are the user's files, and hiding them would make the store a special case. A file has its preview picture (40 dp) where it has one; a file without one has the shader icon until it has run once. Marks as in 6.1, among them the wallpaper mark on the file the wallpaper shows.
+- **A row's name is the file's name** (D9): `Plasma.frag`, `Untitled 2.frag`. Long names are cut at the end with "…"; the extension is part of the name and is cut with it.
+
+### 11.2 The shaders that did not move
+
+The library's root ends with a section **Not moved (N)**, only while there are any. Each row is a database shader the move could not write as a file: its title (or `Untitled`), and as its second line the reason, cut to one line ("a character outside ASCII stands between two characters of code"). The picture is its database thumbnail. A tap opens it as before the move: read, run, edit, and Save writes it to the database. Its menu offers nothing: it is not a file. The section goes when a later start moves the last of them. Nothing asks about it at start; the section is where it is said.
+
+### 11.3 New, from each place
+
+| From | What it does |
+| --- | --- |
+| Toolbar menu, **New shader**, with a library file, a "not moved" shader or nothing open | The New sheet (6.6) at the library's root, Shader chosen. Create makes the file from the shader chosen as the default for new ones, or the built-in template (UX 8), and opens and runs it |
+| Toolbar menu, New shader, with a file of another folder | The New sheet at that file's folder, as before |
+| Drawer bar, **New**, at the library's root | The same sheet at the root, Shader chosen; Empty file and Folder as in any folder |
+| Drawer bar, New, in a folder of the library or of another folder | The sheet at that folder; Shader there writes the built-in template |
+| Drawer bar at Folders | **Open folder**, **Open file**, as before |
+
+The sheet's name check (`Naming`) refuses at the library's root the names `textures` and `presets` for a folder or a file without an ending, which the library keeps for itself, so it never suggests them.
+
+Code pasted into a shader of the library's root that defines `mainImage` and no `main` is converted from ShaderToy's form, as in a shader of the database, in one replace that Undo takes back (UX 8).
+
+### 11.4 Start
+
+At every start, in this order, without asking anything:
+
+1. **The move** (SPEC 12.2) runs on the projects' queue. On most starts it finds nothing to move and takes milliseconds. While it runs the editor shows nothing (the picture behind the code is empty, the code view is empty and not editable) and the toolbar says **Shaders** with the second line **Moving shaders into files…**; that line appears only when the move takes longer than half a second, so a start that moves nothing does not flash it. The old picture is not shown meanwhile: it would be a database shader, and showing it means reading the database list on screen, which this design ends. A big database (300 shaders) takes a few seconds once, on the first start of a build with project mode; then never again.
+2. **The library opens**, and its session's file is shown and run: the file last shown, which the move set to the shader that was last opened. A file that is gone shows the newest file of the library instead. An empty library opens the drawer on it with its empty state (6.7).
+3. **Once, after a start that moved shaders**, a message at the bottom: **"%d shaders are now files in ShaderEditor / Shaders"** (singular "1 shader is now a file …"), for 4 s, no action. Shaders that failed are not in the message; they are in the section Not moved. A move that could not begin at all is the only failure told at start, by the same bottom message with its reason; the list then shows what the library holds.
+
+### 11.5 The toolbar for a library file
+
+As for any file (6.1): the title is the file's name, `Plasma.frag`, with the unsaved dot; the second line is the folder, **Shaders**, and with another file running, **▶ Other.frag · Shaders**. A "not moved" shader keeps today's title, its database title, and its second line says **Not moved**, so it is never taken for a file.
 
 ## Decisions of 2026-11-12
 

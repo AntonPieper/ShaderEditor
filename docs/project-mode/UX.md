@@ -126,6 +126,10 @@ There is one list afterwards, the files of that folder, with the same pictures a
 
 After the move, **New shader** creates a file in the library, `Untitled.frag` or the next unused name, from the shader chosen as the default for new shaders or else from the built-in template, and opens and runs it. The wallpaper is chosen among the files of the library, and the default for new shaders among the files of its root. Renaming the default keeps it the default; moving it into a folder ends that, and new shaders start from the built-in template until another is chosen. A moved shader's file holds the text as it was written, comments and all. A wallpaper set before the move keeps showing what it showed; editing the file does not change it until the wallpaper is set again (section 8, first paragraph).
 
+A shader in the library's own folder is converted from ShaderToy's form exactly as a shader of the database was: text put into it that defines `mainImage` and no `main` is wrapped and its uniforms renamed, in one replace that Undo takes back. Opening a file never converts it. Files in the library's folders and in other folders stay as they are, since a ShaderToy port of several files has Common and Buffer files that must not be rewritten one by one.
+
+On screen (NAVIGATION 11): the move runs at every start before the library opens, and only a start that moves something says so, once, with one line at the bottom. The library is the drawer's **Shaders** folder and where it opens; shaders that could not move are listed at the end of it under **Not moved**, each with its reason, and open as before.
+
 A debug build has **Move shaders again**, which puts the library aside under another name and moves everything from the database into an empty one. It deletes nothing, and it asks to close the library first.
 
 Before step 2, **Save as files** converts one shader on request with the usual Name/Location flow and keeps the original. Do not display internal terms such as compatibility mode or converter in normal navigation.
