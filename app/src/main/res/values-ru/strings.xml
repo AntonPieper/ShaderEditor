@@ -397,7 +397,8 @@
 	<string name="copy_failed">Не удалось скопировать в буфер обмена</string>
 	<string name="file_not_saved">%1$s was not saved: %2$s</string>
 	<string name="file_cannot_open">%1$s cannot be opened: %2$s</string>
-	<string name="file_needs_new_editor">Files of a folder open in the new editor. Turn on \"New editor\" in Settings.</string>
+	<string name="file_needs_new_editor">Files of a folder open in the new editor</string>
+	<string name="turn_on">Turn on</string>
 	<string name="file_runs_behind_code">Files of a folder run only behind the code. Choose another run mode in Settings.</string>
 	<string name="share_selection">Поделиться</string>
 	<string name="selection_too_large">Для этого выделено слишком много текста</string>

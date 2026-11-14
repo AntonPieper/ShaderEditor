@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
 	private static final String TOOLBAR_TITLE = "toolbar_title";
 	// How long an explicit save is told in the toolbar's second line.
 	private static final long SAVED_NOTICE_MILLIS = 2000;
+	private static final int NEEDS_NEW_EDITOR_MILLIS = 10000;
 	private static final String CRASH_RECOVERY_COMMENT = """
 			// Shader Editor disabled this shader because it caused a crash while loading.
 			// Fix the shader and remove the #if 0 wrapper to re-enable it.
@@ -78,6 +79,9 @@ public class MainActivity extends AppCompatActivity {
 	private ProjectFileManager files;
 	private DataSource dataSource;
 	private boolean isInitialLoad = false;
+	// The editor was given back the text of a file of a folder that the
+	// old editor cannot show; it is not a shader to run.
+	private boolean holdsUnshownFile = false;
 
 	@Override
 	protected void onCreate(@Nullable Bundle state) {
@@ -169,13 +173,17 @@ public class MainActivity extends AppCompatActivity {
 		// or it would replace that text.
 		boolean openedText = shaderManager.handleSendText(getIntent());
 		isInitialLoad = state == null && !openedText;
+		holdsUnshownFile = state != null && files != null &&
+				files.hadFile(state) &&
+				!ShaderEditorApp.preferences.useNewEditor();
 
 		editorFragment.setOnEditPausedListener(text -> {
 			if (ShaderEditorApp.preferences.doesRunOnChange() &&
 					open instanceof ProjectFile) {
 				editorFragment.runningEdit();
 				files.run();
-			} else if (ShaderEditorApp.preferences.doesRunOnChange()) {
+			} else if (ShaderEditorApp.preferences.doesRunOnChange() &&
+					!holdsUnshownFile) {
 				editorFragment.runningEdit();
 				shaderViewManager.setShader(text, open.getQuality());
 			}
@@ -187,8 +195,12 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onRestoreInstanceState(@NonNull Bundle state) {
 		super.onRestoreInstanceState(state);
-		if (files == null || !files.restoreState(state)) {
+		// The library's shader first: a file asked for opens over it.
+		if (files == null || !files.hadFile(state)) {
 			shaderManager.restoreState(state);
+		}
+		if (files != null) {
+			files.restoreState(state);
 		}
 		if (!state.getBoolean(CODE_VISIBLE, true)) {
 			uiManager.toggleCodeVisibility();
@@ -425,6 +437,11 @@ public class MainActivity extends AppCompatActivity {
 			// is a screen for no file open.
 			@Override
 			public void onGone() {
+				if (holdsUnshownFile) {
+					// Its text is not a shader of the library to save.
+					holdsUnshownFile = false;
+					shaderManager.deselect();
+				}
 				shaderManager.selectShader(
 						ShaderEditorApp.preferences.getLastOpenedShader());
 			}
@@ -461,6 +478,17 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onFailed(@NonNull String message) {
 				Message.show(MainActivity.this, message);
+			}
+
+			// Long enough to be read after the drawer closed, and to be
+			// acted on.
+			@Override
+			public void onNeedsNewEditor(@NonNull Runnable turnOn) {
+				Message.make(MainActivity.this,
+								getText(R.string.file_needs_new_editor),
+								NEEDS_NEW_EDITOR_MILLIS)
+						.setAction(R.string.turn_on, v -> turnOn.run())
+						.show();
 			}
 		};
 	}

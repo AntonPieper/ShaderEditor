@@ -399,6 +399,12 @@ public class Preferences {
 		return newEditor;
 	}
 
+	/** As the switch in Settings does. */
+	public void setUseNewEditor(boolean use) {
+		newEditor = use;
+		preferences.edit().putBoolean(NEW_EDITOR, use).apply();
+	}
+
 	public boolean showExtraKeys() {
 		return showExtraKeys;
 	}
