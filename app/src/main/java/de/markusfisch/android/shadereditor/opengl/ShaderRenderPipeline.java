@@ -36,11 +36,15 @@ final class ShaderRenderPipeline {
 	private static final String SURFACE_RESOLUTION = "resolution";
 	private static final String SURFACE_LIMIT = "limit";
 	private static final String SURFACE_FRAME = "frame";
-	private static final String SURFACE_FRAGMENT_SHADER = """
+	// Samplers are lowp unless told otherwise, which would lose what an
+	// rgba16f target holds.
+	static final String SURFACE_FRAGMENT_SHADER = """
 			#ifdef GL_FRAGMENT_PRECISION_HIGH
 			precision highp float;
+			precision highp sampler2D;
 			#else
 			precision mediump float;
+			precision mediump sampler2D;
 			#endif
 			
 			uniform vec2 resolution;
@@ -49,6 +53,7 @@ final class ShaderRenderPipeline {
 			void main(void) {
 				vec4 c = texture2D(frame, gl_FragCoord.xy / resolution.xy);
 				// PictureLimit.apply
+				c = clamp(c, 0.0, 1.0);
 				c.rgb /= 1.0 + limit * max(c.r, max(c.g, c.b));
 				gl_FragColor = c;
 			}

@@ -1,8 +1,9 @@
 package de.markusfisch.android.shadereditor.opengl;
 
-// How bright the picture may be behind code. Each pixel is divided by
-// one plus the strength times its brightest channel: a dark pixel stays
-// almost as it is, white lands on the ceiling, and the hue is kept.
+// How bright the picture may be behind code. Each pixel is clamped to
+// what a surface shows, 0 to 1, and divided by one plus the strength
+// times its brightest channel: a dark pixel stays almost as it is, white
+// and anything brighter land on the ceiling, and the hue is kept.
 public final class PictureLimit {
 	// The brightest a pixel may be, of 255.
 	public static final int DIM = 0x1a;
@@ -23,6 +24,10 @@ public final class PictureLimit {
 
 	// One channel as the presentation shader shows it.
 	static float apply(float channel, float brightest, float strength) {
-		return channel / (1f + strength * brightest);
+		return clamp(channel) / (1f + strength * clamp(brightest));
+	}
+
+	private static float clamp(float channel) {
+		return Math.min(1f, Math.max(0f, channel));
 	}
 }

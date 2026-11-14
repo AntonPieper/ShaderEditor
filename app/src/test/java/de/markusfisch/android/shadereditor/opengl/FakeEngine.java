@@ -19,19 +19,20 @@ final class FakeEngine {
 	private final FrameInputs frame = new FrameInputs();
 	private ActiveBuiltins builtins;
 
+	// A context of this version that draws into every format.
 	FakeEngine(@NonNull Preparation preparation, int glesVersion) {
-		this(new FakeGlDevice(), preparation, glesVersion);
+		this(new FakeGlDevice(), preparation, TargetFormats.of(glesVersion,
+				"GL_OES_texture_half_float GL_EXT_color_buffer_half_float"));
 	}
 
 	FakeEngine(@NonNull FakeGlDevice device,
 			@NonNull Preparation preparation,
-			int glesVersion) {
+			@NonNull TargetFormats formats) {
 		this.device = device;
 		pipeline = new ShaderRenderPipeline(device);
 		pipeline.createContextResources();
 		runtime = PlanRuntime.link(device,
-				new PlanShader(preparation, 1f, "fix"), glesVersion,
-				diagnostics);
+				new PlanShader(preparation, 1f, "fix"), formats, diagnostics);
 		if (runtime != null) {
 			runtime.loadTextures(null);
 			runtime.upload(diagnostics);

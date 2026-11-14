@@ -141,6 +141,14 @@ class FakeGlDevice extends GlDevice {
 
 	@Nullable
 	@Override
+	String allocateTexture2D(@NonNull GlTexture2D texture, int width,
+			int height, int internalFormat, int type) {
+		allocateTexture2D(texture, width, height);
+		return fails("allocateTexture2D") ? "allocation failed" : null;
+	}
+
+	@Nullable
+	@Override
 	String uploadTexture2D(@NonNull GlTexture2D texture, int width, int height,
 			@NonNull Buffer rgba) {
 		texture.setSize(width, height);

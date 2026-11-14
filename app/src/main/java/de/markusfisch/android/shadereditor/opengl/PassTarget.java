@@ -41,22 +41,30 @@ final class PassTarget {
 			@NonNull RenderPlan.Target target,
 			@NonNull RenderPlan.Size size,
 			boolean history,
+			@NonNull TargetFormats formats,
 			@NonNull List<ProjectDiagnostic> errors) {
 		var pass = new PassTarget(device, size, history ? 2 : 1);
+		var format = target.format();
 		for (int i = 0; i < pass.textures.length; ++i) {
 			var texture = pass.textures[i] = device.createTexture2D();
-			device.allocateTexture2D(texture, size.width(), size.height());
+			var message = device.allocateTexture2D(texture, size.width(),
+					size.height(), formats.internalFormat(format),
+					formats.type(format));
 			device.applySampling(texture, Sampling.PASS);
 			var framebuffer = pass.framebuffers[i] = device.createFramebuffer();
 			device.attachColor(framebuffer, texture);
 			int status = device.checkFramebufferStatus(framebuffer);
-			if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+			if (message != null || status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
 				device.bindFramebuffer(null);
 				pass.release();
 				errors.add(new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR,
 						"Cannot draw into a target of " + size.width() + "x" +
-								size.height() + ", framebuffer incomplete: 0x" +
-								Integer.toHexString(status),
+								size.height() + " in format=" +
+								TargetFormats.name(format) + ", " +
+								(message != null
+										? message
+										: "framebuffer incomplete: 0x" +
+										Integer.toHexString(status)),
 						target.file(), target.line()));
 				return null;
 			}

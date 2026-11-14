@@ -43,6 +43,8 @@ final class PlanRuntime implements ShaderSwap.Build {
 	@NonNull
 	private final Sampling presentSampling;
 	private final int glesVersion;
+	@NonNull
+	private final TargetFormats formats;
 	private final FrameInputs passFrame = new FrameInputs();
 	private final FullScreenQuad quad = new FullScreenQuad();
 	// Told with the outcome, whatever it is.
@@ -75,13 +77,14 @@ final class PlanRuntime implements ShaderSwap.Build {
 			@NonNull PlanShader shader,
 			@NonNull RenderPlan plan,
 			@NonNull List<PlanPass> passes,
-			int glesVersion) {
+			@NonNull TargetFormats formats) {
 		this.device = device;
 		this.preparation = shader.preparation();
 		this.quality = shader.quality();
 		this.plan = plan;
 		this.passes = passes;
-		this.glesVersion = glesVersion;
+		this.formats = formats;
+		glesVersion = formats.glesVersion();
 		var targets = this.targets = new PassTarget[passes.size()];
 		inFrame = (pass, frame) -> targets[pass] == null
 				? null
@@ -146,18 +149,19 @@ final class PlanRuntime implements ShaderSwap.Build {
 	}
 
 	// GL thread. Returns null and adds the preparation's diagnostics and
-	// why it cannot draw when a pass does not link.
+	// why it cannot draw when a pass does not link or the context cannot
+	// draw into its targets as they ask.
 	@Nullable
 	static PlanRuntime link(
 			@NonNull GlDevice device,
 			@NonNull PlanShader shader,
-			int glesVersion,
+			@NonNull TargetFormats formats,
 			@NonNull List<ProjectDiagnostic> errors) {
 		var preparation = shader.preparation();
 		var plan = preparation.plan();
 		var reasons = new ArrayList<>(preparation.diagnostics());
 		var refusals = plan != null
-				? PlanSupport.refusals(plan)
+				? PlanSupport.refusals(plan, formats)
 				: List.<ProjectDiagnostic>of();
 		if (plan == null || !refusals.isEmpty()) {
 			errors.addAll(reasons);
@@ -167,7 +171,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 		var passes = new ArrayList<PlanPass>();
 		boolean linked = true;
 		for (int i = 0; i < plan.passes().size(); ++i) {
-			var pass = PlanPass.link(device, plan, i, glesVersion,
+			var pass = PlanPass.link(device, plan, i, formats.glesVersion(),
 					shader.textureFix(), reasons);
 			linked &= pass != null;
 			passes.add(pass);
@@ -181,7 +185,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 			errors.addAll(reasons);
 			return null;
 		}
-		return new PlanRuntime(device, shader, plan, passes, glesVersion);
+		return new PlanRuntime(device, shader, plan, passes, formats);
 	}
 
 	// The passes whose builtins it reads, by their index in the plan.
@@ -382,7 +386,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 				continue;
 			}
 			targets[i] = PassTarget.create(device, plan.passes().get(i).target(),
-					sizes[i], schedule.keepsHistory(i), errors);
+					sizes[i], schedule.keepsHistory(i), formats, errors);
 			if (targets[i] == null) {
 				releaseTargets();
 				return ShaderSwap.Allocation.FAILED;
