@@ -13,6 +13,17 @@ import java.io.IOException;
  * changes what a file holds must not take the third for the first.
  */
 final class StateFile {
+	/**
+	 * Whether a store may write now. The stores of the library are
+	 * shut while a redo of the move is unfinished, so that nothing
+	 * makes the folder again that was just put aside.
+	 */
+	interface Gate {
+		Gate OPEN = () -> true;
+
+		boolean open();
+	}
+
 	private StateFile() {
 	}
 

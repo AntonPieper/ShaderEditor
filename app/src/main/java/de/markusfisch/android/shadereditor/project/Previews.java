@@ -35,13 +35,16 @@ public final class Previews {
 	// What has not followed a rename or deletion yet, or null.
 	private final Following following;
 
+	private final StateFile.Gate gate;
+
 	Previews(File folder) {
-		this(folder, null);
+		this(folder, null, StateFile.Gate.OPEN);
 	}
 
-	Previews(File folder, Following following) {
+	Previews(File folder, Following following, StateFile.Gate gate) {
 		this.folder = folder;
 		this.following = following;
+		this.gate = gate;
 	}
 
 	/** Return the picture kept for path, or null when there is none. */
@@ -81,7 +84,7 @@ public final class Previews {
 	 */
 	boolean put(ProjectPath path, String revision, byte[] png) {
 		File file = file(path);
-		if (file == null) {
+		if (file == null || !gate.open()) {
 			return false;
 		}
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -104,6 +107,8 @@ public final class Previews {
 	boolean follow(Journal.Move move) {
 		if (!folder.exists()) {
 			return true;
+		} else if (!gate.open()) {
+			return false;
 		}
 		File[] files = folder.listFiles((d, name) -> name.endsWith(SUFFIX));
 		if (files == null) {

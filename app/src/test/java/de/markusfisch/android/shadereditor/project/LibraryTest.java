@@ -168,21 +168,129 @@ public class LibraryTest {
 		assertTrue(new File(files, "library before redo/moved").isFile());
 	}
 
-	// A folder under the target's name is no proof that the rename
-	// was made while the source is there too.
+	// Both are there: the target's name was free when the redo was
+	// noted, so it is what was put aside, and the folder under the
+	// library's name was made since. It goes aside too, under the
+	// next free name, and nobody has to remove anything by hand.
 	@Test
-	public void bothFoldersThereIsNotAFinishedRename() throws IOException {
+	public void aFolderMadeUnderTheLibrarysNameDuringARedoIsPutAsideToo()
+			throws IOException {
 		Library library = library();
 		move(library, 0);
-		write(new File(temp.getRoot(),
-				"user-files/Shaders before redo/Other.frag"), MAIN);
 		write(new File(temp.getRoot(), "files/library-redo"),
 				"Shaders before redo\nlibrary before redo\n");
-		LibraryMove.Result result = move(library, 0);
-		assertEquals("a redo of the move is not finished: both Shaders " +
-				"and Shaders before redo are there", result.problem());
-		assertTrue(new File(library.folder(), "Plasma.frag").isFile());
-		assertTrue(new File(temp.getRoot(), "files/library/moved").isFile());
+		File aside = new File(temp.getRoot(),
+				"user-files/Shaders before redo");
+		assertTrue(library.folder().renameTo(aside));
+		// Another app makes the folder again through the provider.
+		write(new File(library.folder(), "Made since.frag"), MAIN);
+		List<String> relocated = new ArrayList<>();
+
+		LibraryMove.Result result = library.move(database(), "Untitled",
+				new LibraryMove.Chosen(0, 0), null, (from, to) ->
+						relocated.add(from.getName() + " -> " + to.getName()));
+		assertNull(result.problem());
+		assertEquals(2, result.moved().size());
+		assertTrue(new File(aside, "Plasma.frag").isFile());
+		assertTrue(new File(temp.getRoot(),
+				"user-files/Shaders before redo 2/Made since.frag").isFile());
+		assertFalse(new File(library.folder(), "Made since.frag").exists());
+		assertTrue(new File(temp.getRoot(),
+				"files/library before redo/moved").isFile());
+		assertFalse(new File(temp.getRoot(), "files/library-redo").exists());
+		// The session goes with the library the redo was begun for.
+		assertEquals(List.of("Shaders -> Shaders before redo"), relocated);
+	}
+
+	// While a redo is unfinished nothing is written into what the app
+	// keeps about the library, whoever asks, so the folder that was
+	// just put aside is not made again beside it.
+	@Test
+	public void nothingIsWrittenIntoWhatIsKeptWhileARedoIsUnfinished()
+			throws IOException {
+		Library library = library();
+		move(library, 0);
+		File files = new File(temp.getRoot(), "files");
+		write(new File(files, "library-redo"),
+				"Shaders before redo\nlibrary before redo\n");
+		assertTrue(library.folder().renameTo(new File(temp.getRoot(),
+				"user-files/Shaders before redo")));
+		assertTrue(new File(files, "library").renameTo(
+				new File(files, "library before redo")));
+
+		assertFalse(library.previews().put(path("Alpha.frag"), "r",
+				Pictures.png(1)));
+		assertFalse(library.settings().setQuality(path("Alpha.frag"), .5f));
+		assertFalse(library.settings().setTemplate(path("Alpha.frag")));
+		assertFalse(library.note().noteName(9, "Nine.frag"));
+		assertFalse(new File(files, "library").exists());
+		// So the redo can still be finished.
+		assertNull(library.finishRedo(null));
+		assertTrue(library.previews().put(path("Alpha.frag"), "r",
+				Pictures.png(1)));
+	}
+
+	// Every change goes in one way: the redo is finished first, or
+	// the change is refused with the reason.
+	@Test
+	public void aQualityOrAPictureIsNotKeptPastAnUnfinishedRedo()
+			throws IOException {
+		Library library = library();
+		move(library, 0);
+		String blocked = "a redo of the move is not finished: what was " +
+				"open of the library cannot follow it";
+		assertEquals(blocked, library.putAside((from, to) -> false));
+		assertEquals(blocked, library.setQuality(path("Plasma.frag"), .5f,
+				(from, to) -> false));
+		assertEquals(blocked, library.setPreview(path("Plasma.frag"), "r",
+				Pictures.png(1), (from, to) -> false));
+		assertFalse(new File(temp.getRoot(), "files/library").exists());
+
+		// Finished on the way in, the change is made in the new one.
+		assertNull(library.setQuality(path("Plasma.frag"), .5f,
+				(from, to) -> true));
+		assertNull(library.setPreview(path("Plasma.frag"), "r",
+				Pictures.png(1), null));
+		assertEquals(.5f, library.settings().quality(path("Plasma.frag")),
+				0f);
+		assertEquals(1f, new LibrarySettings(new File(temp.getRoot(),
+				"files/library before redo/settings"))
+				.quality(path("Plasma.frag")), 0f);
+	}
+
+	// What is kept is not changed while it still has to follow a
+	// rename: the change would land on the wrong file.
+	@Test
+	public void nothingIsChangedWhileARenameIsNotFollowed()
+			throws IOException {
+		Library library = library();
+		move(library, 2);
+		File settings = new File(temp.getRoot(), "files/library/settings");
+		FileTexts.Kept kept = library.kept();
+		assertTrue(settings.setReadable(false, false));
+		String waiting = "what is kept about the files of the library " +
+				"has not followed a rename yet; try again";
+		try {
+			assertFalse(settings.canRead());
+			assertTrue(kept.follow(new Journal.Move(path("Clouds.frag"),
+					path("Sky.frag"))));
+			assertEquals(waiting, library.setPreview(path("Clouds.frag"),
+					"r", Pictures.png(8), null));
+			assertEquals(waiting, library.create(null, "Untitled",
+					MAIN.getBytes(StandardCharsets.UTF_8), null, null)
+					.problem());
+			assertEquals(waiting, move(library, 2).problem());
+		} finally {
+			settings.setReadable(true);
+		}
+		// Followed on the way in, the change is made.
+		assertNull(library.setPreview(path("Clouds.frag"), "r",
+				Pictures.png(8), null));
+		assertEquals(.5f, library.settings().quality(path("Sky.frag")), 0f);
+		assertArrayEquals(Pictures.png(5),
+				library.previews().get(path("Sky.frag")).png());
+		assertArrayEquals(Pictures.png(8),
+				library.previews().get(path("Clouds.frag")).png());
 	}
 
 	@Test

@@ -66,16 +66,17 @@ public final class Library {
 
 	/** Return what the move of the database shaders has done. */
 	public MoveNote note() {
-		return new MoveNote(new File(state(), "moved"));
+		return new MoveNote(new File(state(), "moved"), this::settled);
 	}
 
 	public LibrarySettings settings() {
 		return new LibrarySettings(new File(state(), "settings"),
-				following());
+				following(), this::settled);
 	}
 
 	public Previews previews() {
-		return new Previews(new File(state(), "previews"), following());
+		return new Previews(new File(state(), "previews"), following(),
+				this::settled);
 	}
 
 	/**
@@ -140,8 +141,9 @@ public final class Library {
 			return false;
 		}
 		LibrarySettings settings = new LibrarySettings(
-				new File(state(), "settings"));
-		Previews previews = new Previews(new File(state(), "previews"));
+				new File(state(), "settings"), null, this::settled);
+		Previews previews = new Previews(new File(state(), "previews"),
+				null, this::settled);
 		for (Journal.Move move : noted) {
 			if (!settings.follow(move) || !previews.follow(move) ||
 					!following.done(move)) {
@@ -152,7 +154,53 @@ public final class Library {
 	}
 
 	private Following following() {
-		return new Following(new File(state(), "following"));
+		return new Following(new File(state(), "following"),
+				this::settled);
+	}
+
+	// Whether no redo is begun: while one is, nothing is written into
+	// what the app keeps about the library, by whoever asks.
+	private boolean settled() {
+		return !new File(appFiles, REDO).exists();
+	}
+
+	/**
+	 * The one way in for whatever changes the library or what is kept
+	 * about it: a redo that was begun is finished first, and what is
+	 * kept follows the renames it has not followed yet. Return why
+	 * nothing may be changed now, or null.
+	 */
+	String enter(Relocation relocation) {
+		String barrier = finishRedo(relocation);
+		if (barrier != null) {
+			return barrier;
+		}
+		return follow() ? null : "what is kept about the files of the " +
+				"library has not followed a rename yet; try again";
+	}
+
+	/**
+	 * Keep quality for the file at path. Return why it is not kept, or
+	 * null.
+	 */
+	String setQuality(ProjectPath path, float quality,
+			Relocation relocation) {
+		String refused = enter(relocation);
+		return refused != null ? refused
+				: settings().setQuality(path, quality) ? null
+				: "the settings of the library cannot be written";
+	}
+
+	/**
+	 * Keep png as the picture of the file at path, made from its
+	 * content at revision. Return why it is not kept, or null.
+	 */
+	String setPreview(ProjectPath path, String revision, byte[] png,
+			Relocation relocation) {
+		String refused = enter(relocation);
+		return refused != null ? refused
+				: previews().put(path, revision, png) ? null
+				: "the picture cannot be kept";
 	}
 
 	/**
@@ -165,7 +213,7 @@ public final class Library {
 	LibraryMove.Result move(LibraryMove.Source source, String untitled,
 			LibraryMove.Chosen chosen, LibraryMove.Selector selector,
 			Relocation relocation) {
-		String barrier = finishRedo(relocation);
+		String barrier = enter(relocation);
 		if (barrier != null) {
 			return LibraryMove.Result.blocked(barrier);
 		}
@@ -183,7 +231,7 @@ public final class Library {
 	 * textures in the wrong place. Return why it is not kept, or null.
 	 */
 	String setTemplate(ProjectPath path, Relocation relocation) {
-		String barrier = finishRedo(relocation);
+		String barrier = enter(relocation);
 		if (barrier != null) {
 			return barrier;
 		} else if (path != null && path.toString().indexOf('/') > -1) {
@@ -208,7 +256,7 @@ public final class Library {
 	 */
 	Created create(String title, String untitled, byte[] builtIn,
 			byte[] picture, Relocation relocation) {
-		String barrier = finishRedo(relocation);
+		String barrier = enter(relocation);
 		if (barrier != null) {
 			return new Created(null, barrier);
 		}
@@ -264,7 +312,7 @@ public final class Library {
 	 */
 	String dress(ProjectPath path, byte[] builtIn, byte[] picture,
 			Relocation relocation) {
-		String barrier = finishRedo(relocation);
+		String barrier = enter(relocation);
 		if (barrier != null) {
 			return barrier;
 		}
@@ -378,9 +426,10 @@ public final class Library {
 					"nothing";
 		}
 		File folderAside = new File(userFiles, names[0]);
-		String problem = aside(folder(), folderAside);
+		String problem = aside(folder(), folderAside, FOLDER + ASIDE);
 		if (problem == null) {
-			problem = aside(state(), new File(appFiles, names[1]));
+			problem = aside(state(), new File(appFiles, names[1]),
+					STATE + ASIDE);
 		}
 		if (problem == null && relocation != null &&
 				!relocation.moved(folder(), folderAside)) {
@@ -396,15 +445,19 @@ public final class Library {
 
 	// One of the two renames, told by what is there: only the source,
 	// it is made now; only the target, it was made; neither, there
-	// was nothing to rename.
-	private static String aside(File from, File to) {
-		if (from.exists() && to.exists()) {
-			return "both " + from.getName() + " and " + to.getName() +
-					" are there";
-		}
-		return !from.exists() || from.renameTo(to)
+	// was nothing to rename. With both there, the target is what was
+	// put aside, because its name was free when the redo was noted,
+	// and the source was made since: it is put aside too, under the
+	// next name that is free, so that the redo always gets on.
+	private static String aside(File from, File to, String stem) {
+		File target = from.exists() && to.exists()
+				? new File(to.getParentFile(),
+						unused(to.getParentFile(), stem))
+				: to;
+		return !from.exists() || from.renameTo(target)
 				? null
-				: from.getName() + " cannot be renamed to " + to.getName();
+				: from.getName() + " cannot be renamed to " +
+						target.getName();
 	}
 
 	private static String unused(File folder, String stem) {

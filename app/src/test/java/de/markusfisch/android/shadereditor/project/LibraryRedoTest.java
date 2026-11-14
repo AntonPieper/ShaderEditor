@@ -61,6 +61,24 @@ public class LibraryRedoTest {
 		assertFalse(live.isOpen(id));
 	}
 
+	// An opening takes several turns before its session is known. It
+	// counts from the moment it is asked for, so that a redo that is
+	// asked for in between is refused and the opening is never
+	// answered with the folder that was put aside.
+	@Test
+	public void anOpeningCountsFromTheMomentItIsAskedFor() {
+		LiveProjects live = new LiveProjects(sessions(), steps.worker,
+				steps.main, steps.timers, OpenProject.MAX_BUDGET);
+		assertFalse(live.busy());
+		live.begin();
+		live.begin();
+		assertTrue(live.busy());
+		live.end();
+		assertTrue(live.busy());
+		live.end();
+		assertFalse(live.busy());
+	}
+
 	// What was open of the library that is put aside stays with it,
 	// and the new library starts with a session of its own.
 	@Test

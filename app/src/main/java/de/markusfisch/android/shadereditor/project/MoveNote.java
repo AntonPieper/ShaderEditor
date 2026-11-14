@@ -37,8 +37,15 @@ public final class MoveNote {
 	// is there and cannot be read.
 	private long whole;
 
+	private final StateFile.Gate gate;
+
 	MoveNote(File file) {
+		this(file, StateFile.Gate.OPEN);
+	}
+
+	MoveNote(File file, StateFile.Gate gate) {
 		this.file = file;
+		this.gate = gate;
 		load();
 	}
 
@@ -176,7 +183,8 @@ public final class MoveNote {
 
 	private boolean append(String line) {
 		File folder = file.getParentFile();
-		if (whole < 0 || line.indexOf('\n') > -1 || folder == null ||
+		if (!gate.open() || whole < 0 || line.indexOf('\n') > -1 ||
+				folder == null ||
 				(!folder.isDirectory() && !folder.mkdirs())) {
 			return false;
 		}
