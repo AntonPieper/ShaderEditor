@@ -28,6 +28,14 @@ public final class RenameDialog {
 		void onRename(@NonNull String name);
 	}
 
+	/** A dialog that asks with a checker; it stays until dismissed. */
+	public interface Shown {
+		/** Say why the name was not taken; the dialog stays open. */
+		void fail(@NonNull String reason);
+
+		void dismiss();
+	}
+
 	/** Says why a name cannot be taken, or null when it can. */
 	public interface Checker {
 		@Nullable
@@ -46,8 +54,12 @@ public final class RenameDialog {
 	 * Ask under title, with message above the field when not null; a
 	 * name checker refuses cannot be confirmed, and the field says why.
 	 * Of a name with an extension, the part before it is selected.
+	 * With a checker the dialog stays open after Rename until the
+	 * returned {@link Shown} is dismissed, so that a name the storage
+	 * refuses can be told under the field.
 	 */
-	public static void show(@NonNull Context context, @StringRes int title,
+	@NonNull
+	public static Shown show(@NonNull Context context, @StringRes int title,
 			@NonNull String name, @Nullable Checker checker,
 			@Nullable CharSequence message, @NonNull Listener listener) {
 		View view = LayoutInflater.from(context).inflate(
@@ -83,10 +95,25 @@ public final class RenameDialog {
 		}
 		dialog.show();
 		nameView.requestFocus();
-		if (checker == null) {
-			return;
-		}
 		View rename = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+		Shown shown = new Shown() {
+			@Override
+			public void fail(@NonNull String reason) {
+				nameLayout.setError(reason);
+				rename.setEnabled(false);
+			}
+
+			@Override
+			public void dismiss() {
+				SoftKeyboard.hide(context, nameView);
+				dialog.dismiss();
+			}
+		};
+		if (checker == null) {
+			return shown;
+		}
+		rename.setOnClickListener(v -> listener.onRename(
+				nameView.getText().toString().trim()));
 		Runnable check = () -> {
 			String problem = checker.check(nameView.getText().toString()
 					.trim());
@@ -112,5 +139,6 @@ public final class RenameDialog {
 			}
 		});
 		check.run();
+		return shown;
 	}
 }

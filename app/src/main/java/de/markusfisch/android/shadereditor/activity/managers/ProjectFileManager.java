@@ -15,6 +15,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.navigation.Moves;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Tap;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
@@ -79,6 +80,10 @@ public final class ProjectFileManager {
 	private ProjectPath deciding;
 	// Counts the files asked for; an answer for one before is void.
 	private int asked;
+	// The number of the last rename or deletion of the project heard of.
+	private int heard;
+	// Whether the last build delivered is of paths renamed since.
+	private boolean stale;
 	private boolean destroyed;
 
 	public ProjectFileManager(@NonNull AppCompatActivity activity,
@@ -187,6 +192,7 @@ public final class ProjectFileManager {
 		ProjectFile shown = new ProjectFile(activity, project, path, single,
 				listener);
 		file = shown;
+		heard = last(project.events(0));
 		project.setListener(ContextCompat.getMainExecutor(activity),
 				this::changed);
 		editor.showDocument(document, project.editorState(path));
@@ -225,6 +231,7 @@ public final class ProjectFileManager {
 				return;
 			}
 			build = prepared;
+			stale = false;
 			// Nothing runs, as for a folder without a shader: a picture
 			// or errors left from before are not this project's.
 			runner.run(prepared.preparation(), now.getQuality());
@@ -247,6 +254,7 @@ public final class ProjectFileManager {
 		}
 		file = null;
 		deciding = null;
+		stale = false;
 		build = null;
 		built = null;
 		builtEntry = null;
@@ -321,13 +329,59 @@ public final class ProjectFileManager {
 	}
 
 	private void changed() {
+		follow();
 		decide();
-		// Another file was chosen to run, or found to run.
-		if (file != null && file.getProject() == built &&
-				!Objects.equals(built.running(), builtEntry)) {
+		// Another file was chosen to run, or found to run; or a rename
+		// made the last build stale: a build asked for while the project
+		// still settles what runs is not delivered, so it is asked for
+		// again until one is.
+		if (file != null && file.getProject() == built && (stale ||
+				!Objects.equals(built.running(), builtEntry))) {
 			run();
 		}
 		listener.onChanged();
+	}
+
+	// The file in the editor follows a rename of it or of a folder it
+	// is in, with the same document; the last build names old paths,
+	// so it is built again until one is delivered.
+	private void follow() {
+		ProjectFile shown = file;
+		if (shown == null) {
+			return;
+		}
+		OpenProject project = shown.getProject();
+		List<OpenProject.Event> events = project.events(heard);
+		if (events.isEmpty()) {
+			return;
+		}
+		heard = last(events);
+		String path = shown.getPath().toString();
+		boolean renamed = false;
+		for (OpenProject.Event event : events) {
+			if (event.change() instanceof OpenProject.Renamed rename) {
+				renamed = true;
+				path = Moves.renamed(path, rename.from().toString(),
+						rename.to().toString());
+			}
+		}
+		if (!path.equals(shown.getPath().toString())) {
+			ProjectPath now = ProjectPath.parse(path).value();
+			if (deciding != null && deciding.equals(shown.getPath())) {
+				deciding = now;
+			}
+			file = new ProjectFile(activity, project, now, shown.isSingle(),
+					listener);
+			file.setQuality(shown.getQuality());
+			listener.onShown(file);
+		}
+		stale |= renamed;
+	}
+
+	private static int last(@NonNull List<OpenProject.Event> events) {
+		return events.isEmpty()
+				? 0
+				: events.get(events.size() - 1).number();
 	}
 
 	// A tap runs a file that can run unless what runs uses it, once it

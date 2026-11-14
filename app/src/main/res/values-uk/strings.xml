@@ -383,9 +383,7 @@
 	<string name="nav_used_by">%s, which runs, uses this file.</string>
 	<string name="nav_cannot_rename">%1$s cannot be renamed: %2$s</string>
 	<string name="nav_cannot_delete">%1$s cannot be deleted: %2$s</string>
-	<string name="nav_cannot_rename_held">%s is open or has unsaved text, so it cannot be renamed yet</string>
 	<string name="nav_cannot_delete_held">%s is open or has unsaved text, so it cannot be deleted yet</string>
-	<string name="nav_cannot_rename_holding">%s holds a file that is open or has unsaved text, so it cannot be renamed yet</string>
 	<string name="nav_cannot_delete_holding">%s holds a file that is open or has unsaved text, so it cannot be deleted yet</string>
 	<string name="nav_remove_title">Remove %s from the list?</string>
 	<string name="nav_remove">Remove</string>

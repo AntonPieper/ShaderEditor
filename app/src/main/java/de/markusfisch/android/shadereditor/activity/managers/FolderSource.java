@@ -266,7 +266,7 @@ final class FolderSource {
 						FileActions.of(reading.rows(level,
 								context.getString(R.string.nav_show_more),
 								context.getString(R.string.nav_shown_of)),
-								running(), writable.contains(path)),
+								running(), !file && writable.contains(path)),
 						unsaved()))),
 				reading.notice());
 	}

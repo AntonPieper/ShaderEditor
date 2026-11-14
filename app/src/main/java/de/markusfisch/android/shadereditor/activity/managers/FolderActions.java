@@ -11,6 +11,7 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.navigation.Level;
+import de.markusfisch.android.shadereditor.navigation.Moves;
 import de.markusfisch.android.shadereditor.navigation.Naming;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.project.OpenProject;
@@ -120,27 +121,60 @@ final class FolderActions {
 	private void rename(@NonNull String key, @NonNull OpenProject project,
 			@NonNull ProjectPath path, @NonNull Row row,
 			@NonNull List<String> names) {
-		if (refuse(project, path, row, R.string.nav_cannot_rename_held,
-				R.string.nav_cannot_rename_holding)) {
-			return;
-		}
 		names.remove(row.name());
 		Naming naming = new Naming(names);
-		RenameDialog.show(activity, R.string.nav_rename, row.name(), name ->
+		RenameDialog.Shown[] shown = {null};
+		shown[0] = RenameDialog.show(activity, R.string.nav_rename,
+				row.name(), name ->
 						NewSheet.describe(activity, naming.check(name), name),
 				uses(project, path), name -> {
-			ProjectPath to = sibling(path, name);
-			if (to == null || name.equals(row.name())) {
+					ProjectPath to = sibling(path, name);
+					if (to == null || name.equals(row.name())) {
+						shown[0].dismiss();
+						return;
+					}
+					// What the project holds there, the open file too,
+					// follows; the editor learns it from the project.
+					ProjectPath running = project.running();
+					project.rename(path, to, moved -> {
+						if (moved instanceof OpenProject.Refused refused &&
+								refused.refusal() ==
+										ProjectFiles.Refusal.EXISTS) {
+							shown[0].fail(activity.getString(
+									R.string.nav_name_taken, name));
+							return;
+						}
+						shown[0].dismiss();
+						// What ran by the rule, as main.glsl, keeps running
+						// under its new name.
+						if (moved instanceof OpenProject.Renamed &&
+								running != null && Moves.within(
+								running.toString(), path.toString())) {
+							ProjectPath runs = ProjectPath.parse(
+									Moves.renamed(running.toString(),
+											path.toString(), to.toString()))
+									.value();
+							if (!runs.equals(project.running())) {
+								project.runThisFile(runs);
+							}
+						}
+						answered(key, path, moved, R.string.nav_cannot_rename);
+					});
+				});
+	}
+
+	// What a rename or deletion did, told and shown in the list.
+	private void answered(@NonNull String key, @NonNull ProjectPath path,
+			@NonNull OpenProject.Moved moved, int failed) {
+		if (moved instanceof OpenProject.Refused refused) {
+			host.tell(activity.getString(failed, path.getFileName(),
+					refused.reason()));
+			if (refused.refusal() != ProjectFiles.Refusal.ABSENT &&
+					refused.refusal() != ProjectFiles.Refusal.PARTIAL) {
 				return;
 			}
-			boolean ran = path.equals(project.running());
-			change(key, project, path, R.string.nav_cannot_rename,
-					files -> files.rename(path, to), () -> {
-						if (ran) {
-							project.runThisFile(to);
-						}
-					});
-		});
+		}
+		host.changed(key, path);
 	}
 
 	private void delete(@NonNull String key, @NonNull OpenProject project,
