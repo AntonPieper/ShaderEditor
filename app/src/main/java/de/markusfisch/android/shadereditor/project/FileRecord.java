@@ -12,7 +12,8 @@ import de.markusfisch.android.shadereditor.editor.Text;
  * while it is in memory, the stored revision its text was last equal
  * to, the one operation on storage in flight for it, and how far its
  * journal holds the unsaved text. It does no I/O: an operation starts
- * as a {@link Request}, a write of the journal as a {@link Flush}, and
+ * as a {@link Request}, a write of the journal as a {@link Flush} the
+ * worker completes by itself, and
  * what storage gave is adopted only for the request still current, so
  * text and base change together, before the listeners of the document
  * hear.
@@ -29,17 +30,17 @@ final class FileRecord {
 	record Request(Kind kind, int ticket, int revision, String base) {
 	}
 
-	enum Write {
-		SNAPSHOT, APPEND, REMOVE
-	}
-
 	/**
-	 * What the journal of the file is to do: write text as a snapshot
-	 * with header at revision to, append changes from revision from to
-	 * to, or remove the journal; to also tells the writes apart.
+	 * What the journal of the file is to do, in one task of the worker:
+	 * hold text at revision to, by appending changes when it is at
+	 * revision from and by a snapshot with header otherwise, or, when
+	 * text is null, go; to also tells the writes apart.
 	 */
-	record Flush(Write write, Journal.Header header, Text text, int from,
-			int to, List<Document.Change> changes) {
+	record Flush(Journal.Header header, Text text, int from, int to,
+			List<Document.Change> changes) {
+		boolean removes() {
+			return text == null;
+		}
 	}
 
 	final ProjectPath path;
@@ -322,8 +323,7 @@ final class FileRecord {
 			}
 			journaled = false;
 			journal = -1;
-			return new Flush(Write.REMOVE, null, null, -1, ++writes,
-					List.of());
+			return new Flush(null, null, -1, ++writes, List.of());
 		} else if (journal >= 0 && revision == flushed) {
 			return null;
 		}
@@ -332,38 +332,32 @@ final class FileRecord {
 		journaled = true;
 		int from = journal;
 		journal = ++writes;
-		return from < 0
-				? new Flush(Write.SNAPSHOT, new Journal.Header(path, base,
-						kept, kept ? base : null), document.text(), -1, writes,
-						List.of())
-				: new Flush(Write.APPEND, null, null, from, writes, changed);
+		return new Flush(new Journal.Header(path, base, kept,
+				kept ? base : null), document.text(), from, writes, changed);
 	}
 
 	/**
-	 * Take what the journal did with flush; return whether a snapshot
-	 * is to be sent now.
+	 * Take whether the journal did what flush asked. Only the answer to
+	 * the last write sent tells how the journal is: the text counts as
+	 * held once that write, which names its revision, is acknowledged.
 	 */
-	boolean acknowledge(Flush flush, Journal.Appended appended) {
-		// A later write tells how the journal is.
+	void acknowledge(Flush flush, boolean done) {
 		if (flush.to() != writes) {
-			return false;
-		} else if (appended == Journal.Appended.DONE) {
+			return;
+		} else if (done) {
 			acked = writes;
 			failure = null;
 			// A new snapshot took the place of one that was damaged.
-			if (flush.write() == Write.SNAPSHOT) {
+			if (!flush.removes()) {
 				unreadable = null;
 			}
-			return false;
+			return;
 		}
 		journal = -1;
-		if (flush.write() == Write.REMOVE) {
+		if (flush.removes()) {
 			journaled = true;
-		} else if (appended == Journal.Appended.SNAPSHOT) {
-			return true;
 		}
 		failure = "the journal cannot be written";
-		return false;
 	}
 
 	/** Forget the document and return it. */
