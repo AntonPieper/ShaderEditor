@@ -58,6 +58,9 @@ public final class Projects {
 	private static final Executor QUEUE =
 			Executors.newSingleThreadExecutor();
 	private static LiveProjects live;
+	// The session of the library, once an opening of it told; none
+	// while it is put aside and made anew. Written on main.
+	private static volatile String libraryId;
 
 	private final Context context;
 	private final ProjectSessions sessions;
@@ -131,7 +134,12 @@ public final class Projects {
 	 * opened, and problem says why.
 	 */
 	public void openLibrary(Callback<Opened> done) {
-		Callback<Opened> answer = counted(done);
+		Callback<Opened> answer = counted(opened -> {
+			if (opened.id() != null) {
+				libraryId = opened.id();
+			}
+			done.done(opened);
+		});
 		QUEUE.execute(() -> {
 			String barrier = guarded(() -> library().finishRedo(
 					this::relocated), problem -> problem);
@@ -226,6 +234,16 @@ public final class Projects {
 	 * shader of the database became. What changes it are the calls
 	 * here, which run on the queue.
 	 */
+	/**
+	 * Return whether key is the session of the library: the one place
+	 * that knows, so that no screen keeps a copy to hold in step. False
+	 * until the library was opened once in this process, and while it
+	 * is put aside and made anew. On main.
+	 */
+	public boolean isLibrary(String key) {
+		return key != null && key.equals(libraryId);
+	}
+
 	public Library library() {
 		return new Library(UserFilesProvider.getUserFilesDir(context),
 				context.getFilesDir());
@@ -283,6 +301,9 @@ public final class Projects {
 					"close it first", null));
 			return;
 		}
+		// The folder with this session is put aside; the next opening
+		// tells the session of the new one.
+		libraryId = null;
 		QUEUE.execute(() -> {
 			Redone redone = guarded(() -> {
 				// A journal that cannot be read counts as text too.

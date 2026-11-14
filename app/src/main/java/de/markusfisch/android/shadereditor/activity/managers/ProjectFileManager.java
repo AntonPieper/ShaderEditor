@@ -105,9 +105,6 @@ public final class ProjectFileManager {
 	private int line;
 	@Nullable
 	private String key;
-	// The session of the library, once known.
-	@Nullable
-	private String library;
 	@Nullable
 	private Asked askedFor;
 	@Nullable
@@ -157,14 +154,13 @@ public final class ProjectFileManager {
 	}
 
 	/**
-	 * Takes the session of the library, whose root files are shaders. A
-	 * screen made again shows its file before the library is known:
-	 * what depends on the library is settled for that file now.
+	 * The library, whose root files are shaders, is known. A screen
+	 * made again may show its file before that: what depends on the
+	 * library is settled for that file now.
 	 */
-	public void setLibrary(@NonNull String key) {
-		library = key;
+	public void onLibrary() {
 		ProjectFile shown = file;
-		if (shown != null && key.equals(this.key)) {
+		if (shown != null && holds.projects().isLibrary(key)) {
 			editor.setShaderToy(Library.convertsShaderToy(shown.getPath()));
 		}
 	}
@@ -285,7 +281,8 @@ public final class ProjectFileManager {
 				this::changed);
 		editor.showDocument(document, project.syntax(path),
 				project.editorState(path),
-				key.equals(library) && Library.convertsShaderToy(path));
+				holds.projects().isLibrary(key) &&
+						Library.convertsShaderToy(path));
 		listener.onShown(shown);
 		String unreadable = project.unreadable(path);
 		if (unreadable != null) {

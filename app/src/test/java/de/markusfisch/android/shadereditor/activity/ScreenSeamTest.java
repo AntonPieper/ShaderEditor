@@ -59,6 +59,17 @@ public class ScreenSeamTest {
 		assertFalse(source.contains("instanceof ShaderScreen"));
 	}
 
+	// The library's session is known in one place, Projects: nothing
+	// that works on files is handed a copy of it to keep in step.
+	@Test
+	public void noManagerKeepsTheLibrarysSession() throws IOException {
+		for (String manager : new String[]{"ProjectFileManager",
+				"LibraryLooks", "NewFile", "LibraryAdd", "LibraryStart"}) {
+			assertFalse(manager, source("activity/managers/" + manager +
+					".java").contains("void setLibrary("));
+		}
+	}
+
 	private static String name(String line, String prefix) {
 		return line.substring(prefix.length(), line.indexOf(';'));
 	}
@@ -73,9 +84,12 @@ public class ScreenSeamTest {
 	}
 
 	private static String mainActivity() throws IOException {
+		return source("activity/MainActivity.java");
+	}
+
+	private static String source(String path) throws IOException {
 		return new String(Files.readAllBytes(new File(
 				"src/main/java/de/markusfisch/android/shadereditor/" +
-						"activity/MainActivity.java").toPath()),
-				StandardCharsets.UTF_8);
+						path).toPath()), StandardCharsets.UTF_8);
 	}
 }

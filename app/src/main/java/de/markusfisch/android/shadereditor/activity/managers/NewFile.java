@@ -73,9 +73,6 @@ final class NewFile {
 	private ProjectPath folder;
 	// Counts the folders asked for; an answer for one before is void.
 	private int asked;
-	// The library's session, or null while it is not known.
-	@Nullable
-	private String library;
 	private boolean destroyed;
 
 	NewFile(@NonNull Context context, @NonNull ProjectHolds holds,
@@ -145,11 +142,6 @@ final class NewFile {
 		});
 	}
 
-	/** Takes the library's session, whose shaders the library makes. */
-	void setLibrary(@NonNull String key) {
-		library = key;
-	}
-
 	void create(@NonNull NewSheet.Kind kind, @NonNull String name) {
 		OpenProject in = project;
 		String at = key;
@@ -163,7 +155,7 @@ final class NewFile {
 		// One at a time: Create waits until this is made or failed.
 		asking.setBusy(true);
 		if (kind == NewSheet.Kind.SHADER && folder == null &&
-				at.equals(library)) {
+				holds.projects().isLibrary(at)) {
 			newShader(asking, in, at, name);
 			return;
 		}
@@ -362,7 +354,7 @@ final class NewFile {
 			names.add(item.path().getFileName());
 		}
 		// The library keeps the names of the folders its shaders share.
-		if (in == null && key != null && key.equals(library)) {
+		if (in == null && holds.projects().isLibrary(key)) {
 			names.add("textures");
 			names.add("presets");
 		}
