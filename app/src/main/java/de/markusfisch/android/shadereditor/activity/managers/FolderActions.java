@@ -143,7 +143,7 @@ final class FolderActions {
 							return;
 						}
 						shown[0].dismiss();
-						// What ran by the rule, as main.glsl, keeps running
+						// What ran by the rule, as main.frag, keeps running
 						// under its new name.
 						if (moved instanceof OpenProject.Renamed &&
 								running != null && Moves.within(

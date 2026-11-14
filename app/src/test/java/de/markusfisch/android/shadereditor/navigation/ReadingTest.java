@@ -114,6 +114,26 @@ public class ReadingTest {
 		assertNull(listed(new Reading.Entry("a.glsl", false)).notice());
 	}
 
+	@Test
+	public void theIconOfAFileIsAHintFromItsName() {
+		List<Row> rows = listed(new Reading.Entry("photo.JPG", false),
+				new Reading.Entry("main.frag", false),
+				new Reading.Entry("notes", false),
+				new Reading.Entry("lib.glsl", false))
+				.rows(ROOT, "Show more", "%1$d of %2$d");
+
+		// By name alone: a shader named photo.JPG would show as a
+		// picture here and still open as text.
+		java.util.Map<String, Row.Kind> kinds = new java.util.HashMap<>();
+		for (Row row : rows) {
+			kinds.put(row.name(), row.kind());
+		}
+		assertEquals(Row.Kind.IMAGE, kinds.get("photo.JPG"));
+		assertEquals(Row.Kind.TEXT, kinds.get("main.frag"));
+		assertEquals(Row.Kind.TEXT, kinds.get("notes"));
+		assertEquals(Row.Kind.TEXT, kinds.get("lib.glsl"));
+	}
+
 	private static Reading listed(Reading.Entry... entries) {
 		return Reading.started().listed(List.of(entries));
 	}
