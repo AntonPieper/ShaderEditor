@@ -33,6 +33,7 @@
 	<string name="warning">警告</string>
 	<string name="warning_message">警告：%1$s</string>
 	<string name="error_row_more">另有 %1$d 个</string>
+	<string name="error_on_line">第 %1$d 行：%2$s</string>
 	<string name="shader_saved">着色器已保存</string>
 	<string name="shader_disabled_after_crash">上一个着色器导致程序崩溃，已被自动注释。</string>
 

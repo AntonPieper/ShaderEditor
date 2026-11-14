@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.ContextMenu;
@@ -583,6 +584,30 @@ public class CodeView extends View {
 		}
 		placeRow();
 		invalidate();
+		accessibility.errorsChanged(failing.length > 0
+				? errorOnLine(failing[0], marks.messages(failing[0]).get(0))
+				: null);
+	}
+
+	/**
+	 * Return the messages of the errors of the caret's line, with the
+	 * line, or null if it has none.
+	 */
+	@Nullable
+	CharSequence caretLineError() {
+		if (document == null || marks == null) {
+			return null;
+		}
+		int line = document.text().lineOf(document.selection().head());
+		List<String> messages = marks.messages(line);
+		return messages.isEmpty()
+				? null
+				: errorOnLine(line, TextUtils.join("\n", messages));
+	}
+
+	private String errorOnLine(int line, String message) {
+		return getResources().getString(R.string.error_on_line, line + 1,
+				message);
 	}
 
 	public int getLineHeight() {

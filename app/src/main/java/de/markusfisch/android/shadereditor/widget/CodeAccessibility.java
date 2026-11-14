@@ -31,7 +31,10 @@ import de.markusfisch.android.shadereditor.editor.Text;
  * commands. It sends what TextView sends: text changed, with the text
  * before, in the window AccessibleText.edit gives; selection changed;
  * traversed at movement granularity; and, as a scroll view, scrolled.
- * It gives the bounds of characters on screen. The framework calls it
+ * It gives the bounds of characters on screen. The messages of the
+ * errors of the caret's line are the node's error; the first error of
+ * a result is announced, once while it stays the same, as the row that
+ * shows it is not part of the text. The framework calls it
  * only while a service is enabled, and the view tells it of changes
  * only then.
  */
@@ -51,6 +54,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	private String windowText;
 	// The selection the last event reported.
 	private Document.Selection reported;
+	// The error announced last, while results have errors.
+	private String announced;
 
 	CodeAccessibility(CodeView view) {
 		this.view = view;
@@ -73,6 +78,11 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			return;
 		}
 		info.addAction(AccessibilityAction.ACTION_SET_TEXT);
+		CharSequence error = view.caretLineError();
+		if (error != null) {
+			info.setContentInvalid(true);
+			info.setError(error);
+		}
 		if (host.isFocused() &&
 				Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 			info.addAction(AccessibilityAction.ACTION_IME_ENTER);
@@ -403,6 +413,29 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	private boolean textAction(View host, int id) {
 		return host.isFocused() && offers(view.offered(), id) &&
 				view.toolbarAction(id);
+	}
+
+	/**
+	 * Announce the first error of a result, first, or null for none,
+	 * unless it was announced last; and tell services the error of the
+	 * caret's line may have changed, without having it spoken twice.
+	 */
+	void errorsChanged(String first) {
+		if (first == null) {
+			announced = null;
+		}
+		if (!isEnabled()) {
+			return;
+		}
+		if (first != null && !first.equals(announced) && view.isShown()) {
+			announced = first;
+			view.announceForAccessibility(first);
+		}
+		ViewParent parent = view.getParent();
+		if (parent != null) {
+			parent.notifySubtreeAccessibilityStateChanged(view, view,
+					AccessibilityEvent.CONTENT_CHANGE_TYPE_UNDEFINED);
+		}
 	}
 
 	private boolean isEnabled() {
