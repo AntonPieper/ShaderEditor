@@ -489,15 +489,22 @@ public class HostDirectivesTest {
 				"#pragma se input filter=linear", TEX);
 	}
 
-	// A full-width plus would vanish and turn 1+2 into 12.
+	// The stored text stays as it is; the compiler is handed a space,
+	// so a full-width plus cannot vanish and turn 1+2 into 12, and
+	// the author is told where.
 	@Test
-	public void nonAsciiCharacterInCodeIsAnErrorAtItsLine() {
+	public void nonAsciiCharacterInCodeIsAWarningAtItsLine() {
 		HostDirectives result = parse("float a;",
 				"float v = 1\uff0b2;");
-		ProjectDiagnostic error = singleError(result);
-		assertEquals(2, error.line());
-		assertEquals(path("shaders/main.frag"), error.file());
-		assertTrue(error.message(), error.message().contains("U+FF0B"));
+		assertEquals(1, result.diagnostics().size());
+		ProjectDiagnostic warning = result.diagnostics().get(0);
+		assertEquals(ProjectDiagnostic.Severity.WARNING, warning.severity());
+		assertEquals(2, warning.line());
+		assertEquals(path("shaders/main.frag"), warning.file());
+		assertEquals("Character \uff0b (U+FF0B) outside a comment is read " +
+				"as a space: shader compilers read only ASCII code; " +
+				"replace it", warning.message());
+		assertEquals("float v = 1\uff0b2;", result.lines().get(1));
 		assertEquals(List.of(), parse("// caf\u00e9",
 				"/* \u2603 */ float a;").diagnostics());
 		assertEquals(List.of(), parse("float a;\u000c").diagnostics());

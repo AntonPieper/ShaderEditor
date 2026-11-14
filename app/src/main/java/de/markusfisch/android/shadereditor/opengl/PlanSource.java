@@ -123,9 +123,10 @@ record PlanSource(
 				at != null ? at.line() : 0);
 	}
 
-	// Comments may carry non-ASCII characters, which crash some shader
-	// compilers; preparation refuses them in code, where only whitespace
-	// becomes a space. Line breaks stay, so lines still map.
+	// Non-ASCII characters crash some shader compilers, so each becomes
+	// a space here, at the last step before the compiler, and never in
+	// the stored text. In a comment that changes nothing; in code
+	// preparation warned of it. Line breaks stay, so lines still map.
 	@NonNull
 	private static String removeNonAscii(@NonNull String text) {
 		return text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", " ");

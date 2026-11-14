@@ -418,6 +418,22 @@ public class PreparationTest {
 		assertNotNull(prepare(files, "picture.frag").plan());
 	}
 
+	// A file is the user's text. What a compiler cannot read of it is
+	// seen to where it is compiled, not by refusing the file.
+	@Test
+	public void aShaderWithMoreThanAsciiIsPreparedAsItIs() {
+		String text = lines("// Gr\u00fc\u00dfe \u4e16\u754c",
+				"void main() {\u00a0", "}");
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.frag", text));
+		assertNotNull(preparation.plan());
+		assertEquals(List.of("WARNING main.frag:2 Character \u00a0 " +
+				"(U+00A0) outside a comment is read as a space: shader " +
+				"compilers read only ASCII code; replace it"),
+				messages(preparation));
+		assertEquals(text, preparation.plan().programs().get(0).text());
+	}
+
 	@Test
 	public void entryMustBeTextWithAMainWhateverItIsCalled() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
