@@ -55,6 +55,7 @@ This document captures how the app is structured today so you can change it conf
   - `MainMenuManager` (popup menu with editor actions, navigation to Add Uniform, samples, settings).
   - `NavigationManager` (previews, FAQ link, share intent).
   - `ExtraKeysManager` (soft keyboard helpers + completions strip).
+  - One `ShaderScreen` (`activity/managers/ShaderScreen.java:1`), chosen once from `@bool/project_mode`: `DatabaseScreen` (release; owns `ShaderManager` and `ShaderListManager`) or `LibraryScreen` (project mode; owns the files, the drawer, the library's start and looks). `MainActivity` talks to the world it is in only through this interface.
 - State flow: the editor notifies `ShaderManager` when text changes; `ShaderManager` updates `ShaderViewManager` and `ShaderListManager`; UI state (title/subtitle, show-errors pill) is adjusted via `UIManager`.
 
 ### 4.3 Editor stack
