@@ -33,6 +33,10 @@
 	<!-- The unsaved mark after the title: the size of a "•" in it -->
 	<dimen name="se_unsaved_dot">4dp</dimen>
 	<dimen name="se_unsaved_gap">8dp</dimen>
+	<!-- The frame-rate and quality chip in the editor's toolbar -->
+	<dimen name="quality_chip_height">36dp</dimen>
+	<dimen name="quality_chip_padding_start">10dp</dimen>
+	<dimen name="quality_chip_padding_end">4dp</dimen>
 	<dimen name="se_corner">8dp</dimen>
 	<dimen name="se_corner_container">16dp</dimen>
 	<!-- The platform's dim behind a dialog in a dark theme; Material 3's

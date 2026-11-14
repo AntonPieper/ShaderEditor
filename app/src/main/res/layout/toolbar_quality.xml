@@ -1,0 +1,16 @@
+<!-- The frame-rate and quality control: a filled chip with an arrow -->
+<TextView
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:id="@android:id/text1"
+	android:layout_width="wrap_content"
+	android:layout_height="@dimen/quality_chip_height"
+	android:background="@drawable/quality_chip"
+	android:fontFeatureSettings="tnum"
+	android:gravity="center_vertical"
+	android:maxLines="1"
+	android:paddingStart="@dimen/quality_chip_padding_start"
+	android:paddingEnd="@dimen/quality_chip_padding_end"
+	android:textAppearance="?attr/textAppearanceLabelLarge"
+	android:textColor="?attr/colorOnSurface"
+	app:drawableEndCompat="@drawable/ic_arrow_drop_down" />

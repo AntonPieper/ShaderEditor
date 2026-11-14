@@ -133,7 +133,7 @@ public class ShaderViewManager {
 		// The frame rate stands before the quality chosen, when it is
 		// not in the toolbar's second line.
 		adapter = new ArrayAdapter<>(activity,
-				android.R.layout.simple_spinner_item,
+				R.layout.toolbar_quality,
 				activity.getResources().getTextArray(R.array.quality_names)) {
 			@NonNull
 			@Override
