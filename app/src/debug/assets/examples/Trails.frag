@@ -9,7 +9,8 @@ uniform float time; // seconds since load
 uniform vec2 touch; // last touch in pixels; 0,0 before any; kept after the finger lifts
 uniform int pointerCount; // fingers on the screen now, 0..10
 // The previous frame, 8 bits per channel, read with linear filtering.
-uniform sampler2D backbuffer;///min:l;mag:l;
+#pragma se input filter=linear
+uniform sampler2D backbuffer;
 
 void main(void) {
 	float unit = min(resolution.x, resolution.y);

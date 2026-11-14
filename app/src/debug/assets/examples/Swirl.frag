@@ -7,7 +7,8 @@ precision mediump float;
 uniform vec2 resolution; // size of the surface in pixels
 uniform vec2 touch; // last touch in pixels; 0,0 before any; kept after the finger lifts
 uniform vec2 touchStart; // where the last touch went down, in pixels; 0,0 before any
-uniform sampler2D noise; // the bundled grey noise image, 256 x 256, repeats
+#pragma se input "textures/noise.png" wrap=repeat
+uniform sampler2D noise; // a grey noise image, 256 x 256, that repeats
 
 void main(void) {
 	float unit = min(resolution.x, resolution.y);

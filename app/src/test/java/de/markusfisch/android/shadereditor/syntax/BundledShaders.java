@@ -7,8 +7,11 @@ import java.nio.file.Files;
 import java.util.Map;
 import java.util.TreeMap;
 
+import de.markusfisch.android.shadereditor.project.ExamplesTest;
+
 /**
- * The shaders in res/raw, by file name.
+ * The shaders in res/raw, by file name, and the examples, by their
+ * path under examples/.
  */
 public final class BundledShaders {
 	private BundledShaders() {
@@ -25,7 +28,25 @@ public final class BundledShaders {
 			shaders.put(file.getName(), new String(
 					Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
 		}
+		addExamples(ExamplesTest.folder(), "examples/", shaders);
 		return shaders;
+	}
+
+	private static void addExamples(File dir, String prefix,
+			Map<String, String> shaders) throws IOException {
+		File[] files = dir.listFiles();
+		if (files == null) {
+			return;
+		}
+		for (File file : files) {
+			String name = prefix + file.getName();
+			if (file.isDirectory()) {
+				addExamples(file, name + "/", shaders);
+			} else if (name.endsWith(".frag") || name.endsWith(".glsl")) {
+				shaders.put(name, new String(
+						Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+			}
+		}
 	}
 
 	private static File findRawDirectory() {
