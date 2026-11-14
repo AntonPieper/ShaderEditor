@@ -26,7 +26,10 @@ final class ContextEngineHost implements EngineHost {
 	// shader starts. After the app started again, it asks again if the
 	// platform still lets it show the dialog.
 	private static final HashSet<String> requested = new HashSet<>();
-	private static int requests;
+	// Main thread only. The permissions whose dialog is up. Its answer
+	// is kept under a key of the permission by the activity's registry
+	// when the activity is made again, so the new one takes it.
+	private static final HashSet<String> asking = new HashSet<>();
 
 	private final Handler mainHandler = new Handler(Looper.getMainLooper());
 	@NonNull
@@ -55,23 +58,42 @@ final class ContextEngineHost implements EngineHost {
 			if (isGranted(permission) || activity.isFinishing()) {
 				return;
 			}
+			if (asking.contains(permission)) {
+				// Asked by the activity before this one, as before a
+				// rotation: its answer comes here.
+				listen(activity, permission, denied);
+				return;
+			}
 			if (!requested.add(permission)) {
 				denied.run();
 				return;
 			}
-			var launcher = new AtomicReference<ActivityResultLauncher<String>>();
-			launcher.set(activity.getActivityResultRegistry().register(
-					"engine_permission_" + ++requests,
-					new ActivityResultContracts.RequestPermission(),
-					granted -> {
-						launcher.get().unregister();
-						if (!granted) {
-							denied.run();
-						}
-					}));
-			launcher.get().launch(permission);
+			asking.add(permission);
+			listen(activity, permission, denied).launch(permission);
 		});
 		return true;
+	}
+
+	// Main thread only.
+	@NonNull
+	private static ActivityResultLauncher<String> listen(
+			@NonNull ComponentActivity activity, @NonNull String permission,
+			@NonNull Runnable denied) {
+		var launcher = new AtomicReference<ActivityResultLauncher<String>>();
+		Handler main = new Handler(Looper.getMainLooper());
+		launcher.set(activity.getActivityResultRegistry().register(
+				"engine_permission_" + permission,
+				new ActivityResultContracts.RequestPermission(),
+				granted -> {
+					// A result kept for a screen made again is delivered
+					// within register, before launcher is set.
+					main.post(() -> launcher.get().unregister());
+					asking.remove(permission);
+					if (!granted) {
+						denied.run();
+					}
+				}));
+		return launcher.get();
 	}
 
 	@Override
