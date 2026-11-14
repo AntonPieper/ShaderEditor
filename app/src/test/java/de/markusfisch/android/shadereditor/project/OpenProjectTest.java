@@ -2350,6 +2350,243 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void renameKeepsTheDocumentWithItsUnsavedTextAndUndo()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		ProjectPath b = path("b.glsl");
+		Document document = shown(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		document.select(1, 2);
+		project.runThisFile(a);
+		List<Integer> heard = new ArrayList<>();
+		project.setListener(Runnable::run,
+				() -> heard.add(project.events(0).size()));
+
+		OpenProject.Moved moved = await(done -> project.rename(a, b, done));
+
+		assertEquals(new OpenProject.Renamed(a, b), moved);
+		assertEquals(List.of(new OpenProject.Event(1, moved)),
+				project.events(0));
+		assertTrue(heard.contains(1));
+		assertSame(document, project.document(b));
+		assertNull(project.document(a));
+		assertEquals(Set.of(b), project.unsaved());
+		assertEquals(b, project.shown());
+		assertEquals(b, project.running());
+		assertEquals("stored", read("b.glsl"));
+		assertFalse(new File(root, "a.glsl").exists());
+		assertEquals("mine", journaled("b.glsl"));
+		assertNull(journaled("a.glsl"));
+		flush(project);
+
+		// After a restart: the text, the selection, undo and what the
+		// session showed and ran are under the new path.
+		OpenProject restarted = open();
+		assertEquals(Set.of(b), restarted.unsaved());
+		assertEquals(b, restarted.shown());
+		assertEquals(b, restarted.running());
+		Document reopened = document(restarted, "b.glsl");
+		assertEquals("mine", reopened.text().toString());
+		assertEquals(new Document.Selection(1, 2), reopened.selection());
+		reopened.undo();
+		assertEquals("stored", reopened.text().toString());
+	}
+
+	@Test
+	public void renameOfAFolderTakesEveryFileHeldUnderIt()
+			throws IOException {
+		write("lib/unsaved.glsl", "u");
+		write("lib/deep/clean.glsl", "c");
+		write("lib/other.glsl", "o");
+		write("libs.glsl", "not under lib");
+		OpenProject first = open();
+		edit(first, document(first, "lib/other.glsl"), "other, unsaved");
+		flush(first);
+		// Held without being in memory, in memory with unsaved text,
+		// and in memory without.
+		OpenProject project = open();
+		Document unsaved = document(project, "lib/unsaved.glsl");
+		edit(project, unsaved, "mine");
+		Document clean = shown(project, "lib/deep/clean.glsl");
+		Document beside = document(project, "libs.glsl");
+
+		OpenProject.Moved moved = await(done -> project.rename(
+				path("lib"), path("shaders/common"), done));
+
+		assertEquals(new OpenProject.Renamed(path("lib"),
+				path("shaders/common")), moved);
+		assertSame(unsaved, project.document(
+				path("shaders/common/unsaved.glsl")));
+		assertSame(clean, project.document(
+				path("shaders/common/deep/clean.glsl")));
+		assertSame(beside, project.document(path("libs.glsl")));
+		assertEquals(path("shaders/common/deep/clean.glsl"),
+				project.shown());
+		assertEquals(Set.of(path("shaders/common/unsaved.glsl"),
+				path("shaders/common/other.glsl")), project.unsaved());
+		assertEquals(project.unsaved(), kept());
+		assertEquals("other, unsaved", text(project,
+				"shaders/common/other.glsl"));
+		assertTrue(save(project, true).values().stream().allMatch(
+				outcome -> outcome instanceof Saved));
+		assertEquals("mine", read("shaders/common/unsaved.glsl"));
+		assertEquals("other, unsaved", read("shaders/common/other.glsl"));
+		assertFalse(new File(root, "lib").exists());
+	}
+
+	@Test
+	public void renameIsRefusedAsAValueAndChangesNothing()
+			throws IOException {
+		write("taken.glsl", "t");
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+
+		// The target exists; the project holds a file at the target.
+		OpenProject.Moved exists = await(done -> project.rename(a,
+				path("taken.glsl"), done));
+		assertEquals(ProjectFiles.Refusal.EXISTS,
+				((OpenProject.Refused) exists).refusal());
+		document(project, "taken.glsl");
+		OpenProject.Moved held = await(done -> project.rename(
+				path("other.glsl"), path("taken.glsl"), done));
+		assertEquals(ProjectFiles.Refusal.EXISTS,
+				((OpenProject.Refused) held).refusal());
+		OpenProject.Moved itself = await(done -> project.rename(
+				path("lib"), path("lib/inner"), done));
+		assertEquals(ProjectFiles.Refusal.FAILED,
+				((OpenProject.Refused) itself).refusal());
+		assertSame(document, project.document(a));
+		assertTrue(project.events(0).isEmpty());
+
+		// The file vanished elsewhere: that is what is seen of it.
+		assertTrue(new File(root, "a.glsl").delete());
+		OpenProject.Moved absent = await(done -> project.rename(a,
+				path("b.glsl"), done));
+		assertEquals(ProjectFiles.Refusal.ABSENT,
+				((OpenProject.Refused) absent).refusal());
+		assertSame(document, project.document(a));
+		assertEquals(FileTexts.Found.MISSING, project.found(a));
+		assertEquals("the file was deleted", project.conflicts().get(a));
+		flush(project);
+		assertEquals("mine", journaled("a.glsl"));
+	}
+
+	@Test
+	public void renameComesAfterASaveUnderWayAndSeesWhatChangedElsewhere()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		ProjectPath b = path("b.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		List<Object> order = new ArrayList<>();
+
+		project.save(true, order::add);
+		project.rename(a, b, order::add);
+		settle();
+
+		assertEquals(2, order.size());
+		assertEquals(new OpenProject.Renamed(a, b), order.get(1));
+		assertEquals("mine", read("b.glsl"));
+		assertFalse(document.isModified());
+		assertTrue(kept().isEmpty());
+
+		// Renamed as it is, whatever it holds; looked at afterwards.
+		write("b.glsl", "theirs");
+		OpenProject.Moved back = await(done -> project.rename(b, a, done));
+		assertEquals(new OpenProject.Renamed(b, a), back);
+		assertEquals("theirs", document.text().toString());
+		edit(project, document, "mine again");
+		write("a.glsl", "theirs again");
+		OpenProject.Moved again = await(done -> project.rename(a, b, done));
+		assertEquals(new OpenProject.Renamed(a, b), again);
+		assertEquals(Set.of(b), project.conflicts().keySet());
+		assertEquals("mine again", document.text().toString());
+	}
+
+	@Test
+	public void unsavedTextIsUnderOneOfTheTwoPathsWhereverARenameDies()
+			throws IOException {
+		ProjectPath a = path("a.glsl");
+		ProjectPath b = path("b.glsl");
+		// How far it gets: nothing done; storage renamed and main not
+		// told; main told and the journal not moved; all of it.
+		for (int reached = 0; reached <= 3; ++reached) {
+			delete(new File(root, "b.glsl"));
+			write("a.glsl", "stored");
+			OpenProject project = open();
+			refresh(project);
+			Document document = document(project, "a.glsl");
+			edit(project, document, "mine " + reached);
+			flush(project);
+
+			project.rename(a, b, moved -> {
+			});
+			if (reached >= 1) {
+				worker.step();
+			}
+			if (reached >= 2) {
+				main.run();
+			}
+			if (reached >= 3) {
+				settle();
+			}
+			worker.clear();
+			main.clear();
+
+			OpenProject restarted = open();
+			ProjectPath at = reached == 0 ? a : b;
+			String name = "reached " + reached;
+			assertEquals(name, Set.of(at), restarted.unsaved());
+			assertEquals(name, Set.of(at), kept());
+			assertTrue(name, restarted.conflicts().isEmpty());
+			assertEquals(name, "mine " + reached, text(restarted,
+					at.toString()));
+			assertEquals(name, "stored", read(at.toString()));
+			assertNull(name, new ProjectSessions(sessionsDir).journal(id)
+					.move());
+			assertTrue(save(restarted, true).get(at) instanceof Saved);
+		}
+	}
+
+	@Test
+	public void typingWhileARenameIsUnderWayIsKeptUnderTheNewPath()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		ProjectPath b = path("b.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		project.rename(a, b, moved -> {
+		});
+		// Storage renamed; main does not know yet, and the user types.
+		worker.step();
+		edit(project, document, "later");
+		project.persist();
+		settle();
+
+		assertSame(document, project.document(b));
+		assertEquals("later", journaled("b.glsl"));
+		assertNull(journaled("a.glsl"));
+		assertEquals(Set.of(b), kept());
+
+		// The same when the project is closed at that moment.
+		project.rename(b, a, moved -> {
+		});
+		worker.step();
+		edit(project, document, "latest");
+		project.close();
+		settle();
+		OpenProject restarted = open();
+		assertEquals(Set.of(a), restarted.unsaved());
+		assertEquals("latest", text(restarted, "a.glsl"));
+		assertEquals(Set.of(a), kept());
+	}
+
+	@Test
 	public void renameTheProcessDiedInIsFinishedWhenTheProjectOpens()
 			throws IOException {
 		OpenProject project = open();

@@ -131,6 +131,40 @@ public final class OpenProject {
 	public record Unreadable(String reason) implements Outcome {
 	}
 
+	/**
+	 * What renaming or deleting a file or folder did: {@link Renamed}
+	 * or {@link Refused}.
+	 */
+	public interface Moved {
+	}
+
+	/**
+	 * The file or folder at from is at to now, in storage and for the
+	 * project: the documents of the files it holds are the same, under
+	 * the new paths, with their unsaved text and undo.
+	 */
+	public record Renamed(ProjectPath from, ProjectPath to)
+			implements Moved {
+	}
+
+	/**
+	 * Nothing was renamed or deleted, for reason: the target exists or
+	 * the project holds a file there (EXISTS), there is nothing at the
+	 * path anymore (ABSENT), the storage does not offer the change
+	 * (UNSUPPORTED) or failed (FAILED), or failed halfway (PARTIAL):
+	 * then look again, see {@link #refresh}.
+	 */
+	public record Refused(ProjectFiles.Refusal refusal, String reason)
+			implements Moved {
+	}
+
+	/**
+	 * A rename or deletion that happened, numbered in the order they
+	 * did, see {@link #events}.
+	 */
+	public record Event(int number, Moved change) {
+	}
+
 	/** Runs a task on the main thread after a delay in milliseconds. */
 	interface Later {
 		void post(Runnable task, long millis);
@@ -174,7 +208,7 @@ public final class OpenProject {
 			String unkept,
 			Map<ProjectPath, FileTexts.Found> found,
 			Map<ProjectPath, Runs> runs, Map<ProjectPath, String> unreadable,
-			Set<ProjectPath> replaced, int damaged) {
+			Set<ProjectPath> replaced, int damaged, int moves) {
 	}
 
 	// The files opened, being opened or worked on in storage.
@@ -226,6 +260,9 @@ public final class OpenProject {
 	private State announced;
 	private Executor executor;
 	private Runnable listener;
+	// What was renamed or deleted last, and how many were.
+	private final List<Event> events = new ArrayList<>();
+	private int moves;
 	private boolean pending;
 	private boolean closed;
 	// How many journals have a header that cannot be read.
@@ -1045,6 +1082,188 @@ public final class OpenProject {
 		});
 	}
 
+	/**
+	 * Rename the file or folder at from to to, which must not exist, in
+	 * storage and for the project, whether the project holds files
+	 * there or not. Every file it holds at or under from keeps its
+	 * document, with unsaved text, undo and selection, under the new
+	 * path; its journal and undo history follow, and so do the file
+	 * shown and the file chosen to run. A save, a reload or a check of
+	 * such a file that is under way is finished first. Storage is not
+	 * read: a file that changed elsewhere is renamed as it is, and
+	 * looked at afterwards as {@link #refresh} looks at it. done gets
+	 * {@link Renamed} or {@link Refused}; everyone else learns of it
+	 * through the listener and {@link #events}.
+	 */
+	public void rename(ProjectPath from, ProjectPath to,
+			Callback<Moved> done) {
+		Journal.Move move = new Journal.Move(from, to);
+		Refused refused = refusal(move);
+		if (refused != null) {
+			main.execute(() -> done.done(refused));
+			return;
+		}
+		// What is typed is with the journal that is about to follow.
+		persist();
+		Map<FileRecord, FileRecord.Request> held = new LinkedHashMap<>();
+		hold(move, held, () -> {
+			Refused late = refusal(move);
+			if (late != null) {
+				release(held, null);
+				done.done(late);
+				return;
+			}
+			texts.move(move, change -> {
+				if (change instanceof ProjectFiles.Refused failed) {
+					release(held, failed.refusal());
+					done.done(new Refused(failed.refusal(),
+							failed.reason()));
+				} else {
+					renamed(move, held, done);
+				}
+			});
+		});
+	}
+
+	/**
+	 * Return what was renamed or deleted after the event numbered
+	 * after, 0 for all that is remembered, oldest first; the listener
+	 * hears of each. Only the last few are remembered: who finds a gap
+	 * in the numbers looks at everything again.
+	 */
+	public List<Event> events(int after) {
+		List<Event> since = new ArrayList<>();
+		for (Event event : events) {
+			if (event.number() > after) {
+				since.add(event);
+			}
+		}
+		return since;
+	}
+
+	// Return why move cannot be made, as far as the project knows, or
+	// null.
+	private Refused refusal(Journal.Move move) {
+		ProjectPath to = move.to();
+		if (lone != null) {
+			return new Refused(ProjectFiles.Refusal.UNSUPPORTED,
+					"the project is this one file");
+		} else if (to == null) {
+			return null;
+		} else if (move.touches(to)) {
+			return new Refused(ProjectFiles.Refusal.FAILED,
+					"a file cannot move to where it is");
+		}
+		Journal.Move target = new Journal.Move(to, null);
+		for (FileRecord record : records.values()) {
+			if (target.touches(record.path)) {
+				return new Refused(ProjectFiles.Refusal.EXISTS,
+						record.path + " is open or has unsaved text");
+			}
+		}
+		return null;
+	}
+
+	// Start an operation of every file the project holds at or under
+	// the source of move, each once nothing else works on it, also of
+	// those it comes to hold while waiting; then run then.
+	private void hold(Journal.Move move,
+			Map<FileRecord, FileRecord.Request> held, Runnable then) {
+		for (FileRecord record : new ArrayList<>(records.values())) {
+			if (move.touches(record.path) && !held.containsKey(record)) {
+				record.whenIdle(() -> {
+					if (records.get(record.path) == record) {
+						held.put(record, record.start(
+								FileRecord.Kind.MOVE));
+					}
+					hold(move, held, then);
+				});
+				return;
+			}
+		}
+		then.run();
+	}
+
+	// End the operations of held; when storage had nothing at the path,
+	// that is what was seen of every file there.
+	private void release(Map<FileRecord, FileRecord.Request> held,
+			ProjectFiles.Refusal refusal) {
+		for (Map.Entry<FileRecord, FileRecord.Request> entry :
+				held.entrySet()) {
+			if (refusal == ProjectFiles.Refusal.ABSENT) {
+				entry.getKey().observe(entry.getValue(),
+						FileTexts.Found.MISSING, null);
+			}
+			end(entry.getKey(), entry.getValue());
+		}
+		changed();
+	}
+
+	// Storage made move: the files held go by their new paths.
+	private void renamed(Journal.Move move,
+			Map<FileRecord, FileRecord.Request> held,
+			Callback<Moved> done) {
+		for (FileRecord record : held.keySet()) {
+			records.remove(record.path);
+			record.path = move.moved(record.path);
+			records.put(record.path, record);
+		}
+		List<ProjectPath> used = new ArrayList<>(recent);
+		recent.clear();
+		for (ProjectPath path : used) {
+			recent.add(move.moved(path));
+		}
+		for (ProjectPath path : new ArrayList<>(opening.keySet())) {
+			if (move.touches(path)) {
+				opening.put(move.moved(path), opening.remove(path));
+			}
+		}
+		if (shown != null) {
+			shown = move.moved(shown);
+		}
+		if (chosen != null) {
+			chosen = move.moved(chosen);
+		}
+		if (running != null && move.touches(running)) {
+			running = move.moved(running);
+			++choice;
+		}
+		List<Used> built = new ArrayList<>();
+		for (Used file : this.used) {
+			built.add(new Used(move.moved(file.path()), file.image()));
+		}
+		this.used = Collections.unmodifiableList(built);
+		// What was built is of the old paths.
+		++generation;
+		// The journals and histories follow, behind what was written
+		// to them meanwhile, then what the session shows and runs.
+		texts.follow(move);
+		worker.execute(() -> follow(sessions, id, move));
+		Renamed renamed = new Renamed(move.from(), move.to());
+		event(renamed);
+		for (Map.Entry<FileRecord, FileRecord.Request> entry :
+				held.entrySet()) {
+			FileRecord record = entry.getKey();
+			end(record, entry.getValue());
+			// Renamed as it was: what it is, is seen now.
+			if (records.get(record.path) == record) {
+				record.whenIdle(() -> check(record, new HashSet<>(),
+						() -> {
+						}));
+			}
+		}
+		keepSelection(false);
+		changed();
+		updateRunning(() -> done.done(renamed));
+	}
+
+	private void event(Moved change) {
+		events.add(new Event(++moves, change));
+		if (events.size() > 32) {
+			events.remove(0);
+		}
+	}
+
 	/** Return the file that runs, or null when nothing runs. */
 	public ProjectPath running() {
 		return running;
@@ -1718,7 +1937,7 @@ public final class OpenProject {
 		}
 		return new State(unsaved(), conflicts, running, used,
 				diagnostics, unprotected(), unkept, found, runs, unreadable,
-				replaced, damaged);
+				replaced, damaged, moves);
 	}
 
 	// Call the listener, unless nothing it hears about changed or a call
