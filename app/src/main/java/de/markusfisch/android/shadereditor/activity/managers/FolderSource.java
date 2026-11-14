@@ -27,7 +27,6 @@ import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
-import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.provider.UserFilesProvider;
 
 /**
@@ -44,7 +43,7 @@ final class FolderSource {
 	}
 
 	private final Context context;
-	private final Projects projects;
+	private final ProjectHolds holds;
 	private final Executor listings;
 	private final Handler handler;
 	private final String key;
@@ -66,12 +65,12 @@ final class FolderSource {
 	 *                is lost
 	 * @param changed called when what a level lists changed
 	 */
-	FolderSource(@NonNull Context context, @NonNull Projects projects,
+	FolderSource(@NonNull Context context, @NonNull ProjectHolds holds,
 			@NonNull Executor listings, @NonNull Handler handler,
 			@NonNull String key, @NonNull FoldersSource folders,
 			@NonNull Runnable changed) {
 		this.context = context;
-		this.projects = projects;
+		this.holds = holds;
 		this.listings = listings;
 		this.handler = handler;
 		this.key = key;
@@ -113,6 +112,9 @@ final class FolderSource {
 	void adopt(@Nullable OpenProject project, @Nullable String problem,
 			boolean file) {
 		this.file = file;
+		if (project != null) {
+			holds.hold(project);
+		}
 		readings.clear();
 		opened(project, problem);
 	}
@@ -173,7 +175,7 @@ final class FolderSource {
 	void close() {
 		closed = true;
 		if (project != null) {
-			project.close();
+			holds.release(project);
 			project = null;
 		}
 	}
@@ -216,7 +218,7 @@ final class FolderSource {
 		} else if (project == null && problem == null) {
 			if (!opening) {
 				opening = true;
-				projects.look(key, opened -> opened(opened.project(),
+				holds.look(key, opened -> opened(opened.project(),
 						opened.problem()));
 			}
 			return;
@@ -244,7 +246,8 @@ final class FolderSource {
 	// Off the main thread.
 	@NonNull
 	private Access access() {
-		ProjectSessions.Locator locator = projects.sessions().locator(key);
+		ProjectSessions.Locator locator = holds.projects().sessions()
+				.locator(key);
 		if (locator == null) {
 			return new Access(false, false, null);
 		} else if (locator.kind() == ProjectSessions.Kind.DIRECTORY) {
@@ -268,9 +271,12 @@ final class FolderSource {
 		opening = false;
 		if (closed) {
 			if (project != null) {
-				project.close();
+				holds.release(project);
 			}
 			return;
+		}
+		if (this.project != null) {
+			holds.release(this.project);
 		}
 		this.project = project;
 		this.problem = project != null

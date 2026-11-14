@@ -112,6 +112,7 @@ public class NavigationDrawer implements ShaderList {
 	private final LibrarySource library;
 	private final FoldersSource folders;
 	private final Projects projects;
+	private final ProjectHolds holds;
 	private final ActivityResultLauncher<Intent> pickFolder;
 	private final ActivityResultLauncher<Intent> pickFile;
 	private final Map<Level, Source> sources = new HashMap<>();
@@ -136,6 +137,7 @@ public class NavigationDrawer implements ShaderList {
 	public NavigationDrawer(@NonNull AppCompatActivity activity,
 			@NonNull DataSource dataSource,
 			@NonNull ShaderListManager.Listener listener,
+			@NonNull ProjectHolds holds,
 			@NonNull Host host) {
 		this.activity = activity;
 		this.dataSource = dataSource;
@@ -146,7 +148,8 @@ public class NavigationDrawer implements ShaderList {
 		sources.put(Level.EXAMPLES, new ExamplesSource(activity, host));
 		folders = new FoldersSource(activity, library, this::remove);
 		sources.put(Level.FOLDERS, folders);
-		projects = new Projects(activity);
+		this.holds = holds;
+		projects = holds.projects();
 		pickFolder = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(),
 				result -> onPicked(result, true));
@@ -469,7 +472,7 @@ public class NavigationDrawer implements ShaderList {
 			if (folder != null) {
 				folder.close();
 			}
-			folder = new FolderSource(activity, projects, listings, handler,
+			folder = new FolderSource(activity, holds, listings, handler,
 					key, folders, () -> {
 				if (folder != null && folder.key().equals(level.key())) {
 					refresh();
