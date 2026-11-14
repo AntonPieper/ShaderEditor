@@ -107,19 +107,26 @@ A ZIP reaches the app through Open file or as a share target. Do not register Sh
 Existing shaders go through three steps (SPEC 12.2), and users notice only the second.
 
 1. At first nothing changes. DB shaders are listed, edited, and saved as today. Underneath they are converted on the fly, so they already run on the same engine as files.
-2. Later, one update moves them. All shaders become files in the library folder, and all library textures go into its `textures/` folder once:
+2. Then they move, by themselves, at the first start of a build that has project mode on. All shaders become files in the library folder, which is in the app's own storage, and the library textures they read go into its `textures/` folder once:
 
 ```text
 ShaderEditor/
   Shaders/
     Plasma.frag
     Clouds.frag
+    Untitled.frag
     textures/
       noise.png
+    presets/
+      noise.frag
 ```
 
-The shader list looks the same afterwards, with the same thumbnails, and the wallpaper keeps showing the same shader. Say once, plainly, what happened and where the files are. Titles that are empty or repeated get a number. If anything fails, the affected shader stays usable from the database and the move resumes on the next start. Do not ask the user to choose anything.
-3. A release later the database copy is removed. This step is invisible.
+There is one list afterwards, the files of that folder, with the same pictures and in the same order by date, and the wallpaper keeps showing the same shader. Say once, plainly, what happened and where the files are, and name the shaders that could not be moved with the reason. A shader without a title is `Untitled`, a repeated title gets a number (`Plasma 2.frag`), and a character a file name cannot hold becomes `_`. If anything fails, the affected shader stays in the database and the move tries it again on the next start. Do not ask the user to choose anything. The database is not changed and nothing is deleted: it stays as a backup.
+3. Removing the database copy is a later, separate step. It is invisible, and it is not part of the move.
+
+After the move, **New shader** creates a file in the library, `Untitled.frag` or the next unused name, from the shader chosen as the default for new shaders or else from the built-in template, and opens and runs it. The wallpaper is chosen among the files of the library, and the default for new shaders among the files of its root. A moved shader's file holds the text as it was written, comments and all. A wallpaper set before the move keeps showing what it showed; editing the file does not change it until the wallpaper is set again (section 8, first paragraph).
+
+A debug build has **Move shaders again**, which puts the library aside under another name and moves everything from the database into an empty one. It deletes nothing, and it asks to close the library first.
 
 Before step 2, **Save as files** converts one shader on request with the usual Name/Location flow and keeps the original. Do not display internal terms such as compatibility mode or converter in normal navigation.
 
