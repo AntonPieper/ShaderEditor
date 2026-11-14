@@ -46,6 +46,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -131,6 +132,7 @@ public class NavigationDrawer implements ShaderList {
 	private final ActivityResultLauncher<Intent> pickFile;
 	private final ActivityResultLauncher<Intent> pickLocation;
 	private final NewFile newFile;
+	private final FolderActions folderActions;
 	private final Map<Level, Source> sources = new HashMap<>();
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
 	// Folders are read on their own, so a slow one holds up no other
@@ -180,6 +182,37 @@ public class NavigationDrawer implements ShaderList {
 		pickLocation = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(),
 				this::onLocationPicked);
+		folderActions = new FolderActions(activity, projects,
+				new FolderActions.Host() {
+					@Override
+					public void open(@NonNull String key,
+							@NonNull ProjectPath path) {
+						if (host.onOpenFile(key, path, false)) {
+							close();
+						}
+					}
+
+					@Override
+					public void showNew(@NonNull String key,
+							@NonNull ProjectPath folder,
+							@NonNull String where) {
+						NavigationDrawer.this.showNew(key, folder, where,
+								NewSheet.Kind.EMPTY);
+					}
+
+					@Override
+					public void changed(@NonNull String key,
+							@NonNull ProjectPath path) {
+						reread(key, path);
+					}
+
+					// Over the drawer, which would hide the bottom bar.
+					@Override
+					public void tell(@NonNull String message) {
+						Snackbar.make(drawer, message, Snackbar.LENGTH_LONG)
+								.show();
+					}
+				});
 		newFile = new NewFile(activity, holds, listings, handler,
 				new NewFile.Created() {
 					@Override
@@ -548,6 +581,7 @@ public class NavigationDrawer implements ShaderList {
 			folder = new FolderSource(activity, holds, listings, handler,
 					key, folders,
 					(path, single) -> host.onOpenFile(key, path, single),
+					folderActions::act,
 					() -> {
 				if (folder != null && folder.key().equals(level.key())) {
 					refresh();
@@ -846,6 +880,12 @@ public class NavigationDrawer implements ShaderList {
 		MenuCompat.setGroupDividerEnabled(rowMenu, true);
 		for (Row.Action action : row.actions()) {
 			switch (action) {
+				case RUN -> rowMenu.add(Menu.NONE, action.ordinal(),
+						Menu.NONE, R.string.nav_run_this_file)
+						.setIcon(R.drawable.ic_play_arrow);
+				case NEW_HERE -> rowMenu.add(Menu.NONE, action.ordinal(),
+						Menu.NONE, R.string.nav_new_file_here)
+						.setIcon(R.drawable.ic_add);
 				case RENAME -> rowMenu.add(Menu.NONE, action.ordinal(),
 						Menu.NONE, R.string.nav_rename).setIcon(R.drawable.ic_edit);
 				case DUPLICATE -> rowMenu.add(Menu.NONE, action.ordinal(),

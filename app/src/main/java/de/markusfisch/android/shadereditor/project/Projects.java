@@ -186,8 +186,13 @@ public final class Projects {
 		});
 	}
 
-	// On the queue. Files that cannot be reached refuse every change.
-	private ProjectFiles files(String id) {
+	/**
+	 * Return the files of session id, to be used on the queue only: in
+	 * a {@link Change}, or as the destination of
+	 * {@link OpenProject#copyTo}. Files that cannot be reached refuse
+	 * every change.
+	 */
+	public ProjectFiles files(String id) {
 		Locator locator = sessions.locator(id);
 		SafProjects.Opened opened = locator != null
 				? SafProjects.open(context, locator)

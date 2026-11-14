@@ -370,6 +370,9 @@
 	<string name="nav_name_taken">%s is already here</string>
 	<string name="nav_cannot_create">%1$s cannot be created: %2$s</string>
 	<string name="nav_cannot_change_folder">Nothing can be created in this folder</string>
+	<string name="nav_run_this_file">Run this file</string>
+	<string name="nav_new_file_here">New file here</string>
+	<string name="nav_cannot_duplicate">%1$s cannot be duplicated: %2$s</string>
 	<string name="nav_remove_title">Remove %s from the list?</string>
 	<string name="nav_remove">Remove</string>
 	<plurals name="nav_remove_unsaved">
