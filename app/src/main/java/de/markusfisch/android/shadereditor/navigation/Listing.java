@@ -7,10 +7,11 @@ import java.util.Locale;
 /**
  * What a source knows of its level: the header's title and second
  * line, whether the level is read-only and can be sorted, the action
- * of its bar, and its rows in sections.
+ * of its bar, its rows in sections, and what stands under them, or
+ * null.
  */
 public record Listing(String title, String subtitle, boolean readOnly,
-		boolean sortable, Bar bar, List<Section> sections) {
+		boolean sortable, Bar bar, List<Section> sections, Notice notice) {
 	/** The action at the bottom of the drawer. */
 	public enum Bar {
 		NONE,
@@ -53,6 +54,7 @@ public record Listing(String title, String subtitle, boolean readOnly,
 				kept.add(new Section(section.heading, rows));
 			}
 		}
-		return new Listing(title, subtitle, readOnly, sortable, bar, kept);
+		return new Listing(title, subtitle, readOnly, sortable, bar, kept,
+				notice);
 	}
 }

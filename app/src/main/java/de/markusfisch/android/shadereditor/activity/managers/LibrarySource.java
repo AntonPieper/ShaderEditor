@@ -96,7 +96,8 @@ final class LibrarySource implements Source {
 				false,
 				true,
 				Listing.Bar.NEW,
-				List.of(new Listing.Section(null, order.sort(rows))));
+				List.of(new Listing.Section(null, order.sort(rows))),
+				null);
 	}
 
 	@Override

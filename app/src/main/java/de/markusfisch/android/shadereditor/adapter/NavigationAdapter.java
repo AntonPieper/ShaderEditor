@@ -194,6 +194,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 				case LIBRARY -> R.drawable.ic_grid_view;
 				case EXAMPLES -> R.drawable.ic_book_2;
 				case FOLDER -> R.drawable.ic_folder;
+				case IMAGE -> R.drawable.ic_image;
 				case SHADER -> R.drawable.ic_draft;
 			};
 			boolean isIcon = bitmap == null && picture.resource() == 0;

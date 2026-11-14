@@ -10,6 +10,8 @@ public enum Tap {
 	OPEN_AND_RUN,
 	/** Shows the image. */
 	SHOW_IMAGE,
+	/** Shows more rows of the level. */
+	MORE,
 	/** Nothing: the editor cannot open the file. */
 	NOTHING;
 
@@ -26,6 +28,7 @@ public enum Tap {
 			case TEXT -> OPEN;
 			case IMAGE -> SHOW_IMAGE;
 			case OTHER -> NOTHING;
+			case MORE -> MORE;
 		};
 	}
 }

@@ -55,7 +55,8 @@ final class ExamplesSource implements Source {
 				true,
 				false,
 				Listing.Bar.NEW_SHADER,
-				sections);
+				sections,
+				null);
 	}
 
 	@Override
