@@ -23,24 +23,27 @@ import de.markusfisch.android.shadereditor.project.HostDirective.TextureKind;
  */
 final class PassGraph {
 	/**
-	 * One pass file. {@code directives} is null when the file cannot be
+	 * One pass file. {@code source} is null when the file cannot be
 	 * read, and {@code problem} says why.
 	 */
 	static final class Node {
 		final ProjectPath file;
+		// What the file is written in, by its name.
+		final ShaderLanguage language;
 		final List<Edge> inputs = new ArrayList<>();
 		String problem;
-		SourceAssembly assembly;
-		HostDirectives directives;
+		PassSource source;
 		Node initialPass;
 		ProjectPath initialImage;
 		boolean history;
 		boolean perFrame;
-		// Whether the source, with its includes, mentions main at all.
-		boolean main;
+		// Whether the source, with its includes, has an entry point, as
+		// far as the pass graph tells.
+		boolean entryPoint;
 
 		private Node(ProjectPath file) {
 			this.file = file;
+			language = ShaderLanguage.of(file.toString());
 		}
 
 		boolean hasInitial() {
@@ -63,7 +66,6 @@ final class PassGraph {
 			a.file.toString().compareTo(b.file.toString());
 	private static final Pattern BACKBUFFER = Pattern.compile(
 			"\\bbackbuffer\\b");
-	private static final Pattern MAIN = Pattern.compile("\\bmain\\b");
 
 	/** Passes in execution order, or in discovery order on errors. */
 	final List<Node> nodes = new ArrayList<>();
@@ -97,11 +99,11 @@ final class PassGraph {
 		PassGraph graph = new PassGraph(files, entry, limits, builtins);
 		if (graph.entry == null) {
 			return graph;
-		} else if (graph.entry.directives == null) {
+		} else if (graph.entry.source == null) {
 			graph.error(entry, 0, graph.entry.problem);
-		} else if (!graph.entry.main) {
-			graph.error(entry, 0, entry + " defines no main, so it " +
-					"cannot run");
+		} else if (!graph.entry.entryPoint) {
+			graph.error(entry, 0, entry + " defines no " +
+					graph.entry.language.entryPoint() + ", so it cannot run");
 		}
 		graph.validate();
 		return graph;
@@ -134,17 +136,16 @@ final class PassGraph {
 		if (node.problem != null) {
 			return node;
 		}
-		node.assembly = SourceAssembly.assemble(files, file, limits);
-		node.directives = HostDirectives.parse(node.assembly, builtins);
+		node.source = node.language.pass(files, file, limits, builtins);
 		// Not told for a file with errors of its own: they come first,
-		// and may be why no main is found.
-		node.main = mentions(node, MAIN) ||
-				hasError(node.directives.diagnostics());
-		diagnostics.addAll(node.directives.diagnostics());
-		for (HostDirective.Input input : node.directives.inputs()) {
+		// and may be why no entry point is found.
+		node.entryPoint = node.source.entryPoint() ||
+				hasError(node.source.diagnostics());
+		diagnostics.addAll(node.source.diagnostics());
+		for (HostDirective.Input input : node.source.inputs()) {
 			Node producer = source(input.source(), input.file(),
 					input.line());
-			check(input, producer);
+			check(node, input, producer);
 			node.inputs.add(new Edge(input, producer));
 			if (producer != null && input.frame() == Frame.PREVIOUS) {
 				producer.history = true;
@@ -153,14 +154,14 @@ final class PassGraph {
 				node.history = true;
 			}
 		}
-		HostDirective.Target target = node.directives.target();
+		HostDirective.Target target = node.source.target();
 		ProjectPath initial = target != null ? target.initial() : null;
 		if (initial != null) {
 			node.initialPass = source(initial, target.file(), target.line());
 			node.initialImage = pictures.contains(initial) ? initial : null;
 		}
 		for (HostDirectives.Reference reference :
-				node.directives.references()) {
+				node.source.references()) {
 			source(reference.path(), reference.file(), reference.line());
 		}
 		return node;
@@ -189,17 +190,19 @@ final class PassGraph {
 		}
 		boolean seen = byPath.containsKey(source);
 		Node producer = node(source, from, line);
-		if (producer != null && producer.directives == null) {
+		if (producer != null && producer.source == null) {
 			error(from, line, producer.problem);
-		} else if (producer != null && !producer.main && !seen) {
-			error(from, line, source + " defines no main, so it cannot " +
+		} else if (producer != null && !producer.entryPoint && !seen) {
+			error(from, line, source + " defines no " +
+					producer.language.entryPoint() + ", so it cannot " +
 					"be an input; include it instead");
 		}
 		return producer;
 	}
 
 	// The options of an input that depend on what its file is.
-	private void check(HostDirective.Input input, Node producer) {
+	private void check(Node node, HostDirective.Input input,
+			Node producer) {
 		ProjectPath source = input.source();
 		if (source == null) {
 			return;
@@ -212,9 +215,9 @@ final class PassGraph {
 			if (input.texture() != null &&
 					input.texture() != TextureKind.FLAT) {
 				error(input.file(), input.line(), "A pass is read as " +
-						"uniform " + HostDirectives.keyword(
-						TextureKind.FLAT) + " " + input.uniform() +
-						", not " + HostDirectives.keyword(input.texture()));
+						node.language.declaration(TextureKind.FLAT,
+								input.uniform()) + ", not " +
+						node.language.type(input.texture()));
 			}
 		} else if (pictures.contains(source) && input.frame() != null) {
 			error(input.file(), input.line(), "frame= applies only to " +
@@ -231,7 +234,7 @@ final class PassGraph {
 		for (Node node : nodes) {
 			Node shader = node.initialPass;
 			if (shader != null) {
-				HostDirective.Target target = node.directives.target();
+				HostDirective.Target target = node.source.target();
 				link(initial, node, shader, target.file(), target.line(),
 						"starts as");
 				for (Edge edge : shader.inputs) {
@@ -271,7 +274,7 @@ final class PassGraph {
 		for (Node node : nodes) {
 			if (node.hasInitial() && !node.history &&
 					!readAtReset.contains(node) && !mentionsBackbuffer(node)) {
-				HostDirective.Target target = node.directives.target();
+				HostDirective.Target target = node.source.target();
 				diagnostics.add(Preparation.initialWithoutEffect(node.file,
 						target.file(), target.line()));
 			}
@@ -396,15 +399,10 @@ final class PassGraph {
 		return false;
 	}
 
+	// Whether the code of node, comments apart, names the backbuffer.
 	private static boolean mentionsBackbuffer(Node node) {
-		return mentions(node, BACKBUFFER);
-	}
-
-	// Return whether the code of node, comments apart, has word.
-	private static boolean mentions(Node node, Pattern word) {
-		for (String code : PreprocessorScan.scan(node.directives.lines(),
-				null).code()) {
-			if (word.matcher(code).find()) {
+		for (String code : node.source.code()) {
+			if (BACKBUFFER.matcher(code).find()) {
 				return true;
 			}
 		}
