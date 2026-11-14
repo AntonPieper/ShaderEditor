@@ -30,7 +30,11 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 	}
 
 	/** A file or folder as the listing of its folder tells it. */
-	public record Entry(String name, boolean folder) {
+	public record Entry(String name, boolean folder, long modified) {
+		/** An entry of which the listing told no time. */
+		public Entry(String name, boolean folder) {
+			this(name, folder, 0);
+		}
 	}
 
 	public static Reading started() {
@@ -114,7 +118,7 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 					}),
 					name,
 					null,
-					0,
+					Math.max(0, entry.modified),
 					entry.folder ? level.enter(name) : null,
 					EnumSet.noneOf(Row.Mark.class),
 					EnumSet.noneOf(Row.Action.class)));

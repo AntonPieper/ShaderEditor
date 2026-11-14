@@ -27,6 +27,8 @@ import java.util.List;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.activity.managers.ExtraKeysManager;
 import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
+import de.markusfisch.android.shadereditor.activity.managers.LibraryLooks;
+import de.markusfisch.android.shadereditor.activity.managers.LibraryStart;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationDrawer;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationManager;
 import de.markusfisch.android.shadereditor.activity.managers.OpenItem;
@@ -80,6 +82,10 @@ public class MainActivity extends AppCompatActivity {
 	private ProjectFileManager files;
 	private DataSource dataSource;
 	private boolean isInitialLoad = false;
+	@Nullable
+	private LibraryStart libraryStart;
+	@Nullable
+	private LibraryLooks looks;
 	// The editor was given back the text of a file of a folder that the
 	// old editor cannot show; it is not a shader to run.
 	private boolean holdsUnshownFile = false;
@@ -118,11 +124,22 @@ public class MainActivity extends AppCompatActivity {
 				shaderViewManager);
 		if (getResources().getBoolean(R.bool.project_mode)) {
 			holds = new ProjectHolds(new Projects(this));
+			looks = new LibraryLooks(holds.projects(), shaderViewManager,
+					() -> shaderListManager.loadShadersAsync(),
+					problem -> Message.show(this, getString(
+							R.string.library_not_kept, problem)));
+			// The quality chosen is told once it changes, also when the
+			// spinner first shows what it holds: what it holds now.
+			shaderViewManager.setQuality(1f);
 			files = new ProjectFileManager(this, editorFragment, holds,
 					createProjectFileListener(),
 					(preparation, nothingRuns, quality) -> {
 						if (preparation != null) {
 							shaderViewManager.setPlan(preparation, quality);
+							ProjectFile file = files.file();
+							looks.ran(files.key(), file != null
+									? file.getProject().running()
+									: null);
 						} else {
 							// No build reports, so only the manifest
 							// can be wrong.
@@ -173,7 +190,8 @@ public class MainActivity extends AppCompatActivity {
 		// Only load the last shader when no incoming text was opened,
 		// or it would replace that text.
 		boolean openedText = shaderManager.handleSendText(getIntent());
-		isInitialLoad = state == null && !openedText;
+		// Where the shaders are files, the start opens the library.
+		isInitialLoad = state == null && !openedText && files == null;
 		holdsUnshownFile = state != null && files != null &&
 				files.hadFile(state) &&
 				!ShaderEditorApp.preferences.useNewEditor();
@@ -191,6 +209,54 @@ public class MainActivity extends AppCompatActivity {
 		});
 		editorFragment.setOnTextModifiedListener(() -> open.onTextModified());
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
+		if (files != null) {
+			startLibrary(state == null && !openedText);
+		}
+	}
+
+	// Move what is left in the database into the library, then show
+	// the file the library showed last.
+	private void startLibrary(boolean show) {
+		libraryStart = new LibraryStart(this, holds.projects(),
+				new LibraryStart.Listener() {
+					@Override
+					public void onMoving() {
+						if (open == shaderManager) {
+							uiManager.setToolbarTitle(
+									getString(R.string.nav_shaders),
+									getString(R.string.library_moving),
+									false);
+						}
+					}
+
+					@Override
+					public void onLibrary(@NonNull String key) {
+						if (shaderListManager instanceof NavigationDrawer
+								drawer) {
+							drawer.setLibrary(key);
+						}
+						looks.setLibrary(key);
+						files.setLibrary(key);
+					}
+
+					@Override
+					public void onShow(@NonNull String key,
+							@NonNull ProjectPath path) {
+						files.show(key, path);
+					}
+
+					@Override
+					public void onEmpty(@NonNull String key) {
+						uiManager.setToolbarTitle(
+								getString(R.string.nav_shaders), null, false);
+					}
+
+					@Override
+					public void onMoved(@NonNull String message) {
+						Message.show(MainActivity.this, message);
+					}
+				});
+		libraryStart.start(dataSource, show);
 	}
 
 	@Override
@@ -262,6 +328,12 @@ public class MainActivity extends AppCompatActivity {
 		if (files != null) {
 			files.destroy();
 		}
+		if (libraryStart != null) {
+			libraryStart.destroy();
+		}
+		if (looks != null) {
+			looks.destroy();
+		}
 		if (shaderManager != null) {
 			shaderManager.destroy();
 		}
@@ -306,36 +378,8 @@ public class MainActivity extends AppCompatActivity {
 					dataSource,
 					createShaderListListener());
 		}
-		return new NavigationDrawer(this, dataSource,
-				createShaderListListener(),
-				holds,
+		return new NavigationDrawer(this, holds,
 				new NavigationDrawer.Host() {
-					@Override
-					public void onAddShader(@NonNull String name) {
-						addShader(name.isEmpty() ? null : name);
-					}
-
-					@Override
-					public void onDuplicateShader(long id) {
-						if (id == shaderManager.getSelectedShaderId() &&
-								shaderManager.isModified()) {
-							shaderManager.saveShader();
-						}
-						shaderManager.duplicateShader(id);
-						shaderListManager.loadShadersAsync();
-					}
-
-					@Override
-					public void onDeleteShader(long id) {
-						boolean wasOpen = id == shaderManager.getSelectedShaderId();
-						shaderManager.deleteShader(id);
-						if (wasOpen) {
-							shaderManager.selectShader(
-									dataSource.shader.getFirstShaderId());
-						}
-						shaderListManager.loadShadersAsync();
-					}
-
 					@Override
 					public boolean onOpenFile(@NonNull String key,
 							@NonNull ProjectPath path, boolean single) {
@@ -477,6 +521,11 @@ public class MainActivity extends AppCompatActivity {
 			public void onSaved() {
 				uiManager.showNotice(getText(R.string.shader_saved),
 						SAVED_NOTICE_MILLIS);
+				ProjectFile file = files.file();
+				if (file != null) {
+					looks.saved(files.key(),
+							file.getProject().running());
+				}
 			}
 
 			@Override
@@ -629,13 +678,25 @@ public class MainActivity extends AppCompatActivity {
 		return new MainMenuManager.ShaderActions() {
 			@Override
 			public void onAddShader() {
-				// A file of a folder gets a new one beside it.
-				if (files != null && files.file() == open &&
-						shaderListManager instanceof NavigationDrawer drawer) {
-					drawer.showNew(files.key(), files.file().getPath());
+				if (shaderListManager instanceof NavigationDrawer drawer) {
+					// A shader is a file: of the library, or beside the
+					// file of another folder that is open.
+					if (files.file() == open) {
+						drawer.showNew(files.key(), files.file().getPath());
+					} else {
+						drawer.showNewShader();
+					}
 					return;
 				}
-				addShader(null);
+				long defaultId = ShaderEditorApp.preferences.getDefaultNewShader();
+				if (defaultId > 0 &&
+						dataSource.shader.getShader(defaultId) != null) {
+					shaderManager.selectCopy(defaultId);
+				} else {
+					shaderManager.createShaderFromResource(null,
+							R.raw.new_shader, R.drawable.thumbnail_new_shader,
+							1f);
+				}
 			}
 
 			@Override
@@ -723,24 +784,6 @@ public class MainActivity extends AppCompatActivity {
 				navigationManager.goToFaq();
 			}
 		};
-	}
-
-	// A copy of the default shader, else the template, named name if
-	// not null.
-	private void addShader(@Nullable String name) {
-		long defaultId = ShaderEditorApp.preferences.getDefaultNewShader();
-		if (defaultId > 0 && dataSource.shader.getShader(defaultId) != null) {
-			shaderManager.selectCopy(defaultId);
-			long id = shaderManager.getSelectedShaderId();
-			if (name != null && id > 0) {
-				dataSource.shader.updateShaderName(id, name);
-				shaderManager.shaderRenamed(id, name);
-				shaderListManager.loadShadersAsync();
-			}
-		} else {
-			shaderManager.createShaderFromResource(name,
-					R.raw.new_shader, R.drawable.thumbnail_new_shader, 1f);
-		}
 	}
 
 	private void showOpenTitle() {

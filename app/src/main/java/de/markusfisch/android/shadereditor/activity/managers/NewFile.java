@@ -36,6 +36,9 @@ final class NewFile {
 
 		/** A folder was made; show it. */
 		void onFolder(@NonNull String key, @NonNull ProjectPath path);
+
+		/** What the library keeps of a new shader is not kept, for reason. */
+		void onNotKept(@NonNull String reason);
 	}
 
 	private final Context context;
@@ -53,6 +56,9 @@ final class NewFile {
 	private ProjectPath folder;
 	// Counts the folders asked for; an answer for one before is void.
 	private int asked;
+	// The library's session, or null while it is not known.
+	@Nullable
+	private String library;
 
 	NewFile(@NonNull Context context, @NonNull ProjectHolds holds,
 			@NonNull Executor listings, @NonNull Handler handler,
@@ -95,12 +101,21 @@ final class NewFile {
 		});
 	}
 
+	/** Takes the library's session, whose shaders the library makes. */
+	void setLibrary(@NonNull String key) {
+		library = key;
+	}
+
 	void create(@NonNull NewSheet.Kind kind, @NonNull String name) {
 		OpenProject in = project;
 		String at = key;
 		ProjectParseResult<ProjectPath> parsed = ProjectPath.parse(
 				folder != null ? folder + "/" + name : name);
 		if (in == null || at == null || !parsed.isSuccess()) {
+			return;
+		} else if (kind == NewSheet.Kind.SHADER && folder == null &&
+				at.equals(library)) {
+			newShader(in, at, name);
 			return;
 		}
 		ProjectPath path = parsed.value();
@@ -135,6 +150,64 @@ final class NewFile {
 			} else {
 				created.onFile(at, path);
 			}
+		});
+	}
+
+	// A shader in the library's root is copied from the one chosen as
+	// the default for new shaders, else made from the built-in
+	// template, with its quality and picture.
+	// The template and its picture are read off the main thread.
+	private void newShader(@NonNull OpenProject in, @NonNull String at,
+			@NonNull String name) {
+		Context app = context.getApplicationContext();
+		try {
+			listings.execute(() -> {
+				byte[] builtIn;
+				try {
+					builtIn = Resources.loadRawResource(app,
+							R.raw.new_shader).getBytes(
+							StandardCharsets.UTF_8);
+				} catch (IOException e) {
+					builtIn = new byte[0];
+				}
+				byte[] picture = Resources.loadBitmapResource(app,
+						R.drawable.thumbnail_new_shader);
+				byte[] template = builtIn;
+				handler.post(() -> newShader(in, at, name, template,
+						picture));
+			});
+		} catch (RejectedExecutionException e) {
+			// The drawer is gone.
+		}
+	}
+
+	private void newShader(@NonNull OpenProject in, @NonNull String at,
+			@NonNull String name, @NonNull byte[] template,
+			@Nullable byte[] picture) {
+		if (sheet == null || !at.equals(key)) {
+			return;
+		}
+		holds.projects().newShader(name, context.getString(
+				R.string.nav_untitled), template, picture, made -> {
+			NewSheet shown = sheet;
+			if (shown == null || !at.equals(key)) {
+				return;
+			} else if (made.path() == null) {
+				shown.fail(context.getString(R.string.nav_cannot_create,
+						name, made.problem()));
+				return;
+			} else if (made.problem() != null) {
+				// Its quality and picture once more; the file is there.
+				holds.projects().dressNewShader(made.path(), template,
+						picture, problem -> {
+							if (problem != null) {
+								created.onNotKept(problem);
+							}
+						});
+			}
+			shown.dismiss();
+			// The library learns of the file as of one made elsewhere.
+			in.refresh(reread -> created.onFile(at, made.path()));
 		});
 	}
 
@@ -173,6 +246,11 @@ final class NewFile {
 		List<String> names = new ArrayList<>();
 		for (OpenProject.Item item : items.items()) {
 			names.add(item.path().getFileName());
+		}
+		// The library keeps the names of the folders its shaders share.
+		if (in == null && key != null && key.equals(library)) {
+			names.add("textures");
+			names.add("presets");
 		}
 		// Unsaved text of a file that is gone still has its name.
 		String prefix = in != null ? in + "/" : "";

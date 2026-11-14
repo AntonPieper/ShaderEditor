@@ -619,6 +619,14 @@ public class LibraryTest {
 		}
 	}
 
+	@Test
+	public void onlyFilesOfTheRootAreConvertedFromShaderToy() {
+		assertTrue(Library.convertsShaderToy(path("Ported.frag")));
+		assertTrue(Library.convertsShaderToy(path("notes.txt")));
+		assertFalse(Library.convertsShaderToy(path("Port/Image.frag")));
+		assertFalse(Library.convertsShaderToy(path("Port/Common.glsl")));
+	}
+
 	private static ProjectPath path(String path) {
 		return ProjectPath.parse(path).value();
 	}

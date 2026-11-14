@@ -60,12 +60,16 @@ interface SourceEditor {
 	 * is no edit. Edits go into document from then on. syntax is how
 	 * the language of its file is coloured, completed and indented.
 	 *
-	 * @param state what getDocumentState returned when it was shown
-	 *              before, or null
+	 * @param state     what getDocumentState returned when it was shown
+	 *                  before, or null
+	 * @param shaderToy whether text the user puts in that defines
+	 *                  mainImage and no main is converted from
+	 *                  ShaderToy's form, as the text of a shader of the
+	 *                  database is
 	 * @return false when this editor cannot show a document
 	 */
 	boolean showDocument(@NonNull Document document, @NonNull Syntax syntax,
-			@Nullable Object state);
+			@Nullable Object state, boolean shaderToy);
 
 	/**
 	 * Return what the view keeps of the document shown besides the

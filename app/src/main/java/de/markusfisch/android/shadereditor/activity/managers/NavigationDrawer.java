@@ -48,6 +48,7 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -62,8 +63,6 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.NavigationAdapter;
 import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
-import de.markusfisch.android.shadereditor.database.DataRecords.ShaderInfo;
-import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
@@ -74,6 +73,7 @@ import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
 import de.markusfisch.android.shadereditor.project.OpenProject;
+import de.markusfisch.android.shadereditor.project.Previews;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
@@ -87,13 +87,6 @@ import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
  */
 public class NavigationDrawer implements ShaderList {
 	public interface Host {
-		/** Create a database shader, named name unless it is empty. */
-		void onAddShader(@NonNull String name);
-
-		void onDuplicateShader(long id);
-
-		void onDeleteShader(long id);
-
 		void onOpenExample(@NonNull Samples.Sample sample);
 
 		/**
@@ -110,8 +103,6 @@ public class NavigationDrawer implements ShaderList {
 	private static final long SLIDE_MILLIS = 200;
 
 	private final AppCompatActivity activity;
-	private final DataSource dataSource;
-	private final ShaderListManager.Listener listener;
 	private final DrawerLayout drawerLayout;
 	private final View drawer;
 	private final Host host;
@@ -125,7 +116,6 @@ public class NavigationDrawer implements ShaderList {
 	private final View bar;
 	private final MaterialButton newButton;
 	private final View openFile;
-	private final LibrarySource library;
 	private final FoldersSource folders;
 	private final Projects projects;
 	private final ProjectHolds holds;
@@ -141,39 +131,53 @@ public class NavigationDrawer implements ShaderList {
 	private final ExecutorService listings =
 			Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
-	private final CoalescingReloadGate reloadGate = new CoalescingReloadGate();
+	// What the library's rows show besides names.
+	private final FolderSource.Looks libraryLooks;
 
 	// The list in view and the one the next level slides in with.
 	private RecyclerView list;
 	private RecyclerView nextList;
-	private Level level = Level.LIBRARY;
+	private Level level = Level.FOLDERS;
 	private Listing listing;
 	// The file in the editor, the file that runs and the files it uses.
 	private Item.Place open;
 	private Item.Place running;
 	private Set<Item.Place> used = Collections.emptySet();
-	private boolean loaded;
+	// The library's session, or null until the start opened it.
+	@Nullable
+	private String libraryKey;
 	// The folder opened before whose levels are shown, or null.
 	private FolderSource folder;
 	@Nullable
 	private NewSheet sheet;
 
 	public NavigationDrawer(@NonNull AppCompatActivity activity,
-			@NonNull DataSource dataSource,
-			@NonNull ShaderListManager.Listener listener,
 			@NonNull ProjectHolds holds,
 			@NonNull Host host) {
 		this.activity = activity;
-		this.dataSource = dataSource;
-		this.listener = listener;
 		this.host = host;
-		library = new LibrarySource(activity, dataSource, listener, host);
-		sources.put(Level.LIBRARY, library);
 		sources.put(Level.EXAMPLES, new ExamplesSource(activity, host));
-		folders = new FoldersSource(activity, library, this::remove);
+		folders = new FoldersSource(activity, this::remove);
 		sources.put(Level.FOLDERS, folders);
 		this.holds = holds;
 		projects = holds.projects();
+		libraryLooks = new FolderSource.Looks() {
+			@Nullable
+			@Override
+			public byte[] picture(@NonNull ProjectPath path) {
+				Previews.Picture picture = projects.library().previews()
+						.get(path);
+				return picture != null ? picture.png() : null;
+			}
+
+			@Nullable
+			@Override
+			public ProjectPath wallpaper() {
+				return projects.library().wallpaperFile(
+						projects.wallpaper().current(),
+						ShaderEditorApp.preferences.getWallpaperShader());
+			}
+		};
 		pickFolder = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(),
 				result -> onPicked(result, true));
@@ -229,6 +233,14 @@ public class NavigationDrawer implements ShaderList {
 						reread(key, path);
 						go(Item.Place.file(key, path + "/-").level());
 						drawerLayout.openDrawer(drawer);
+					}
+
+					@Override
+					public void onNotKept(@NonNull String reason) {
+						if (isActivityAlive()) {
+							tell(activity.getString(
+									R.string.library_not_kept, reason));
+						}
 					}
 				});
 
@@ -311,7 +323,8 @@ public class NavigationDrawer implements ShaderList {
 		Level restored = state != null
 				? Level.of(state.getString(LEVEL))
 				: null;
-		if (restored != null) {
+		// The database's list is no level any more.
+		if (restored != null && !restored.equals(Level.LIBRARY)) {
 			level = restored;
 		}
 		activity.getSavedStateRegistry().registerSavedStateProvider(STATE,
@@ -329,18 +342,32 @@ public class NavigationDrawer implements ShaderList {
 		drawerLayout.openDrawer(drawer);
 	}
 
+	/**
+	 * Takes the library's session: the row Shaders leads into it, and
+	 * the drawer opens there while no other file is in the editor.
+	 */
+	public void setLibrary(@NonNull String key) {
+		libraryKey = key;
+		newFile.setLibrary(key);
+		loadRecent();
+		if (!drawerLayout.isDrawerVisible(drawer)) {
+			go(home());
+		}
+	}
+
+	// The library is listed like any folder; this reads it again.
 	@Override
 	public void loadShadersAsync() {
-		if (executor.isShutdown() || !reloadGate.request()) {
-			return;
+		loadRecent();
+		if (folder != null && folder.key().equals(libraryKey)) {
+			folder.forget();
 		}
-		submitLoad();
 	}
 
 	@Override
 	public void setSelectedShaderId(long id) {
-		// What runs is what is open while shaders come from the database.
-		open = running = id > 0 ? LibrarySource.place(id) : null;
+		// Only a shader that was not moved is still in the database.
+		open = running = null;
 		used = Collections.emptySet();
 		if (listing != null) {
 			refresh();
@@ -372,11 +399,24 @@ public class NavigationDrawer implements ShaderList {
 		}
 	}
 
+	/** Shows the New sheet for a shader in the library's root. */
+	public void showNewShader() {
+		if (libraryKey != null) {
+			showNew(libraryKey, null, activity.getString(R.string.nav_shaders),
+					NewSheet.Kind.SHADER);
+		}
+	}
+
 	/**
 	 * Shows the New sheet for the folder of the file at path of the
-	 * folder opened before with key.
+	 * folder opened before with key; for a file of the library, at the
+	 * library's root, where its shaders are.
 	 */
 	public void showNew(@NonNull String key, @NonNull ProjectPath path) {
+		if (key.equals(libraryKey)) {
+			showNewShader();
+			return;
+		}
 		Level in = Item.Place.file(key, path.toString()).level();
 		String folder = in.path();
 		Recent known = folders.find(key);
@@ -456,25 +496,18 @@ public class NavigationDrawer implements ShaderList {
 		return recyclerView;
 	}
 
-	private void submitLoad() {
-		try {
-			executor.execute(() -> {
-				library.loadPlaceholder();
-				List<ShaderInfo> shaders = dataSource.shader.getShaders(false);
-				handler.post(() -> onShadersLoaded(shaders));
-			});
-		} catch (RejectedExecutionException e) {
-			reloadGate.abort();
-		}
-	}
-
 	private void loadRecent() {
+		String library = libraryKey;
 		try {
 			executor.execute(() -> {
 				List<ProjectSessions.Recent> recent =
 						projects.sessions().recent();
+				int shaders = library != null
+						? count(projects.library().folder())
+						: -1;
 				handler.post(() -> {
 					folders.setRecent(recent);
+					folders.setLibrary(library, shaders);
 					if (level.equals(Level.FOLDERS)) {
 						refresh();
 					}
@@ -625,6 +658,7 @@ public class NavigationDrawer implements ShaderList {
 						}
 					},
 					folderActions::act,
+					key.equals(libraryKey) ? libraryLooks : null,
 					() -> {
 				if (folder != null && folder.key().equals(level.key())) {
 					refresh();
@@ -634,25 +668,16 @@ public class NavigationDrawer implements ShaderList {
 		return folder;
 	}
 
-	private void onShadersLoaded(@NonNull List<ShaderInfo> shaders) {
-		if (reloadGate.finish()) {
-			if (!executor.isShutdown() && isActivityAlive()) {
-				submitLoad();
-			} else {
-				reloadGate.abort();
-			}
-			return;
+	// How many files the folder holds; off the main thread.
+	private static int count(@NonNull File folder) {
+		int count = 0;
+		File[] files = folder.listFiles();
+		for (File file : files != null ? files : new File[0]) {
+			count += file.isFile() && !file.getName().startsWith(".")
+					? 1
+					: 0;
 		}
-		if (!isActivityAlive()) {
-			return;
-		}
-		library.setShaders(shaders);
-		loaded = true;
-		listener.onShadersLoaded(shaders);
-		if (shaders.isEmpty()) {
-			listener.onAllShadersDeleted();
-		}
-		refresh();
+		return count;
 	}
 
 	private boolean isActivityAlive() {
@@ -661,7 +686,9 @@ public class NavigationDrawer implements ShaderList {
 
 	@NonNull
 	private Level home() {
-		return open != null ? open.level() : Level.LIBRARY;
+		return open != null
+				? open.level()
+				: libraryKey != null ? Level.root(libraryKey) : Level.FOLDERS;
 	}
 
 	private void refresh() {
@@ -721,7 +748,7 @@ public class NavigationDrawer implements ShaderList {
 
 	private void show(@NonNull RecyclerView list) {
 		adapter(list).setItems(Item.of(listing, level, open, running, used),
-				loaded, listing.notice());
+				true, listing.notice());
 	}
 
 	private void showHeader() {
@@ -776,7 +803,7 @@ public class NavigationDrawer implements ShaderList {
 			return folderSource(key).at(level);
 		}
 		Source source = sources.get(level);
-		return source != null ? source : library;
+		return source != null ? source : folders;
 	}
 
 	private void tap(@NonNull Item item) {
@@ -798,13 +825,12 @@ public class NavigationDrawer implements ShaderList {
 		}
 	}
 
-	// New in the library makes a database shader; in a folder, a file
-	// or folder there.
+	// New at the top makes a shader in the library; in a folder, a
+	// file or folder there.
 	private void showNew() {
 		String key = level.key();
 		if (key == null) {
-			sheet = newSheet(NewSheet.Kind.SHADER);
-			sheet.showLibrary(activity.getString(R.string.nav_shaders));
+			showNewShader();
 			return;
 		}
 		String path = level.path();
@@ -829,10 +855,6 @@ public class NavigationDrawer implements ShaderList {
 					@NonNull String name) {
 				if (newFile.isShowing()) {
 					newFile.create(kind, name);
-				} else if (sheet != null) {
-					sheet.dismiss();
-					host.onAddShader(name);
-					close();
 				}
 			}
 

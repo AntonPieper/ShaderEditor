@@ -53,11 +53,9 @@ public final class NewSheet {
 	private final TextView location;
 	private final View create;
 	private final String untitled;
-	// The names in the folder, or null while they are read or in the
-	// library, where names may repeat and may be left out.
+	// The names in the folder, or null while they are read.
 	@Nullable
 	private Naming naming;
-	private boolean inFolder;
 	private boolean ready;
 	// Whether the name is the one suggested, which follows the kind.
 	private boolean suggested = true;
@@ -133,26 +131,13 @@ public final class NewSheet {
 		}
 	}
 
-	/** Creates a database shader in the library, which takes any name. */
-	public void showLibrary(@NonNull String where) {
-		inFolder = false;
-		naming = null;
-		ready = true;
-		kinds.setVisibility(View.GONE);
-		location.setText(where);
-		fill("");
-		show();
-	}
-
 	/**
 	 * Creates in a folder, at where, once its names are known through
 	 * {@link #setNames}.
 	 */
 	public void showFolder(@NonNull String where) {
-		inFolder = true;
 		naming = null;
 		ready = false;
-		kinds.setVisibility(View.VISIBLE);
 		location.setText(where);
 		check();
 		show();
@@ -187,9 +172,6 @@ public final class NewSheet {
 
 	@NonNull
 	private Kind kind() {
-		if (!inFolder) {
-			return Kind.SHADER;
-		}
 		int id = kinds.getCheckedButtonId();
 		return id == R.id.new_folder
 				? Kind.FOLDER
@@ -241,12 +223,12 @@ public final class NewSheet {
 
 	private void check() {
 		String name = nameView.getText().toString().trim();
-		Naming.Problem problem = !inFolder || naming == null
+		Naming.Problem problem = naming == null
 				? Naming.Problem.NONE
 				: naming.check(name);
 		String says = describe(context, problem, name);
 		nameLayout.setError(says != null && !says.isEmpty() ? says : null);
 		create.setEnabled(ready && problem == Naming.Problem.NONE &&
-				(!inFolder || !name.isEmpty()));
+				!name.isEmpty());
 	}
 }
