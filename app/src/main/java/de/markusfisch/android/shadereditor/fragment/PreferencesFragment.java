@@ -22,6 +22,7 @@ import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceGroup;
 
+import de.markusfisch.android.shadereditor.BuildConfig;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
@@ -89,6 +90,25 @@ public class PreferencesFragment
 	public void onCreatePreferences(Bundle state, String rootKey) {
 		setPreferencesFromResource(R.xml.preferences, rootKey);
 		wireImportExport();
+		if (BuildConfig.DEBUG) {
+			addCompletionEmphasis();
+		}
+	}
+
+	private void addCompletionEmphasis() {
+		Preference font = findPreference("font");
+		if (font == null || font.getParent() == null) {
+			return;
+		}
+		ListPreference emphasis = new ListPreference(requireContext());
+		emphasis.setKey(Preferences.COMPLETION_EMPHASIS);
+		emphasis.setTitle("Completion emphasis (debug)");
+		emphasis.setDialogTitle("Completion emphasis (debug)");
+		emphasis.setEntries(new CharSequence[]{"Bold", "Outline"});
+		emphasis.setEntryValues(new CharSequence[]{"bold", "outline"});
+		emphasis.setDefaultValue("bold");
+		emphasis.setIconSpaceReserved(false);
+		font.getParent().addPreference(emphasis);
 	}
 
 	@Override
