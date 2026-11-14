@@ -38,6 +38,10 @@ public class ShaderViewManager {
 	@NonNull
 	private float[] qualityValues;
 	private float quality = 1f;
+	// Whether the run mode shows the picture behind the code, and
+	// whether there is a picture to show.
+	private boolean visible = true;
+	private boolean picture = true;
 	private ArrayAdapter<CharSequence> adapter;
 	@Nullable
 	private CharSequence frameRate;
@@ -54,14 +58,16 @@ public class ShaderViewManager {
 		initShaderView();
 	}
 
+	// The GL thread follows the screen also while there is no picture,
+	// so that one shown later draws.
 	public void onPause() {
-		if (shaderView.getVisibility() == View.VISIBLE) {
+		if (visible) {
 			shaderView.onPause();
 		}
 	}
 
 	public void onResume() {
-		if (shaderView.getVisibility() == View.VISIBLE) {
+		if (visible) {
 			shaderView.onResume();
 		}
 	}
@@ -69,16 +75,38 @@ public class ShaderViewManager {
 	public void setShader(@NonNull String text, float quality) {
 		setQuality(quality);
 		shaderView.setShader(text, quality);
+		showPicture(true);
 	}
 
 	/** Run a prepared project at quality. */
 	public void setPlan(@NonNull Preparation preparation, float quality) {
 		setQuality(quality);
 		shaderView.setPlan(preparation, quality);
+		showPicture(true);
+	}
+
+	/**
+	 * Show no picture until the next shader or plan is set, as when
+	 * what is open runs nothing; the engine cannot clear its picture.
+	 */
+	public void showNothing() {
+		showPicture(false);
 	}
 
 	public void setVisibility(boolean visible) {
-		shaderView.setVisibility(visible ? View.VISIBLE : View.GONE);
+		this.visible = visible;
+		apply();
+	}
+
+	private void showPicture(boolean picture) {
+		if (this.picture != picture) {
+			this.picture = picture;
+			apply();
+		}
+	}
+
+	private void apply() {
+		shaderView.setVisibility(visible && picture ? View.VISIBLE : View.GONE);
 	}
 
 	// The brightest the picture may be, of 255 (PictureLimit).
