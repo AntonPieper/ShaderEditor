@@ -78,12 +78,12 @@ public class FileKindTest {
 		assertEquals("PNG", FileKind.picture(head));
 		assertArrayEquals(new byte[]{1, 2}, files.head(path("tiny"), 8));
 		assertNull(files.head(path("absent"), 8));
-		// A store that cannot read part of a file reads it.
-		MemoryProjectFiles memory = new MemoryProjectFiles();
-		memory.put("a.frag", large);
-		assertEquals("PNG", FileKind.picture(memory.head(path("a.frag"),
-				FileKind.HEAD)));
-		assertNull(memory.head(path("absent"), 8));
+		// A store that cannot stop early answers only for a file that
+		// short: nothing larger is read to look at its beginning.
+		ProjectFiles plain = path -> files.read(path);
+		assertArrayEquals(new byte[]{1, 2}, plain.head(path("tiny"), 8));
+		assertNull(plain.head(path("large.frag"), FileKind.HEAD));
+		assertNull(plain.head(path("absent"), 8));
 	}
 
 	private static byte[] bytes(String text) {

@@ -51,7 +51,7 @@ public class FileTextsTest {
 
 	@Test
 	public void opensEveryLineEndAndSavesLineFeeds() {
-		store.put("main.glsl", "﻿a\r\nb\rc\nd");
+		store.put("main.frag", "﻿a\r\nb\rc\nd");
 		document = new Document(opened(MAIN, ProjectFiles.UNKNOWN));
 		assertEquals("a\nb\nc\nd", document.text().toString());
 		assertEquals(4, document.text().lineCount());
@@ -59,14 +59,14 @@ public class FileTextsTest {
 		document.replace(0, 1, Text.of("A"));
 		save(document);
 		assertTrue(saves.get(0).outcome() instanceof Saved);
-		assertEquals("A\nb\nc\nd", store.text("main.glsl"));
+		assertEquals("A\nb\nc\nd", store.text("main.frag"));
 	}
 
 	@Test
 	public void refusesFileOverLimitWithoutReadingIt() {
-		store.put("main.glsl", new byte[(int) Document.MAX_BYTES + 1]);
+		store.put("main.frag", new byte[(int) Document.MAX_BYTES + 1]);
 		Opening opening = open(MAIN, Document.MAX_BYTES + 1);
-		assertEquals("main.glsl is larger than 16 MiB",
+		assertEquals("main.frag is larger than 16 MiB",
 				((Unopened) opening).reason());
 		assertEquals(0, store.reads);
 
@@ -77,7 +77,7 @@ public class FileTextsTest {
 
 	@Test
 	public void saveWritesTextCapturedBeforeLaterEdit() {
-		store.put("main.glsl", "one");
+		store.put("main.frag", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of(" two"));
 		texts.save(MAIN, document.text(), document.state(), base,
@@ -86,13 +86,13 @@ public class FileTextsTest {
 		worker.run();
 		main.run();
 
-		assertEquals("one two", store.text("main.glsl"));
+		assertEquals("one two", store.text("main.frag"));
 		assertTrue(document.isModified());
 	}
 
 	@Test
 	public void undoBackToSavedTextIsUnmodified() {
-		store.put("main.glsl", "one");
+		store.put("main.frag", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of(" two"));
 		texts.save(MAIN, document.text(), document.state(), base,
@@ -107,7 +107,7 @@ public class FileTextsTest {
 
 	@Test
 	public void failedSaveKeepsDocumentModifiedAndSaysWhy() {
-		store.put("main.glsl", "one");
+		store.put("main.frag", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of(" two"));
 		store.failure = "the disk is full";
@@ -115,27 +115,27 @@ public class FileTextsTest {
 
 		assertEquals(new Failed("the disk is full"), saves.get(0).outcome());
 		assertTrue(document.isModified());
-		assertEquals("one", store.text("main.glsl"));
+		assertEquals("one", store.text("main.frag"));
 	}
 
 	@Test
 	public void changeElsewhereIsAConflictThatKeepsTheText() {
-		store.put("main.glsl", "one");
+		store.put("main.frag", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of(" two"));
-		store.put("main.glsl", "elsewhere");
+		store.put("main.frag", "elsewhere");
 		save(document);
 
 		assertTrue(saves.get(0).outcome() instanceof Conflict);
 		assertEquals(store.read(MAIN).revision(),
 				saves.get(0).found().revision());
 		assertTrue(document.isModified());
-		assertEquals("elsewhere", store.text("main.glsl"));
+		assertEquals("elsewhere", store.text("main.frag"));
 	}
 
 	@Test
 	public void journalIsReopenedAsUnsavedTextAndStaysForMainToRemove() {
-		store.put("main.glsl", "one");
+		store.put("main.frag", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(3, 3, Text.of("\r\ntwo"));
 		assertTrue(new Journal(drafts).own().snapshot(new Journal.Header(MAIN,
@@ -153,7 +153,7 @@ public class FileTextsTest {
 		worker.run();
 		main.run();
 		assertTrue(saves.get(0).outcome() instanceof Saved);
-		assertEquals("one\ntwo", store.text("main.glsl"));
+		assertEquals("one\ntwo", store.text("main.frag"));
 		assertEquals("one\ntwo", new Journal(drafts).read(MAIN).text()
 				.toString());
 	}
@@ -175,15 +175,15 @@ public class FileTextsTest {
 		assertTrue(saves.get(0).outcome() instanceof Saved);
 		assertTrue("largest chunk " + store.largestChunk,
 				store.largestChunk <= 64 * 1024);
-		assertEquals(sb.toString(), store.text("main.glsl"));
+		assertEquals(sb.toString(), store.text("main.frag"));
 	}
 
 	@Test
 	public void rereadGivesAChangedFileThatSavesOverItsRevision() {
-		store.put("main.glsl", "one");
+		store.put("main.frag", "one");
 		document = new Document(opened(MAIN, 3));
 		assertEquals(FileTexts.Found.SAME, reread(MAIN).found());
-		store.put("main.glsl", "two");
+		store.put("main.frag", "two");
 
 		FileTexts.Checked changed = reread(MAIN);
 
@@ -194,7 +194,7 @@ public class FileTextsTest {
 		document.replace(0, 3, Text.of("three"));
 		save(document);
 		assertTrue(saves.get(0).outcome() instanceof Saved);
-		assertEquals("three", store.text("main.glsl"));
+		assertEquals("three", store.text("main.frag"));
 	}
 
 	@Test
@@ -227,33 +227,33 @@ public class FileTextsTest {
 
 	@Test
 	public void rereadTellsAFileThatIsNotTextAnymore() {
-		store.put("main.glsl", "one");
+		store.put("main.frag", "one");
 		document = new Document(opened(MAIN, 3));
-		store.put("main.glsl", new byte[]{0});
+		store.put("main.frag", new byte[]{0});
 
 		assertEquals(FileTexts.Found.NOT_TEXT, reread(MAIN).found());
 	}
 
 	@Test
 	public void rereadWithoutTakingItsRevisionKeepsTheConflict() {
-		store.put("main.glsl", "one");
+		store.put("main.frag", "one");
 		document = new Document(opened(MAIN, 3));
-		store.put("main.glsl", "two");
+		store.put("main.frag", "two");
 		assertEquals("two", reread(MAIN).text().toString());
 
 		document.replace(0, 3, Text.of("mine"));
 		save(document);
 
 		assertTrue(saves.get(0).outcome() instanceof Conflict);
-		assertEquals("two", store.text("main.glsl"));
+		assertEquals("two", store.text("main.frag"));
 	}
 
 	@Test
 	public void compareTellsWhenStorageHoldsExactlyTheUnsavedText() {
-		store.put("main.glsl", "one");
+		store.put("main.frag", "one");
 		document = new Document(opened(MAIN, 3));
 		document.replace(0, 3, Text.of("mine\n\u00e9"));
-		store.put("main.glsl", "theirs");
+		store.put("main.frag", "theirs");
 		FileTexts.Checked[] checked = {null};
 
 		texts.compare(MAIN, base, document.text(), c -> checked[0] = c);
@@ -262,7 +262,7 @@ public class FileTextsTest {
 		assertEquals(FileTexts.Found.CHANGED, checked[0].found());
 		assertFalse(checked[0].equal());
 
-		store.put("main.glsl", "mine\n\u00e9");
+		store.put("main.frag", "mine\n\u00e9");
 		texts.compare(MAIN, base, document.text(), c -> checked[0] = c);
 		worker.run();
 		main.run();
@@ -302,7 +302,7 @@ public class FileTextsTest {
 
 	@Test
 	public void journalOfReloadedTextGoesOnlyWithAHistoryOrWhenStored() {
-		store.put("main.glsl", "stored");
+		store.put("main.frag", "stored");
 		document = new Document(opened(MAIN, 6));
 		document.replace(0, 6, Text.of("mine"));
 		Journal journal = new Journal(drafts).own();
@@ -324,7 +324,7 @@ public class FileTextsTest {
 		assertEquals("mine", journal.read(MAIN).text().toString());
 
 		// With the history that holds it, or once storage holds it.
-		store.put("main.glsl", "mine");
+		store.put("main.frag", "mine");
 		texts.journal(MAIN, remove, done::add);
 		worker.run();
 		main.run();

@@ -93,16 +93,16 @@ public class DriverLogTest {
 	}
 
 	private static SourceMap nestedIncludeMap() {
-		SourceLocation includeA = new SourceLocation(path("main.glsl"), 2, null);
+		SourceLocation includeA = new SourceLocation(path("main.frag"), 2, null);
 		SourceLocation includeB = new SourceLocation(path("lib/a.glsl"), 1,
 				includeA);
 		return new SourceMap(List.of(
-				new SourceLocation(path("main.glsl"), 1, null),
+				new SourceLocation(path("main.frag"), 1, null),
 				new SourceLocation(path("lib/b.glsl"), 1, includeB),
 				new SourceLocation(path("lib/b.glsl"), 2, includeB),
 				new SourceLocation(path("lib/a.glsl"), 2, includeA),
-				new SourceLocation(path("main.glsl"), 3, null),
-				new SourceLocation(path("main.glsl"), 4, null),
+				new SourceLocation(path("main.frag"), 3, null),
+				new SourceLocation(path("main.frag"), 4, null),
 				SourceLocation.GENERATED));
 	}
 

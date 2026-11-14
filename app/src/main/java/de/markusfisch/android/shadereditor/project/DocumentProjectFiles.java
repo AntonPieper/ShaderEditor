@@ -47,7 +47,7 @@ public final class DocumentProjectFiles implements ProjectFiles {
 			sb.append(c == '/' || c == '\\' || c == '"' ||
 					Character.isISOControl(c) ? '_' : c);
 		}
-		String text = sb.length() > 0 ? sb.toString() : "shader.glsl";
+		String text = sb.length() > 0 ? sb.toString() : "shader" + ShaderLanguage.PASS;
 		ProjectParseResult<ProjectPath> parsed = ProjectPath.parse(text);
 		return parsed.isSuccess() && parsed.value().toString().equals(text)
 				? parsed.value()

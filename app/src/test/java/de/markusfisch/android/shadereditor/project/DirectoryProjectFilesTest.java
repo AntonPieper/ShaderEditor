@@ -51,23 +51,23 @@ public class DirectoryProjectFilesTest {
 
 	@Test
 	public void readsContentAbsentAndFailed() throws IOException {
-		put("main.glsl", "void main() {}");
+		put("main.frag", "void main() {}");
 		assertTrue(new File(root, "folder").mkdir());
-		Content content = (Content) files.read(path("main.glsl"));
+		Content content = (Content) files.read(path("main.frag"));
 		assertEquals("void main() {}", text(content.bytes()));
 		assertTrue(content.revision().startsWith("sha256:"));
 		assertNull(files.read(path("missing.glsl")));
-		assertNull(files.read(path("missing/main.glsl")));
-		assertNull(files.read(path("main.glsl/main.glsl")));
+		assertNull(files.read(path("missing/main.frag")));
+		assertNull(files.read(path("main.frag/main.frag")));
 		assertFailed("it is a folder", files.read(path("folder")));
 	}
 
 	@Test
 	public void unreadableFileFails() throws IOException {
-		File file = put("main.glsl", "void main() {}");
+		File file = put("main.frag", "void main() {}");
 		assertTrue(file.setReadable(false));
 		try {
-			assertTrue(files.read(path("main.glsl")) instanceof Failed);
+			assertTrue(files.read(path("main.frag")) instanceof Failed);
 		} finally {
 			assertTrue(file.setReadable(true));
 		}
@@ -77,19 +77,19 @@ public class DirectoryProjectFilesTest {
 	public void missingRootFails() {
 		files = new DirectoryProjectFiles(new File(root, "gone"));
 		assertFailed("the project folder is missing",
-				files.read(path("main.glsl")));
+				files.read(path("main.frag")));
 		assertFailed("the project folder is missing", files.list(null));
-		assertRefused(Refusal.FAILED, files.write(path("main.glsl"),
+		assertRefused(Refusal.FAILED, files.write(path("main.frag"),
 				bytes("x"), null));
 	}
 
 	@Test
 	public void boundedReadStopsAtTheLimit() throws IOException {
-		put("main.glsl", "x".repeat(100_000));
+		put("main.frag", "x".repeat(100_000));
 
 		assertEquals(new Failed(ProjectFiles.TOO_LARGE),
-				files.read(path("main.glsl"), 1000));
-		assertEquals(100_000, ((Content) files.read(path("main.glsl"),
+				files.read(path("main.frag"), 1000));
+		assertEquals(100_000, ((Content) files.read(path("main.frag"),
 				100_000)).bytes().length);
 	}
 
@@ -107,25 +107,25 @@ public class DirectoryProjectFilesTest {
 
 	@Test
 	public void listsEntriesWithVersionControlFolders() throws IOException {
-		put("main.glsl", "");
+		put("main.frag", "");
 		put("assets/noise.png", "");
 		put(".git/config", "");
-		assertEquals(Set.of("main.glsl", "assets/", ".git/"), names(null));
+		assertEquals(Set.of("main.frag", "assets/", ".git/"), names(null));
 		assertEquals(Set.of("noise.png"), names("assets"));
 		assertNull(files.list(path("missing")));
-		assertFailed("it is not a folder", files.list(path("main.glsl")));
+		assertFailed("it is not a folder", files.list(path("main.frag")));
 		assertFalse(ProjectPath.parse(".git/config").isSuccess());
 	}
 
 	@Test
 	public void listsSizeAndTimeOfLastChange() throws IOException {
-		assertTrue(put("main.glsl", "void main() {}").setLastModified(
+		assertTrue(put("main.frag", "void main() {}").setLastModified(
 				1_700_000_000_000L));
 		put("lib/common.glsl", "");
 
 		Entries entries = (Entries) files.list(null);
 
-		assertEquals(Set.of(new Entry("main.glsl", false, 14,
+		assertEquals(Set.of(new Entry("main.frag", false, 14,
 						1_700_000_000_000L),
 				new Entry("lib", true, ProjectFiles.UNKNOWN,
 						new File(root, "lib").lastModified())),
@@ -134,12 +134,12 @@ public class DirectoryProjectFilesTest {
 
 	@Test
 	public void offersWhatTheFileSystemAllows() throws IOException {
-		put("main.glsl", "");
+		put("main.frag", "");
 		File locked = put("locked/a.glsl", "").getParentFile();
 		assertTrue(locked.setWritable(false));
 		try {
 			assertEquals(new Offers(true, false, true, true, true),
-					files.offers(path("main.glsl")));
+					files.offers(path("main.frag")));
 			assertEquals(new Offers(false, true, false, false, false),
 					files.offers(null));
 			assertEquals(new Offers(true, false, false, false, false),
@@ -169,37 +169,37 @@ public class DirectoryProjectFilesTest {
 
 	@Test
 	public void streamsWhatASourceWrites() throws IOException {
-		put("main.glsl", "old");
-		Change change = files.write(path("main.glsl"), out -> {
+		put("main.frag", "old");
+		Change change = files.write(path("main.frag"), out -> {
 			for (int i = 0; i < 3; ++i) {
 				out.write(bytes("line " + i + "\n"));
 			}
-		}, revision("main.glsl"));
-		assertEquals(new Done(revision("main.glsl")), change);
-		assertEquals("line 0\nline 1\nline 2\n", read("main.glsl"));
+		}, revision("main.frag"));
+		assertEquals(new Done(revision("main.frag")), change);
+		assertEquals("line 0\nline 1\nline 2\n", read("main.frag"));
 
-		assertRefused(Refusal.FAILED, files.write(path("main.glsl"), out -> {
+		assertRefused(Refusal.FAILED, files.write(path("main.frag"), out -> {
 			out.write(bytes("half"));
 			throw new IOException("the text is gone");
-		}, revision("main.glsl")));
-		assertEquals("line 0\nline 1\nline 2\n", read("main.glsl"));
-		assertEquals(Set.of("main.glsl"), onDisk(""));
+		}, revision("main.frag")));
+		assertEquals("line 0\nline 1\nline 2\n", read("main.frag"));
+		assertEquals(Set.of("main.frag"), onDisk(""));
 	}
 
 	@Test
 	public void staleRevisionIsAConflictThatChangesNothing()
 			throws IOException {
-		put("main.glsl", "old");
-		String seen = revision("main.glsl");
-		put("main.glsl", "external");
-		assertRefused(Refusal.CONFLICT, files.write(path("main.glsl"),
+		put("main.frag", "old");
+		String seen = revision("main.frag");
+		put("main.frag", "external");
+		assertRefused(Refusal.CONFLICT, files.write(path("main.frag"),
 				bytes("mine"), seen));
-		assertRefused(Refusal.CONFLICT, files.write(path("main.glsl"),
+		assertRefused(Refusal.CONFLICT, files.write(path("main.frag"),
 				bytes("mine"), null));
-		assertEquals("external", read("main.glsl"));
+		assertEquals("external", read("main.frag"));
 
-		assertTrue(new File(root, "main.glsl").delete());
-		assertRefused(Refusal.CONFLICT, files.write(path("main.glsl"),
+		assertTrue(new File(root, "main.frag").delete());
+		assertRefused(Refusal.CONFLICT, files.write(path("main.frag"),
 				bytes("mine"), seen));
 		assertRefused(Refusal.CONFLICT, files.write(path("new/a.glsl"),
 				bytes("mine"), seen));
@@ -209,17 +209,17 @@ public class DirectoryProjectFilesTest {
 	@Test
 	public void changeMadeWhileWritingIsAConflictThatChangesNothing()
 			throws IOException {
-		put("main.glsl", "old");
-		String seen = revision("main.glsl");
+		put("main.frag", "old");
+		String seen = revision("main.frag");
 
-		assertRefused(Refusal.CONFLICT, files.write(path("main.glsl"),
+		assertRefused(Refusal.CONFLICT, files.write(path("main.frag"),
 				out -> {
-					put("main.glsl", "external");
+					put("main.frag", "external");
 					out.write(bytes("mine"));
 				}, seen));
 
-		assertEquals("external", read("main.glsl"));
-		assertEquals(Set.of("main.glsl"), onDisk(""));
+		assertEquals("external", read("main.frag"));
+		assertEquals(Set.of("main.frag"), onDisk(""));
 		assertRefused(Refusal.CONFLICT, files.write(path("new.glsl"),
 				out -> {
 					put("new.glsl", "external");
@@ -277,11 +277,11 @@ public class DirectoryProjectFilesTest {
 
 	@Test
 	public void renamesToADifferentCase() throws IOException {
-		put("main.glsl", "m");
-		assertEquals(new Done(null), files.rename(path("main.glsl"),
-				path("Main.glsl")));
-		assertEquals(Set.of("Main.glsl"), onDisk(""));
-		assertEquals("m", read("Main.glsl"));
+		put("main.frag", "m");
+		assertEquals(new Done(null), files.rename(path("main.frag"),
+				path("Main.frag")));
+		assertEquals(Set.of("Main.frag"), onDisk(""));
+		assertEquals("m", read("Main.frag"));
 	}
 
 	@Test
@@ -300,20 +300,20 @@ public class DirectoryProjectFilesTest {
 
 	@Test
 	public void namesDifferingInCaseAreDifferentPaths() throws IOException {
-		put("Main.glsl", "upper");
-		assertNull(files.read(path("main.glsl")));
-		assertEquals(Set.of("Main.glsl"), names(null));
-		Change change = files.write(path("main.glsl"), bytes("lower"), null);
+		put("Main.frag", "upper");
+		assertNull(files.read(path("main.frag")));
+		assertEquals(Set.of("Main.frag"), names(null));
+		Change change = files.write(path("main.frag"), bytes("lower"), null);
 		if (foldsCase()) {
 			assertRefused(Refusal.EXISTS, change);
-			assertEquals(Set.of("Main.glsl"), onDisk(""));
-			assertRefused(Refusal.EXISTS, files.createFolder(path("MAIN.glsl")));
+			assertEquals(Set.of("Main.frag"), onDisk(""));
+			assertRefused(Refusal.EXISTS, files.createFolder(path("MAIN.frag")));
 		} else {
 			assertTrue(change instanceof Done);
-			assertEquals("lower", read("main.glsl"));
-			assertEquals(Set.of("Main.glsl", "main.glsl"), onDisk(""));
+			assertEquals("lower", read("main.frag"));
+			assertEquals(Set.of("Main.frag", "main.frag"), onDisk(""));
 		}
-		assertEquals("upper", read("Main.glsl"));
+		assertEquals("upper", read("Main.frag"));
 	}
 
 	@Test
@@ -349,24 +349,24 @@ public class DirectoryProjectFilesTest {
 
 	@Test
 	public void refusesLinksInsideTheRoot() throws IOException {
-		put("main.glsl", "main");
+		put("main.frag", "main");
 		put("lib/a.glsl", "a");
-		link("alias.glsl", new File(root, "main.glsl"));
+		link("alias.glsl", new File(root, "main.frag"));
 		link("folder", new File(root, "lib"));
 		assertFailed("alias.glsl is a link", files.read(path("alias.glsl")));
 		assertFailed("folder is a link", files.read(path("folder/a.glsl")));
-		assertEquals(Set.of("main.glsl", "lib/"), names(null));
+		assertEquals(Set.of("main.frag", "lib/"), names(null));
 		assertRefused(Refusal.FAILED, files.write(path("alias.glsl"),
-				bytes("x"), revision("main.glsl")));
+				bytes("x"), revision("main.frag")));
 		assertRefused(Refusal.FAILED, files.write(path("folder/new.glsl"),
 				bytes("x"), null));
-		assertEquals("main", read("main.glsl"));
+		assertEquals("main", read("main.frag"));
 		assertEquals(Set.of("a.glsl"), onDisk("lib"));
 	}
 
 	@Test
 	public void refusesLinksLeavingTheRoot() throws IOException {
-		put("main.glsl", "main");
+		put("main.frag", "main");
 		put(outside, "secret.glsl", "secret");
 		link("secret.glsl", new File(outside, "secret.glsl"));
 		link("out", outside);
@@ -383,8 +383,8 @@ public class DirectoryProjectFilesTest {
 		assertRefused(Refusal.FAILED, files.createFolder(path("out/new")));
 		assertRefused(Refusal.FAILED, files.rename(path("out/secret.glsl"),
 				path("stolen.glsl")));
-		assertRefused(Refusal.FAILED, files.rename(path("main.glsl"),
-				path("out/main.glsl")));
+		assertRefused(Refusal.FAILED, files.rename(path("main.frag"),
+				path("out/main.frag")));
 		assertRefused(Refusal.FAILED, files.delete(path("out")));
 		assertEquals(Set.of("secret.glsl"), onDisk(outside));
 		assertEquals("secret", text(Files.readAllBytes(
@@ -393,14 +393,14 @@ public class DirectoryProjectFilesTest {
 
 	@Test
 	public void rootReachedThroughALinkWorks() throws IOException {
-		put("main.glsl", "main");
+		put("main.frag", "main");
 		File alias = new File(temp.getRoot(), "alias");
 		Files.createSymbolicLink(alias.toPath(), root.toPath());
 		files = new DirectoryProjectFiles(alias);
-		assertEquals("main", read("main.glsl"));
+		assertEquals("main", read("main.frag"));
 		assertTrue(files.write(path("a.glsl"), bytes("a"), null)
 				instanceof Done);
-		assertEquals(Set.of("main.glsl", "a.glsl"), onDisk(""));
+		assertEquals(Set.of("main.frag", "a.glsl"), onDisk(""));
 	}
 
 	@Test

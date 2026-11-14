@@ -216,7 +216,7 @@ public class UniformSourcesTest {
 	@Test
 	public void cameraReportedAsSampler2DStartsCameraSource() {
 		var reported = new GlUniform("cameraBack", GLES20.GL_SAMPLER_2D, 1, 0, 0);
-		var bindings = PlanBindings.of(TestProjects.plan("main.glsl",
+		var bindings = PlanBindings.of(TestProjects.plan("main.frag",
 						"void main() {}").passes().get(0), 0, List.of(reported),
 				"uniform samplerExternalOES cameraBack;");
 		var sources = new UniformSources(HOST);

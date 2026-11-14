@@ -50,14 +50,14 @@ public class SafProjectFilesChangeTest {
 
 	@Test
 	public void offersOfPaths() {
-		documents.put("main.glsl", "").flags =
+		documents.put("main.frag", "").flags =
 				DocumentsContract.Document.FLAG_SUPPORTS_DELETE;
 		assertEquals(new Offers(false, false, false, false, true),
-				files.offers(path("main.glsl")));
+				files.offers(path("main.frag")));
 		assertTrue(files.offers(null).create());
 		assertEquals(Offers.NONE, files.offers(path("missing.glsl")));
 		documents.calls.clear();
-		assertTrue(files.offers(path("main.glsl")).delete());
+		assertTrue(files.offers(path("main.frag")).delete());
 		assertEquals(List.of(), documents.calls);
 		assertEquals(Offers.NONE, new SafProjectFiles(documents,
 				documents.root.id).offers(null));
@@ -81,17 +81,17 @@ public class SafProjectFilesChangeTest {
 
 	@Test
 	public void staleRevisionIsAConflictThatChangesNothing() {
-		FakeDocuments.Node main = documents.put("main.glsl", "old");
-		String seen = revision("main.glsl");
+		FakeDocuments.Node main = documents.put("main.frag", "old");
+		String seen = revision("main.frag");
 		main.bytes = bytes("external");
-		assertRefused(Refusal.CONFLICT, files.write(path("main.glsl"),
+		assertRefused(Refusal.CONFLICT, files.write(path("main.frag"),
 				bytes("mine"), seen));
-		assertRefused(Refusal.CONFLICT, files.write(path("main.glsl"),
+		assertRefused(Refusal.CONFLICT, files.write(path("main.frag"),
 				bytes("mine"), null));
 		assertEquals("external", documents.text(main));
 
 		documents.nodes.remove(main.id);
-		assertRefused(Refusal.CONFLICT, files.write(path("main.glsl"),
+		assertRefused(Refusal.CONFLICT, files.write(path("main.frag"),
 				bytes("mine"), seen));
 		assertRefused(Refusal.CONFLICT, files.write(path("new/a.glsl"),
 				bytes("mine"), seen));
@@ -193,10 +193,10 @@ public class SafProjectFilesChangeTest {
 
 	@Test
 	public void readOnlyFileInAWritableFolder() {
-		FakeDocuments.Node main = documents.put("main.glsl", "old");
+		FakeDocuments.Node main = documents.put("main.frag", "old");
 		main.flags = 0;
-		assertRefused(Refusal.UNSUPPORTED, files.write(path("main.glsl"),
-				bytes("new"), revision("main.glsl")));
+		assertRefused(Refusal.UNSUPPORTED, files.write(path("main.frag"),
+				bytes("new"), revision("main.frag")));
 		assertEquals("old", documents.text(main));
 		assertTrue(files.write(path("other.glsl"), bytes("x"), null)
 				instanceof Done);
@@ -207,8 +207,8 @@ public class SafProjectFilesChangeTest {
 		documents.folderFlags = 0;
 		documents.fileFlags = 0;
 		documents.root.flags = 0;
-		FakeDocuments.Node main = documents.put("main.glsl", "main");
-		String revision = revision("main.glsl");
+		FakeDocuments.Node main = documents.put("main.frag", "main");
+		String revision = revision("main.frag");
 		documents.calls.clear();
 		assertEveryChangeUnsupported(revision);
 		assertRefused(Refusal.ABSENT, files.delete(path("absent")));
@@ -222,15 +222,15 @@ public class SafProjectFilesChangeTest {
 	@Test
 	public void aFileChangesAsItsFlagsOfferBelowARootThatOffersNothing() {
 		documents.root.flags = 0;
-		FakeDocuments.Node main = documents.put("main.glsl", "main");
+		FakeDocuments.Node main = documents.put("main.frag", "main");
 		documents.put("gone.glsl", "gone");
-		String revision = revision("main.glsl");
+		String revision = revision("main.frag");
 
-		assertTrue(files.offers(path("main.glsl")).write());
-		assertTrue(files.write(path("main.glsl"), bytes("new"), revision)
+		assertTrue(files.offers(path("main.frag")).write());
+		assertTrue(files.write(path("main.frag"), bytes("new"), revision)
 				instanceof Done);
 		assertEquals("new", documents.text(main));
-		assertTrue(files.rename(path("main.glsl"), path("renamed.glsl"))
+		assertTrue(files.rename(path("main.frag"), path("renamed.glsl"))
 				instanceof Done);
 		assertTrue(files.delete(path("gone.glsl")) instanceof Done);
 		assertRefused(Refusal.UNSUPPORTED, files.write(path("new.glsl"),
@@ -240,28 +240,28 @@ public class SafProjectFilesChangeTest {
 
 	@Test
 	public void readOnlyGrantRefusesEveryChange() {
-		FakeDocuments.Node main = documents.put("main.glsl", "main");
-		String revision = revision("main.glsl");
+		FakeDocuments.Node main = documents.put("main.frag", "main");
+		String revision = revision("main.frag");
 		files = new SafProjectFiles(documents, documents.root.id, false);
 		documents.calls.clear();
 		assertEveryChangeUnsupported(revision);
 		assertRefused(Refusal.UNSUPPORTED, files.delete(path("absent")));
 		assertEquals(List.of(), documents.calls);
 		assertEquals("main", documents.text(main));
-		assertEquals("main", read("main.glsl"));
+		assertEquals("main", read("main.frag"));
 	}
 
 	@Test
 	public void namesTheProviderChangesAreRefused() {
 		documents.foldsCase = true;
-		documents.put("Main.glsl", "upper");
-		Change change = files.write(path("main.glsl"), bytes("lower"), null);
+		documents.put("Main.frag", "upper");
+		Change change = files.write(path("main.frag"), bytes("lower"), null);
 		assertRefused(Refusal.FAILED, change);
-		assertEquals("the storage stored main.glsl as main.glsl (1)",
+		assertEquals("the storage stored main.frag as main.frag (1)",
 				((Refused) change).reason());
-		assertRefused(Refusal.FAILED, files.createFolder(path("MAIN.glsl")));
-		assertEquals(Set.of("Main.glsl"), stored(""));
-		assertEquals("upper", read("Main.glsl"));
+		assertRefused(Refusal.FAILED, files.createFolder(path("MAIN.frag")));
+		assertEquals(Set.of("Main.frag"), stored(""));
+		assertEquals("upper", read("Main.frag"));
 	}
 
 	@Test
@@ -289,14 +289,14 @@ public class SafProjectFilesChangeTest {
 
 	@Test
 	public void lostPermissionRefusesChanges() {
-		documents.put("main.glsl", "");
+		documents.put("main.frag", "");
 		documents.failure = new SecurityException("revoked");
 		Refused lost = new Refused(Refusal.FAILED,
 				SafProjectFiles.LOST_FOLDER);
-		assertEquals(lost, files.write(path("main.glsl"), bytes("x"), null));
+		assertEquals(lost, files.write(path("main.frag"), bytes("x"), null));
 		assertEquals(lost, files.createFolder(path("a")));
-		assertEquals(lost, files.rename(path("main.glsl"), path("b.glsl")));
-		assertEquals(lost, files.delete(path("main.glsl")));
+		assertEquals(lost, files.rename(path("main.frag"), path("b.glsl")));
+		assertEquals(lost, files.delete(path("main.frag")));
 	}
 
 	@Test
@@ -314,12 +314,12 @@ public class SafProjectFilesChangeTest {
 				throw new java.io.IOException("busy");
 			}
 		};
-		FakeDocuments.Node main = failing.put("main.glsl", "ORIGINAL");
+		FakeDocuments.Node main = failing.put("main.frag", "ORIGINAL");
 		files = new SafProjectFiles(failing, failing.root.id, true);
-		String revision = ((Content) files.read(path("main.glsl")))
+		String revision = ((Content) files.read(path("main.frag")))
 				.revision();
 
-		assertRefused(Refusal.PARTIAL, files.write(path("main.glsl"),
+		assertRefused(Refusal.PARTIAL, files.write(path("main.frag"),
 				bytes("NEW TEXT"), revision));
 		assertEquals("NE", failing.text(main));
 		assertRefused(Refusal.PARTIAL, files.write(path("new.glsl"),
@@ -336,12 +336,12 @@ public class SafProjectFilesChangeTest {
 		};
 		files = new SafProjectFiles(failing, failing.root.id, true);
 		assertEquals(new Refused(Refusal.FAILED, "the storage failed: full"),
-				files.write(path("main.glsl"), bytes("x"), null));
+				files.write(path("main.frag"), bytes("x"), null));
 		assertEquals(1, failing.nodes.size());
 	}
 
 	private void assertEveryChangeUnsupported(String revision) {
-		ProjectPath main = path("main.glsl");
+		ProjectPath main = path("main.frag");
 		assertRefused(Refusal.UNSUPPORTED, files.write(main, bytes("x"),
 				revision));
 		assertRefused(Refusal.UNSUPPORTED, files.write(path("new.glsl"),

@@ -34,16 +34,16 @@ public class ProviderDocumentsTest {
 	public void setUp() throws IOException {
 		data = temp.newFolder("data");
 		root = new File(data, "files/user-files");
-		put(root, "main.glsl");
+		put(root, "main.frag");
 		put(root, "lib/a.glsl");
 		put(root, ".git/config");
 		put(data, "databases/shaders.db");
 		put(data, "shared_prefs/preferences.xml");
 		put(data, "files/drafts/draft.glsl");
-		put(data, "files/wallpaper/main.glsl");
+		put(data, "files/wallpaper/main.frag");
 		put(data, "cache/thumbnail.png");
 		link("databases", new File(data, "databases"));
-		link("alias.glsl", new File(root, "main.glsl"));
+		link("alias.glsl", new File(root, "main.frag"));
 		link("lib/up", data);
 		documents = new ProviderDocuments(root);
 	}
@@ -52,8 +52,8 @@ public class ProviderDocumentsTest {
 	public void resolvesDocumentsInsideTheRoot() throws IOException {
 		assertEquals(root.getCanonicalFile(),
 				documents.file(ProviderDocuments.ROOT));
-		assertEquals(new File(root, "main.glsl").getCanonicalFile(),
-				documents.file("root/main.glsl"));
+		assertEquals(new File(root, "main.frag").getCanonicalFile(),
+				documents.file("root/main.frag"));
 		assertEquals(new File(root, "lib/a.glsl").getCanonicalFile(),
 				documents.file("root/lib/a.glsl"));
 	}
@@ -66,15 +66,15 @@ public class ProviderDocumentsTest {
 				"ROOT",
 				"root/",
 				"/",
-				"root//main.glsl",
-				"root/./main.glsl",
-				"root/lib/../main.glsl",
-				"root/main.glsl/",
+				"root//main.frag",
+				"root/./main.frag",
+				"root/lib/../main.frag",
+				"root/main.frag/",
 				"root/..",
 				"root/../drafts/draft.glsl",
 				"root/../../databases/shaders.db",
 				"root/../../shared_prefs/preferences.xml",
-				"root/../wallpaper/main.glsl",
+				"root/../wallpaper/main.frag",
 				"root/../../cache/thumbnail.png",
 				"../databases/shaders.db",
 				"root/%2e%2e/%2e%2e/databases/shaders.db",
@@ -87,15 +87,15 @@ public class ProviderDocumentsTest {
 				"root/lib/up/databases/shaders.db",
 				"root/.git",
 				"root/.git/config",
-				"root/main\u0000.glsl",
-				"root/main.glsl\n",
-				"root/C:/main.glsl",
+				"root/main\u0000.frag",
+				"root/main.frag\n",
+				"root/C:/main.frag",
 				"root/file:///etc/passwd",
 				"content://de.markusfisch.android.shadereditor.debug" +
 						".documents/document/root",
 				"root/missing.glsl",
 				"root/main.gls\u006c\u0301",
-				new File(root, "main.glsl").getAbsolutePath(),
+				new File(root, "main.frag").getAbsolutePath(),
 				new File(data, "databases/shaders.db").getAbsolutePath(),
 				"/data/data/de.markusfisch.android.shadereditor/" +
 						"databases/shaders.db"));
@@ -115,7 +115,7 @@ public class ProviderDocumentsTest {
 		}
 		assertEquals(Set.of("shaders.db"), onDisk(data, "databases"));
 		assertEquals(Set.of("draft.glsl"), onDisk(data, "files/drafts"));
-		assertEquals(Set.of("alias.glsl", "databases", "main.glsl", "lib",
+		assertEquals(Set.of("alias.glsl", "databases", "main.frag", "lib",
 				".git"), onDisk(root, ""));
 	}
 
@@ -129,7 +129,7 @@ public class ProviderDocumentsTest {
 			assertThrows(label, FileNotFoundException.class,
 					() -> documents.create("root/lib", name, true));
 			assertThrows(label, FileNotFoundException.class,
-					() -> documents.rename("root/main.glsl", name));
+					() -> documents.rename("root/main.frag", name));
 		}
 		// A drive or scheme only means one at the start of a path.
 		for (String name : Arrays.asList("C:x.glsl", "content:x")) {
@@ -138,7 +138,7 @@ public class ProviderDocumentsTest {
 			assertEquals("root/lib/" + name,
 					documents.create("root/lib", name, false));
 		}
-		assertEquals(Set.of("alias.glsl", "databases", "main.glsl", "lib",
+		assertEquals(Set.of("alias.glsl", "databases", "main.frag", "lib",
 				".git"), onDisk(root, ""));
 		assertEquals(Set.of("a.glsl", "up", "C:x.glsl", "content:x"),
 				onDisk(root, "lib"));
@@ -147,7 +147,7 @@ public class ProviderDocumentsTest {
 	@Test
 	public void listsChildrenWithoutLinksOrVersionControl()
 			throws IOException {
-		assertEquals(Set.of("root/main.glsl", "root/lib"),
+		assertEquals(Set.of("root/main.frag", "root/lib"),
 				documents.children(ProviderDocuments.ROOT).keySet());
 		assertEquals(new File(root, "lib").getCanonicalFile(),
 				documents.children(ProviderDocuments.ROOT).get("root/lib")
@@ -155,27 +155,27 @@ public class ProviderDocumentsTest {
 		assertEquals(Set.of("root/lib/a.glsl"),
 				documents.children("root/lib").keySet());
 		assertThrows(FileNotFoundException.class,
-				() -> documents.children("root/main.glsl"));
+				() -> documents.children("root/main.frag"));
 	}
 
 	@Test
 	public void decidesContainmentOnResolvedFiles() {
 		String root = ProviderDocuments.ROOT;
-		assertTrue(documents.isChild(root, "root/main.glsl"));
+		assertTrue(documents.isChild(root, "root/main.frag"));
 		assertTrue(documents.isChild(root, "root/lib/a.glsl"));
 		assertTrue(documents.isChild("root/lib", "root/lib/a.glsl"));
 		assertFalse(documents.isChild(root, root));
-		assertFalse(documents.isChild("root/lib", "root/main.glsl"));
+		assertFalse(documents.isChild("root/lib", "root/main.frag"));
 		assertFalse(documents.isChild("root/lib/a.glsl", "root/lib"));
-		assertFalse(documents.isChild("root/main.glsl", "root/main.glsl"));
-		assertFalse(documents.isChild("root/../..", "root/main.glsl"));
+		assertFalse(documents.isChild("root/main.frag", "root/main.frag"));
+		assertFalse(documents.isChild("root/../..", "root/main.frag"));
 	}
 
 	@Test
 	public void namesParents() throws FileNotFoundException {
 		assertEquals("root/lib", ProviderDocuments.parent("root/lib/a.glsl"));
 		assertEquals(ProviderDocuments.ROOT,
-				ProviderDocuments.parent("root/main.glsl"));
+				ProviderDocuments.parent("root/main.frag"));
 		assertThrows(FileNotFoundException.class,
 				() -> ProviderDocuments.parent(ProviderDocuments.ROOT));
 		assertThrows(FileNotFoundException.class,
@@ -189,8 +189,8 @@ public class ProviderDocumentsTest {
 				false));
 		assertEquals("root/new (1).glsl", documents.create(root,
 				"new.glsl", false));
-		assertEquals("root/main (1).glsl", documents.create(root,
-				"main.glsl", false));
+		assertEquals("root/main (1).frag", documents.create(root,
+				"main.frag", false));
 		assertEquals("root/lib/sub", documents.create("root/lib", "sub",
 				true));
 		assertEquals("root/lib/sub (1)", documents.create("root/lib", "sub",
@@ -202,14 +202,14 @@ public class ProviderDocumentsTest {
 		assertEquals(0, documents.file("root/new (1).glsl").length());
 		assertTrue(documents.file("root/lib/sub (1)").isDirectory());
 		assertThrows(FileNotFoundException.class,
-				() -> documents.create("root/main.glsl", "x.glsl", false));
+				() -> documents.create("root/main.frag", "x.glsl", false));
 		assertThrows(FileNotFoundException.class,
 				() -> documents.create("root/missing", "x.glsl", false));
 	}
 
 	@Test
 	public void renamesAndDeletes() throws IOException {
-		assertEquals("root/renamed.glsl", documents.rename("root/main.glsl",
+		assertEquals("root/renamed.glsl", documents.rename("root/main.frag",
 				"renamed.glsl"));
 		assertTrue(documents.file("root/renamed.glsl").isFile());
 		assertEquals("root/lib/b.glsl", documents.rename("root/lib/a.glsl",

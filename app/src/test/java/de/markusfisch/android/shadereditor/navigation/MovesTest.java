@@ -9,7 +9,7 @@ import org.junit.Test;
 public class MovesTest {
 	@Test
 	public void aRenamedFileIsAtItsNewName() {
-		assertEquals("scene.glsl", Moves.renamed("main.glsl", "main.glsl",
+		assertEquals("scene.glsl", Moves.renamed("main.frag", "main.frag",
 				"scene.glsl"));
 	}
 

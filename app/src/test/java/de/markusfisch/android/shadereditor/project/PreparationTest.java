@@ -41,7 +41,7 @@ public class PreparationTest {
 	@Test
 	public void plansDiamondWithResolvedInputs() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#version 300 es",
 						"#pragma se input \"pass/c.glsl\"",
 						"uniform sampler2D c;",
@@ -59,7 +59,7 @@ public class PreparationTest {
 		assertTrue(preparation.diagnostics().isEmpty());
 		RenderPlan plan = preparation.plan();
 		assertEquals(List.of("pass/d.glsl", "pass/b.glsl", "pass/c.glsl",
-				"main.glsl"), programFiles(plan));
+				"main.frag"), programFiles(plan));
 		assertEquals(3, plan.output());
 		assertTrue(plan.reset().isEmpty());
 
@@ -67,19 +67,19 @@ public class PreparationTest {
 		assertEquals(3, main.program());
 		assertEquals(List.of(
 						new RenderPlan.Input("c", "sampler2D", Source.pass(2),
-								Frame.CURRENT, NEAREST, path("main.glsl"), 2),
+								Frame.CURRENT, NEAREST, path("main.frag"), 2),
 						new RenderPlan.Input("b", "sampler2D", Source.pass(1),
 								Frame.CURRENT, new Sampling(Filter.LINEAR,
 								Filter.LINEAR, Mipmap.NONE, Wrap.CLAMP,
-								Wrap.CLAMP), path("main.glsl"), 4),
+								Wrap.CLAMP), path("main.frag"), 4),
 						new RenderPlan.Input("noise", "sampler2D",
 								Source.image(path("noise.png")), Frame.CURRENT,
 								new Sampling(Filter.LINEAR, Filter.LINEAR,
 										Mipmap.NONE, Wrap.REPEAT, Wrap.REPEAT),
-								path("main.glsl"), 6)),
+								path("main.frag"), 6)),
 				main.inputs());
 		assertEquals(new RenderPlan.Target(0.5, 0, 0, Format.RGBA8,
-				Filter.LINEAR, path("main.glsl"), 8), main.target());
+				Filter.LINEAR, path("main.frag"), 8), main.target());
 		assertEquals(Source.pass(0),
 				plan.passes().get(1).inputs().get(0).source());
 		assertEquals(Source.pass(0),
@@ -98,7 +98,7 @@ public class PreparationTest {
 		assertTrue(program.text().startsWith("#version 300 es\n\n" +
 				"uniform sampler2D c;\n\n"));
 		assertEquals(9, program.sourceMap().locate(9).line());
-		assertEquals(List.of("shader-project.json", "main.glsl",
+		assertEquals(List.of("shader-project.json", "main.frag",
 				"pass/c.glsl", "pass/d.glsl", "pass/b.glsl", "noise.png"),
 				dependencyPaths(preparation));
 		assertNull(preparation.dependencies().get(0).revision());
@@ -108,7 +108,7 @@ public class PreparationTest {
 	@Test
 	public void plansHistoryAndPreviousReads() {
 		RenderPlan plan = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se input \"state.glsl\" frame=previous",
 						"uniform sampler2D state;",
 						MAIN))
@@ -117,7 +117,7 @@ public class PreparationTest {
 						"uniform sampler2D backbuffer;",
 						MAIN))).plan();
 		assertNotNull(plan);
-		assertEquals(List.of("main.glsl", "state.glsl"), programFiles(plan));
+		assertEquals(List.of("main.frag", "state.glsl"), programFiles(plan));
 		RenderPlan.Input state = plan.passes().get(0).inputs().get(0);
 		assertEquals(Source.pass(1), state.source());
 		assertEquals(Frame.PREVIOUS, state.frame());
@@ -133,7 +133,7 @@ public class PreparationTest {
 	@Test
 	public void plansCameraAsEngineSampler() {
 		RenderPlan plan = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se input filter=linear",
 						"uniform samplerExternalOES cameraBack;",
 						MAIN))).plan();
@@ -147,19 +147,19 @@ public class PreparationTest {
 	@Test
 	public void cameraWrapIsAnErrorWithoutPlan() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se input wrap=repeat",
 						"uniform samplerExternalOES cameraFront;",
 						MAIN)));
 		assertNull(preparation.plan());
-		assertEquals(List.of("ERROR main.glsl:1 Camera images can only be " +
+		assertEquals(List.of("ERROR main.frag:1 Camera images can only be " +
 				"read with wrap=clamp, remove wrap="), messages(preparation));
 	}
 
 	@Test
 	public void plansInitialSourcesInResetOrder() {
 		RenderPlan plan = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se target initial=\"i.glsl\"",
 						"uniform sampler2D backbuffer;",
 						"#pragma se input \"p.glsl\"",
@@ -175,7 +175,7 @@ public class PreparationTest {
 						MAIN))
 				.put("seed.png", Pictures.png(1))).plan();
 		assertNotNull(plan);
-		assertEquals(List.of("p.glsl", "i.glsl", "main.glsl"),
+		assertEquals(List.of("p.glsl", "i.glsl", "main.frag"),
 				programFiles(plan));
 		assertEquals(List.of(0, 2), plan.reset());
 		assertEquals(Source.image(path("seed.png")),
@@ -188,13 +188,13 @@ public class PreparationTest {
 	@Test
 	public void readsValidManifestAsDependency() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", MAIN)
+				.put("main.frag", MAIN)
 				.put("shader-project.json", "{\"projectVersion\": 1}"));
 		assertNotNull(preparation.plan());
 		assertTrue(preparation.diagnostics().isEmpty());
 		assertEquals(List.of(
 						new SourceAssembly.Dependency(ProjectManifest.FILE, "r1"),
-						new SourceAssembly.Dependency(path("main.glsl"), "r0")),
+						new SourceAssembly.Dependency(path("main.frag"), "r0")),
 				preparation.dependencies());
 	}
 
@@ -202,10 +202,10 @@ public class PreparationTest {
 	public void continuedMacroLineIncludesNothing() {
 		String main = lines("#define A \\", "#include \"lib.glsl\"", MAIN);
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", main)
+				.put("main.frag", main)
 				.put("lib.glsl", "float f;\n"));
 		assertTrue(preparation.diagnostics().isEmpty());
-		assertEquals(List.of("shader-project.json", "main.glsl"),
+		assertEquals(List.of("shader-project.json", "main.frag"),
 				dependencyPaths(preparation));
 		assertEquals(main, preparation.plan().programs().get(0).text());
 	}
@@ -215,7 +215,7 @@ public class PreparationTest {
 		String main = lines("// c \\", "#pragma se input \"a.png\"",
 				"uniform sampler2D a;", MAIN);
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", main)
+				.put("main.frag", main)
 				.put("a.png", Pictures.png(1)));
 		assertTrue(preparation.diagnostics().isEmpty());
 		assertTrue(preparation.plan().passes().get(0).inputs().isEmpty());
@@ -225,7 +225,7 @@ public class PreparationTest {
 	@Test
 	public void quoteOnContinuedDirectiveLineOpensNoComment() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines("#define S \\", "\"a/*b\"",
+				.put("main.frag", lines("#define S \\", "\"a/*b\"",
 						"#pragma se input \"a.png\"", "uniform sampler2D a;",
 						MAIN))
 				.put("a.png", Pictures.png(1)));
@@ -233,14 +233,14 @@ public class PreparationTest {
 		assertEquals(List.of(new RenderPlan.Input("a", "sampler2D",
 						Source.image(path("a.png")), Frame.CURRENT,
 						new Sampling(Filter.LINEAR, Filter.LINEAR, Mipmap.NONE,
-								Wrap.CLAMP, Wrap.CLAMP), path("main.glsl"), 3)),
+								Wrap.CLAMP, Wrap.CLAMP), path("main.frag"), 3)),
 				preparation.plan().passes().get(0).inputs());
 	}
 
 	@Test
 	public void invalidManifestIsAnErrorButDependenciesAreComplete() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se input \"a.png\"",
 						"uniform sampler2D a;",
 						MAIN))
@@ -251,23 +251,23 @@ public class PreparationTest {
 		assertEquals(List.of("ERROR shader-project.json:2 Unsupported " +
 				"projectVersion 2, this app reads version 1"),
 				messages(preparation));
-		assertEquals(List.of("shader-project.json", "main.glsl", "a.png"),
+		assertEquals(List.of("shader-project.json", "main.frag", "a.png"),
 				dependencyPaths(preparation));
 	}
 
 	@Test
 	public void missingManifestEntryIsAnError() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", MAIN)
+				.put("main.frag", MAIN)
 				.put("shader-project.json", "{\"entry\": \"missing.glsl\"}"));
 		assertNull(preparation.plan());
 		assertEquals(List.of("ERROR shader-project.json:0 Entry " +
 				"missing.glsl in shader-project.json does not exist"),
 				messages(preparation));
-		assertEquals(List.of("shader-project.json", "main.glsl",
+		assertEquals(List.of("shader-project.json", "main.frag",
 				"missing.glsl"), dependencyPaths(preparation));
 		assertNotNull(prepare(new MemoryProjectFiles()
-				.put("main.glsl", MAIN)
+				.put("main.frag", MAIN)
 				.put("other.glsl", MAIN)
 				.put("shader-project.json", "{\"entry\": \"other.glsl\"}"))
 				.plan());
@@ -276,21 +276,21 @@ public class PreparationTest {
 	@Test
 	public void versionControlFoldersAreNotDependencies() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines("#include \"sub/../.git/config\"",
+				.put("main.frag", lines("#include \"sub/../.git/config\"",
 						MAIN));
 		Preparation preparation = prepare(files);
 		assertNull(preparation.plan());
-		assertEquals(List.of("ERROR main.glsl:1 Path is inside a " +
+		assertEquals(List.of("ERROR main.frag:1 Path is inside a " +
 				"version-control folder: sub/../.git/config"),
 				messages(preparation));
-		assertEquals(List.of(ProjectManifest.FILE, path("main.glsl")),
+		assertEquals(List.of(ProjectManifest.FILE, path("main.frag")),
 				files.readPaths);
 	}
 
 	@Test
 	public void invalidDirectivesKeepTheirPathsAsDependencies() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se input \"a.png\" filter=garbage",
 						"uniform sampler2D a;",
 						"#pragma se input \"b.png\" wrap=clamp wrap=clamp",
@@ -307,7 +307,7 @@ public class PreparationTest {
 				.put("seed.png", Pictures.png(1)));
 		assertNull(preparation.plan());
 		assertEquals(5, preparation.diagnostics().size());
-		assertEquals(List.of("shader-project.json", "main.glsl", "a.png",
+		assertEquals(List.of("shader-project.json", "main.frag", "a.png",
 				"b.png", "c.glsl", "lib.glsl", "d.png", "seed.png"),
 				dependencyPaths(preparation));
 	}
@@ -315,7 +315,7 @@ public class PreparationTest {
 	@Test
 	public void manifestThatIsNotTextIsAnError() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", MAIN)
+				.put("main.frag", MAIN)
 				.put("shader-project.json", new byte[]{(byte) 0xc3}));
 		assertNull(preparation.plan());
 		assertEquals(List.of("ERROR shader-project.json:0 " +
@@ -325,24 +325,24 @@ public class PreparationTest {
 	@Test
 	public void manifestBelowTheRootIsAnOrdinaryFile() {
 		Preparation preparation = Preparation.prepare(new MemoryProjectFiles()
-						.put("sub/main.glsl", MAIN)
+						.put("sub/main.frag", MAIN)
 						.put("sub/shader-project.json", "nonsense"),
-				path("sub/main.glsl"), ProjectLimits.DEFAULT, BuiltinNames.ALL);
+				path("sub/main.frag"), ProjectLimits.DEFAULT, BuiltinNames.ALL);
 		assertNotNull(preparation.plan());
-		assertEquals(List.of("shader-project.json", "sub/main.glsl"),
+		assertEquals(List.of("shader-project.json", "sub/main.frag"),
 				dependencyPaths(preparation));
 	}
 
 	@Test
 	public void cycleKeepsEveryDependency() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se input \"a.glsl\"",
 						"uniform sampler2D a;",
 						MAIN))
 				.put("a.glsl", lines(
 						"#include \"lib.glsl\"",
-						"#pragma se input \"main.glsl\"",
+						"#pragma se input \"main.frag\"",
 						"uniform sampler2D m;",
 						"#pragma se input \"a.png\"",
 						"uniform sampler2D img;",
@@ -351,14 +351,14 @@ public class PreparationTest {
 				.put("a.png", Pictures.png(1)));
 		assertNull(preparation.plan());
 		assertEquals(1, preparation.diagnostics().size());
-		assertEquals(List.of("shader-project.json", "main.glsl", "a.glsl",
+		assertEquals(List.of("shader-project.json", "main.frag", "a.glsl",
 				"lib.glsl", "a.png"), dependencyPaths(preparation));
 	}
 
 	@Test
 	public void sharedIncludeIsReadOnce() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#include \"lib.glsl\"",
 						"#pragma se input \"a.glsl\"",
 						"uniform sampler2D a;",
@@ -397,7 +397,7 @@ public class PreparationTest {
 	@Test
 	public void whatAnInputNamesIsToldFromItsBytes() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						input("texture.frag", "a"),
 						input("pass.png", "b"),
 						"#pragma se target initial=\"seed\"",
@@ -410,7 +410,7 @@ public class PreparationTest {
 
 		RenderPlan plan = preparation.plan();
 		assertNotNull(messages(preparation).toString(), plan);
-		assertEquals(List.of("pass.png", "main.glsl"), programFiles(plan));
+		assertEquals(List.of("pass.png", "main.frag"), programFiles(plan));
 		Pass main = plan.passes().get(1);
 		assertEquals(Source.image(path("texture.frag")),
 				main.inputs().get(0).source());
@@ -418,7 +418,7 @@ public class PreparationTest {
 		assertEquals(Source.pass(0), main.inputs().get(1).source());
 		assertEquals(NEAREST, main.inputs().get(1).sampling());
 		assertEquals(Source.image(path("seed")), main.initial());
-		assertEquals(List.of("shader-project.json", "main.glsl",
+		assertEquals(List.of("shader-project.json", "main.frag",
 				"texture.frag", "pass.png", "seed"),
 				dependencyPaths(preparation));
 	}
@@ -426,21 +426,21 @@ public class PreparationTest {
 	@Test
 	public void anInputThatIsNeitherPictureNorTextIsAnErrorOnItsLine() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(input("data.bin", "a"), MAIN))
+				.put("main.frag", lines(input("data.bin", "a"), MAIN))
 				.put("data.bin", new byte[]{(byte) 0xff, (byte) 0xfe, 0}));
 
 		assertNull(preparation.plan());
-		assertEquals(List.of("ERROR main.glsl:1 data.bin is neither a " +
+		assertEquals(List.of("ERROR main.frag:1 data.bin is neither a " +
 				"picture (PNG, JPEG) nor text"), messages(preparation));
 	}
 
 	@Test
 	public void anInputNamingTextWithoutMainIsAnErrorThatNamesTheFile() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(input("lib/noise.glsl", "a"), MAIN))
+				.put("main.frag", lines(input("lib/noise.glsl", "a"), MAIN))
 				.put("lib/noise.glsl", "float noise(vec2 p) { return 0.0; }\n");
 
-		assertEquals(List.of("ERROR main.glsl:1 lib/noise.glsl defines no " +
+		assertEquals(List.of("ERROR main.frag:1 lib/noise.glsl defines no " +
 				"main, so it cannot be an input; include it instead"),
 				messages(prepare(files)));
 
@@ -452,7 +452,7 @@ public class PreparationTest {
 	@Test
 	public void optionsAreCheckedAgainstWhatTheFileIs() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#pragma se input \"picture.frag\" frame=previous",
 						"uniform sampler2D a;",
 						"#pragma se input \"pass.png\" mipmap=linear",
@@ -464,25 +464,25 @@ public class PreparationTest {
 				.put("pass.png", MAIN + "\n"));
 
 		assertEquals(List.of(
-				"ERROR main.glsl:1 frame= applies only to a pass, " +
+				"ERROR main.frag:1 frame= applies only to a pass, " +
 						"picture.frag is a picture; remove it",
-				"ERROR main.glsl:3 mipmap= applies only to a picture, " +
+				"ERROR main.frag:3 mipmap= applies only to a picture, " +
 						"pass.png is a pass and has no mipmaps",
-				"ERROR main.glsl:5 A pass is read as uniform sampler2D c, " +
+				"ERROR main.frag:5 A pass is read as uniform sampler2D c, " +
 						"not samplerCube"), messages(preparation));
 	}
 
 	@Test
 	public void blockCommentEndingOnConsumedLineIsAnError() {
 		Preparation preparation = prepare(new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"/* hello",
 						"*/ #pragma se input \"a.png\"",
 						"uniform sampler2D tex;",
 						MAIN))
 				.put("a.png", Pictures.png(1)));
 		assertNull(preparation.plan());
-		assertEquals(List.of("ERROR main.glsl:2 Block comments are not " +
+		assertEquals(List.of("ERROR main.frag:2 Block comments are not " +
 				"allowed on a line with a host directive, use a trailing " +
 				"// comment"), messages(preparation));
 	}
@@ -490,7 +490,7 @@ public class PreparationTest {
 	@Test
 	public void failedReadIsAnErrorWithItsReason() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(
+				.put("main.frag", lines(
 						"#include \"lib.glsl\"",
 						"#pragma se input \"pass.glsl\"",
 						"uniform sampler2D pass;",
@@ -501,24 +501,24 @@ public class PreparationTest {
 				.put("pass.glsl", MAIN)
 				.put("noise.png", Pictures.png(1));
 		ProjectFiles failing = path -> path.equals(ProjectManifest.FILE) ||
-				path.getFileName().equals("main.glsl")
+				path.getFileName().equals("main.frag")
 				? files.read(path)
 				: new ProjectFiles.Failed("permission lost");
 		Preparation preparation = Preparation.prepare(failing,
-				path("main.glsl"), ProjectLimits.DEFAULT, BuiltinNames.ALL);
+				path("main.frag"), ProjectLimits.DEFAULT, BuiltinNames.ALL);
 		assertNull(preparation.plan());
 		assertEquals(List.of(
-				"ERROR main.glsl:1 Could not read lib.glsl: permission lost",
-				"ERROR main.glsl:2 Could not read pass.glsl: permission lost",
-				"ERROR main.glsl:4 Could not read noise.png: permission lost"),
+				"ERROR main.frag:1 Could not read lib.glsl: permission lost",
+				"ERROR main.frag:2 Could not read pass.glsl: permission lost",
+				"ERROR main.frag:4 Could not read noise.png: permission lost"),
 				messages(preparation));
-		assertEquals(List.of("shader-project.json", "main.glsl", "lib.glsl",
+		assertEquals(List.of("shader-project.json", "main.frag", "lib.glsl",
 				"pass.glsl", "noise.png"), dependencyPaths(preparation));
 		assertEquals(List.of("ERROR shader-project.json:0 Could not read " +
 						"shader-project.json: permission lost",
-				"ERROR main.glsl:0 Could not read main.glsl: permission lost"),
+				"ERROR main.frag:0 Could not read main.frag: permission lost"),
 				messages(Preparation.prepare(path -> new ProjectFiles.Failed(
-						"permission lost"), path("main.glsl"),
+						"permission lost"), path("main.frag"),
 						ProjectLimits.DEFAULT, BuiltinNames.ALL)));
 	}
 
@@ -526,12 +526,12 @@ public class PreparationTest {
 	public void keepsCopiesOfTheBytesItRead() {
 		byte[] image = Pictures.png(1, 2, 3);
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines(input("a.png", "a"), MAIN))
+				.put("main.frag", lines(input("a.png", "a"), MAIN))
 				.put("a.png", image);
 		Preparation preparation = prepare(files);
 		assertNotNull(preparation.plan());
 		image[0] = 9;
-		assertEquals(List.of(path("main.glsl"), path("a.png")),
+		assertEquals(List.of(path("main.frag"), path("a.png")),
 				new ArrayList<>(preparation.files().keySet()));
 		ProjectFiles.Content kept = preparation.files().get(path("a.png"));
 		assertArrayEquals(Pictures.png(1, 2, 3), kept.bytes());
@@ -543,10 +543,10 @@ public class PreparationTest {
 	@Test
 	public void rejectsMoreFilesThanTheLimit() {
 		Preparation preparation = Preparation.prepare(new MemoryProjectFiles()
-						.put("main.glsl", lines(input("a.glsl", "a"), MAIN))
+						.put("main.frag", lines(input("a.glsl", "a"), MAIN))
 						.put("a.glsl", lines(input("b.glsl", "b"), MAIN))
 						.put("b.glsl", MAIN),
-				path("main.glsl"), new ProjectLimits(16, 1000, 100, 3, 16, 100),
+				path("main.frag"), new ProjectLimits(16, 1000, 100, 3, 16, 100),
 				BuiltinNames.ALL);
 		assertNull(preparation.plan());
 		assertEquals(List.of("ERROR a.glsl:1 Could not read b.glsl: the " +
@@ -561,18 +561,18 @@ public class PreparationTest {
 			main.append(input("a" + i + ".png", "a" + i)).append('\n');
 		}
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", main + MAIN);
+				.put("main.frag", main + MAIN);
 		for (int i = 0; i < 6; ++i) {
 			files.put("a" + i + ".png", Pictures.png(1));
 		}
 		Preparation preparation = Preparation.prepare(files,
-				path("main.glsl"), new ProjectLimits(16, 10000, 100, 2, 16,
+				path("main.frag"), new ProjectLimits(16, 10000, 100, 2, 16,
 						100), BuiltinNames.ALL);
 		assertNull(preparation.plan());
-		assertEquals(List.of(ProjectManifest.FILE, path("main.glsl")),
+		assertEquals(List.of(ProjectManifest.FILE, path("main.frag")),
 				files.readPaths);
 		assertEquals(6, preparation.diagnostics().size());
-		assertEquals("ERROR main.glsl:1 Could not read a0.png: the build " +
+		assertEquals("ERROR main.frag:1 Could not read a0.png: the build " +
 				"reads more than the limit of 2 files",
 				messages(preparation).get(0));
 	}
@@ -580,7 +580,7 @@ public class PreparationTest {
 	@Test
 	public void zeroLimitsAreErrorsNotCrashes() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
-				.put("main.glsl", lines("#include \"lib.glsl\"",
+				.put("main.frag", lines("#include \"lib.glsl\"",
 						input("a.png", "a"), MAIN))
 				.put("lib.glsl", "float x;\n")
 				.put("a.png", Pictures.png(1));
@@ -592,12 +592,12 @@ public class PreparationTest {
 				new ProjectLimits(16, 1000, 100, 64, 0, 100));
 		for (ProjectLimits limits : zeros) {
 			Preparation preparation = Preparation.prepare(files,
-					path("main.glsl"), limits, BuiltinNames.ALL);
+					path("main.frag"), limits, BuiltinNames.ALL);
 			assertNull(limits.toString(), preparation.plan());
 			assertTrue(messages(preparation).toString(),
 					messages(preparation).get(0).contains("limit of 0"));
 		}
-		assertNotNull(Preparation.prepare(files, path("main.glsl"),
+		assertNotNull(Preparation.prepare(files, path("main.frag"),
 				new ProjectLimits(16, 1000, 100, 64, 16, 0),
 				BuiltinNames.ALL).plan());
 	}
@@ -606,8 +606,8 @@ public class PreparationTest {
 	public void plansTheSameFromADirectory() throws IOException {
 		Map<String, byte[]> project = new LinkedHashMap<>();
 		project.put("shader-project.json", bytes(
-				"{\"projectVersion\": 1, \"entry\": \"main.glsl\"}"));
-		project.put("main.glsl", bytes(lines(
+				"{\"projectVersion\": 1, \"entry\": \"main.frag\"}"));
+		project.put("main.frag", bytes(lines(
 				"#include \"lib/common.glsl\"",
 				"#pragma se input \"passes/blur.glsl\" filter=linear",
 				"uniform sampler2D blur;",
@@ -641,7 +641,7 @@ public class PreparationTest {
 		assertEquals(messages(expected), messages(actual));
 		assertEquals(expected.plan(), actual.plan());
 		assertEquals(dependencyPaths(expected), dependencyPaths(actual));
-		assertEquals(List.of("shader-project.json", "main.glsl",
+		assertEquals(List.of("shader-project.json", "main.frag",
 				"lib/common.glsl", "passes/blur.glsl",
 				"textures/caf\u00e9.png"), dependencyPaths(actual));
 		assertEquals(expected.files().keySet(), actual.files().keySet());
@@ -657,7 +657,7 @@ public class PreparationTest {
 	}
 
 	private static Preparation prepare(ProjectFiles files) {
-		return Preparation.prepare(files, path("main.glsl"),
+		return Preparation.prepare(files, path("main.frag"),
 				ProjectLimits.DEFAULT, BuiltinNames.ALL);
 	}
 

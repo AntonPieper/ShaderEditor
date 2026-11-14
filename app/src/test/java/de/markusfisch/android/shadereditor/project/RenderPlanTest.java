@@ -15,7 +15,7 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Size;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Target;
 
 public class RenderPlanTest {
-	private static final ProjectPath MAIN = path("main.glsl");
+	private static final ProjectPath MAIN = path("main.frag");
 	private static final int MAX = 4096;
 
 	@Test

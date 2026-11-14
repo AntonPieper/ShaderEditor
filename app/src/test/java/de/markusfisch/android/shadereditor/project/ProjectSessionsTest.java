@@ -84,15 +84,15 @@ public class ProjectSessionsTest {
 
 	@Test
 	public void removingSessionKeepsProjectFiles() throws IOException {
-		write(new File(project, "main.glsl"), "stored");
+		write(new File(project, "main.frag"), "stored");
 		write(new File(project, "lib.glsl"), "library");
 		Locator locator = new Locator(Kind.DIRECTORY, project.getPath());
 		String id = sessions.open(locator);
 		DirectoryProjectFiles store = new DirectoryProjectFiles(
 				new File(sessions.locator(id).value()));
-		assertTrue(store.write(path("main.glsl"),
+		assertTrue(store.write(path("main.frag"),
 				"saved".getBytes(StandardCharsets.UTF_8),
-				revision(store, "main.glsl")) instanceof ProjectFiles.Done);
+				revision(store, "main.frag")) instanceof ProjectFiles.Done);
 		keep(sessions.journal(id), "lib.glsl", "unsaved",
 				revision(store, "lib.glsl"));
 		assertFalse(sessions.unsaved(id).isEmpty());
@@ -102,7 +102,7 @@ public class ProjectSessionsTest {
 		assertNull(sessions.locator(id));
 		assertNull(sessions.find(locator));
 		assertFalse(new File(root, id).exists());
-		assertEquals("saved", read(new File(project, "main.glsl")));
+		assertEquals("saved", read(new File(project, "main.frag")));
 		assertEquals("library", read(new File(project, "lib.glsl")));
 		String again = sessions.open(locator);
 		assertTrue(sessions.unsaved(again).isEmpty());
@@ -110,7 +110,7 @@ public class ProjectSessionsTest {
 
 	@Test
 	public void removingSessionDoesNotFollowLinks() throws IOException {
-		write(new File(project, "main.glsl"), "stored");
+		write(new File(project, "main.frag"), "stored");
 		String id = sessions.open(new Locator(Kind.DIRECTORY,
 				project.getPath()));
 		File drafts = new File(root, id + "/drafts");
@@ -121,7 +121,7 @@ public class ProjectSessionsTest {
 		assertTrue(sessions.discard(id));
 
 		assertFalse(new File(root, id).exists());
-		assertEquals("stored", read(new File(project, "main.glsl")));
+		assertEquals("stored", read(new File(project, "main.frag")));
 	}
 
 	@Test
@@ -130,7 +130,7 @@ public class ProjectSessionsTest {
 		String id = sessions.open(locator);
 		assertTrue(sessions.remember(id, "project", "Shaders", 10));
 		assertTrue(sessions.setLast(id));
-		keep(sessions.journal(id), "main.glsl", "unsaved", "r0");
+		keep(sessions.journal(id), "main.frag", "unsaved", "r0");
 
 		assertTrue(sessions.remove(id));
 
@@ -138,8 +138,8 @@ public class ProjectSessionsTest {
 		assertEquals(List.of(), sessions.recent());
 		assertNull(sessions.last());
 		assertEquals(id, sessions.find(locator));
-		assertEquals(Set.of(path("main.glsl")), sessions.unsaved(id));
-		assertEquals("unsaved", sessions.journal(id).read(path("main.glsl"))
+		assertEquals(Set.of(path("main.frag")), sessions.unsaved(id));
+		assertEquals("unsaved", sessions.journal(id).read(path("main.frag"))
 				.text().toString());
 		assertTrue(sessions.remember(id, "project", "Shaders", 20));
 		assertEquals(List.of(id), ids(sessions.recent()));
@@ -148,7 +148,7 @@ public class ProjectSessionsTest {
 	@Test
 	public void listsRecentProjectsAcrossRestartsUntilRemoved()
 			throws IOException {
-		write(new File(project, "main.glsl"), "stored");
+		write(new File(project, "main.frag"), "stored");
 		File other = temp.newFolder("other");
 		String first = sessions.open(new Locator(Kind.DIRECTORY,
 				project.getPath()));
@@ -168,7 +168,7 @@ public class ProjectSessionsTest {
 						new Locator(Kind.DIRECTORY, project.getPath()), "project",
 						"ShaderEditor / Shaders", 10, false),
 				restarted.recent(first));
-		keep(restarted.journal(second), "main.glsl", "edited", null);
+		keep(restarted.journal(second), "main.frag", "edited", null);
 		assertTrue(restarted.recent(second).unsaved());
 		assertNull(restarted.recent(unlisted));
 
@@ -181,7 +181,7 @@ public class ProjectSessionsTest {
 		assertTrue(restarted.remove(first));
 
 		assertEquals(List.of(second), ids(new ProjectSessions(root).recent()));
-		assertEquals("stored", read(new File(project, "main.glsl")));
+		assertEquals("stored", read(new File(project, "main.frag")));
 		String again = restarted.open(new Locator(Kind.DIRECTORY,
 				project.getPath()));
 		assertNull(restarted.recent(again));
@@ -215,12 +215,12 @@ public class ProjectSessionsTest {
 		assertEquals(Set.of(), sessions.unsaved(id));
 
 		assertTrue(sessions.setShown(id, path("lib/common.glsl")));
-		keep(sessions.journal(id), "main.glsl", "edited", "r0");
+		keep(sessions.journal(id), "main.frag", "edited", "r0");
 		keep(sessions.journal(id), "lib/common.glsl", "edited", null);
 		ProjectSessions restarted = new ProjectSessions(root);
 
 		assertEquals(path("lib/common.glsl"), restarted.shown(id));
-		assertEquals(Set.of(path("main.glsl"), path("lib/common.glsl")),
+		assertEquals(Set.of(path("main.frag"), path("lib/common.glsl")),
 				restarted.unsaved(id));
 		assertTrue(restarted.setShown(id, null));
 		assertNull(restarted.shown(id));
@@ -249,8 +249,8 @@ public class ProjectSessionsTest {
 	public void readsNoFileLargerThanItWrites() throws IOException {
 		String id = sessions.open(new Locator(Kind.DIRECTORY,
 				project.getPath()));
-		assertTrue(sessions.setShown(id, path("main.glsl")));
-		assertEquals(path("main.glsl"), sessions.shown(id));
+		assertTrue(sessions.setShown(id, path("main.frag")));
+		assertEquals(path("main.frag"), sessions.shown(id));
 
 		try (java.io.RandomAccessFile file = new java.io.RandomAccessFile(
 				new File(root, id + "/shown"), "rw")) {

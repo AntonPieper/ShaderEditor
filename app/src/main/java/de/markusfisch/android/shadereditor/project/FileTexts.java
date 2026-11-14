@@ -594,12 +594,12 @@ public final class FileTexts {
 	// Return the stored text of path, telling unreadable, why its
 	// journal could not be read, or null.
 	private Opening read(ProjectPath path, long size, String unreadable) {
-		if (path.getKind() == ProjectPath.Kind.IMAGE) {
-			return new Unopened(path + " is an image, not text",
-					unreadable, Found.NOT_TEXT, null);
-		}
 		if (size > Document.MAX_BYTES) {
-			return tooLarge(path, unreadable, null);
+			// Its first bytes tell a picture without reading it.
+			byte[] head = store.head(path, FileKind.HEAD);
+			return head != null && FileKind.picture(head) != null
+					? picture(path, unreadable, null)
+					: tooLarge(path, unreadable, null);
 		}
 		Read read = store.read(path, Document.MAX_BYTES);
 		if (read instanceof ProjectFiles.Failed failed &&
@@ -613,6 +613,10 @@ public final class FileTexts {
 							: Found.UNAVAILABLE, null);
 		}
 		byte[] bytes = content.bytes();
+		// What the file is, by its bytes; its name says nothing.
+		if (FileKind.picture(bytes) != null) {
+			return picture(path, unreadable, content.revision());
+		}
 		if (bytes.length > Document.MAX_BYTES) {
 			return tooLarge(path, unreadable, content.revision());
 		}
@@ -632,6 +636,12 @@ public final class FileTexts {
 				? SourceText.decode(bytes)
 				: null;
 		return text != null && text.indexOf('\0') < 0 ? Text.of(text) : null;
+	}
+
+	private static Unopened picture(ProjectPath path, String unreadable,
+			String revision) {
+		return new Unopened(path + " is a picture, not text", unreadable,
+				Found.NOT_TEXT, revision);
 	}
 
 	// A file within the limit that this device has no memory for.

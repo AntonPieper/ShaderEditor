@@ -9,7 +9,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class ProjectPathTest {
-	private static final ProjectPath MAIN = path("main.glsl");
+	private static final ProjectPath MAIN = path("main.frag");
 	private static final ProjectPath NESTED = path("passes/blur/h.glsl");
 
 	@Test
@@ -56,7 +56,7 @@ public class ProjectPathTest {
 
 	@Test
 	public void identityIsCaseSensitive() {
-		assertNotEquals(path("Main.glsl"), path("main.glsl"));
+		assertNotEquals(path("Main.frag"), path("main.frag"));
 	}
 
 	@Test
@@ -112,7 +112,7 @@ public class ProjectPathTest {
 
 	@Test
 	public void rejectsAbsolutePaths() {
-		assertError(MAIN, "/main.glsl", "Path is absolute: /main.glsl");
+		assertError(MAIN, "/main.frag", "Path is absolute: /main.frag");
 	}
 
 	@Test
@@ -146,19 +146,7 @@ public class ProjectPathTest {
 	}
 
 	@Test
-	public void classifiesExtensionsCaseInsensitively() {
-		assertEquals(ProjectPath.Kind.SHADER, path("a/b.glsl").getKind());
-		assertEquals(ProjectPath.Kind.SHADER, path("B.GLSL").getKind());
-		assertEquals(ProjectPath.Kind.IMAGE, path("t.png").getKind());
-		assertEquals(ProjectPath.Kind.IMAGE, path("t.JPG").getKind());
-		assertEquals(ProjectPath.Kind.IMAGE, path("t.Jpeg").getKind());
-		assertEquals(ProjectPath.Kind.OTHER, path("t.webp").getKind());
-		assertEquals(ProjectPath.Kind.OTHER, path("glsl").getKind());
-		assertEquals(ProjectPath.Kind.OTHER, path("a.glsl/readme").getKind());
-	}
-
-	@Test
-	public void classificationKeepsLookupCaseSensitive() {
+	public void lookupIsCaseSensitive() {
 		assertFalse(path("B.GLSL").equals(path("B.glsl")));
 	}
 

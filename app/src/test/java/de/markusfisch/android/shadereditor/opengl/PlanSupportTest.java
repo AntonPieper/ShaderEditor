@@ -20,7 +20,7 @@ public class PlanSupportTest {
 
 	@Test
 	public void acceptsOnePassWithImagesEngineSamplersAndDefaultTarget() {
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 						"#pragma se input \"a.png\" wrap=repeat mipmap=linear",
 						"uniform sampler2D a;",
 						"#pragma se input \"a.png\" filter=nearest",
@@ -36,10 +36,10 @@ public class PlanSupportTest {
 
 	@Test
 	public void refusesInputsFromOtherPasses() {
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 						"#pragma se input \"b.glsl\"",
 						"uniform sampler2D b;",
-						"#pragma se input \"main.glsl\" frame=previous",
+						"#pragma se input \"main.frag\" frame=previous",
 						"uniform sampler2D self;",
 						MAIN),
 				"b.glsl", MAIN);
@@ -50,20 +50,20 @@ public class PlanSupportTest {
 
 	@Test
 	public void acceptsReadingItsOwnPreviousFrame() {
-		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+		assertTrue(PlanSupport.refusals(plan("main.frag", lines(
 				"#pragma se input filter=linear",
 				"uniform sampler2D backbuffer;",
-				"#pragma se input \"main.glsl\" frame=previous",
+				"#pragma se input \"main.frag\" frame=previous",
 				"uniform sampler2D self;",
 				MAIN))).isEmpty());
 	}
 
 	@Test
 	public void acceptsTargetsOfAnySizeAndPresent() {
-		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+		assertTrue(PlanSupport.refusals(plan("main.frag", lines(
 				"#pragma se target scale=0.5 present=linear",
 				MAIN))).isEmpty());
-		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+		assertTrue(PlanSupport.refusals(plan("main.frag", lines(
 				MAIN,
 				"#pragma se target size=64x64"))).isEmpty());
 	}
@@ -72,14 +72,14 @@ public class PlanSupportTest {
 	public void refusesFormatsOtherThanRgba8() {
 		assertEquals(List.of(error("se target format needs a newer " +
 						"version of ShaderEditor", 1)),
-				PlanSupport.refusals(plan("main.glsl", lines(
+				PlanSupport.refusals(plan("main.frag", lines(
 						"#pragma se target scale=0.5 format=rgba16f",
 						MAIN))));
 	}
 
 	@Test
 	public void acceptsAnInitialImage() {
-		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+		assertTrue(PlanSupport.refusals(plan("main.frag", lines(
 						"#pragma se target initial=\"seed.png\"",
 						"uniform sampler2D backbuffer;",
 						MAIN),
@@ -88,7 +88,7 @@ public class PlanSupportTest {
 
 	@Test
 	public void acceptsAnInitialShaderThatReadsAnImage() {
-		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+		assertTrue(PlanSupport.refusals(plan("main.frag", lines(
 						"#pragma se target initial=\"seed.glsl\"",
 						"uniform sampler2D backbuffer;",
 						MAIN),
@@ -99,7 +99,7 @@ public class PlanSupportTest {
 						MAIN),
 				"a.png", PNG)).isEmpty());
 		// Ordered by path, the initial shader may come first.
-		assertTrue(PlanSupport.refusals(plan("main.glsl", lines(
+		assertTrue(PlanSupport.refusals(plan("main.frag", lines(
 						"#pragma se target initial=\"a.glsl\"",
 						"uniform sampler2D backbuffer;",
 						MAIN),
@@ -111,7 +111,7 @@ public class PlanSupportTest {
 		assertEquals(List.of(new ProjectDiagnostic(Severity.ERROR,
 						"se target initial needs a newer version of " +
 								"ShaderEditor", path("seed.glsl"), 1)),
-				PlanSupport.refusals(plan("main.glsl", lines(
+				PlanSupport.refusals(plan("main.frag", lines(
 								"#pragma se target initial=\"seed.glsl\"",
 								"uniform sampler2D backbuffer;",
 								MAIN),
@@ -123,7 +123,7 @@ public class PlanSupportTest {
 		assertEquals(List.of(new ProjectDiagnostic(Severity.ERROR,
 						"Reading the output of b.glsl needs a newer version " +
 								"of ShaderEditor", path("seed.glsl"), 1)),
-				PlanSupport.refusals(plan("main.glsl", lines(
+				PlanSupport.refusals(plan("main.frag", lines(
 								"#pragma se target initial=\"seed.glsl\"",
 								"uniform sampler2D backbuffer;",
 								MAIN),
@@ -136,7 +136,7 @@ public class PlanSupportTest {
 
 	@Test
 	public void acceptsCubemapImages() {
-		var plan = plan("main.glsl", lines(
+		var plan = plan("main.frag", lines(
 						MAIN,
 						"#pragma se input \"sky.png\" mipmap=linear",
 						"uniform samplerCube sky;"),
@@ -146,7 +146,7 @@ public class PlanSupportTest {
 
 	@Test
 	public void refusesMoreThanOnePass() {
-		var plan = plan("main.glsl", MAIN);
+		var plan = plan("main.frag", MAIN);
 		var pass = plan.passes().get(0);
 		var twoPasses = new RenderPlan(plan.programs(), List.of(pass, pass),
 				1, List.of());
@@ -158,6 +158,6 @@ public class PlanSupportTest {
 
 	private static ProjectDiagnostic error(String message, int line) {
 		return new ProjectDiagnostic(Severity.ERROR, message,
-				path("main.glsl"), line);
+				path("main.frag"), line);
 	}
 }

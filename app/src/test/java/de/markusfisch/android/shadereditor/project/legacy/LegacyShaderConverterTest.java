@@ -117,7 +117,7 @@ public class LegacyShaderConverterTest {
 	public void backbufferPresetStartsFromAGeneratedShader() {
 		Result result = convert(lines("uniform sampler2D backbuffer;///p:noise",
 				"void main() {}"));
-		assertEquals(lines("#pragma se target initial=\"presets/noise.glsl\"",
+		assertEquals(lines("#pragma se target initial=\"presets/noise.frag\"",
 				"uniform sampler2D backbuffer;",
 				"void main() {}"), result.shader());
 		assertEquals(List.of(new TextureFile("noise", path(
@@ -147,7 +147,7 @@ public class LegacyShaderConverterTest {
 				"\tgl_FragColor = texture2D(image, vec2(",
 				"\t\tgl_FragCoord.x / resolution.x,",
 				"\t\t1.0 - (y + 0.5) / h));",
-				"}"), result.files().get(path("presets/noise.glsl")));
+				"}"), result.files().get(path("presets/noise.frag")));
 		assertTrue(result.diagnostics().isEmpty());
 		assertEquals(lines("uniform sampler2D backbuffer;///p:none"),
 				convert(lines("uniform sampler2D backbuffer;///p:none"))
@@ -176,11 +176,11 @@ public class LegacyShaderConverterTest {
 		Result result = LegacyShaderConverter.convert(
 				lines("uniform sampler2D backbuffer;///p:3;"), library,
 				NAMES);
-		assertEquals(lines("#pragma se target initial=\"presets/3.glsl\"",
+		assertEquals(lines("#pragma se target initial=\"presets/3.frag\"",
 				"uniform sampler2D backbuffer;"), result.shader());
 		assertEquals(List.of(new TextureFile("3", path("textures/3.png"),
 				false)), result.textures());
-		assertTrue(result.files().get(path("presets/3.glsl"))
+		assertTrue(result.files().get(path("presets/3.frag"))
 				.contains("// The image is 16x8 pixels."));
 		assertTrue(result.diagnostics().isEmpty());
 		assertEquals(List.of(3L), ids);
@@ -205,7 +205,7 @@ public class LegacyShaderConverterTest {
 						"uniform sampler2D a_b;",
 						"uniform sampler2D backbuffer;///p:a/b;"),
 				name -> new LibraryTexture(false, 8, 4), NAMES);
-		assertEquals(lines("#pragma se target initial=\"presets/a_b_2.glsl\"",
+		assertEquals(lines("#pragma se target initial=\"presets/a_b_2.frag\"",
 				"#pragma se input \"textures/a_b.png\" " +
 						"min=nearest mag=linear wrap=repeat",
 				"uniform sampler2D a_b;",
@@ -214,7 +214,7 @@ public class LegacyShaderConverterTest {
 				new TextureFile("a_b", path("textures/a_b.png"), false),
 				new TextureFile("a/b", path("textures/a_b_2.png"), false)),
 				result.textures());
-		assertTrue(result.files().get(path("presets/a_b_2.glsl"))
+		assertTrue(result.files().get(path("presets/a_b_2.frag"))
 				.contains("#pragma se input \"../textures/a_b_2.png\""));
 		assertEquals(List.of("The library texture \"a/b\" has a name " +
 						"that cannot be a file name, so its copy is " +
@@ -228,7 +228,7 @@ public class LegacyShaderConverterTest {
 				path("textures/____________foo.png"), false)),
 				result.textures());
 		assertTrue(result.files().containsKey(
-				path("presets/____________foo.glsl")));
+				path("presets/____________foo.frag")));
 		assertEquals(1, result.diagnostics().size());
 		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
 	}
@@ -709,7 +709,7 @@ public class LegacyShaderConverterTest {
 				"void main() {",
 				"\tif (gl_FragCoord.x < 1.0) discard;",
 				"}"));
-		ProjectPath presets = path("presets/x.glsl");
+		ProjectPath presets = path("presets/x.frag");
 		ProjectDiagnostic unlocated = ProjectDiagnostic.error("no line");
 		List<ProjectDiagnostic> original = result.toOriginal(List.of(
 				diagnostic(ProjectDiagnostic.Severity.ERROR, "include",
@@ -745,7 +745,7 @@ public class LegacyShaderConverterTest {
 	public void errorsOfAGeneratedFileAreAtTheLineItWasGeneratedFor() {
 		Result result = convert(lines("void main() {}",
 				"uniform sampler2D backbuffer;///p:noise;"));
-		ProjectPath preset = path("presets/noise.glsl");
+		ProjectPath preset = path("presets/noise.frag");
 		assertTrue(result.files().containsKey(preset));
 		assertEquals(List.of(
 				diagnostic(ProjectDiagnostic.Severity.ERROR, "decode",
@@ -756,9 +756,9 @@ public class LegacyShaderConverterTest {
 						diagnostic(ProjectDiagnostic.Severity.ERROR, "decode",
 								preset, 7),
 						diagnostic(ProjectDiagnostic.Severity.WARNING,
-								"initial has no effect", path("main.glsl"), 1),
+								"initial has no effect", path("main.frag"), 1),
 						diagnostic(ProjectDiagnostic.Severity.ERROR, "target",
-								path("main.glsl"), 1))));
+								path("main.frag"), 1))));
 	}
 
 	// L01

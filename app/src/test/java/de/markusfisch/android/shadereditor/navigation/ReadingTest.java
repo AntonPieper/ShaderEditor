@@ -27,12 +27,12 @@ public class ReadingTest {
 	@Test
 	public void aFolderLeadsIntoItsLevelAndAFileIsKnownByItsPath() {
 		List<Row> rows = listed(new Reading.Entry("lib", true),
-				new Reading.Entry("main.glsl", false),
+				new Reading.Entry("main.frag", false),
 				new Reading.Entry("Paper.PNG", false))
 				.rows(ROOT.enter("sub"), "Show more", "%1$d of %2$d");
 		assertEquals(ROOT.enter("sub").enter("lib"), rows.get(0).enters());
 		assertEquals(Tap.ENTER, Tap.of(rows.get(0).kind(), false));
-		assertEquals("sub/main.glsl", rows.get(1).key());
+		assertEquals("sub/main.frag", rows.get(1).key());
 		assertEquals(Row.Kind.TEXT, rows.get(1).kind());
 		assertEquals(Row.Kind.IMAGE, rows.get(2).kind());
 	}
@@ -40,10 +40,10 @@ public class ReadingTest {
 	@Test
 	public void namesThatStartWithADotAreLeftOut() {
 		List<Row> rows = listed(new Reading.Entry(".git", true),
-				new Reading.Entry("main.glsl", false))
+				new Reading.Entry("main.frag", false))
 				.rows(ROOT, "Show more", "%1$d of %2$d");
 		assertEquals(1, rows.size());
-		assertEquals("main.glsl", rows.get(0).name());
+		assertEquals("main.frag", rows.get(0).name());
 	}
 
 	@Test
@@ -73,7 +73,7 @@ public class ReadingTest {
 	public void aResultAfterStoppingChangesNothing() {
 		Reading stopped = Reading.started().slow().stopped();
 		assertEquals(stopped, stopped.listed(List.of(
-				new Reading.Entry("main.glsl", false))));
+				new Reading.Entry("main.frag", false))));
 		assertEquals(List.of(Notice.Action.TRY_AGAIN),
 				stopped.notice().actions());
 	}

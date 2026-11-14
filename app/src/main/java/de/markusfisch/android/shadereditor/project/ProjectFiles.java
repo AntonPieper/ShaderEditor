@@ -149,14 +149,15 @@ public interface ProjectFiles {
 
 	/**
 	 * Return at most the first count bytes of the file at path, to tell
-	 * what it is without reading it whole, or null when there is no
-	 * such file or it cannot be read. A store that reads a stream stops
-	 * after them; one that cannot reads the file.
+	 * what it is without reading it whole, or null when they are not
+	 * known: there is no such file, or it cannot be read. A store that
+	 * reads a stream stops after them. One that cannot answers only for
+	 * a file of no more than count bytes, so that nothing larger is
+	 * read to look at its beginning.
 	 */
 	default byte[] head(ProjectPath path, int count) {
-		return read(path) instanceof Content content
-				? java.util.Arrays.copyOf(content.bytes(),
-						Math.min(count, content.bytes().length))
+		return read(path, count) instanceof Content content
+				? content.bytes()
 				: null;
 	}
 
