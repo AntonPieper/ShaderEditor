@@ -21,6 +21,7 @@ import com.google.android.material.snackbar.Snackbar;
 
 import org.jetbrains.annotations.Contract;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
@@ -43,6 +44,7 @@ import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
@@ -386,6 +388,17 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onChanged() {
 				showOpenTitle();
+				ProjectFile file = files.file();
+				if (file != null && file == open &&
+						shaderListManager instanceof NavigationDrawer drawer) {
+					OpenProject project = file.getProject();
+					List<ProjectPath> used = new ArrayList<>();
+					for (OpenProject.Used use : project.used()) {
+						used.add(use.path());
+					}
+					drawer.setOpenFile(files.key(), file.getPath(),
+							project.running(), used);
+				}
 			}
 
 			@Override

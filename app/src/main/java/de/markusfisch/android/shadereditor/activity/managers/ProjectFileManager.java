@@ -9,6 +9,8 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.navigation.Row;
+import de.markusfisch.android.shadereditor.navigation.Tap;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -16,7 +18,8 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 /**
  * Opens files of folders in the editor and keeps the one open: its
  * project stays open while it is, and the editor shows the project's
- * document of it. Call it on the main thread.
+ * document of it. A tap on a file runs it when it can run and what
+ * runs does not use it already. Call it on the main thread.
  */
 public final class ProjectFileManager {
 	public interface Listener extends ProjectFile.Listener {
@@ -36,6 +39,9 @@ public final class ProjectFileManager {
 	private ProjectFile file;
 	@Nullable
 	private String key;
+	// The file tapped last until it is known whether it can run.
+	@Nullable
+	private ProjectPath deciding;
 	// Counts the files asked for; an answer for one before is void.
 	private int asked;
 	private boolean destroyed;
@@ -63,22 +69,28 @@ public final class ProjectFileManager {
 
 	/**
 	 * Open the file at path of the folder or single file opened before
-	 * with key; return whether the drawer closes.
+	 * with key, as a tap on it does; return whether the drawer closes.
 	 * Only the new editor can show it; the old one says so.
 	 */
 	public boolean open(@NonNull String key, @NonNull ProjectPath path,
 			boolean single) {
+		return open(key, path, single, true);
+	}
+
+	private boolean open(@NonNull String key, @NonNull ProjectPath path,
+			boolean single, boolean tapped) {
 		if (!ShaderEditorApp.preferences.useNewEditor()) {
 			listener.onFailed(activity.getString(
 					R.string.file_needs_new_editor));
-			// The drawer closes all the same, so that this can be read.
-			return true;
+			// A tap closes the drawer all the same, so that this can be
+			// read.
+			return tapped;
 		}
 		int ask = ++asked;
 		holds.open(key, opened -> {
 			OpenProject project = opened.project();
 			if (project == null) {
-				failed(ask, path, opened.problem());
+				failed(ask, tapped, path, opened.problem());
 				return;
 			} else if (ask != asked || destroyed) {
 				holds.release(project);
@@ -91,16 +103,16 @@ public final class ProjectFileManager {
 						: null;
 				if (document == null) {
 					holds.release(project);
-					failed(ask, path, problem);
+					failed(ask, tapped, path, problem);
 					return;
 				}
-				show(key, project, path, document, single);
+				show(key, project, path, document, single, tapped);
 			});
 		});
 		return true;
 	}
 
-	private void failed(int ask, @NonNull ProjectPath path,
+	private void failed(int ask, boolean tapped, @NonNull ProjectPath path,
 			@Nullable String problem) {
 		if (ask != asked || destroyed || problem == null) {
 			return;
@@ -111,20 +123,22 @@ public final class ProjectFileManager {
 
 	private void show(@NonNull String key, @NonNull OpenProject project,
 			@NonNull ProjectPath path, @NonNull Document document,
-			boolean single) {
+			boolean single, boolean tapped) {
 		leave();
 		this.key = key;
 		ProjectFile shown = new ProjectFile(activity, project, path, single,
 				listener);
 		file = shown;
 		project.setListener(ContextCompat.getMainExecutor(activity),
-				listener::onChanged);
+				this::changed);
 		editor.showDocument(document, project.editorState(path));
 		listener.onShown(shown);
 		String unreadable = project.unreadable(path);
 		if (unreadable != null) {
 			listener.onFailed(problem(path, unreadable));
 		}
+		deciding = tapped ? path : null;
+		decide();
 	}
 
 	/** Let the file in the editor go, as another item is shown there. */
@@ -134,6 +148,7 @@ public final class ProjectFileManager {
 			return;
 		}
 		file = null;
+		deciding = null;
 		OpenProject project = left.getProject();
 		project.setEditorState(left.getPath(), editor.getDocumentState());
 		project.setListener(null, null);
@@ -143,6 +158,34 @@ public final class ProjectFileManager {
 	public void destroy() {
 		leave();
 		destroyed = true;
+	}
+
+	private void changed() {
+		decide();
+		listener.onChanged();
+	}
+
+	// A tap runs a file that can run unless what runs uses it, once it
+	// is known whether its text defines main.
+	private void decide() {
+		ProjectFile tapped = file;
+		if (tapped == null || deciding == null ||
+				!deciding.equals(tapped.getPath())) {
+			return;
+		}
+		OpenProject project = tapped.getProject();
+		OpenProject.Runs runs = project.runs(deciding);
+		if (runs == OpenProject.Runs.UNKNOWN) {
+			return;
+		}
+		ProjectPath path = deciding;
+		deciding = null;
+		boolean inUse = path.equals(project.running()) || project.uses(path);
+		if (Tap.of(runs == OpenProject.Runs.YES
+				? Row.Kind.SHADER
+				: Row.Kind.TEXT, inUse) == Tap.OPEN_AND_RUN) {
+			project.runThisFile(path);
+		}
 	}
 
 	@NonNull

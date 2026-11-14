@@ -11,12 +11,15 @@ import androidx.annotation.Nullable;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.navigation.FileMarks;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Order;
@@ -143,6 +146,7 @@ final class FolderSource {
 
 			@Override
 			public boolean open(Row row, boolean run) {
+				// Whether it runs is decided once its text is known.
 				var path = ProjectPath.parse(row.key());
 				return path.isSuccess() && opener.open(path.value(), file);
 			}
@@ -220,10 +224,24 @@ final class FolderSource {
 				false,
 				// A single file's folder can be opened to load the rest.
 				file ? Listing.Bar.OPEN_FOLDER : Listing.Bar.NONE,
-				List.of(new Listing.Section(null, reading.rows(level,
-						context.getString(R.string.nav_show_more),
-						context.getString(R.string.nav_shown_of)))),
+				List.of(new Listing.Section(null, FileMarks.unsaved(
+						reading.rows(level,
+								context.getString(R.string.nav_show_more),
+								context.getString(R.string.nav_shown_of)),
+						unsaved()))),
 				reading.notice());
+	}
+
+	// The files with unsaved text, by their paths.
+	@NonNull
+	private Set<String> unsaved() {
+		Set<String> unsaved = new HashSet<>();
+		if (project != null) {
+			for (ProjectPath path : project.unsaved()) {
+				unsaved.add(path.toString());
+			}
+		}
+		return unsaved;
 	}
 
 	private void read(@NonNull String path) {
