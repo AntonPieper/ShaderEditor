@@ -3,6 +3,8 @@
 	<dimen name="editor_text_size">12sp</dimen>
 	<dimen name="editor_caret_width">2dp</dimen>
 	<dimen name="editor_composing_underline">1dp</dimen>
+	<!-- The bar at the line number of a line with an error -->
+	<dimen name="editor_mark_width">3dp</dimen>
 	<dimen name="menu_item_height">48dp</dimen>
 	<!-- The menu's narrowest width; it grows with its labels -->
 	<dimen name="menu_width">200dp</dimen>

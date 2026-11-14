@@ -128,6 +128,19 @@ public class LineMarksTest {
 		assertEquals("_ E _", marked(marks, document));
 	}
 
+	@Test
+	public void countsChangesOfTheMarksOnly() {
+		Document document = new Document(Text.of(TEXT));
+		LineMarks marks = marked(document, error(3));
+		int changes = marks.changes();
+		document.replace(7, 7, Text.of("xy"));
+		assertEquals(changes, marks.changes());
+		document.replace(0, 0, Text.of("\n"));
+		assertEquals(changes + 1, marks.changes());
+		marks.set(document.revision(), List.of(error(4)));
+		assertEquals(changes + 2, marks.changes());
+	}
+
 	private static LineMarks marked(Document document,
 			ProjectDiagnostic... diagnostics) {
 		LineMarks marks = new LineMarks(document);

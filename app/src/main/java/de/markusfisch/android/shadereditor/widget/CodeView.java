@@ -294,6 +294,7 @@ public class CodeView extends View {
 	private int gutterFirst;
 	private int gutterLast = -1;
 	private int gutterDigits;
+	private int gutterMarks;
 	// The lines drawn by the last frame, from shownFirst on.
 	private LineCache.Line[] shown = new LineCache.Line[0];
 	private int shownFirst;
@@ -1879,8 +1880,10 @@ public class CodeView extends View {
 			gutter = new RenderNode("gutter");
 		}
 		RenderNode node = (RenderNode) gutter;
+		int markChanges = marks != null ? marks.changes() : 0;
 		if (first != gutterFirst || last != gutterLast ||
-				digitCount != gutterDigits || !node.hasDisplayList()) {
+				digitCount != gutterDigits || markChanges != gutterMarks ||
+				!node.hasDisplayList()) {
 			node.setPosition(0, 0,
 					(int) Math.ceil(digitCount * appearance.digitWidth) + 1,
 					(int) Math.ceil(lines.top(last) - lines.top(first)) +
@@ -1895,6 +1898,7 @@ public class CodeView extends View {
 			gutterFirst = first;
 			gutterLast = last;
 			gutterDigits = digitCount;
+			gutterMarks = markChanges;
 		}
 		canvas.drawRenderNode(node);
 	}
@@ -1905,10 +1909,20 @@ public class CodeView extends View {
 			int digitCount) {
 		CodeAppearance a = appearance;
 		Paint paint = a.paint;
-		paint.setColor(a.lineNumberColor);
 		float right = digitCount * a.digitWidth;
 		float firstTop = lines.top(first);
+		// The leading edge of the gutter, left of the padding.
+		float edge = -getPaddingLeft();
+		fill.setColor(a.markColor);
 		for (int n = first; n <= last; ++n) {
+			boolean marked = marks != null &&
+					marks.severity(n) == ProjectDiagnostic.Severity.ERROR;
+			if (marked) {
+				float top = lines.top(n) - firstTop;
+				canvas.drawRect(edge, top, edge + a.markWidth,
+						top + a.lineHeight, fill);
+			}
+			paint.setColor(marked ? a.markColor : a.lineNumberColor);
 			int start = digits.length;
 			for (int number = n + 1; number > 0; number /= 10) {
 				digits[--start] = (char) ('0' + number % 10);
