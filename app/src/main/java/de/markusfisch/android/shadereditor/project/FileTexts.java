@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -48,11 +49,11 @@ public final class FileTexts {
 
 	/**
 	 * What a save did, the state of the document it took the text at,
-	 * which a {@link OpenProject.Saved} outcome marks as saved, and the
-	 * revision storage holds after a {@link OpenProject.Conflict}, null
-	 * when none.
+	 * which a {@link OpenProject.Saved} outcome marks as saved, and
+	 * what storage holds after a {@link OpenProject.Conflict}, else
+	 * null.
 	 */
-	public record Save(int state, Outcome outcome, String seen) {
+	public record Save(int state, Outcome outcome, Checked found) {
 	}
 
 	/** What storage holds of a file, compared with what it was. */
@@ -61,10 +62,13 @@ public final class FileTexts {
 	}
 
 	/**
-	 * What a check of a file found, with the stored text and its
-	 * revision when it changed.
+	 * What a check of a file found: what storage holds compared with the
+	 * base, the revision it holds, null when none is known, the stored
+	 * text when it changed and was asked for, and whether storage holds
+	 * exactly the unsaved text it was compared with.
 	 */
-	public record Checked(Found found, Text text, String revision) {
+	public record Checked(Found found, Text text, String revision,
+			boolean equal) {
 	}
 
 	private final ProjectFiles store;
@@ -116,10 +120,10 @@ public final class FileTexts {
 	/**
 	 * Save text, taken from the document at state, to path, expecting
 	 * base, the revision the text came from. Call with null for the
-	 * text the journal of path holds, which goes once it is written;
-	 * the outcome is null when there is none, and failed when it cannot
-	 * be read. The text is immutable,
-	 * so editing on meanwhile changes nothing of what is written.
+	 * text the journal of path holds, which stays until main has it
+	 * removed; the outcome is null when there is none, and failed when
+	 * it cannot be read. The text is immutable, so editing on meanwhile
+	 * changes nothing of what is written.
 	 */
 	public void save(ProjectPath path, Text text, int state, String base,
 			Callback<Save> done) {
@@ -208,50 +212,71 @@ public final class FileTexts {
 	public void reread(ProjectPath path, String base,
 			Callback<Checked> done) {
 		worker.execute(() -> {
-			Checked checked = check(path, base, true);
+			Checked checked = check(path, base, null, false);
 			main.execute(() -> done.done(checked));
 		});
 	}
 
 	/**
-	 * Compare what storage holds of path with base, for unsaved text;
-	 * done gets what it found, without the text.
+	 * Compare what storage holds of path with base, for the unsaved
+	 * text mine, or that of its journal when null; done gets what it
+	 * found and whether storage holds exactly that text.
 	 */
-	public void compare(ProjectPath path, String base,
+	public void compare(ProjectPath path, String base, Text mine,
 			Callback<Checked> done) {
 		worker.execute(() -> {
-			Checked checked = check(path, base, false);
+			Checked checked = check(path, base, mine, true);
 			main.execute(() -> done.done(checked));
 		});
 	}
 
 	/**
-	 * Return what storage holds of path compared with base, with the
-	 * stored text when it changed and decode; on the worker.
+	 * Return what storage holds of path compared with base; on the
+	 * worker. When it changed: for unsaved text, mine or that of the
+	 * journal when null, whether storage holds exactly that text, else
+	 * the stored text.
 	 */
-	Checked check(ProjectPath path, String base, boolean decode) {
+	Checked check(ProjectPath path, String base, Text mine,
+			boolean unsaved) {
 		Read read = store.read(path, Document.MAX_BYTES);
 		if (read == null) {
-			return new Checked(Found.MISSING, null, null);
+			return new Checked(Found.MISSING, null, null, false);
 		}
 		if (read instanceof ProjectFiles.Failed failed &&
 				ProjectFiles.TOO_LARGE.equals(failed.reason())) {
-			return new Checked(Found.TOO_LARGE, null, null);
+			return new Checked(Found.TOO_LARGE, null, null, false);
 		}
 		if (!(read instanceof Content content)) {
-			return new Checked(Found.UNAVAILABLE, null, null);
+			return new Checked(Found.UNAVAILABLE, null, null, false);
 		}
-		if (content.revision().equals(base)) {
-			return new Checked(Found.SAME, null, base);
+		String revision = content.revision();
+		if (revision.equals(base)) {
+			return new Checked(Found.SAME, null, base, false);
 		} else if (content.bytes().length > Document.MAX_BYTES) {
-			return new Checked(Found.TOO_LARGE, null, content.revision());
-		} else if (!decode) {
-			return new Checked(Found.CHANGED, null, content.revision());
+			return new Checked(Found.TOO_LARGE, null, revision, false);
+		} else if (unsaved) {
+			return new Checked(Found.CHANGED, null, revision,
+					holds(content.bytes(), path, mine));
 		}
 		Text text = decode(content.bytes());
 		return text != null
-				? new Checked(Found.CHANGED, text, content.revision())
-				: new Checked(Found.NOT_TEXT, null, content.revision());
+				? new Checked(Found.CHANGED, text, revision, false)
+				: new Checked(Found.NOT_TEXT, null, revision, false);
+	}
+
+	// Return whether bytes are exactly the unsaved text of path: mine,
+	// or that of its journal when null.
+	private boolean holds(byte[] bytes, ProjectPath path, Text mine) {
+		Text text = mine;
+		if (text == null) {
+			Journal.Recovered recovered = journal.read(path);
+			text = recovered != null ? recovered.text() : null;
+		}
+		try {
+			return text != null && TextBytes.equal(text, bytes);
+		} catch (IOException e) {
+			return false;
+		}
 	}
 
 	private Save save(ProjectPath path, Text text, String base, int state) {
@@ -271,9 +296,6 @@ public final class FileTexts {
 		ProjectFiles.Change change = store.write(path,
 				out -> TextBytes.write(bytes, out), base);
 		if (change instanceof ProjectFiles.Done done) {
-			if (text == null) {
-				journal.remove(path);
-			}
 			return new Save(state, new OpenProject.Saved(done.revision()),
 					null);
 		}
@@ -282,9 +304,8 @@ public final class FileTexts {
 			return new Save(state, new OpenProject.Failed(refused.reason()),
 					null);
 		}
-		Read read = store.read(path, Document.MAX_BYTES);
 		return new Save(state, new OpenProject.Conflict(refused.reason()),
-				read instanceof Content content ? content.revision() : null);
+				check(path, base, null, false));
 	}
 
 	// Append when the journal continues where flush says, else write the

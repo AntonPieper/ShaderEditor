@@ -24,10 +24,12 @@ final class FileRecord {
 	}
 
 	/**
-	 * An operation on storage: its ticket, the revision of the document
-	 * when it was asked, -1 without one, and the base it expects.
+	 * An operation on storage: its ticket, the document when it started,
+	 * null when not in memory, with its revision and state then, and the
+	 * base it expects.
 	 */
-	record Request(Kind kind, int ticket, int revision, String base) {
+	record Request(Kind kind, int ticket, Document document, int revision,
+			int state, String base) {
 	}
 
 	/**
@@ -52,16 +54,16 @@ final class FileRecord {
 	String failure;
 	int timer;
 	int limit;
-	// What the last check found in storage.
+	// What storage was last seen to hold, compared with the base, and
+	// its revision then, null when none is known. An observation: only
+	// taking the stored text, a save or the user's consent make it the
+	// base.
 	FileTexts.Found found = FileTexts.Found.SAME;
+	String seen;
 	// Whether the text at revision runs, and the revision asked for.
 	OpenProject.Runs runs = OpenProject.Runs.UNKNOWN;
 	int runsRevision = -1;
 	int runsAsked = -1;
-	// Why storage is not at the base anymore while the text is unsaved,
-	// else null, and the revision storage held then, null when none.
-	String conflict;
-	String seen;
 	// Whether the user chose to keep the unsaved text over the base,
 	// so only an explicit save writes it.
 	boolean kept;
@@ -85,6 +87,8 @@ final class FileRecord {
 	private int acked;
 	private int flushed;
 	private List<Document.Change> changes = new ArrayList<>();
+	// Whether the journal of the file, not in memory, is to go.
+	private boolean retire;
 
 	FileRecord(ProjectPath path) {
 		this.path = path;
@@ -126,11 +130,30 @@ final class FileRecord {
 
 	/**
 	 * Return whether the record holds anything to keep: a document, an
-	 * operation, a journal or why one could not be read.
+	 * operation, a journal, a write of it on its way or why one could
+	 * not be read.
 	 */
 	boolean needed() {
 		return document != null || op != null || journaled ||
-				unreadable != null;
+				unreadable != null || retire || acked != writes;
+	}
+
+	/**
+	 * Return why storage does not hold what the unsaved text is based on
+	 * anymore, as last seen, or null when it does, cannot be read or
+	 * there is no unsaved text.
+	 */
+	String conflict() {
+		if (!edited()) {
+			return null;
+		}
+		return switch (found) {
+			case SAME, UNAVAILABLE -> null;
+			case MISSING -> base != null ? "the file was deleted" : null;
+			default -> base == null
+					? "the file exists"
+					: "the file has changed";
+		};
 	}
 
 	/**
@@ -147,13 +170,16 @@ final class FileRecord {
 	}
 
 	/**
-	 * Take what the journal header of a file not in memory tells: its
-	 * base and whether the user kept the text over it.
+	 * Take what the journal header of a file not in memory tells, its
+	 * base and whether the user kept the text over it, and what storage
+	 * was found to hold, at revision.
 	 */
-	void recover(Journal.Header header) {
+	void recover(Journal.Header header, FileTexts.Found found,
+			String revision) {
 		base = header.base();
 		kept = header.kept();
 		journaled = true;
+		see(found, revision);
 	}
 
 	/**
@@ -173,8 +199,9 @@ final class FileRecord {
 		if (op != null) {
 			throw new IllegalStateException(op.kind() + " in flight");
 		}
-		op = new Request(kind, ++tickets,
-				document != null ? document.revision() : -1, base);
+		op = new Request(kind, ++tickets, document,
+				document != null ? document.revision() : -1,
+				document != null ? document.state() : -1, base);
 		return op;
 	}
 
@@ -205,6 +232,9 @@ final class FileRecord {
 		}
 		this.document = document;
 		base = revision;
+		if (journal < 0) {
+			see(FileTexts.Found.SAME, revision);
+		}
 		journaled |= journal >= 0;
 		this.journal = journal;
 		writes = acked = Math.max(journal, 0);
@@ -221,6 +251,7 @@ final class FileRecord {
 	 */
 	boolean adoptStored(Request request, Text text, String revision) {
 		if (request != op || document == null ||
+				document != request.document() ||
 				document.revision() != request.revision()) {
 			return false;
 		}
@@ -231,37 +262,36 @@ final class FileRecord {
 				Math.min(selection.head(), text.length()));
 		document.markSaved(document.state());
 		base = revision;
-		found = FileTexts.Found.SAME;
-		conflict = null;
+		see(FileTexts.Found.SAME, revision);
 		kept = false;
 		document.endBatch();
 		return true;
 	}
 
 	/**
-	 * Take what a check for request found in storage; return whether it
-	 * was current.
+	 * Take what request found storage to hold, at revision, null when
+	 * none is known. It is seen, not taken: the base stays, and unsaved
+	 * text on another base is in conflict. Return whether request was
+	 * current.
 	 */
-	boolean adoptFound(Request request, FileTexts.Found found) {
+	boolean observe(Request request, FileTexts.Found found,
+			String revision) {
 		if (request != op) {
 			return false;
 		}
-		this.found = found;
+		see(found, revision);
 		return true;
 	}
 
-	/**
-	 * Take that storage is not at the base of request anymore, for
-	 * reason, holding revision seen, null for none; only while the base
-	 * is the same. Return whether it was taken.
-	 */
-	boolean adoptConflict(Request request, String reason, String seen) {
-		if (request != op || !Objects.equals(base, request.base())) {
-			return false;
-		}
-		conflict = reason;
-		this.seen = seen;
-		return true;
+	// Storage holds found at revision, compared with the base as it is
+	// now.
+	private void see(FileTexts.Found found, String revision) {
+		boolean text = found == FileTexts.Found.SAME ||
+				found == FileTexts.Found.CHANGED;
+		this.found = !text ? found : Objects.equals(revision, base)
+				? FileTexts.Found.SAME
+				: FileTexts.Found.CHANGED;
+		seen = revision;
 	}
 
 	/**
@@ -271,30 +301,32 @@ final class FileRecord {
 	void consent(String revision) {
 		base = revision;
 		kept = true;
-		conflict = null;
-		seen = null;
+		see(revision != null
+				? FileTexts.Found.SAME
+				: FileTexts.Found.MISSING, revision);
 		journal = -1;
 	}
 
 	/**
-	 * Take that the text of state was written at revision for request;
-	 * return whether it was current.
+	 * Take that storage holds the text request started with at revision:
+	 * a save wrote it, or a check found exactly it there. Return whether
+	 * request was current.
 	 */
-	boolean adoptSaved(Request request, int state, String revision) {
-		if (request != op) {
+	boolean adoptSaved(Request request, String revision) {
+		if (request != op || document != request.document()) {
 			return false;
 		}
 		base = revision;
-		found = FileTexts.Found.SAME;
-		conflict = null;
+		see(FileTexts.Found.SAME, revision);
 		kept = false;
 		// The journal header names the new base.
 		journal = -1;
 		if (document != null) {
-			document.markSaved(state);
-		} else {
-			// Its journal was the text written, and is gone with it.
+			document.markSaved(request.state());
+		} else if (journaled) {
+			// Its journal is the text stored, and goes by the next flush.
 			journaled = false;
+			retire = true;
 		}
 		return true;
 	}
@@ -306,12 +338,16 @@ final class FileRecord {
 
 	/**
 	 * Return what the journal is to write to hold the text of the
-	 * document, or null when it does or the document is not in memory;
-	 * it counts as sent.
+	 * document, or to go when the file has no unsaved text anymore, or
+	 * null when it is as it should be; it counts as sent.
 	 */
 	Flush flush() {
 		if (document == null) {
-			return null;
+			if (!retire) {
+				return null;
+			}
+			retire = false;
+			return new Flush(null, null, -1, ++writes, List.of());
 		}
 		int revision = document.revision();
 		List<Document.Change> changed = changes;

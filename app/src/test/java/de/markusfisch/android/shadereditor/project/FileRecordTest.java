@@ -120,6 +120,38 @@ public class FileRecordTest {
 		assertFalse(record.journaled);
 	}
 
+	@Test
+	public void conflictIsWhatWasSeenOfStorageAgainstTheBase() {
+		open("stored", "r1");
+		Document document = record.document();
+		Request check = record.start(Kind.CHECK);
+		assertTrue(record.observe(check, FileTexts.Found.CHANGED, "r2"));
+		record.end(check);
+		// Without unsaved text nothing is in conflict.
+		assertNull(record.conflict());
+
+		document.replace(0, 6, Text.of("mine"));
+		assertEquals("the file has changed", record.conflict());
+		assertEquals("r2", record.seen);
+
+		record.consent("r2");
+		assertNull(record.conflict());
+		assertEquals("r2", record.base());
+		check = record.start(Kind.CHECK);
+		record.observe(check, FileTexts.Found.CHANGED, "r3");
+		record.end(check);
+		assertEquals("r3", record.seen);
+		assertEquals("the file has changed", record.conflict());
+
+		check = record.start(Kind.CHECK);
+		record.observe(check, FileTexts.Found.MISSING, null);
+		record.end(check);
+		// What a request that is over found is not seen.
+		assertFalse(record.observe(check, FileTexts.Found.SAME, "r2"));
+		assertEquals("the file was deleted", record.conflict());
+		assertNull(record.seen);
+	}
+
 	private void open(String text, String revision) {
 		Request open = record.start(Kind.OPEN);
 		assertTrue(record.adoptOpened(open, new Document(Text.of(text)),
