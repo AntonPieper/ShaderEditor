@@ -159,11 +159,13 @@ public final class ProjectFileManager {
 	}
 
 	/**
-	 * Show the file at path of the folder opened before with key as the
-	 * file it showed last: what runs there runs, whatever the file is.
+	 * Show the file at path of the folder, or single file, opened
+	 * before with key as the file it showed last: what runs there runs,
+	 * whatever the file is.
 	 */
-	public void show(@NonNull String key, @NonNull ProjectPath path) {
-		open(key, path, false, false);
+	public void show(@NonNull String key, @NonNull ProjectPath path,
+			boolean single) {
+		open(key, path, single, false);
 	}
 
 	/**

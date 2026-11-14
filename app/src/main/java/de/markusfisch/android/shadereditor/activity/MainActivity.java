@@ -255,8 +255,8 @@ public class MainActivity extends AppCompatActivity {
 
 					@Override
 					public void onShow(@NonNull String key,
-							@NonNull ProjectPath path) {
-						files.show(key, path);
+							@NonNull ProjectPath path, boolean single) {
+						files.show(key, path, single);
 					}
 
 					@Override
