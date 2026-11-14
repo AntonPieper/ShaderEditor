@@ -9,6 +9,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import de.markusfisch.android.shadereditor.editor.Analysis;
 import de.markusfisch.android.shadereditor.editor.AnalysisScheduler;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
@@ -46,9 +47,11 @@ final class DocumentWork {
 
 	/**
 	 * Start the work for document and its styles, in place of the work
-	 * before; restyled runs after a line may have new colours.
+	 * before; restyled runs after a line may have new colours, analysed
+	 * after each analysis.
 	 */
-	void start(Document document, LineStyles styles, Runnable restyled) {
+	void start(Document document, LineStyles styles, Runnable restyled,
+			AnalysisScheduler.Callback analysed) {
 		stop();
 		stylesScheduler = new LineStylesScheduler(document, styles,
 				thread, main, restyled::run);
@@ -57,7 +60,15 @@ final class DocumentWork {
 			if (styles.setTypeNames(analysis.typeNames())) {
 				restyled.run();
 			}
+			analysed.onAnalysis(analysis);
 		});
+	}
+
+	/** Return the last analysis, possibly of an older text. */
+	Analysis latest() {
+		return analysisScheduler != null
+				? analysisScheduler.latest()
+				: Analysis.NONE;
 	}
 
 	/** Stop the work; results still on their way are dropped. */

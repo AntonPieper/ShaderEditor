@@ -50,6 +50,8 @@ import androidx.core.view.WindowInsetsCompat;
 import java.util.ArrayList;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.editor.Analysis;
+import de.markusfisch.android.shadereditor.editor.AnalysisScheduler;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.EditCommands;
 import de.markusfisch.android.shadereditor.editor.KeyCommands;
@@ -269,6 +271,8 @@ public class CodeView extends View {
 	private LineMarks marks;
 	private boolean connected;
 	private LineBackdrop backdrop;
+	private AnalysisScheduler.Callback analysisListener;
+	private boolean tabIndents = true;
 	private boolean showLineNumbers = true;
 	private int composingStart = -1;
 	private int composingEnd = -1;
@@ -477,6 +481,29 @@ public class CodeView extends View {
 	public void setShowLineNumbers(boolean showLineNumbers) {
 		this.showLineNumbers = showLineNumbers;
 		invalidate();
+	}
+
+	/** Hear of every analysis of the document shown, on this thread. */
+	public void setAnalysisListener(
+			@Nullable AnalysisScheduler.Callback listener) {
+		analysisListener = listener;
+	}
+
+	/**
+	 * Return the last analysis of the document shown, possibly of an
+	 * older revision of it.
+	 */
+	@NonNull
+	public Analysis getAnalysis() {
+		return work.latest();
+	}
+
+	/**
+	 * Let Tab indent, true by default, or leave it to move the focus,
+	 * as the platform does.
+	 */
+	public void setTabIndents(boolean tabIndents) {
+		this.tabIndents = tabIndents;
 	}
 
 	public void setLineBackdrop(@Nullable LineBackdrop backdrop) {
@@ -714,7 +741,8 @@ public class CodeView extends View {
 
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
-		if (keys == null) {
+		if (keys == null ||
+				(keyCode == KeyEvent.KEYCODE_TAB && !tabIndents)) {
 			return super.onKeyDown(keyCode, event);
 		}
 		int meta = event.getMetaState();
@@ -764,7 +792,9 @@ public class CodeView extends View {
 	public boolean onKeyUp(int keyCode, KeyEvent event) {
 		int meta = event.getMetaState();
 		action("key", event.getAction(), keyCode, meta, null);
-		return keys != null && (KeyCommands.command(keyCode, meta) != null ||
+		return keys != null &&
+				(keyCode != KeyEvent.KEYCODE_TAB || tabIndents) &&
+				(KeyCommands.command(keyCode, meta) != null ||
 				KeyCommands.types(meta) && event.getUnicodeChar(meta) != 0) ||
 				super.onKeyUp(keyCode, event);
 	}
@@ -1885,7 +1915,11 @@ public class CodeView extends View {
 
 	private void connect() {
 		document.addListener(listener);
-		work.start(document, styles, this::restyled);
+		work.start(document, styles, this::restyled, analysis -> {
+			if (analysisListener != null) {
+				analysisListener.onAnalysis(analysis);
+			}
+		});
 		connected = true;
 		restartBlink();
 	}

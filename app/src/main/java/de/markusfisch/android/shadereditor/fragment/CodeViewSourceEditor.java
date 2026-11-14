@@ -12,19 +12,26 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.snackbar.Snackbar;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.AddUniform;
+import de.markusfisch.android.shadereditor.editor.Analysis;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
+import de.markusfisch.android.shadereditor.opengl.UniformDef;
+import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
+import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.widget.CodeView;
+import de.markusfisch.android.shadereditor.widget.ShaderToySource;
 
 /**
  * The editor built on CodeView: one document, its colours and its line
@@ -38,6 +45,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 			"[\\t ]+$", Pattern.MULTILINE);
 	private static final WindowInsets NO_INSETS =
 			new WindowInsetsCompat.Builder().build().toWindowInsets();
+	private static final List<String> BUILTIN_UNIFORMS = new ArrayList<>();
+
+	static {
+		for (UniformDef uniform : UniformTable.BUILTINS) {
+			BUILTIN_UNIFORMS.add(uniform.getName());
+		}
+		Collections.sort(BUILTIN_UNIFORMS);
+	}
 
 	@NonNull
 	private final CodeView view;
@@ -57,10 +72,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 	@Nullable
 	private Listener listener;
 	private Document document;
+	private LineStyles styles;
 	private LineMarks marks;
 	private int revision;
 	private int updateDelay = 1000;
 	private int inputType = -1;
+	// The text converted from ShaderToy's form last.
+	@Nullable
+	private String converting;
 	@NonNull
 	private List<ProjectDiagnostic> errors = Collections.emptyList();
 
@@ -71,6 +90,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 			v.onApplyWindowInsets(NO_INSETS);
 			return insets;
 		});
+		view.setAnalysisListener(this::analysed);
 		show(new Document(Text.EMPTY));
 	}
 
@@ -223,6 +243,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.setFontFeatureSettings(font == Typeface.MONOSPACE ? null :
 				preferences.useLigatures() ? "normal" : "calt off");
 		view.setTabWidth(preferences.getTabWidth());
+		view.setTabIndents(preferences.useTabForIndent());
 		int type = preferences.hideNativeSuggestions()
 				? CodeView.INPUT_TYPE_NO_SUGGESTIONS
 				: CodeView.INPUT_TYPE_TEXT;
@@ -249,13 +270,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 		this.document = document;
 		revision = document.revision();
 		errors = Collections.emptyList();
+		styles = new LineStyles(document, STYLE_BUDGET);
 		marks = new LineMarks(document);
-		view.setDocument(document, new LineStyles(document, STYLE_BUDGET),
-				marks);
+		view.setDocument(document, styles, marks);
 		document.addListener(documentListener);
 	}
 
 	private void updated() {
+		complete();
 		if (document.revision() == revision) {
 			return;
 		}
@@ -265,6 +287,61 @@ final class CodeViewSourceEditor implements SourceEditor {
 		}
 		view.removeCallbacks(editPaused);
 		view.postDelayed(editPaused, updateDelay);
+	}
+
+	private void analysed(@NonNull Analysis analysis) {
+		complete();
+		if (isShaderToySource(analysis.outline())) {
+			String source = getText();
+			// Not again after the conversion was undone.
+			String converted = source.equals(converting)
+					? null
+					: ShaderToySource.convert(source);
+			if (converted != null) {
+				converting = source;
+				document.beginBatch();
+				document.replace(0, document.text().length(),
+						Text.of(converted));
+				document.select(0, 0);
+				document.endBatch();
+				view.bringCaretIntoView();
+			}
+		}
+	}
+
+	// Offers the completions for the caret, from its line and the last
+	// analysis; nothing while text is selected.
+	private void complete() {
+		Document.Selection selection = document.selection();
+		if (listener == null || !selection.isEmpty()) {
+			return;
+		}
+		Text text = document.text();
+		int caret = selection.head();
+		int n = text.lineOf(caret);
+		int lineStart = text.lineStart(n);
+		Analysis analysis = view.getAnalysis();
+		GlslCompletion.Completions completions = GlslCompletion.atColumn(
+				styles.runs(n).line(), caret - lineStart, lineStart,
+				analysis.names(), analysis.revision() == document.revision(),
+				BUILTIN_UNIFORMS);
+		listener.onCompletions(completions.words(), completions.position());
+	}
+
+	// Whether the text defines mainImage and no main, as ShaderToy's do;
+	// ShaderToySource has the last word.
+	private static boolean isShaderToySource(@NonNull Outline outline) {
+		boolean mainImage = false;
+		for (Outline.Declaration declaration : outline.declarations()) {
+			if (declaration.kind() != Outline.Kind.FUNCTION) {
+				continue;
+			}
+			if ("main".equals(declaration.name())) {
+				return false;
+			}
+			mainImage |= "mainImage".equals(declaration.name());
+		}
+		return mainImage;
 	}
 
 	private void editPaused() {

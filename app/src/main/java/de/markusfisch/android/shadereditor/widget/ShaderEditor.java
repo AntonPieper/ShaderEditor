@@ -144,31 +144,6 @@ public class ShaderEditor extends LineNumberEditText {
 		}
 	}
 
-	private static String convertShaderToySource(String src) {
-		if (!ShaderToySource.needsConversion(src)) {
-			return null;
-		}
-		// Only include and translate uniforms that have an equivalent.
-		return "#ifdef GL_FRAGMENT_PRECISION_HIGH\n" +
-				"precision highp float;\n" +
-				"#else\n" +
-				"precision mediump float;\n" +
-				"#endif\n\n" +
-				"uniform vec2 resolution;\n" +
-				"uniform float time;\n" +
-				"uniform vec4 mouse;\n" +
-				"uniform vec4 date;\n\n" +
-				src.replaceAll("iResolution", "resolution")
-						.replaceAll("iGlobalTime", "time")
-						.replaceAll("iMouse", "mouse")
-						.replaceAll("iDate", "date") +
-				"\n\nvoid main() {\n" +
-				"\tvec4 fragment_color;\n" +
-				"\tmainImage(fragment_color, gl_FragCoord.xy);\n" +
-				"\tgl_FragColor = fragment_color;\n" +
-				"}\n";
-	}
-
 	public void setOnEditPausedListener(
 			@Nullable OnEditPausedListener listener) {
 		onEditPausedListener = listener;
@@ -481,7 +456,7 @@ public class ShaderEditor extends LineNumberEditText {
 				cancelUpdate();
 				convertTabs(e, start, count);
 
-				String converted = convertShaderToySource(e.toString());
+				String converted = ShaderToySource.convert(e.toString());
 				if (converted != null) {
 					// This replaces the text: e is stale from here on,
 					// and the new text is already tokenized and announced.
