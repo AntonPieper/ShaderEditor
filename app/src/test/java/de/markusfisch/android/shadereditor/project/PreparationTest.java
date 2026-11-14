@@ -403,7 +403,7 @@ public class PreparationTest {
 						"uniform sampler2D noise;", MAIN))
 				.put("noise.wgsl", Pictures.png(1));
 
-		assertEquals(List.of("ERROR main.wgsl:0 main.wgsl" + refused),
+		assertEquals(List.of("ERROR main.wgsl:0" + refused),
 				messages(prepare(files, "main.wgsl")));
 		assertEquals(List.of("ERROR reads.frag:1 fx/blur.wgsl" + refused),
 				messages(prepare(files, "reads.frag")));
@@ -427,13 +427,13 @@ public class PreparationTest {
 				.put("picture.png", MAIN + "\n")
 				.put("notes", MAIN + "\n");
 
-		assertEquals(List.of("ERROR shader.frag:0 shader.frag is a " +
-				"picture, not a shader"), messages(prepare(files,
+		assertEquals(List.of("ERROR shader.frag:0 is a picture, not " +
+				"a shader"), messages(prepare(files,
 				"shader.frag")));
-		assertEquals(List.of("ERROR data.frag:0 data.frag is not text"),
+		assertEquals(List.of("ERROR data.frag:0 is not text"),
 				messages(prepare(files, "data.frag")));
-		assertEquals(List.of("ERROR lib.frag:0 lib.frag defines no main, " +
-				"so it cannot run"), messages(prepare(files, "lib.frag")));
+		assertEquals(List.of("ERROR lib.frag:0 defines no main, so it " +
+				"cannot run"), messages(prepare(files, "lib.frag")));
 		// The name says nothing: these two run.
 		assertNotNull(prepare(files, "picture.png").plan());
 		assertNotNull(prepare(files, "notes").plan());
