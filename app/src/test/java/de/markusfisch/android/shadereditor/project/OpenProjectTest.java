@@ -2907,6 +2907,7 @@ public class OpenProjectTest {
 		write("disabled.glsl", "#if 0\nvoid main() {}\n#endif\n");
 		write("commented.glsl", "// void main() {}\n");
 		write("notes.txt", SHADER);
+		write("other.wgsl", SHADER);
 		OpenProject project = open();
 
 		assertTrue(canRun(project, "main.frag"));
@@ -2917,6 +2918,8 @@ public class OpenProjectTest {
 		assertFalse(canRun(project, "commented.glsl"));
 		// The name plays no part.
 		assertTrue(canRun(project, "notes.txt"));
+		// Unless it is another shading language's.
+		assertFalse(canRun(project, "other.wgsl"));
 		assertEquals(OpenProject.Runs.NO, project.runs(path("other.glsl")));
 		edit(project, document(project, "lib/common.glsl"), "void main() {}");
 		assertTrue(canRun(project, "lib/common.glsl"));

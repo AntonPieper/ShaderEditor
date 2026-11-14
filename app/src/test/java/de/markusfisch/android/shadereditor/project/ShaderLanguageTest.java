@@ -26,6 +26,27 @@ public class ShaderLanguageTest {
 	}
 
 	@Test
+	public void namesOfOtherShadingLanguagesNeverMeanGlsl() {
+		for (String name : new String[]{"blur.wgsl", "a/b.AGSL", "c.sksl",
+				"d.hlsl", "e.slang"}) {
+			ShaderLanguage language = ShaderLanguage.of(name);
+			assertEquals(name, ShaderLanguage.UNSUPPORTED, language);
+			assertEquals(name, ShaderLanguage.UNSUPPORTED,
+					ShaderLanguage.listed(name));
+			assertFalse(language.runnable(Text.of("void main() {}\n")));
+			assertEquals(name + " is named as a shader in another " +
+					"language than GLSL, which ShaderEditor does not run; " +
+					"rename it if it is GLSL", language.refusal(
+					ProjectPath.parse(name).value()));
+		}
+		assertNull(ShaderLanguage.GLSL.refusal(
+				ProjectPath.parse("main.frag").value()));
+		// Not an ending: the name only contains it.
+		assertEquals(ShaderLanguage.GLSL, ShaderLanguage.of("wgsl"));
+		assertEquals(ShaderLanguage.GLSL, ShaderLanguage.of("a.wgsl.frag"));
+	}
+
+	@Test
 	public void listsTheNamesShadersUsuallyHave() {
 		assertEquals(ShaderLanguage.GLSL, ShaderLanguage.listed("main.frag"));
 		assertEquals(ShaderLanguage.GLSL, ShaderLanguage.listed("A.GLSL"));
