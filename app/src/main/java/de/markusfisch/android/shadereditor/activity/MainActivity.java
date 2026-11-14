@@ -161,16 +161,10 @@ public class MainActivity extends AppCompatActivity {
 		editorFragment.setOnEditPausedListener(text -> {
 			if (ShaderEditorApp.preferences.doesRunOnChange() &&
 					open instanceof ProjectFile) {
-				if (editorFragment.hasErrors()) {
-					editorFragment.clearError();
-					editorFragment.highlightErrors();
-				}
+				editorFragment.runningEdit();
 				files.run();
 			} else if (ShaderEditorApp.preferences.doesRunOnChange()) {
-				if (editorFragment.hasErrors()) {
-					editorFragment.clearError();
-					editorFragment.highlightErrors();
-				}
+				editorFragment.runningEdit();
 				shaderViewManager.setShader(text, open.getQuality());
 			}
 		});
@@ -492,7 +486,10 @@ public class MainActivity extends AppCompatActivity {
 						for (var diagnostic : infoLog) {
 							if (diagnostic.severity() ==
 									ProjectDiagnostic.Severity.ERROR) {
-								showError(diagnostic.toString());
+								if (!editorFragment.showsErrorMessage(
+										diagnostic)) {
+									showError(diagnostic.toString());
+								}
 								break;
 							}
 						}

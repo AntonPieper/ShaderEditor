@@ -224,7 +224,17 @@ final class CodeViewSourceEditor implements SourceEditor {
 	@Override
 	public void markErrors() {
 		marks.set(document.revision(), errors);
-		view.invalidate();
+		view.marksChanged();
+	}
+
+	@Override
+	public boolean keepsErrorsUntilResult() {
+		return true;
+	}
+
+	@Override
+	public boolean showsErrorMessages() {
+		return view.isShown();
 	}
 
 	@Override

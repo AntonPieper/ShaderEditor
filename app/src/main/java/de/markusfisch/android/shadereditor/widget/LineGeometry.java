@@ -69,6 +69,16 @@ final class LineGeometry {
 				(rowLine >= 0 && rowLine < lineCount ? rowHeight : 0);
 	}
 
+	/**
+	 * Return the scroll position that keeps line anchor where it was on
+	 * screen at scrollY, after the row changed from one of oldHeight
+	 * under oldLine to the one now.
+	 */
+	int keep(int scrollY, int anchor, int oldLine, int oldHeight) {
+		return scrollY + offset(anchor, rowLine, rowHeight) -
+				offset(anchor, oldLine, oldHeight);
+	}
+
 	private static int offset(int n, int rowLine, int rowHeight) {
 		return rowLine >= 0 && n > rowLine ? rowHeight : 0;
 	}
