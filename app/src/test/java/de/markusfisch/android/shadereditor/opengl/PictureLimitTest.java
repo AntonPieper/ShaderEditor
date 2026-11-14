@@ -30,6 +30,20 @@ public class PictureLimitTest {
 		}
 	}
 
+	// An rgba16f output holds values above 1, which the ceiling bounds
+	// as it bounds white.
+	@Test
+	public void valuesAboveOneStayUnderTheCeiling() {
+		for (int ceiling : new int[]{PictureLimit.DIM, PictureLimit.BALANCED,
+				PictureLimit.BRIGHT}) {
+			for (float value : new float[]{1.5f, 4f, 1000f}) {
+				assertEquals(ceiling / 255f, gray(value, ceiling), 1e-6f);
+			}
+		}
+		float strength = PictureLimit.strength(PictureLimit.BALANCED / 255f);
+		assertEquals(0f, PictureLimit.apply(-2f, 4f, strength), 0f);
+	}
+
 	@Test
 	public void theHueIsKept() {
 		float strength = PictureLimit.strength(PictureLimit.DIM / 255f);

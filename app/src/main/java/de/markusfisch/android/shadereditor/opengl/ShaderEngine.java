@@ -108,7 +108,8 @@ public final class ShaderEngine {
 	// in, still valid when a source warns later.
 	@NonNull
 	private List<ProjectDiagnostic> built = List.of();
-	private int version = 2;
+	@NonNull
+	private TargetFormats formats = TargetFormats.of(2, "");
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
 	private volatile long nextFpsUpdate;
@@ -199,7 +200,6 @@ public final class ShaderEngine {
 
 	// GL thread, for every new context of the given GLES major version.
 	public void onContextCreated(int version) {
-		this.version = version;
 		device.disable(GLES20.GL_CULL_FACE);
 		device.disable(GLES20.GL_BLEND);
 		device.disable(GLES20.GL_DEPTH_TEST);
@@ -207,6 +207,7 @@ public final class ShaderEngine {
 
 		discardContextResources();
 		device.createContextResources();
+		formats = device.targetFormats(version);
 		var errors = renderPipeline.createContextResources();
 		if (!errors.isEmpty()) {
 			submitErrors(errors);
@@ -425,7 +426,7 @@ public final class ShaderEngine {
 	private void build(@NonNull ShaderSwap.Revision<Offer> revision) {
 		var errors = new ArrayList<ProjectDiagnostic>();
 		var build = PlanRuntime.link(device, revision.shader().shader(),
-				version, errors);
+				formats, errors);
 		if (build == null) {
 			shaders.failed(revision);
 			report(revision, errors);

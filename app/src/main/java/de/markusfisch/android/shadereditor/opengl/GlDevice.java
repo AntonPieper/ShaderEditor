@@ -189,18 +189,36 @@ class GlDevice {
 	}
 
 	void allocateTexture2D(@NonNull GlTexture2D texture, int width, int height) {
+		allocateTexture2D(texture, width, height, GLES20.GL_RGBA,
+				GLES20.GL_UNSIGNED_BYTE);
+	}
+
+	// Returns why it could not, or null.
+	@Nullable
+	String allocateTexture2D(@NonNull GlTexture2D texture, int width,
+			int height, int internalFormat, int type) {
 		bindTexture(0, texture);
+		clearGlErrors();
 		GLES20.glTexImage2D(
 				GLES20.GL_TEXTURE_2D,
 				0,
-				GLES20.GL_RGBA,
+				internalFormat,
 				width,
 				height,
 				0,
 				GLES20.GL_RGBA,
-				GLES20.GL_UNSIGNED_BYTE,
+				type,
 				null);
 		texture.setSize(width, height);
+		return takeError("glTexImage2D");
+	}
+
+	// What the current context does with the formats of targets.
+	@NonNull
+	TargetFormats targetFormats(int glesVersion) {
+		String extensions = GLES20.glGetString(GLES20.GL_EXTENSIONS);
+		return TargetFormats.of(glesVersion,
+				extensions != null ? extensions : "");
 	}
 
 	@Nullable
