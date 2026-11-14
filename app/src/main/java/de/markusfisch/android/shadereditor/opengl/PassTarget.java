@@ -52,7 +52,9 @@ final class PassTarget {
 					formats.type(format));
 			device.applySampling(texture, Sampling.PASS);
 			var framebuffer = pass.framebuffers[i] = device.createFramebuffer();
-			device.attachColor(framebuffer, texture);
+			if (message == null) {
+				message = device.attachColor(framebuffer, texture);
+			}
 			int status = device.checkFramebufferStatus(framebuffer);
 			if (message != null || status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
 				device.bindFramebuffer(null);

@@ -125,6 +125,16 @@ final class PlanPass {
 		for (int i = 0; i < passSamplers.length; ++i) {
 			passSamplers[i] = device.createSampler(passes.get(i).sampling());
 		}
+		for (int sampler : samplers) {
+			if (sampler == 0) {
+				return "GL gave a sampler no name";
+			}
+		}
+		for (int sampler : passSamplers) {
+			if (sampler == 0) {
+				return "GL gave a sampler no name";
+			}
+		}
 		return device.takeError("glGenSamplers");
 	}
 

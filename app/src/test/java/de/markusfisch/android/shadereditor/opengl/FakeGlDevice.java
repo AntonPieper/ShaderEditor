@@ -45,6 +45,11 @@ class FakeGlDevice extends GlDevice {
 	// The name of the call that fails next, or null.
 	@Nullable
 	String failAt;
+	// Textures and framebuffers made and not deleted.
+	final java.util.Set<Integer> live = new java.util.HashSet<>();
+	// Textures that were allocated or attached.
+	final List<Integer> touched = new ArrayList<>();
+	private int failAfter;
 	private final Map<Integer, Integer> units = new HashMap<>();
 	private final Map<Integer, Map<String, float[]>> values = new HashMap<>();
 	private int nextName = 1;
@@ -97,7 +102,7 @@ class FakeGlDevice extends GlDevice {
 	@Override
 	GlTexture2D createTexture2D() {
 		calls.add("createTexture2D");
-		return new GlTexture2D(name("createTexture2D"));
+		return new GlTexture2D(liveName("createTexture2D"));
 	}
 
 	@NonNull
@@ -116,6 +121,7 @@ class FakeGlDevice extends GlDevice {
 	void deleteTexture(@Nullable GlTexture texture) {
 		if (texture != null && texture.isValid()) {
 			calls.add("deleteTexture");
+			live.remove(texture.getId());
 			texture.invalidate();
 		}
 	}
@@ -139,12 +145,23 @@ class FakeGlDevice extends GlDevice {
 		texture.setSize(width, height);
 	}
 
+	// Like the device: an object without a name is refused before any
+	// call.
+	@Nullable
+	String allocate(@NonNull GlTexture2D texture, int width, int height) {
+		if (!texture.isValid()) {
+			return "no texture";
+		}
+		touched.add(texture.getId());
+		allocateTexture2D(texture, width, height);
+		return fails("allocateTexture2D") ? "allocation failed" : null;
+	}
+
 	@Nullable
 	@Override
 	String allocateTexture2D(@NonNull GlTexture2D texture, int width,
 			int height, int internalFormat, int type) {
-		allocateTexture2D(texture, width, height);
-		return fails("allocateTexture2D") ? "allocation failed" : null;
+		return allocate(texture, width, height);
 	}
 
 	@Nullable
@@ -206,13 +223,14 @@ class FakeGlDevice extends GlDevice {
 	@Override
 	GlFramebuffer createFramebuffer() {
 		calls.add("createFramebuffer");
-		return new GlFramebuffer(name("createFramebuffer"));
+		return new GlFramebuffer(liveName("createFramebuffer"));
 	}
 
 	@Override
 	void deleteFramebuffer(@Nullable GlFramebuffer framebuffer) {
 		if (framebuffer != null && framebuffer.isValid()) {
 			calls.add("deleteFramebuffer");
+			live.remove(framebuffer.getId());
 			framebuffer.invalidate();
 		}
 	}
@@ -224,15 +242,26 @@ class FakeGlDevice extends GlDevice {
 				: null;
 	}
 
+	@Nullable
 	@Override
-	void attachColor(@NonNull GlFramebuffer framebuffer,
+	String attachColor(@NonNull GlFramebuffer framebuffer,
 			@NonNull GlTexture2D texture) {
+		if (!framebuffer.isValid() || !texture.isValid()) {
+			return "no name";
+		}
+		touched.add(texture.getId());
 		bindFramebuffer(framebuffer);
 		framebuffer.setColorAttachment(texture);
+		return fails("attachColor") ? "attach failed" : null;
 	}
 
+	// The window's framebuffer is complete, so a failed attachment would
+	// pass this check if it did not look at what is bound.
 	@Override
 	int checkFramebufferStatus(@NonNull GlFramebuffer framebuffer) {
+		if (!framebuffer.isValid()) {
+			return 0;
+		}
 		bindFramebuffer(framebuffer);
 		return fails("checkFramebufferStatus")
 				? GLES20.GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT
@@ -353,16 +382,33 @@ class FakeGlDevice extends GlDevice {
 		}
 	}
 
+	// Makes the occurrence-th call of that name from now on fail.
+	void fail(@NonNull String call, int occurrence) {
+		failAt = call;
+		failAfter = occurrence - 1;
+	}
+
 	private int name(@NonNull String call) {
 		return fails(call) ? 0 : nextName++;
 	}
 
-	private boolean fails(@NonNull String call) {
-		if (call.equals(failAt)) {
-			failAt = null;
-			return true;
+	private int liveName(@NonNull String call) {
+		int name = name(call);
+		if (name != 0) {
+			live.add(name);
 		}
-		return false;
+		return name;
+	}
+
+	private boolean fails(@NonNull String call) {
+		if (!call.equals(failAt)) {
+			return false;
+		} else if (failAfter > 0) {
+			--failAfter;
+			return false;
+		}
+		failAt = null;
+		return true;
 	}
 
 	private static int type(@NonNull String type) {

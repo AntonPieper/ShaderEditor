@@ -96,9 +96,13 @@ final class ShaderRenderPipeline {
 				THUMBNAIL_WIDTH,
 				THUMBNAIL_HEIGHT);
 		thumbnailFramebuffer = device.createFramebuffer();
-		device.attachColor(thumbnailFramebuffer, thumbnailTexture);
+		var message = device.attachColor(thumbnailFramebuffer,
+				thumbnailTexture);
 		int status = device.checkFramebufferStatus(thumbnailFramebuffer);
-		if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+		if (message != null) {
+			errors.add(ProjectDiagnostic.error("Thumbnail framebuffer: " +
+					message));
+		} else if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
 			errors.add(ProjectDiagnostic.error(
 					"Thumbnail framebuffer incomplete: 0x" +
 							Integer.toHexString(status)));

@@ -320,6 +320,54 @@ public class PlanRuntimeTest {
 		return count;
 	}
 
+	// Any step of making the targets of a candidate can fail, at its
+	// first target or a later one: the candidate fails as a whole,
+	// everything it made is deleted, and the targets of the running plan
+	// are neither deleted nor written.
+	@Test
+	public void aFailureAnywhereInMakingTargetsLeavesNothingBehind() {
+		var running = prepare("main.frag", lines(
+				"uniform sampler2D backbuffer;",
+				MAIN));
+		var candidate = prepare("main.frag", lines(
+						"#pragma se input \"a.frag\" frame=previous",
+						"uniform sampler2D a;",
+						"#pragma se input \"b.frag\"",
+						"uniform sampler2D b;",
+						MAIN),
+				"a.frag", MAIN,
+				"b.frag", lines(
+						"#pragma se input \"b.frag\" frame=previous",
+						"uniform sampler2D self;",
+						MAIN));
+		var formats = TargetFormats.of(3, "GL_EXT_color_buffer_float");
+		for (var step : List.of("createTexture2D", "allocateTexture2D",
+				"createFramebuffer", "attachColor", "checkFramebufferStatus")) {
+			for (int occurrence : new int[]{1, 4}) {
+				var device = new FakeGlDevice();
+				var old = new FakeEngine(device, running, formats);
+				old.resize(8, 4);
+				old.draw(0);
+				var next = new FakeEngine(device, candidate, formats);
+				var live = new java.util.HashSet<>(device.live);
+				int touched = device.touched.size();
+				device.fail(step, occurrence);
+				assertEquals(step + " " + occurrence,
+						ShaderSwap.Allocation.FAILED, next.resize(8, 4));
+				assertEquals(step + " " + occurrence, live, device.live);
+				for (var texture : device.touched.subList(touched,
+						device.touched.size())) {
+					assertFalse(step + " " + occurrence,
+							live.contains(texture));
+				}
+				old.draw(1);
+				var draws = old.draws("main.frag");
+				assertEquals(draws.get(0).target(), (int) draws.get(1)
+						.units().get(old.unit("main.frag", "backbuffer")));
+			}
+		}
+	}
+
 	private static List<ProjectDiagnostic> checkInitial(
 			Preparation preparation,
 			boolean history) {
