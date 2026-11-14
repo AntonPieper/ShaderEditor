@@ -84,6 +84,14 @@ public final class LibraryMove {
 	public interface Selector {
 		/** Return whether path is that now. */
 		boolean select(ProjectPath path);
+
+		/**
+		 * Return whether the library shows a file already: then
+		 * someone chose it, and it stays.
+		 */
+		default boolean shows() {
+			return false;
+		}
 	}
 
 	/**
@@ -436,6 +444,12 @@ public final class LibraryMove {
 	// came this far; later ones leave the library as the user has it.
 	private void select() {
 		if (note.selected()) {
+			return;
+		} else if (selector != null && selector.shows()) {
+			// The user was first, or an earlier run that died before
+			// it could note this.
+			between.run();
+			note.noteSelected(0);
 			return;
 		}
 		ProjectPath path = chosen.lastOpened() > 0
