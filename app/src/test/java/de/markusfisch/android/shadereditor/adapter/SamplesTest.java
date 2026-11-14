@@ -75,14 +75,15 @@ public class SamplesTest {
 				"Back camera.frag",
 				"Mirror.frag",
 				"Trails.frag",
-				"Game of Life.frag",
+				"Game of Life/main.frag",
 				"Electric Fade.frag",
 				"Swirl.frag",
 				"GLES 3.frag",
 				"Blobs.frag",
 				"Skybox.frag",
 				"Bloom/main.frag",
-				"Horizon.frag"), paths());
+				"Horizon.frag",
+				"Ink/main.frag"), paths());
 	}
 
 	@Test
@@ -114,6 +115,7 @@ public class SamplesTest {
 				Samples.Section.TECHNIQUES,
 				Samples.Section.TECHNIQUES,
 				Samples.Section.TECHNIQUES,
+				Samples.Section.WALLPAPERS,
 				Samples.Section.WALLPAPERS), sections);
 	}
 
