@@ -188,21 +188,37 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 	}
 
 	// GL thread. Swaps the next build in once it is complete and still
-	// the newest request, and returns it, or returns null.
+	// the newest request, and returns it, or returns null. Whether it is
+	// the newest request and the swap are one step under the lock that
+	// request() takes: the build that becomes current is the newest
+	// requested revision at that moment, or nothing changes. The build it
+	// replaces is released after that step.
 	@Nullable
 	B swapIfComplete() {
-		if (next() == null || !next.isComplete()) {
+		B replaced;
+		B superseded = null;
+		synchronized (this) {
+			if (next == null || !next.isComplete()) {
+				return null;
+			}
+			replaced = current;
+			if (nextRevision != null && superseded(nextRevision)) {
+				superseded = next;
+				replaced = null;
+			} else {
+				current = next;
+				currentRevision = nextRevision;
+				fallback = null;
+			}
+			next = null;
+			nextRevision = null;
+		}
+		if (superseded != null) {
+			superseded.release();
 			return null;
 		}
-		if (current != null) {
-			current.release();
-		}
-		current = next;
-		currentRevision = nextRevision;
-		next = null;
-		nextRevision = null;
-		synchronized (this) {
-			fallback = null;
+		if (replaced != null) {
+			replaced.release();
 		}
 		return current;
 	}

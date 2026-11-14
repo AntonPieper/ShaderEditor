@@ -24,6 +24,9 @@ public class ShaderSwapTest {
 		boolean complete;
 		boolean released;
 		boolean discarded;
+		// Runs while the build is released.
+		@Nullable
+		Runnable onRelease;
 
 		FakeBuild(@NonNull String shader, boolean complete) {
 			this.shader = shader;
@@ -38,6 +41,9 @@ public class ShaderSwapTest {
 		@Override
 		public void release() {
 			released = true;
+			if (onRelease != null) {
+				onRelease.run();
+			}
 		}
 
 		@Override
@@ -68,6 +74,41 @@ public class ShaderSwapTest {
 		assertEquals(2, swap.currentRevision().number());
 		assertTrue(a.released);
 		assertFalse(b.released);
+	}
+
+	// The build that becomes current is the newest requested revision
+	// at the moment it becomes current: a request that arrives while the
+	// build it replaces is released comes after that moment.
+	@Test
+	public void aRequestWhileTheOldBuildIsReleasedComesAfterTheSwap() {
+		var a = buildAndSwap("a");
+		swap.offer("b");
+		var b = new FakeBuild("b", true);
+		swap.built(swap.take(), b);
+		var currentAtRequest = new ArrayList<FakeBuild>();
+		a.onRelease = () -> {
+			currentAtRequest.add(swap.current());
+			swap.request();
+		};
+		assertSame(b, swap.swapIfComplete());
+		assertEquals(List.of(b), currentAtRequest);
+		assertEquals(2, swap.currentRevision().number());
+		assertEquals(3, swap.requested());
+	}
+
+	// A request between taking the build and swapping it in supersedes
+	// it: nothing changes.
+	@Test
+	public void aBuildSupersededBeforeTheSwapNeverBecomesCurrent() {
+		var a = buildAndSwap("a");
+		swap.offer("b");
+		var b = new FakeBuild("b", true);
+		swap.built(swap.take(), b);
+		swap.request();
+		assertNull(swap.swapIfComplete());
+		assertSame(a, swap.current());
+		assertFalse(a.released);
+		assertTrue(b.released);
 	}
 
 	@Test
