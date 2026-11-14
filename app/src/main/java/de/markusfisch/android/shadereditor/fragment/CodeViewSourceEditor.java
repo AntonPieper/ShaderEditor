@@ -295,12 +295,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 	@Override
 	public void destroy() {
 		view.removeCallbacks(editPaused);
+		// A file's document outlives this screen.
+		release();
 	}
 
 	private void show(@NonNull Document document) {
 		view.removeCallbacks(editPaused);
 		if (this.document != null) {
-			this.document.removeListener(documentListener);
+			release();
 		}
 		this.document = document;
 		revision = document.revision();
@@ -309,6 +311,12 @@ final class CodeViewSourceEditor implements SourceEditor {
 		marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
 		document.addListener(documentListener);
+	}
+
+	private void release() {
+		document.removeListener(documentListener);
+		styles.close();
+		marks.close();
 	}
 
 	private void updated() {

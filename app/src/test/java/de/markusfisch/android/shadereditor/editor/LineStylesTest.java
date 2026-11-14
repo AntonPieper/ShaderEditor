@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.editor;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -223,6 +224,15 @@ public class LineStylesTest {
 		assertNull(styles.continuation());
 		type(document, 0, "/*");
 		assertNull(styles.continuation());
+	}
+
+	@Test
+	public void ignoresEditsOnceClosed() {
+		Document document = new Document(Text.of("x\ny"));
+		LineStyles styles = new LineStyles(document, 10);
+		styles.close();
+		document.replace(0, 0, Text.of("/*"));
+		assertNotEquals(Style.COMMENT, styles.runs(1).style(0));
 	}
 
 	private static void edit(Document document, Random random, String base) {
