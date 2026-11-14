@@ -134,7 +134,10 @@ public class UIManager {
 		drawerLayout.setTouchThru(isVisible);
 		extraKeysManager.setVisible(!isVisible &&
 				ShaderEditorApp.preferences.showExtraKeys());
-		limitPicture(Settings.Global.getFloat(activity.getContentResolver(),
+		// Code over a bright picture cannot be read, so the picture is
+		// dimmed at once when the code appears and only fades back.
+		limitPicture(isVisible && Settings.Global.getFloat(
+				activity.getContentResolver(),
 				Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f);
 	}
 

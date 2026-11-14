@@ -389,7 +389,7 @@ Never colour alone: every state has an icon or a shape, and a spoken text.
 
 ### 6.7 Motion
 
-The library's defaults and nothing bespoke. Changes inside a surface (a drawer level sliding, a fade) take `motionDurationShort4` (200 ms); sheets and dialogs keep the component's own. The code's opacity and the picture's limit follow the drawer's slide directly, and take 150 ms on the eye button. Nothing loops except the caret. Nothing moves because a key was pressed. With the system's animations off, everything is instant.
+The library's defaults and nothing bespoke. Changes inside a surface (a drawer level sliding, a fade) take `motionDurationShort4` (200 ms); sheets and dialogs keep the component's own. The code's opacity and the picture's limit follow the drawer's slide directly. On the eye button the picture is limited at once when the code appears, because code over a bright picture cannot be read, and the limit lifts over 150 ms when the code is hidden. Nothing loops except the caret. Nothing moves because a key was pressed. With the system's animations off, everything is instant.
 
 ### 6.8 Wording
 
