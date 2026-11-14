@@ -34,6 +34,7 @@ public final class ShaderEngine {
 		default void onLastPicture(boolean shown) {
 		}
 
+		// The frames drawn per second, 0 when no picture runs any more.
 		void onFramesPerSecond(int fps);
 	}
 
@@ -269,6 +270,13 @@ public final class ShaderEngine {
 				!build.hasTargets()) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
+			// No picture runs, as after a build that failed: the rate
+			// of the one before is not this one's.
+			var listener = this.listener;
+			if (lastFps != 0 && listener != null) {
+				resetFps();
+				listener.onFramesPerSecond(0);
+			}
 			return;
 		}
 
