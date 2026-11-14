@@ -7,11 +7,11 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.zip.CRC32;
 
@@ -25,20 +25,17 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
 /**
  * The undo history of the files of a session, one file each, so undo
  * survives a document leaving memory and the process. A history is
- * kept for exactly one text, named by the SHA-256 of its bytes: read
- * for another text, damaged, or larger than a document may be, it is
- * ignored and deleted. Nothing depends on it; losing it loses undo.
- * Its size is that of the document's history, which keeps at most a
- * thousand steps and four million characters. Worker only.
+ * kept for exactly one text, named by the SHA-256 of its characters,
+ * each encoded by itself, so no two texts share a name: read for
+ * another text, damaged, or larger than a document may be, it is
+ * ignored and deleted. Nothing depends on it; losing it loses undo and
+ * the selection, never text or whether the text is saved, which a
+ * history does not tell. Its size is that of the document's history,
+ * which keeps at most a thousand steps and four million characters;
+ * all of a session together keep at most {@link #MAX_BYTES}, the
+ * oldest going first. Worker only.
  */
 final class Histories {
-	/**
-	 * A history and the stored revision the text was based on when it
-	 * was kept, null for none.
-	 */
-	record Kept(History history, String base) {
-	}
-
 	/**
 	 * The most characters the texts of a history kept may have, as many
 	 * as a document keeps beyond its newest step; one of a document
@@ -46,8 +43,11 @@ final class Histories {
 	 */
 	static final int MAX_CHARS = 4_000_000;
 
-	// "SEH1"
-	private static final int MAGIC = 0x53454831;
+	/** The most bytes the histories of a session take together. */
+	static final long MAX_BYTES = 2 * Document.MAX_BYTES;
+
+	// "SEH2"
+	private static final int MAGIC = 0x53454832;
 	private static final String SUFFIX = ".history";
 
 	private final File dir;
@@ -56,24 +56,22 @@ final class Histories {
 		this.dir = dir;
 	}
 
-	/** Return the SHA-256 of the bytes of text, or null. */
+	/**
+	 * Return the SHA-256 of the characters of text, each encoded by
+	 * itself as the journal does, lines ended by a line feed, or null.
+	 * Unlike the bytes a file gets, where every lone surrogate is the
+	 * same '?', it differs for texts that differ.
+	 */
 	static String hash(Text text) {
 		MessageDigest digest;
 		try {
 			digest = MessageDigest.getInstance("SHA-256");
-			TextBytes.write(text, new OutputStream() {
-				@Override
-				public void write(int b) {
-					digest.update((byte) b);
-				}
-
-				@Override
-				public void write(byte[] b, int off, int len) {
-					digest.update(b, off, len);
-				}
-			});
-		} catch (NoSuchAlgorithmException | IOException e) {
+		} catch (NoSuchAlgorithmException e) {
 			return null;
+		}
+		for (int i = 0, lines = text.lineCount(); i < lines; ++i) {
+			digest.update(Journal.encode(text.line(i)));
+			digest.update((byte) '\n');
 		}
 		return StoredFiles.revision(digest);
 	}
@@ -84,20 +82,16 @@ final class Histories {
 	}
 
 	/**
-	 * Keep history for path, whose text has hash and was based on the
-	 * stored revision base. Return whether it was written.
+	 * Keep history for path, whose text has hash. Return whether it was
+	 * written.
 	 */
-	boolean write(ProjectPath path, String hash, String base,
-			History history) {
+	boolean write(ProjectPath path, String hash, History history) {
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 		try (DataOutputStream out = new DataOutputStream(bytes)) {
 			out.writeUTF(path.toString());
 			out.writeUTF(hash);
-			out.writeBoolean(base != null);
-			out.writeUTF(base != null ? base : "");
 			out.writeInt(history.revision());
 			out.writeInt(history.state());
-			out.writeInt(history.saved());
 			writeSelection(out, history.selection());
 			writeSteps(out, history.undo());
 			writeSteps(out, history.redo());
@@ -121,12 +115,12 @@ final class Histories {
 	 * Return the history kept for path when it was kept for the text of
 	 * hash, else null; one that is not, or cannot be read, is deleted.
 	 */
-	Kept read(ProjectPath path, String hash) {
+	History read(ProjectPath path, String hash) {
 		File file = file(path);
 		if (!file.isFile()) {
 			return null;
 		}
-		Kept kept = null;
+		History kept = null;
 		if (file.length() <= Document.MAX_BYTES) {
 			try {
 				kept = parse(path, hash, file);
@@ -147,11 +141,33 @@ final class Histories {
 		file(path).delete();
 	}
 
+	/**
+	 * Delete the histories written longest ago while all together take
+	 * more than {@link #MAX_BYTES}: those of files deleted or renamed
+	 * elsewhere are never read again and would stay forever.
+	 */
+	void trim() {
+		File[] files = dir.listFiles((d, name) -> name.endsWith(SUFFIX));
+		if (files == null) {
+			return;
+		}
+		Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(),
+				a.lastModified()));
+		long total = 0;
+		for (File file : files) {
+			total += file.length();
+			if (total > MAX_BYTES) {
+				//noinspection ResultOfMethodCallIgnored
+				file.delete();
+			}
+		}
+	}
+
 	private File file(ProjectPath path) {
 		return new File(dir, name(path));
 	}
 
-	private static Kept parse(ProjectPath path, String hash, File file)
+	private static History parse(ProjectPath path, String hash, File file)
 			throws IOException {
 		byte[] body;
 		try (DataInputStream in = new DataInputStream(
@@ -174,17 +190,13 @@ final class Histories {
 				!in.readUTF().equals(hash)) {
 			return null;
 		}
-		boolean based = in.readBoolean();
-		String base = in.readUTF();
 		int revision = in.readInt();
 		int state = in.readInt();
-		int saved = in.readInt();
 		Selection selection = readSelection(in);
 		List<History.Step> undo = readSteps(in);
 		List<History.Step> redo = readSteps(in);
 		return in.available() == 0
-				? new Kept(new History(undo, redo, revision, state, saved,
-						selection), based ? base : null)
+				? new History(undo, redo, revision, state, selection)
 				: null;
 	}
 

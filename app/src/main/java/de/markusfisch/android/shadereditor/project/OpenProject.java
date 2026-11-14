@@ -307,6 +307,7 @@ public final class OpenProject {
 				sessions.histories(id), sessions.recent(id), worker, main,
 				later, lone, storage, budget);
 		journal.removeLeftovers();
+		project.histories.trim();
 		for (Journal.Header header : journal.headers().values()) {
 			FileTexts.Checked checked = project.texts.check(header.path(),
 					header.base(), null, true);
@@ -1112,21 +1113,18 @@ public final class OpenProject {
 	private boolean take(FileRecord record, FileRecord.Request request,
 			FileTexts.Opened opened) {
 		Document document = new Document(opened.text(), opened.bytes());
-		Histories.Kept kept = opened.history();
-		boolean restored = kept != null && document.restore(kept.history());
-		if (!opened.unsaved()) {
-			document.markSaved(document.state());
-		} else if (!restored ||
-				!Objects.equals(kept.base(), opened.revision())) {
-			// Which state was saved holds only on the same base.
-			document.markSaved(-1);
+		if (opened.history() != null) {
+			document.restore(opened.history());
 		}
+		// Only where the text came from tells whether it is saved.
+		document.markSaved(opened.unsaved() ? -1 : document.state());
 		if (records.get(record.path) != record ||
 				!record.adoptOpened(request, document, opened.revision(),
 						opened.journal())) {
 			return false;
 		}
 		record.historyAt = document.revision();
+		record.historySelection = document.selection();
 		record.listener = new Document.Listener() {
 			private int revision = document.revision();
 
@@ -1244,9 +1242,11 @@ public final class OpenProject {
 						opened.revision());
 			}
 			end(record, request);
-			// The journal goes only now that the stored text is taken.
+			// The journal goes only now that the stored text is taken,
+			// and after the history that brings its text back by undo.
 			if (took) {
 				record.kept = false;
+				keepHistory(record);
 				flush(record);
 			}
 			changed();
@@ -1319,18 +1319,22 @@ public final class OpenProject {
 	}
 
 	// Keep the undo history of the document of record, with what it
-	// selects, when it changed since it was kept, so it is there when
-	// the file is opened again, also by another process.
+	// selects, when either changed since it was kept, so it is there
+	// when the file is opened again, also by another process.
 	private void keepHistory(FileRecord record) {
 		Document document = record.document();
-		if (document == null || document.revision() == record.historyAt) {
+		if (document == null ||
+				document.revision() == record.historyAt &&
+						document.selection().equals(
+								record.historySelection)) {
 			return;
 		}
 		record.historyAt = document.revision();
+		record.historySelection = document.selection();
 		if (document.historyChars() > Histories.MAX_CHARS) {
 			texts.forgetHistory(record.path);
-		} else if (document.canUndo() || document.canRedo()) {
-			texts.keepHistory(record.path, document.text(), record.base(),
+		} else {
+			texts.keepHistory(record.path, document.text(),
 					document.history());
 		}
 	}

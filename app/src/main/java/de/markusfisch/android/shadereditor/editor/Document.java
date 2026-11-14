@@ -80,11 +80,11 @@ public final class Document {
 	/**
 	 * What a document keeps besides its text, to be taken by a document
 	 * of the same text: the steps undo and redo take, oldest first, the
-	 * revision and state the text is at, the state last saved, and the
-	 * selection.
+	 * revision and state the text is at, and the selection. Which state
+	 * was saved is not part of it.
 	 */
 	public record History(List<Step> undo, List<Step> redo, int revision,
-			int state, int saved, Selection selection) {
+			int state, Selection selection) {
 		public History {
 			undo = List.copyOf(undo);
 			redo = List.copyOf(redo);
@@ -184,7 +184,7 @@ public final class Document {
 	 * costs a list of the steps. Call it outside a batch.
 	 */
 	public History history() {
-		return new History(export(undo), export(redo), revision, state, saved,
+		return new History(export(undo), export(redo), revision, state,
 				selection);
 	}
 
@@ -193,6 +193,8 @@ public final class Document {
 	 * redo take the steps they took there, and select as it was. A
 	 * document that has a history of its own, or is in a batch, keeps
 	 * it; so does one whose text cannot be at the selection history has.
+	 * Whether the document is modified stays as it is: unmodified, its
+	 * text is the saved one, else no state the history returns to is.
 	 * Listeners are not told. Return whether it was taken.
 	 */
 	public boolean restore(History history) {
@@ -217,8 +219,8 @@ public final class Document {
 			historyChars += step.chars;
 		}
 		revision = Math.max(revision, history.revision());
+		saved = state == saved ? history.state() : -1;
 		state = history.state();
-		saved = history.saved();
 		selection = selected;
 		typing = null;
 		return true;

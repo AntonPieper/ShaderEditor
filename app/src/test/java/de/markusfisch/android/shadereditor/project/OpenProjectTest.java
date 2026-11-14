@@ -1535,8 +1535,13 @@ public class OpenProjectTest {
 		assertEquals("two", reopened.text().toString());
 		reopened.undo();
 		assertEquals("one", reopened.text().toString());
-		assertFalse(reopened.isModified());
 		assertFalse(reopened.canUndo());
+		// The history does not tell which text is the stored one; a look
+		// at storage does.
+		assertTrue(reopened.isModified());
+		refresh(project);
+		assertFalse(reopened.isModified());
+		assertTrue(project.unsaved().isEmpty());
 	}
 
 	@Test
@@ -1560,6 +1565,101 @@ public class OpenProjectTest {
 		assertFalse(changed.canUndo());
 		File history = new File(new File(sessionsDir, id), "history");
 		assertEquals(0, history.list().length);
+	}
+
+	@Test
+	public void historyOfAnotherTextTheFileCannotTellApartIsNotTaken()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "?");
+		edit(project, document, "\uD800");
+		assertTrue(save(project, true).get(a) instanceof Saved);
+		flush(project);
+		assertEquals("?", read("a.glsl"));
+
+		// Only the journal learns of the other lone surrogate.
+		edit(project, document, "\uDC00");
+		project.persist();
+		settle();
+		OpenProject restarted = open();
+		Document recovered = document(restarted, "a.glsl");
+
+		assertEquals("\uDC00", recovered.text().toString());
+		assertTrue(recovered.isModified());
+		assertEquals(Set.of(a), restarted.unsaved());
+		restarted.persist();
+		settle();
+		assertEquals("\uDC00", journaled("a.glsl"));
+	}
+
+	@Test
+	public void unsavedTextStaysUnsavedWhateverItsHistoryTold()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		edit(project, document, "saved");
+		assertTrue(save(project, true).get(a) instanceof Saved);
+		// The history is kept while the text is the saved one.
+		flush(project);
+		edit(project, document, "other");
+		edit(project, document, "saved");
+		project.persist();
+		settle();
+
+		OpenProject restarted = open();
+		Document recovered = document(restarted, "a.glsl");
+
+		assertEquals("saved", recovered.text().toString());
+		assertTrue(recovered.isModified());
+		assertEquals("saved", journaled("a.glsl"));
+		// Storage tells that it is the saved text, not the history.
+		refresh(restarted);
+		assertFalse(recovered.isModified());
+		assertTrue(kept().isEmpty());
+	}
+
+	@Test
+	public void selectionSurvivesARestartWithoutAChangeOfText()
+			throws IOException {
+		OpenProject project = open();
+		Document document = document(project, "a.glsl", "stored text");
+		document.select(2, 4);
+		flush(project);
+		assertEquals(new Document.Selection(2, 4),
+				document(open(), "a.glsl").selection());
+
+		OpenProject next = open();
+		Document edited = document(next, "a.glsl");
+		edit(next, edited, "edited text");
+		flush(next);
+		edited.select(1, 1);
+		flush(next);
+
+		assertEquals(new Document.Selection(1, 1),
+				document(open(), "a.glsl").selection());
+	}
+
+	@Test
+	public void reloadKeepsTheTextItReplacedForUndoAfterARestart()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, document(project, "a.glsl", "stored"), "mine");
+		flush(project);
+
+		String problem = await(done -> project.reload(a, done));
+
+		assertNull(problem);
+		assertTrue(kept().isEmpty());
+		// The process dies in the foreground: nothing more is flushed.
+		Document restarted = document(open(), "a.glsl");
+		assertEquals("stored", restarted.text().toString());
+		assertFalse(restarted.isModified());
+		restarted.undo();
+		assertEquals("mine", restarted.text().toString());
+		assertTrue(restarted.isModified());
 	}
 
 	@Test

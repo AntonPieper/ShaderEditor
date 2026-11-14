@@ -205,12 +205,14 @@ Failure handling: the record's `journal` advances only on the worker's acknowled
 | --- | --- | --- |
 | Save | survives (`markSaved` keeps the steps) **[code]** | same |
 | Outside change adopted (clean refresh, Reload) | survives, the replacement is one undoable step **[code]** | same |
-| File dropped from memory | lost | restored from the history file |
+| File dropped from memory | lost | restored from the history file; unsaved text that is opened again stays marked unsaved when undo reaches the stored text, until the next check of storage |
 | App killed in the background | lost | restored (written at `onStop`) |
 | Crash or power loss in the foreground | lost | lost back to the last background or drop; the text itself is recovered from the journal |
 | Outside change while dead, or journal replayed to a different text | — | history ignored (hash mismatch), as Neovim does |
 
-**The history file.** One per path, in the session's private folder: SHA-256 of the text it applies to, the steps, selection and scroll position. Written on the worker when a document is dropped from memory, at `onStop` for documents whose history changed since the last write, and at once after a Reload (so the discarded text stays recoverable). Read at open; adopted only if the hash equals the hash of the text just opened; deleted otherwise. For a clean file the hash is the store revision, already known; for a modified one it is computed on the worker.
+**The history file.** One per path, in the session's private folder: SHA-256 of the text it applies to, the steps and the selection. Written on the worker when a document is dropped from memory, at `onStop` for documents whose history or selection changed since the last write, and at once after a Reload, before the journal of the replaced text is removed (so the discarded text stays recoverable). Read at open; adopted only if the hash equals the hash of the text just opened; deleted otherwise.
+
+**What the history may decide: undo and the selection, nothing else.** The hash is taken over the text's characters, each encoded by itself as the journal encodes them, not over the bytes a file gets: those turn every lone surrogate into the same `?`, so two different texts would share a name. The history does not carry which state was saved, and the store revision is not used as its name. Whether a text is saved is decided only by where it came from: a document opened from storage is saved at the state it opens in, a document opened from a journal is unsaved whatever undo leads to, until a save or a check that finds storage holding exactly its text. So losing or misreading a history can lose undo and never text or the saved state. All histories of a session together are bounded (twice the size limit of a document); the oldest are deleted when a project opens, which is what removes the histories of files deleted or renamed elsewhere.
 
 Cost: the file is rewritten whole each time, as Neovim's is. A day's typing is under 100 KB of history; the worst case is the document cap, about 4 MB, for instance after reloading a 2 MB file. Written only when the history changed since the last write.
 
