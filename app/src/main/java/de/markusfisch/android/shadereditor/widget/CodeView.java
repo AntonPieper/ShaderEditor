@@ -1201,6 +1201,27 @@ public class CodeView extends View {
 		}
 	}
 
+	/** Return the lines Page Up and Down move. */
+	int pageLines() {
+		return Math.max(1, (getHeight() - insets.top - insets.bottom) /
+				appearance.lineHeight - 1);
+	}
+
+	/**
+	 * Select from anchor to head for an accessibility service, a
+	 * selection with its handles and toolbar if shown, and scroll the
+	 * head into view.
+	 */
+	void selectForAccessibility(int anchor, int head, boolean shown) {
+		toolbar.close();
+		select(anchor, head);
+		touched = shown && anchor != head ? document.selection() : null;
+		if (touched != null) {
+			showToolbar();
+		}
+		bringCaretIntoView();
+	}
+
 	/** Record a call the connection does not pass on. */
 	void note(String name, Object answer, Object... args) {
 		if (session != null) {
@@ -1286,9 +1307,7 @@ public class CodeView extends View {
 	}
 
 	private boolean key(int keyCode, int meta, String typed) {
-		if (!keys.keyDown(keyCode, meta, typed, Math.max(1,
-				(getHeight() - insets.top - insets.bottom) /
-						appearance.lineHeight - 1))) {
+		if (!keys.keyDown(keyCode, meta, typed, pageLines())) {
 			return false;
 		}
 		bringCaretIntoView();
