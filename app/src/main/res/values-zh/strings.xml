@@ -334,4 +334,6 @@
 	</plurals>
 	<string name="copy_failed">无法复制到剪贴板</string>
 	<string name="file_not_saved">%1$s was not saved: %2$s</string>
+	<string name="file_cannot_open">%1$s cannot be opened: %2$s</string>
+	<string name="file_needs_new_editor">Files of a folder open in the new editor. Turn on \"New editor\" in Settings.</string>
 </resources>

@@ -2,4 +2,6 @@
 	<string name="default_font_value">monospace</string>
 	<!-- The frame rate beside the quality, like "58 fps · 1/2" -->
 	<string name="frame_rate_quality">%1$s · %2$s</string>
+	<!-- A problem of a file, like "lib/common.glsl: it changed elsewhere" -->
+	<string name="file_problem">%1$s: %2$s</string>
 </resources>

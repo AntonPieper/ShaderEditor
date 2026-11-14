@@ -42,8 +42,20 @@ final class FolderSource {
 	private record Access(boolean granted, boolean file, Uri uri) {
 	}
 
+	/** Opens a file of it in the editor. */
+	interface Opener {
+		/**
+		 * Return whether the file is being opened, so that the drawer
+		 * closes.
+		 *
+		 * @param single whether what was opened is a single file
+		 */
+		boolean open(@NonNull ProjectPath path, boolean single);
+	}
+
 	private final Context context;
 	private final ProjectHolds holds;
+	private final Opener opener;
 	private final Executor listings;
 	private final Handler handler;
 	private final String key;
@@ -63,14 +75,16 @@ final class FolderSource {
 	/**
 	 * @param folders where it is listed under Recent and told when it
 	 *                is lost
+	 * @param opener  opens its files in the editor
 	 * @param changed called when what a level lists changed
 	 */
 	FolderSource(@NonNull Context context, @NonNull ProjectHolds holds,
 			@NonNull Executor listings, @NonNull Handler handler,
 			@NonNull String key, @NonNull FoldersSource folders,
-			@NonNull Runnable changed) {
+			@NonNull Opener opener, @NonNull Runnable changed) {
 		this.context = context;
 		this.holds = holds;
+		this.opener = opener;
 		this.listings = listings;
 		this.handler = handler;
 		this.key = key;
@@ -129,8 +143,8 @@ final class FolderSource {
 
 			@Override
 			public boolean open(Row row, boolean run) {
-				// Files are not opened from a folder yet.
-				return false;
+				var path = ProjectPath.parse(row.key());
+				return path.isSuccess() && opener.open(path.value(), file);
 			}
 
 			@Override

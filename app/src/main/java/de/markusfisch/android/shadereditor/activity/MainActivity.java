@@ -29,6 +29,8 @@ import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationDrawer;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationManager;
 import de.markusfisch.android.shadereditor.activity.managers.OpenItem;
+import de.markusfisch.android.shadereditor.activity.managers.ProjectFile;
+import de.markusfisch.android.shadereditor.activity.managers.ProjectFileManager;
 import de.markusfisch.android.shadereditor.activity.managers.ProjectHolds;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderList;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
@@ -42,6 +44,7 @@ import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.service.ShaderWallpaperService;
 import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
@@ -66,9 +69,11 @@ public class MainActivity extends AppCompatActivity {
 	private ShaderList shaderListManager;
 	private ShaderViewManager shaderViewManager;
 	private NavigationManager navigationManager;
-	// The projects of the drawer, with project mode only, else null.
+	// The files of folders, with project mode only, else null.
 	@Nullable
 	private ProjectHolds holds;
+	@Nullable
+	private ProjectFileManager files;
 	private DataSource dataSource;
 	private boolean isInitialLoad = false;
 
@@ -104,6 +109,8 @@ public class MainActivity extends AppCompatActivity {
 				shaderViewManager);
 		if (getResources().getBoolean(R.bool.project_mode)) {
 			holds = new ProjectHolds(new Projects(this));
+			files = new ProjectFileManager(this, editorFragment, holds,
+					createProjectFileListener());
 		}
 		MainMenuManager.ShaderActions shaderActions =
 				createShaderActions(extraKeysManager);
@@ -119,6 +126,12 @@ public class MainActivity extends AppCompatActivity {
 				() -> uiManager.showNotice(getText(R.string.shader_saved),
 						SAVED_NOTICE_MILLIS));
 		open = shaderManager;
+		shaderManager.setOnShownListener(() -> {
+			if (files != null) {
+				files.leave();
+			}
+			open = shaderManager;
+		});
 
 		MainMenuManager mainMenuManager = new MainMenuManager(
 				this,
@@ -137,6 +150,9 @@ public class MainActivity extends AppCompatActivity {
 		isInitialLoad = state == null && !openedText;
 
 		editorFragment.setOnEditPausedListener(text -> {
+			if (open instanceof ProjectFile) {
+				return;
+			}
 			if (ShaderEditorApp.preferences.doesRunOnChange()) {
 				if (editorFragment.hasErrors()) {
 					editorFragment.clearError();
@@ -189,6 +205,9 @@ public class MainActivity extends AppCompatActivity {
 		// The screen made again after a configuration change takes them.
 		if (holds != null && !isFinishing()) {
 			holds.keepOpen();
+		}
+		if (files != null) {
+			files.destroy();
 		}
 		if (shaderManager != null) {
 			shaderManager.destroy();
@@ -266,6 +285,15 @@ public class MainActivity extends AppCompatActivity {
 					}
 
 					@Override
+					public boolean onOpenFile(@NonNull String key,
+							@NonNull ProjectPath path, boolean single) {
+						if (ShaderEditorApp.preferences.autoSave()) {
+							open.save(false);
+						}
+						return files.open(key, path, single);
+					}
+
+					@Override
 					public void onOpenExample(@NonNull Samples.Sample sample) {
 						if (shaderManager.isModified()) {
 							shaderManager.saveShader();
@@ -333,6 +361,42 @@ public class MainActivity extends AppCompatActivity {
 					shaderManager.selectShader(idToLoad);
 				}
 				isInitialLoad = false;
+			}
+		};
+	}
+
+	@NonNull
+	@Contract(" -> new")
+	private ProjectFileManager.Listener createProjectFileListener() {
+		return new ProjectFileManager.Listener() {
+			@Override
+			public void onShown(@NonNull ProjectFile file) {
+				if (open == shaderManager) {
+					// As when another shader is chosen.
+					if (shaderManager.isModified()) {
+						shaderManager.saveShader();
+					}
+					shaderManager.deselect();
+				}
+				open = file;
+				editorFragment.clearError();
+				onChanged();
+			}
+
+			@Override
+			public void onChanged() {
+				showOpenTitle();
+			}
+
+			@Override
+			public void onSaved() {
+				uiManager.showNotice(getText(R.string.shader_saved),
+						SAVED_NOTICE_MILLIS);
+			}
+
+			@Override
+			public void onFailed(@NonNull String message) {
+				Message.show(MainActivity.this, message);
 			}
 		};
 	}
@@ -581,6 +645,9 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 	private void runShader() {
+		if (open instanceof ProjectFile) {
+			return;
+		}
 		String src = editorFragment.getText();
 		editorFragment.clearError();
 		if (ShaderEditorApp.preferences.doesSaveOnRun()) {
