@@ -23,8 +23,9 @@ import de.markusfisch.android.shadereditor.editor.Text;
  * text is the window AccessibleText gives for the selection's head and
  * whose selection is the document's in that window. The line numbers
  * are not part of the text. Services move the caret by the units of
- * AccessibleText and select, as touch selects. The framework calls it
- * only while a service is enabled.
+ * AccessibleText, select, cut, copy, paste, replace the text, press
+ * Enter, tap, long press and scroll by a page, through the view's own
+ * commands. The framework calls it only while a service is enabled.
  */
 final class CodeAccessibility extends View.AccessibilityDelegate {
 	private static final int GRANULARITIES =
@@ -53,8 +54,18 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		info.setEditable(true);
 		info.setMultiLine(true);
 		info.setInputType(view.inputType());
+		info.setClickable(true);
+		info.addAction(AccessibilityAction.ACTION_CLICK);
+		info.setLongClickable(true);
+		info.addAction(AccessibilityAction.ACTION_LONG_CLICK);
+		addScrollActions(host, info);
 		if (document == null) {
 			return;
+		}
+		info.addAction(AccessibilityAction.ACTION_SET_TEXT);
+		if (host.isFocused() &&
+				Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+			info.addAction(AccessibilityAction.ACTION_IME_ENTER);
 		}
 		Document.Selection selection = document.selection();
 		AccessibleText.Window window = window(document.text(),
@@ -71,6 +82,19 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			info.addAction(AccessibilityAction.ACTION_SET_SELECTION);
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 				info.setTextSelectable(true);
+			}
+		}
+		if (host.isFocused()) {
+			// In the order of TextView's.
+			int[] offered = view.offered();
+			if (offers(offered, android.R.id.copy)) {
+				info.addAction(AccessibilityAction.ACTION_COPY);
+			}
+			if (offers(offered, android.R.id.paste)) {
+				info.addAction(AccessibilityAction.ACTION_PASTE);
+			}
+			if (offers(offered, android.R.id.cut)) {
+				info.addAction(AccessibilityAction.ACTION_CUT);
 			}
 		}
 	}
@@ -92,8 +116,42 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 								.ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN));
 			case AccessibilityNodeInfo.ACTION_SET_SELECTION:
 				return setSelection(document, arguments);
+			case AccessibilityNodeInfo.ACTION_COPY:
+				return textAction(host, android.R.id.copy);
+			case AccessibilityNodeInfo.ACTION_PASTE:
+				return textAction(host, android.R.id.paste);
+			case AccessibilityNodeInfo.ACTION_CUT:
+				return textAction(host, android.R.id.cut);
+			case AccessibilityNodeInfo.ACTION_SET_TEXT:
+				return view.replaceAll(arguments != null
+						? arguments.getCharSequence(AccessibilityNodeInfo
+						.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE)
+						: null);
+			case AccessibilityNodeInfo.ACTION_CLICK:
+				return view.clickForAccessibility();
+			case AccessibilityNodeInfo.ACTION_LONG_CLICK:
+				return view.longClickForAccessibility();
+			case AccessibilityNodeInfo.ACTION_SCROLL_FORWARD:
+				return view.scrollByPage(0, 1);
+			case AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD:
+				return view.scrollByPage(0, -1);
 			default:
 				break;
+		}
+		if (action == android.R.id.accessibilityActionScrollDown) {
+			return view.scrollByPage(0, 1);
+		} else if (action == android.R.id.accessibilityActionScrollUp) {
+			return view.scrollByPage(0, -1);
+		} else if (action == android.R.id.accessibilityActionScrollRight) {
+			return view.scrollByPage(1, 0);
+		} else if (action == android.R.id.accessibilityActionScrollLeft) {
+			return view.scrollByPage(-1, 0);
+		} else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+				action == android.R.id.accessibilityActionImeEnter) {
+			if (host.isFocused()) {
+				view.enter();
+			}
+			return true;
 		}
 		return super.performAccessibilityAction(host, action, arguments);
 	}
@@ -192,10 +250,47 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		return true;
 	}
 
+	private boolean textAction(View host, int id) {
+		return host.isFocused() && offers(view.offered(), id) &&
+				view.toolbarAction(id);
+	}
+
 	private boolean isEnabled() {
 		AccessibilityManager manager = (AccessibilityManager) view
 				.getContext().getSystemService(Context.ACCESSIBILITY_SERVICE);
 		return manager != null && manager.isEnabled();
+	}
+
+	private static void addScrollActions(View host,
+			AccessibilityNodeInfo info) {
+		boolean up = host.canScrollVertically(-1);
+		boolean down = host.canScrollVertically(1);
+		boolean left = host.canScrollHorizontally(-1);
+		boolean right = host.canScrollHorizontally(1);
+		info.setScrollable(up || down || left || right);
+		if (up) {
+			info.addAction(AccessibilityAction.ACTION_SCROLL_BACKWARD);
+			info.addAction(AccessibilityAction.ACTION_SCROLL_UP);
+		}
+		if (down) {
+			info.addAction(AccessibilityAction.ACTION_SCROLL_FORWARD);
+			info.addAction(AccessibilityAction.ACTION_SCROLL_DOWN);
+		}
+		if (left) {
+			info.addAction(AccessibilityAction.ACTION_SCROLL_LEFT);
+		}
+		if (right) {
+			info.addAction(AccessibilityAction.ACTION_SCROLL_RIGHT);
+		}
+	}
+
+	private static boolean offers(int[] offered, int id) {
+		for (int o : offered) {
+			if (o == id) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static AccessibleText.Unit unit(int granularity) {

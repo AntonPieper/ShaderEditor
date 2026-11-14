@@ -27,6 +27,7 @@ import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.WindowInsets;
+import android.view.accessibility.AccessibilityEvent;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
@@ -1106,10 +1107,12 @@ public class CodeView extends View {
 		return done;
 	}
 
-	// Does action id of the toolbar; returns whether the toolbar is done.
-	// Select all keeps it, and a copy leaves the caret behind the text,
-	// as the platform's do; an action that did nothing changes nothing.
-	private boolean toolbarAction(int id) {
+	/**
+	 * Do action id of the toolbar; return whether the toolbar is done.
+	 * Select all keeps it, and a copy leaves the caret behind the text,
+	 * as the platform's do; an action that did nothing changes nothing.
+	 */
+	boolean toolbarAction(int id) {
 		KeyCommands.Command command = KeyCommands.contextMenuCommand(id);
 		boolean done;
 		selecting = true;
@@ -1145,7 +1148,8 @@ public class CodeView extends View {
 		}
 	}
 
-	private int[] offered() {
+	/** Return the ids of the actions the toolbar offers now. */
+	int[] offered() {
 		Document.Selection selection = document.selection();
 		ClipboardManager manager = clipboardManager();
 		return TextActions.offered(selection.start(), selection.end(),
@@ -1220,6 +1224,69 @@ public class CodeView extends View {
 			showToolbar();
 		}
 		bringCaretIntoView();
+	}
+
+	/**
+	 * Replace the whole text by text, null for none, as one step with
+	 * the caret behind it; return false if the document refused it.
+	 */
+	boolean replaceAll(@Nullable CharSequence text) {
+		Text replacement = Text.of(text != null ? text : "");
+		action("setText", replacement.toString());
+		document.beginBatch();
+		try {
+			if (!document.replace(0, document.text().length(), replacement)) {
+				return false;
+			}
+			document.select(replacement.length(), replacement.length());
+		} finally {
+			document.endBatch();
+		}
+		bringCaretIntoView();
+		return true;
+	}
+
+	/**
+	 * Do what an accessibility service's tap does to an EditText: focus
+	 * and show the keyboard; the caret stays.
+	 */
+	boolean clickForAccessibility() {
+		if (!isFocused()) {
+			requestFocus();
+		}
+		performClick();
+		InputMethodManager imm = inputMethodManager();
+		if (imm != null) {
+			imm.showSoftInput(this, 0);
+		}
+		return true;
+	}
+
+	/**
+	 * Do what an accessibility service's long press does to an EditText:
+	 * show or hide the toolbar for the selection or the caret.
+	 */
+	boolean longClickForAccessibility() {
+		sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_LONG_CLICKED);
+		performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+		touched = document.selection();
+		toggleToolbar();
+		return true;
+	}
+
+	/**
+	 * Scroll a page in the direction of dx and dy, each -1, 0 or 1;
+	 * return whether the view scrolled.
+	 */
+	boolean scrollByPage(int dx, int dy) {
+		int x = getScrollX();
+		int y = getScrollY();
+		scroller.forceFinished(true);
+		scrollTo(x + dx * Math.round(getWidth() - insets.right -
+						textLeft(document.text().lineCount())),
+				y + dy * (getHeight() - insets.top - insets.bottom));
+		awakenScrollBars();
+		return x != getScrollX() || y != getScrollY();
 	}
 
 	/** Record a call the connection does not pass on. */
