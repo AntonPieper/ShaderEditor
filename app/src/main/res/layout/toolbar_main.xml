@@ -64,7 +64,9 @@
 	<!-- The title and its second line. The toolbar's own title cannot
 	keep the unsaved dot out of its ellipsis; this one has the dot as an
 	end drawable, so a long name is shortened before the dot and the
-	name never moves when the dot comes or goes. -->
+	name never moves when the dot comes or goes. The second line is cut
+	in the middle: it keeps the file that runs and the folder's own name
+	at the end of a path. -->
 	<LinearLayout
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
@@ -84,8 +86,8 @@
 			android:id="@+id/toolbar_subtitle"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:ellipsize="end"
-			android:maxLines="1"
+			android:ellipsize="middle"
+			android:singleLine="true"
 			android:textAppearance="?attr/textAppearanceBodySmall"
 			android:visibility="gone" />
 	</LinearLayout>
