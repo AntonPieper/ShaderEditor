@@ -29,6 +29,7 @@ import de.markusfisch.android.shadereditor.activity.managers.MainMenuManager;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationDrawer;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationManager;
 import de.markusfisch.android.shadereditor.activity.managers.OpenItem;
+import de.markusfisch.android.shadereditor.activity.managers.ProjectHolds;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderList;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
@@ -41,6 +42,7 @@ import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.service.ShaderWallpaperService;
 import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
 import de.markusfisch.android.shadereditor.widget.Message;
@@ -64,6 +66,9 @@ public class MainActivity extends AppCompatActivity {
 	private ShaderList shaderListManager;
 	private ShaderViewManager shaderViewManager;
 	private NavigationManager navigationManager;
+	// The projects of the drawer, with project mode only, else null.
+	@Nullable
+	private ProjectHolds holds;
 	private DataSource dataSource;
 	private boolean isInitialLoad = false;
 
@@ -97,6 +102,9 @@ public class MainActivity extends AppCompatActivity {
 				editorFragment,
 				extraKeysManager,
 				shaderViewManager);
+		if (getResources().getBoolean(R.bool.project_mode)) {
+			holds = new ProjectHolds(new Projects(this));
+		}
 		MainMenuManager.ShaderActions shaderActions =
 				createShaderActions(extraKeysManager);
 		shaderListManager = createShaderList(shaderActions);
@@ -178,6 +186,10 @@ public class MainActivity extends AppCompatActivity {
 
 	@Override
 	protected void onDestroy() {
+		// The screen made again after a configuration change takes them.
+		if (holds != null && !isFinishing()) {
+			holds.keepOpen();
+		}
 		if (shaderManager != null) {
 			shaderManager.destroy();
 		}
@@ -221,6 +233,7 @@ public class MainActivity extends AppCompatActivity {
 		}
 		return new NavigationDrawer(this, dataSource,
 				createShaderListListener(),
+				holds,
 				new NavigationDrawer.Host() {
 					@Override
 					public void onAddShader() {
