@@ -70,6 +70,12 @@ final class PassTarget {
 		return size;
 	}
 
+	// What the pass draws into, and until swap() the frame it drew.
+	@NonNull
+	GlTexture2D drawn() {
+		return textures[current];
+	}
+
 	// The frame completed last: before swap() the previous one.
 	@NonNull
 	GlTexture2D completed() {

@@ -20,9 +20,9 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
-// A prepared single-pass plan linked in the current context, with the
+// A prepared plan linked in the current context, with the
 // images its inputs read and how each input samples its image, and the
-// image or shader its history starts as. It is ready to draw once every
+// image or shader each history starts as. It is ready to draw once every
 // image is uploaded, and fails as a whole when one cannot be; it owns its
 // GL objects, its targets among them, and is built again from the plan in
 // a new context.
@@ -33,27 +33,16 @@ final class PlanRuntime implements ShaderSwap.Build {
 	@NonNull
 	private final Preparation preparation;
 	@NonNull
-	private final PlanPass running;
-	// The shader the history starts as, drawn once per reset, or null.
-	@Nullable
-	private final PlanPass initialPass;
-	// The image the history starts as, or null.
-	@Nullable
-	private final ProjectPath initialImage;
-	// The running pass first.
+	private final RenderPlan plan;
+	// By the index of the pass in the plan.
 	@NonNull
 	private final List<PlanPass> passes;
 	@NonNull
-	private final RenderPlan.Pass pass;
-	@NonNull
-	private final PlanBindings bindings;
-	// Whether the pass keeps its previous frame.
-	private final boolean history;
+	private final PassSchedule schedule;
 	@NonNull
 	private final Sampling presentSampling;
 	private final int glesVersion;
 	private final FrameInputs passFrame = new FrameInputs();
-	private final FrameInputs initialFrame = new FrameInputs();
 	private final FullScreenQuad quad = new FullScreenQuad();
 	// Told with the outcome, whatever it is.
 	@NonNull
@@ -64,13 +53,10 @@ final class PlanRuntime implements ShaderSwap.Build {
 			new TextureHandOver<>();
 	@Nullable
 	private final CameraSource.Binding camera;
-	@Nullable
-	private GlTexture2D initialTexture;
-	@Nullable
-	private PassTarget target;
-	// What the initial shader draws into.
-	@Nullable
-	private PassTarget initialTarget;
+	// By the index of the pass in the plan; null where the schedule
+	// needs none, and all null before they are made.
+	@NonNull
+	private final PassTarget[] targets;
 	// Whether the targets were made since the last frame.
 	private boolean reset;
 	private boolean complete;
@@ -79,36 +65,34 @@ final class PlanRuntime implements ShaderSwap.Build {
 	private PlanRuntime(
 			@NonNull GlDevice device,
 			@NonNull PlanShader shader,
-			@NonNull PlanPass running,
-			@Nullable PlanPass initialPass,
+			@NonNull RenderPlan plan,
+			@NonNull List<PlanPass> passes,
 			int glesVersion) {
 		this.device = device;
 		this.preparation = shader.preparation();
 		this.quality = shader.quality();
-		this.running = running;
-		this.initialPass = initialPass;
+		this.plan = plan;
+		this.passes = passes;
 		this.glesVersion = glesVersion;
-		pass = running.pass;
-		bindings = running.bindings;
-		var initial = pass.initial();
-		initialImage = initial != null &&
-				initial.kind() == RenderPlan.Source.Kind.IMAGE
-				? initial.image()
-				: null;
-		passes = initialPass != null
-				? List.of(running, initialPass)
-				: List.of(running);
-		history = pass.history() || !bindings.history.isEmpty();
-		var present = pass.target().present();
+		targets = new PassTarget[passes.size()];
+		var backbuffer = new boolean[passes.size()];
+		// The running pass first: its camera opens.
+		var bindings = new ArrayList<PlanBindings>();
+		bindings.add(passes.get(plan.output()).bindings);
+		warnings.addAll(preparation.diagnostics());
+		for (int i = 0; i < passes.size(); ++i) {
+			var linked = passes.get(i);
+			backbuffer[i] = linked.bindings.readsBackbuffer();
+			warnings.addAll(linked.warnings);
+			if (i != plan.output()) {
+				bindings.add(linked.bindings);
+			}
+		}
+		schedule = PassSchedule.of(plan, backbuffer);
+		var present = plan.passes().get(plan.output()).target().present();
 		presentSampling = new Sampling(present, present, Mipmap.NONE,
 				Wrap.CLAMP, Wrap.CLAMP);
-		warnings.addAll(preparation.diagnostics());
-		var bindings = new ArrayList<PlanBindings>();
-		for (var linked : passes) {
-			warnings.addAll(linked.warnings);
-			bindings.add(linked.bindings);
-		}
-		checkInitial(shader.preparation().plan(), pass, history, warnings);
+		checkInitial(plan, schedule, warnings);
 		var open = PlanBindings.openCamera(bindings);
 		camera = open != null
 				? new CameraSource.Binding(open, device.createExternalTexture())
@@ -128,23 +112,25 @@ final class PlanRuntime implements ShaderSwap.Build {
 	// in it is used is only known now.
 	static void checkInitial(
 			@NonNull RenderPlan plan,
-			@NonNull RenderPlan.Pass pass,
-			boolean history,
+			@NonNull PassSchedule schedule,
 			@NonNull List<ProjectDiagnostic> warnings) {
-		var target = pass.target();
-		if (pass.initial() == null || history) {
-			return;
-		}
-		var warning = Preparation.initialWithoutEffect(
-				plan.programs().get(pass.program()).file(), target.file(),
-				target.line());
-		if (!warnings.contains(warning)) {
-			warnings.add(warning);
+		for (int i = 0; i < plan.passes().size(); ++i) {
+			var pass = plan.passes().get(i);
+			if (pass.initial() == null || schedule.isInitialized(i)) {
+				continue;
+			}
+			var target = pass.target();
+			var warning = Preparation.initialWithoutEffect(
+					plan.programs().get(pass.program()).file(), target.file(),
+					target.line());
+			if (!warnings.contains(warning)) {
+				warnings.add(warning);
+			}
 		}
 	}
 
 	// GL thread. Returns null and adds the preparation's diagnostics and
-	// why it cannot draw when it does not link.
+	// why it cannot draw when a pass does not link.
 	@Nullable
 	static PlanRuntime link(
 			@NonNull GlDevice device,
@@ -162,29 +148,27 @@ final class PlanRuntime implements ShaderSwap.Build {
 			errors.addAll(refusals);
 			return null;
 		}
-		var running = PlanPass.link(device, plan, plan.output(), glesVersion,
-				shader.textureFix(), reasons);
-		var initial = plan.passes().get(plan.output()).initial();
-		PlanPass initialPass = null;
-		if (running != null && initial != null &&
-				initial.kind() == RenderPlan.Source.Kind.PASS) {
-			initialPass = PlanPass.link(device, plan, initial.pass(),
-					glesVersion, shader.textureFix(), reasons);
-			if (initialPass == null) {
-				running.release();
-				running = null;
-			}
+		var passes = new ArrayList<PlanPass>();
+		boolean linked = true;
+		for (int i = 0; i < plan.passes().size(); ++i) {
+			var pass = PlanPass.link(device, plan, i, glesVersion,
+					shader.textureFix(), reasons);
+			linked &= pass != null;
+			passes.add(pass);
 		}
-		if (running == null) {
+		if (!linked) {
+			for (var pass : passes) {
+				if (pass != null) {
+					pass.release();
+				}
+			}
 			errors.addAll(reasons);
 			return null;
 		}
-		return new PlanRuntime(device, shader, running, initialPass,
-				glesVersion);
+		return new PlanRuntime(device, shader, plan, passes, glesVersion);
 	}
 
-	// The passes whose builtins it reads, the one drawn every frame
-	// first.
+	// The passes whose builtins it reads, by their index in the plan.
 	@NonNull
 	List<PlanPass> passes() {
 		return passes;
@@ -195,7 +179,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 	}
 
 	float fTimeMax() {
-		return running.fTimeMax;
+		return passes.get(plan.output()).fTimeMax;
 	}
 
 	// Decodes its images off the GL thread from the bytes the preparation
@@ -205,8 +189,11 @@ final class PlanRuntime implements ShaderSwap.Build {
 		for (var linked : passes) {
 			paths.addAll(linked.bindings.imagePaths());
 		}
-		if (initialImage != null && history) {
-			paths.add(initialImage);
+		for (int pass : schedule.reset) {
+			var initial = plan.passes().get(pass).initial();
+			if (initial.kind() == RenderPlan.Source.Kind.IMAGE) {
+				paths.add(initial.image());
+			}
 		}
 		var files = new HashMap<ProjectPath, byte[]>();
 		for (var path : paths) {
@@ -249,20 +236,26 @@ final class PlanRuntime implements ShaderSwap.Build {
 			errors.addAll(linked.bindings.check(images.sizes(), glesVersion,
 					maxSize, device.getMaxCubemapSize()));
 		}
-		var seed = initialImage != null ? images.images.get(initialImage) : null;
-		if (seed != null && (seed.width() > maxSize || seed.height() > maxSize)) {
-			errors.add(locate(initialImage, initialImage + " is " +
-					seed.width() + "x" + seed.height() + ", larger than " +
-					maxSize + ", the largest texture this device supports"));
-		}
 		var keys = new LinkedHashSet<PlanBindings.Texture>();
 		for (var linked : passes) {
 			for (var binding : linked.bindings.images) {
 				keys.add(binding.texture());
 			}
 		}
-		if (seed != null) {
-			keys.add(new PlanBindings.Texture(initialImage, false));
+		for (int pass : schedule.reset) {
+			var initial = plan.passes().get(pass).initial();
+			var seed = initial.kind() == RenderPlan.Source.Kind.IMAGE
+					? images.images.get(initial.image())
+					: null;
+			if (seed == null || !keys.add(new PlanBindings.Texture(
+					initial.image(), false))) {
+				continue;
+			}
+			if (seed.width() > maxSize || seed.height() > maxSize) {
+				errors.add(locate(initial.image(), initial.image() + " is " +
+						seed.width() + "x" + seed.height() + ", larger than " +
+						maxSize + ", the largest texture this device supports"));
+			}
 		}
 		if (errors.isEmpty()) {
 			for (var key : keys) {
@@ -281,9 +274,6 @@ final class PlanRuntime implements ShaderSwap.Build {
 					texture = texture2D;
 					message = device.uploadTexture2D(texture2D, image.width(),
 							image.height(), image.rgba());
-					if (key.image().equals(initialImage)) {
-						initialTexture = texture2D;
-					}
 				}
 				textures.put(key, texture);
 				if (message == null && needsMipmaps(key)) {
@@ -327,11 +317,10 @@ final class PlanRuntime implements ShaderSwap.Build {
 	}
 
 	// GL thread, before it replaces the current build and whenever the
-	// render size changed: makes its own target at the size the plan
-	// says, the render size times scale or a fixed size, with a second
-	// texture when the pass reads its previous frame, and one for the
-	// initial shader at the size its own target says. Adds why when it
-	// cannot; it has nothing to draw into then.
+	// render size changed: makes the targets the schedule needs at the
+	// sizes the plan says, the render size times scale or a fixed size,
+	// with a second texture where the previous frame is read. Adds why
+	// when it cannot; it has nothing to draw into then.
 	@NonNull
 	ShaderSwap.Allocation createTargets(
 			int width,
@@ -341,33 +330,36 @@ final class PlanRuntime implements ShaderSwap.Build {
 		// The render size is already scaled by the quality.
 		int max = device.getMaxTextureSize();
 		var project = RenderPlan.Size.project(width, height, 1, max);
-		var size = project.isSuccess()
-				? pass.target().size(project.value(), max)
-				: project;
-		var initialSize = initialPass != null && history && project.isSuccess()
-				? initialPass.pass.target().size(project.value(), max)
-				: null;
-		if (!size.isSuccess() ||
-				(initialSize != null && !initialSize.isSuccess())) {
-			errors.add(!size.isSuccess()
-					? size.diagnostic()
-					: initialSize.diagnostic());
+		if (!project.isSuccess()) {
+			errors.add(project.diagnostic());
 			return ShaderSwap.Allocation.INVALID;
 		}
-		var sampling = bindings.checkHistory(size.value(), glesVersion);
-		if (!sampling.isEmpty()) {
-			errors.addAll(sampling);
+		var sizes = new RenderPlan.Size[targets.length];
+		var invalid = new ArrayList<ProjectDiagnostic>();
+		for (int i = 0; i < targets.length && invalid.isEmpty(); ++i) {
+			if (!schedule.hasTarget(i)) {
+				continue;
+			}
+			var size = plan.passes().get(i).target().size(project.value(), max);
+			if (size.isSuccess()) {
+				sizes[i] = size.value();
+				invalid.addAll(passes.get(i).bindings.checkHistory(sizes[i],
+						glesVersion));
+			} else {
+				invalid.add(size.diagnostic());
+			}
+		}
+		if (!invalid.isEmpty()) {
+			errors.addAll(invalid);
 			return ShaderSwap.Allocation.INVALID;
 		}
-		target = PassTarget.create(device, pass.target(), size.value(),
-				history, errors);
-		if (target == null) {
-			return ShaderSwap.Allocation.FAILED;
-		} else if (initialSize != null) {
-			initialTarget = PassTarget.create(device,
-					initialPass.pass.target(), initialSize.value(), false,
-					errors);
-			if (initialTarget == null) {
+		for (int i = 0; i < targets.length; ++i) {
+			if (sizes[i] == null) {
+				continue;
+			}
+			targets[i] = PassTarget.create(device, plan.passes().get(i).target(),
+					sizes[i], schedule.keepsHistory(i), errors);
+			if (targets[i] == null) {
 				releaseTargets();
 				return ShaderSwap.Allocation.FAILED;
 			}
@@ -377,36 +369,33 @@ final class PlanRuntime implements ShaderSwap.Build {
 	}
 
 	boolean hasTargets() {
-		return target != null;
+		return targets[plan.output()] != null;
 	}
 
-	// GL thread. Cleared to opaque black before every draw, with its
-	// previous frame when that is read, and presented with the filter the
-	// target asks for.
+	// GL thread. Draws the passes as the schedule says, each into its
+	// target cleared to opaque black, and presents the running one with
+	// the filter its target asks for.
 	void draw(
 			@NonNull ShaderRenderPipeline pipeline,
 			@NonNull ActiveBuiltins builtins,
 			@NonNull FrameInputs frame) {
-		var target = this.target;
-		if (target == null) {
+		var output = targets[plan.output()];
+		if (output == null) {
 			return;
 		}
-		var steps = PassSchedule.frame(reset, history,
-				initialImage != null || initialPass != null);
-		reset = false;
-		for (int i = 0, n = steps.size(); i < n; ++i) {
-			switch (steps.get(i)) {
-				case CLEAR_HISTORY -> target.clearHistory();
-				case INITIAL -> drawInitial(pipeline, target, builtins, frame);
-				case CLEAR -> target.clear();
-				case DRAW -> drawPass(target, builtins, frame);
-				case SWAP -> target.swap();
-				case PRESENT -> {
-					var output = target.completed();
-					device.applySampling(output, presentSampling);
-					pipeline.present(output, frame.surfaceWidth,
-							frame.surfaceHeight);
-				}
+		if (reset) {
+			reset = false;
+			initialize(pipeline, builtins, frame);
+		}
+		for (int pass : schedule.frame) {
+			drawPass(pass, builtins, frame, false);
+		}
+		var shown = output.drawn();
+		device.applySampling(shown, presentSampling);
+		pipeline.present(shown, frame.surfaceWidth, frame.surfaceHeight);
+		for (var target : targets) {
+			if (target != null) {
+				target.swap();
 			}
 		}
 	}
@@ -445,68 +434,80 @@ final class PlanRuntime implements ShaderSwap.Build {
 		if (camera != null) {
 			camera.texture().invalidate();
 		}
-		if (target != null) {
-			target.discard();
-			target = null;
-		}
-		if (initialTarget != null) {
-			initialTarget.discard();
-			initialTarget = null;
+		for (int i = 0; i < targets.length; ++i) {
+			if (targets[i] != null) {
+				targets[i].discard();
+				targets[i] = null;
+			}
 		}
 	}
 
 	// GL thread. Releases what it draws into; false when it had nothing.
 	boolean releaseTargets() {
-		boolean had = target != null;
-		if (target != null) {
-			target.release();
-			target = null;
-		}
-		if (initialTarget != null) {
-			initialTarget.release();
-			initialTarget = null;
+		boolean had = false;
+		for (int i = 0; i < targets.length; ++i) {
+			if (targets[i] != null) {
+				targets[i].release();
+				targets[i] = null;
+				had = true;
+			}
 		}
 		return had;
 	}
 
-	// With resolution and pixel positions in the target's size.
-	private void drawPass(
-			@NonNull PassTarget target,
+	// Clears every history and draws over it what the passes the
+	// schedule names start as: an image, or what a pass draws at its own
+	// size, stretched.
+	private void initialize(
+			@NonNull ShaderRenderPipeline pipeline,
 			@NonNull ActiveBuiltins builtins,
 			@NonNull FrameInputs frame) {
-		passFrame.scale(frame, target.size().width(), target.size().height());
-		builtins.write(passFrame);
-		running.bind(textures, camera, target.completed());
-		device.draw(quad);
-		running.unbind();
+		for (var target : targets) {
+			if (target != null) {
+				target.clearHistory();
+			}
+		}
+		for (int i = 0; i < schedule.reset.length; ++i) {
+			int pass = schedule.reset[i];
+			var initial = plan.passes().get(pass).initial();
+			GlTexture picture;
+			if (initial.kind() == RenderPlan.Source.Kind.PASS) {
+				if (schedule.drawsInitial(i)) {
+					drawPass(initial.pass(), builtins, frame, true);
+				}
+				picture = targets[initial.pass()].drawn();
+			} else {
+				picture = textures.get(new PlanBindings.Texture(
+						initial.image(), false));
+			}
+			if (picture instanceof GlTexture2D texture) {
+				device.applySampling(texture, Sampling.IMAGE);
+				pipeline.stretch(texture, targets[pass].history());
+			}
+		}
 	}
 
-	// Stretches the image, or what the initial shader draws at its own
-	// size with time and frame at zero, over the previous frame.
-	private void drawInitial(
-			@NonNull ShaderRenderPipeline pipeline,
-			@NonNull PassTarget target,
+	// With resolution and pixel positions in the target's size, and on
+	// reset with time and frame at zero.
+	private void drawPass(
+			int pass,
 			@NonNull ActiveBuiltins builtins,
-			@NonNull FrameInputs frame) {
-		var picture = initialTexture;
-		var shader = initialPass;
-		var drawn = initialTarget;
-		if (shader != null && drawn != null) {
-			drawn.clear();
-			var size = drawn.size();
-			initialFrame.scale(frame, size.width(), size.height());
-			initialFrame.time = 0;
-			initialFrame.frame = 0;
-			builtins.write(1, initialFrame);
-			shader.bind(textures, camera, null);
-			device.draw(quad);
-			shader.unbind();
-			picture = drawn.completed();
+			@NonNull FrameInputs frame,
+			boolean initializing) {
+		var target = targets[pass];
+		var linked = passes.get(pass);
+		target.clear();
+		passFrame.scale(frame, target.size().width(), target.size().height());
+		if (initializing) {
+			passFrame.time = 0;
+			passFrame.frame = 0;
 		}
-		if (picture != null) {
-			device.applySampling(picture, Sampling.IMAGE);
-			pipeline.stretch(picture, target.history());
-		}
+		builtins.write(pass, passFrame);
+		linked.bind(textures, camera, schedule.keepsHistory(pass)
+				? target.completed()
+				: null);
+		device.draw(quad);
+		linked.unbind();
 	}
 
 	private boolean needsMipmaps(@NonNull PlanBindings.Texture texture) {
@@ -519,7 +520,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 	}
 
 	// A problem with an image, at the first input that reads it, or else
-	// at the target that starts from it.
+	// at a target that starts from it.
 	@NonNull
 	private ProjectDiagnostic locate(
 			@NonNull ProjectPath image,
@@ -529,8 +530,14 @@ final class PlanRuntime implements ShaderSwap.Build {
 				return linked.bindings.locate(image, message);
 			}
 		}
-		return new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR, message,
-				pass.target().file(), pass.target().line());
+		for (var pass : plan.passes()) {
+			var initial = pass.initial();
+			if (initial != null && image.equals(initial.image())) {
+				return new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR,
+						message, pass.target().file(), pass.target().line());
+			}
+		}
+		return ProjectDiagnostic.error(message);
 	}
 
 	// Cuts the faces out of the strip one at a time, so only one face is

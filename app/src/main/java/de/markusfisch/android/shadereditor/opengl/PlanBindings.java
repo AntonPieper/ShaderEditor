@@ -177,6 +177,12 @@ final class PlanBindings {
 		return null;
 	}
 
+	// Whether an active backbuffer that no input annotates reads the
+	// previous frame.
+	boolean readsBackbuffer() {
+		return !history.isEmpty() && history.get(0).input() == null;
+	}
+
 	// The images that active samplers read, each once.
 	@NonNull
 	Set<ProjectPath> imagePaths() {
