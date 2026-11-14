@@ -89,6 +89,7 @@ public class PreferencesFragment
 	@Override
 	public void onCreatePreferences(Bundle state, String rootKey) {
 		setPreferencesFromResource(R.xml.preferences, rootKey);
+		wireFontLicences();
 		wireImportExport();
 		if (BuildConfig.DEBUG) {
 			addCompletionEmphasis();
@@ -225,6 +226,18 @@ public class PreferencesFragment
 		}
 
 		return true;
+	}
+
+	private void wireFontLicences() {
+		Preference licences = findPreference(Preferences.FONT_LICENCES);
+		if (licences == null) {
+			return;
+		}
+		licences.setOnPreferenceClickListener(preference -> {
+			new FontLicencesSheet().show(getParentFragmentManager(),
+					FontLicencesSheet.TAG);
+			return true;
+		});
 	}
 
 	private void wireImportExport() {

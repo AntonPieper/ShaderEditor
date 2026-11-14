@@ -54,6 +54,7 @@
 	<string name="update_delay">Задержка в обновлении</string>
 	<string name="text_size">Размер шрифта</string>
 	<string name="font">Шрифт</string>
+	<string name="font_licences">Лицензии шрифтов</string>
 	<string name="use_ligatures">Использовать лигатуры</string>
 	<string name="use_ligatures_summary">Преобразовывает комбинации символов по типу &lt;= в ≤</string>
 	<string name="picture_behind_code">Picture behind code</string>
