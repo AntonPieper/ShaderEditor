@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
@@ -51,6 +52,24 @@ interface SourceEditor {
 
 	/** Show text in place of the old one, without history and errors. */
 	void setText(@NonNull String text);
+
+	/**
+	 * Show document itself, with its selection and undo history, in
+	 * place of the text shown, without telling the listener: showing it
+	 * is no edit. Edits go into document from then on.
+	 *
+	 * @param state what getDocumentState returned when it was shown
+	 *              before, or null
+	 * @return false when this editor cannot show a document
+	 */
+	boolean showDocument(@NonNull Document document, @Nullable Object state);
+
+	/**
+	 * Return what the view keeps of the document shown besides the
+	 * document itself, such as where it scrolled to, or null.
+	 */
+	@Nullable
+	Object getDocumentState();
 
 	/**
 	 * Return what is kept in memory over a configuration change besides

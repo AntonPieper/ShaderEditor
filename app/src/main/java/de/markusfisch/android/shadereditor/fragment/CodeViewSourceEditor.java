@@ -80,6 +80,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// The text converted from ShaderToy's form last.
 	@Nullable
 	private String converting;
+	// Whether ShaderToy's form is converted, which a file is not.
+	private boolean convert = true;
 	@NonNull
 	private List<ProjectDiagnostic> errors = Collections.emptyList();
 
@@ -120,10 +122,32 @@ final class CodeViewSourceEditor implements SourceEditor {
 	@Override
 	public void setText(@NonNull String text) {
 		show(new Document(Text.of(text)));
+		convert = true;
 		if (listener != null) {
 			listener.onTextModified();
 			listener.onEditPaused(getText());
 		}
+	}
+
+	@Override
+	public boolean showDocument(@NonNull Document document,
+			@Nullable Object state) {
+		show(document);
+		// Not the user's own text, which is not rewritten.
+		converting = null;
+		convert = false;
+		if (state instanceof int[] scroll && scroll.length == 2) {
+			view.scrollTo(scroll[0], scroll[1]);
+		} else {
+			view.bringCaretIntoView();
+		}
+		return true;
+	}
+
+	@Nullable
+	@Override
+	public Object getDocumentState() {
+		return new int[]{view.getScrollX(), view.getScrollY()};
 	}
 
 	@Nullable
@@ -153,6 +177,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 			restored.select(selection[0], selection[1]);
 		}
 		show(restored);
+		convert = true;
 		view.bringCaretIntoView();
 	}
 
@@ -291,7 +316,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	private void analysed(@NonNull Analysis analysis) {
 		complete();
-		if (isShaderToySource(analysis.outline())) {
+		if (convert && isShaderToySource(analysis.outline())) {
 			String source = getText();
 			// Not again after the conversion was undone.
 			String converted = source.equals(converting)
