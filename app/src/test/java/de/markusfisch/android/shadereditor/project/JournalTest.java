@@ -282,4 +282,51 @@ public class JournalTest {
 		assertEquals(Document.MAX_BYTES / 2,
 				new Journal(dir).read(A).text().length());
 	}
+
+	@Test
+	public void ownsTheFolderHoweverItsPathIsSpelled() {
+		assertTrue(journal.snapshot(HEADER, 0, Text.of("first")));
+		Journal alias = new Journal(new File(dir, ".")).own();
+		assertTrue(alias.snapshot(HEADER, 0, Text.of("next")));
+
+		assertFalse(journal.snapshot(HEADER, 1, Text.of("late")));
+		assertFalse(journal.remove(A));
+		assertEquals("next", journal.read(A).text().toString());
+		boolean[] abandoned = {false};
+		assertTrue(alias.remove(A));
+		Journal.ifAbandoned(new File(dir.getParentFile(),
+				dir.getName() + "/./"), () -> abandoned[0] = true);
+		assertFalse(abandoned[0]);
+		alias.release();
+		Journal.ifAbandoned(dir, () -> abandoned[0] = true);
+		assertTrue(abandoned[0]);
+	}
+
+	@Test
+	public void replaysNoMoreRecordsThanAreEverAppended() throws IOException {
+		Text text = Text.of("x".repeat(200 * 1024));
+		List<Change> large = List.of(new Change(0, 0, "y".repeat(60_000)));
+		assertTrue(journal.snapshot(HEADER, 0, text));
+		assertEquals(Appended.DONE, journal.append(A, 0, 1, large));
+		assertEquals(Appended.DONE, journal.append(A, 1, 2, large));
+		// A third one is over what the records may take together.
+		assertEquals(Appended.SNAPSHOT, journal.append(A, 2, 3, large));
+		byte[] kept = Files.readAllBytes(journal.file(A).toPath());
+
+		// Its bytes, as another journal that is at revision 2 writes
+		// them, put behind the two all the same.
+		assertTrue(journal.snapshot(HEADER, 2, text));
+		long snapshot = journal.file(A).length();
+		assertEquals(Appended.DONE, journal.append(A, 2, 3, large));
+		byte[] other = Files.readAllBytes(journal.file(A).toPath());
+		Files.write(journal.file(A).toPath(), kept);
+		Files.write(journal.file(A).toPath(), Arrays.copyOfRange(other,
+				(int) snapshot, other.length),
+				java.nio.file.StandardOpenOption.APPEND);
+
+		Recovered recovered = new Journal(dir).read(A);
+
+		assertEquals(2, recovered.revision());
+		assertEquals(text.length() + 120_000, recovered.text().length());
+	}
 }

@@ -483,6 +483,26 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void projectReplacedThroughAnotherSpellingOfItsFolderWritesNoJournal()
+			throws IOException {
+		OpenProject first = open();
+		Document old = document(first, "a.glsl", "stored");
+		OpenProject second = OpenProject.open(id,
+				new DirectoryProjectFiles(root), null, null,
+				new ProjectSessions(new File(sessionsDir, ".")), worker,
+				main, steps.timers, budget);
+		edit(second, document(second, "a.glsl"), "second");
+		flush(second);
+
+		edit(first, old, "stale");
+		first.persist();
+		settle();
+
+		assertEquals("second", journaled("a.glsl"));
+		assertNotNull(first.unprotected());
+	}
+
+	@Test
 	public void removingTheRecentOfAnOpenProjectKeepsItsSession()
 			throws IOException {
 		ProjectSessions sessions = new ProjectSessions(sessionsDir);
