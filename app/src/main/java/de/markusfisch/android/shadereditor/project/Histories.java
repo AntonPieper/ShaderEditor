@@ -101,7 +101,7 @@ final class Histories {
 		byte[] body = bytes.toByteArray();
 		CRC32 crc = new CRC32();
 		crc.update(body, 0, body.length);
-		return Journal.replace(dir, name(path), out -> {
+		boolean written = Journal.replace(dir, name(path), out -> {
 			DataOutputStream data = new DataOutputStream(out);
 			data.writeInt(MAGIC);
 			data.writeInt(body.length);
@@ -109,6 +109,10 @@ final class Histories {
 			data.writeInt((int) crc.getValue());
 			data.flush();
 		});
+		// The bound holds while a project stays open, not only when
+		// one opens; the one just written is the newest and stays.
+		trim();
+		return written;
 	}
 
 	/**

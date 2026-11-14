@@ -113,5 +113,18 @@ public class HistoriesTest {
 		assertFalse(files[0].exists());
 		assertTrue(files[1].exists() && files[2].exists() &&
 				files[3].exists());
+
+		// Writing one keeps the bound too, and what was written.
+		try (java.io.RandomAccessFile file =
+				new java.io.RandomAccessFile(files[0], "rw")) {
+			file.setLength(Histories.MAX_BYTES / 4);
+		}
+		assertTrue(files[0].setLastModified(1_000_000L));
+		ProjectPath b = ProjectPath.parse("b.glsl").value();
+		assertTrue(new Histories(dir).write(b, hash, document.history()));
+		assertFalse(files[0].exists());
+		assertTrue(files[1].exists() && files[2].exists() &&
+				files[3].exists());
+		assertTrue(new Histories(dir).has(b));
 	}
 }

@@ -103,9 +103,21 @@ final class Journal {
 
 	private final Map<ProjectPath, Tail> tails = new HashMap<>();
 	private final File dir;
+	// What the folder is owned by: the folder itself, however its path
+	// is spelled.
+	private final String key;
 
 	Journal(File dir) {
 		this.dir = dir;
+		key = key(dir);
+	}
+
+	private static String key(File dir) {
+		try {
+			return dir.getCanonicalPath();
+		} catch (IOException e) {
+			return dir.getAbsolutePath();
+		}
 	}
 
 	/**
@@ -114,7 +126,7 @@ final class Journal {
 	 */
 	Journal own() {
 		synchronized (OWNERS) {
-			OWNERS.put(dir.getAbsolutePath(), this);
+			OWNERS.put(key, this);
 		}
 		return this;
 	}
@@ -123,7 +135,7 @@ final class Journal {
 	void release() {
 		synchronized (OWNERS) {
 			if (owns()) {
-				OWNERS.remove(dir.getAbsolutePath());
+				OWNERS.remove(key);
 			}
 		}
 	}
@@ -135,7 +147,7 @@ final class Journal {
 	static void ifAbandoned(File dir, Runnable abandon) {
 		synchronized (OWNERS) {
 			String[] kept = dir.list();
-			if (!OWNERS.containsKey(dir.getAbsolutePath()) &&
+			if (!OWNERS.containsKey(key(dir)) &&
 					(kept == null || kept.length == 0)) {
 				abandon.run();
 			}
@@ -144,7 +156,7 @@ final class Journal {
 
 	private boolean owns() {
 		synchronized (OWNERS) {
-			return OWNERS.get(dir.getAbsolutePath()) == this;
+			return OWNERS.get(key) == this;
 		}
 	}
 
@@ -269,8 +281,9 @@ final class Journal {
 			Text text = Text.of(decode(bytes));
 			long length = 12L + head.length + 8 + bytes.length;
 			long records = 0;
-			for (byte[] record; records <= MAX_RECORDS &&
-					(record = readBlock(in, MAX_RECORDS)) != null; ) {
+			// No more records than are ever appended, all together.
+			for (byte[] record; (record = readBlock(in,
+					MAX_RECORDS - records - 8)) != null; ) {
 				Replayed replayed = replay(record, revision, text);
 				if (replayed == null) {
 					break;
