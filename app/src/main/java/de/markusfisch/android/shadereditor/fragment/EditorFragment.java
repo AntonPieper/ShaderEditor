@@ -408,6 +408,18 @@ public class EditorFragment extends Fragment {
 		return editor.showDocument(document, syntax, state, shaderToy);
 	}
 
+	/**
+	 * Set whether text put into the document shown is converted from
+	 * ShaderToy's form, when that is known only after it was shown.
+	 */
+	public void setShaderToy(boolean shaderToy) {
+		if (editor == null) {
+			pendingShaderToy = shaderToy;
+		} else {
+			editor.setShaderToy(shaderToy);
+		}
+	}
+
 	/** Return what the view keeps of the document shown, or null. */
 	@Nullable
 	public Object getDocumentState() {

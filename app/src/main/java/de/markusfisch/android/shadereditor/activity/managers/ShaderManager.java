@@ -242,21 +242,28 @@ public class ShaderManager implements OpenItem {
 		outState.putBoolean(MODIFIED, isModified);
 	}
 
-	/** Return the id of the shader state was saved with, or 0. */
-	public static long savedShaderId(@NonNull Bundle state) {
-		return state.getLong(SELECTED_SHADER_ID, NO_SHADER);
-	}
-
 	// The editor restores its text itself, keeping the undo history.
 	public void restoreState(@NonNull Bundle savedInstanceState) {
-		selectedShaderId = savedInstanceState.getLong(
-				SELECTED_SHADER_ID, NO_SHADER);
-		title = savedInstanceState.getString(SELECTED_SHADER_TITLE, "");
-		quality = savedInstanceState.getFloat(QUALITY, 1f);
+		restore(savedInstanceState.getLong(SELECTED_SHADER_ID, NO_SHADER),
+				savedInstanceState.getString(SELECTED_SHADER_TITLE, ""),
+				savedInstanceState.getFloat(QUALITY, 1f),
+				savedInstanceState.getBoolean(MODIFIED));
+	}
+
+	/**
+	 * Take the shader with id as the one in the editor again, whose
+	 * text the editor restored itself, after the screen was made
+	 * again.
+	 */
+	public void restore(long id, @NonNull String title, float quality,
+			boolean modified) {
+		selectedShaderId = id;
+		this.title = title;
+		this.quality = quality;
 		shaderListManager.setSelectedShaderId(selectedShaderId);
 		shaderViewManager.setShader(editorFragment.getText(), quality);
 		updatePendingCrashShaderId();
-		setModified(savedInstanceState.getBoolean(MODIFIED));
+		setModified(modified);
 	}
 
 	public void selectShader(long id) {

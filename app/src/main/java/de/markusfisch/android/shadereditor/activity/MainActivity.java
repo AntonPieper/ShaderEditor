@@ -36,6 +36,7 @@ import de.markusfisch.android.shadereditor.activity.managers.NavigationDrawer;
 import de.markusfisch.android.shadereditor.activity.managers.NavigationManager;
 import de.markusfisch.android.shadereditor.activity.managers.NothingOpen;
 import de.markusfisch.android.shadereditor.activity.managers.OpenItem;
+import de.markusfisch.android.shadereditor.activity.managers.OpenState;
 import de.markusfisch.android.shadereditor.activity.managers.ProjectFile;
 import de.markusfisch.android.shadereditor.activity.managers.ProjectFileManager;
 import de.markusfisch.android.shadereditor.activity.managers.ProjectHolds;
@@ -61,6 +62,7 @@ import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
 import de.markusfisch.android.shadereditor.widget.Message;
 
 public class MainActivity extends AppCompatActivity {
+	private static final String OPEN = "open";
 	private static final String CODE_VISIBLE = "code_visible";
 	private static final String TOOLBAR_TITLE = "toolbar_title";
 	// How long an explicit save is told in the toolbar's second line.
@@ -109,6 +111,10 @@ public class MainActivity extends AppCompatActivity {
 	// The code was hidden when the screen was made again with nothing
 	// open yet: it is hidden again once a text is shown.
 	private boolean hideCodeOnShow;
+	// What was open before the screen was made again; null for a new
+	// screen, and where the shaders are rows of the database.
+	@Nullable
+	private OpenState restored;
 
 	@Override
 	protected void onCreate(@Nullable Bundle state) {
@@ -159,6 +165,11 @@ public class MainActivity extends AppCompatActivity {
 						@Override
 						public void onFailed(@NonNull String message) {
 							Message.show(MainActivity.this, message);
+							// The start left the screen to what was
+							// to be added: the library's file, then.
+							if (!open.hasText() && moving) {
+								libraryStart.show();
+							}
 						}
 					});
 			looks = new LibraryLooks(this, holds.projects(), shaderViewManager,
@@ -259,8 +270,11 @@ public class MainActivity extends AppCompatActivity {
 				: shaderManager.handleSendText(getIntent());
 		// Where the shaders are files, the start opens the library.
 		isInitialLoad = state == null && !openedText && files == null;
-		holdsUnshownFile = state != null && files != null &&
-				files.hadFile(state) &&
+		restored = files != null && state != null
+				? OpenState.decode(state.getString(OPEN))
+				: null;
+		holdsUnshownFile = restored != null &&
+				restored.kind() == OpenState.Kind.FILE &&
 				!ShaderEditorApp.preferences.useNewEditor();
 
 		editorFragment.setOnEditPausedListener(text -> {
@@ -277,9 +291,19 @@ public class MainActivity extends AppCompatActivity {
 		editorFragment.setOnTextModifiedListener(() -> open.onTextModified());
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
 		if (files != null) {
-			moving = state == null && !openedText;
+			// A screen that had a file, a shader or nothing open comes
+			// back to that; one that had not come that far shows what
+			// the library shows, as a cold start does, unless text
+			// that was shared comes instead.
+			boolean show = !openedText && (restored == null ||
+					restored.showsLibrary());
+			// Nothing stands where the code is until what was open is
+			// back, or the start has shown a file.
+			moving = true;
+			movingTold = restored != null &&
+					restored.kind() == OpenState.Kind.MOVING;
 			showOpen();
-			startLibrary(state == null && !openedText);
+			startLibrary(show);
 		}
 	}
 
@@ -311,8 +335,13 @@ public class MainActivity extends AppCompatActivity {
 
 					@Override
 					public void onShow(@NonNull String key,
-							@NonNull ProjectPath path, boolean single) {
-						files.show(key, path, single);
+							@NonNull ProjectPath path, boolean single,
+							boolean chosen) {
+						if (chosen) {
+							files.show(key, path, single);
+						} else {
+							files.open(key, path, single);
+						}
 					}
 
 					@Override
@@ -381,20 +410,24 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onRestoreInstanceState(@NonNull Bundle state) {
 		super.onRestoreInstanceState(state);
-		// The library's shader first: a file asked for opens over it.
-		// Where the shaders are files, only one that was not moved.
 		if (files == null) {
 			shaderManager.restoreState(state);
-		} else if (!files.hadFile(state) &&
-				ShaderManager.savedShaderId(state) > 0) {
-			shaderManager.restoreState(state);
+		} else if (restored != null && restored.isFile()) {
+			files.restore(restored);
+		} else if (restored != null &&
+				restored.kind() == OpenState.Kind.NOT_MOVED) {
+			shaderManager.restore(restored.shader(),
+					restored.title() != null ? restored.title() : "",
+					restored.quality(), restored.modified());
 			open = shaderManager;
 			moving = false;
 			showOpen();
+		} else if (restored != null &&
+				restored.kind() == OpenState.Kind.NOTHING) {
+			moving = false;
+			showOpen();
 		}
-		if (files != null) {
-			files.restoreState(state);
-		}
+		// Not that far yet: the start shows what the library shows.
 		if (!state.getBoolean(CODE_VISIBLE, true)) {
 			if (open.hasText()) {
 				uiManager.toggleCodeVisibility();
@@ -406,9 +439,10 @@ public class MainActivity extends AppCompatActivity {
 
 	@Override
 	protected void onSaveInstanceState(@NonNull Bundle state) {
-		shaderManager.saveState(state);
-		if (files != null) {
-			files.saveState(state);
+		if (files == null) {
+			shaderManager.saveState(state);
+		} else {
+			state.putString(OPEN, openState().encode());
 		}
 		// With nothing open the editor's view is gone for that reason.
 		state.putBoolean(CODE_VISIBLE, open.hasText()
@@ -518,7 +552,9 @@ public class MainActivity extends AppCompatActivity {
 		super.onPostCreate(state);
 		uiManager.setToolbarTitle(title, open.getSubtitle(),
 				open.isModified());
-		if (!open.hasText()) {
+		// A file that comes back keeps its title until it is shown.
+		if (!open.hasText() && (restored == null ||
+				restored.showsLibrary())) {
 			showOpenTitle();
 		}
 		if (uiManager.drawerToggle != null) {
@@ -1125,6 +1161,22 @@ public class MainActivity extends AppCompatActivity {
 			}
 		}
 		showOpenTitle();
+	}
+
+	// What is open, as the one thing kept of it when the screen is made
+	// again.
+	@NonNull
+	private OpenState openState() {
+		if (open == shaderManager &&
+				shaderManager.getSelectedShaderId() > 0) {
+			return OpenState.notMoved(shaderManager.getSelectedShaderId(),
+					shaderManager.getTitle(), shaderManager.getQuality(),
+					shaderManager.isModified());
+		}
+		OpenState file = files.state();
+		return file != null ? file
+				: !moving ? OpenState.NOTHING
+				: movingTold ? OpenState.MOVING : OpenState.STARTING;
 	}
 
 	// The shader of the database that was open is gone: what the
