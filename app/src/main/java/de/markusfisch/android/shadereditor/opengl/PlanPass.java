@@ -1,7 +1,5 @@
 package de.markusfisch.android.shadereditor.opengl;
 
-import android.opengl.GLES30;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -12,7 +10,6 @@ import java.util.Map;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
-import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 // One pass of a plan linked in the current context: its program, what
 // its active samplers read, what it warns about, and on GLES3 a sampler
@@ -113,12 +110,12 @@ final class PlanPass {
 		var images = bindings.images;
 		samplers = new int[images.size()];
 		for (int i = 0; i < samplers.length; ++i) {
-			samplers[i] = createSampler(images.get(i).sampling());
+			samplers[i] = device.createSampler(images.get(i).sampling());
 		}
 		var previous = bindings.history;
 		historySamplers = new int[previous.size()];
 		for (int i = 0; i < historySamplers.length; ++i) {
-			historySamplers[i] = createSampler(previous.get(i).sampling());
+			historySamplers[i] = device.createSampler(previous.get(i).sampling());
 		}
 		return device.takeError("glGenSamplers");
 	}
@@ -140,7 +137,7 @@ final class PlanPass {
 				continue;
 			} else if (samplers != null) {
 				device.bindTexture(unit, texture);
-				GLES30.glBindSampler(unit, samplers[i]);
+				device.bindSampler(unit, samplers[i]);
 			} else {
 				device.applySampling(unit, texture, binding.sampling());
 			}
@@ -151,7 +148,7 @@ final class PlanPass {
 			int unit = binding.sampler().unit();
 			if (historySamplers != null) {
 				device.bindTexture(unit, previous);
-				GLES30.glBindSampler(unit, historySamplers[i]);
+				device.bindSampler(unit, historySamplers[i]);
 			} else {
 				device.applySampling(unit, previous, binding.sampling());
 			}
@@ -172,18 +169,18 @@ final class PlanPass {
 			return;
 		}
 		for (var binding : bindings.images) {
-			GLES30.glBindSampler(binding.sampler().unit(), 0);
+			device.bindSampler(binding.sampler().unit(), 0);
 		}
 		for (var binding : bindings.history) {
-			GLES30.glBindSampler(binding.sampler().unit(), 0);
+			device.bindSampler(binding.sampler().unit(), 0);
 		}
 	}
 
 	void release() {
 		device.deleteProgram(program);
 		if (samplers != null && historySamplers != null) {
-			GLES30.glDeleteSamplers(samplers.length, samplers, 0);
-			GLES30.glDeleteSamplers(historySamplers.length, historySamplers, 0);
+			device.deleteSamplers(samplers);
+			device.deleteSamplers(historySamplers);
 		}
 		samplers = null;
 		historySamplers = null;
@@ -193,19 +190,5 @@ final class PlanPass {
 		program.invalidate();
 		samplers = null;
 		historySamplers = null;
-	}
-
-	private static int createSampler(@NonNull Sampling sampling) {
-		int[] sampler = new int[1];
-		GLES30.glGenSamplers(1, sampler, 0);
-		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MIN_FILTER,
-				GlSampling.minFilter(sampling));
-		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MAG_FILTER,
-				GlSampling.magFilter(sampling));
-		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_WRAP_S,
-				GlSampling.wrap(sampling.wrapS()));
-		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_WRAP_T,
-				GlSampling.wrap(sampling.wrapT()));
-		return sampler[0];
 	}
 }
