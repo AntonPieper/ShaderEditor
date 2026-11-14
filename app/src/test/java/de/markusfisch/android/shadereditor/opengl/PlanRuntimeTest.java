@@ -81,8 +81,8 @@ public class PlanRuntimeTest {
 			boolean history) {
 		var plan = preparation.plan();
 		var warnings = new ArrayList<>(preparation.diagnostics());
-		PlanRuntime.checkInitial(plan, plan.passes().get(plan.output()),
-				history, warnings);
+		PlanRuntime.checkInitial(plan,
+				PassSchedule.of(plan, new boolean[]{history}), warnings);
 		return warnings;
 	}
 }
