@@ -351,18 +351,6 @@ public class ShaderEditor extends LineNumberEditText {
 		return AUTOFILL_TYPE_NONE;
 	}
 
-	/**
-	 * Keep the text out of the saved instance state. EditText always
-	 * saves it, spans included, and a large shader makes that state too
-	 * big for the Binder transaction that carries it, which crashes the
-	 * app when it goes to the background. The selection is still saved.
-	 * EditorFragment keeps the text somewhere else.
-	 */
-	@Override
-	public boolean getFreezesText() {
-		return false;
-	}
-
 	@Nullable
 	@Override
 	public InputConnection onCreateInputConnection(
@@ -409,6 +397,12 @@ public class ShaderEditor extends LineNumberEditText {
 	private void init(@NonNull Context context) {
 		// Setting this through XML does not work
 		setHorizontallyScrolling(true);
+		// EditText saves its text with spans and its undo history, every
+		// cut, deleted or pasted text, in the instance state. That makes
+		// the state too big for the Binder transaction that carries it,
+		// which crashes the app when it goes to the background. The text
+		// and the selection are saved by EditorFragment instead.
+		setSaveEnabled(false);
 
 		setFilters(new InputFilter[]{(source,
 				start, end,
