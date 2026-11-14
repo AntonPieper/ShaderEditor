@@ -24,7 +24,6 @@ import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
-import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 
 /**
  * Opens files of folders in the editor and keeps the one open: its
@@ -54,8 +53,12 @@ public final class ProjectFileManager {
 
 	/** Runs what a project runs. */
 	public interface Runner {
-		/** Run preparation at quality; null when nothing runs. */
-		void run(@Nullable Preparation preparation, float quality);
+		/**
+		 * Run preparation at quality; null when nothing runs, and then
+		 * report nothingRuns.
+		 */
+		void run(@Nullable Preparation preparation,
+				@NonNull List<ProjectDiagnostic> nothingRuns, float quality);
 	}
 
 	private static final String KEY = "project_file_key";
@@ -208,8 +211,7 @@ public final class ProjectFileManager {
 		heard = last(project.events(0));
 		project.setListener(ContextCompat.getMainExecutor(activity),
 				this::changed);
-		editor.showDocument(document,
-				ShaderLanguage.of(path.toString()).syntax(),
+		editor.showDocument(document, project.syntax(path),
 				project.editorState(path));
 		listener.onShown(shown);
 		String unreadable = project.unreadable(path);
@@ -249,7 +251,8 @@ public final class ProjectFileManager {
 			stale = false;
 			// Nothing runs, as for a folder without a shader: a picture
 			// or errors left from before are not this project's.
-			runner.run(prepared.preparation(), now.getQuality());
+			runner.run(prepared.preparation(), prepared.nothingRuns(),
+					now.getQuality());
 		});
 	}
 

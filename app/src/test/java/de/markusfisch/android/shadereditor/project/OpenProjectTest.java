@@ -37,6 +37,12 @@ import de.markusfisch.android.shadereditor.project.OpenProject.Saved;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic.Severity;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
+import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
+import de.markusfisch.android.shadereditor.syntax.JsonSyntax;
+import de.markusfisch.android.shadereditor.syntax.LexedLine;
+import de.markusfisch.android.shadereditor.syntax.LineTokens;
+import de.markusfisch.android.shadereditor.syntax.Outline;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 public class OpenProjectTest {
 	private static final String SHADER = """
@@ -231,6 +237,43 @@ public class OpenProjectTest {
 		Preparation preparation = prepare(project);
 		assertEquals("// edited\n", built(preparation, "lib/common.glsl"));
 		assertEquals("// common\n", read("lib/common.glsl"));
+	}
+
+	@Test
+	public void anInvalidManifestShowsWhenNothingRuns() throws IOException {
+		write("shader-project.json", "{\"entri\": \"a.frag\"}");
+		OpenProject project = open();
+		OpenProject.Build build = build(project);
+
+		assertNull(build.preparation());
+		assertEquals(List.of(new ProjectDiagnostic(
+				ProjectDiagnostic.Severity.ERROR, "Unknown key \"entri\"",
+				path("shader-project.json"), 1)), build.nothingRuns());
+	}
+
+	@Test
+	public void theManifestOfTheRootIsEditedAsTheManifest()
+			throws IOException {
+		write("shader-project.json", "{}");
+		write("main.frag", SHADER);
+		write("b.glsl", SHADER);
+		write("notes.md", "# notes");
+		write("noise.png", "x");
+		write("lib/shader-project.json", "{}");
+		OpenProject project = open();
+
+		Syntax manifest = project.syntax(path("shader-project.json"));
+		settle();
+		List<List<String>> offered = new ArrayList<>();
+		String line = "{\"entry\": \"";
+		manifest.complete(LexedLine.of(manifest, line, false,
+						Syntax.TEXT_START, new LineTokens()), line.length(), 0,
+				Outline.NONE, true, List.of(),
+				(words, position) -> offered.add(words));
+		assertEquals(List.of(List.of("b.glsl", "main.frag")), offered);
+		assertSame(JsonSyntax.INSTANCE,
+				project.syntax(path("lib/shader-project.json")));
+		assertSame(GlslSyntax.INSTANCE, project.syntax(path("main.frag")));
 	}
 
 	@Test

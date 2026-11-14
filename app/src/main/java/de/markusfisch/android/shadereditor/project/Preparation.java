@@ -99,6 +99,17 @@ public record Preparation(
 						"or remove initial", file, line);
 	}
 
+	/**
+	 * Return what is wrong with the manifest of files, for a folder in
+	 * which nothing runs; nothing when it is valid or there is none.
+	 */
+	public static List<ProjectDiagnostic> checkManifest(ProjectFiles files) {
+		ProjectParseResult<ProjectManifest> manifest = readManifest(files);
+		return manifest != null && !manifest.isSuccess()
+				? List.of(manifest.diagnostic())
+				: List.of();
+	}
+
 	// Return null when there is no manifest.
 	private static ProjectParseResult<ProjectManifest> readManifest(
 			ProjectFiles files) {

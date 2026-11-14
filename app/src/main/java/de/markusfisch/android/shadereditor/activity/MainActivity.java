@@ -114,13 +114,15 @@ public class MainActivity extends AppCompatActivity {
 		if (getResources().getBoolean(R.bool.project_mode)) {
 			holds = new ProjectHolds(new Projects(this));
 			files = new ProjectFileManager(this, editorFragment, holds,
-					createProjectFileListener(), (preparation, quality) -> {
+					createProjectFileListener(),
+					(preparation, nothingRuns, quality) -> {
 						if (preparation != null) {
 							shaderViewManager.setPlan(preparation, quality);
 						} else {
-							// No build reports, so nothing to show.
+							// No build reports, so only the manifest
+							// can be wrong.
 							shaderViewManager.showNothing();
-							shaderViewListener.onInfoLog(List.of());
+							shaderViewListener.onInfoLog(nothingRuns);
 						}
 					});
 			editorFragment.setOnErrorSelectedListener((file, line) -> {

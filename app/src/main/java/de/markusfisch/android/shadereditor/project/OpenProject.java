@@ -20,6 +20,7 @@ import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Content;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
+import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 /**
  * The project open in the editor, for the screens that show it: its
@@ -74,16 +75,27 @@ public final class OpenProject {
 	 */
 	public static final class Build {
 		private final Preparation preparation;
+		private final List<ProjectDiagnostic> nothingRuns;
 		private final int generation;
 
-		private Build(Preparation preparation, int generation) {
+		private Build(Preparation preparation,
+				List<ProjectDiagnostic> nothingRuns, int generation) {
 			this.preparation = preparation;
+			this.nothingRuns = nothingRuns;
 			this.generation = generation;
 		}
 
 		/** Return the preparation, or null when nothing runs. */
 		public Preparation preparation() {
 			return preparation;
+		}
+
+		/**
+		 * Return what is wrong with the manifest when nothing runs, so
+		 * that it shows all the same.
+		 */
+		public List<ProjectDiagnostic> nothingRuns() {
+			return nothingRuns;
 		}
 	}
 
@@ -530,6 +542,32 @@ public final class OpenProject {
 				: compareNames(a.path().getFileName(),
 						b.path().getFileName()));
 		return new Folder(items, null);
+	}
+
+	/**
+	 * Return how the editor treats the file at path: as its language
+	 * says, and the manifest of a folder as the manifest, which
+	 * completes the names of the files in the root that may be shaders
+	 * once they are listed.
+	 */
+	public Syntax syntax(ProjectPath path) {
+		if (lone != null || !ProjectManifest.FILE.equals(path)) {
+			return ShaderLanguage.of(path.toString()).syntax();
+		}
+		ManifestSyntax syntax = new ManifestSyntax();
+		worker.execute(() -> {
+			List<String> names = new ArrayList<>();
+			for (Item item : list(null).items()) {
+				String name = item.path().toString();
+				if (!item.folder() &&
+						FileKind.hint(name, null) == FileKind.TEXT &&
+						ShaderLanguage.of(name).runs()) {
+					names.add(name);
+				}
+			}
+			main.execute(() -> syntax.setFiles(names));
+		});
+		return syntax;
 	}
 
 	/**
@@ -1439,6 +1477,9 @@ public final class OpenProject {
 					? Preparation.prepare(edited, entry,
 							ProjectLimits.DEFAULT, builtins)
 					: null;
+			List<ProjectDiagnostic> nothingRuns = entry == null
+					? Preparation.checkManifest(edited)
+					: List.of();
 			List<Used> read = new ArrayList<>();
 			if (preparation != null) {
 				for (SourceAssembly.Dependency dependency :
@@ -1460,7 +1501,7 @@ public final class OpenProject {
 				}
 				used = Collections.unmodifiableList(read);
 				changed();
-				done.done(new Build(preparation, generation));
+				done.done(new Build(preparation, nothingRuns, generation));
 			});
 		});
 	}

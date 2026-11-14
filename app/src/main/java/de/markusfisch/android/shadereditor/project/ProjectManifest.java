@@ -13,8 +13,8 @@ public record ProjectManifest(int projectVersion, ProjectPath entry) {
 	public static final ProjectManifest DEFAULT = new ProjectManifest(
 			1, OpenProject.MAIN);
 
-	private static final String VERSION_KEY = "projectVersion";
-	private static final String ENTRY_KEY = "entry";
+	static final String VERSION_KEY = "projectVersion";
+	static final String ENTRY_KEY = "entry";
 
 	public static ProjectParseResult<ProjectManifest> parse(String text) {
 		Reader reader = new Reader(text);
