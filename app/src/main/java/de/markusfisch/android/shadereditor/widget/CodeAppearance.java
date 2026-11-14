@@ -67,12 +67,12 @@ final class CodeAppearance {
 		warningColor = ContextCompat.getColor(context,
 				R.color.syntax_warning);
 		caretColor = ContextCompat.getColor(context, R.color.editor_caret);
+		selectionColor = ContextCompat.getColor(context,
+				R.color.code_selection);
 		TypedArray a = context.obtainStyledAttributes(new int[]{
-				android.R.attr.textColorHighlight,
 				androidx.appcompat.R.attr.colorPrimary});
 		try {
-			selectionColor = a.getColor(0, 0x6633b5e5);
-			handleColor = a.getColor(1, caretColor);
+			handleColor = a.getColor(0, caretColor);
 		} finally {
 			a.recycle();
 		}

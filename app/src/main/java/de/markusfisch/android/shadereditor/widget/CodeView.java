@@ -16,11 +16,14 @@ import android.os.Looper;
 import android.text.InputType;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.ContextMenu;
 import android.view.GestureDetector;
 import android.view.HapticFeedbackConstants;
+import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.WindowInsets;
@@ -28,6 +31,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EdgeEffect;
+import android.widget.Magnifier;
 import android.widget.OverScroller;
 import android.widget.Toast;
 
@@ -35,6 +39,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.graphics.Insets;
+import androidx.core.view.ViewConfigurationCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.util.ArrayList;
@@ -59,17 +64,22 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * become KeyCommands, and the caret is kept in view after each and
  * above the soft keyboard when that opens. The soft keyboard edits the
  * document through one TextInput per connection; a tap shows it.
- * A tap places the caret; a double tap selects a word; a long press
- * selects one and a drag after it extends the selection by words,
- * scrolling while the finger is near an edge. A selection made by touch
- * has the platform's handles, which drag its ends; a tap shows the
- * caret's handle until a while has passed or the text changes. When the
+ * A tap places the caret; a double tap or a long press selects a word
+ * and a drag after it extends the selection by words, scrolling while
+ * the finger is near an edge. A selection made by touch has the
+ * platform's handles, which drag its ends, by words while it grows, with
+ * the platform's magnifier from Android 9 on; a tap shows the caret's
+ * handle until a while has passed or the text changes. When the
  * finger lifts, the platform's floating toolbar offers the clipboard
  * for the selection; a tap inside the selection hides or shows it
  * again. A tap on the caret's handle, or a long press past the end of a
  * line, shows it for the caret. Cut, copy and paste of the toolbar, the
  * keyboard's context menu and the keys are the same KeyCommands; a copy
- * the clipboard refuses says so.
+ * the clipboard refuses says so. A mouse click places the caret, a
+ * double click selects a word, Shift extends the selection, a drag
+ * selects by character or by word, the secondary button opens the
+ * context menu and the wheel scrolls; over the text the pointer is the
+ * text cursor.
  * Given a KeyboardSession, it records the connections and, as actions,
  * every key event (action, key code, meta state, the text it types),
  * the text on the clipboard before a paste, a tap's selection, the
@@ -112,6 +122,7 @@ public class CodeView extends View {
 	private static final int VERTICAL = 2;
 	private static final int DRAG_WORDS = 1;
 	private static final int DRAG_HANDLE = 2;
+	private static final int DRAG_MOUSE = 3;
 
 	private final CodeAppearance appearance;
 	private final Paint fill = new Paint();
@@ -219,6 +230,13 @@ public class CodeView extends View {
 	private float pointDx;
 	private float pointDy;
 	private boolean caretHandle;
+	// A Magnifier from Android 9 on, once a handle was dragged.
+	private Object magnifier;
+	// When and where the last mouse click was that may become a double
+	// click.
+	private long clicked;
+	private float clickX;
+	private float clickY;
 	// The selection the last touch made, while it is the document's.
 	private Document.Selection touched;
 	private boolean selecting;
@@ -306,14 +324,18 @@ public class CodeView extends View {
 
 					@Override
 					public boolean onDoubleTap(@NonNull MotionEvent e) {
-						selectWord(e.getX(), e.getY());
+						dragWords(e.getX(), e.getY(), false);
 						return true;
 					}
 
 					@Override
 					public void onLongPress(@NonNull MotionEvent e) {
+						if (dragging != 0) {
+							// After a double tap.
+							return;
+						}
 						if (onText(e.getX(), e.getY())) {
-							dragWords(e.getX(), e.getY());
+							dragWords(e.getX(), e.getY(), true);
 						} else {
 							dragCaret(e.getX(), e.getY());
 						}
@@ -527,6 +549,9 @@ public class CodeView extends View {
 	@SuppressLint("ClickableViewAccessibility")
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
+		if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+			return mouse(event) || super.onTouchEvent(event);
+		}
 		int action = event.getActionMasked();
 		if (action == MotionEvent.ACTION_DOWN) {
 			dragging = 0;
@@ -562,6 +587,52 @@ public class CodeView extends View {
 			postInvalidateOnAnimation();
 		}
 		return handled || super.onTouchEvent(event);
+	}
+
+	@Override
+	public boolean onGenericMotionEvent(MotionEvent event) {
+		if (document != null &&
+				event.isFromSource(InputDevice.SOURCE_CLASS_POINTER) &&
+				event.getAction() == MotionEvent.ACTION_SCROLL) {
+			float v = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
+			float h = event.getAxisValue(MotionEvent.AXIS_HSCROLL);
+			if ((event.getMetaState() & KeyEvent.META_SHIFT_ON) != 0) {
+				h = -v;
+				v = 0;
+			}
+			if (v != 0 || h != 0) {
+				ViewConfiguration config = ViewConfiguration.get(getContext());
+				scroller.forceFinished(true);
+				scrollTo(getScrollX() + Math.round(h * ViewConfigurationCompat
+								.getScaledHorizontalScrollFactor(config,
+										getContext())),
+						getScrollY() - Math.round(v * ViewConfigurationCompat
+								.getScaledVerticalScrollFactor(config,
+										getContext())));
+				awakenScrollBars();
+				return true;
+			}
+		}
+		return super.onGenericMotionEvent(event);
+	}
+
+	@RequiresApi(Build.VERSION_CODES.N)
+	@Override
+	public PointerIcon onResolvePointerIcon(MotionEvent event, int index) {
+		if (document != null && event.isFromSource(InputDevice.SOURCE_MOUSE) &&
+				event.getX(index) >= textLeft(document.text().lineCount())) {
+			return PointerIcon.getSystemIcon(getContext(),
+					PointerIcon.TYPE_TEXT);
+		}
+		return super.onResolvePointerIcon(event, index);
+	}
+
+	@Override
+	protected void onCreateContextMenu(ContextMenu menu) {
+		if (document != null) {
+			SelectionToolbar.fill(menu, offered(),
+					item -> contextMenuAction(item.getItemId()));
+		}
 	}
 
 	@Override
@@ -1242,21 +1313,8 @@ public class CodeView extends View {
 		performClick();
 	}
 
-	private void selectWord(float x, float y) {
-		if (document == null) {
-			return;
-		}
-		toolbar.close();
-		Document.Selection word = touch.wordAt(document.text(),
-				offsetAt(x, y));
-		select(word.anchor(), word.head());
-		requestFocus();
-		if (!word.isEmpty()) {
-			showToolbar();
-		}
-	}
-
-	private void dragWords(float x, float y) {
+	// Selects the word at x, y, which a drag extends by words.
+	private void dragWords(float x, float y, boolean pressed) {
 		if (document == null) {
 			return;
 		}
@@ -1264,7 +1322,9 @@ public class CodeView extends View {
 		touch.dragWords(document.text(), offsetAt(x, y));
 		select(touch.anchor(), touch.head());
 		requestFocus();
-		performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+		if (pressed) {
+			performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+		}
 		startDrag(DRAG_WORDS, x, y);
 	}
 
@@ -1277,7 +1337,7 @@ public class CodeView extends View {
 		int head = which == SelectionHandles.START
 				? touched.start()
 				: touched.end();
-		touch.dragChars(touched.isEmpty() ? head : touched.start() +
+		touch.dragHandle(touched.isEmpty() ? head : touched.start() +
 				touched.end() - head, head);
 		// The handle points at the bottom of a line; the drag at its
 		// middle.
@@ -1296,7 +1356,7 @@ public class CodeView extends View {
 		}
 		toolbar.close();
 		int offset = offsetAt(x, y);
-		touch.dragChars(offset, offset);
+		touch.dragHandle(offset, offset);
 		select(offset, offset);
 		requestFocus();
 		performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
@@ -1324,6 +1384,7 @@ public class CodeView extends View {
 		boolean tapped = dragging == DRAG_HANDLE && !moved;
 		boolean pressed = dragging == DRAG_WORDS;
 		dragging = 0;
+		dismissMagnifier();
 		if (touched == null) {
 			return;
 		}
@@ -1342,9 +1403,123 @@ public class CodeView extends View {
 		if (touch.dragTo(text, offsetAt(dragX + pointDx, dragY + pointDy))) {
 			select(touch.anchor(), touch.head());
 		}
+		if (dragging == DRAG_HANDLE && moved) {
+			magnify();
+		}
 		if (!edgeScrolling && (edgeStepX() != 0 || edgeStepY() != 0)) {
 			edgeScrolling = true;
 			postOnAnimation(edgeScroll);
+		}
+	}
+
+	// Shows the magnifier over the line of the dragged end, at the
+	// finger but not past the text of that line, from Android 9 on.
+	private void magnify() {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+			return;
+		}
+		Text text = document.text();
+		int n = text.lineOf(touch.head());
+		float left = textLeft(text.lineCount());
+		float x = Math.max(left, Math.min(dragX + pointDx,
+				left - getScrollX() + layoutOf(n).width()));
+		float y = textTop() + (n + .5f) * appearance.lineHeight -
+				getScrollY();
+		if (y < insets.top || y > getHeight() - insets.bottom) {
+			dismissMagnifier();
+			return;
+		}
+		if (magnifier == null) {
+			// With the defaults of the platform's text views.
+			magnifier = new Magnifier(this);
+		}
+		((Magnifier) magnifier).show(x, y);
+	}
+
+	private void dismissMagnifier() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+				magnifier != null) {
+			((Magnifier) magnifier).dismiss();
+		}
+	}
+
+	// A click places the caret, a double click selects a word, with
+	// Shift held a click extends the selection; a drag after each
+	// selects by character or by word. A secondary click opens the
+	// context menu. A mouse shows no handles.
+	private boolean mouse(MotionEvent event) {
+		if (document == null) {
+			return false;
+		}
+		float x = event.getX();
+		float y = event.getY();
+		switch (event.getActionMasked()) {
+			case MotionEvent.ACTION_DOWN:
+				requestFocus();
+				toolbar.close();
+				touched = null;
+				startDrag(DRAG_MOUSE, x, y);
+				if (event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)) {
+					dragging = 0;
+					contextClick(x, y);
+					return true;
+				}
+				click(event, offsetAt(x, y));
+				return true;
+			case MotionEvent.ACTION_MOVE:
+				if (dragging == DRAG_MOUSE) {
+					dragX = x;
+					dragY = y;
+					dragSelection();
+				}
+				return true;
+			case MotionEvent.ACTION_UP:
+			case MotionEvent.ACTION_CANCEL:
+				dragging = 0;
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	private void click(MotionEvent event, int offset) {
+		long time = event.getEventTime();
+		float x = event.getX();
+		float y = event.getY();
+		boolean twice = time - clicked < ViewConfiguration.getDoubleTapTimeout() &&
+				Math.abs(x - clickX) < touchSlop &&
+				Math.abs(y - clickY) < touchSlop;
+		// A third click is a first one again.
+		clicked = twice ? 0 : time;
+		clickX = x;
+		clickY = y;
+		if (twice) {
+			touch.dragWords(document.text(), offset);
+		} else if ((event.getMetaState() & KeyEvent.META_SHIFT_ON) != 0) {
+			touch.dragChars(document.selection().anchor(), offset);
+		} else {
+			touch.dragChars(offset, offset);
+		}
+		select(touch.anchor(), touch.head());
+		InputMethodManager imm = inputMethodManager();
+		if (imm != null) {
+			imm.showSoftInput(this, 0);
+		}
+	}
+
+	// Opens the context menu at x, y, before Android 7 the toolbar, for
+	// the selection if x, y is in it, else for a caret placed there.
+	private void contextClick(float x, float y) {
+		int offset = offsetAt(x, y);
+		Document.Selection selection = document.selection();
+		if (offset < selection.start() || offset > selection.end()) {
+			select(offset, offset);
+		}
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+			touched = null;
+			showContextMenu(x, y);
+		} else {
+			showToolbar();
 		}
 	}
 
@@ -1420,7 +1595,7 @@ public class CodeView extends View {
 		} finally {
 			selecting = false;
 		}
-		touched = document.selection();
+		touched = dragging == DRAG_MOUSE ? null : document.selection();
 	}
 
 	private void showCaretHandle() {
@@ -1570,6 +1745,7 @@ public class CodeView extends View {
 		handler.removeCallbacks(blink);
 		handler.removeCallbacks(hideCaretHandle);
 		caretHandle = false;
+		dismissMagnifier();
 		if (connected) {
 			document.removeListener(listener);
 			work.stop();
