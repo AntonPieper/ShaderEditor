@@ -21,7 +21,7 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.navigation.Naming;
+import de.markusfisch.android.shadereditor.project.Naming;
 
 /**
  * The sheet that creates something new: its kind, where a folder can

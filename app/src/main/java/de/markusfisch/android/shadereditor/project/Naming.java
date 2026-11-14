@@ -1,4 +1,4 @@
-package de.markusfisch.android.shadereditor.navigation;
+package de.markusfisch.android.shadereditor.project;
 
 import java.util.HashSet;
 import java.util.Locale;
