@@ -362,4 +362,6 @@
 	<string name="file_cannot_open">%1$s cannot be opened: %2$s</string>
 	<string name="file_needs_new_editor">Files of a folder open in the new editor. Turn on \"New editor\" in Settings.</string>
 	<string name="file_runs_behind_code">Files of a folder run only behind the code. Choose another run mode in Settings.</string>
+	<string name="share_selection">分享</string>
+	<string name="selection_too_large">所选文本过多，无法执行此操作</string>
 </resources>

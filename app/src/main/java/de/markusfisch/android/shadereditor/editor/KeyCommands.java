@@ -202,9 +202,11 @@ public final class KeyCommands {
 				.substring(selection.start(), selection.end()));
 	}
 
-	// Replaces the selection by text, as one step, with the caret behind;
-	// returns false if the document refused it.
-	private boolean paste(Text text) {
+	/**
+	 * Replace the selection by text, as one step, with the caret behind;
+	 * return false if the document refused it.
+	 */
+	public boolean paste(Text text) {
 		Selection selection = document.selection();
 		int start = selection.start();
 		document.beginBatch();

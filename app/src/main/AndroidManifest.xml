@@ -28,6 +28,11 @@
 			<action android:name="android.intent.action.VIEW"/>
 			<data android:scheme="https"/>
 		</intent>
+		<!-- What other apps offer for selected text -->
+		<intent>
+			<action android:name="android.intent.action.PROCESS_TEXT"/>
+			<data android:mimeType="text/plain"/>
+		</intent>
 	</queries>
 	<application
 		tools:ignore="UnusedAttribute"

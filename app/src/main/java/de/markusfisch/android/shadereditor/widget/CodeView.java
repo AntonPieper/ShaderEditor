@@ -1,9 +1,12 @@
 package de.markusfisch.android.shadereditor.widget;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
@@ -25,6 +28,7 @@ import android.view.HapticFeedbackConstants;
 import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
+import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
 import android.view.View;
@@ -40,6 +44,11 @@ import android.widget.EditText;
 import android.widget.OverScroller;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.ActivityResultRegistry;
+import androidx.activity.result.ActivityResultRegistryOwner;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -50,6 +59,7 @@ import androidx.core.view.WindowInsetsCompat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Analysis;
@@ -133,6 +143,7 @@ public class CodeView extends View {
 	// to every app that reads it, in binder transactions of at most
 	// 1 MB, at up to two bytes a character.
 	private static final int MAX_CLIP = 400_000;
+	private static final String PROCESS_TEXT = "CodeView.processText";
 	private static final int HORIZONTAL = 1;
 	private static final int VERTICAL = 2;
 	private static final int DRAG_WORDS = 1;
@@ -224,6 +235,19 @@ public class CodeView extends View {
 				@Override
 				public boolean act(int id) {
 					return toolbarAction(id);
+				}
+
+				@Override
+				public void addProcessText(Menu menu) {
+					if (!document.selection().isEmpty()) {
+						ProcessText.addTo(menu, getContext(),
+								resultRegistry() == null);
+					}
+				}
+
+				@Override
+				public boolean process(Intent intent) {
+					return processText(intent);
 				}
 
 				@Override
@@ -1240,6 +1264,10 @@ public class CodeView extends View {
 
 	/** Do a context menu action of the keyboard; return if it is known. */
 	boolean contextMenuAction(int id) {
+		if (id == android.R.id.shareText) {
+			share();
+			return true;
+		}
 		KeyCommands.Command command = KeyCommands.contextMenuCommand(id);
 		if (command != null) {
 			menuCommand(id, command);
@@ -1272,7 +1300,9 @@ public class CodeView extends View {
 		boolean done;
 		selecting = true;
 		try {
-			done = command != null && menuCommand(id, command);
+			done = command != null
+					? menuCommand(id, command)
+					: id == android.R.id.shareText && share();
 		} finally {
 			selecting = false;
 		}
@@ -1289,6 +1319,108 @@ public class CodeView extends View {
 			invalidate();
 		}
 		return done;
+	}
+
+	// Offers the selection to other apps through the platform's chooser,
+	// as TextView does; returns false if it did not, which it says when
+	// the selection is too large to send.
+	private boolean share() {
+		Document.Selection selection = document.selection();
+		if (selection.isEmpty() || tooLargeToSend(selection)) {
+			return false;
+		}
+		Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
+				.putExtra(Intent.EXTRA_TEXT, document.text().substring(
+						selection.start(), selection.end()));
+		try {
+			getContext().startActivity(Intent.createChooser(send, null));
+			return true;
+		} catch (RuntimeException e) {
+			// Too large after all, or nothing to share with.
+			showTooLarge();
+			return false;
+		}
+	}
+
+	// Starts intent, an activity of another app that processes text,
+	// with the selected text. The text it returns replaces the
+	// selection as one step, as in TextView, if the host takes results;
+	// else the intent says the text is read only. Returns false if the
+	// selection is too large to send, which it says.
+	private boolean processText(Intent intent) {
+		Document.Selection selection = document.selection();
+		if (tooLargeToSend(selection)) {
+			return false;
+		}
+		intent.putExtra(Intent.EXTRA_PROCESS_TEXT, document.text().substring(
+				selection.start(), selection.end()));
+		ActivityResultRegistry registry = resultRegistry();
+		AtomicReference<ActivityResultLauncher<Intent>> launcher =
+				new AtomicReference<>();
+		try {
+			if (registry == null) {
+				getContext().startActivity(intent);
+				return true;
+			}
+			launcher.set(registry.register(PROCESS_TEXT,
+					new ActivityResultContracts.StartActivityForResult(),
+					result -> {
+						launcher.get().unregister();
+						processed(result);
+					}));
+			launcher.get().launch(intent);
+			return true;
+		} catch (RuntimeException e) {
+			if (launcher.get() != null) {
+				launcher.get().unregister();
+			}
+			showTooLarge();
+			return false;
+		}
+	}
+
+	// The text an activity returned replaces the selection; without
+	// one, the selection collapses to its end, as in TextView.
+	private void processed(ActivityResult result) {
+		Intent data = result.getData();
+		if (document == null || keys == null) {
+			return;
+		}
+		if (result.getResultCode() != Activity.RESULT_OK || data == null) {
+			Document.Selection selection = document.selection();
+			select(selection.end(), selection.end());
+			touched = null;
+			invalidate();
+			return;
+		}
+		CharSequence text = data.getCharSequenceExtra(
+				Intent.EXTRA_PROCESS_TEXT);
+		if (text != null && keys.paste(Text.of(text))) {
+			bringCaretIntoView();
+		}
+	}
+
+	private boolean tooLargeToSend(Document.Selection selection) {
+		if (selection.end() - selection.start() <= MAX_CLIP) {
+			return false;
+		}
+		showTooLarge();
+		return true;
+	}
+
+	private void showTooLarge() {
+		Toast.makeText(getContext(), R.string.selection_too_large,
+				Toast.LENGTH_SHORT).show();
+	}
+
+	private ActivityResultRegistry resultRegistry() {
+		for (Context context = getContext(); context instanceof ContextWrapper;
+				context = ((ContextWrapper) context).getBaseContext()) {
+			if (context instanceof ActivityResultRegistryOwner owner) {
+				return owner.getActivityResultRegistry();
+			}
+		}
+		return null;
 	}
 
 	// The user closed the toolbar, which then drops a selection as the
