@@ -1465,6 +1465,112 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void reloadKeepsTheJournalWhileNoHistoryHoldsItsText()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		flush(project);
+		// A file where the folder of the histories would be.
+		File history = new File(new File(sessionsDir, id), "history");
+		assertTrue(delete(history));
+		Files.write(history.toPath(), new byte[]{1});
+
+		String problem = await(done -> project.reload(a, done));
+
+		assertNull(problem);
+		assertEquals("stored", document.text().toString());
+		assertFalse(document.isModified());
+		assertTrue(project.unsaved().isEmpty());
+		assertNull(project.unprotected());
+		// The text given up is still what a restart finds.
+		assertEquals("mine", journaled("a.glsl"));
+		assertEquals("mine", text(open(), "a.glsl"));
+
+		// Once the history can be written, the journal goes with it.
+		OpenProject next = open();
+		String again = await(done -> next.reload(a, done));
+		assertNull(again);
+		assertEquals("mine", journaled("a.glsl"));
+		assertTrue(history.delete());
+		next.persist();
+		settle();
+		assertTrue(kept().isEmpty());
+		Document restarted = document(open(), "a.glsl");
+		assertEquals("stored", restarted.text().toString());
+		restarted.undo();
+		assertEquals("mine", restarted.text().toString());
+	}
+
+	@Test
+	public void reloadKeepsTheJournalOfTextTooLargeForAHistory()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = shown(project, "a.glsl", "stored");
+		String mine = "m".repeat(Histories.MAX_CHARS + 1);
+		edit(project, document, mine);
+		flush(project);
+
+		String problem = await(done -> project.reload(a, done));
+		flush(project);
+
+		assertNull(problem);
+		assertEquals("stored", document.text().toString());
+		assertEquals(Set.of(a), kept());
+		assertEquals(mine, text(open(), "a.glsl"));
+	}
+
+	@Test
+	public void reloadOfTextNotInMemoryKeepsWhatAnEarlierCallerTypes()
+			throws IOException {
+		budget = 0;
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, shown(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		shown(project, "b.glsl", "b");
+		assertNull(project.document(a));
+
+		// Someone asked for the file before, and types once it is there.
+		project.load(a, ProjectFiles.UNKNOWN, problem -> {
+			project.show(a);
+			edit(project, a.toString(), "later");
+		});
+		project.reload(a, problem -> {
+		});
+		settle();
+
+		assertEquals("later", project.document(a).text().toString());
+		assertTrue(project.document(a).isModified());
+		flush(project);
+		assertEquals("later", journaled("a.glsl"));
+	}
+
+	@Test
+	public void reloadThatCannotReadSeesWhatIsThereInstead()
+			throws IOException {
+		OpenProject project = editedElsewhere();
+		ProjectPath a = path("a.glsl");
+		String theirs = project.seen(a);
+		List<String> heard = new ArrayList<>();
+		project.setListener(Runnable::run, () -> heard.add(
+				project.conflicts().get(a)));
+		assertTrue(new File(root, "a.glsl").delete());
+
+		project.resolve(a, OpenProject.Choice.RELOAD, theirs);
+		settle();
+
+		assertEquals(FileTexts.Found.MISSING, project.found(a));
+		assertNull(project.seen(a));
+		assertEquals(List.of("the file was deleted"), heard);
+		assertEquals("mine", project.document(a).text().toString());
+		String problem = await(done -> project.reload(a, done));
+		assertNotNull(problem);
+	}
+
+	@Test
 	public void explicitSaveCreatesACleanFileDeletedElsewhereAgain()
 			throws IOException {
 		OpenProject project = open();
@@ -2547,6 +2653,16 @@ public class OpenProjectTest {
 			throws IOException {
 		write(path, text);
 		return shown(project, path);
+	}
+
+	private static boolean delete(File file) {
+		File[] children = file.listFiles();
+		if (children != null) {
+			for (File child : children) {
+				delete(child);
+			}
+		}
+		return !file.exists() || file.delete();
 	}
 
 	// Return the files the journal keeps unsaved text of.

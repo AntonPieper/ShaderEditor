@@ -785,8 +785,13 @@ public final class OpenProject {
 	 * can be undone, and drop its unsaved text once the document took
 	 * the stored text; text typed after the call is kept instead, also
 	 * when the read waits for a save or a check of the file. Unsaved
-	 * text not in memory is opened first, so undo brings it back. done
-	 * gets null when done, or why it cannot be read.
+	 * text not in memory is opened first, so undo brings it back; it is
+	 * replaced as the journal had it, so what anyone typed once it was
+	 * in memory stays too. The journal of the replaced text is removed
+	 * only together with a history that holds it; while none can be
+	 * written, the journal stays, and the text comes back as unsaved
+	 * when the project opens again. done gets null when done, or why
+	 * the file cannot be read; what was found in its place is seen.
 	 */
 	public void reload(ProjectPath path, Callback<String> done) {
 		reload(path, false, null, done);
@@ -796,22 +801,23 @@ public final class OpenProject {
 			Callback<String> done) {
 		FileRecord record = record(path);
 		if (record.document() == null && record.journaled) {
+			// The user consents to losing the unsaved text as the
+			// journal has it: what is typed once it is in memory, also
+			// by whoever asked for it before, stays.
 			load(path, ProjectFiles.UNKNOWN, problem -> {
 				if (problem != null) {
 					done.done(problem);
-				} else {
-					reload(record, expect, seen, done);
+					return;
 				}
+				Document asked = record.document();
+				int at = record.opened();
+				record.whenIdle(() -> reload(record, asked, at, expect,
+						seen, done));
 			});
-		} else {
-			reload(record, expect, seen, done);
+			return;
 		}
-	}
-
-	// The user consents to losing the text the document has now: what
-	// is typed from here on stays, however long the read waits.
-	private void reload(FileRecord record, boolean expect, String seen,
-			Callback<String> done) {
+		// The user consents to losing the text the document has now:
+		// what is typed from here on stays, however long the read waits.
 		Document asked = record.document();
 		int at = asked != null ? asked.revision() : -1;
 		record.whenIdle(() -> reload(record, asked, at, expect, seen,
@@ -1322,8 +1328,13 @@ public final class OpenProject {
 		texts.openStored(path, opening -> {
 			boolean took = false;
 			String problem = null;
-			if (!(opening instanceof FileTexts.Opened opened)) {
-				problem = ((FileTexts.Unopened) opening).reason();
+			if (opening instanceof FileTexts.Unopened unopened) {
+				// What stands in place of the text is seen all the same.
+				problem = unopened.reason();
+				record.observe(request, unopened.found(),
+						unopened.revision());
+			} else if (!(opening instanceof FileTexts.Opened opened)) {
+				problem = "it cannot be read";
 			} else if (records.get(path) != record) {
 				// Closed since.
 			} else if (expect && !Objects.equals(seen, opened.revision())) {
@@ -1331,7 +1342,8 @@ public final class OpenProject {
 			} else {
 				// Typing that came after the request stays, with its
 				// journal.
-				took = asked == null && record.document() == null
+				took = asked == null && record.document() == null &&
+						!record.journaled
 						? take(record, request, opened)
 						: record.adoptStored(request, asked, at,
 								opened.text(), opened.revision());
@@ -1344,11 +1356,12 @@ public final class OpenProject {
 			}
 			end(record, request);
 			// The journal goes only now that the stored text is taken,
-			// and after the history that brings its text back by undo.
+			// and only by the task of the worker that wrote the history
+			// which brings its text back by undo.
 			if (took) {
 				record.kept = false;
-				keepHistory(record);
 				flush(record);
+				keepHistory(record);
 			}
 			changed();
 			done.done(problem);
@@ -1480,6 +1493,9 @@ public final class OpenProject {
 				: null;
 		if (flush == null) {
 			return;
+		} else if (flush.history() != null) {
+			record.historyAt = record.document().revision();
+			record.historySelection = record.document().selection();
 		}
 		texts.journal(record.path, flush, written -> {
 			record.acknowledge(flush, written);
