@@ -554,6 +554,45 @@ public class LibraryTest {
 				new LibraryMove.Chosen(template, 0), null, null);
 	}
 
+	// An example or shared text: a file of the root, its texture in
+	// textures/ once, nothing of the user's written over.
+	@Test
+	public void aShaderAddedFromTextIsAFileWithItsTextures()
+			throws IOException {
+		Library library = library();
+		MoveDatabase database = database();
+		database.rows.add(new MoveDatabase.Row(3, "Plasma",
+				"uniform sampler2D noise;\n// again\n" + MAIN, .25f, 0,
+				Pictures.png(7)));
+
+		Library.Created first = library.add("Plasma", "Untitled",
+				database.convert(1), 1f, null);
+		assertNull(first.problem());
+		assertEquals(path("Plasma.frag"), first.path());
+		assertTrue(new File(library.folder(), "textures/noise.png").isFile());
+		assertTrue(text(new File(library.folder(), "Plasma.frag"))
+				.contains("textures/noise.png"));
+
+		// The texture that is there is used; the name gets a number.
+		Library.Created second = library.add("Plasma", "Untitled",
+				database.convert(3), .25f, null);
+		assertNull(second.problem());
+		assertEquals(path("Plasma 2.frag"), second.path());
+		assertEquals(.25f, library.settings().quality(second.path()), 0f);
+		assertNotNull(library.previews().get(second.path()));
+
+		// Another file where its texture goes stays as it is.
+		write(new File(library.folder(), "textures/noise.png"), "mine");
+		Library.Created refused = library.add("Plasma", "Untitled",
+				database.convert(1), 1f, null);
+		assertNull(refused.path());
+		assertTrue(refused.problem(), refused.problem().contains(
+				"textures/noise.png"));
+		assertEquals("mine", text(new File(library.folder(),
+				"textures/noise.png")));
+		assertFalse(new File(library.folder(), "Plasma 3.frag").exists());
+	}
+
 	private Library library() {
 		return library(temp.getRoot());
 	}
