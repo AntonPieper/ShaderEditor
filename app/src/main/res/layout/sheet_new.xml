@@ -1,0 +1,92 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:orientation="vertical"
+	android:paddingBottom="@dimen/se_margin_screen">
+
+	<com.google.android.material.bottomsheet.BottomSheetDragHandleView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content" />
+
+	<TextView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="@dimen/se_margin_sheet"
+		android:text="@string/nav_new"
+		android:textAppearance="?attr/textAppearanceTitleLarge" />
+
+	<com.google.android.material.textfield.TextInputLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="@dimen/se_margin_sheet"
+		android:layout_marginTop="@dimen/se_margin_screen"
+		android:hint="@string/nav_name"
+		app:placeholderText="@string/nav_untitled">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:id="@+id/new_name"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:imeOptions="actionDone"
+			android:importantForAutofill="no"
+			android:inputType="text"
+			android:maxLines="1" />
+	</com.google.android.material.textfield.TextInputLayout>
+
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="8dp"
+		android:gravity="center_vertical"
+		android:minHeight="@dimen/se_row_height_two_line"
+		android:orientation="horizontal"
+		android:paddingHorizontal="@dimen/se_margin_sheet">
+
+		<LinearLayout
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:orientation="vertical">
+
+			<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/nav_location"
+				android:textAppearance="?attr/textAppearanceBodyMedium"
+				android:textColor="?attr/colorOnSurfaceVariant" />
+
+			<TextView
+				android:id="@+id/new_location"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:ellipsize="start"
+				android:singleLine="true"
+				android:textAppearance="?attr/textAppearanceBodyLarge" />
+		</LinearLayout>
+
+	</LinearLayout>
+
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:gravity="end"
+		android:orientation="horizontal"
+		android:paddingHorizontal="16dp">
+
+		<Button
+			android:id="@+id/new_cancel"
+			style="?attr/borderlessButtonStyle"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@android:string/cancel" />
+
+		<Button
+			android:id="@+id/new_create"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="8dp"
+			android:text="@string/nav_create" />
+	</LinearLayout>
+</LinearLayout>

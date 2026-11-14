@@ -75,6 +75,7 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.widget.Message;
+import de.markusfisch.android.shadereditor.widget.NewSheet;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
 
 /**
@@ -83,7 +84,8 @@ import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
  */
 public class NavigationDrawer implements ShaderList {
 	public interface Host {
-		void onAddShader();
+		/** Create a database shader, named name unless it is empty. */
+		void onAddShader(@NonNull String name);
 
 		void onDuplicateShader(long id);
 
@@ -147,6 +149,8 @@ public class NavigationDrawer implements ShaderList {
 	private boolean loaded;
 	// The folder opened before whose levels are shown, or null.
 	private FolderSource folder;
+	@Nullable
+	private NewSheet sheet;
 
 	public NavigationDrawer(@NonNull AppCompatActivity activity,
 			@NonNull DataSource dataSource,
@@ -202,7 +206,7 @@ public class NavigationDrawer implements ShaderList {
 					listing.bar() == Listing.Bar.OPEN_FOLDER) {
 				pick(true);
 			} else {
-				addShader();
+				showNew();
 			}
 		});
 		openFile = drawer.findViewById(R.id.navigation_open_file);
@@ -313,6 +317,9 @@ public class NavigationDrawer implements ShaderList {
 
 	@Override
 	public void destroy() {
+		if (sheet != null) {
+			sheet.dismiss();
+		}
 		if (folder != null) {
 			folder.close();
 		}
@@ -340,7 +347,7 @@ public class NavigationDrawer implements ShaderList {
 
 					@Override
 					public void onNewShader() {
-						addShader();
+						showNew();
 					}
 
 					@Override
@@ -689,9 +696,24 @@ public class NavigationDrawer implements ShaderList {
 		}
 	}
 
-	private void addShader() {
-		host.onAddShader();
-		close();
+	// New makes a database shader in the library.
+	private void showNew() {
+		sheet = new NewSheet(activity, new NewSheet.Listener() {
+			@Override
+			public void onCreate(@NonNull String name) {
+				if (sheet != null) {
+					sheet.dismiss();
+				}
+				host.onAddShader(name);
+				close();
+			}
+
+			@Override
+			public void onDismissed() {
+				sheet = null;
+			}
+		});
+		sheet.showLibrary(activity.getString(R.string.nav_shaders));
 	}
 
 	private void showOrderMenu() {
