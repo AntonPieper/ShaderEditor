@@ -124,8 +124,11 @@ public final class NewSheet {
 		behavior.setSkipCollapsed(true);
 		behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
 		if (dialog.getWindow() != null) {
+			// The sheet stands on the keyboard, so that where it creates
+			// and its buttons stay in view.
 			dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams
-					.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+					.SOFT_INPUT_STATE_ALWAYS_VISIBLE |
+					WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 		}
 	}
 
