@@ -152,14 +152,14 @@ public record RenderPlan(
 
 		/**
 		 * Apply the options an input wrote to the defaults of its kind of
-		 * source.
+		 * source; picture tells that the file it names is a picture and
+		 * not a pass.
 		 */
-		public static ProjectParseResult<Sampling> of(HostDirective.Input input) {
+		public static ProjectParseResult<Sampling> of(HostDirective.Input input,
+				boolean picture) {
 			Sampling defaults;
 			if (input.source() != null) {
-				defaults = input.source().getKind() == ProjectPath.Kind.IMAGE
-						? IMAGE
-						: PASS;
+				defaults = picture ? IMAGE : PASS;
 			} else if ("backbuffer".equals(input.uniform())) {
 				defaults = PASS;
 			} else {

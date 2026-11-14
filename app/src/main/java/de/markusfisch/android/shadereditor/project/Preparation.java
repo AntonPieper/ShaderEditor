@@ -45,9 +45,11 @@ public record Preparation(
 	}
 
 	/**
-	 * Prepare the running shader entry of a project. Every file is read
-	 * once, and only the manifest, its entry and files the running
-	 * shader depends on are read. Images are not decoded. reserved are
+	 * Prepare the running shader entry of a project, a text file of any
+	 * name. Every file is read once, and only the manifest, its entry
+	 * and files the running shader depends on are read. What a file an
+	 * input names is, a picture or a pass, is told from those bytes;
+	 * images are not decoded. reserved are
 	 * the GLSL types of the engine's builtin uniforms by name: an input
 	 * with a path cannot use one, an input without a path must name an
 	 * engine sampler of its type.
@@ -57,31 +59,11 @@ public record Preparation(
 			ProjectPath entry,
 			ProjectLimits limits,
 			Map<String, String> reserved) {
-		return prepare(files, entry, limits, reserved, false);
-	}
-
-	/**
-	 * Prepare entry as {@link #prepare(ProjectFiles, ProjectPath,
-	 * ProjectLimits, Map)} does; lone tells that entry is the only file
-	 * of the project, which runs whatever its name.
-	 */
-	static Preparation prepare(
-			ProjectFiles files,
-			ProjectPath entry,
-			ProjectLimits limits,
-			Map<String, String> reserved,
-			boolean lone) {
 		CapturedFiles captured = new CapturedFiles(files, limits);
 		List<ProjectDiagnostic> diagnostics = new ArrayList<>();
 		ProjectParseResult<ProjectManifest> manifest = readManifest(captured);
 		if (manifest != null && !manifest.isSuccess()) {
 			diagnostics.add(manifest.diagnostic());
-		}
-		if (!lone && entry.getKind() != ProjectPath.Kind.SHADER) {
-			diagnostics.add(error("The running shader must be a .glsl " +
-					"file: " + entry, entry));
-			return new Preparation(null, diagnostics,
-					captured.dependencies(), List.of(), captured.contents());
 		}
 		int before = captured.dependencies().size();
 		PassGraph graph = PassGraph.discover(captured, entry, limits,
@@ -171,7 +153,8 @@ public record Preparation(
 			List<RenderPlan.Input> inputs = new ArrayList<>();
 			for (PassGraph.Edge edge : node.inputs) {
 				HostDirective.Input input = edge.input();
-				ProjectParseResult<Sampling> sampling = Sampling.of(input);
+				ProjectParseResult<Sampling> sampling = Sampling.of(input,
+						edge.producer() == null);
 				if (!sampling.isSuccess()) {
 					diagnostics.add(sampling.diagnostic());
 					continue;

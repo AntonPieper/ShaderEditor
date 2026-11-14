@@ -35,6 +35,8 @@ final class PassGraph {
 		ProjectPath initialImage;
 		boolean history;
 		boolean perFrame;
+		// Whether the source, with its includes, mentions main at all.
+		boolean main;
 
 		private Node(ProjectPath file) {
 			this.file = file;
@@ -60,6 +62,7 @@ final class PassGraph {
 			a.file.toString().compareTo(b.file.toString());
 	private static final Pattern BACKBUFFER = Pattern.compile(
 			"\\bbackbuffer\\b");
+	private static final Pattern MAIN = Pattern.compile("\\bmain\\b");
 
 	/** Passes in execution order, or in discovery order on errors. */
 	final List<Node> nodes = new ArrayList<>();
@@ -70,6 +73,8 @@ final class PassGraph {
 	final Node entry;
 
 	private final Map<ProjectPath, Node> byPath = new HashMap<>();
+	// The files inputs name that are pictures, by their bytes.
+	private final Set<ProjectPath> pictures = new HashSet<>();
 	private final CapturedFiles files;
 	private final ProjectLimits limits;
 	private final Map<String, String> reserved;
@@ -93,6 +98,9 @@ final class PassGraph {
 			return graph;
 		} else if (graph.entry.directives == null) {
 			graph.error(entry, 0, graph.entry.problem);
+		} else if (!graph.entry.main) {
+			graph.error(entry, 0, entry + " defines no main, so it " +
+					"cannot run");
 		}
 		graph.validate();
 		return graph;
@@ -111,16 +119,31 @@ final class PassGraph {
 		node = new Node(file);
 		byPath.put(file, node);
 		nodes.add(node);
-		node.problem = CapturedFiles.problem(file, files.read(file));
+		ProjectFiles.Read read = files.read(file);
+		node.problem = CapturedFiles.problem(file, read);
+		if (node.problem == null) {
+			// A pass is text, whatever the file is called.
+			FileKind kind = FileKind.of(
+					((ProjectFiles.Content) read).bytes());
+			node.problem = kind == FileKind.TEXT ? null
+					: kind == FileKind.PICTURE
+					? file + " is a picture, not a shader"
+					: file + " is not text";
+		}
 		if (node.problem != null) {
 			return node;
 		}
 		node.assembly = SourceAssembly.assemble(files, file, limits);
 		node.directives = HostDirectives.parse(node.assembly, reserved);
+		// Not told for a file with errors of its own: they come first,
+		// and may be why no main is found.
+		node.main = mentions(node, MAIN) ||
+				hasError(node.directives.diagnostics());
 		diagnostics.addAll(node.directives.diagnostics());
 		for (HostDirective.Input input : node.directives.inputs()) {
 			Node producer = source(input.source(), input.file(),
 					input.line());
+			check(input, producer);
 			node.inputs.add(new Edge(input, producer));
 			if (producer != null && input.frame() == Frame.PREVIOUS) {
 				producer.history = true;
@@ -133,9 +156,7 @@ final class PassGraph {
 		ProjectPath initial = target != null ? target.initial() : null;
 		if (initial != null) {
 			node.initialPass = source(initial, target.file(), target.line());
-			node.initialImage = initial.getKind() == ProjectPath.Kind.IMAGE
-					? initial
-					: null;
+			node.initialImage = pictures.contains(initial) ? initial : null;
 		}
 		for (HostDirectives.Reference reference :
 				node.directives.references()) {
@@ -144,23 +165,59 @@ final class PassGraph {
 		return node;
 	}
 
-	// Return the pass of a shader source, null for an image.
+	// Return the pass of a source that is text, null for a picture:
+	// what a file an input names is used as follows from its bytes.
 	private Node source(ProjectPath source, ProjectPath from, int line) {
-		if (source == null) {
+		if (source == null || stopped) {
 			return null;
-		} else if (source.getKind() == ProjectPath.Kind.SHADER) {
-			Node producer = node(source, from, line);
-			if (producer != null && producer.directives == null) {
-				error(from, line, producer.problem);
-			}
-			return producer;
-		} else if (!stopped) {
-			String problem = CapturedFiles.problem(source, files.read(source));
-			if (problem != null) {
-				error(from, line, problem);
-			}
 		}
-		return null;
+		ProjectFiles.Read read = files.read(source);
+		String problem = CapturedFiles.problem(source, read);
+		if (problem != null) {
+			error(from, line, problem);
+			return null;
+		}
+		FileKind kind = FileKind.of(((ProjectFiles.Content) read).bytes());
+		if (kind == FileKind.PICTURE) {
+			pictures.add(source);
+			return null;
+		} else if (kind == FileKind.OTHER) {
+			error(from, line, source + " is neither a picture (PNG, " +
+					"JPEG) nor text");
+			return null;
+		}
+		boolean seen = byPath.containsKey(source);
+		Node producer = node(source, from, line);
+		if (producer != null && producer.directives == null) {
+			error(from, line, producer.problem);
+		} else if (producer != null && !producer.main && !seen) {
+			error(from, line, source + " defines no main, so it cannot " +
+					"be an input; include it instead");
+		}
+		return producer;
+	}
+
+	// The options of an input that depend on what its file is.
+	private void check(HostDirective.Input input, Node producer) {
+		ProjectPath source = input.source();
+		if (source == null) {
+			return;
+		} else if (producer != null) {
+			if (input.mipmap() != null) {
+				error(input.file(), input.line(), "mipmap= applies only " +
+						"to a picture, " + source + " is a pass and has " +
+						"no mipmaps");
+			}
+			if (input.samplerType() != null &&
+					!"sampler2D".equals(input.samplerType())) {
+				error(input.file(), input.line(), "A pass is read as " +
+						"uniform sampler2D " + input.uniform() + ", not " +
+						input.samplerType());
+			}
+		} else if (pictures.contains(source) && input.frame() != null) {
+			error(input.file(), input.line(), "frame= applies only to " +
+					"a pass, " + source + " is a picture; remove it");
+		}
 	}
 
 	// An initial shader is drawn at reset and sees the initial content
@@ -328,10 +385,24 @@ final class PassGraph {
 				files + " (" + sites + ")"));
 	}
 
+	private static boolean hasError(List<ProjectDiagnostic> diagnostics) {
+		for (ProjectDiagnostic diagnostic : diagnostics) {
+			if (diagnostic.severity() == ProjectDiagnostic.Severity.ERROR) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private static boolean mentionsBackbuffer(Node node) {
+		return mentions(node, BACKBUFFER);
+	}
+
+	// Return whether the code of node, comments apart, has word.
+	private static boolean mentions(Node node, Pattern word) {
 		for (String code : PreprocessorScan.scan(node.directives.lines(),
 				null).code()) {
-			if (BACKBUFFER.matcher(code).find()) {
+			if (word.matcher(code).find()) {
 				return true;
 			}
 		}

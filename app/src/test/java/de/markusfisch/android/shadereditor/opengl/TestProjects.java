@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import de.markusfisch.android.shadereditor.project.BuiltinNames;
+import de.markusfisch.android.shadereditor.project.Pictures;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectLimits;
@@ -15,12 +16,16 @@ final class TestProjects {
 	private TestProjects() {
 	}
 
-	// Takes paths and texts in turns; .png files get two bytes.
+	// Takes paths and texts in turns; a file named .png is a picture,
+	// which it is by its bytes, whatever text is given for it.
 	static Preparation prepare(String... pathsAndTexts) {
 		var files = new HashMap<ProjectPath, ProjectFiles.Content>();
 		for (int i = 0; i < pathsAndTexts.length; i += 2) {
 			files.put(path(pathsAndTexts[i]), new ProjectFiles.Content(
-					pathsAndTexts[i + 1].getBytes(StandardCharsets.UTF_8),
+					pathsAndTexts[i].endsWith(".png")
+							? Pictures.png()
+							: pathsAndTexts[i + 1].getBytes(
+									StandardCharsets.UTF_8),
 					"r" + i));
 		}
 		return Preparation.prepare(files::get, path("main.glsl"),

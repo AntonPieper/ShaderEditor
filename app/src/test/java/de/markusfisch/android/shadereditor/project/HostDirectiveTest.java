@@ -196,22 +196,22 @@ public class HostDirectiveTest {
 	}
 
 	@Test
-	public void rejectsFrameOnImageOrEngineSampler() {
-		assertError("frame= applies only", "se input \"a.png\" frame=previous");
+	public void rejectsFrameAndMipmapOnAnEngineSampler() {
 		assertError("frame= applies only", "se input frame=current");
-	}
-
-	@Test
-	public void rejectsMipmapOnPassOutputOrEngineSampler() {
-		assertError("mipmap= applies only",
-				"se input \"pass.glsl\" mipmap=linear");
 		assertError("mipmap= applies only", "se input mipmap=none");
 	}
 
+	// What a file is, is not read out of its name: whether an option
+	// fits is told once the file is read.
 	@Test
-	public void rejectsUnrecognizedSourceExtension() {
-		assertError("cannot be a source", "se input \"a.gif\"");
-		assertError("cannot be a source", "se target initial=\"a.txt\"");
+	public void acceptsAnyFileNameAndLeavesItsOptionsToTheBuild() {
+		assertEquals(List.of(), parse("se input \"a.gif\"").diagnostics());
+		assertEquals(List.of(), parse("se target initial=\"a.txt\"")
+				.diagnostics());
+		assertEquals(List.of(), parse("se input \"a.png\" frame=previous")
+				.diagnostics());
+		assertEquals(List.of(), parse("se input \"pass.frag\" mipmap=linear")
+				.diagnostics());
 	}
 
 	@Test

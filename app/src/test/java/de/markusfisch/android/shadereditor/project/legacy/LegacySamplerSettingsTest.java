@@ -283,7 +283,7 @@ public class LegacySamplerSettingsTest {
 				new SourceLocation(path("main.glsl"), 1, null));
 		assertTrue(options, directive.diagnostics().isEmpty());
 		HostDirective.Input input = directive.input();
-		ProjectParseResult<Sampling> sampling = Sampling.of(input);
+		ProjectParseResult<Sampling> sampling = Sampling.of(input, true);
 		assertTrue(sampling.isSuccess());
 		return sampling.value();
 	}

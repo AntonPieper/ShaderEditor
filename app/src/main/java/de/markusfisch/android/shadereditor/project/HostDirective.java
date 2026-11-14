@@ -224,16 +224,17 @@ public record HostDirective(
 				min = filter;
 				mag = filter;
 			}
-			ProjectPath.Kind kind = source != null ? source.getKind() : null;
 			if (source == null && options.isEmpty()) {
 				error("#pragma se input needs a path or an option, for " +
 						"example #pragma se input \"assets/noise.png\"");
 			}
-			if (frame != null && kind != ProjectPath.Kind.SHADER) {
-				error("frame= applies only to a .glsl source, remove it");
+			// What a path names, a picture or a pass, is known once the
+			// file is read; only an engine sampler is known here.
+			if (frame != null && source == null) {
+				error("frame= applies only to a pass, remove it");
 			}
-			if (mipmap != null && kind != ProjectPath.Kind.IMAGE) {
-				error("mipmap= applies only to an image source, pass " +
+			if (mipmap != null && source == null) {
+				error("mipmap= applies only to a picture, pass " +
 						"outputs and engine samplers have no mipmaps");
 			}
 			input = new Input(at.file(), at.line(), null, null, source,
@@ -407,10 +408,6 @@ public record HostDirective(
 					at.file(), quoted.substring(1, quoted.length() - 1));
 			if (!result.isSuccess()) {
 				error(result.diagnostic().message());
-				return null;
-			} else if (result.value().getKind() == ProjectPath.Kind.OTHER) {
-				error(result.value() + " cannot be a source, use a " +
-						".glsl, .png, .jpg or .jpeg file");
 				return null;
 			}
 			return result.value();

@@ -213,18 +213,15 @@ public record HostDirectives(
 			String type = declaration.type;
 			String name = declaration.name;
 			ProjectPath source = parsed.source();
-			ProjectPath.Kind kind = source != null ? source.getKind() : null;
 			if (parsed.wrapS() != null && type.equals("samplerCube")) {
 				error(at, "wrap= does not apply to samplerCube, remove it");
 			}
-			if (kind == ProjectPath.Kind.SHADER &&
-					!type.equals("sampler2D")) {
-				error(at, "A .glsl source is read as uniform sampler2D " +
-						name + ", not " + type);
-			} else if (kind == ProjectPath.Kind.IMAGE &&
-					!type.equals("sampler2D") && !type.equals("samplerCube")) {
-				error(at, "An image source is read as sampler2D or " +
-						"samplerCube, not " + type);
+			// Whether the file is a picture or a pass narrows this once
+			// it is read.
+			if (source != null && !type.equals("sampler2D") &&
+					!type.equals("samplerCube")) {
+				error(at, "A file is read as sampler2D or samplerCube, " +
+						"not " + type);
 			}
 			String builtin = reserved.get(name);
 			if (source == null && builtin != null &&
