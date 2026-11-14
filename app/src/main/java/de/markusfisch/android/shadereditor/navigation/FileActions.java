@@ -3,7 +3,10 @@ package de.markusfisch.android.shadereditor.navigation;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
+import de.markusfisch.android.shadereditor.project.OpenProject;
 
 /** What the menus of the rows of a folder offer. */
 public final class FileActions {
@@ -18,10 +21,12 @@ public final class FileActions {
 	 *
 	 * @param running  the path of the file that runs, as the rows' keys
 	 *                 are, or null
+	 * @param runs     what is known of whether each file can run, by its
+	 *                 path; a file that is not in it is not known yet
 	 * @param writable whether the folder of the rows can be changed
 	 */
 	public static List<Row> of(List<Row> rows, String running,
-			boolean writable) {
+			Map<String, OpenProject.Runs> runs, boolean writable) {
 		List<Row> offered = new ArrayList<>(rows.size());
 		for (Row row : rows) {
 			Set<Row.Action> actions = EnumSet.noneOf(Row.Action.class);
@@ -34,10 +39,13 @@ public final class FileActions {
 					}
 				}
 				case SHADER, TEXT, IMAGE -> {
-					// Any file that may be text: whether it has a main is
-					// told when it runs, not by its name.
-					if (!row.key().equals(running) &&
-							row.kind() != Row.Kind.IMAGE) {
+					// Any file that may be text; a picture's name hints
+					// that it is not one.
+					OpenProject.Runs known = runs.get(row.key());
+					if (row.kind() != Row.Kind.IMAGE && offersRun(
+							row.key().equals(running), known != null
+									? known
+									: OpenProject.Runs.UNKNOWN)) {
 						actions.add(Row.Action.RUN);
 					}
 					if (writable) {
@@ -54,5 +62,15 @@ public final class FileActions {
 					row.marks(), actions));
 		}
 		return offered;
+	}
+
+	/**
+	 * Whether Run this file is offered for a file, in its row's menu and
+	 * in the toolbar's alike: not while it runs, nor when its text is
+	 * known to define no main; while that is not known, it is offered,
+	 * and running it tells.
+	 */
+	public static boolean offersRun(boolean running, OpenProject.Runs runs) {
+		return !running && runs != OpenProject.Runs.NO;
 	}
 }
