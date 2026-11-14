@@ -73,6 +73,9 @@
 	<string name="save_on_run_summary">Зберегти зміни під час ручного запуску</string>
 	<string name="disable_highlighting">Вимкнути підсвічування</string>
 	<string name="disable_highlighting_summary">Вимкнути підсвічування для великих шейдерів</string>
+	<string name="new_editor">Новий редактор</string>
+	<string name="new_editor_summary">Для великих шейдерів; ще тестується</string>
+	<string name="text_too_large">Не змінено: текст став би більшим за 16 МіБ</string>
 	<string name="auto_save">Автоматичне збереження</string>
 	<string name="auto_hide_extra_keys">Автоматично приховувати додаткові клавіші</string>
 	<string name="auto_hide_extra_keys_summary">Автоматично приховувати рядок додаткових клавіш над програмною клавіатурою</string>

@@ -70,6 +70,9 @@
 	<string name="save_on_run_summary">手动启动着色器时自动保存更改</string>
 	<string name="disable_highlighting">关闭语法高亮</string>
 	<string name="disable_highlighting_summary">为大型着色器文件关闭高亮以提高性能</string>
+	<string name="new_editor">新编辑器</string>
+	<string name="new_editor_summary">为大型着色器打造；仍在测试中</string>
+	<string name="text_too_large">未更改：文本将超过 16 MiB</string>
 	<string name="auto_save">自动保存</string>
 	<string name="auto_hide_extra_keys">自动隐藏扩展按键</string>
 	<string name="auto_hide_extra_keys_summary">自动隐藏键盘上方的额外按键行</string>

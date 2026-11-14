@@ -58,6 +58,12 @@
 			android:summary="@string/disable_highlighting_summary"
 			android:checked="false"
 			android:defaultValue="false"/>
+		<androidx.preference.SwitchPreferenceCompat
+			app:iconSpaceReserved="false"
+			android:key="new_editor"
+			android:title="@string/new_editor"
+			android:summary="@string/new_editor_summary"
+			android:defaultValue="false"/>
 	</PreferenceCategory>
 	<PreferenceCategory app:iconSpaceReserved="false" android:title="@string/keyboard">
 		<androidx.preference.SwitchPreferenceCompat

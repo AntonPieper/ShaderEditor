@@ -41,6 +41,7 @@ public class Preferences {
 	public static final String IMPORT_DATABASE = "import_database";
 	public static final String EXPORT_DATABASE = "export_database";
 	public static final String SHOW_LINE_NUMBERS = "show_line_numbers";
+	public static final String NEW_EDITOR = "new_editor";
 	public static final String SHOW_EXTRA_KEYS = "show_extra_keys";
 	public static final String AUTO_HIDE_EXTRA_KEYS = "auto_hide_extra_keys";
 	public static final String HIDE_NATIVE_SUGGESTIONS = "hide_native_suggestions";
@@ -88,6 +89,7 @@ public class Preferences {
 	private boolean disableHighlighting = false;
 	private boolean autoSave = true;
 	private boolean showLineNumbers = true;
+	private boolean newEditor = false;
 	private boolean showExtraKeys = true;
 	private boolean autoHideExtraKeys = true;
 	private boolean hideNativeSuggestions = true;
@@ -171,6 +173,9 @@ public class Preferences {
 		showLineNumbers = preferences.getBoolean(
 				SHOW_LINE_NUMBERS,
 				showLineNumbers);
+		newEditor = preferences.getBoolean(
+				NEW_EDITOR,
+				newEditor);
 		showExtraKeys = preferences.getBoolean(
 				SHOW_EXTRA_KEYS,
 				showExtraKeys);
@@ -385,6 +390,10 @@ public class Preferences {
 
 	public boolean showLineNumbers() {
 		return showLineNumbers;
+	}
+
+	public boolean useNewEditor() {
+		return newEditor;
 	}
 
 	public boolean showExtraKeys() {

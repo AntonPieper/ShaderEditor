@@ -73,6 +73,9 @@
 	<string name="save_on_run_summary">Save changes when running manually</string>
 	<string name="disable_highlighting">Disable highlighting</string>
 	<string name="disable_highlighting_summary">Disable highlighting for big shaders</string>
+	<string name="new_editor">New editor</string>
+	<string name="new_editor_summary">Built for large shaders; still being tested</string>
+	<string name="text_too_large">Not changed: the text would be larger than 16 MiB</string>
 	<string name="auto_save">Auto save</string>
 	<string name="auto_hide_extra_keys">Auto hide extra keys</string>
 	<string name="auto_hide_extra_keys_summary">When the keyboard is closed</string>
