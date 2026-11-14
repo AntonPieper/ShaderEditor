@@ -477,7 +477,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 		passFrame.scale(frame, target.size().width(), target.size().height());
 		builtins.write(passFrame);
 		running.bind(textures, camera, target.completed());
-		quad.draw();
+		device.draw(quad);
 		running.unbind();
 	}
 
@@ -499,7 +499,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 			initialFrame.frame = 0;
 			builtins.write(1, initialFrame);
 			shader.bind(textures, camera, null);
-			quad.draw();
+			device.draw(quad);
 			shader.unbind();
 			picture = drawn.completed();
 		}

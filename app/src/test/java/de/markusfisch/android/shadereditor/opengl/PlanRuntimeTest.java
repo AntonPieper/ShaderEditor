@@ -3,6 +3,8 @@ package de.markusfisch.android.shadereditor.opengl;
 import static de.markusfisch.android.shadereditor.opengl.TestProjects.lines;
 import static de.markusfisch.android.shadereditor.opengl.TestProjects.prepare;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -41,6 +43,37 @@ public class PlanRuntimeTest {
 		assertEquals(1, preparation.diagnostics().size());
 		assertEquals(preparation.diagnostics(), checkInitial(preparation,
 				false));
+	}
+
+	// Frame n draws into one texture of the target and reads the other,
+	// which holds frame n - 1; the frame drawn is the one presented.
+	@Test
+	public void aPassReadsTheFrameItDrewBeforeAndPresentsTheNewOne() {
+		var engine = new FakeEngine(prepare("main.frag", lines(
+				"uniform sampler2D backbuffer;",
+				"uniform vec2 resolution;",
+				"void main() {",
+				"	gl_FragColor = texture2D(backbuffer,",
+				"			gl_FragCoord.xy / resolution);",
+				"}")), 3);
+		assertEquals(ShaderSwap.Allocation.MADE, engine.resize(8, 4));
+		engine.draw(0);
+		engine.draw(.1f);
+		engine.draw(.2f);
+		var draws = engine.draws("main.frag");
+		int unit = engine.unit("main.frag", "backbuffer");
+		assertEquals(3, draws.size());
+		for (int i = 1; i < draws.size(); ++i) {
+			assertEquals(draws.get(i - 1).target(),
+					(int) draws.get(i).units().get(unit));
+			assertNotEquals(draws.get(i - 1).target(), draws.get(i).target());
+		}
+		var presented = engine.presented();
+		assertEquals(3, presented.size());
+		for (int i = 0; i < draws.size(); ++i) {
+			assertTrue(presented.get(i).units().containsValue(
+					draws.get(i).target()));
+		}
 	}
 
 	private static List<ProjectDiagnostic> checkInitial(

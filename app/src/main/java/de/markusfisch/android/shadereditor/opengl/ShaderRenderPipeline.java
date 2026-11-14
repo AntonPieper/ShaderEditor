@@ -211,6 +211,6 @@ final class ShaderRenderPipeline {
 		device.uniform1f(surfaceProgram.limitLocation(), limit);
 		device.bindTexture(surfaceProgram.frameUnit(), sourceTexture);
 		device.clear(GLES20.GL_COLOR_BUFFER_BIT);
-		quad.draw();
+		device.draw(quad);
 	}
 }

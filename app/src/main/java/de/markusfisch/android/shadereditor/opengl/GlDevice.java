@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.opengl;
 import android.graphics.Bitmap;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,7 +20,9 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 import de.markusfisch.android.shadereditor.project.SourceMap;
 
-final class GlDevice {
+// Every GL call the engine makes, so that tests can drive the engine
+// with a device of their own.
+class GlDevice {
 	private static final int[] CUBE_MAP_TARGETS = {
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
 			GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
@@ -286,6 +289,43 @@ final class GlDevice {
 		return error != GLES20.GL_NO_ERROR
 				? call + " failed with GL error 0x" + Integer.toHexString(error)
 				: null;
+	}
+
+	// Covers the viewport with the program in use.
+	void draw(@NonNull FullScreenQuad quad) {
+		GLES20.glEnableVertexAttribArray(FullScreenQuad.POSITION_LOCATION);
+		GLES20.glVertexAttribPointer(
+				FullScreenQuad.POSITION_LOCATION,
+				2,
+				GLES20.GL_BYTE,
+				false,
+				0,
+				quad.vertices);
+		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	// A sampler object of a GLES3 context that samples as asked.
+	int createSampler(@NonNull Sampling sampling) {
+		int[] sampler = new int[1];
+		GLES30.glGenSamplers(1, sampler, 0);
+		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MIN_FILTER,
+				GlSampling.minFilter(sampling));
+		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_MAG_FILTER,
+				GlSampling.magFilter(sampling));
+		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_WRAP_S,
+				GlSampling.wrap(sampling.wrapS()));
+		GLES30.glSamplerParameteri(sampler[0], GLES30.GL_TEXTURE_WRAP_T,
+				GlSampling.wrap(sampling.wrapT()));
+		return sampler[0];
+	}
+
+	// 0 lets the unit sample by texture parameters again.
+	void bindSampler(int unit, int sampler) {
+		GLES30.glBindSampler(unit, sampler);
+	}
+
+	void deleteSamplers(@NonNull int[] samplers) {
+		GLES30.glDeleteSamplers(samplers.length, samplers, 0);
 	}
 
 	@NonNull
