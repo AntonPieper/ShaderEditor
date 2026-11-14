@@ -49,7 +49,6 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -606,7 +605,7 @@ public class NavigationDrawer implements ShaderList {
 				List<ProjectSessions.Recent> recent =
 						projects.sessions().recent();
 				int shaders = library != null
-						? count(projects.library().folder())
+						? projects.library().rootFiles().size()
 						: -1;
 				handler.post(() -> {
 					folders.setRecent(recent);
@@ -769,18 +768,6 @@ public class NavigationDrawer implements ShaderList {
 			});
 		}
 		return folder;
-	}
-
-	// How many files the folder holds; off the main thread.
-	private static int count(@NonNull File folder) {
-		int count = 0;
-		File[] files = folder.listFiles();
-		for (File file : files != null ? files : new File[0]) {
-			count += file.isFile() && !file.getName().startsWith(".")
-					? 1
-					: 0;
-		}
-		return count;
 	}
 
 	private boolean isActivityAlive() {

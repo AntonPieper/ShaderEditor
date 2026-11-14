@@ -65,9 +65,92 @@ public final class Library {
 		this.appFiles = appFiles;
 	}
 
-	/** Return the library's folder; it may not be there yet. */
-	public File folder() {
+	/** A file of the library's root, by its name. */
+	public record RootFile(String name, long modified) {
+	}
+
+	/**
+	 * Return the library's folder; it may not be there yet. Only this
+	 * layer has it: a screen reads the library through the readers
+	 * below and changes it through {@link Projects}.
+	 */
+	File folder() {
 		return new File(userFiles, FOLDER);
+	}
+
+	/**
+	 * Return the files of the library's root as they are in storage,
+	 * last changed first: no folders, and no files whose names begin
+	 * with a dot. For the lists outside the drawer, which count and
+	 * offer the shaders. Off the main thread.
+	 */
+	public List<RootFile> rootFiles() {
+		File[] files = folder().listFiles();
+		files = files != null ? files : new File[0];
+		Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(),
+				a.lastModified()));
+		List<RootFile> root = new ArrayList<>();
+		for (File file : files) {
+			if (file.isFile() && !file.getName().startsWith(".")) {
+				root.add(new RootFile(file.getName(), file.lastModified()));
+			}
+		}
+		return root;
+	}
+
+	/**
+	 * Build the file at path as it is saved, for what shows it outside
+	 * the editor. Off the main thread.
+	 */
+	public Preparation prepareSaved(ProjectPath path, Builtins builtins) {
+		return Preparation.prepare(new DirectoryProjectFiles(folder()),
+				path, ProjectLimits.DEFAULT, builtins);
+	}
+
+	/**
+	 * Return the file a start shows of the library opened as project:
+	 * shown, the one it showed last, while the folder still lists it or
+	 * held says that it has text that is not saved; else the newest
+	 * file of the root, and null for a library without files. Off the
+	 * main thread.
+	 */
+	public static ProjectPath startFile(OpenProject project,
+			ProjectPath shown, boolean held) {
+		return shown != null && (held || exists(project, shown))
+				? shown
+				: newest(project.list(null));
+	}
+
+	// Whether the folder of path lists it; one that cannot be listed
+	// is left to the opening to tell.
+	private static boolean exists(OpenProject project, ProjectPath path) {
+		String text = path.toString();
+		int slash = text.lastIndexOf('/');
+		var parent = slash > 0
+				? ProjectPath.parse(text.substring(0, slash))
+				: null;
+		OpenProject.Folder folder = project.list(parent != null &&
+				parent.isSuccess() ? parent.value() : null);
+		if (folder.problem() != null) {
+			return true;
+		}
+		for (OpenProject.Item item : folder.items()) {
+			if (!item.folder() && item.path().equals(path)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	static ProjectPath newest(OpenProject.Folder folder) {
+		OpenProject.Item newest = null;
+		for (OpenProject.Item item : folder.items()) {
+			if (!item.folder() && (newest == null ||
+					item.modified() > newest.modified())) {
+				newest = item;
+			}
+		}
+		return newest != null ? newest.path() : null;
 	}
 
 	/** Return what the move of the database shaders has done. */

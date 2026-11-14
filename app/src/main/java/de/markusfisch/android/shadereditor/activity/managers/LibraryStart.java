@@ -17,6 +17,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
+import de.markusfisch.android.shadereditor.project.Library;
 import de.markusfisch.android.shadereditor.project.LibraryMove;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -267,22 +268,18 @@ public final class LibraryStart {
 				boolean single = recent != null && recent.locator().kind() ==
 						ProjectSessions.Kind.DOCUMENT;
 				// A file that went since shows the newest instead.
-				ProjectPath there = shown != null && other == null &&
-						(held || exists(project, shown))
-						? shown
-						: null;
-				ProjectPath newest = other == null && there == null
-						? newest(project.list(null))
+				ProjectPath start = other == null
+						? Library.startFile(project, shown, held)
 						: null;
 				handler.post(() -> {
 					if (destroyed) {
 						return;
 					} else if (other != null) {
 						listener.onShow(last, other, single, true);
-					} else if (there != null) {
-						listener.onShow(key, there, false, true);
-					} else if (newest != null) {
-						listener.onShow(key, newest, false, false);
+					} else if (start != null) {
+						// The newest comes as tapped, so that it runs.
+						listener.onShow(key, start, false,
+								start.equals(shown));
 					} else {
 						listener.onEmpty(key);
 					}
@@ -291,39 +288,5 @@ public final class LibraryStart {
 		} catch (RejectedExecutionException e) {
 			// Destroyed.
 		}
-	}
-
-	// Whether the folder of path lists it; one that cannot be listed
-	// is left to the opening to tell.
-	private static boolean exists(@NonNull OpenProject project,
-			@NonNull ProjectPath path) {
-		String text = path.toString();
-		int slash = text.lastIndexOf('/');
-		var parent = slash > 0
-				? ProjectPath.parse(text.substring(0, slash))
-				: null;
-		OpenProject.Folder folder = project.list(parent != null &&
-				parent.isSuccess() ? parent.value() : null);
-		if (folder.problem() != null) {
-			return true;
-		}
-		for (OpenProject.Item item : folder.items()) {
-			if (!item.folder() && item.path().equals(path)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	@Nullable
-	private static ProjectPath newest(@NonNull OpenProject.Folder folder) {
-		OpenProject.Item newest = null;
-		for (OpenProject.Item item : folder.items()) {
-			if (!item.folder() && (newest == null ||
-					item.modified() > newest.modified())) {
-				newest = item;
-			}
-		}
-		return newest != null ? newest.path() : null;
 	}
 }

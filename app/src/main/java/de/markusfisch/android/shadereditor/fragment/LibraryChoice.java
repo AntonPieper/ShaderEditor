@@ -12,9 +12,7 @@ import androidx.preference.Preference;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -27,10 +25,8 @@ import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
-import de.markusfisch.android.shadereditor.project.DirectoryProjectFiles;
 import de.markusfisch.android.shadereditor.project.Library;
 import de.markusfisch.android.shadereditor.project.Preparation;
-import de.markusfisch.android.shadereditor.project.ProjectLimits;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.project.Previews;
@@ -133,9 +129,8 @@ final class LibraryChoice {
 		}
 		Library library = projects.library();
 		READING.execute(() -> {
-			Preparation preparation = Preparation.prepare(
-					new DirectoryProjectFiles(library.folder()), path,
-					ProjectLimits.DEFAULT, UniformTable.builtins());
+			Preparation preparation = library.prepareSaved(path,
+					UniformTable.builtins());
 			float quality = library.settings().quality(path);
 			MAIN.post(() -> projects.setWallpaper(preparation, path,
 					quality, path, problem -> {
@@ -193,10 +188,6 @@ final class LibraryChoice {
 			long id, @NonNull String none) {
 		Library library = projects.library();
 		ProjectPath chosen = chosen(projects, wallpaper, id);
-		File[] files = library.folder().listFiles();
-		files = files != null ? files : new File[0];
-		Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(),
-				a.lastModified()));
 		List<ProjectPath> paths = new ArrayList<>();
 		List<DataRecords.ShaderInfo> rows = new ArrayList<>();
 		if (!wallpaper) {
@@ -205,11 +196,8 @@ final class LibraryChoice {
 		}
 		int at = wallpaper ? -1 : 0;
 		Previews previews = library.previews();
-		for (File file : files) {
-			ProjectPath path = file.isFile() &&
-					!file.getName().startsWith(".")
-					? ProjectPath.parse(file.getName()).value()
-					: null;
+		for (Library.RootFile file : library.rootFiles()) {
+			ProjectPath path = ProjectPath.parse(file.name()).value();
 			if (path == null) {
 				continue;
 			}
@@ -218,7 +206,7 @@ final class LibraryChoice {
 			}
 			Previews.Picture picture = previews.get(path);
 			rows.add(new DataRecords.ShaderInfo(paths.size(),
-					file.getName(), null, picture != null
+					file.name(), null, picture != null
 							? OldPlaceholder.real(context, picture.png())
 							: null));
 			paths.add(path);
