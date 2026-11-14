@@ -1,0 +1,94 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+uniform sampler2D s0;
+uniform sampler2D s1;
+uniform sampler2D s2;
+uniform sampler2D s3;
+uniform sampler2D s4;
+uniform sampler2D s5;
+uniform sampler2D s6;
+uniform sampler2D s7;
+uniform sampler2D s8;
+uniform sampler2D s9;
+uniform sampler2D s10;
+uniform sampler2D s11;
+uniform sampler2D s12;
+uniform sampler2D s13;
+uniform sampler2D s14;
+uniform sampler2D s15;
+uniform sampler2D s16;
+uniform sampler2D s17;
+uniform sampler2D s18;
+uniform sampler2D s19;
+uniform sampler2D s20;
+uniform sampler2D s21;
+uniform sampler2D s22;
+uniform sampler2D s23;
+uniform sampler2D s24;
+uniform sampler2D s25;
+uniform sampler2D s26;
+uniform sampler2D s27;
+uniform sampler2D s28;
+uniform sampler2D s29;
+uniform sampler2D s30;
+uniform sampler2D s31;
+uniform sampler2D s32;
+uniform sampler2D s33;
+uniform sampler2D s34;
+uniform sampler2D s35;
+uniform sampler2D s36;
+uniform sampler2D s37;
+uniform sampler2D s38;
+uniform sampler2D s39;
+uniform vec2 resolution;
+
+// Forty samplers, more texture units than a device has.
+void main(void) {
+	vec2 uv = gl_FragCoord.xy / resolution;
+	vec4 c = vec4(0.0);
+	c += texture2D(s0, uv);
+	c += texture2D(s1, uv);
+	c += texture2D(s2, uv);
+	c += texture2D(s3, uv);
+	c += texture2D(s4, uv);
+	c += texture2D(s5, uv);
+	c += texture2D(s6, uv);
+	c += texture2D(s7, uv);
+	c += texture2D(s8, uv);
+	c += texture2D(s9, uv);
+	c += texture2D(s10, uv);
+	c += texture2D(s11, uv);
+	c += texture2D(s12, uv);
+	c += texture2D(s13, uv);
+	c += texture2D(s14, uv);
+	c += texture2D(s15, uv);
+	c += texture2D(s16, uv);
+	c += texture2D(s17, uv);
+	c += texture2D(s18, uv);
+	c += texture2D(s19, uv);
+	c += texture2D(s20, uv);
+	c += texture2D(s21, uv);
+	c += texture2D(s22, uv);
+	c += texture2D(s23, uv);
+	c += texture2D(s24, uv);
+	c += texture2D(s25, uv);
+	c += texture2D(s26, uv);
+	c += texture2D(s27, uv);
+	c += texture2D(s28, uv);
+	c += texture2D(s29, uv);
+	c += texture2D(s30, uv);
+	c += texture2D(s31, uv);
+	c += texture2D(s32, uv);
+	c += texture2D(s33, uv);
+	c += texture2D(s34, uv);
+	c += texture2D(s35, uv);
+	c += texture2D(s36, uv);
+	c += texture2D(s37, uv);
+	c += texture2D(s38, uv);
+	c += texture2D(s39, uv);
+	gl_FragColor = c;
+}
