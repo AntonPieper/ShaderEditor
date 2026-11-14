@@ -113,11 +113,33 @@
 				<!-- The names shaders usually have, as in
 					ShaderLanguage. No type is registered for any of
 					them, so a provider reports plain text or bytes,
-					and the name in the path is all there is to go by. -->
+					and the name in the path is all there is to go by.
+					From Android 12 a suffix matches the end of the path
+					however many dots come before it. Before that only
+					patterns exist, whose ".*" stops at the first dot,
+					so each count of dots in the path needs one: these
+					go to four, which a name like a.b.frag in a folder
+					like my.shaders needs. -->
+				<data android:pathSuffix=".glsl"/>
+				<data android:pathSuffix=".frag"/>
+				<data android:pathSuffix=".fs"/>
+				<data android:pathSuffix=".fsh"/>
 				<data android:pathPattern=".*\\.glsl"/>
 				<data android:pathPattern=".*\\.frag"/>
 				<data android:pathPattern=".*\\.fs"/>
 				<data android:pathPattern=".*\\.fsh"/>
+				<data android:pathPattern=".*\\..*\\.glsl"/>
+				<data android:pathPattern=".*\\..*\\.frag"/>
+				<data android:pathPattern=".*\\..*\\.fs"/>
+				<data android:pathPattern=".*\\..*\\.fsh"/>
+				<data android:pathPattern=".*\\..*\\..*\\.glsl"/>
+				<data android:pathPattern=".*\\..*\\..*\\.frag"/>
+				<data android:pathPattern=".*\\..*\\..*\\.fs"/>
+				<data android:pathPattern=".*\\..*\\..*\\.fsh"/>
+				<data android:pathPattern=".*\\..*\\..*\\..*\\.glsl"/>
+				<data android:pathPattern=".*\\..*\\..*\\..*\\.frag"/>
+				<data android:pathPattern=".*\\..*\\..*\\..*\\.fs"/>
+				<data android:pathPattern=".*\\..*\\..*\\..*\\.fsh"/>
 			</intent-filter>
 			<intent-filter>
 				<action android:name="android.intent.action.VIEW"/>
@@ -126,10 +148,27 @@
 					android:scheme="file"
 					android:mimeType="*/*"
 					android:host="*"/>
+				<!-- As above. -->
+				<data android:pathSuffix=".glsl"/>
+				<data android:pathSuffix=".frag"/>
+				<data android:pathSuffix=".fs"/>
+				<data android:pathSuffix=".fsh"/>
 				<data android:pathPattern=".*\\.glsl"/>
 				<data android:pathPattern=".*\\.frag"/>
 				<data android:pathPattern=".*\\.fs"/>
 				<data android:pathPattern=".*\\.fsh"/>
+				<data android:pathPattern=".*\\..*\\.glsl"/>
+				<data android:pathPattern=".*\\..*\\.frag"/>
+				<data android:pathPattern=".*\\..*\\.fs"/>
+				<data android:pathPattern=".*\\..*\\.fsh"/>
+				<data android:pathPattern=".*\\..*\\..*\\.glsl"/>
+				<data android:pathPattern=".*\\..*\\..*\\.frag"/>
+				<data android:pathPattern=".*\\..*\\..*\\.fs"/>
+				<data android:pathPattern=".*\\..*\\..*\\.fsh"/>
+				<data android:pathPattern=".*\\..*\\..*\\..*\\.glsl"/>
+				<data android:pathPattern=".*\\..*\\..*\\..*\\.frag"/>
+				<data android:pathPattern=".*\\..*\\..*\\..*\\.fs"/>
+				<data android:pathPattern=".*\\..*\\..*\\..*\\.fsh"/>
 			</intent-filter>
 			<!-- A provider that says the file is a shader, whatever its
 				URI looks like. -->
