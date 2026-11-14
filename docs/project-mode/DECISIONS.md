@@ -88,7 +88,7 @@ Shaders/                 <- open this folder
   tunnel.frag            #include "lib/sdf.glsl"
 ```
 
-Share and Set wallpaper collect only what the running shader depends on, so one large folder costs nothing. A shader folder opened on its own cannot reach a sibling `lib/`; the missing-file diagnostic says so. Library code bundled with the app, if it is ever added, follows the texture rule: inserting it copies it into the project.
+Share and Set wallpaper collect only what the running shader depends on, so one large folder costs nothing. A shader folder opened on its own cannot reach a sibling `lib/`; the missing-file diagnostic says so. Library code bundled with the app follows the texture rule: what a user keeps is a copy, and an app update never changes it. Decided with the examples (EXAMPLES.md section 3): the app bundles a small include library in its examples, `lib/sdf.glsl`, `lib/noise.glsl` and `lib/color.glsl`. Its files hold pure functions only, with no uniforms, `precision`, `#version`, host directives or texture lookups, behind include guards; every function is called by a bundled example; functions are added and never changed. Save a copy of an example that includes them copies them with it.
 
 Include search roots with vendoring on export were considered in June (ADR 0003) and rejected: they make a project depend on app state, and they need manifest keys, a search order, and a collision rule to solve what a parent folder already solves.
 

@@ -38,6 +38,12 @@ public final class Samples {
 			float quality) {
 	}
 
+	/**
+	 * The resId of an example that reads other files, which a database
+	 * shader cannot: it exists only where shaders are files.
+	 */
+	public static final int NO_TEXT = 0;
+
 	// Within a section, samples are listed in this order.
 	public static final List<Sample> ALL = List.of(
 			new Sample(Section.START_HERE,
@@ -172,6 +178,13 @@ public final class Samples {
 					R.drawable.thumbnail_gles_300,
 					R.string.sample_gles_300_name,
 					R.string.sample_gles_300_rationale,
+					1f),
+			new Sample(Section.TECHNIQUES,
+					NO_TEXT,
+					"Blobs.frag",
+					R.drawable.thumbnail_blobs,
+					R.string.sample_blobs_name,
+					R.string.sample_blobs_rationale,
 					1f),
 			new Sample(Section.WALLPAPERS,
 					R.raw.sample_horizon,

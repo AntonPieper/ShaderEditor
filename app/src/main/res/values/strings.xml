@@ -240,6 +240,8 @@
 	<string name="samples_section_wallpapers">Wallpapers</string>
 	<string name="sample_battery_name">Battery</string>
 	<string name="sample_battery_rationale">Plug in the charger; the level rises in pulses</string>
+	<string name="sample_blobs_name">Blobs</string>
+	<string name="sample_blobs_rationale">Drag a finger; its blob melts into the others</string>
 	<string name="sample_camera_back_name">Back camera</string>
 	<string name="sample_camera_back_rationale">Turn the phone; the view stays upright (camera)</string>
 	<string name="sample_clock_name">Clock</string>
