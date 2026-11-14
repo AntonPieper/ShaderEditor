@@ -293,8 +293,62 @@ Late results, summarised: they can only be late relative to a closed or dropped 
 - **M4. Rename does not look at content.** A file that changed elsewhere is renamed as it is; afterwards each held file is checked as a refresh checks it, so the usual rules apply under the new path (a file without unsaved text takes the stored text, unsaved text is in conflict). A source that vanished elsewhere is refused as absent, and that is what is seen of every held file there (unsaved text stays, in conflict "the file was deleted"). A target that exists in storage, or at or under which the project holds a file, is refused. A project of one lone document refuses: its session and its recent entry name that document.
 - **M5. Unsaved text is deleted only when its deletion was asked for, as it is.** `delete(path, discard)` takes the operation of every held file at or under the path like a rename. When one of them has unsaved text (or a journal that cannot be read) that `discard` does not name as it is at that moment, by the revision of its document, nothing is deleted and the answer lists those files with what names their text now. Passing that answer back is the consent, the same idea as for Reload: it is for the text the user was shown, and text typed since makes the operation ask again. Files without unsaved text need no consent; their documents are closed. A journal that only waits for a history after a Reload goes without asking: its text was given up already.
 - **M6. What was deleted with consent does not come back.** From the moment the consent is checked, a held file's text as it is then is not written to the journal again by anyone, a timer, a flush, a fence at close, until the deletion is over. Storage deletes; the same task of the worker removes the journals and histories at and under the path; if the process dies in that task, the next opening finds the deletion noted and the file gone and removes them then. When main is told, the records are forgotten and the documents closed, so no later write or acknowledgement has anything to act on. Only text typed after the call is not part of the consent: such a document stays, as unsaved text of a file that is not there, in a new journal. A file that is gone from storage already is deleted for the project all the same; a storage that refuses leaves everything as it was.
+- **M7. What the app keeps by path about a file goes where the file goes.** For the library that is the quality, the template and the picture. They follow in the same worker task that lets the journals and histories follow: at once for a deletion, after main knows for a rename, and when a project opens after the process died in between (M3). A folder takes what is kept of every file under it. So a path that is used again never shows the picture or the quality of the file that was there before. When they cannot follow, because their file cannot be read or written, the note of the move stays and the next opening tries again.
 - What follows a rename is not rebuilt: the diagnostics of the last build keep the old paths until the next build, which the rename makes stale. A load of the old path that was waiting is answered once the file is in memory, under its new path.
 - Everyone but the caller learns of it from the listener: `events(after)` gives the renames and deletions in order.
+
+### 5.1b Moving the database shaders into the library
+
+SPEC 12.2 says what the library is and what the move does. This is how it stays true when the process dies, and when it runs a second time.
+
+**One owner.** Everything that changes the library's names or what the app keeps about it (the move, a redo, a new shader, a quality, a template, a picture) is a task on the one queue the projects work on, and nothing else changes them. What is offered off that queue only reads. The app is one process; there is no lock against a second process, because there is none. The move reads the database through an interface that cannot write, and reads its note again when it starts, not when it was made.
+
+**Three outcomes of reading app data.** A file of `files/library/` is not there, or holds what is read, or is there and cannot be read. The third is never taken for the first: who only shows something falls back to the default, and who changes something refuses and reports. So a note that cannot be read moves nothing, and settings that cannot be read are not written over.
+
+**The note** is the file `files/library/moved`: lines of text, appended and synced. Only a line with its line end was written whole. What follows the last line end is a write that did not finish: it is not read, and it is cut off, synced, before the next line is appended, so it can never become a line by what is written behind it. A death in the cut leaves whole lines only.
+
+| Line | Says | Written |
+| --- | --- | --- |
+| `name <id> <file>` | Shader `id` of the database gets this file name; a later line for the same shader replaces it | Before anything of the shader is written |
+| `moved <id> <file>` | Shader `id` is moved, to this file | After its file, picture and settings are written |
+| `file <revision> <path>` | The move wrote this texture or preset shader, with these bytes | After that file is written |
+| `selected <id> -` | What the library shows first is settled, for this shader or for none (0) | After the session took it |
+
+So every path the move wrote belongs to one database shader (`name`, `moved`) or holds one library image, told by its bytes (`file`).
+
+- **L1. A name is noted before it is used.** The name is chosen against the names in the library's root then and the names noted before, without regard to case. A second run uses the noted name, so one shader never becomes two files, and a shader that fails keeps its name for the run that moves it.
+- **L2. A file is created, never written over, and a noted name proves nothing.** Every write asks the store for a file that is not there. A file found under a shader's noted name is that shader only when it holds exactly the text the move would write: then the run that wrote it died before it noted `moved`, and this run goes on from there. Any other file stays as it is; the shader is not moved, gets the next unused name noted, and is moved under that name by the next run. A user who edits a shader's file in the moment between its write and its `moved` line therefore gets a second file with the database's text beside the edited one, and loses nothing.
+- **L3. `moved` is written last and is final.** It is written only after this shader's own text was written, or found unchanged, under its name. A shader with that line is skipped by every later run, whatever became of its file.
+- **L4. A dependency is written once and reused by its bytes.** A texture or preset file that is there is reused when the note has it with the bytes the move would write now, or when it has no note and holds exactly those bytes (then it is noted). Otherwise the shader fails with the reason and is not noted as moved.
+- **L5. Pictures and settings are the move's until `moved`.** Before that line they may be written again by a second run; after it, never.
+- **L6. One shader's failure stops only that shader.** That includes whatever reading the database or converting throws, and running out of memory in it: the row is reported with the reason and the next row is read. The list of rows holds ids, titles, dates, qualities and sizes, never text or pictures, so one large or broken row cannot fail the listing. A database that cannot be listed at all is one reported failure of the run. Nothing is thrown out of the task.
+- **L7. A row that cannot become the same shader as a file is not moved.** Its text larger than a document may be (16 MiB), before or after conversion, or text that cannot be kept as written (SPEC 12.2), fails with that reason.
+- **L8. What the library shows first is settled once.** After a run that got through every row, the file of the shader that was open last becomes what the library's session shows and runs, and `selected` is noted when the session took it. Until that line a start tries again; after it no start touches the session. A shader that was not moved by then is not shown by a later run.
+
+What a death leaves, for one shader, and what the next run does:
+
+| The process dies | Left behind | The next run |
+| --- | --- | --- |
+| before `name` | nothing of this shader | starts the shader |
+| after `name`, before the shader's file | a noted name without a file; maybe textures of it, noted or not | reuses the textures (L4), writes the file under that name |
+| after the file, before the picture or the settings | the file, with the shader's text | finds its own text (L2), writes picture and settings |
+| after the settings, before `moved` | everything but the last line | finds its own text, writes picture and settings again (L5), notes `moved` |
+| after `moved` | the shader, moved | skips it (L3) |
+| after the last `moved`, before `selected` | every shader, and a session that shows something else or nothing | settles what is shown (L8) |
+| in a write to the store | the old state: a file appears by one rename | as above |
+| in a line of the note | bytes without a line end | reads the whole lines, cuts the rest before it appends |
+
+**Redo.** Putting the library aside is two renames, of the folder and of `files/library`, then the library's session following to the new place of the folder, and a marker file `files/library-redo`, written in one rename before the first and removed after the last, which names both targets. While the marker is there nothing else is done to the library: every operation first finishes the redo, and when it cannot, refuses with the reason. Each rename is told by what is there: only the source, it is made now; only the target, it was made; both, that is nobody's finished rename and stops everything until one is moved away. A marker that cannot be read stops everything too, and a second redo never replaces it.
+
+The redo is refused while the library is open at all, with or without unsaved text, and while its journal holds text or cannot be read; its caller closes the project first. The session of the old library (unsaved text, undo histories, what was shown) is given the place of the folder that was put aside, so the new library begins with a session of its own and no journal is ever read as the text of a new file of the same name. Opening `Shaders before redo` finds that session again. The settings and pictures of the old library are kept in `files/library before redo`; nothing attaches them to that folder again.
+
+**Previews** are app data, not project files: `files/library/previews/` holds one file per path, named by a hash of the path and holding the path, the revision of the content the picture was made from, and the PNG. A reader gets a picture only from a file that names the path it asked for, with the revision, and decides whether the picture is current.
+
+**Settings** are the file `files/library/settings`: the quality of a path where it is not 1, and the file in the library's root new shaders are copied from. It is small and replaced whole in one rename.
+
+**Settings and pictures follow the files** inside the operation that renames or deletes them (5.1a, M7).
+
+**The wallpaper's snapshot** is a folder `files/wallpaper/<number>/` with the files the shader was made of in the build it was set from, and the file `files/wallpaper/current`, which names that folder, the file that runs, its quality and the library file it was taken of. `current` is replaced in one rename after the folder is whole. That makes the pointer atomic, not the reading of the folder behind it: the service reads `current` and then the files on a thread of its own, while the queue may install the next snapshot. So the snapshot that was current stays until the install after the next, and a reader whose files are gone all the same reads `current` once more. A build that fails is never set as the wallpaper. The folders are copies the app made, not files of the user. Without `current` the service reads the database shader whose id the preference holds, as it always did.
 
 ### 5.2 Checked with a model
 

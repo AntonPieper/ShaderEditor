@@ -58,7 +58,7 @@ A path reference is the text between two double quotes, taken literally. There a
 
 Different spellings that normalize to the same path identify the same resource. A project snapshot must reject duplicate normalized paths. If a provider cannot represent a project's distinct paths, report the conflict rather than renaming silently. Filesystem links and archive links must not escape the root; initially reject links rather than inventing link semantics. Version-control administration directories are not valid dependency targets and are omitted from project export: a path with a segment `.git`, `.hg` or `.svn` is an error.
 
-Shader/manifest text uses UTF-8. Accept an initial UTF-8 BOM and normalize CRLF/CR to LF while retaining original source locations. Parse host paths before any driver-facing ASCII sanitization. Do not strip Unicode characters out of filenames or mutate tokens to make invalid shader text appear valid. Preserve raw driver logs for diagnostic fallback.
+Shader/manifest text uses UTF-8. A file is its author's text and is never changed to suit a compiler: a character outside printable ASCII is handed to the compiler as a space, at the last step before it and on its own line, in comments and in code alike. In a comment that changes nothing. Outside a comment it is a warning at its line, which says so; the shader is still built. Accept an initial UTF-8 BOM and normalize CRLF/CR to LF while retaining original source locations. Parse host paths before any driver-facing ASCII sanitization. Do not strip Unicode characters out of filenames or mutate tokens to make invalid shader text appear valid. Preserve raw driver logs for diagnostic fallback.
 
 An unreachable source file is not compiled; a broken experiment does not prevent the selected entry from running.
 
@@ -306,7 +306,7 @@ The converter is a pure function with no Android or GL dependency: given a DB sh
 | Backbuffer preset `p:name` | `se target initial="..."` naming a generated shader that reproduces the old fit (scale to width, mirror-repeat vertically) with the image's dimensions written in |
 | Camera samplers, builtin uniforms, `FTIME_PERIOD` (`0` still makes `ftime` NaN) | Unchanged. When a shader declares both camera samplers, the one declared first in the text gets the camera, as before. |
 | `uniform sampler2D name;` matching a library texture whose name is a builtin uniform's (`time`, `mouse`, …) | The uniform is renamed `name_texture`, or `name_texture2`, … when that name is taken, in every use outside comments, and gets the directive of the first row. Compiler messages use the new name. |
-| Characters other than printable ASCII, tab and line feed | Removed before conversion, as the old renderer removed them before it read the text |
+| Characters other than printable ASCII, tab and line feed | To render a database shader in place, removed before conversion, as the old renderer removed them before it read the text. A shader that becomes a file keeps every one of them (section 12.2) |
 
 Every row is exact. A sampler whose name matches no library texture stays without a provider and gets the ordinary warning of section 3.2.
 
@@ -333,10 +333,46 @@ Text in a database shader that is project syntax is read as project syntax: an `
 ### 12.2 Three phases
 
 1. **Convert in memory.** A DB shader is stored and edited as it is today. To render it, convert it and run the result through `prepare` like any project; a `ProjectFiles` view over the database supplies the converted text and the textures. Diagnostics map back to the stored text through the converter's source map. From this point every existing shader exercises the converter and the one pipeline.
-2. **Migrate.** One time, write every DB shader and every library texture into a single library folder in ShaderEditor's own storage (UX 8): shaders as `<title>.frag`, textures once in `textures/`. Carry thumbnails, quality, and the wallpaper selection into app metadata. Write and verify each file before marking its shader as migrated, so an interrupted migration resumes and a failed one leaves the shader usable from the database. Keep the database as a read-only backup for at least one release.
+2. **Move.** Write every DB shader and every library texture a shader reads into the library folder in ShaderEditor's own storage: shaders as `<title>.frag`, textures once in `textures/`. Carry thumbnails, quality and the default for new shaders into app metadata. The rules are below (The library, The move).
 3. **Remove.** Delete the database shader and texture code and the database view. The converter stays, for old shader text that arrives from outside.
 
-**Save as files** applies the converter to one shader on request at any time before migration, through the ordinary Name/Location flow, and leaves the original in place.
+**Save as files** applies the converter to one shader on request at any time before the move, through the ordinary Name/Location flow, and leaves the original in place.
+
+#### The library
+
+The library is one ordinary project: the folder `Shaders` in the app's own user files (`files/user-files/Shaders`), read and written as a directory store without a grant or a prompt. Other apps see the same folder as `ShaderEditor / Shaders` through the app's document provider. Nothing about it is special to `prepare`: the rules of sections 1 to 11 apply as in any folder.
+
+- **A shader is one text file in the library's root**, `<Title>.frag`. Shaders share the folders beside them: `textures/` holds every image once, and `presets/` the shaders the converter generates for backbuffer presets (section 12.1). A shader does not get a folder of its own, so the files the converter writes (`textures/noise.png`, `presets/noise.frag`) are valid as written, relative to the root. Folders the user makes in the library are ordinary folders.
+- **A file name is made from a title by one rule**, the one that says what a new name may be (`Naming`): characters no folder may hold in a name (`/ \ " : * ? < > |` and control characters) become `_`; white space at both ends and dots at the start go; an ending the language table lists (`.frag`, `.glsl`, `.fs`, `.fsh`) is taken off, so `plasma.glsl` does not become `plasma.glsl.frag`; a title of more than 100 characters is cut there; what is then empty, and a shader without a title, is `Untitled`. The file is `<stem>.frag`. A name that is taken, compared without regard to case, gets a number: `Plasma 2.frag`, `Plasma 3.frag`. Shaders are named in the order of their database ids, so the same database gives the same names.
+- **App metadata of the library** lies beside the user files, in `files/library/`, where the document provider does not reach and which is backed up with the files it describes. It holds the note of the move (FILES 5.1b), the settings files have no place for, and the preview pictures.
+
+| What the database held | After the move |
+| --- | --- |
+| Shader text | The file: the user's text with what the file form needs (below) |
+| Title | The file name |
+| Thumbnail | The file's preview picture: one PNG per path in `files/library/previews/`, stored with its path and the revision of the content it shows. A picture made from other content is still shown, until a new one is rendered. It goes with its file when the app renames or deletes it, also inside a folder |
+| Quality | A setting of the path in `files/library/settings`; a file without one has quality 1. It goes with its file like the picture |
+| Last modified | The file's modification time, so a list ordered by date keeps its order |
+| Created | Dropped; nothing showed it |
+| Default new shader (a database id in the preferences) | The file that shader became, in `files/library/settings`. It must be a file in the library's root: a copy in the root of a shader in a folder would look for its includes and textures in the wrong place, so a file in a folder is refused where the default is chosen. New copies that file's text, quality and picture, the picture with the revision it was made from; when the file is gone or is not text, New uses the built-in template, as it did when the id was gone. A file that is there and cannot be read now is reported, and nothing is made |
+| Last opened shader (a database id) | The file shown and run in the library's session, settled once by the move (FILES 5.1b, L8) |
+| Wallpaper shader (a database id) | Unchanged: see below |
+
+**The wallpaper.** The wallpaper service reads what it read before: the database row whose id the preference holds. The move does not touch that row, so a wallpaper that is set shows the same shader afterwards. That row is now the wallpaper's installed snapshot in the sense of section 10: it shows the shader as it was moved, and later edits of the file reach it only when the user sets the wallpaper again. The note of the move says which file the id became, so a list can mark that file. Setting the wallpaper from a file installs a snapshot of its own (section 10) in `files/wallpaper/`; from then on the service reads that snapshot and the id is no longer looked at. A shader that does not build is not installed, and never set.
+
+#### The move
+
+The move runs by itself at the first start of a build that has project mode on, and again at every later start, where it finds nothing to do. It only reads the database: the database stays as it is, a backup nothing writes to and nothing deletes. It writes through the library's store with the store's rules: a file is created only where none is, and no file is ever written over.
+
+- **The file holds the text the user wrote.** The move changes only what the file form needs: the directive lines and renamed samplers of section 12.1, and line ends, which become line feeds. Comments, characters outside ASCII and everything else stay as they are; what a compiler cannot read is seen to where the shader is compiled (section 2), for these files as for any other. The old renderer dropped such characters where a file reads a space, which is the same shader unless one stands between two characters of code. A shader with one there, or with one inside a comment or declaration the conversion rewrites, cannot be written as a file that says the same: it fails with that reason, stays in the database, and is never noted as moved. So does a shader whose text is larger than a file may hold (16 MiB).
+- A shader is moved once. Whether it was moved is a fact about its database row, kept in the note, and not about the file: a file the user renamed, edited or deleted afterwards is never made again.
+- A shader's textures and preset shaders are written before the shader, each once. A file that is already there is reused when it holds the same bytes, and when the note says the move wrote it with those bytes, whatever the user made of it since. A different file under that name, which two library textures with unusable names can cause, fails that shader with the reason; it stays in the database and is tried again at the next start.
+- A shader that cannot be moved (a texture or a row that cannot be read, a store that refuses, a file of another content under its name) is reported with its reason, and the others go on. The result lists what was moved, what had been moved before, and what failed, for the app to tell the user once. A run that cannot begin (the database cannot be listed, the note of earlier runs cannot be read, a redo is unfinished) is one reported failure and moves nothing.
+- What the converter could not convert exactly (section 12.1) is reported with the shader, as its warnings.
+- A library texture that no shader reads is not moved. It stays in the database, where Add texture still finds it and copies it into `textures/` when it is used (UX 4). Before the database code is removed (phase 3), those have to be written too.
+- The process may die at any point. The note is written before a name is used and after a shader is complete, so a second run continues where the first stopped, makes no second copy and loses nothing (FILES 5.1b lists every step).
+
+A debug build can **redo the move**: the library folder and its metadata are renamed aside (`Shaders before redo`, with a number when that is taken), nothing is deleted, and the move runs again into an empty library. It refuses while the library is open or holds unsaved text. The old library keeps its session, so opening `Shaders before redo` finds its undo histories again; its settings and pictures are kept in `files/library before redo` and are not attached to it again. The new library starts with a session, settings and pictures of its own.
 
 ### 12.3 Old shader text from outside
 
