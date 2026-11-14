@@ -83,6 +83,8 @@ public class MainActivity extends AppCompatActivity {
 	// open and create database shaders.
 	private OpenItem open;
 	private ShaderList shaderListManager;
+	// Where the shaders are files, the list is the drawer of folders.
+	private NavigationDrawer drawer;
 	private ShaderViewManager shaderViewManager;
 	private ExtraKeysManager extraKeysManager;
 	private NavigationManager navigationManager;
@@ -178,31 +180,16 @@ public class MainActivity extends AppCompatActivity {
 				createNavigationActions());
 
 		uiManager.setupToolbar(mainMenuManager::show,
-				v -> this.runShader(),
-				v -> {
-					// Without a file there is no code to show.
-					if (open.hasText()) {
-						uiManager.toggleCodeVisibility();
-					} else {
-						sayNothingIsOpen();
-					}
-				},
+				v -> screen.run(),
+				v -> screen.toggleCode(),
 				v -> editorFragment.showErrors());
 
 		screen.start(state, getIntent());
 
-		editorFragment.setOnEditPausedListener(text -> {
-			if (ShaderEditorApp.preferences.doesRunOnChange() &&
-					open instanceof ProjectFile) {
-				editorFragment.runningEdit();
-				files.run();
-			} else if (ShaderEditorApp.preferences.doesRunOnChange() &&
-					!holdsUnshownFile && open.hasText()) {
-				editorFragment.runningEdit();
-				shaderViewManager.setShader(text, open.getQuality());
-			}
-		});
-		editorFragment.setOnTextModifiedListener(() -> open.onTextModified());
+		editorFragment.setOnEditPausedListener(text ->
+				screen.onEditPaused(text));
+		editorFragment.setOnTextModifiedListener(() ->
+				screen.open().onTextModified());
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
 	}
 
@@ -219,14 +206,11 @@ public class MainActivity extends AppCompatActivity {
 
 					@Override
 					public void onLibrary(@NonNull String key) {
-						if (shaderListManager instanceof NavigationDrawer
-								drawer) {
-							drawer.setLibrary(key);
-							// Let go of with the library, when the move
-							// was asked for again and refused.
-							if (!notMoved.isEmpty()) {
-								drawer.setNotMoved(notMoved);
-							}
+						drawer.setLibrary(key);
+						// Let go of with the library, when the move
+						// was asked for again and refused.
+						if (!notMoved.isEmpty()) {
+							drawer.setNotMoved(notMoved);
 						}
 						looks.setLibrary(key);
 						files.setLibrary(key);
@@ -272,10 +256,7 @@ public class MainActivity extends AppCompatActivity {
 					public void onNotMoved(
 							@NonNull List<LibraryMove.Failed> failed) {
 						notMoved = failed;
-						if (shaderListManager instanceof NavigationDrawer
-								drawer) {
-							drawer.setNotMoved(failed);
-						}
+						drawer.setNotMoved(failed);
 					}
 				});
 		libraryStart.start(dataSource, show);
@@ -301,10 +282,7 @@ public class MainActivity extends AppCompatActivity {
 					moving = true;
 					movingTold = true;
 					showOpen();
-					if (shaderListManager instanceof NavigationDrawer
-							drawer) {
-						drawer.closeLibrary();
-					}
+					drawer.closeLibrary();
 					libraryStart.redo(dataSource);
 				})
 				.setNegativeButton(android.R.string.cancel, null)
@@ -347,7 +325,7 @@ public class MainActivity extends AppCompatActivity {
 	@Override
 	protected void onPause() {
 		if (ShaderEditorApp.preferences.autoSave()) {
-			open.save(false);
+			screen.open().save(false);
 		}
 		ShaderEditorApp.preferences.setPendingCrashShaderId(0);
 		screen.onPause();
@@ -392,8 +370,8 @@ public class MainActivity extends AppCompatActivity {
 				? state.getCharSequence(TOOLBAR_TITLE)
 				: uiManager.getToolbarTitle();
 		super.onPostCreate(state);
-		uiManager.setToolbarTitle(title, open.getSubtitle(),
-				open.isModified());
+		uiManager.setToolbarTitle(title, screen.open().getSubtitle(),
+				screen.open().isModified());
 		screen.onPostCreate();
 		if (uiManager.drawerToggle != null) {
 			uiManager.drawerToggle.syncState();
@@ -546,17 +524,14 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onMoved(@NonNull String key) {
-				if (shaderListManager instanceof NavigationDrawer drawer) {
-					drawer.reread(key);
-				}
+				drawer.reread(key);
 			}
 
 			@Override
 			public void onChanged() {
 				showOpenTitle();
 				ProjectFile file = files.file();
-				if (file != null && file == open &&
-						shaderListManager instanceof NavigationDrawer drawer) {
+				if (file != null && file == open) {
 					OpenProject project = file.getProject();
 					List<ProjectPath> used = new ArrayList<>();
 					for (OpenProject.Used use : project.used()) {
@@ -610,9 +585,7 @@ public class MainActivity extends AppCompatActivity {
 						}
 					}
 				}
-				if (libraryAdd != null) {
-					libraryAdd.saveCopy(project, paths.get(0), paths);
-				}
+				libraryAdd.saveCopy(project, paths.get(0), paths);
 			}
 
 			// Long enough to be read after the drawer closed, and to be
@@ -642,9 +615,7 @@ public class MainActivity extends AppCompatActivity {
 			public void onFramesPerSecond(int fps) {
 				if (fps > 0) {
 					ShaderEditorApp.preferences.setPendingCrashShaderId(0);
-					if (guard != null) {
-						guard.ran();
-					}
+					screen.onFrame();
 					uiManager.setFrameRate(fps + " fps");
 				}
 			}
@@ -657,12 +628,7 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
 				runOnUiThread(() -> {
-					if (open instanceof ProjectFile file) {
-						files.onDiagnostics(infoLog);
-						editorFragment.setErrors(infoLog, file.getPath());
-					} else {
-						editorFragment.setErrors(infoLog);
-					}
+					screen.showErrors(infoLog);
 					showErrors.setVisibility(infoLog.isEmpty()
 							? View.GONE
 							: View.VISIBLE);
@@ -693,14 +659,7 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onQualityChanged(float quality) {
-				open.setQuality(quality);
-				if (open instanceof ProjectFile file) {
-					chosenFor = Arrays.asList(files.key(),
-							file.getProject().running());
-					chosenQuality = quality;
-					looks.keepQuality(files.key(),
-							file.getProject().running(), quality);
-				}
+				screen.onQualityChanged(quality);
 			}
 
 			private void showError(String error) {
@@ -759,13 +718,13 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public boolean canUndo() {
-				return open.hasText() && editorFragment != null &&
+				return screen.open().hasText() && editorFragment != null &&
 						editorFragment.canUndo();
 			}
 
 			@Override
 			public boolean canRedo() {
-				return open.hasText() && editorFragment != null &&
+				return screen.open().hasText() && editorFragment != null &&
 						editorFragment.canRedo();
 			}
 		};
@@ -777,78 +736,48 @@ public class MainActivity extends AppCompatActivity {
 		return new MainMenuManager.ShaderActions() {
 			@Override
 			public void onAddShader() {
-				if (shaderListManager instanceof NavigationDrawer drawer) {
-					// A shader is a file: of the library, or beside the
-					// file of another folder that is open.
-					if (files.file() == open) {
-						drawer.showNew(files.key(), files.file().getPath());
-					} else {
-						drawer.showNewShader();
-					}
-					return;
-				}
-				long defaultId = ShaderEditorApp.preferences.getDefaultNewShader();
-				if (defaultId > 0 &&
-						dataSource.shader.getShader(defaultId) != null) {
-					shaderManager.selectCopy(defaultId);
-				} else {
-					shaderManager.createShaderFromResource(null,
-							R.raw.new_shader, R.drawable.thumbnail_new_shader,
-							1f);
-				}
+				screen.newShader();
 			}
 
 			@Override
 			public void onSaveShader() {
-				open.save(true);
+				screen.open().save(true);
 			}
 
 			@Override
 			public void onDuplicateShader() {
-				// A shader that was not moved is copied into the library.
-				if (libraryAdd != null && open == shaderManager &&
-						open.can(OpenItem.Action.SAVE_COPY)) {
-					libraryAdd.add(shaderManager.getTitle(),
-							editorFragment.getText(),
-							shaderManager.getQuality(), null);
-					return;
-				}
-				open.saveCopy();
+				screen.saveCopy();
 			}
 
 			@Override
 			public void onDeleteShader() {
-				if (!open.can(OpenItem.Action.DELETE)) {
+				if (!screen.open().can(OpenItem.Action.DELETE)) {
 					return;
 				}
 				new MaterialAlertDialogBuilder(MainActivity.this)
 						.setTitle(getString(R.string.delete_shader_title,
-								open.getTitle()))
+								screen.open().getTitle()))
 						.setPositiveButton(R.string.delete_shader,
-								(dialog, which) -> {
-									long id = open == shaderManager
-											? shaderManager.getSelectedShaderId()
-											: 0;
-									open.delete();
-									forgetNotMoved(id);
-								})
+								(dialog, which) -> screen.delete())
 						.setNegativeButton(android.R.string.cancel, null)
 						.show();
 			}
 
 			@Override
 			public void onShareShader() {
-				open.share();
+				screen.open().share();
 			}
 
 			@Override
 			public void onUpdateWallpaper() {
-				updateWallpaper();
+				if (screen.open().can(OpenItem.Action.WALLPAPER)) {
+					screen.updateWallpaper();
+				}
 			}
 
 			@Override
 			public void onRunThisFile() {
-				open.runThisFile();
+				screen.open().runThisFile();
 			}
 
 			@Override
@@ -859,20 +788,17 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public boolean isWallpaper() {
-				return open instanceof ProjectFile file
-						? looks.isWallpaper(files.key(),
-								file.getProject().running())
-						: open.isWallpaper();
+				return screen.isWallpaper();
 			}
 
 			@Override
 			public boolean offers(@NonNull OpenItem.Action action) {
-				return open.offers(action);
+				return screen.open().offers(action);
 			}
 
 			@Override
 			public boolean hasText() {
-				return open.hasText();
+				return screen.open().hasText();
 			}
 		};
 	}
@@ -883,19 +809,12 @@ public class MainActivity extends AppCompatActivity {
 		return new MainMenuManager.NavigationActions() {
 			@Override
 			public void onAddUniform() {
-				if (open.hasText()) {
-					navigationManager.goToAddUniform(
-							shaderManager.addUniformLauncher);
-				}
+				screen.addUniform();
 			}
 
 			@Override
 			public void onLoadSample() {
-				if (shaderListManager instanceof NavigationDrawer drawer) {
-					drawer.showExamples();
-					return;
-				}
-				navigationManager.goToLoadSample(shaderManager.loadSampleLauncher);
+				screen.showExamples();
 			}
 
 			@Override
@@ -910,9 +829,7 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onMoveLibraryAgain() {
-				if (libraryStart != null) {
-					moveLibraryAgain();
-				}
+				screen.moveLibraryAgain();
 			}
 		};
 	}
@@ -933,10 +850,9 @@ public class MainActivity extends AppCompatActivity {
 				open.isModified());
 	}
 
-	private void updateWallpaper() {
-		if (!open.can(OpenItem.Action.WALLPAPER)) {
-			return;
-		}
+	// Set what is open as the wallpaper: a file of a folder, or a
+	// shader that was not moved while a file may be the wallpaper.
+	private void updateFileWallpaper() {
 		if (open instanceof ProjectFile file) {
 			// What the editor shows, as one build.
 			looks.setWallpaper(files.key(), file.getProject(),
@@ -951,21 +867,16 @@ public class MainActivity extends AppCompatActivity {
 					});
 			return;
 		}
-		if (looks != null) {
-			// A shader that was not moved; a file may be the wallpaper.
-			OpenItem item = open;
-			looks.setDatabaseWallpaper(item::setAsWallpaper, problem -> {
-				if (problem != null) {
-					Message.show(this, getString(
-							R.string.cannot_install_wallpaper, problem));
-				} else {
-					showWallpaper();
-				}
-			});
-			return;
-		}
-		open.setAsWallpaper();
-		showWallpaper();
+		// A shader that was not moved; a file may be the wallpaper.
+		OpenItem item = open;
+		looks.setDatabaseWallpaper(item::setAsWallpaper, problem -> {
+			if (problem != null) {
+				Message.show(this, getString(
+						R.string.cannot_install_wallpaper, problem));
+			} else {
+				showWallpaper();
+			}
+		});
 	}
 
 	// What is open decides what stands where the code is: the editor,
@@ -1032,8 +943,7 @@ public class MainActivity extends AppCompatActivity {
 
 	// A shader that was not moved and is deleted is not listed anymore.
 	private void forgetNotMoved(long id) {
-		if (id <= 0 || !(shaderListManager instanceof NavigationDrawer
-				drawer)) {
+		if (id <= 0) {
 			return;
 		}
 		List<LibraryMove.Failed> left = new ArrayList<>();
@@ -1072,14 +982,8 @@ public class MainActivity extends AppCompatActivity {
 		Message.show(this, messageId);
 	}
 
-	private void runShader() {
-		if (open instanceof ProjectFile) {
-			runFile();
-			return;
-		} else if (!open.hasText()) {
-			sayNothingIsOpen();
-			return;
-		}
+	// Run the text of a shader of the database.
+	private void runText() {
 		String src = editorFragment.getText();
 		clearErrors();
 		if (ShaderEditorApp.preferences.doesSaveOnRun()) {
@@ -1265,6 +1169,93 @@ public class MainActivity extends AppCompatActivity {
 			shaderManager.handleSendText(intent);
 		}
 
+		@NonNull
+		@Override
+		public OpenItem open() {
+			return open;
+		}
+
+		@Override
+		public void newShader() {
+			long defaultId = ShaderEditorApp.preferences.getDefaultNewShader();
+			if (defaultId > 0 &&
+					dataSource.shader.getShader(defaultId) != null) {
+				shaderManager.selectCopy(defaultId);
+			} else {
+				shaderManager.createShaderFromResource(null,
+						R.raw.new_shader, R.drawable.thumbnail_new_shader,
+						1f);
+			}
+		}
+
+		@Override
+		public void saveCopy() {
+			open.saveCopy();
+		}
+
+		@Override
+		public void delete() {
+			open.delete();
+		}
+
+		@Override
+		public void updateWallpaper() {
+			open.setAsWallpaper();
+			showWallpaper();
+		}
+
+		@Override
+		public boolean isWallpaper() {
+			return open.isWallpaper();
+		}
+
+		@Override
+		public void showExamples() {
+			navigationManager.goToLoadSample(shaderManager.loadSampleLauncher);
+		}
+
+		@Override
+		public void moveLibraryAgain() {
+		}
+
+		@Override
+		public void run() {
+			runText();
+		}
+
+		@Override
+		public void toggleCode() {
+			uiManager.toggleCodeVisibility();
+		}
+
+		@Override
+		public void addUniform() {
+			navigationManager.goToAddUniform(
+					shaderManager.addUniformLauncher);
+		}
+
+		@Override
+		public void onEditPaused(@NonNull String text) {
+			if (ShaderEditorApp.preferences.doesRunOnChange()) {
+				editorFragment.runningEdit();
+				shaderViewManager.setShader(text, open.getQuality());
+			}
+		}
+
+		@Override
+		public void onQualityChanged(float quality) {
+			open.setQuality(quality);
+		}
+
+		@Override
+		public void onFrame() {
+		}
+
+		@Override
+		public void showErrors(@NonNull List<ProjectDiagnostic> infoLog) {
+			editorFragment.setErrors(infoLog);
+		}
+
 		private void showTitle() {
 			uiManager.setToolbarTitle(open.getTitle(), open.getSubtitle(),
 					open.isModified());
@@ -1375,7 +1366,8 @@ public class MainActivity extends AppCompatActivity {
 				}
 			});
 		
-			shaderListManager = createDrawer();
+			drawer = createDrawer();
+			shaderListManager = drawer;
 			shaderManager = new ShaderManager(activity,
 					editorFragment,
 					shaderViewManager,
@@ -1518,6 +1510,137 @@ public class MainActivity extends AppCompatActivity {
 		@Override
 		public void onNewIntent(@Nullable Intent intent) {
 			addShared(intent);
+		}
+
+		@NonNull
+		@Override
+		public OpenItem open() {
+			return open;
+		}
+
+		@Override
+		public void newShader() {
+			// A shader is a file: of the library, or beside the
+			// file of another folder that is open.
+			if (files.file() == open) {
+				drawer.showNew(files.key(), files.file().getPath());
+			} else {
+				drawer.showNewShader();
+			}
+		}
+
+		@Override
+		public void saveCopy() {
+			// A shader that was not moved is copied into the library.
+			if (open == shaderManager &&
+					open.can(OpenItem.Action.SAVE_COPY)) {
+				libraryAdd.add(shaderManager.getTitle(),
+						editorFragment.getText(),
+						shaderManager.getQuality(), null);
+				return;
+			}
+			open.saveCopy();
+		}
+
+		@Override
+		public void delete() {
+			long id = open == shaderManager
+					? shaderManager.getSelectedShaderId()
+					: 0;
+			open.delete();
+			forgetNotMoved(id);
+		}
+
+		@Override
+		public void updateWallpaper() {
+			updateFileWallpaper();
+		}
+
+		@Override
+		public boolean isWallpaper() {
+			return open instanceof ProjectFile file
+					? looks.isWallpaper(files.key(),
+							file.getProject().running())
+					: open.isWallpaper();
+		}
+
+		@Override
+		public void showExamples() {
+			drawer.showExamples();
+		}
+
+		@Override
+		public void moveLibraryAgain() {
+			activity.moveLibraryAgain();
+		}
+
+		@Override
+		public void run() {
+			if (open instanceof ProjectFile) {
+				runFile();
+			} else if (!open.hasText()) {
+				sayNothingIsOpen();
+			} else {
+				runText();
+			}
+		}
+
+		@Override
+		public void toggleCode() {
+			// Without a file there is no code to show.
+			if (open.hasText()) {
+				uiManager.toggleCodeVisibility();
+			} else {
+				sayNothingIsOpen();
+			}
+		}
+
+		@Override
+		public void addUniform() {
+			if (open.hasText()) {
+				navigationManager.goToAddUniform(
+						shaderManager.addUniformLauncher);
+			}
+		}
+
+		@Override
+		public void onEditPaused(@NonNull String text) {
+			if (ShaderEditorApp.preferences.doesRunOnChange() &&
+					open instanceof ProjectFile) {
+				editorFragment.runningEdit();
+				files.run();
+			} else if (ShaderEditorApp.preferences.doesRunOnChange() &&
+					!holdsUnshownFile && open.hasText()) {
+				editorFragment.runningEdit();
+				shaderViewManager.setShader(text, open.getQuality());
+			}
+		}
+
+		@Override
+		public void onQualityChanged(float quality) {
+			open.setQuality(quality);
+			if (open instanceof ProjectFile file) {
+				chosenFor = Arrays.asList(files.key(),
+						file.getProject().running());
+				chosenQuality = quality;
+				looks.keepQuality(files.key(),
+						file.getProject().running(), quality);
+			}
+		}
+
+		@Override
+		public void onFrame() {
+			guard.ran();
+		}
+
+		@Override
+		public void showErrors(@NonNull List<ProjectDiagnostic> infoLog) {
+			if (open instanceof ProjectFile file) {
+				files.onDiagnostics(infoLog);
+				editorFragment.setErrors(infoLog, file.getPath());
+			} else {
+				editorFragment.setErrors(infoLog);
+			}
 		}
 	}
 }

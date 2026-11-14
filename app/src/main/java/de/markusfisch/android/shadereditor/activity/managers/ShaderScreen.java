@@ -6,6 +6,10 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.List;
+
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+
 /**
  * One of the two worlds the main screen can be in: the shaders are
  * rows of the database, as in release builds, or files of the library
@@ -48,4 +52,56 @@ public interface ShaderScreen {
 
 	/** Another app shared or opened text while the screen is there. */
 	void onNewIntent(@Nullable Intent intent);
+
+	/**
+	 * Return what is open: what the toolbar shows and what Save, Share
+	 * and the other entries of the menu act on.
+	 */
+	@NonNull
+	OpenItem open();
+
+	/** The user asks for a new shader. */
+	void newShader();
+
+	/** The user asks for a copy of what is open. */
+	void saveCopy();
+
+	/** Delete what is open; the user said yes. */
+	void delete();
+
+	/** Set what is open as the wallpaper; it can be one. */
+	void updateWallpaper();
+
+	/** Return whether what is open is the wallpaper. */
+	boolean isWallpaper();
+
+	/** Show the examples. */
+	void showExamples();
+
+	/**
+	 * Move the shaders of the database into files once more. Only
+	 * offered where the shaders are files.
+	 */
+	void moveLibraryAgain();
+
+	/** The user asks to run what is open. */
+	void run();
+
+	/** The user asks to show or hide the code. */
+	void toggleCode();
+
+	/** The user asks to add a uniform to the text. */
+	void addUniform();
+
+	/** The user stopped typing; text is what the editor holds. */
+	void onEditPaused(@NonNull String text);
+
+	/** The user chose quality. */
+	void onQualityChanged(float quality);
+
+	/** A frame was drawn. May come on another thread. */
+	void onFrame();
+
+	/** Mark in the editor what the run reported. */
+	void showErrors(@NonNull List<ProjectDiagnostic> infoLog);
 }
