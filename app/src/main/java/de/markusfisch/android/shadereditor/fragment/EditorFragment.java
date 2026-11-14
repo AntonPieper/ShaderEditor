@@ -78,6 +78,7 @@ public class EditorFragment extends Fragment {
 		});
 		setShowLineNumbers(ShaderEditorApp.preferences.showLineNumbers());
 		undoRedo = new UndoRedo(shaderEditor, ShaderEditorApp.editHistory);
+		shaderEditor.setUndoRedo(undoRedo);
 		editorDraft = new EditorDraft(requireContext().getNoBackupFilesDir());
 		if (state != null) {
 			restoreText(state);
