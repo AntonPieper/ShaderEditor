@@ -626,6 +626,8 @@ The main screen is in one of two worlds: the shaders are rows of the database, a
 
 The two worlds stand behind one interface, `ShaderScreen`. The activity tells the screen what happens to it: it is started (with what was kept of the screen before, and with text another app shared), its state is kept and taken back, it starts, stops, resumes and pauses, it is destroyed, it gets a new intent. Each world answers in its own way; where one has nothing to do, it does nothing.
 
+Where the shaders are rows of the database the screen is `DatabaseScreen`. It owns the `ShaderManager` that loads, saves and inserts rows, the list of rows in the drawer, and the start that shows the shader open last; one shader is open at all times. From the activity it asks only what no world owns (`ShaderScreen.Host`): to run the editor's text, and to pick the live wallpaper.
+
 The activity also hands the screen what the user asks for, without looking at what is open: a new shader, a copy, Delete (after the question), Set as wallpaper, the examples, Run, the code button, Add uniform, a quality, and what the editor and the engine report (typing paused, a frame drawn, what a run reported). What needs no world, the activity does on what the screen says is open (`open()`): Save, Share, Run this file, the unsaved mark, and which entries the menu offers.
 
 ## Decisions of 2026-11-12
