@@ -472,8 +472,10 @@ public final class OpenProject {
 	 * in memory already. size is its size as the listing told it, or
 	 * {@link ProjectFiles#UNKNOWN}. done gets null once
 	 * {@link #document} has it, or why it cannot be edited. The
-	 * document stays at least until done returns: {@link #show} it
-	 * there, or it may leave memory again for the budget.
+	 * document stays at least until done, and that of everyone else
+	 * who asked for the file meanwhile, returned, whatever they call:
+	 * {@link #show} it there, or it may leave memory again for the
+	 * budget.
 	 */
 	public void load(ProjectPath path, long size, Callback<String> done) {
 		FileRecord present = loaded(path);
@@ -1201,10 +1203,19 @@ public final class OpenProject {
 			List<Callback<String>> joined = opening.remove(path);
 			end(record, request);
 			changed();
+			// The document stays until everyone who asked for it was
+			// told, whatever they do meanwhile.
+			FileRecord told = loaded(path);
+			if (told != null) {
+				++told.awaited;
+			}
 			if (joined != null) {
 				for (Callback<String> done : joined) {
 					done.done(problem);
 				}
+			}
+			if (told != null) {
+				--told.awaited;
 			}
 			// Only now: a callback may have shown the document.
 			trim();
@@ -1215,12 +1226,7 @@ public final class OpenProject {
 	// whether it took it.
 	private boolean take(FileRecord record, FileRecord.Request request,
 			FileTexts.Opened opened) {
-		Document document = new Document(opened.text(), opened.bytes());
-		if (opened.history() != null) {
-			document.restore(opened.history());
-		}
-		// Only where the text came from tells whether it is saved.
-		document.markSaved(opened.unsaved() ? -1 : document.state());
+		Document document = opened.document();
 		if (records.get(record.path) != record ||
 				!record.adoptOpened(request, document, opened.revision(),
 						opened.journal())) {
