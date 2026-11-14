@@ -30,12 +30,16 @@ import de.markusfisch.android.shadereditor.navigation.Naming;
 public final class NewSheet {
 	public enum Kind {
 		SHADER,
-		EMPTY
+		EMPTY,
+		FOLDER
 	}
 
 	public interface Listener {
 		/** Create kind as name; the sheet stays until dismissed. */
 		void onCreate(@NonNull Kind kind, @NonNull String name);
+
+		/** Choose another folder to create in. */
+		void onChangeLocation();
 
 		void onDismissed();
 	}
@@ -71,7 +75,11 @@ public final class NewSheet {
 		nameView = view.findViewById(R.id.new_name);
 		location = view.findViewById(R.id.new_location);
 		create = view.findViewById(R.id.new_create);
-		kinds.check(kind == Kind.EMPTY ? R.id.new_empty : R.id.new_shader);
+		kinds.check(switch (kind) {
+			case SHADER -> R.id.new_shader;
+			case EMPTY -> R.id.new_empty;
+			case FOLDER -> R.id.new_folder;
+		});
 		kinds.addOnButtonCheckedListener((group, id, checked) -> {
 			if (checked) {
 				suggest();
@@ -105,6 +113,8 @@ public final class NewSheet {
 		});
 		create.setOnClickListener(v -> listener.onCreate(kind(),
 				nameView.getText().toString().trim()));
+		view.findViewById(R.id.new_change).setOnClickListener(v ->
+				listener.onChangeLocation());
 		dialog = new BottomSheetDialog(context);
 		view.findViewById(R.id.new_cancel).setOnClickListener(v ->
 				dialog.dismiss());
@@ -176,9 +186,10 @@ public final class NewSheet {
 		if (!inFolder) {
 			return Kind.SHADER;
 		}
-		return kinds.getCheckedButtonId() == R.id.new_empty
-				? Kind.EMPTY
-				: Kind.SHADER;
+		int id = kinds.getCheckedButtonId();
+		return id == R.id.new_folder
+				? Kind.FOLDER
+				: id == R.id.new_empty ? Kind.EMPTY : Kind.SHADER;
 	}
 
 	// An unused name, with the part before the extension selected.
@@ -187,7 +198,8 @@ public final class NewSheet {
 			check();
 			return;
 		}
-		fill(naming.unused(untitled, ".glsl"));
+		String extension = kind() == Kind.FOLDER ? "" : ".glsl";
+		fill(naming.unused(untitled, extension));
 	}
 
 	private void fill(@NonNull String name) {

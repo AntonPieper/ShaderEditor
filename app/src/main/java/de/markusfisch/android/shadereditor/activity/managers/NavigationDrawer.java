@@ -71,6 +71,7 @@ import de.markusfisch.android.shadereditor.navigation.Order;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
+import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
@@ -128,6 +129,7 @@ public class NavigationDrawer implements ShaderList {
 	private final ProjectHolds holds;
 	private final ActivityResultLauncher<Intent> pickFolder;
 	private final ActivityResultLauncher<Intent> pickFile;
+	private final ActivityResultLauncher<Intent> pickLocation;
 	private final NewFile newFile;
 	private final Map<Level, Source> sources = new HashMap<>();
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -175,11 +177,26 @@ public class NavigationDrawer implements ShaderList {
 		pickFile = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(),
 				result -> onPicked(result, false));
+		pickLocation = activity.registerForActivityResult(
+				new ActivityResultContracts.StartActivityForResult(),
+				this::onLocationPicked);
 		newFile = new NewFile(activity, holds, listings, handler,
-				(key, path) -> {
-					reread(key, path);
-					if (host.onOpenFile(key, path, false)) {
-						close();
+				new NewFile.Created() {
+					@Override
+					public void onFile(@NonNull String key,
+							@NonNull ProjectPath path) {
+						reread(key, path);
+						if (host.onOpenFile(key, path, false)) {
+							close();
+						}
+					}
+
+					@Override
+					public void onFolder(@NonNull String key,
+							@NonNull ProjectPath path) {
+						reread(key, path);
+						go(Item.Place.file(key, path + "/-").level());
+						drawerLayout.openDrawer(drawer);
 					}
 				});
 
@@ -743,9 +760,50 @@ public class NavigationDrawer implements ShaderList {
 			}
 
 			@Override
+			public void onChangeLocation() {
+				try {
+					pickLocation.launch(new Intent(
+							Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(
+							Intent.FLAG_GRANT_READ_URI_PERMISSION |
+									Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+									Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION));
+				} catch (ActivityNotFoundException e) {
+					Message.show(activity, R.string.nav_cannot_pick);
+				}
+			}
+
+			@Override
 			public void onDismissed() {
 				newFile.dismissed();
 				sheet = null;
+			}
+		});
+	}
+
+	// The sheet creates in the folder chosen from now on.
+	private void onLocationPicked(@NonNull ActivityResult result) {
+		Intent data = result.getData();
+		Uri uri = data != null ? data.getData() : null;
+		if (result.getResultCode() != Activity.RESULT_OK || uri == null ||
+				sheet == null) {
+			return;
+		}
+		projects.openTree(uri, data.getFlags(), opened -> {
+			loadRecent();
+			OpenProject project = opened.project();
+			if (project != null) {
+				holds.hold(project);
+			}
+			if (sheet != null && isActivityAlive() && opened.id() != null) {
+				String name = project != null ? project.name() : null;
+				newFile.show(sheet, opened.id(), null,
+						name != null ? name : "");
+			} else if (sheet != null) {
+				sheet.fail(activity.getString(R.string.nav_cannot_open_folder));
+			}
+			// The sheet holds it now, if it takes it.
+			if (project != null) {
+				holds.release(project);
 			}
 		});
 	}
