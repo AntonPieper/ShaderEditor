@@ -507,8 +507,8 @@ public final class LibraryScreen implements ShaderScreen {
 						if (!notMoved.isEmpty()) {
 							drawer.setNotMoved(notMoved);
 						}
-						looks.setLibrary(key);
-						files.setLibrary(key);
+						looks.onLibrary();
+						files.onLibrary();
 						// A screen made again ran its file before the
 						// library was known: its quality is the library's.
 						if (key.equals(files.key())) {

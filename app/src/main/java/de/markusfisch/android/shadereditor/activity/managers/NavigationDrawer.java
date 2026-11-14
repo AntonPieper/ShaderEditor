@@ -374,7 +374,6 @@ public class NavigationDrawer implements ShaderList {
 	 */
 	public void setLibrary(@NonNull String key) {
 		libraryKey = key;
-		newFile.setLibrary(key);
 		// The screen can show a file by now.
 		newFile.resume();
 		loadRecent();

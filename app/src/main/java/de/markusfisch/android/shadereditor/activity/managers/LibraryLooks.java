@@ -45,8 +45,6 @@ public final class LibraryLooks {
 	private final Consumer<String> told;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final ExecutorService reading = Executors.newSingleThreadExecutor();
-	@Nullable
-	private String library;
 	// The file of the library the wallpaper shows, once read.
 	@Nullable
 	private ProjectPath wallpaper;
@@ -67,9 +65,8 @@ public final class LibraryLooks {
 		this.told = told;
 	}
 
-	/** Takes the session of the library; files of others get none. */
-	public void setLibrary(@NonNull String key) {
-		library = key;
+	/** The library is known: files of other folders get none of this. */
+	public void onLibrary() {
 		findWallpaper();
 	}
 
@@ -224,7 +221,7 @@ public final class LibraryLooks {
 	}
 
 	private boolean inLibrary(@Nullable String key) {
-		return key != null && key.equals(library);
+		return projects.isLibrary(key);
 	}
 
 	private void findWallpaper() {
