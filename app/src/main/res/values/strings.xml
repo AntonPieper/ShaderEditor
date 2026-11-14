@@ -400,6 +400,7 @@
 	<string name="library_not_kept">This could not be kept: %s</string>
 	<string name="library_not_added">The shader could not be made: %s</string>
 	<string name="library_not_opened">The shaders could not be opened: %s</string>
+	<string name="file_not_run_after_crash">Shader Editor closed while %s was starting. It does not run again by itself.</string>
 	<string name="cannot_install_wallpaper">The wallpaper was not set: %s</string>
 	<string name="nothing_runs_here">nothing runs here</string>
 	<string name="library_not_moved_section">Not moved (%d)</string>

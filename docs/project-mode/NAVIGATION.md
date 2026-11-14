@@ -612,6 +612,8 @@ At every start, in this order, without asking anything:
 - Nothing open comes back as nothing open (6.7): no file is opened in its place.
 - A screen whose start had not shown a file yet is treated as a cold start: the move, then the file the library shows. A screen made again while the shaders move shows **Moving shaders into files…** at once, stays without an editor, and still gets the message of what was moved, also when the move ended for the screen that is gone.
 
+**A file the app ended on does not run by itself again.** A start runs the file it shows without being asked, so a shader that ends the app when it starts would end it at every start. The file that runs is therefore noted from the moment it is handed to the engine until its first frame is drawn, or the screen leaves the front. A start that finds the note holds that file: it is shown with its text, nothing runs behind it, and a message that stays says **"Shader Editor closed while %s was starting. It does not run again by itself."** with the action **Run code**. The hold lasts over starts and screens made again, and while other files run, until the user taps **Run code** in the message or the run button of the toolbar; typing does not lift it, where the app runs on every change, and brings the message back. A shader of the database keeps what it had: its text is commented out.
+
 ### 11.5 The toolbar for a library file
 
 As for any file (6.1): the title is the file's name, `Plasma.frag`, with the unsaved dot; the second line is the folder, **Shaders**, and with another file running, **▶ Other.frag · Shaders**. A "not moved" shader keeps today's title, its database title, and its second line says **Not moved**, so it is never taken for a file.

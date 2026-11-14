@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.lifecycle.Lifecycle;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -40,6 +41,7 @@ import de.markusfisch.android.shadereditor.activity.managers.OpenState;
 import de.markusfisch.android.shadereditor.activity.managers.ProjectFile;
 import de.markusfisch.android.shadereditor.activity.managers.ProjectFileManager;
 import de.markusfisch.android.shadereditor.activity.managers.ProjectHolds;
+import de.markusfisch.android.shadereditor.activity.managers.RunGuard;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderList;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderListManager;
 import de.markusfisch.android.shadereditor.activity.managers.ShaderManager;
@@ -111,6 +113,11 @@ public class MainActivity extends AppCompatActivity {
 	// The code was hidden when the screen was made again with nothing
 	// open yet: it is hidden again once a text is shown.
 	private boolean hideCodeOnShow;
+	// Where the shaders are files: keeps a file the app ended on from
+	// running by itself, and the message that says so while it shows.
+	private RunGuard guard;
+	@Nullable
+	private Snackbar heldMessage;
 	// What was open before the screen was made again; null for a new
 	// screen, and where the shaders are rows of the database.
 	@Nullable
@@ -179,6 +186,29 @@ public class MainActivity extends AppCompatActivity {
 			// The quality chosen is told once it changes, also when the
 			// spinner first shows what it holds: what it holds now.
 			shaderViewManager.setQuality(1f);
+			guard = new RunGuard(new RunGuard.Store() {
+				@NonNull
+				@Override
+				public String pending() {
+					return ShaderEditorApp.preferences.getPendingCrashFile();
+				}
+
+				@Override
+				public void setPending(@NonNull String file) {
+					ShaderEditorApp.preferences.setPendingCrashFile(file);
+				}
+
+				@NonNull
+				@Override
+				public String held() {
+					return ShaderEditorApp.preferences.getHeldFile();
+				}
+
+				@Override
+				public void setHeld(@NonNull String file) {
+					ShaderEditorApp.preferences.setHeldFile(file);
+				}
+			});
 			files = new ProjectFileManager(this, editorFragment, holds,
 					createProjectFileListener(),
 					(preparation, nothingRuns, quality) -> {
@@ -193,6 +223,10 @@ public class MainActivity extends AppCompatActivity {
 										if (file != null) {
 											file.setQuality(kept);
 										}
+										if (key != null && running != null &&
+												!mayRun(key, running)) {
+											return;
+										}
 										// The folder and the file that
 										// runs: what another one showed
 										// never stays when this fails.
@@ -204,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
 						} else {
 							// No build reports, so only the manifest
 							// can be wrong.
+							forgetHeldMessage();
 							shaderViewManager.showNothing();
 							shaderViewListener.onInfoLog(nothingRuns);
 						}
@@ -240,6 +275,7 @@ public class MainActivity extends AppCompatActivity {
 				files.leave();
 				open = shaderManager;
 				moving = false;
+				forgetHeldMessage();
 				showOpen();
 			});
 			shaderManager.setOnGoneListener(this::showLibraryFile);
@@ -486,6 +522,9 @@ public class MainActivity extends AppCompatActivity {
 			open.save(false);
 		}
 		ShaderEditorApp.preferences.setPendingCrashShaderId(0);
+		if (guard != null) {
+			guard.ran();
+		}
 		super.onPause();
 		shaderViewManager.onPause();
 	}
@@ -710,6 +749,7 @@ public class MainActivity extends AppCompatActivity {
 				shaderManager.deselect();
 				open = nothing;
 				moving = false;
+				forgetHeldMessage();
 				showOpen();
 			}
 
@@ -811,6 +851,9 @@ public class MainActivity extends AppCompatActivity {
 			public void onFramesPerSecond(int fps) {
 				if (fps > 0) {
 					ShaderEditorApp.preferences.setPendingCrashShaderId(0);
+					if (guard != null) {
+						guard.ran();
+					}
 					uiManager.setFrameRate(fps + " fps");
 				}
 			}
@@ -1259,10 +1302,51 @@ public class MainActivity extends AppCompatActivity {
 			open.save(false);
 		}
 		if (ShaderEditorApp.preferences.doesRunInBackground()) {
-			files.run();
+			runHeld();
 		} else {
 			Message.show(this, R.string.file_runs_behind_code);
 		}
+	}
+
+	// The user asks for it: also a file the app ended on runs.
+	private void runHeld() {
+		guard.release();
+		forgetHeldMessage();
+		files.run();
+	}
+
+	// The message is about the file that runs behind the code shown.
+	private void forgetHeldMessage() {
+		if (heldMessage != null) {
+			heldMessage.dismiss();
+			heldMessage = null;
+		}
+	}
+
+	// Return whether the file that runs may be handed to the engine.
+	// A file the app ended on is not, until the user asks for it: the
+	// message that says so stays, with the way to run it. Any other
+	// is pending from here until its first frame.
+	private boolean mayRun(@NonNull String key, @NonNull ProjectPath running) {
+		if (!guard.holds(key, running.toString())) {
+			forgetHeldMessage();
+			// A screen that is not in front draws no frame.
+			if (getLifecycle().getCurrentState().isAtLeast(
+					Lifecycle.State.RESUMED)) {
+				guard.running(key, running.toString());
+			}
+			return true;
+		}
+		shaderViewManager.showNothing();
+		if (heldMessage == null || !heldMessage.isShownOrQueued()) {
+			heldMessage = Message.make(this, getString(
+							R.string.file_not_run_after_crash,
+							running.toString()),
+					Snackbar.LENGTH_INDEFINITE)
+					.setAction(R.string.run_code, v -> runHeld());
+			heldMessage.show();
+		}
+		return false;
 	}
 
 	// What an earlier run reported is gone, also when this run reports
