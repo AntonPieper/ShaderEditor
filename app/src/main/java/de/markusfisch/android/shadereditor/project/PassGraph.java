@@ -133,6 +133,9 @@ final class PassGraph {
 					? file + " is a picture, not a shader"
 					: file + " is not text";
 		}
+		if (node.problem == null) {
+			node.problem = node.language.refusal(file);
+		}
 		if (node.problem != null) {
 			return node;
 		}

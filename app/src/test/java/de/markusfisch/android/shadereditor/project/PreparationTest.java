@@ -388,6 +388,37 @@ public class PreparationTest {
 	}
 
 	@Test
+	public void aFileNamedAsAnotherLanguageIsNotRunAsGlsl() {
+		String refused = " is named as a shader in another language " +
+				"than GLSL, which ShaderEditor does not run; rename it if " +
+				"it is GLSL";
+		MemoryProjectFiles files = new MemoryProjectFiles()
+				.put("main.wgsl", MAIN + "\n")
+				.put("reads.frag", lines("#pragma se input \"fx/blur.wgsl\"",
+						"uniform sampler2D blur;", MAIN))
+				.put("fx/blur.wgsl", MAIN + "\n")
+				.put("includes.frag", lines("#include \"lib.agsl\"", MAIN))
+				.put("lib.agsl", "float one() { return 1.0; }\n")
+				.put("picture.frag", lines("#pragma se input \"noise.wgsl\"",
+						"uniform sampler2D noise;", MAIN))
+				.put("noise.wgsl", Pictures.png(1));
+
+		assertEquals(List.of("ERROR main.wgsl:0 main.wgsl" + refused),
+				messages(prepare(files, "main.wgsl")));
+		assertEquals(List.of("ERROR reads.frag:1 fx/blur.wgsl" + refused),
+				messages(prepare(files, "reads.frag")));
+		Preparation including = prepare(files, "includes.frag");
+		assertEquals(List.of("ERROR includes.frag:1 lib.agsl" + refused),
+				messages(including));
+		// Still what the shader is made of, for sharing.
+		assertEquals(2, including.uses().size());
+		assertEquals("lib.agsl",
+				including.uses().get(1).path().toString());
+		// Kind comes first: a picture is a texture whatever its name.
+		assertNotNull(prepare(files, "picture.frag").plan());
+	}
+
+	@Test
 	public void entryMustBeTextWithAMainWhateverItIsCalled() {
 		MemoryProjectFiles files = new MemoryProjectFiles()
 				.put("shader.frag", Pictures.png(1))

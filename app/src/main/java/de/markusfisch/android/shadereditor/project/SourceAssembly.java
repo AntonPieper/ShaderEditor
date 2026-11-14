@@ -230,8 +230,16 @@ public final class SourceAssembly {
 			}
 			ProjectParseResult<ProjectPath> target = ProjectPath.resolve(
 					file, operand.substring(1, close));
+			String refusal = target.isSuccess()
+					? ShaderLanguage.of(target.value().toString())
+							.refusal(target.value())
+					: null;
 			if (!target.isSuccess()) {
 				error(here, target.diagnostic().message());
+			} else if (refusal != null) {
+				// Read all the same, so that it stays a dependency.
+				load(target.value(), here);
+				error(here, refusal);
 			} else if (stack.contains(target.value())) {
 				StringBuilder chain = new StringBuilder("Include cycle: ");
 				for (ProjectPath path : stack) {

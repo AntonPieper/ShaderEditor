@@ -85,12 +85,15 @@ A pass must have an entry point, which in GLSL is a function `main`: an input th
 
 Options are checked against the kind once it is known: `frame=` on a picture, `mipmap=` on a pass, and a sampler type the source cannot be read as (section 3.1) are errors on the input line.
 
-**Language comes from the name, through one table.** A text file's language is looked up by its name; GLSL is the language of every text file the table does not list. The table has one language today:
+**Language comes from the name, through one table.** A text file's language is looked up by its name; GLSL is the language of every text file the table does not list. The table has one language that runs today:
 
 | The name ends in | Language |
 | --- | --- |
 | `.frag`, `.glsl`, `.fs`, `.fsh` | GLSL |
+| `.wgsl`, `.agsl`, `.sksl`, `.hlsl`, `.slang` | another shading language, which v1 does not run |
 | anything else | GLSL |
+
+The names other shading languages are known by are reserved, so that a file so named never means GLSL. As the running shader, as a pass or as an include, such a text file is an error that says so and how to fix it: `fx/blur.wgsl is named as a shader in another language than GLSL, which ShaderEditor does not run; rename it if it is GLSL`. Run this file is not offered on it. It is still text: it can be browsed, edited and shared, and a picture with such a name is a picture, because kind comes first. This is what lets a later version add a row for such a language without a new `projectVersion` (section 1): no project that is valid today changes its meaning.
 
 This table is the only place where the ending of a file name has meaning, and it is consulted only for text. Endings are compared without regard to case; path lookup stays case-sensitive (section 2). The listed endings are also what the app offers itself for when another app opens a file, and what the folder list may use as a hint.
 
