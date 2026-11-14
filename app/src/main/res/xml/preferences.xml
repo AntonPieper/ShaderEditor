@@ -32,6 +32,10 @@
 				android:entryValues="@array/font_values"
 				android:key="font"
 				android:title="@string/font" />
+		<Preference
+			app:iconSpaceReserved="false"
+			android:key="font_licences"
+			android:title="@string/font_licences"/>
 		<androidx.preference.SwitchPreferenceCompat
 			app:iconSpaceReserved="false"
 			android:key="use_ligatures"

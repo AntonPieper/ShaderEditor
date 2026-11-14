@@ -56,6 +56,11 @@ android {
 		}
 	}
 
+	sourceSets {
+		// licenses/fonts/<font>.txt ship as assets/fonts/<font>.txt
+		getByName("main").assets.directories.add("../licenses")
+	}
+
 	buildFeatures {
 		buildConfig = true
 		viewBinding = true

@@ -51,6 +51,7 @@
 	<string name="update_delay">自动运行延迟</string>
 	<string name="text_size">字体大小</string>
 	<string name="font">字体风格</string>
+	<string name="font_licences">字体许可证</string>
 	<string name="use_ligatures">启用连字 (Ligatures)</string>
 	<string name="use_ligatures_summary">将 &lt;= 等字符组合转换为单一符号 ≤</string>
 	<string name="picture_behind_code">Picture behind code</string>

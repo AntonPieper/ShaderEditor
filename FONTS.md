@@ -6,7 +6,8 @@ so asking for bold gives the font's real bold weight.
 
 Every file is the unmodified static TrueType file from the project's
 latest tagged release on GitHub; regular and bold come from the same
-release. Licence texts are in `licenses/fonts/`.
+release. Licence texts are in `licenses/fonts/` and ship in the APK (see
+"Licence files").
 
 | File | Source | Release tag | Licence | SHA-256 |
 | --- | --- | --- | --- | --- |
@@ -37,6 +38,10 @@ have none.
 | `licenses/fonts/roboto_mono.txt` | `OFL.txt` at googlefonts/RobotoMono `v3.001` |
 | `licenses/fonts/source_code_pro.txt` | `LICENSE.md` at adobe-fonts/source-code-pro `2.042R-u/1.062R-i/1.026R-vf` |
 
-The OFL lets the licence travel in the font's own metadata; every file
-carries it in `name` IDs 13 and 14. "Plex" and "Source" are Reserved Font
-Names: a modified copy of those fonts must not use them.
+The OFL asks that each copy of a font carries its copyright notice and the
+licence. `licenses/fonts/` is the single source: the build packages that
+folder as `assets/fonts/<font>.txt` in the APK (`sourceSets` in
+`app/build.gradle.kts`), and Settings > Font licences shows each text under
+the font's name. Each file starts with the font's copyright line. "Plex" and
+"Source" are Reserved Font Names: a modified copy of those fonts must not
+use them.

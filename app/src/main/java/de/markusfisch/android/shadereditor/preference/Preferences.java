@@ -26,6 +26,7 @@ public class Preferences {
 	public static final String SENSOR_DELAY = "sensor_delay";
 	public static final String TEXT_SIZE = "text_size";
 	public static final String FONT = "font";
+	public static final String FONT_LICENCES = "font_licences";
 	public static final String USE_LIGATURES = "use_ligatures";
 	public static final String PICTURE_BEHIND_CODE = "picture_behind_code";
 	public static final String USE_DEVICE_COLOURS = "use_device_colours";
