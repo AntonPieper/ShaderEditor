@@ -196,10 +196,15 @@ public class ProjectSessionsTest {
 		assertTrue(drafts.mkdirs());
 		write(new File(drafts, ".journal-123.tmp"), "half");
 		write(new File(drafts, "old.draft"), "a draft of before");
-		write(new File(drafts, "broken.journal"), "no header");
 
 		assertFalse(sessions.recent(id).unsaved());
 		assertFalse(sessions.recent().get(0).unsaved());
+
+		// A journal is written whole or not at all: one without a
+		// header is unsaved text that was damaged, not a leftover.
+		write(new File(drafts, "broken.journal"), "no header");
+		assertTrue(sessions.recent(id).unsaved());
+		assertTrue(sessions.unsaved(id).isEmpty());
 	}
 
 	@Test

@@ -43,7 +43,7 @@ public final class ProjectSessions {
 	 * A session listed among the recent projects: its id, locator, the
 	 * name and place of its files to show, when it was last opened, in
 	 * milliseconds since the epoch, and whether its journal holds the
-	 * unsaved text of a file under a valid header.
+	 * unsaved text of a file, also one that cannot be read.
 	 */
 	public record Recent(String id, Locator locator, String name,
 			String location, long opened, boolean unsaved) {
@@ -223,9 +223,10 @@ public final class ProjectSessions {
 			if (recent.readInt() != MAGIC) {
 				return null;
 			}
+			Journal.Scan journals = new Journal(file(id, DRAFTS)).scan();
 			Recent session = new Recent(id, locator, recent.readUTF(),
 					recent.readUTF(), recent.readLong(),
-					!unsaved(id).isEmpty());
+					!journals.headers().isEmpty() || journals.damaged() > 0);
 			return recent.read() < 0 ? session : null;
 		} catch (IOException e) {
 			return null;

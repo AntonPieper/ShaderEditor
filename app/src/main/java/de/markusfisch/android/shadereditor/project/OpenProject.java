@@ -102,8 +102,8 @@ public final class OpenProject {
 	}
 
 	/**
-	 * What saving a file did: {@link Saved}, {@link Conflict} or
-	 * {@link Failed}.
+	 * What saving a file did: {@link Saved}, {@link Conflict},
+	 * {@link Failed} or {@link Unreadable}.
 	 */
 	public interface Outcome {
 	}
@@ -124,6 +124,13 @@ public final class OpenProject {
 
 	/** The file was not written; the text stays unsaved for a retry. */
 	public record Failed(String reason) implements Outcome {
+	}
+
+	/**
+	 * The unsaved text of the file cannot be read, for reason. Nothing
+	 * was written, and the journal stays until {@link #dismiss}.
+	 */
+	public record Unreadable(String reason) implements Outcome {
 	}
 
 	/** Runs a task on the main thread after a delay in milliseconds. */
@@ -168,7 +175,8 @@ public final class OpenProject {
 			List<ProjectDiagnostic> diagnostics, String unprotected,
 			String unkept,
 			Map<ProjectPath, FileTexts.Found> found,
-			Map<ProjectPath, Runs> runs, Map<ProjectPath, String> unreadable) {
+			Map<ProjectPath, Runs> runs, Map<ProjectPath, String> unreadable,
+			int damaged) {
 	}
 
 	// The files opened, being opened or worked on in storage.
@@ -214,6 +222,8 @@ public final class OpenProject {
 	private Runnable listener;
 	private boolean pending;
 	private boolean closed;
+	// How many journals have a header that cannot be read.
+	private int damaged;
 	// Counts the changes of text and of what runs, and the choices of
 	// what runs alone; a result asked for before is stale.
 	private int generation;
@@ -308,7 +318,9 @@ public final class OpenProject {
 				later, lone, storage, budget);
 		journal.removeLeftovers();
 		project.histories.trim();
-		for (Journal.Header header : journal.headers().values()) {
+		Journal.Scan journals = journal.scan();
+		project.damaged = journals.damaged();
+		for (Journal.Header header : journals.headers().values()) {
 			FileTexts.Checked checked = project.texts.check(header.path(),
 					header.base(), null, true);
 			if (checked.equal()) {
@@ -642,7 +654,10 @@ public final class OpenProject {
 		};
 		for (FileRecord record : new ArrayList<>(records.values())) {
 			ProjectPath path = record.path;
-			if (!record.edited() && !(explicit &&
+			if (!record.edited() && record.unreadable != null) {
+				outcomes.put(path, new Unreadable(record.unreadable));
+				continue;
+			} else if (!record.edited() && !(explicit &&
 					record.document() != null &&
 					record.found == FileTexts.Found.MISSING)) {
 				continue;
@@ -812,6 +827,20 @@ public final class OpenProject {
 			}
 			changed();
 		});
+		texts.damaged(count -> {
+			damaged = count;
+			changed();
+		});
+	}
+
+	/**
+	 * Return how many journals of the session have a header that cannot
+	 * be read, so their unsaved text is lost and the file it was of is
+	 * not known: each stays until its file is opened, which then tells
+	 * {@link #unreadable}, and dismissed.
+	 */
+	public int damagedJournals() {
+		return damaged;
 	}
 
 	/**
@@ -1085,17 +1114,23 @@ public final class OpenProject {
 	private void open(FileRecord record, long size) {
 		FileRecord.Request request = record.start(FileRecord.Kind.OPEN);
 		ProjectPath path = record.path;
-		texts.open(path, size, record.journaled, opened -> {
+		texts.open(path, size, opened -> {
 			String problem = null;
+			boolean taken = false;
 			if (opened instanceof FileTexts.Unopened unopened) {
 				problem = unopened.reason();
-			} else if (take(record, request, (FileTexts.Opened) opened) &&
-					((FileTexts.Opened) opened).journal() < 0) {
-				// The journal is gone, or cannot be read and is left as
-				// it is until it is dismissed or the next snapshot
-				// replaces it.
+			} else {
+				taken = take(record, request, (FileTexts.Opened) opened) &&
+						((FileTexts.Opened) opened).journal() < 0;
+			}
+			// The journal is gone, or cannot be read and is left as it
+			// is until it is dismissed or the next snapshot replaces
+			// it; that is told also when the stored file cannot be
+			// opened in its place.
+			if (records.get(path) == record && (taken ||
+					opened.unreadable() != null)) {
 				record.journaled = false;
-				record.unreadable = ((FileTexts.Opened) opened).unreadable();
+				record.unreadable = opened.unreadable();
 			}
 			List<Callback<String>> joined = opening.remove(path);
 			end(record, request);
@@ -1166,6 +1201,9 @@ public final class OpenProject {
 						// Closed since.
 					} else if (save.outcome() instanceof Saved saved) {
 						record.adoptSaved(request, saved.revision());
+					} else if (save.outcome() instanceof Unreadable damage) {
+						record.journaled = false;
+						record.unreadable = damage.reason();
 					} else if (save.found() != null) {
 						record.observe(request, save.found().found(),
 								save.found().revision());
@@ -1399,11 +1437,12 @@ public final class OpenProject {
 	}
 
 	// Return the files not in memory whose unsaved text is in the
-	// journal.
+	// journal, also where it could not be read.
 	private Set<ProjectPath> journaled() {
 		Set<ProjectPath> journaled = new HashSet<>();
 		for (FileRecord record : records.values()) {
-			if (record.document() == null && record.journaled) {
+			if (record.document() == null && (record.journaled ||
+					record.unreadable != null)) {
 				journaled.add(record.path);
 			}
 		}
@@ -1505,7 +1544,8 @@ public final class OpenProject {
 			conflicts.put(path, seen(path));
 		}
 		return new State(unsaved(), conflicts, running, used,
-				diagnostics, unprotected(), unkept, found, runs, unreadable);
+				diagnostics, unprotected(), unkept, found, runs, unreadable,
+				damaged);
 	}
 
 	// Call the listener, unless nothing it hears about changed or a call
@@ -1630,6 +1670,11 @@ public final class OpenProject {
 			Text text = snapshot.get(path);
 			if (text == null && journaled.contains(path)) {
 				Journal.Recovered recovered = journal.read(path);
+				// Not the stored text in its place: that is older than
+				// what the file is marked unsaved for.
+				if (recovered != null && recovered.text() == null) {
+					return new Failed(recovered.problem());
+				}
 				text = recovered != null ? recovered.text() : null;
 			}
 			if (text == null) {
