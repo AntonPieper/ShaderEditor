@@ -577,6 +577,23 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Tell done whether the file at path is a picture, by the signature
+	 * its first bytes start with; its name plays no part. A file with a
+	 * document or unsaved text here is text, whatever storage holds.
+	 */
+	public void picture(ProjectPath path, Callback<Boolean> done) {
+		if (loaded(path) != null || unsaved().contains(path)) {
+			main.execute(() -> done.done(false));
+			return;
+		}
+		worker.execute(() -> {
+			byte[] head = store.head(path, FileKind.HEAD);
+			boolean picture = head != null && FileKind.picture(head) != null;
+			main.execute(() -> done.done(picture));
+		});
+	}
+
+	/**
 	 * Return the document of path, with its text, selection and undo
 	 * history, while it is in memory, else null.
 	 */

@@ -14,7 +14,9 @@ public interface Source {
 
 	/**
 	 * Opens the row's file in the editor and, when asked, runs it.
-	 * Returns whether it did, so that the drawer closes.
+	 * Returns whether it did, so that the drawer closes; a source that
+	 * first reads what the file is returns false and closes the drawer
+	 * itself once it opens it.
 	 */
 	boolean open(Row row, boolean run);
 

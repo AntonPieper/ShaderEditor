@@ -369,6 +369,7 @@
 	<string name="nav_cannot_change_folder">Nothing can be created in this folder</string>
 	<string name="nav_run_this_file">Run this file</string>
 	<string name="nav_new_file_here">New file here</string>
+	<string name="nav_is_picture">%s is a picture</string>
 	<string name="nav_cannot_duplicate">%1$s cannot be duplicated: %2$s</string>
 	<string name="nav_delete_folder">Everything in it is deleted too.</string>
 	<string name="nav_used_by">%s, which runs, uses this file.</string>
