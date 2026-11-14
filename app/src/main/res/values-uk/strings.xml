@@ -357,6 +357,8 @@
 	<string name="nav_stopped">Stopped reading this folder</string>
 	<string name="nav_try_again">Try again</string>
 	<string name="nav_empty_folder">Nothing in this folder</string>
+	<string name="nav_library_empty">No shaders yet. A new shader is saved here, in ShaderEditor / Shaders.</string>
+	<string name="no_file_open">No file open. Create a shader or pick an example.</string>
 	<string name="nav_cannot_read">This folder cannot be read</string>
 	<string name="nav_cannot_be_opened">Cannot be opened</string>
 	<string name="nav_lost_folder">Shader Editor can no longer open this folder</string>

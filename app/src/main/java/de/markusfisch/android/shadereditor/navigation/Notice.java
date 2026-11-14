@@ -17,6 +17,8 @@ public record Notice(Kind kind, String reason) {
 		STOPPED,
 		/** The folder holds nothing to show. */
 		EMPTY,
+		/** The library holds no shader. */
+		NO_SHADERS,
 		/** The folder could not be listed. */
 		FAILED,
 		/** The folder opened before cannot be reached anymore. */
@@ -29,7 +31,9 @@ public record Notice(Kind kind, String reason) {
 		STOP,
 		TRY_AGAIN,
 		CHOOSE_AGAIN,
-		REMOVE
+		REMOVE,
+		NEW_SHADER,
+		EXAMPLES
 	}
 
 	public List<Action> actions() {
@@ -38,6 +42,7 @@ public record Notice(Kind kind, String reason) {
 			case STOPPED, FAILED -> List.of(Action.TRY_AGAIN);
 			case LOST_FOLDER, LOST_FILE ->
 					List.of(Action.CHOOSE_AGAIN, Action.REMOVE);
+			case NO_SHADERS -> List.of(Action.NEW_SHADER, Action.EXAMPLES);
 			default -> List.of();
 		};
 	}

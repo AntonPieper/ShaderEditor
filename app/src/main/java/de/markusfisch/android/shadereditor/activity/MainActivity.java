@@ -53,6 +53,7 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.service.ShaderWallpaperService;
+import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
 import de.markusfisch.android.shadereditor.widget.Message;
 
@@ -203,6 +204,7 @@ public class MainActivity extends AppCompatActivity {
 				files.leave();
 			}
 			open = shaderManager;
+			showNoFile(false);
 		});
 
 		MainMenuManager mainMenuManager = new MainMenuManager(
@@ -213,7 +215,12 @@ public class MainActivity extends AppCompatActivity {
 
 		uiManager.setupToolbar(mainMenuManager::show,
 				v -> this.runShader(),
-				v -> uiManager.toggleCodeVisibility(),
+				v -> {
+					// Without a file there is no code to show.
+					if (!isNoFileShown()) {
+						uiManager.toggleCodeVisibility();
+					}
+				},
 				v -> editorFragment.showErrors());
 
 		// Only load the last shader when no incoming text was opened,
@@ -283,8 +290,7 @@ public class MainActivity extends AppCompatActivity {
 
 					@Override
 					public void onEmpty(@NonNull String key) {
-						uiManager.setToolbarTitle(
-								getString(R.string.nav_shaders), null, false);
+						showNoFile(true);
 					}
 
 					@Override
@@ -571,6 +577,7 @@ public class MainActivity extends AppCompatActivity {
 					shaderManager.deselect();
 				}
 				open = file;
+				showNoFile(false);
 				// The last build's, until the next one reports.
 				editorFragment.setErrors(file.getProject().diagnostics(),
 						file.getPath());
@@ -586,8 +593,10 @@ public class MainActivity extends AppCompatActivity {
 					holdsUnshownFile = false;
 					shaderManager.deselect();
 				}
-				shaderManager.selectShader(
-						ShaderEditorApp.preferences.getLastOpenedShader());
+				// No shader of the database stands in for a file.
+				shaderManager.deselect();
+				open = shaderManager;
+				showNoFile(true);
 			}
 
 			@Override
@@ -905,6 +914,11 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 	private void showOpenTitle() {
+		if (isNoFileShown()) {
+			uiManager.setToolbarTitle(getString(R.string.nav_shaders), null,
+					false);
+			return;
+		}
 		// Where the shaders are files, one of the database was not moved.
 		String subtitle = files != null && open == shaderManager &&
 				shaderManager.getSelectedShaderId() > 0
@@ -947,6 +961,33 @@ public class MainActivity extends AppCompatActivity {
 		}
 		open.setAsWallpaper();
 		showWallpaper();
+	}
+
+	// Where the shaders are files and none is open, a text stands in
+	// place of the editor and nothing runs (NAVIGATION 6.7).
+	private void showNoFile(boolean shown) {
+		View noFile = findViewById(R.id.no_file);
+		View editor = editorFragment.getView();
+		if (noFile == null || (noFile.getVisibility() == View.VISIBLE) ==
+				shown) {
+			return;
+		}
+		noFile.setVisibility(shown ? View.VISIBLE : View.GONE);
+		showOpenTitle();
+		if (editor != null) {
+			if (shown) {
+				SoftKeyboard.hide(this, editor);
+			}
+			editor.setVisibility(shown ? View.GONE : View.VISIBLE);
+		}
+		if (shown) {
+			shaderViewManager.showNothing();
+		}
+	}
+
+	private boolean isNoFileShown() {
+		View noFile = findViewById(R.id.no_file);
+		return noFile != null && noFile.getVisibility() == View.VISIBLE;
 	}
 
 	// Pick the live wallpaper if it is not, else say it is set.
