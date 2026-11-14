@@ -18,7 +18,7 @@ public class ReadingTest {
 		assertEquals("abcd1234", inner.key());
 		assertEquals("lib/noise", inner.path());
 		assertNull(ROOT.path());
-		assertNull(Level.LIBRARY.key());
+		assertNull(Level.EXAMPLES.key());
 		assertEquals(inner, Level.of(inner.name()));
 		assertEquals(Level.EXAMPLES, Level.of(Level.EXAMPLES.name()));
 		assertEquals(Level.FOLDERS, inner.up().up().up());

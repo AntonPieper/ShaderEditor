@@ -57,6 +57,9 @@ public class MainMenuManager {
 		void onShowSettings();
 
 		void onShowFaq();
+
+		/** Move every shader of the database into a new library. */
+		void onMoveLibraryAgain();
 	}
 
 	@NonNull
@@ -109,6 +112,12 @@ public class MainMenuManager {
 		setClickListener(R.id.load_sample, navigationActions::onLoadSample);
 		setClickListener(R.id.settings, navigationActions::onShowSettings);
 		setClickListener(R.id.faq, navigationActions::onShowFaq);
+		setClickListener(R.id.move_library_again,
+				navigationActions::onMoveLibraryAgain);
+		view.findViewById(R.id.move_library_again).setVisibility(
+				activity.getResources().getBoolean(R.bool.project_mode)
+						? View.VISIBLE
+						: View.GONE);
 
 		CompoundButton extraKeysToggle = view.findViewById(
 				R.id.show_extra_keys_box);

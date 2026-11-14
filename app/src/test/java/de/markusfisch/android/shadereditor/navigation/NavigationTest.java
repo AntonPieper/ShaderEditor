@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Set;
 
 public class NavigationTest {
+	// The root of the library, a folder like any other.
+	private static final Level LIBRARY = Level.root("library");
+
 	@Test
 	public void aTapRunsAShaderThatIsNotInUse() {
 		assertEquals(Tap.OPEN_AND_RUN, Tap.of(Row.Kind.SHADER, false));
@@ -64,7 +67,7 @@ public class NavigationTest {
 		List<Item> items = Item.of(listing(
 				new Listing.Section(null, List.of(shader("a", "One", 0))),
 				new Listing.Section("Recent", List.of(shader("b", "Two", 0)))),
-				Level.LIBRARY, null, null, Set.of());
+				LIBRARY, null, null, Set.of());
 		assertEquals(3, items.size());
 		assertNull(items.get(0).heading());
 		assertEquals("Recent", items.get(1).heading());
@@ -73,10 +76,10 @@ public class NavigationTest {
 
 	@Test
 	public void theOpenFileIsSelectedAndTheRunningOneMarked() {
-		Item.Place open = new Item.Place(Level.LIBRARY, "b");
+		Item.Place open = new Item.Place(LIBRARY, "b");
 		List<Item> items = Item.of(listing(new Listing.Section(null, List.of(
 						shader("a", "One", 0), shader("b", "Two", 0)))),
-				Level.LIBRARY, open, open, Set.of());
+				LIBRARY, open, open, Set.of());
 		assertFalse(items.get(0).selected());
 		assertEquals(Tap.OPEN_AND_RUN, items.get(0).tap());
 		assertTrue(items.get(1).selected());
@@ -86,11 +89,11 @@ public class NavigationTest {
 
 	@Test
 	public void aShaderTheRunningOneUsesOnlyOpens() {
-		Item.Place running = new Item.Place(Level.LIBRARY, "main");
-		Item.Place pass = new Item.Place(Level.LIBRARY, "pass");
+		Item.Place running = new Item.Place(LIBRARY, "main");
+		Item.Place pass = new Item.Place(LIBRARY, "pass");
 		List<Item> items = Item.of(listing(new Listing.Section(null, List.of(
 						shader("pass", "Pass", 0), shader("other", "Other", 0)))),
-				Level.LIBRARY, running, running, Set.of(pass));
+				LIBRARY, running, running, Set.of(pass));
 		assertEquals(Tap.OPEN, items.get(0).tap());
 		assertEquals(Set.of(), items.get(0).marks());
 		assertEquals(Tap.OPEN_AND_RUN, items.get(1).tap());
@@ -98,7 +101,7 @@ public class NavigationTest {
 
 	@Test
 	public void theSameKeyInAnotherLevelIsAnotherFile() {
-		Item.Place open = new Item.Place(Level.LIBRARY, "a");
+		Item.Place open = new Item.Place(LIBRARY, "a");
 		List<Item> items = Item.of(listing(new Listing.Section(null,
 						List.of(shader("a", "One", 0)))),
 				Level.EXAMPLES, open, open, Set.of());
@@ -108,7 +111,7 @@ public class NavigationTest {
 
 	@Test
 	public void theFolderHoldingTheOpenFileIsSelected() {
-		Item.Place open = new Item.Place(Level.LIBRARY, "a");
+		Item.Place open = new Item.Place(LIBRARY, "a");
 		List<Item> items = Item.of(listing(new Listing.Section(null,
 						List.of(folder("library", "Shaders")))),
 				Level.FOLDERS, open, open, Set.of());
@@ -118,9 +121,9 @@ public class NavigationTest {
 
 	@Test
 	public void levelsKnowWhatIsAboveThem() {
-		assertTrue(Level.LIBRARY.isBelow(Level.FOLDERS));
-		assertFalse(Level.FOLDERS.isBelow(Level.LIBRARY));
-		assertFalse(Level.EXAMPLES.isBelow(Level.LIBRARY));
+		assertTrue(LIBRARY.isBelow(Level.FOLDERS));
+		assertFalse(Level.FOLDERS.isBelow(LIBRARY));
+		assertFalse(Level.EXAMPLES.isBelow(LIBRARY));
 	}
 
 	private static Listing listing(Listing.Section... sections) {
@@ -137,7 +140,7 @@ public class NavigationTest {
 	private static Row folder(String key, String name) {
 		return new Row(key, Row.Kind.FOLDER,
 				Row.Picture.of(Row.Picture.Icon.LIBRARY), name, null, 0,
-				Level.LIBRARY, EnumSet.noneOf(Row.Mark.class),
+				LIBRARY, EnumSet.noneOf(Row.Mark.class),
 				EnumSet.noneOf(Row.Action.class));
 	}
 
