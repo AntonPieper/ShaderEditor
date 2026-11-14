@@ -13,6 +13,18 @@ public record Item(String heading, Row row, boolean selected,
 		Set<Row.Mark> marks, Tap tap) {
 	/** A file as the drawer finds it: the level listing it and its key. */
 	public record Place(Level level, String key) {
+		/**
+		 * The place of the file at path from the root of the folder
+		 * opened before with key: the level of the folder it is in.
+		 */
+		public static Place file(String key, String path) {
+			Level level = Level.root(key);
+			String[] parts = path.split("/");
+			for (int i = 0; i < parts.length - 1; ++i) {
+				level = level.enter(parts[i]);
+			}
+			return new Place(level, path);
+		}
 	}
 
 	/**

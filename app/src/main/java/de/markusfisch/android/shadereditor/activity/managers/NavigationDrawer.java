@@ -49,8 +49,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -138,7 +140,10 @@ public class NavigationDrawer implements ShaderList {
 	private RecyclerView nextList;
 	private Level level = Level.LIBRARY;
 	private Listing listing;
+	// The file in the editor, the file that runs and the files it uses.
 	private Item.Place open;
+	private Item.Place running;
+	private Set<Item.Place> used = Collections.emptySet();
 	private boolean loaded;
 	// The folder opened before whose levels are shown, or null.
 	private FolderSource folder;
@@ -273,8 +278,35 @@ public class NavigationDrawer implements ShaderList {
 
 	@Override
 	public void setSelectedShaderId(long id) {
-		open = id > 0 ? LibrarySource.place(id) : null;
+		// What runs is what is open while shaders come from the database.
+		open = running = id > 0 ? LibrarySource.place(id) : null;
+		used = Collections.emptySet();
 		if (listing != null) {
+			refresh();
+		}
+	}
+
+	/**
+	 * Marks the file at shown of the folder opened before with key as
+	 * the one in the editor, running as the file that runs, if any, and
+	 * used as the files that runs uses; and the unsaved text there.
+	 */
+	public void setOpenFile(@NonNull String key, @NonNull ProjectPath shown,
+			@Nullable ProjectPath running, @NonNull List<ProjectPath> used) {
+		open = Item.Place.file(key, shown.toString());
+		this.running = running != null
+				? Item.Place.file(key, running.toString())
+				: null;
+		Set<Item.Place> places = new HashSet<>();
+		for (ProjectPath path : used) {
+			places.add(Item.Place.file(key, path.toString()));
+		}
+		this.used = places;
+		if (!drawerLayout.isDrawerVisible(drawer)) {
+			// It opens where the file in the editor is, also when that
+			// came after the drawer closed.
+			go(home());
+		} else if (listing != null) {
 			refresh();
 		}
 	}
@@ -579,9 +611,8 @@ public class NavigationDrawer implements ShaderList {
 	}
 
 	private void show(@NonNull RecyclerView list) {
-		// What runs is what is open while shaders come from the database.
-		adapter(list).setItems(Item.of(listing, level, open, open,
-				Collections.emptySet()), loaded, listing.notice());
+		adapter(list).setItems(Item.of(listing, level, open, running, used),
+				loaded, listing.notice());
 	}
 
 	private void showHeader() {
