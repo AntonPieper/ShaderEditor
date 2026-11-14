@@ -73,6 +73,9 @@
 	<string name="save_on_run_summary">Сохранять изменения при ручном запуске</string>
 	<string name="disable_highlighting">Выключить выделение</string>
 	<string name="disable_highlighting_summary">Выключить выделение для больших шейдеров</string>
+	<string name="new_editor">Новый редактор</string>
+	<string name="new_editor_summary">Для больших шейдеров; ещё тестируется</string>
+	<string name="text_too_large">Не изменено: текст стал бы больше 16 МиБ</string>
 	<string name="auto_save">Авто сохранение</string>
 	<string name="auto_hide_extra_keys">Автоматически скрывать дополнительные клавиши</string>
 	<string name="auto_hide_extra_keys_summary">Автоматически скрывать дополнительный ряд клавиш над клавиатурой</string>

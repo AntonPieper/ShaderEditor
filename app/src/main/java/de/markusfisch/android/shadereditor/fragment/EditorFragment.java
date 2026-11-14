@@ -22,6 +22,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
+import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
 import de.markusfisch.android.shadereditor.widget.ShaderEditor;
 
@@ -35,6 +36,8 @@ public class EditorFragment extends Fragment {
 
 	private View editorContainer;
 	private SourceEditor editor;
+	// Which editor the view was made with.
+	private boolean newEditor;
 	// Text set before the view exists, for example from an intent
 	// that started the activity.
 	@Nullable
@@ -67,10 +70,18 @@ public class EditorFragment extends Fragment {
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle state) {
-		View view = inflater.inflate(R.layout.fragment_editor, container, false);
-
-		editorContainer = view.findViewById(R.id.editor_container);
-		editor = new EditTextSourceEditor(view.findViewById(R.id.editor));
+		View view;
+		newEditor = ShaderEditorApp.preferences.useNewEditor();
+		if (newEditor) {
+			view = inflater.inflate(R.layout.fragment_code_view, container,
+					false);
+			editor = new CodeViewSourceEditor((CodeView) view);
+			editorContainer = view;
+		} else {
+			view = inflater.inflate(R.layout.fragment_editor, container, false);
+			editor = new EditTextSourceEditor(view.findViewById(R.id.editor));
+			editorContainer = view.findViewById(R.id.editor_container);
+		}
 		editor.setListener(new SourceEditor.Listener() {
 			@Override
 			public void onTextModified() {
@@ -204,6 +215,11 @@ public class EditorFragment extends Fragment {
 	@Override
 	public void onResume() {
 		super.onResume();
+		if (newEditor != ShaderEditorApp.preferences.useNewEditor()) {
+			// The draft keeps the text while the other editor is made.
+			requireActivity().recreate();
+			return;
+		}
 		editor.applySettings(ShaderEditorApp.preferences);
 		editor.resume();
 	}
