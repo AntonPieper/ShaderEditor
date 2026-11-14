@@ -58,7 +58,7 @@ class FakeGlDevice extends GlDevice {
 	private GlFramebuffer framebuffer;
 
 	@Override
-	void createContextResources() {
+	void createContextResources(int glesVersion) {
 		calls.add("createContextResources");
 	}
 

@@ -290,7 +290,7 @@ public final class GpuBitmapTransformer {
 			}
 
 			makeCurrent();
-			device.createContextResources();
+			device.createContextResources(2);
 			device.disable(GLES20.GL_BLEND);
 			device.disable(GLES20.GL_CULL_FACE);
 			device.disable(GLES20.GL_DEPTH_TEST);

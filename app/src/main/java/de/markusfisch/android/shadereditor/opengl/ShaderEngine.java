@@ -206,7 +206,7 @@ public final class ShaderEngine {
 		device.setClearColor(0f, 0f, 0f, 1f);
 
 		discardContextResources();
-		device.createContextResources();
+		device.createContextResources(version);
 		formats = device.targetFormats(version);
 		var errors = renderPipeline.createContextResources();
 		if (!errors.isEmpty()) {
