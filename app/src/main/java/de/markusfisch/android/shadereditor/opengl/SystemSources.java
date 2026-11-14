@@ -210,18 +210,23 @@ final class SystemSources {
 		private MicInputListener listener;
 		@Nullable
 		private Retry retry;
+		private UniformSources sources;
+		// Set on the main thread when the user did not allow recording.
+		private volatile boolean denied;
 
 		// Without the permission, or while the microphone is busy, it
 		// tries again until it records.
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
+			this.sources = sources;
 			var listener = new MicInputListener(host.context());
 			this.listener = listener;
 			if (listener.register()) {
 				return;
 			}
 			if (!host.onPermissionNeeded(
-					android.Manifest.permission.RECORD_AUDIO)) {
+					android.Manifest.permission.RECORD_AUDIO,
+					() -> denied = true)) {
 				sources.warn("The microphone may not record; run this " +
 						"shader in the app once to allow it");
 			}
@@ -244,6 +249,10 @@ final class SystemSources {
 
 		@Override
 		public void update(long now) {
+			if (denied) {
+				denied = false;
+				sources.warn("The microphone permission is missing");
+			}
 			recording = listener != null && listener.isRecording();
 			if (recording) {
 				listener.sample.read(sample);

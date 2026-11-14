@@ -69,7 +69,7 @@ public class CameraListener {
 	private final float[] orientation = new float[4];
 	private final float[] addent = new float[2];
 	private boolean bound;
-	// Why the camera did not bind, until it was taken.
+	// Why the camera cannot be used, until it was taken.
 	@Nullable
 	private String failure;
 
@@ -244,6 +244,11 @@ public class CameraListener {
 		System.arraycopy(orientation, 0, matrix, 0, orientation.length);
 		System.arraycopy(this.addent, 0, addent, 0, this.addent.length);
 		return true;
+	}
+
+	// Any thread. Reports why the camera cannot be used.
+	public synchronized void fail(@NonNull String message) {
+		failure = message;
 	}
 
 	// Why the camera could not be opened, once, or null.

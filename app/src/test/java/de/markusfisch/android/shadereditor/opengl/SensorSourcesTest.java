@@ -57,7 +57,8 @@ public class SensorSourcesTest {
 		}
 
 		@Override
-		public boolean onPermissionNeeded(@NonNull String permission) {
+		public boolean onPermissionNeeded(@NonNull String permission,
+				@NonNull Runnable denied) {
 			return false;
 		}
 
