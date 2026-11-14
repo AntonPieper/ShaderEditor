@@ -146,6 +146,83 @@ final class Histories {
 	}
 
 	/**
+	 * Let the histories follow move, which storage made: each one of a
+	 * file at or under its source is kept for the new path, or deleted.
+	 * One that cannot be followed is deleted too; that loses undo.
+	 */
+	void follow(Journal.Move move) {
+		File[] files = dir.listFiles((d, name) -> name.endsWith(SUFFIX));
+		if (files == null) {
+			return;
+		}
+		for (File file : files) {
+			byte[] body = file.length() <= Document.MAX_BYTES
+					? body(file)
+					: null;
+			ProjectPath path = null;
+			int rest = 0;
+			if (body != null) {
+				try (DataInputStream in = new DataInputStream(
+						new ByteArrayInputStream(body))) {
+					ProjectParseResult<ProjectPath> parsed =
+							ProjectPath.parse(in.readUTF());
+					path = parsed.isSuccess() ? parsed.value() : null;
+					rest = body.length - in.available();
+				} catch (IOException e) {
+					path = null;
+				}
+			}
+			if (path == null || !move.touches(path)) {
+				continue;
+			}
+			ProjectPath moved = move.moved(path);
+			if (moved != null) {
+				ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+				try (DataOutputStream out = new DataOutputStream(bytes)) {
+					out.writeUTF(moved.toString());
+					out.write(body, rest, body.length - rest);
+					write(name(moved), bytes.toByteArray());
+				} catch (IOException e) {
+					// Undo of that file is lost.
+				}
+			}
+			//noinspection ResultOfMethodCallIgnored
+			file.delete();
+		}
+	}
+
+	// Return the body of a history file, or null when it is not one.
+	private static byte[] body(File file) {
+		try (DataInputStream in = new DataInputStream(
+				new FileInputStream(file))) {
+			int length = in.readInt() == MAGIC ? in.readInt() : -1;
+			if (length < 0 || length > file.length() - 12) {
+				return null;
+			}
+			byte[] body = new byte[length];
+			in.readFully(body);
+			CRC32 crc = new CRC32();
+			crc.update(body, 0, body.length);
+			return in.readInt() == (int) crc.getValue() ? body : null;
+		} catch (IOException e) {
+			return null;
+		}
+	}
+
+	private boolean write(String name, byte[] body) {
+		CRC32 crc = new CRC32();
+		crc.update(body, 0, body.length);
+		return Journal.replace(dir, name, out -> {
+			DataOutputStream data = new DataOutputStream(out);
+			data.writeInt(MAGIC);
+			data.writeInt(body.length);
+			data.write(body);
+			data.writeInt((int) crc.getValue());
+			data.flush();
+		});
+	}
+
+	/**
 	 * Delete the histories written longest ago while all together take
 	 * more than {@link #MAX_BYTES}: those of files deleted or renamed
 	 * elsewhere are never read again and would stay forever.

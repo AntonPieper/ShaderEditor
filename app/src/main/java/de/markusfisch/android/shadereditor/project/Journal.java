@@ -53,6 +53,38 @@ final class Journal {
 		}
 	}
 
+	/**
+	 * A rename of a file or folder in storage to to, or its deletion
+	 * when to is null, that the journals have yet to follow. It is kept
+	 * in the folder before storage is touched, so that a project opened
+	 * after the process died finishes it or drops it, by what storage
+	 * holds then.
+	 */
+	record Move(ProjectPath from, ProjectPath to) {
+		/** Return whether path is from or lies under it. */
+		boolean touches(ProjectPath path) {
+			return path.equals(from) ||
+					path.toString().startsWith(from + "/");
+		}
+
+		/**
+		 * Return where path is after the move: null when it is deleted,
+		 * path itself when the move does not touch it.
+		 */
+		ProjectPath moved(ProjectPath path) {
+			if (!touches(path)) {
+				return path;
+			}
+			ProjectParseResult<ProjectPath> moved = to == null
+					? null
+					: ProjectPath.parse(to + path.toString().substring(
+							from.toString().length()));
+			return moved != null && moved.isSuccess()
+					? moved.value()
+					: null;
+		}
+	}
+
 	/** A change: length removed at start, and the text inserted. */
 	record Change(int start, int removed, String inserted) {
 	}
@@ -85,6 +117,7 @@ final class Journal {
 	private static final String SUFFIX = ".journal";
 	private static final String TEMP_PREFIX = ".journal-";
 	private static final String TEMP = ".tmp";
+	private static final String MOVE = "moving";
 	// What the format before this one called a journal.
 	private static final String DRAFT = ".draft";
 	// Records are rewritten into a snapshot once they exceed the
@@ -270,6 +303,101 @@ final class Journal {
 		return header.replaced() || snapshot(new Header(path,
 				header.base(), header.kept(), header.keptOver(), true),
 				recovered.revision(), recovered.text());
+	}
+
+	/**
+	 * Keep move as under way, or that none is when null. Return whether
+	 * that is kept.
+	 */
+	boolean setMove(Move move) {
+		if (!owns()) {
+			return false;
+		}
+		if (move == null) {
+			File file = new File(dir, MOVE);
+			return !file.exists() || file.delete();
+		}
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		try (DataOutputStream out = new DataOutputStream(bytes)) {
+			out.writeInt(MAGIC);
+			out.writeUTF(move.from().toString());
+			out.writeBoolean(move.to() != null);
+			out.writeUTF(move.to() != null ? move.to().toString() : "");
+		} catch (IOException e) {
+			return false;
+		}
+		return replace(dir, MOVE, bytes.toByteArray());
+	}
+
+	/** Return the move that is under way, or null. */
+	Move move() {
+		File file = new File(dir, MOVE);
+		if (!file.isFile() || file.length() > MAX_HEAD) {
+			return null;
+		}
+		try (DataInputStream in = new DataInputStream(
+				new FileInputStream(file))) {
+			if (in.readInt() != MAGIC) {
+				return null;
+			}
+			ProjectParseResult<ProjectPath> from = ProjectPath.parse(
+					in.readUTF());
+			ProjectParseResult<ProjectPath> to = in.readBoolean()
+					? ProjectPath.parse(in.readUTF())
+					: null;
+			return from.isSuccess() && (to == null || to.isSuccess())
+					? new Move(from.value(), to != null ? to.value() : null)
+					: null;
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * Let the journals follow move, which storage made: each one at or
+	 * under its source is kept under the new path, with the text and
+	 * header it has, or deleted. One written under the new path since
+	 * is the newer and stays. Return whether none is left behind.
+	 */
+	boolean follow(Move move) {
+		if (!owns()) {
+			return false;
+		}
+		boolean followed = true;
+		for (ProjectPath path : scan().headers().keySet()) {
+			if (move.touches(path)) {
+				followed &= follow(path, move.moved(path));
+			}
+		}
+		// One whose header cannot be read is known by its name alone.
+		File named = file(move.from());
+		if (named.isFile()) {
+			followed &= move.to() != null && !file(move.to()).exists()
+					? named.renameTo(file(move.to()))
+					: named.delete();
+		}
+		return followed;
+	}
+
+	private boolean follow(ProjectPath from, ProjectPath to) {
+		tails.remove(from);
+		File old = file(from);
+		Recovered kept = to != null ? read(to) : null;
+		if (to != null && (kept == null || kept.text() == null)) {
+			Recovered recovered = read(from);
+			if (recovered == null || recovered.text() == null) {
+				// Unreadable: as it is, to be told under the new name.
+				tails.remove(to);
+				return !old.exists() || old.renameTo(file(to));
+			}
+			Header header = recovered.header();
+			if (!snapshot(new Header(to, header.base(), header.kept(),
+					header.keptOver(), header.replaced()),
+					recovered.revision(), recovered.text())) {
+				return false;
+			}
+		}
+		return !old.exists() || old.delete();
 	}
 
 	/**
