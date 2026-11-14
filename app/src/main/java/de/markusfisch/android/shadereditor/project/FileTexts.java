@@ -158,13 +158,22 @@ public final class FileTexts {
 	}
 
 	/**
-	 * Delete the journal of path; done gets whether none is kept now.
+	 * Delete the journal of path if it still cannot be read; done gets
+	 * whether none that cannot be read is kept now.
 	 */
-	void forget(ProjectPath path, Callback<Boolean> done) {
+	void dismiss(ProjectPath path, Callback<Boolean> done) {
 		worker.execute(() -> {
-			boolean removed = journal.remove(path);
+			boolean removed = journal.dismiss(path);
 			main.execute(() -> done.done(removed));
 		});
+	}
+
+	/**
+	 * Let the journal go once everything given before is written: what
+	 * is asked of it later changes nothing.
+	 */
+	void release() {
+		worker.execute(journal::release);
 	}
 
 	/**

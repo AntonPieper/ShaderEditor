@@ -31,7 +31,10 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
  * the text, and change records appended after it without a sync. Each
  * part has its own checksum; a torn or damaged tail is cut at the last
  * good record, a damaged header or snapshot is reported and the file
- * left as it is. Worker only, one call at a time.
+ * left as it is. Only the journal that {@link #own owns} the folder
+ * writes and deletes there, so what a project that is closed, or
+ * replaced by a later one, still asks for changes nothing; any journal
+ * reads. Worker only, one call at a time.
  */
 final class Journal {
 	/**
@@ -87,6 +90,9 @@ final class Journal {
 			long records) {
 	}
 
+	// The journal that writes and deletes in each folder.
+	private static final Map<String, Journal> OWNERS = new HashMap<>();
+
 	private final Map<ProjectPath, Tail> tails = new HashMap<>();
 	private final File dir;
 
@@ -95,10 +101,53 @@ final class Journal {
 	}
 
 	/**
+	 * Become the journal that writes and deletes in its folder, in
+	 * place of the one that did; return this.
+	 */
+	Journal own() {
+		synchronized (OWNERS) {
+			OWNERS.put(dir.getAbsolutePath(), this);
+		}
+		return this;
+	}
+
+	/** Stop owning the folder, so the next command changes nothing. */
+	void release() {
+		synchronized (OWNERS) {
+			if (owns()) {
+				OWNERS.remove(dir.getAbsolutePath());
+			}
+		}
+	}
+
+	/**
+	 * Run abandon when no journal owns dir and it holds no file, while
+	 * none can come to own it.
+	 */
+	static void ifAbandoned(File dir, Runnable abandon) {
+		synchronized (OWNERS) {
+			String[] kept = dir.list();
+			if (!OWNERS.containsKey(dir.getAbsolutePath()) &&
+					(kept == null || kept.length == 0)) {
+				abandon.run();
+			}
+		}
+	}
+
+	private boolean owns() {
+		synchronized (OWNERS) {
+			return OWNERS.get(dir.getAbsolutePath()) == this;
+		}
+	}
+
+	/**
 	 * Replace the journal of header's path with text at revision, synced.
 	 * Return whether it was written.
 	 */
 	boolean snapshot(Header header, int revision, Text text) {
+		if (!owns()) {
+			return false;
+		}
 		ProjectPath path = header.path();
 		tails.remove(path);
 		byte[] head = header(header, revision);
@@ -125,6 +174,9 @@ final class Journal {
 	 */
 	Appended append(ProjectPath path, int from, int to,
 			List<Change> changes) {
+		if (!owns()) {
+			return Appended.FAILED;
+		}
 		Tail tail = tails.get(path);
 		if (tail == null) {
 			Recovered recovered = read(path);
@@ -255,9 +307,25 @@ final class Journal {
 
 	/** Forget the journal of path; return whether none is kept now. */
 	boolean remove(ProjectPath path) {
+		if (!owns()) {
+			return false;
+		}
 		tails.remove(path);
 		File file = file(path);
 		return !file.exists() || file.delete();
+	}
+
+	/**
+	 * Forget the journal of path if it still cannot be read; one written
+	 * since stays. Return whether none that cannot be read is kept now.
+	 */
+	boolean dismiss(ProjectPath path) {
+		if (!owns()) {
+			return false;
+		}
+		Recovered recovered = read(path);
+		return recovered == null || recovered.text() != null ||
+				remove(path);
 	}
 
 	/**
@@ -284,7 +352,7 @@ final class Journal {
 	 * drafts of the format before this one and unfinished snapshots.
 	 */
 	void removeLeftovers() {
-		File[] files = dir.listFiles((d, name) -> name.endsWith(DRAFT) ||
+		File[] files = !owns() ? null : dir.listFiles((d, name) -> name.endsWith(DRAFT) ||
 				name.startsWith(TEMP_PREFIX) && name.endsWith(TEMP));
 		if (files != null) {
 			for (File file : files) {

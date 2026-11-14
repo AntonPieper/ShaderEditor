@@ -225,8 +225,13 @@ public final class OpenProject {
 		this.sessions = sessions;
 		this.journal = journal;
 		this.histories = histories;
-		this.worker = worker;
-		// Once closed, what arrives late does nothing.
+		// Once closed, nothing more is asked of the worker, and what
+		// arrives late does nothing.
+		this.worker = task -> {
+			if (!closed) {
+				worker.execute(task);
+			}
+		};
 		this.main = task -> main.execute(() -> {
 			if (!closed) {
 				task.run();
@@ -237,7 +242,8 @@ public final class OpenProject {
 				task.run();
 			}
 		}, millis);
-		texts = new FileTexts(store, journal, histories, worker, this.main);
+		texts = new FileTexts(store, journal, histories, this.worker,
+				this.main);
 	}
 
 	/**
@@ -260,6 +266,13 @@ public final class OpenProject {
 			Executor main, Later later, long budget) {
 		Journal journal = sessions.journal(id);
 		if (journal == null) {
+			return null;
+		}
+		// From here the session is not forgotten under the project, and
+		// the project that had it before writes nothing more.
+		journal.own();
+		if (sessions.locator(id) == null) {
+			journal.release();
 			return null;
 		}
 		Storage storage;
@@ -320,7 +333,9 @@ public final class OpenProject {
 	/**
 	 * Keep everything typed in the journal, durably, and let the project
 	 * go: its timers stop, results that arrive later do nothing, and the
-	 * next opening of its session makes a new one.
+	 * next opening of its session makes a new one. Its documents stay
+	 * as they are, but nothing of the project follows them anymore, and
+	 * no method does anything from now on.
 	 */
 	public void close() {
 		if (closed) {
@@ -330,8 +345,17 @@ public final class OpenProject {
 		keepHistories();
 		texts.sync(synced -> {
 		});
+		texts.release();
 		closed = true;
 		listener = null;
+		for (FileRecord record : records.values()) {
+			if (record.document() != null) {
+				record.document().removeListener(record.listener);
+			}
+		}
+		records.clear();
+		opening.clear();
+		recent.clear();
 		if (release != null) {
 			release.run();
 			release = null;
@@ -679,14 +703,15 @@ public final class OpenProject {
 
 	/**
 	 * Give up the unsaved text of path that could not be read: its
-	 * journal is deleted, and the file no longer counts as unsaved.
+	 * journal is deleted, unless text typed since took its place, and
+	 * the file no longer counts as unsaved for it.
 	 */
 	public void dismiss(ProjectPath path) {
 		FileRecord record = records.get(path);
 		if (record == null || record.unreadable == null) {
 			return;
 		}
-		texts.forget(path, removed -> {
+		texts.dismiss(path, removed -> {
 			if (removed && record.unreadable != null) {
 				record.unreadable = null;
 				if (!record.needed() && records.get(path) == record) {
