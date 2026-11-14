@@ -118,6 +118,12 @@ public class MainActivity extends AppCompatActivity {
 	private RunGuard guard;
 	@Nullable
 	private Snackbar heldMessage;
+	// The quality chosen last on this screen, and for which file that
+	// runs, as folder and path: a run right after the choice may come
+	// before the library has kept it.
+	@Nullable
+	private List<Object> chosenFor;
+	private float chosenQuality;
 	// What was open before the screen was made again; null for a new
 	// screen, and where the shaders are rows of the database.
 	@Nullable
@@ -219,7 +225,11 @@ public class MainActivity extends AppCompatActivity {
 									? file.getProject().running()
 									: null;
 							looks.quality(files.key(), running, quality,
-									kept -> {
+									read -> {
+										float kept = Arrays.asList(key, running)
+												.equals(chosenFor)
+												? chosenQuality
+												: read;
 										if (file != null) {
 											file.setQuality(kept);
 										}
@@ -330,9 +340,10 @@ public class MainActivity extends AppCompatActivity {
 			// A screen that had a file, a shader or nothing open comes
 			// back to that; one that had not come that far shows what
 			// the library shows, as a cold start does, unless text
-			// that was shared comes instead.
-			boolean show = !openedText && (restored == null ||
-					restored.showsLibrary());
+			// that was shared comes instead, or a shader the screen
+			// before this one asked for.
+			boolean show = !openedText && !libraryAdd.awaits() &&
+					(restored == null || restored.showsLibrary());
 			// Nothing stands where the code is until what was open is
 			// back, or the start has shown a file.
 			moving = true;
@@ -340,6 +351,7 @@ public class MainActivity extends AppCompatActivity {
 					restored.kind() == OpenState.Kind.MOVING;
 			showOpen();
 			startLibrary(show);
+			libraryAdd.resume();
 		}
 	}
 
@@ -904,6 +916,9 @@ public class MainActivity extends AppCompatActivity {
 			public void onQualityChanged(float quality) {
 				open.setQuality(quality);
 				if (open instanceof ProjectFile file) {
+					chosenFor = Arrays.asList(files.key(),
+							file.getProject().running());
+					chosenQuality = quality;
 					looks.keepQuality(files.key(),
 							file.getProject().running(), quality);
 				}
