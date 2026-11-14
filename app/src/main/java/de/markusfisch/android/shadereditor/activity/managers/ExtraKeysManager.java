@@ -31,6 +31,7 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	private final View insertTabView;
 	@NonNull
 	private final CompletionsAdapter completionsAdapter;
+	private boolean hasText = true;
 
 	public ExtraKeysManager(@NonNull Activity activity,
 			@NonNull View rootView, @NonNull Editor editor) {
@@ -80,9 +81,15 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	}
 
 	public void setVisible(boolean visible) {
-		extraKeysView.setVisibility(getVisibility(visible &&
+		extraKeysView.setVisibility(getVisibility(visible && hasText &&
 				(!ShaderEditorApp.preferences.autoHideExtraKeys() ||
 						isKeyboardOpen())));
+	}
+
+	/** Without a text to insert into, the keys are not shown. */
+	public void setHasText(boolean hasText) {
+		this.hasText = hasText;
+		setVisible(ShaderEditorApp.preferences.showExtraKeys());
 	}
 
 	@Override
