@@ -38,8 +38,17 @@ public final class ProjectFileManager {
 		/** file is in the editor now, in place of what was there. */
 		void onShown(@NonNull ProjectFile file);
 
-		/** The file open before the screen was made again is gone. */
-		void onNotRestored();
+		/**
+		 * The file in the editor was deleted, or the one open before
+		 * the screen was made again is gone: show something else.
+		 */
+		void onGone();
+
+		/**
+		 * Files of the folder opened before with key were renamed or
+		 * deleted.
+		 */
+		void onMoved(@NonNull String key);
 	}
 
 	/** Runs what a project runs. */
@@ -180,7 +189,7 @@ public final class ProjectFileManager {
 		listener.onFailed(activity.getString(R.string.file_cannot_open,
 				path.toString(), problem));
 		if (!tapped) {
-			listener.onNotRestored();
+			listener.onGone();
 		}
 	}
 
@@ -344,7 +353,9 @@ public final class ProjectFileManager {
 
 	// The file in the editor follows a rename of it or of a folder it
 	// is in, with the same document; the last build names old paths,
-	// so it is built again until one is delivered.
+	// so it is built again until one is delivered. Deleted, it closes,
+	// unless it was typed in after the deletion was asked for: then
+	// its document stays, as unsaved text of a file that is not there.
 	private void follow() {
 		ProjectFile shown = file;
 		if (shown == null) {
@@ -355,6 +366,8 @@ public final class ProjectFileManager {
 		if (events.isEmpty()) {
 			return;
 		}
+		// Some were missed: everything is looked at again.
+		boolean gone = events.get(0).number() > heard + 1;
 		heard = last(events);
 		String path = shown.getPath().toString();
 		boolean renamed = false;
@@ -363,10 +376,17 @@ public final class ProjectFileManager {
 				renamed = true;
 				path = Moves.renamed(path, rename.from().toString(),
 						rename.to().toString());
+			} else if (event.change() instanceof
+					OpenProject.Deleted deleted) {
+				gone |= Moves.within(path, deleted.path().toString());
 			}
 		}
-		if (!path.equals(shown.getPath().toString())) {
-			ProjectPath now = ProjectPath.parse(path).value();
+		ProjectPath now = ProjectPath.parse(path).value();
+		String moved = key;
+		if (gone && project.document(now) == null) {
+			leave();
+			listener.onGone();
+		} else if (!now.equals(shown.getPath())) {
 			if (deciding != null && deciding.equals(shown.getPath())) {
 				deciding = now;
 			}
@@ -376,6 +396,9 @@ public final class ProjectFileManager {
 			listener.onShown(file);
 		}
 		stale |= renamed;
+		if (moved != null) {
+			listener.onMoved(moved);
+		}
 	}
 
 	private static int last(@NonNull List<OpenProject.Event> events) {

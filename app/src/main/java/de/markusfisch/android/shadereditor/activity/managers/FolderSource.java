@@ -218,6 +218,12 @@ final class FolderSource {
 		changed.run();
 	}
 
+	/** Forgets every folder read, so that each is read again. */
+	void forget() {
+		readings.clear();
+		changed.run();
+	}
+
 	/**
 	 * Forgets the folders that are not level or above it, so that they
 	 * are read again when entered again.
