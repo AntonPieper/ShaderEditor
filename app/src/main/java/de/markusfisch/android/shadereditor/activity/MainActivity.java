@@ -98,10 +98,12 @@ public class MainActivity extends AppCompatActivity {
 		}
 
 		navigationManager = new NavigationManager(this);
+		ShaderViewManager.Listener shaderViewListener =
+				createShaderViewListener();
 		shaderViewManager = new ShaderViewManager(this,
 				findViewById(R.id.preview),
 				findViewById(R.id.quality),
-				createShaderViewListener());
+				shaderViewListener);
 		ExtraKeysManager extraKeysManager = new ExtraKeysManager(this,
 				findViewById(android.R.id.content),
 				editorFragment::insert);
@@ -112,7 +114,15 @@ public class MainActivity extends AppCompatActivity {
 		if (getResources().getBoolean(R.bool.project_mode)) {
 			holds = new ProjectHolds(new Projects(this));
 			files = new ProjectFileManager(this, editorFragment, holds,
-					createProjectFileListener(), shaderViewManager::setPlan);
+					createProjectFileListener(), (preparation, quality) -> {
+						if (preparation != null) {
+							shaderViewManager.setPlan(preparation, quality);
+						} else {
+							// No build reports, so nothing to show.
+							shaderViewManager.showNothing();
+							shaderViewListener.onInfoLog(List.of());
+						}
+					});
 			editorFragment.setOnErrorSelectedListener((file, line) -> {
 				if (file != null) {
 					files.openAt(file, line);

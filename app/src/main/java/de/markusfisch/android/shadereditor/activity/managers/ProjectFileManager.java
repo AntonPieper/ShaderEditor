@@ -43,7 +43,8 @@ public final class ProjectFileManager {
 
 	/** Runs what a project runs. */
 	public interface Runner {
-		void run(@NonNull Preparation preparation, float quality);
+		/** Run preparation at quality; null when nothing runs. */
+		void run(@Nullable Preparation preparation, float quality);
 	}
 
 	private static final String KEY = "project_file_key";
@@ -224,10 +225,9 @@ public final class ProjectFileManager {
 				return;
 			}
 			build = prepared;
-			Preparation preparation = prepared.preparation();
-			if (preparation != null) {
-				runner.run(preparation, now.getQuality());
-			}
+			// Nothing runs, as for a folder without a shader: a picture
+			// or errors left from before are not this project's.
+			runner.run(prepared.preparation(), now.getQuality());
 		});
 	}
 
