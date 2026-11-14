@@ -34,6 +34,7 @@
 	<string name="warning">Предупреждение</string>
 	<string name="warning_message">Предупреждение: %1$s</string>
 	<string name="error_row_more">+ещё %1$d</string>
+	<string name="error_on_line">Строка %1$d: %2$s</string>
 	<string name="shader_saved">Шейдер сохранен</string>
 	<string name="shader_disabled_after_crash">Предыдущий шейдер вызвал сбой Shader Editor и был закомментирован.</string>
 
