@@ -23,7 +23,9 @@ public record Row(String key, Kind kind, Picture picture, String name,
 		/** An image. */
 		IMAGE,
 		/** A file the editor cannot open. */
-		OTHER
+		OTHER,
+		/** Shows more rows of the level. */
+		MORE
 	}
 
 	/** Marks at the end of a row, in the order they are shown. */
@@ -48,7 +50,8 @@ public record Row(String key, Kind kind, Picture picture, String name,
 			SHADER,
 			LIBRARY,
 			EXAMPLES,
-			FOLDER
+			FOLDER,
+			IMAGE
 		}
 
 		public static Picture of(Icon icon) {

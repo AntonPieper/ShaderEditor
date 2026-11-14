@@ -72,7 +72,8 @@ final class FoldersSource implements Source {
 				false,
 				false,
 				Listing.Bar.OPEN,
-				sections);
+				sections,
+				null);
 	}
 
 	@Override

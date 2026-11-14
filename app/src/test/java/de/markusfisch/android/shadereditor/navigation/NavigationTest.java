@@ -125,7 +125,7 @@ public class NavigationTest {
 
 	private static Listing listing(Listing.Section... sections) {
 		return new Listing("Shaders", null, false, true, Listing.Bar.NEW,
-				List.of(sections));
+				List.of(sections), null);
 	}
 
 	private static Row shader(String key, String name, long changed) {
