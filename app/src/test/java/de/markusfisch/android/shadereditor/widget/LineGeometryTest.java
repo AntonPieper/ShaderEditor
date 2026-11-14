@@ -81,6 +81,32 @@ public class LineGeometryTest {
 		}
 	}
 
+	@Test
+	public void revealsALineWithItsRowByTheLeastScroll() {
+		LineGeometry lines = lines(20);
+		// 10 lines visible from 0 to 200; the row under line 9 is 50 tall.
+		lines.setRow(9, 50);
+		// Line and row fit: nothing moves.
+		assertEquals(0, lines.reveal(0, 5, 0, 300));
+		// The row hangs below the bottom: up by exactly the part cut off.
+		assertEquals(50, lines.reveal(0, 9, 0, 200));
+		// Without a row the line alone decides.
+		lines.setRow(-1, 0);
+		assertEquals(0, lines.reveal(0, 9, 0, 200));
+		assertEquals(20, lines.reveal(0, 10, 0, 200));
+		// Above the top: down to the line's top.
+		assertEquals(60, lines.reveal(100, 3, 0, 200));
+		// A row taller than the space: the line stays at the top.
+		lines.setRow(9, 500);
+		assertEquals(180, lines.reveal(0, 9, 0, 200));
+		// The row of another line does not count.
+		lines.setRow(4, 50);
+		assertEquals(0, lines.reveal(0, 3, 0, 200));
+		// Insets: the band starts and ends inside the view.
+		lines.setRow(9, 50);
+		assertEquals(90, lines.reveal(0, 9, 8, 160));
+	}
+
 	private static LineGeometry lines(int lineHeight) {
 		LineGeometry lines = new LineGeometry();
 		lines.setLineHeight(lineHeight);

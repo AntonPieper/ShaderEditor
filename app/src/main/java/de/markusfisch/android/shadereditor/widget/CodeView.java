@@ -629,7 +629,6 @@ public class CodeView extends View {
 		int n = text.lineOf(head);
 		float x = textLeft(text.lineCount()) +
 				layoutOf(n).xOf(head - text.lineStart(n));
-		float top = lineTop(n);
 		float margin = appearance.charWidth * 4;
 		int scrollX = getScrollX();
 		int scrollY = getScrollY();
@@ -640,13 +639,7 @@ public class CodeView extends View {
 		} else if (x + margin > visibleRight) {
 			scrollX += (int) Math.ceil(x + margin - visibleRight);
 		}
-		if (top < scrollY + insets.top) {
-			scrollY = (int) top - insets.top;
-		} else if (top + appearance.lineHeight >
-				scrollY + getHeight() - insets.bottom) {
-			scrollY = (int) Math.ceil(top + appearance.lineHeight -
-					getHeight() + insets.bottom);
-		}
+		scrollY = revealLine(scrollY, n);
 		scroller.forceFinished(true);
 		scrollInside(scrollX, scrollY);
 	}
@@ -672,7 +665,16 @@ public class CodeView extends View {
 		if (caretIntoViewWhenLaidOut || (h < oldh && isFocused())) {
 			bringCaretIntoView();
 		} else {
-			scrollInside(getScrollX(), getScrollY());
+			int scrollY = getScrollY();
+			// The row of the caret's line stays in view with it.
+			int caret = document != null
+					? document.text().lineOf(document.selection().head())
+					: -1;
+			if (h < oldh && caret >= 0 && caret == lines.rowLine() &&
+					anchorLine() == caret) {
+				scrollY = revealLine(scrollY, caret);
+			}
+			scrollInside(getScrollX(), scrollY);
 		}
 	}
 
@@ -2077,12 +2079,26 @@ public class CodeView extends View {
 			lines.setRow(line, rowText.length * a.rowLineHeight +
 					2 * a.rowPaddingVertical);
 		}
+		int scrollY = getScrollY();
 		if (!edited || line == oldLine) {
-			scrollInside(getScrollX(), lines.keep(getScrollY(), anchor,
-					oldLine, oldHeight));
+			scrollY = lines.keep(scrollY, anchor, oldLine, oldHeight);
 		}
+		// The row of the caret's line belongs to it: both stay in view.
+		int caret = document.text().lineOf(document.selection().head());
+		if (line == caret && anchor == caret) {
+			scrollY = revealLine(scrollY, caret);
+		}
+		scrollInside(getScrollX(), scrollY);
 		gutterLast = -1;
 		invalidate();
+	}
+
+	// Returns the scroll position nearest scrollY that shows line n, with
+	// its row, between the insets.
+	private int revealLine(int scrollY, int n) {
+		float textTop = textTop();
+		return lines.reveal(scrollY, n, insets.top - textTop,
+				getHeight() - insets.bottom - textTop);
 	}
 
 	// Returns the caret's line if any of it is on screen, else the first
