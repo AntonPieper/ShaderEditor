@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.widget;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -105,6 +106,29 @@ public class LineGeometryTest {
 		// Insets: the band starts and ends inside the view.
 		lines.setRow(9, 50);
 		assertEquals(90, lines.reveal(0, 9, 8, 160));
+	}
+
+	@Test
+	public void scrollsNoFurtherThanTheLastLineAtTheBottom() {
+		LineGeometry lines = lines(20);
+		// 30 lines of 20 in a view of 400, 8 above and 8 below them.
+		assertEquals(30 * 20 + 16 - 400, lines.maxScroll(30, 8, 8, 400));
+		// What covers the view's bottom (keyboard, bars) counts below.
+		assertEquals(30 * 20 + 8 + 108 - 400,
+				lines.maxScroll(30, 8, 108, 400));
+		// A text that fits does not scroll.
+		assertEquals(0, lines.maxScroll(10, 8, 8, 400));
+		assertEquals(0, lines.maxScroll(19, 8, 8, 400));
+		// An open row under the last line is the last thing.
+		lines.setRow(29, 50);
+		assertEquals(30 * 20 + 50 + 16 - 400, lines.maxScroll(30, 8, 8, 400));
+		// A row under another line counts as well, it moves the last one.
+		lines.setRow(3, 50);
+		assertEquals(30 * 20 + 50 + 16 - 400, lines.maxScroll(30, 8, 8, 400));
+		// The last line and its row can still be revealed at the end.
+		lines.setRow(29, 50);
+		assertTrue(lines.reveal(0, 29, -8, 392) <=
+				lines.maxScroll(30, 8, 8, 400));
 	}
 
 	private static LineGeometry lines(int lineHeight) {

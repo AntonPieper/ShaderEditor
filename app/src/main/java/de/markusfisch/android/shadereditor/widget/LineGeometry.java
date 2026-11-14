@@ -97,6 +97,18 @@ final class LineGeometry {
 		return scrollY;
 	}
 
+	/**
+	 * Return the largest scroll position for lineCount lines in a view
+	 * of viewHeight, with above pixels before line 0 and below pixels
+	 * after the last line (padding and what covers the view's bottom):
+	 * the last line, or the row under it, rests at the bottom; 0 when
+	 * everything fits.
+	 */
+	int maxScroll(int lineCount, float above, float below, int viewHeight) {
+		return Math.max(0, (int) Math.ceil(above + height(lineCount) +
+				below - viewHeight));
+	}
+
 	private static int offset(int n, int rowLine, int rowHeight) {
 		return rowLine >= 0 && n > rowLine ? rowHeight : 0;
 	}

@@ -1273,13 +1273,11 @@ public class CodeView extends View {
 				styles != null ? styles.runs(n) : null, false).layout();
 	}
 
-	// The last line can scroll up to the middle of the space between the
-	// system bars, or above the keyboard.
+	// The last line, or the row under it, can scroll up to the bottom of
+	// the space above the system bars or the keyboard, and no further.
 	private int maxScrollY() {
-		int visible = getHeight() - insets.top - insets.bottom;
-		float bottom = textTop() + lines.height(document.text().lineCount()) +
-				getPaddingBottom() + insets.bottom + visible / 2f;
-		return Math.max(0, (int) Math.ceil(bottom - getHeight()));
+		return lines.maxScroll(document.text().lineCount(), textTop(),
+				getPaddingBottom() + insets.bottom, getHeight());
 	}
 
 	private int maxScrollX() {
