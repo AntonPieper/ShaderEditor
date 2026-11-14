@@ -137,12 +137,78 @@ public class AccessibleTextTest {
 		assertNull(following(text, Unit.PARAGRAPH, 1));
 	}
 
+	@Test
+	public void aKeystrokeIsHeardInTheWindowOfTheCaret() {
+		Document document = new Document(lines(1000));
+		int caret = document.text().lineStart(300);
+		Window window = AccessibleText.window(document.text(), caret, caret);
+		AccessibleText.Edit edit = edit(document, caret, caret, "x");
+		assertEquals(window, edit.before());
+		assertEquals(new Window(window.start(), window.end() + 1),
+				edit.after());
+		assertEquals(caret - window.start(), edit.from());
+		assertEquals(0, edit.removed());
+		assertEquals(1, edit.added());
+	}
+
+	@Test
+	public void largeChangesAreCutAtTheWindowsSize() {
+		Document document = new Document(lines(100_000));
+		int caret = document.text().lineStart(500);
+		AccessibleText.Edit paste = edit(document, caret, caret,
+				"y".repeat(100_000));
+		assertEquals(AccessibleText.MAX_CHARS, paste.after().length());
+		assertEquals(AccessibleText.MAX_CHARS - paste.from(), paste.added());
+		AccessibleText.Edit delete = edit(document, caret,
+				document.text().length(), "");
+		assertEquals(AccessibleText.MAX_CHARS, delete.before().length());
+		assertEquals(AccessibleText.MAX_CHARS - delete.from(),
+				delete.removed());
+		assertEquals(delete.from(), delete.after().length());
+	}
+
+	@Test
+	public void beforeAndAfterAgreeAroundTheChange() {
+		Document document = new Document(lines(1000));
+		Text text = document.text();
+		int from = text.lineStart(200) + 3;
+		int to = text.lineStart(210);
+		Text before = document.text();
+		AccessibleText.Edit edit = edit(document, from, to, "a\nb");
+		Text after = document.text();
+		String b = before.substring(edit.before().start(), edit.before().end());
+		String a = after.substring(edit.after().start(), edit.after().end());
+		int f = edit.from();
+		assertEquals(b.substring(0, f), a.substring(0, f));
+		assertEquals(before.substring(from, to),
+				b.substring(f, f + edit.removed()));
+		assertEquals("a\nb", a.substring(f, f + edit.added()));
+		assertEquals(b.substring(f + edit.removed()),
+				a.substring(f + edit.added()));
+	}
+
 	private static Text lines(int count) {
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < count; ++i) {
 			sb.append("line ").append(i).append('\n');
 		}
 		return Text.of(sb);
+	}
+
+	// Replaces from to to by inserted and returns the change as heard.
+	private static AccessibleText.Edit edit(Document document, int from,
+			int to, String inserted) {
+		AccessibleText.Edit[] heard = new AccessibleText.Edit[1];
+		Document.Listener listener = new Document.Listener() {
+			@Override
+			public void onChange(Document.Change change, Text before) {
+				heard[0] = AccessibleText.edit(before, document.text(), change);
+			}
+		};
+		document.addListener(listener);
+		document.replace(from, to, Text.of(inserted));
+		document.removeListener(listener);
+		return heard[0];
 	}
 
 	private static Segment following(Text text, Unit unit, int offset) {
