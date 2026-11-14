@@ -7,9 +7,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.RadioButton;
 import android.widget.TextView;
 
+import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import com.google.android.material.color.MaterialColors;
 
 import java.util.ArrayList;
@@ -20,12 +23,19 @@ import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataRecords.ShaderInfo;
 
 public class ShaderAdapter extends BaseAdapter {
+	private final int rowLayout;
 	private final int textColorSelected;
 	private final int textColorUnselected;
 	private final List<ShaderInfo> shaders = new ArrayList<>();
 	private long selectedShaderId = 0;
 
 	public ShaderAdapter(Context context) {
+		this(context, R.layout.row_shader);
+	}
+
+	/** A row with a radio button shows the selection by it. */
+	public ShaderAdapter(Context context, @LayoutRes int rowLayout) {
+		this.rowLayout = rowLayout;
 		this.textColorSelected = MaterialColors.getColor(context,
 				com.google.android.material.R.attr.colorOnSurface, 0);
 		this.textColorUnselected = MaterialColors.getColor(context,
@@ -52,7 +62,7 @@ public class ShaderAdapter extends BaseAdapter {
 		ViewHolder holder;
 		if (convertView == null) {
 			convertView = LayoutInflater.from(parent.getContext()).inflate(
-					R.layout.row_shader,
+					rowLayout,
 					parent,
 					false);
 			holder = new ViewHolder(convertView);
@@ -80,10 +90,13 @@ public class ShaderAdapter extends BaseAdapter {
 	private class ViewHolder {
 		private final ImageView icon;
 		private final TextView title;
+		@Nullable
+		private final RadioButton selected;
 
 		ViewHolder(@NonNull View itemView) {
 			icon = itemView.findViewById(R.id.shader_icon);
 			title = itemView.findViewById(R.id.shader_title);
+			selected = itemView.findViewById(R.id.shader_selected);
 		}
 
 		void bindTo(@NonNull final ShaderInfo shader) {
@@ -95,7 +108,12 @@ public class ShaderAdapter extends BaseAdapter {
 			}
 
 			title.setText(shader.getTitle());
-			title.setTextColor(shader.id() == selectedShaderId ? textColorSelected :
+			boolean isSelected = shader.id() == selectedShaderId;
+			if (selected != null) {
+				selected.setChecked(isSelected);
+				return;
+			}
+			title.setTextColor(isSelected ? textColorSelected :
 					textColorUnselected);
 		}
 	}
