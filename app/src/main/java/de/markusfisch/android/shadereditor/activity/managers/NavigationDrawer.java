@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
@@ -65,6 +66,8 @@ import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.adapter.NavigationAdapter;
 import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.database.DataSource;
+import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
@@ -145,6 +148,8 @@ public class NavigationDrawer implements ShaderList {
 	// The shaders of the database that could not be moved.
 	@NonNull
 	private List<LibraryMove.Failed> notMoved = Collections.emptyList();
+	@NonNull
+	private Map<Long, byte[]> notMovedPictures = Collections.emptyMap();
 
 	// The list in view and the one the next level slides in with.
 	private RecyclerView list;
@@ -407,6 +412,35 @@ public class NavigationDrawer implements ShaderList {
 	 */
 	public void setNotMoved(@NonNull List<LibraryMove.Failed> failed) {
 		notMoved = failed;
+		refreshLibraryRoot();
+		// Each with its database thumbnail (NAVIGATION 11.2), read off
+		// the main thread; the database's grey square is none.
+		Context app = activity.getApplicationContext();
+		try {
+			executor.execute(() -> {
+				Map<Long, byte[]> read = new HashMap<>();
+				DataSource database = Database.getInstance(app)
+						.getDataSource();
+				for (LibraryMove.Failed shader : failed) {
+					byte[] png = OldPlaceholder.real(app,
+							database.shader.getThumbnail(shader.id()));
+					if (png != null) {
+						read.put(shader.id(), png);
+					}
+				}
+				handler.post(() -> {
+					if (notMoved == failed) {
+						notMovedPictures = read;
+						refreshLibraryRoot();
+					}
+				});
+			});
+		} catch (RejectedExecutionException e) {
+			// Destroyed.
+		}
+	}
+
+	private void refreshLibraryRoot() {
 		if (listing != null && libraryKey != null &&
 				level.equals(Level.root(libraryKey))) {
 			refresh();
@@ -852,8 +886,11 @@ public class NavigationDrawer implements ShaderList {
 		List<Row> rows = new ArrayList<>();
 		for (LibraryMove.Failed failed : notMoved) {
 			String title = failed.title();
+			byte[] png = notMovedPictures.get(failed.id());
 			rows.add(new Row(NOT_MOVED + failed.id(), Row.Kind.SHADER,
-					Row.Picture.of(Row.Picture.Icon.SHADER),
+					png != null
+							? Row.Picture.png(png)
+							: Row.Picture.of(Row.Picture.Icon.SHADER),
 					title != null && !title.isEmpty()
 							? title
 							: activity.getString(R.string.nav_untitled),

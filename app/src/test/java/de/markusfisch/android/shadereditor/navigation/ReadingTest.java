@@ -83,6 +83,22 @@ public class ReadingTest {
 				"%1$d of %2$d", Order.CHANGED).get(300).name());
 	}
 
+	// Only the rows shown are made, in the order all rows would have.
+	@Test
+	public void entriesAreOrderedAsTheirRowsAre() {
+		List<Reading.Entry> entries = new ArrayList<>();
+		for (int i = 0; i < 60; ++i) {
+			entries.add(new Reading.Entry((i % 7 == 0 ? "B" : "a") + i +
+					".frag", i % 11 == 0, i % 5 == 0 ? 0 : i % 13));
+		}
+		Reading reading = Reading.started().listed(entries);
+		for (Order order : Order.values()) {
+			assertEquals(order.sort(reading.rows(ROOT, "Show more",
+							"%1$d of %2$d")),
+					reading.rows(ROOT, "Show more", "%1$d of %2$d", order));
+		}
+	}
+
 	@Test
 	public void stopIsOfferedOnlyAfterReadingTakesLong() {
 		assertEquals(List.of(), Reading.started().notice().actions());
