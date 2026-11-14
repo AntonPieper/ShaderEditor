@@ -174,9 +174,11 @@ public class Preferences {
 		showLineNumbers = preferences.getBoolean(
 				SHOW_LINE_NUMBERS,
 				showLineNumbers);
+		// Files of a folder open in the new editor only, so it is the
+		// default wherever folders are.
 		newEditor = preferences.getBoolean(
 				NEW_EDITOR,
-				newEditor);
+				context.getResources().getBoolean(R.bool.project_mode));
 		showExtraKeys = preferences.getBoolean(
 				SHOW_EXTRA_KEYS,
 				showExtraKeys);

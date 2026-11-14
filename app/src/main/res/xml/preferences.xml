@@ -67,7 +67,7 @@
 			android:key="new_editor"
 			android:title="@string/new_editor"
 			android:summary="@string/new_editor_summary"
-			android:defaultValue="false"/>
+			android:defaultValue="@bool/project_mode"/>
 	</PreferenceCategory>
 	<PreferenceCategory app:iconSpaceReserved="false" android:title="@string/keyboard">
 		<androidx.preference.SwitchPreferenceCompat
