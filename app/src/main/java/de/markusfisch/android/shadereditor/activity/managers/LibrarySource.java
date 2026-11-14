@@ -101,10 +101,11 @@ final class LibrarySource implements Source {
 	}
 
 	@Override
-	public void open(Row row, boolean run) {
+	public boolean open(Row row, boolean run) {
 		if (run) {
 			listener.onShaderSelected(Long.parseLong(row.key()));
 		}
+		return true;
 	}
 
 	@Override

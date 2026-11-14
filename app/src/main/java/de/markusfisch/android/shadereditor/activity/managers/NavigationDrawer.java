@@ -6,13 +6,17 @@ import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -108,6 +112,10 @@ public class NavigationDrawer implements ShaderList {
 	private final ActivityResultLauncher<Intent> pickFile;
 	private final Map<Level, Source> sources = new HashMap<>();
 	private final ExecutorService executor = Executors.newSingleThreadExecutor();
+	// Folders are read on their own, so a slow one holds up no other
+	// work.
+	private final ExecutorService listings =
+			Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final CoalescingReloadGate reloadGate = new CoalescingReloadGate();
 
@@ -118,6 +126,8 @@ public class NavigationDrawer implements ShaderList {
 	private Listing listing;
 	private Item.Place open;
 	private boolean loaded;
+	// The folder opened before whose levels are shown, or null.
+	private FolderSource folder;
 
 	public NavigationDrawer(@NonNull AppCompatActivity activity,
 			@NonNull DataSource dataSource,
@@ -215,12 +225,11 @@ public class NavigationDrawer implements ShaderList {
 
 		Bundle state = activity.getSavedStateRegistry()
 				.consumeRestoredStateForKey(STATE);
-		if (state != null) {
-			for (Level known : sources.keySet()) {
-				if (known.name().equals(state.getString(LEVEL))) {
-					level = known;
-				}
-			}
+		Level restored = state != null
+				? Level.of(state.getString(LEVEL))
+				: null;
+		if (restored != null) {
+			level = restored;
 		}
 		activity.getSavedStateRegistry().registerSavedStateProvider(STATE,
 				() -> {
@@ -255,7 +264,11 @@ public class NavigationDrawer implements ShaderList {
 
 	@Override
 	public void destroy() {
+		if (folder != null) {
+			folder.close();
+		}
 		executor.shutdownNow();
+		listings.shutdownNow();
 		handler.removeCallbacksAndMessages(null);
 	}
 
@@ -351,23 +364,40 @@ public class NavigationDrawer implements ShaderList {
 		}
 	}
 
-	private void onOpened(@NonNull Projects.Opened opened, boolean folder) {
-		if (opened.project() != null) {
-			// Nothing of it is shown in the editor yet.
-			opened.project().close();
-		}
+	// The drawer opens on what was picked; nothing starts running.
+	private void onOpened(@NonNull Projects.Opened opened, boolean tree) {
 		if (!isActivityAlive()) {
+			if (opened.project() != null) {
+				opened.project().close();
+			}
 			return;
 		}
 		if (opened.id() == null) {
-			Message.show(activity, folder
+			Message.show(activity, tree
 					? R.string.nav_cannot_open_folder
 					: R.string.nav_cannot_open_file);
 			return;
 		}
+		folderSource(opened.id()).adopt(opened.project(), opened.problem());
 		loadRecent();
-		go(Level.FOLDERS);
+		go(Level.root(opened.id()));
 		drawerLayout.openDrawer(drawer);
+	}
+
+	@NonNull
+	private FolderSource folderSource(@NonNull String key) {
+		if (folder == null || !folder.key().equals(key)) {
+			if (folder != null) {
+				folder.close();
+			}
+			folder = new FolderSource(activity, projects, listings, handler,
+					key, folders.find(key), () -> {
+				if (folder != null && folder.key().equals(level.key())) {
+					refresh();
+				}
+			});
+		}
+		return folder;
 	}
 
 	private void onShadersLoaded(@NonNull List<ShaderInfo> shaders) {
@@ -412,6 +442,12 @@ public class NavigationDrawer implements ShaderList {
 	private void go(@NonNull Level to) {
 		int direction = to.isBelow(level) ? 1 : level.isBelow(to) ? -1 : 0;
 		level = to;
+		if (folder != null && !folder.key().equals(to.key())) {
+			folder.close();
+			folder = null;
+		} else if (folder != null) {
+			folder.keep(to);
+		}
 		listing = list(to);
 		showHeader();
 		list.animate().cancel();
@@ -452,7 +488,8 @@ public class NavigationDrawer implements ShaderList {
 	private void show(@NonNull RecyclerView list) {
 		// What runs is what is open while shaders come from the database.
 		adapter(list).setItems(Item.of(listing, level, open, open,
-				Collections.emptySet()), loaded);
+				Collections.emptySet()),
+				loaded && listing.notice() == null);
 	}
 
 	private void showHeader() {
@@ -460,7 +497,11 @@ public class NavigationDrawer implements ShaderList {
 		up.setVisibility(canGoUp ? View.VISIBLE : View.GONE);
 		upSpace.setVisibility(canGoUp ? View.GONE : View.VISIBLE);
 		menu.setVisibility(listing.sortable() ? View.VISIBLE : View.GONE);
-		title.setText(listing.title());
+		title.setText(boldLastPart(listing.title()));
+		// A path is shortened at its start, so its last part stays.
+		title.setEllipsize(listing.title().contains(" / ")
+				? TextUtils.TruncateAt.START
+				: TextUtils.TruncateAt.END);
 		readOnly.setVisibility(listing.readOnly() ? View.VISIBLE : View.GONE);
 		subtitle.setText(listing.subtitle());
 		((View) subtitle.getParent()).setVisibility(
@@ -482,8 +523,25 @@ public class NavigationDrawer implements ShaderList {
 				: View.GONE);
 	}
 
+	// The folder shown in a path stands out.
+	@NonNull
+	private static CharSequence boldLastPart(@NonNull String path) {
+		int last = path.lastIndexOf(" / ");
+		if (last < 0) {
+			return path;
+		}
+		SpannableString text = new SpannableString(path);
+		text.setSpan(new StyleSpan(Typeface.BOLD), last + 3, path.length(),
+				Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+		return text;
+	}
+
 	@NonNull
 	private Source source(@NonNull Level level) {
+		String key = level.key();
+		if (key != null) {
+			return folderSource(key).at(level);
+		}
 		Source source = sources.get(level);
 		return source != null ? source : library;
 	}
@@ -492,8 +550,15 @@ public class NavigationDrawer implements ShaderList {
 		switch (item.tap()) {
 			case ENTER -> go(item.row().enters());
 			case OPEN, OPEN_AND_RUN -> {
-				source(level).open(item.row(), item.tap() == Tap.OPEN_AND_RUN);
-				close();
+				if (source(level).open(item.row(),
+						item.tap() == Tap.OPEN_AND_RUN)) {
+					close();
+				}
+			}
+			case MORE -> {
+				if (folder != null) {
+					folder.more(level);
+				}
 			}
 			default -> {
 			}

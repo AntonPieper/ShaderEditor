@@ -48,6 +48,16 @@ final class FoldersSource implements Source {
 		this.recent = recent;
 	}
 
+	/** The folder or file opened before with key, or null. */
+	Recent find(@NonNull String key) {
+		for (Recent opened : recent) {
+			if (opened.key().equals(key)) {
+				return opened;
+			}
+		}
+		return null;
+	}
+
 	@Override
 	public Listing list(Order order) {
 		Listing shaders = library.list(order);
@@ -77,7 +87,8 @@ final class FoldersSource implements Source {
 	}
 
 	@Override
-	public void open(Row row, boolean run) {
+	public boolean open(Row row, boolean run) {
+		return false;
 	}
 
 	@Override

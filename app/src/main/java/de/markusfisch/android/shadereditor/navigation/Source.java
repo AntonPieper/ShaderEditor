@@ -12,8 +12,11 @@ public interface Source {
 	 */
 	Listing list(Order order);
 
-	/** Opens the row's file in the editor and, when asked, runs it. */
-	void open(Row row, boolean run);
+	/**
+	 * Opens the row's file in the editor and, when asked, runs it.
+	 * Returns whether it did, so that the drawer closes.
+	 */
+	boolean open(Row row, boolean run);
 
 	/** Does one of the actions the row offers. */
 	void act(Row row, Row.Action action);

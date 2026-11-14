@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * A folder or a single file opened before, as the top level lists it
- * under Recent: the key its source knows it by, its name and where it
+ * under Recent, a level to go into: the key its source knows it by, its name and where it
  * is, when it was opened last in milliseconds since the epoch, and
  * whether it has unsaved text.
  */
@@ -27,14 +27,14 @@ public record Recent(String key, boolean file, String name,
 		List<Row> rows = new ArrayList<>();
 		for (Recent opened : sorted) {
 			rows.add(new Row(opened.key,
-					Row.Kind.OTHER,
+					Row.Kind.FOLDER,
 					Row.Picture.of(opened.file
 							? Row.Picture.Icon.SHADER
 							: Row.Picture.Icon.FOLDER),
 					opened.name,
 					opened.detail(singleFile),
 					opened.opened,
-					null,
+					Level.root(opened.key),
 					opened.unsaved
 							? EnumSet.of(Row.Mark.UNSAVED)
 							: EnumSet.noneOf(Row.Mark.class),

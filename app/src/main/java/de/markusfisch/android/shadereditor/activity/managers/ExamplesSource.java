@@ -60,8 +60,9 @@ final class ExamplesSource implements Source {
 	}
 
 	@Override
-	public void open(Row row, boolean run) {
+	public boolean open(Row row, boolean run) {
 		host.onOpenExample(Samples.ALL.get(Integer.parseInt(row.key())));
+		return true;
 	}
 
 	@Override

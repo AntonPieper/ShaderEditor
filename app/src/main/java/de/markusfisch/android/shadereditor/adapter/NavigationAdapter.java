@@ -166,6 +166,10 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 							? R.dimen.se_row_height
 							: R.dimen.se_row_height_two_line));
 			bindPicture(row.picture());
+			// Its place stays, so that the text lines up with the names.
+			picture.setVisibility(row.kind() == Row.Kind.MORE
+					? View.INVISIBLE
+					: View.VISIBLE);
 			// Beside the name when there is a second line, else centred.
 			((LinearLayout.LayoutParams) picture.getLayoutParams()).gravity =
 					row.detail() == null ? Gravity.CENTER_VERTICAL : Gravity.TOP;
