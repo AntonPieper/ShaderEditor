@@ -173,7 +173,8 @@ public class ShaderManager {
 
 	public void saveState(@NonNull Bundle outState) {
 		outState.putLong(SELECTED_SHADER_ID, selectedShaderId);
-		outState.putSerializable(PROJECT_SESSION, getEditedProjectSession());
+		// The source is restored by the editor.
+		outState.putSerializable(PROJECT_SESSION, getEditedProjectSession(""));
 		outState.putBoolean(MODIFIED, isModified);
 	}
 
@@ -182,7 +183,9 @@ public class ShaderManager {
 		selectedShaderId = savedInstanceState.getLong(
 				SELECTED_SHADER_ID, NO_SHADER);
 		if (savedInstanceState.getSerializable(PROJECT_SESSION) instanceof
-				ShaderProjectSession projectSession) {
+				ShaderProjectSession savedSession) {
+			ShaderProjectSession projectSession =
+					savedSession.withEntryPointSource(editorFragment.getText());
 			currentProjectSession = projectSession;
 			quality = projectSession.getQuality();
 			uiManager.setToolbarTitle(projectSession.getProject().getTitle());
