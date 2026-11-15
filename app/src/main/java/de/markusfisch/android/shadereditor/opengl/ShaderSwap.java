@@ -315,6 +315,21 @@ final class ShaderSwap<S, B extends ShaderSwap.Build> {
 		return currentRevision;
 	}
 
+	// GL thread. Whether the next build is a revision of the picture the
+	// current build draws.
+	boolean nextIsSamePicture() {
+		return next != null && nextRevision != null &&
+				currentRevision != null && current != null &&
+				samePicture.same(nextRevision.shader(),
+						currentRevision.shader());
+	}
+
+	// GL thread. The revision of the next build, or null.
+	@Nullable
+	Revision<S> nextRevision() {
+		return next != null ? nextRevision : null;
+	}
+
 	// GL thread. The next build, or null; one that a newer request
 	// superseded is released.
 	@Nullable

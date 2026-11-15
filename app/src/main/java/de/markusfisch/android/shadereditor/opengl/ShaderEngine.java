@@ -60,15 +60,16 @@ public final class ShaderEngine {
 	}
 
 	// What a host set: the shader to build, what the runtime belongs to,
-	// the runtime it starts at, how its diagnostics are shown, and which
-	// picture it is a revision of. A quality change keeps the latter
-	// four.
+	// the runtime it starts at, how its diagnostics are shown, which
+	// picture it is a revision of, and whether it goes on from the build
+	// that draws. A quality change keeps the latter five.
 	private record Offer(
 			@NonNull PlanShader shader,
 			@NonNull Object origin,
 			long runtimeNanos,
 			@NonNull Reporting reporting,
-			@NonNull Object picture) {
+			@NonNull Object picture,
+			boolean continues) {
 	}
 
 	// The ceiling of PictureLimit a host asked for, of 1, and whether the
@@ -178,21 +179,28 @@ public final class ShaderEngine {
 			@NonNull Object picture) {
 		return shaders.offer(request, new Offer(
 				new PlanShader(preparation, quality, reporting.textureFix()),
-				owner, runtimeNanos, reporting, picture));
+				owner, runtimeNanos, reporting, picture, false));
 	}
 
-	// Any thread. Like setPlan(preparation, quality, picture), where the
-	// text has a tuned number replaced by tuning's uniform: the build
-	// declares it, and once it draws, applyTuning() writes new values
-	// into it. tuning hears whether the build draws or was refused; a
-	// refusal goes to tuning only, not to the listener, and the build
-	// before keeps drawing.
-	public void setPlan(@NonNull Preparation preparation, float quality,
-			@NonNull Object picture, @NonNull Tuning tuning) {
+	// Any thread. Like setPlan(preparation, quality, picture), for the
+	// builds of one tuning session, which go on from the build that
+	// draws instead of starting again: time, frame, timeDelta and
+	// frameRate go on, and so do the previous frames of the passes when
+	// every target stays as it is (no pass changed its size or format).
+	// It starts again as any build does when it is of another picture or
+	// quality than the build that draws, or nothing draws.
+	//
+	// tuning, if not null, is the uniform that replaced a tuned number
+	// of the text: the build declares it, and once it draws,
+	// applyTuning() writes new values into it. tuning hears whether the
+	// build draws or was refused; a refusal goes to tuning only, not to
+	// the listener, and the build before keeps drawing.
+	public void continuePlan(@NonNull Preparation preparation, float quality,
+			@NonNull Object picture, @Nullable Tuning tuning) {
 		shaders.offer(request(), new Offer(
 				new PlanShader(preparation, quality, AS_PREPARED.textureFix(),
 						tuning),
-				preparation, 0, AS_PREPARED, picture));
+				preparation, 0, AS_PREPARED, picture, true));
 	}
 
 	// GL thread, when the host asks after a tuned value changed: writes
@@ -219,7 +227,8 @@ public final class ShaderEngine {
 				offer.origin(),
 				offer.runtimeNanos(),
 				offer.reporting(),
-				offer.picture()));
+				offer.picture(),
+				offer.continues()));
 	}
 
 	// Any thread. The brightest a pixel of the picture may be on the
@@ -394,6 +403,13 @@ public final class ShaderEngine {
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
 		next.upload(errors);
+		// A build of a tuning session goes on from the one that draws.
+		var drawing = shaders.current();
+		boolean continues = drawing != null &&
+				Objects.requireNonNull(shaders.nextRevision()).shader()
+						.continues() &&
+				shaders.nextIsSamePicture() &&
+				next.quality() == drawing.quality();
 		// Its targets come before the current build goes, so a build
 		// that cannot draw leaves the current one drawing.
 		var targetErrors = new ArrayList<ProjectDiagnostic>();
@@ -408,6 +424,7 @@ public final class ShaderEngine {
 										build.quality()),
 								EngineInputs.renderSize(inputs.getSurfaceHeight(),
 										build.quality()),
+								continues ? drawing : null,
 								targetErrors);
 					}
 
@@ -442,13 +459,14 @@ public final class ShaderEngine {
 			next.applyTuning();
 			tuning.live();
 		}
-		inputs.showRuntime(
-				shown.shader().origin(),
-				shown.shader().runtimeNanos());
-
 		long now = System.nanoTime();
 		lastRender = now;
-		inputs.restart(next.quality(), now);
+		if (!continues) {
+			inputs.showRuntime(
+					shown.shader().origin(),
+					shown.shader().runtimeNanos());
+			inputs.restart(next.quality(), now);
+		}
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
 		fTimeMax = next.fTimeMax();
 		runSources(next);

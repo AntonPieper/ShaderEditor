@@ -104,13 +104,16 @@ public class ShaderViewManager {
 	}
 
 	/**
-	 * Run a prepared project, a revision of picture, whose text has a
-	 * tuned number replaced by tuning's uniform; tuning hears whether it
-	 * draws. The quality stays as it is.
+	 * Run a prepared project of a tuning session, a revision of the
+	 * picture shown, which goes on from it: time and frame go on, and
+	 * the previous frames of its passes when no pass changed its size
+	 * or format. tuning, if not null, is the uniform that replaced a
+	 * tuned number of the text, and hears whether the build draws. The
+	 * quality stays as it is.
 	 */
-	public void setPlan(@NonNull Preparation preparation, float quality,
-			@NonNull Object picture, @NonNull Tuning tuning) {
-		shaderView.setPlan(preparation, quality, picture, tuning);
+	public void continuePlan(@NonNull Preparation preparation, float quality,
+			@NonNull Object picture, @Nullable Tuning tuning) {
+		shaderView.continuePlan(preparation, quality, picture, tuning);
 	}
 
 	/** Show the value tuning has now with the next frame. */

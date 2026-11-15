@@ -160,12 +160,12 @@ public class ShaderView extends GLSurfaceView {
 		requestRender();
 	}
 
-	// Like setPlan(preparation, quality, picture), with a tuned number of
-	// the text replaced by tuning's uniform.
-	public void setPlan(@NonNull Preparation preparation, float quality,
-			@NonNull Object picture, @NonNull Tuning tuning) {
-		runtimeOwner = preparation;
-		engine.setPlan(preparation, quality, picture, tuning);
+	// Like setPlan(preparation, quality, picture), for a build of a
+	// tuning session, which goes on from the one shown: see
+	// ShaderEngine.continuePlan(). The runtime goes on for its owner.
+	public void continuePlan(@NonNull Preparation preparation, float quality,
+			@NonNull Object picture, @Nullable Tuning tuning) {
+		engine.continuePlan(preparation, quality, picture, tuning);
 		requestRender();
 	}
 

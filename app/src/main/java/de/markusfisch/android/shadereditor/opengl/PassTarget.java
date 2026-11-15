@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.project.HostDirective;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
@@ -22,14 +23,21 @@ final class PassTarget {
 	private final GlTexture2D[] textures;
 	@NonNull
 	private final GlFramebuffer[] framebuffers;
+	@NonNull
+	private final HostDirective.Format format;
 	private int current;
+	// The builds that draw into it: the one it was made for, and the
+	// build that goes on from that one, until either is released.
+	private int owners = 1;
 
 	private PassTarget(
 			@NonNull GlDevice device,
 			@NonNull RenderPlan.Size size,
+			@NonNull HostDirective.Format format,
 			int count) {
 		this.device = device;
 		this.size = size;
+		this.format = format;
 		textures = new GlTexture2D[count];
 		framebuffers = new GlFramebuffer[count];
 	}
@@ -43,8 +51,8 @@ final class PassTarget {
 			boolean history,
 			@NonNull TargetFormats formats,
 			@NonNull List<ProjectDiagnostic> errors) {
-		var pass = new PassTarget(device, size, history ? 2 : 1);
 		var format = target.format();
+		var pass = new PassTarget(device, size, format, history ? 2 : 1);
 		for (int i = 0; i < pass.textures.length; ++i) {
 			var texture = pass.textures[i] = device.createTexture2D();
 			var message = device.allocateTexture2D(texture, size.width(),
@@ -80,6 +88,22 @@ final class PassTarget {
 		return size;
 	}
 
+	// Whether it is what create() makes for target at size with or
+	// without history.
+	boolean fits(@NonNull RenderPlan.Target target,
+			@NonNull RenderPlan.Size size, boolean history) {
+		return this.size.equals(size) && format == target.format() &&
+				(textures.length == 2) == history;
+	}
+
+	// One more build draws into it, as the one that has it did, and
+	// what it holds goes on; each releases it.
+	@NonNull
+	PassTarget share() {
+		++owners;
+		return this;
+	}
+
 	// What the pass draws into, and until swap() the frame it drew.
 	@NonNull
 	GlTexture2D drawn() {
@@ -111,6 +135,9 @@ final class PassTarget {
 	}
 
 	void release() {
+		if (--owners > 0) {
+			return;
+		}
 		for (int i = 0; i < textures.length; ++i) {
 			device.deleteFramebuffer(framebuffers[i]);
 			device.deleteTexture(textures[i]);
@@ -119,6 +146,9 @@ final class PassTarget {
 
 	// After the context was lost with its objects.
 	void discard() {
+		if (--owners > 0) {
+			return;
+		}
 		for (int i = 0; i < textures.length; ++i) {
 			framebuffers[i].invalidate();
 			textures[i].invalidate();
