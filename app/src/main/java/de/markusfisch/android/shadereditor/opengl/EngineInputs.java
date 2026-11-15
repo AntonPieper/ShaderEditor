@@ -48,6 +48,8 @@ final class EngineInputs {
 	// Until the first touch, and the first touch down, they read 0.
 	private boolean touched;
 	private boolean started;
+	// Whether a touch began that no frame was told of yet.
+	private boolean began;
 	private float offsetX;
 	private float offsetY;
 	private float quality = 1f;
@@ -113,6 +115,7 @@ final class EngineInputs {
 					touchStartX = touchX;
 					touchStartY = touchY;
 					started = touched;
+					began = touched;
 					break;
 				case MotionEvent.ACTION_UP:
 				case MotionEvent.ACTION_CANCEL:
@@ -245,6 +248,8 @@ final class EngineInputs {
 			in.touchStartY = started
 					? renderHeight - touchStartY * quality
 					: 0;
+			in.touchBegan = began;
+			began = false;
 			in.mouseX = touched ? in.touchX / renderWidth : 0;
 			in.mouseY = touched ? 1 - touchY * quality / renderHeight : 0;
 			in.pointerCount = pointerCount;

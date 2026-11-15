@@ -75,16 +75,26 @@ public class ActiveBuiltinsTest {
 		in.touchStartX = 1;
 		in.touchStartY = 2;
 		in.pointerCount = 1;
+		in.touchBegan = true;
 		var mouse = Map.of("mouse",
 				new GlUniform("mouse", GLES20.GL_FLOAT_VEC4, 1, 7));
 		var out = write(in, mouse);
 		assertEquals(List.of(7), out.locations);
 		assertEquals(List.of("vec4"), out.calls);
+		// The frame the touch began in: both positive.
 		assertArrayEquals(new float[]{10, 20, 1, 2}, out.values.get(0), 0f);
-		// Released: where it started turns negative.
+		// Held: w tells the click, which is over; z that it is down.
+		in.touchBegan = false;
+		out = write(in, mouse);
+		assertArrayEquals(new float[]{10, 20, 1, -2}, out.values.get(0), 0f);
+		// Released: z turns negative too.
 		in.pointerCount = 0;
 		out = write(in, mouse);
 		assertArrayEquals(new float[]{10, 20, -1, -2}, out.values.get(0), 0f);
+		// Down and up between two frames: a click that is not held.
+		in.touchBegan = true;
+		out = write(in, mouse);
+		assertArrayEquals(new float[]{10, 20, -1, 2}, out.values.get(0), 0f);
 		// The declaration the uniform list shows stays normalized.
 		out = write(in, Map.of("mouse",
 				new GlUniform("mouse", GLES20.GL_FLOAT_VEC2, 1, 7)));

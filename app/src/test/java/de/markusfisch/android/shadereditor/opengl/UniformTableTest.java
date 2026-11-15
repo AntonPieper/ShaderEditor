@@ -186,6 +186,21 @@ public class UniformTableTest {
 		assertWritten("micAmplitude", mic, "float", 0.25f);
 	}
 
+	// The seconds of the day go on between two looks at the calendar,
+	// with their fraction.
+	@Test
+	public void theSecondOfTheDayGoesOnInEveryFrame() {
+		var clock = new SystemSources.Clock();
+		long start = 10000000000L;
+		clock.update(start);
+		float then = clock.secondOfDay;
+		assertTrue(then >= 0f && then < 86401f);
+		clock.update(start + 250000000L);
+		assertEquals(then + .25f, clock.secondOfDay, .02f);
+		clock.update(start + 500000000L);
+		assertEquals(then + .5f, clock.secondOfDay, .02f);
+	}
+
 	@Test
 	public void lastNotificationTimeIsNaNWithoutNotifications() {
 		var notifications = new SystemSources.Notifications();
