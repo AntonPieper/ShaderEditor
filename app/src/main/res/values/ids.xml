@@ -4,4 +4,5 @@
 	<item name="look_up" type="id" />
 	<!-- The code view's accessibility action that fixes the caret's line. -->
 	<item name="row_fix" type="id" />
+	<item name="row_fix_2" type="id" />
 </resources>

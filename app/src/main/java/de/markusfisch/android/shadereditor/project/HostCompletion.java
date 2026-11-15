@@ -198,6 +198,139 @@ public final class HostCompletion {
 	}
 
 	/**
+	 * A file a line names that is not there: its path, which line names
+	 * it, the name of a file of its folder to use instead, or null, and
+	 * the edit that uses it.
+	 */
+	public record Missing(ProjectPath path, Kind kind, String near,
+			Choice use) {
+		/** Return whether a file can be made for it: a text file. */
+		public boolean creatable() {
+			return FileKind.hint(path.getFileName(), null) != FileKind.PICTURE;
+		}
+	}
+
+	/**
+	 * Return the file line names that message says is not there, with
+	 * the nearest name in its folder; null when message says no such
+	 * thing of the path line names. While the folder is not listed,
+	 * there is no near name.
+	 *
+	 * @param file the file line is in
+	 */
+	public static Missing missing(String line, ProjectPath file,
+			String message, Listing listing) {
+		if (!message.startsWith(CapturedFiles.NOT_FOUND)) {
+			return null;
+		}
+		String named = message.substring(CapturedFiles.NOT_FOUND.length());
+		int from = named.indexOf(" (included from ");
+		ProjectParseResult<ProjectPath> path = ProjectPath.parse(from < 0
+				? named
+				: named.substring(0, from));
+		Tokens tokens = path.isSuccess()
+				? Tokens.of(line, line.length())
+				: null;
+		Path at = tokens != null ? tokens.path : null;
+		ProjectParseResult<ProjectPath> written = at != null
+				? ProjectPath.resolve(file, at.text(line))
+				: null;
+		if (written == null || !written.isSuccess() ||
+				!written.value().equals(path.value())) {
+			return null;
+		}
+		String text = at.text(line);
+		List<Entry> entries = listing.list(folderOf(file, text));
+		String near = entries != null
+				? nearest(path.value().getFileName(), at.kind, entries)
+				: null;
+		return new Missing(path.value(), at.kind, near, near != null
+				? retarget(line, at, near)
+				: null);
+	}
+
+	/**
+	 * Return the edit that makes the path of line that names from
+	 * name the file to of the same folder instead, or null when line
+	 * names no file from.
+	 *
+	 * @param file the file line is in
+	 */
+	public static Choice retarget(String line, ProjectPath file,
+			ProjectPath from, ProjectPath to) {
+		Tokens tokens = Tokens.of(line, line.length());
+		Path at = tokens != null ? tokens.path : null;
+		ProjectParseResult<ProjectPath> written = at != null
+				? ProjectPath.resolve(file, at.text(line))
+				: null;
+		return written != null && written.isSuccess() &&
+				written.value().equals(from)
+				? retarget(line, at, to.getFileName())
+				: null;
+	}
+
+	/**
+	 * Return the name of entries nearest name, of a file of the kind a
+	 * line of kind names as name is: one that differs only in case, or
+	 * else the one alone that differs by one or two letters; null when
+	 * none is that near.
+	 */
+	static String nearest(String name, Kind kind, List<Entry> entries) {
+		boolean picture = FileKind.hint(name, null) == FileKind.PICTURE;
+		String lower = name.toLowerCase(Locale.ROOT);
+		String best = null;
+		int distance = 3;
+		boolean tie = false;
+		for (Entry entry : entries) {
+			String n = entry.name();
+			if (entry.folder() || n.equals(name) || n.startsWith(".") ||
+					rank(kind, n) < 0 ||
+					(FileKind.hint(n, null) == FileKind.PICTURE) != picture) {
+				continue;
+			}
+			int d = distance(lower, n.toLowerCase(Locale.ROOT));
+			if (d < distance) {
+				best = n;
+				distance = d;
+				tie = false;
+			} else if (d == distance) {
+				tie = true;
+			}
+		}
+		return best != null && (!tie || distance == 0) ? best : null;
+	}
+
+	// The edits from a to b, a swap of two neighbours counting one.
+	private static int distance(String a, String b) {
+		int[][] d = new int[a.length() + 1][b.length() + 1];
+		for (int i = 0; i <= a.length(); ++i) {
+			d[i][0] = i;
+		}
+		for (int j = 0; j <= b.length(); ++j) {
+			d[0][j] = j;
+		}
+		for (int i = 1; i <= a.length(); ++i) {
+			for (int j = 1; j <= b.length(); ++j) {
+				int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+				d[i][j] = Math.min(Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1),
+						d[i - 1][j - 1] + cost);
+				if (i > 1 && j > 1 && a.charAt(i - 1) == b.charAt(j - 2) &&
+						a.charAt(i - 2) == b.charAt(j - 1)) {
+					d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+				}
+			}
+		}
+		return d[a.length()][b.length()];
+	}
+
+	// The edit that puts name in place of the last part of path.
+	private static Choice retarget(String line, Path path, String name) {
+		int start = path.start + path.text(line).lastIndexOf('/') + 1;
+		return new Choice(name, start, path.end, name,
+				start + name.length());
+	}
+
+	/**
 	 * Return the folder typed, the part of a path up to its last slash,
 	 * names relative to file, null for the root; or file itself when it
 	 * leaves the root or cannot be a folder.

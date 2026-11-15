@@ -10,16 +10,20 @@ import android.util.LruCache;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.fragment.FileLinks;
@@ -32,6 +36,7 @@ import de.markusfisch.android.shadereditor.project.Previews;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
+import de.markusfisch.android.shadereditor.resource.Resources;
 
 /**
  * The files around the file of a folder in the editor. A folder is
@@ -63,6 +68,15 @@ final class ProjectLinks implements FileLinks {
 		 */
 		void showBack(@NonNull String name, int line,
 				@Nullable Runnable back);
+
+		/**
+		 * A file was made in the project: build what runs again, and
+		 * list the file where the files are listed.
+		 */
+		void made();
+
+		/** Tell message, about what failed. */
+		void failed(@NonNull String message);
 	}
 
 	// Where Open went from, and to.
@@ -311,6 +325,50 @@ final class ProjectLinks implements FileLinks {
 						? () -> show.show(path)
 						: null,
 				image ? null : () -> open(path, 0));
+	}
+
+	@Override
+	public void create(@NonNull ProjectPath path, boolean include) {
+		OpenProject open = project;
+		if (open == null) {
+			return;
+		}
+		projects.change(open.id(), files -> {
+			byte[] bytes;
+			try {
+				bytes = (include
+						? guard(path.getFileName())
+						: Resources.loadRawResource(context,
+						R.raw.new_shader))
+						.getBytes(StandardCharsets.UTF_8);
+			} catch (IOException e) {
+				return new ProjectFiles.Refused(ProjectFiles.Refusal.FAILED,
+						e.getMessage());
+			}
+			return files.write(path, bytes, null);
+		}, change -> {
+			if (change instanceof ProjectFiles.Refused refused) {
+				host.failed(context.getString(R.string.nav_cannot_create,
+						path.getFileName(), refused.reason()));
+			} else if (open == project) {
+				forget();
+				open.refresh(read -> host.made());
+			}
+		});
+	}
+
+	// An empty include named name that is read once however often it is
+	// included.
+	@NonNull
+	static String guard(@NonNull String name) {
+		StringBuilder macro = new StringBuilder();
+		for (char c : name.toUpperCase(Locale.ROOT).toCharArray()) {
+			macro.append(c < 128 && Character.isLetterOrDigit(c) ? c : '_');
+		}
+		if (Character.isDigit(macro.charAt(0))) {
+			macro.insert(0, '_');
+		}
+		return "#ifndef " + macro + "\n#define " + macro + "\n\n#endif\n";
 	}
 
 	@Override

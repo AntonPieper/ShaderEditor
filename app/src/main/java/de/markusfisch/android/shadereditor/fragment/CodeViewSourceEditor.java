@@ -113,6 +113,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// The call the strip shows, or null.
 	@Nullable
 	private SignatureView.Signature signature;
+	// The fixes of the error row, where docs are.
+	@Nullable
+	private final FileFixes fixes;
 	// The files a file of a folder names, or null.
 	@Nullable
 	private FileLinks links;
@@ -193,8 +196,22 @@ final class CodeViewSourceEditor implements SourceEditor {
 					addMarked(statement);
 				}
 			});
+			fixes = new FileFixes(view.getContext(), new FileFixes.Host() {
+				@Nullable
+				@Override
+				public FileLinks links() {
+					return links;
+				}
+
+				@NonNull
+				@Override
+				public Document document() {
+					return document;
+				}
+			}, docs);
 		} else {
 			docs = null;
+			fixes = null;
 		}
 		show(new Document(Text.EMPTY), DATABASE);
 	}
@@ -338,8 +355,13 @@ final class CodeViewSourceEditor implements SourceEditor {
 		this.links = links;
 		hostOffer = null;
 		if (links != null) {
-			links.setListener(this::complete);
+			// A folder listed may name the file a missing one is near.
+			links.setListener(() -> {
+				complete();
+				view.fixesChanged();
+			});
 		}
+		view.fixesChanged();
 	}
 
 	@Override
@@ -496,7 +518,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.setLookUp(syntax == DATABASE ? docs : null);
 		marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
-		view.setRowFix(syntax == DATABASE ? docs : null);
+		view.setRowFix(syntax == DATABASE ? fixes : null);
 		document.addListener(documentListener);
 		// JSON that is there when a file is opened is not put in.
 		toldJson = beginsAsJson();

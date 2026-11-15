@@ -144,18 +144,18 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		return null;
 	}
 
-	@Nullable
+	@NonNull
 	@Override
-	public String label(@NonNull List<String> messages) {
+	public List<String> labels(int line, @NonNull List<String> messages) {
 		UniformDef uniform = undeclaredUniform(messages, host.declared());
 		return uniform != null
-				? view.getContext().getString(R.string.fix_add_uniform,
-				uniform.getType().getKeyword(), uniform.getDeclarator())
-				: null;
+				? List.of(view.getContext().getString(R.string.fix_add_uniform,
+				uniform.getType().getKeyword(), uniform.getDeclarator()))
+				: List.of();
 	}
 
 	@Override
-	public void apply(@NonNull List<String> messages) {
+	public void apply(int line, @NonNull List<String> messages, int index) {
 		UniformDef uniform = undeclaredUniform(messages, host.declared());
 		if (uniform != null) {
 			host.addUniform(statement(uniform));

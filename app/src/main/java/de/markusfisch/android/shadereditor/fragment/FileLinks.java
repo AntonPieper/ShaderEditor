@@ -27,6 +27,13 @@ public interface FileLinks extends HostCompletion.Listing {
 	void point(@Nullable HostCompletion.Named named);
 
 	/**
+	 * Make the text file at path, a pass from the template for a new
+	 * shader, or an empty include with an include guard; then build
+	 * what runs again.
+	 */
+	void create(@NonNull ProjectPath path, boolean include);
+
+	/**
 	 * The caret entered a path: list the folders asked for from now on
 	 * again, off the main thread, as files may have been made since.
 	 */

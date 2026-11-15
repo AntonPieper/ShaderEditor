@@ -542,4 +542,7 @@
 	<string name="a11y_reference_show">Show %1$s</string>
 	<string name="a11y_reference_open">Open %1$s</string>
 	<string name="a11y_back_to_file">Back to %1$s, line %2$d</string>
+	<string name="fix_use">Use %1$s</string>
+	<string name="fix_create">Create</string>
+	<string name="file_not_in_folder">Not in this folder</string>
 </resources>

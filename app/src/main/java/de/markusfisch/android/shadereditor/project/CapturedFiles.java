@@ -22,6 +22,9 @@ final class CapturedFiles implements ProjectFiles {
 	private final int limit;
 	private int reads;
 
+	// What the message for a file that is not there starts with.
+	static final String NOT_FOUND = "File not found: ";
+
 	CapturedFiles(ProjectFiles files, ProjectLimits limits) {
 		this.files = files;
 		this.limit = limits.filesRead();
@@ -35,7 +38,7 @@ final class CapturedFiles implements ProjectFiles {
 		if (read instanceof Content) {
 			return null;
 		} else if (read == null) {
-			return "File not found: " + path;
+			return NOT_FOUND + path;
 		}
 		return "Could not read " + path + (read instanceof Failed failed
 				? ": " + failed.reason()

@@ -14,6 +14,7 @@ import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
 import androidx.annotation.NonNull;
 
 import java.util.Collections;
+import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.AccessibleText;
@@ -46,6 +47,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 					AccessibilityNodeInfo.MOVEMENT_GRANULARITY_LINE |
 					AccessibilityNodeInfo.MOVEMENT_GRANULARITY_PARAGRAPH |
 					AccessibilityNodeInfo.MOVEMENT_GRANULARITY_PAGE;
+	// The actions of the fixes of the caret's line, in their order.
+	private static final int[] FIXES = {R.id.row_fix, R.id.row_fix_2};
 
 	private final CodeView view;
 	private final Motion motion = new Motion();
@@ -83,9 +86,10 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		if (error != null) {
 			info.setContentInvalid(true);
 			info.setError(error);
-			CharSequence fix = view.caretLineFix();
-			if (fix != null) {
-				info.addAction(new AccessibilityAction(R.id.row_fix, fix));
+			List<String> fixes = view.caretLineFixes();
+			for (int i = 0; i < fixes.size(); ++i) {
+				info.addAction(new AccessibilityAction(FIXES[i],
+						fixes.get(i)));
 			}
 		}
 		String word = view.lookUpWord();
@@ -277,8 +281,11 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			return super.performAccessibilityAction(host, action, arguments);
 		} else if (action == R.id.look_up) {
 			return view.lookUpSelection();
-		} else if (action == R.id.row_fix) {
-			return view.applyCaretLineFix();
+		}
+		for (int i = 0; i < FIXES.length; ++i) {
+			if (action == FIXES[i]) {
+				return view.applyCaretLineFix(i);
+			}
 		}
 		switch (action) {
 			case AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY:
