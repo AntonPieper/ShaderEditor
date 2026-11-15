@@ -568,6 +568,15 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Return the first count bytes of the file at path as stored, or
+	 * null when it cannot be read. Reads storage, as {@link #list}
+	 * does: off the main thread.
+	 */
+	public byte[] head(ProjectPath path, int count) {
+		return store.head(path, count);
+	}
+
+	/**
 	 * Return the file the manifest at the root names to run, or null
 	 * where there is no valid manifest. Reads storage, as
 	 * {@link #list} does: off the main thread.
