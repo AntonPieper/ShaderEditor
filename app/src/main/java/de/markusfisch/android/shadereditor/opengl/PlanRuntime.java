@@ -81,6 +81,8 @@ final class PlanRuntime implements ShaderSwap.Build {
 	private final boolean[] backbuffer;
 	@Nullable
 	private RunningPasses running;
+	@Nullable
+	private List<Integer> rowOrder;
 	// Whether a frame was drawn, and whether the last one moved on, so
 	// that its passes' frames are their completed ones.
 	private boolean drawn;
@@ -608,6 +610,27 @@ final class PlanRuntime implements ShaderSwap.Build {
 			}
 		}
 		pipeline.present(texture, picture, surfaceWidth, surfaceHeight);
+	}
+
+	// GL thread. What every row of running() that draws drew in the
+	// frame drawn last, in their order, for pictures of them.
+	@NonNull
+	List<PassInspector.Source> lastFrames() {
+		var sources = new ArrayList<PassInspector.Source>();
+		if (rowOrder == null) {
+			rowOrder = RunningPasses.order(plan, schedule);
+		}
+		for (int pass : rowOrder) {
+			var texture = last(pass);
+			if (texture != null) {
+				var size = targets[pass].size();
+				sources.add(new PassInspector.Source(
+						plan.programs().get(plan.passes().get(pass).program())
+								.file(),
+						texture, size.width(), size.height()));
+			}
+		}
+		return sources;
 	}
 
 	// Whether present() has nothing to show: no frame was drawn since

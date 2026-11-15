@@ -46,6 +46,15 @@ public final class ShaderEngine {
 		}
 	}
 
+	// What a host that shows the passes hears while it watches them.
+	public interface PassWatcher {
+		// Called on the GL thread about four times a second, and after
+		// every frame drawn while paused: a picture of every row of
+		// passes() that draws, in their order, as the screen would show
+		// that pass.
+		void onPictures(@NonNull List<PassPicture> pictures);
+	}
+
 	public interface ThumbnailCallback {
 		// Called on the GL thread with a PNG of the shader requested last
 		// when it was asked for. Called with null when that frame could
@@ -105,6 +114,8 @@ public final class ShaderEngine {
 	private static final float NS_PER_SECOND = 1000000000f;
 	private static final float DEFAULT_REFRESH_RATE = 60f;
 	private static final float DEFAULT_FTIME_MAX = 3f;
+	// About four pictures of the passes a second.
+	private static final long PICTURE_INTERVAL_NS = 250000000L;
 
 	private final GlDevice device = new GlDevice();
 	private final ShaderRenderPipeline renderPipeline =
@@ -135,6 +146,15 @@ public final class ShaderEngine {
 	@Nullable
 	private volatile ProjectPath shown;
 	private volatile boolean paused;
+	// Who watches the passes, and who was told last; GL thread only:
+	// what makes their pictures, and when it did.
+	@Nullable
+	private volatile PassWatcher watcher;
+	@Nullable
+	private PassWatcher told;
+	@Nullable
+	private PassInspector inspector;
+	private long lastPictures;
 	private final AtomicInteger steps = new AtomicInteger();
 	private final AtomicBoolean restartAsked = new AtomicBoolean();
 	private final AtomicBoolean againAsked = new AtomicBoolean();
@@ -269,6 +289,14 @@ public final class ShaderEngine {
 		requestRender();
 	}
 
+	// Any thread. While watcher is not null, it hears small pictures of
+	// the passes; with null nothing of it costs anything: what made the
+	// pictures goes with the next frame.
+	public void watchPasses(@Nullable PassWatcher watcher) {
+		this.watcher = watcher;
+		requestRender();
+	}
+
 	// Any thread. The passes of the build that draws, or none.
 	@NonNull
 	public RunningPasses passes() {
@@ -365,6 +393,10 @@ public final class ShaderEngine {
 				!build.hasTargets()) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
+			if (watcher == null && inspector != null) {
+				inspector.release();
+				inspector = null;
+			}
 			// No picture runs, as after a build that failed: the rate
 			// of the one before is not this one's.
 			var listener = this.listener;
@@ -392,6 +424,7 @@ public final class ShaderEngine {
 					inputs.getSurfaceHeight(), shownPass);
 			thumbnails.onFrame(revision.number());
 			answerThumbnails();
+			watch(build, now, false);
 			return;
 		}
 		var frame = switch (draw) {
@@ -410,6 +443,8 @@ public final class ShaderEngine {
 		}
 		thumbnails.onFrame(revision.number());
 		answerThumbnails();
+		watch(build, now, draw != Playback.Draw.FRAME ||
+				swap != Playback.Swap.NONE);
 
 		if (draw == Playback.Draw.FRAME && listener != null) {
 			updateFps(now);
@@ -678,6 +713,33 @@ public final class ShaderEngine {
 		showPasses(RunningPasses.NONE);
 	}
 
+	// GL thread. Tells the watcher what the passes drew in the frame
+	// drawn last: four times a second, or now when the frame is one it
+	// has not seen, such as one drawn while paused; and lets the
+	// pictures go when no one watches.
+	private void watch(@NonNull PlanRuntime build, long now,
+			boolean fresh) {
+		var watcher = this.watcher;
+		if (watcher == null) {
+			if (inspector != null) {
+				inspector.release();
+				inspector = null;
+			}
+			told = null;
+			return;
+		}
+		if (!fresh && watcher == told &&
+				now - lastPictures < PICTURE_INTERVAL_NS) {
+			return;
+		}
+		told = watcher;
+		lastPictures = now;
+		if (inspector == null) {
+			inspector = new PassInspector(device);
+		}
+		watcher.onPictures(inspector.pictures(build.lastFrames()));
+	}
+
 	// A step asked for, taken.
 	private boolean takeStep() {
 		for (int n; (n = steps.get()) > 0; ) {
@@ -726,6 +788,11 @@ public final class ShaderEngine {
 		shaders.contextLost();
 		renderPipeline.discardContextResources();
 		thumbnails.onFramesLost();
+		if (inspector != null) {
+			inspector.discard();
+			inspector = null;
+		}
+		told = null;
 	}
 
 	private void updateFps(long now) {

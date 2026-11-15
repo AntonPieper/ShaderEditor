@@ -98,29 +98,7 @@ public record RunningPasses(@NonNull List<Row> rows) {
 			@NonNull List<ProjectDiagnostic> warnings) {
 		var passes = plan.passes();
 		int count = passes.size();
-		// The plan's index of every row, in order.
-		var order = new ArrayList<Integer>();
-		var placed = new boolean[count];
-		for (int pass : schedule.frame) {
-			// A first-frame shader goes above the first pass it seeds.
-			var initial = passes.get(pass).initial();
-			if (initial != null && initial.kind() == Source.Kind.PASS) {
-				int seed = initial.pass();
-				if (!passes.get(seed).perFrame() && !placed[seed]) {
-					placed[seed] = true;
-					order.add(seed);
-				}
-			}
-			placed[pass] = true;
-			order.add(pass);
-		}
-		// Whatever else the plan holds: a first frame of a pass that is
-		// not drawn.
-		for (int i = 0; i < count; ++i) {
-			if (!placed[i]) {
-				order.add(i);
-			}
-		}
+		var order = order(plan, schedule);
 		var rowOf = new int[count];
 		for (int r = 0; r < order.size(); ++r) {
 			rowOf[order.get(r)] = r;
@@ -176,5 +154,36 @@ public record RunningPasses(@NonNull List<Row> rows) {
 					reads, pictures, startsFrom, problems));
 		}
 		return new RunningPasses(rows);
+	}
+
+	// The plan's index of every row, in order.
+	@NonNull
+	static List<Integer> order(@NonNull RenderPlan plan,
+			@NonNull PassSchedule schedule) {
+		var passes = plan.passes();
+		int count = passes.size();
+		var order = new ArrayList<Integer>();
+		var placed = new boolean[count];
+		for (int pass : schedule.frame) {
+			// A first-frame shader goes above the first pass it seeds.
+			var initial = passes.get(pass).initial();
+			if (initial != null && initial.kind() == Source.Kind.PASS) {
+				int seed = initial.pass();
+				if (!passes.get(seed).perFrame() && !placed[seed]) {
+					placed[seed] = true;
+					order.add(seed);
+				}
+			}
+			placed[pass] = true;
+			order.add(pass);
+		}
+		// Whatever else the plan holds: a first frame of a pass that is
+		// not drawn.
+		for (int i = 0; i < count; ++i) {
+			if (!placed[i]) {
+				order.add(i);
+			}
+		}
+		return order;
 	}
 }
