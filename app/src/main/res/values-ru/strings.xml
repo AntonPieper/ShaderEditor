@@ -571,4 +571,21 @@
 	<string name="passes_paused">paused</string>
 	<string name="passes_showing">Showing %1$s</string>
 	<string name="passes_show_output">Show the output again</string>
+	<string name="passes_error_line">error in line %1$d</string>
+	<string name="passes_warning_line">warning in line %1$d</string>
+	<string name="passes_every_pixel">every pixel %1$s</string>
+	<string name="passes_values">values %1$s to %2$s</string>
+	<string name="passes_non_finite">NaN or infinity</string>
+	<string name="passes_size">%1$d × %2$d</string>
+	<string name="passes_unchanged">unchanged for %1$d s</string>
+	<string name="passes_open">Open</string>
+	<string name="passes_open_line">Open at line %1$d</string>
+	<string name="passes_size_line">Size line</string>
+	<string name="passes_error">error</string>
+	<string name="passes_warning">warning</string>
+	<string name="passes_starts_from">Starts from</string>
+	<string name="passes_reads">Reads</string>
+	<string name="passes_read_by">Read by</string>
+	<string name="passes_itself_last">itself, last frame</string>
+	<string name="passes_last_chip">%1$s, last frame</string>
 </resources>

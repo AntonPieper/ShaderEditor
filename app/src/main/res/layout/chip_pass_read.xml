@@ -1,0 +1,6 @@
+<!-- A file a pass reads, as a label: outlined, 28 dp, not a button. -->
+<com.google.android.material.chip.Chip
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	style="@style/Widget.ShaderEditor.Chip.Read"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content" />

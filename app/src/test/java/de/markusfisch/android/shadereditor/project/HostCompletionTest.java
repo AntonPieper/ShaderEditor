@@ -140,7 +140,10 @@ public class HostCompletionTest {
 				words("#pragma se input \"blur.frag\" frame=p|"));
 		assertEquals(List.of("clamp", "repeat", "mirror"),
 				words("#pragma se input \"a.png\" wrap=repeat,|"));
-		assertEquals(List.of(), words("#pragma se target scale=|"));
+		assertEquals(List.of("1", "0.5", "0.25", "0.125"),
+				words("#pragma se target scale=|"));
+		assertEquals(List.of("0.5", "0.25", "0.125"),
+				words("#pragma se target scale=0.|"));
 		assertEquals("#pragma se input \"a.png\" filter=linear| wrap=clamp",
 				choose("#pragma se input \"a.png\" filter=l| wrap=clamp",
 						"linear"));

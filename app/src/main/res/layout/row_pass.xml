@@ -49,12 +49,60 @@
 
 		<TextView
 			android:id="@+id/pass_line"
+			android:drawablePadding="4dp"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:fontFeatureSettings="tnum"
 			android:textAppearance="?attr/textAppearanceBodyMedium"
 			android:textColor="@color/pass_line"
 			android:visibility="gone" />
+
+		<!-- The pass shown grows by what is worth knowing and its actions. -->
+		<TextView
+			android:id="@+id/pass_facts"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:fontFeatureSettings="tnum"
+			android:textAppearance="?attr/textAppearanceBodyMedium"
+			android:textColor="@color/pass_line"
+			android:visibility="gone" />
+
+		<!-- Chips of what it reads where lines cannot say it. -->
+		<LinearLayout
+			android:id="@+id/pass_reads"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="vertical"
+			android:visibility="gone" />
+
+		<LinearLayout
+			android:id="@+id/pass_actions"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="-12dp"
+			android:layout_marginTop="4dp"
+			android:gravity="center_vertical"
+			android:orientation="horizontal"
+			android:visibility="gone">
+
+			<Button
+				android:id="@+id/pass_open"
+				style="?attr/borderlessButtonStyle"
+				android:layout_width="wrap_content"
+				android:layout_height="40dp"
+				android:minWidth="0dp"
+				android:text="@string/passes_open"
+				android:textColor="?attr/colorOnSecondaryContainer" />
+
+			<Button
+				android:id="@+id/pass_size"
+				style="?attr/borderlessButtonStyle"
+				android:layout_width="wrap_content"
+				android:layout_height="40dp"
+				android:minWidth="0dp"
+				android:text="@string/passes_size_line"
+				android:textColor="?attr/colorOnSecondaryContainer" />
+		</LinearLayout>
 	</LinearLayout>
 
 	<ImageView
