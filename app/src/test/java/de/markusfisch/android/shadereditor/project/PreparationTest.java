@@ -200,6 +200,30 @@ public class PreparationTest {
 	}
 
 	@Test
+	public void knowsTheLinesThatNameFiles() {
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.frag", lines("#include \"lib.glsl\"",
+						"#pragma se input \"blur.frag\"",
+						"uniform sampler2D blur;", MAIN))
+				.put("lib.glsl", "float f;\n")
+				.put("blur.frag", lines(
+						"#pragma se target initial=\"a.png\"",
+						"#pragma se input \"a.png\"",
+						"uniform sampler2D a;", MAIN))
+				.put("a.png", Pictures.png(1)));
+		assertEquals(List.of(
+						new HostDirectives.Reference(path("a.png"),
+								path("blur.frag"), 2),
+						new HostDirectives.Reference(path("a.png"),
+								path("blur.frag"), 1),
+						new HostDirectives.Reference(path("blur.frag"),
+								path("main.frag"), 2),
+						new HostDirectives.Reference(path("lib.glsl"),
+								path("main.frag"), 1)),
+				preparation.references());
+	}
+
+	@Test
 	public void continuedMacroLineIncludesNothing() {
 		String main = lines("#define A \\", "#include \"lib.glsl\"", MAIN);
 		Preparation preparation = prepare(new MemoryProjectFiles()

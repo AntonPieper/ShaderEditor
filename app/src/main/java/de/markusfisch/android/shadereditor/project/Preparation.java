@@ -33,6 +33,8 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
  *                     order of reading: later stages use these bytes
  *                     and never read a file again
  * @param roles        what each file of uses is to the running shader
+ * @param references   the lines of the files of uses that name a file
+ *                     of uses: inputs, first frames and includes
  * @param temporary    whether a text no document has went into it, as
  *                     while a number is tuned: it runs, and is never
  *                     kept, as the wallpaper is
@@ -44,8 +46,10 @@ public record Preparation(
 		List<SourceAssembly.Dependency> uses,
 		Map<ProjectPath, ProjectFiles.Content> files,
 		Map<ProjectPath, FileRole> roles,
+		List<HostDirectives.Reference> references,
 		boolean temporary) {
 	public Preparation {
+		references = List.copyOf(references);
 		diagnostics = List.copyOf(diagnostics);
 		dependencies = List.copyOf(dependencies);
 		uses = List.copyOf(uses);
@@ -58,13 +62,14 @@ public record Preparation(
 			List<SourceAssembly.Dependency> dependencies,
 			List<SourceAssembly.Dependency> uses,
 			Map<ProjectPath, ProjectFiles.Content> files) {
-		this(plan, diagnostics, dependencies, uses, files, Map.of(), false);
+		this(plan, diagnostics, dependencies, uses, files, Map.of(),
+				List.of(), false);
 	}
 
 	/** This preparation, made of a text no document has. */
 	public Preparation asTemporary() {
 		return new Preparation(plan, diagnostics, dependencies, uses, files,
-				roles, true);
+				roles, references, true);
 	}
 
 	/**
@@ -105,7 +110,42 @@ public record Preparation(
 				? null
 				: plan(graph, diagnostics);
 		return new Preparation(plan, diagnostics, captured.dependencies(),
-				uses, captured.contents(), roles(graph), false);
+				uses, captured.contents(), roles(graph), references(graph),
+				false);
+	}
+
+	// The lines that name a file, in the order the graph read them.
+	private static List<HostDirectives.Reference> references(
+			PassGraph graph) {
+		Set<HostDirectives.Reference> references = new LinkedHashSet<>();
+		for (PassGraph.Node node : graph.nodes) {
+			if (node.source == null) {
+				continue;
+			}
+			for (PassGraph.Edge edge : node.inputs) {
+				HostDirective.Input input = edge.input();
+				if (input.source() != null) {
+					references.add(new HostDirectives.Reference(
+							input.source(), input.file(), input.line()));
+				}
+			}
+			HostDirective.Target target = node.source.target();
+			if (target != null && target.initial() != null) {
+				references.add(new HostDirectives.Reference(
+						target.initial(), target.file(), target.line()));
+			}
+			references.addAll(node.source.references());
+			for (SourceLocation at : node.source.sourceMap().lines()) {
+				for (SourceLocation site = at; site != null &&
+						site.includedFrom() != null;
+						site = site.includedFrom()) {
+					SourceLocation from = site.includedFrom();
+					references.add(new HostDirectives.Reference(
+							site.file(), from.file(), from.line()));
+				}
+			}
+		}
+		return new ArrayList<>(references);
 	}
 
 	// What each file is to the running shader, from the pass graph: a

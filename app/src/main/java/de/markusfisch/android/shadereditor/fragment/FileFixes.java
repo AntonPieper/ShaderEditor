@@ -12,6 +12,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 
 /**
@@ -51,7 +52,8 @@ final class FileFixes implements CodeView.RowFix {
 		List<String> labels = new ArrayList<>();
 		HostCompletion.Missing missing = missing(line, messages);
 		if (missing != null && missing.near() != null) {
-			labels.add(context.getString(R.string.fix_use, missing.near()));
+			labels.add(context.getString(R.string.fix_use,
+					missing.use().text()));
 		}
 		if (missing != null && missing.creatable()) {
 			labels.add(context.getString(R.string.fix_create));
@@ -100,6 +102,12 @@ final class FileFixes implements CodeView.RowFix {
 		return shown;
 	}
 
+	@NonNull
+	private static String parent(@NonNull ProjectPath path) {
+		String at = path.toString();
+		return at.substring(0, at.lastIndexOf('/') + 1);
+	}
+
 	@Nullable
 	private HostCompletion.Missing missing(int line,
 			@NonNull List<String> messages) {
@@ -111,7 +119,18 @@ final class FileFixes implements CodeView.RowFix {
 		for (String message : messages) {
 			HostCompletion.Missing missing = HostCompletion.missing(text,
 					links.file(), message, links);
-			if (missing != null) {
+			ProjectPath to = missing != null
+					? links.renamed(missing.path())
+					: null;
+			HostCompletion.Choice use = to != null
+					? HostCompletion.retarget(text, links.file(),
+					missing.path(), to)
+					: null;
+			// A file renamed in its folder is what the line meant.
+			if (use != null && parent(to).equals(parent(missing.path()))) {
+				return new HostCompletion.Missing(missing.path(),
+						missing.kind(), to.getFileName(), use);
+			} else if (missing != null) {
 				return missing;
 			}
 		}

@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 
 import androidx.annotation.NonNull;
@@ -33,6 +34,9 @@ public final class RenameDialog {
 		/** Say why the name was not taken; the dialog stays open. */
 		void fail(@NonNull String reason);
 
+		/** Return whether the check box of also is checked. */
+		boolean also();
+
 		void dismiss();
 	}
 
@@ -47,7 +51,8 @@ public final class RenameDialog {
 
 	public static void show(@NonNull Context context, @NonNull String name,
 			@NonNull Listener listener) {
-		show(context, R.string.rename_shader, name, null, null, listener);
+		show(context, R.string.rename_shader, name, null, null, null,
+				listener);
 	}
 
 	/**
@@ -56,16 +61,23 @@ public final class RenameDialog {
 	 * Of a name with an extension, the part before it is selected.
 	 * With a checker the dialog stays open after Rename until the
 	 * returned {@link Shown} is dismissed, so that a name the storage
-	 * refuses can be told under the field.
+	 * refuses can be told under the field. Under the field, also is a
+	 * check box, checked, when not null.
 	 */
 	@NonNull
 	public static Shown show(@NonNull Context context, @StringRes int title,
 			@NonNull String name, @Nullable Checker checker,
-			@Nullable CharSequence message, @NonNull Listener listener) {
+			@Nullable CharSequence message, @Nullable CharSequence also,
+			@NonNull Listener listener) {
 		View view = LayoutInflater.from(context).inflate(
 				R.layout.dialog_rename_shader, null);
 		TextInputLayout nameLayout = view.findViewById(R.id.name_layout);
 		EditText nameView = view.findViewById(R.id.name);
+		CompoundButton alsoView = view.findViewById(R.id.also);
+		if (also != null) {
+			alsoView.setText(also);
+			alsoView.setVisibility(View.VISIBLE);
+		}
 		nameView.setText(name);
 		int dot = checker != null ? name.lastIndexOf('.') : -1;
 		nameView.setSelection(0, dot > 0 ? dot : name.length());
@@ -101,6 +113,11 @@ public final class RenameDialog {
 			public void fail(@NonNull String reason) {
 				nameLayout.setError(reason);
 				rename.setEnabled(false);
+			}
+
+			@Override
+			public boolean also() {
+				return also != null && alsoView.isChecked();
 			}
 
 			@Override
