@@ -1,0 +1,10 @@
+master.apk:
+  uses-feature: name='android.software.live_wallpaper'
+provides-component:'wallpaper'
+
+live-wallpaper-optional.apk:
+  uses-feature-not-required: name='android.software.live_wallpaper'
+provides-component:'wallpaper'
+
+emulator-5554 pm list features: feature:android.software.live_wallpaper
+emulator-5556 pm list features: feature:android.software.live_wallpaper
