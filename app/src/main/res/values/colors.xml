@@ -28,6 +28,8 @@
 	<color name="se_accent_container">#244c72</color>
 	<color name="se_on_accent_container">#d6eaff</color>
 	<color name="se_error">#ff7b8a</color>
+	<!-- Warnings, and a colour part above 1 (STYLE 6.1) -->
+	<color name="se_warning">#ffc857</color>
 	<!-- The bars over the picture: se_surface at 80 % -->
 	<color name="se_level_bar">#cc121316</color>
 	<!-- A chip over a bar: white at 14 % (STYLE 7, 11) -->

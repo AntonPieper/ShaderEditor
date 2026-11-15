@@ -55,7 +55,17 @@ public class TuningBar extends LinearLayout {
 		 * stays as it was (Revert).
 		 */
 		void end(boolean keep);
+
+		/**
+		 * Tune part index of the vector instead, keeping the value of
+		 * the one tuned now; the bar is told with {@link #retarget}.
+		 */
+		default void selectPart(int index) {
+		}
 	}
+
+	private static final String[] XYZW = {"x", "y", "z", "w"};
+	private static final String[] RGBA = {"r", "g", "b", "a"};
 
 	/**
 	 * What is tuned: the place, the value it started at and has now,
@@ -139,6 +149,17 @@ public class TuningBar extends LinearLayout {
 	@NonNull
 	private BigDecimal dragFrom = BigDecimal.ZERO;
 	private int bottomInset;
+	// Whether a vec3 or vec4 is shown as a colour, and the views of its
+	// parts in either mode.
+	private boolean colourMode;
+	private com.google.android.material.button.MaterialButtonToggleGroup partsView;
+	private MaterialButton colourView;
+	private LinearLayout coloursView;
+	private final java.util.List<com.google.android.material.slider.Slider> sliders =
+			new java.util.ArrayList<>();
+	private final java.util.List<TextView> sliderValues = new java.util.ArrayList<>();
+	// Whether the bar sets the parts' views itself, not the user.
+	private boolean showing;
 
 	public TuningBar(Context context) {
 		super(context);
@@ -157,6 +178,15 @@ public class TuningBar extends LinearLayout {
 		increase = findViewById(R.id.tuning_increase);
 		stepView = findViewById(R.id.tuning_step);
 		ruler = findViewById(R.id.tuning_ruler);
+		partsView = findViewById(R.id.tuning_parts);
+		colourView = findViewById(R.id.tuning_colour);
+		coloursView = findViewById(R.id.tuning_colours);
+		colourView.setOnClickListener(v -> setColourMode(!colourMode));
+		partsView.addOnButtonCheckedListener((group, id, checked) -> {
+			if (checked && !showing) {
+				selectPart(id);
+			}
+		});
 		lineView.setTypeface(ShaderEditorApp.preferences.getFont());
 		valueView.setTypeface(ShaderEditorApp.preferences.getFont());
 		decrease.setOnClickListener(v -> move(-1));
@@ -244,8 +274,200 @@ public class TuningBar extends LinearLayout {
 		this.session = session;
 		tuned = new Tuned(place, place.value, place.value,
 				step != null ? step : first, first, place.literal);
+		colourMode = false;
 		setVisibility(VISIBLE);
+		showParts();
 		show();
+	}
+
+	/**
+	 * Tune place, another part of the same vector, with step or its
+	 * first step; the mode stays.
+	 */
+	public void retarget(@NonNull TunedPlace place, @Nullable BigDecimal step) {
+		BigDecimal first = TuningStep.first(place.literal,
+				place.value.abs(), place.degrees);
+		tuned = new Tuned(place, place.value, place.value,
+				step != null ? step : first, first, place.literal);
+		showParts();
+		show();
+	}
+
+	private void selectPart(int index) {
+		Tuned now = tuned;
+		TunedPlace.Vector vector = now != null ? now.place().vector() : null;
+		if (vector != null && index != vector.index() && session != null) {
+			session.selectPart(index);
+		}
+	}
+
+	// Whether the vector of what is tuned can be a colour: a vec3 or
+	// vec4 of floats.
+	private boolean colourable() {
+		Tuned now = tuned;
+		TunedPlace.Vector vector = now != null ? now.place().vector() : null;
+		return vector != null && !now.integer() &&
+				("vec3".equals(vector.type()) || "vec4".equals(vector.type()));
+	}
+
+	private void setColourMode(boolean colour) {
+		colourMode = colour && colourable();
+		findViewById(R.id.tuning_numbers).setVisibility(
+				colourMode ? GONE : VISIBLE);
+		coloursView.setVisibility(colourMode ? VISIBLE : GONE);
+		partsView.setVisibility(colourMode ? GONE : VISIBLE);
+		showParts();
+	}
+
+	// The parts of the vector: a segment each, the one tuned checked;
+	// in colour mode a slider each from 0 to 1.
+	private void showParts() {
+		Tuned now = tuned;
+		TunedPlace.Vector vector = now != null ? now.place().vector() : null;
+		View row = findViewById(R.id.tuning_parts_row);
+		if (vector == null) {
+			row.setVisibility(GONE);
+			coloursView.setVisibility(GONE);
+			findViewById(R.id.tuning_numbers).setVisibility(VISIBLE);
+			colourMode = false;
+			return;
+		}
+		row.setVisibility(VISIBLE);
+		colourView.setVisibility(colourable() ? VISIBLE : GONE);
+		colourView.setText(colourMode
+				? R.string.tuning_as_numbers
+				: R.string.tuning_colour);
+		java.util.List<TunedPlace> parts = vector.parts();
+		showing = true;
+		try {
+			if (partsView.getChildCount() != parts.size()) {
+				partsView.removeAllViews();
+				for (int i = 0; i < parts.size(); ++i) {
+					MaterialButton part = new MaterialButton(getContext(), null,
+							com.google.android.material.R.attr.materialButtonOutlinedStyle);
+					part.setId(i);
+					part.setCheckable(true);
+					part.setTypeface(ShaderEditorApp.preferences.getFont());
+					part.setMinHeight(Math.round(40 *
+							getResources().getDisplayMetrics().density));
+					part.setMinWidth(0);
+					part.setPadding(Math.round(4 *
+							getResources().getDisplayMetrics().density), 0,
+							Math.round(4 *
+									getResources().getDisplayMetrics().density),
+							0);
+					part.setMaxLines(1);
+					partsView.addView(part, new LinearLayout.LayoutParams(0,
+							LayoutParams.WRAP_CONTENT, 1));
+				}
+			}
+			for (int i = 0; i < parts.size(); ++i) {
+				MaterialButton part = (MaterialButton) partsView.getChildAt(i);
+				part.setText(getContext().getString(R.string.tuning_part,
+						XYZW[Math.min(i, 3)], partText(i)));
+			}
+			partsView.check(vector.index());
+			showColours(parts.size());
+		} finally {
+			showing = false;
+		}
+		colourView.setIcon(swatch());
+	}
+
+	// What part i holds now, as written.
+	@NonNull
+	private String partText(int i) {
+		Tuned now = tuned;
+		TunedPlace.Vector vector = now.place().vector();
+		return i == vector.index()
+				? now.text().replace("(", "").replace(")", "")
+				: vector.parts().get(i).literalWithSign();
+	}
+
+	private BigDecimal partValue(int i) {
+		Tuned now = tuned;
+		TunedPlace.Vector vector = now.place().vector();
+		return i == vector.index() ? now.value() : vector.parts().get(i).value;
+	}
+
+	private void showColours(int count) {
+		if (!colourMode) {
+			return;
+		}
+		if (sliders.size() != count) {
+			coloursView.removeAllViews();
+			sliders.clear();
+			sliderValues.clear();
+			for (int i = 0; i < count; ++i) {
+				View line = inflate(getContext(), R.layout.tuning_colour_part,
+						null);
+				((TextView) line.findViewById(R.id.letter)).setText(
+						RGBA[Math.min(i, 3)]);
+				com.google.android.material.slider.Slider slider =
+						line.findViewById(R.id.slider);
+				TextView value = line.findViewById(R.id.value);
+				value.setTypeface(ShaderEditorApp.preferences.getFont());
+				final int part = i;
+				slider.addOnChangeListener((s, v, fromUser) -> {
+					if (fromUser && !showing) {
+						setColour(part, v);
+					}
+				});
+				sliders.add(slider);
+				sliderValues.add(value);
+				coloursView.addView(line);
+			}
+		}
+		for (int i = 0; i < count; ++i) {
+			BigDecimal value = partValue(i);
+			float clamped = Math.max(0f, Math.min(1f, value.floatValue()));
+			sliders.get(i).setValue(clamped);
+			TextView text = sliderValues.get(i);
+			text.setText(partText(i));
+			// Above 1 is kept, and shown in amber.
+			text.setTextColor(value.compareTo(BigDecimal.ONE) > 0
+					? ContextCompat.getColor(getContext(), R.color.se_warning)
+					: com.google.android.material.color.MaterialColors.getColor(
+					text, com.google.android.material.R.attr.colorOnSurface));
+		}
+	}
+
+	private void setColour(int part, float value) {
+		Tuned now = tuned;
+		if (now == null || now.place().vector() == null) {
+			return;
+		}
+		if (part != now.place().vector().index()) {
+			selectPart(part);
+			now = tuned;
+			if (now == null || now.place().vector().index() != part) {
+				return;
+			}
+		}
+		int scale = Math.max(2, now.step().stripTrailingZeros().scale());
+		change(new BigDecimal(value).setScale(scale,
+				java.math.RoundingMode.HALF_EVEN), true);
+	}
+
+	// The colour the parts would be, as a 16 dp swatch.
+	@Nullable
+	private android.graphics.drawable.Drawable swatch() {
+		if (!colourable()) {
+			return null;
+		}
+		float dp = getResources().getDisplayMetrics().density;
+		android.graphics.drawable.GradientDrawable swatch =
+				new android.graphics.drawable.GradientDrawable();
+		swatch.setCornerRadius(4 * dp);
+		swatch.setSize(Math.round(16 * dp), Math.round(16 * dp));
+		swatch.setColor(android.graphics.Color.rgb(channel(0), channel(1),
+				channel(2)));
+		return swatch;
+	}
+
+	private int channel(int i) {
+		return Math.round(255 * Math.max(0f, Math.min(1f,
+				partValue(i).floatValue())));
 	}
 
 	/** Close the bar without telling the session: it ended. */
@@ -336,6 +558,9 @@ public class TuningBar extends LinearLayout {
 		}
 		showValue();
 		showLine();
+		if (tuned.place().vector() != null) {
+			showParts();
+		}
 	}
 
 	private void takeTyped() {

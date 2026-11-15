@@ -618,4 +618,7 @@
 	<string name="tuning_not_a_number">Not a number of this type</string>
 	<string name="tuning_failed">This number cannot be tuned: %1$s</string>
 	<string name="tuning_constant">A constant here: the picture follows when your finger rests</string>
+	<string name="tuning_colour">Colour</string>
+	<string name="tuning_as_numbers">As numbers</string>
+	<string name="tuning_part">%1$s %2$s</string>
 </resources>

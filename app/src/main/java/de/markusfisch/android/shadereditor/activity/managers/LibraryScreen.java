@@ -630,9 +630,50 @@ public final class LibraryScreen implements ShaderScreen {
 			tuningStepsFor = steps;
 		}
 		String number = String.valueOf(place.start);
-		boolean started = files.tune(place, new TuningSession.Listener() {
+		// The step of a part of a vector is kept by where it starts.
+		boolean started = files.tune(place, tunedListener());
+		if (!started) {
+			return;
+		}
+		codeBeforeTuning = editorFragment.isCodeVisible();
+		keyboardBeforeTuning = SoftKeyboard.isOpen(tuningBar);
+		tuningBar.open(place, tuningSteps.get(number), new TuningBar.Session() {
+			@Override
+			public void set(@NonNull TuningBar.Tuned tuned) {
+				tuningSteps.put(String.valueOf(tuned.place().start),
+						tuned.step());
+				files.setTuned(tuned.literalValue(), tuned.literalText(),
+						tuned.changed() ? tuned.text() : null);
+			}
+
+			@Override
+			public void end(boolean keep) {
+				files.endTuning(keep);
+			}
+
+			@Override
+			public void selectPart(int index) {
+				TunedPlace next = files.retune(index, tunedListener());
+				if (next != null) {
+					tuningBar.retarget(next, tuningSteps.get(
+							String.valueOf(next.start)));
+				}
+			}
+		});
+		backTunes.setEnabled(true);
+		// The code and the keyboard step aside; the picture shows as it
+		// is, without the limit code puts on it.
+		if (codeBeforeTuning) {
+			uiManager.toggleCodeVisibility();
+		}
+	}
+
+	@NonNull
+	private TuningSession.Listener tunedListener() {
+		return new TuningSession.Listener() {
 			@Override
 			public void onLive() {
+				tuningBar.setConstant(false);
 			}
 
 			@Override
@@ -643,31 +684,7 @@ public final class LibraryScreen implements ShaderScreen {
 			@Override
 			public void onFailed(@NonNull List<ProjectDiagnostic> errors) {
 			}
-		});
-		if (!started) {
-			return;
-		}
-		codeBeforeTuning = editorFragment.isCodeVisible();
-		keyboardBeforeTuning = SoftKeyboard.isOpen(tuningBar);
-		tuningBar.open(place, tuningSteps.get(number), new TuningBar.Session() {
-			@Override
-			public void set(@NonNull TuningBar.Tuned tuned) {
-				tuningSteps.put(number, tuned.step());
-				files.setTuned(tuned.literalValue(), tuned.literalText(),
-						tuned.changed() ? tuned.text() : null);
-			}
-
-			@Override
-			public void end(boolean keep) {
-				files.endTuning(keep);
-			}
-		});
-		backTunes.setEnabled(true);
-		// The code and the keyboard step aside; the picture shows as it
-		// is, without the limit code puts on it.
-		if (codeBeforeTuning) {
-			uiManager.toggleCodeVisibility();
-		}
+		};
 	}
 
 	@Override
