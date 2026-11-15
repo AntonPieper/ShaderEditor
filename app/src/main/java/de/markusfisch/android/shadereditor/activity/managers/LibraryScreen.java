@@ -28,6 +28,7 @@ import de.markusfisch.android.shadereditor.project.LibraryMove;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.Message;
@@ -670,20 +671,23 @@ public final class LibraryScreen implements ShaderScreen {
 						shaderManager.selectShader(id);
 					}
 
+					// The file in the editor, for an image's sheet.
 					@Nullable
 					@Override
-					public ProjectPath textOf(@NonNull String key) {
-						return open instanceof ProjectFile file &&
-								key.equals(files.key())
-								? file.getPath()
-								: null;
-					}
-
-					@NonNull
-					@Override
-					public String text() {
+					public ImageSheets.Edited edited(@NonNull String key) {
+						if (!(open instanceof ProjectFile file) ||
+								!key.equals(files.key())) {
+							return null;
+						}
+						ProjectPath path = file.getPath();
 						String text = editorFragment.getText();
-						return text != null ? text : "";
+						OpenProject.Runs runs = file.getProject().runs(path);
+						return new ImageSheets.Edited(path,
+								text != null ? text : "",
+								ShaderLanguage.of(path.toString()),
+								runs == OpenProject.Runs.UNKNOWN
+										? null
+										: runs == OpenProject.Runs.YES);
 					}
 
 					// As Add uniform adds a statement: one step to undo.
@@ -692,7 +696,10 @@ public final class LibraryScreen implements ShaderScreen {
 					public void insertTexture(@NonNull String statement,
 							@NonNull String name) {
 						editorFragment.addUniform(statement);
-						String text = text();
+						String text = editorFragment.getText();
+						if (text == null) {
+							return;
+						}
 						int at = text.indexOf("uniform sampler2D " + name + ";");
 						if (at > -1) {
 							int line = 1;

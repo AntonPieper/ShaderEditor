@@ -43,6 +43,7 @@ import java.util.concurrent.FutureTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.editor.AddUniform;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.highlighter.EditedRange;
@@ -438,14 +439,7 @@ public class ShaderEditor extends LineNumberEditText {
 			return;
 		}
 
-		String regex = "^(" + statement.replace(" ", "[ \\t]+");
-		int p = regex.indexOf(";");
-		if (p > -1) {
-			regex = regex.substring(0, p);
-		}
-		regex += ".*\\n)$";
-
-		Matcher m = Pattern.compile(regex, Pattern.MULTILINE).matcher(e);
+		Matcher m = AddUniform.sameUniform(statement).matcher(e);
 		if (m.find()) {
 			e.delete(m.start(), m.end());
 		}
