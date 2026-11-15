@@ -274,6 +274,14 @@ public final class Document {
 		}
 	}
 
+	/**
+	 * Whether the last change was typed and a run of typing goes on
+	 * from it: not after another edit, undo, redo or another place.
+	 */
+	public boolean isTyping() {
+		return typing != null;
+	}
+
 	/** Select from anchor to head; another place ends a run of typing. */
 	public void select(int anchor, int head) {
 		int length = text.length();

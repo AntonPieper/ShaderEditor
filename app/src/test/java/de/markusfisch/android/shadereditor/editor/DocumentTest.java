@@ -25,6 +25,24 @@ public class DocumentTest {
 	}
 
 	@Test
+	public void tellsWhetherTypingGoesOn() {
+		Document document = new Document(Text.of("x = 1.0;"));
+		assertFalse(document.isTyping());
+		document.type(4, 4, Text.of("2"));
+		assertTrue(document.isTyping());
+		// Another edit, as the tuning bar writes, ends the run.
+		document.replace(4, 5, Text.of("3"));
+		assertFalse(document.isTyping());
+		document.type(4, 4, Text.of("4"));
+		assertTrue(document.isTyping());
+		document.undo();
+		assertFalse(document.isTyping());
+		document.type(0, 0, Text.of("y"));
+		document.select(3, 3);
+		assertFalse(document.isTyping());
+	}
+
+	@Test
 	public void replaceTellsWhatChanged() {
 		Text text = Text.of("ab\ncd\nef");
 		Document document = new Document(text);

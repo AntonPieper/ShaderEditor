@@ -560,12 +560,15 @@ final class CodeViewSourceEditor implements SourceEditor {
 		skipRun = true;
 	}
 
-	// The strip offers to tune the number the caret was moved onto, by
-	// the tokens of the caret's line only; typing offers nothing.
+	// The strip offers to tune the number the caret was moved onto, or
+	// that an edit other than typing left it on, such as Undo or the
+	// bar's Done, by the tokens of the caret's line only; typing offers
+	// nothing.
 	private void offerTuning(boolean edited) {
 		String number = null;
 		Document.Selection selection = document.selection();
-		if (!edited && docs != null && styles.syntax() == DATABASE &&
+		if (!(edited && document.isTyping()) && docs != null &&
+				styles.syntax() == DATABASE &&
 				selection.isEmpty()) {
 			Text text = document.text();
 			int caret = selection.head();
