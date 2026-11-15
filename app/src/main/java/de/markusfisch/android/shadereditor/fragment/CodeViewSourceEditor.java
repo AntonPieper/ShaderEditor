@@ -36,6 +36,7 @@ import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
+import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
@@ -86,6 +87,11 @@ final class CodeViewSourceEditor implements SourceEditor {
 	private LineStyles styles;
 	private LineMarks marks;
 	private int revision;
+	// The next change starts no run: its maker runs it.
+	private boolean skipRun;
+	// The number the strip offers to tune, or null.
+	@Nullable
+	private String tunable;
 	private int updateDelay = 1000;
 	private int inputType = -1;
 	// The text converted from ShaderToy's form last.
@@ -532,15 +538,53 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	private void updated() {
 		complete();
-		if (document.revision() == revision) {
+		boolean edited = document.revision() != revision;
+		offerTuning(edited);
+		if (!edited) {
 			return;
 		}
 		revision = document.revision();
 		if (listener != null) {
 			listener.onTextModified();
 		}
+		if (skipRun) {
+			skipRun = false;
+			return;
+		}
 		view.removeCallbacks(editPaused);
 		view.postDelayed(editPaused, updateDelay);
+	}
+
+	@Override
+	public void skipNextRun() {
+		skipRun = true;
+	}
+
+	// The strip offers to tune the number the caret was moved onto, by
+	// the tokens of the caret's line only; typing offers nothing.
+	private void offerTuning(boolean edited) {
+		String number = null;
+		Document.Selection selection = document.selection();
+		if (!edited && docs != null && styles.syntax() == DATABASE &&
+				selection.isEmpty()) {
+			Text text = document.text();
+			int caret = selection.head();
+			int n = text.lineOf(caret);
+			LexedLine line = styles.runs(n).line();
+			int column = caret - text.lineStart(n);
+			for (int i = 0, size = line.size(); i < size; ++i) {
+				if (line.style(i) == Style.NUMBER && !line.inDirective(i) &&
+						line.start(i) <= column && column <= line.end(i)) {
+					number = line.text().substring(line.start(i),
+							line.end(i));
+					break;
+				}
+			}
+		}
+		if (listener != null && !java.util.Objects.equals(number, tunable)) {
+			tunable = number;
+			listener.onTunable(number);
+		}
 	}
 
 	private void analysed(@NonNull Analysis analysis) {

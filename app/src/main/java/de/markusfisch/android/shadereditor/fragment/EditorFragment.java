@@ -69,6 +69,13 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 	private OnSignatureListener signatureListener;
 	@Nullable
 	private OnShaderToyShaderListener shaderToyShaderListener;
+	/** Hears the number the caret is on that can be tuned. */
+	public interface OnTunableListener {
+		void onTunable(@Nullable String number);
+	}
+
+	@Nullable
+	private OnTunableListener tunableListener;
 	@Nullable
 	private EditorDraft draft;
 	@Nullable
@@ -166,6 +173,13 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 						file);
 				if (errorListener != null && path.isSuccess()) {
 					errorListener.onItemClick(path.value(), line);
+				}
+			}
+
+			@Override
+			public void onTunable(@Nullable String number) {
+				if (tunableListener != null) {
+					tunableListener.onTunable(number);
 				}
 			}
 		});
@@ -288,6 +302,25 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 
 	public void setOnEditPausedListener(@Nullable ShaderEditor.OnEditPausedListener listener) {
 		editPausedListener = listener;
+	}
+
+	/**
+	 * Tell listener the number the caret was moved onto that can be
+	 * tuned, and null when it leaves it.
+	 */
+	public void setOnTunableListener(
+			@Nullable OnTunableListener listener) {
+		tunableListener = listener;
+	}
+
+	/** Give the code the focus and the keyboard. */
+	public void showKeyboard() {
+		SoftKeyboard.show(getActivity(), editor.getView());
+	}
+
+	/** The next change of the text starts no run of its own. */
+	public void skipNextRun() {
+		editor.skipNextRun();
 	}
 
 	public void setCodeCompletionListener(@Nullable ShaderEditor.CodeCompletionListener listener) {

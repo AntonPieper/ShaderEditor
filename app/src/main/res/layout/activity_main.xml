@@ -65,6 +65,9 @@
 
 		</LinearLayout>
 
+		<!-- Tunes one number of the code while the picture shows -->
+		<include layout="@layout/tuning_bar" />
+
 		<!-- The strip behind the navigation bar -->
 		<View
 			android:id="@+id/navbar"

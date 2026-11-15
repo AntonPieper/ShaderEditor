@@ -67,6 +67,10 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	private final RecyclerView completions;
 	@NonNull
 	private final SignatureView signatureView;
+	@NonNull
+	private final android.widget.Button tuneView;
+	@androidx.annotation.Nullable
+	private Runnable onTune;
 	private boolean hasText = true;
 
 	public ExtraKeysManager(@NonNull Activity activity,
@@ -89,6 +93,14 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		referenceShow = extraKeysView.findViewById(R.id.reference_show);
 		referenceOpen = extraKeysView.findViewById(R.id.reference_open);
 		backView = extraKeysView.findViewById(R.id.back_to_file);
+		tuneView = extraKeysView.findViewById(R.id.tune);
+		tuneView.setTypeface(ShaderEditorApp.preferences.getFont());
+		tuneView.setOnClickListener(v -> {
+			if (onTune != null) {
+				onTune.run();
+			}
+		});
+
 		completions.setLayoutManager(new LinearLayoutManager(
 				activity, RecyclerView.HORIZONTAL, false));
 		completionsAdapter = new CompletionsAdapter(editor::complete, editor);
@@ -206,6 +218,24 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		button.setOnClickListener(action != null ? v -> action.run() : null);
 		button.setContentDescription(button.getContext().getString(spoken,
 				name));
+	}
+
+	/**
+	 * Offer to tune number, the one the caret is on, with onTune; none
+	 * for null.
+	 */
+	public void setTunable(@androidx.annotation.Nullable String number,
+			@androidx.annotation.Nullable Runnable onTune) {
+		this.onTune = onTune;
+		if (number == null || onTune == null) {
+			tuneView.setVisibility(View.GONE);
+			return;
+		}
+		tuneView.setText(tuneView.getContext().getString(R.string.tune_offer,
+				number));
+		tuneView.setContentDescription(tuneView.getContext().getString(
+				R.string.a11y_tune, number));
+		tuneView.setVisibility(View.VISIBLE);
 	}
 
 	public void updateVisibility() {

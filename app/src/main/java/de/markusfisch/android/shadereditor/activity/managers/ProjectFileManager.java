@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -14,17 +15,23 @@ import java.util.Objects;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.navigation.Moves;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Tap;
+import de.markusfisch.android.shadereditor.opengl.Tuning;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
+import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.Library;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.tuning.TunedPlace;
+import de.markusfisch.android.shadereditor.tuning.Tuner;
+import de.markusfisch.android.shadereditor.tuning.TuningSession;
 
 /**
  * Opens files of folders in the editor and keeps the one open: its
@@ -56,6 +63,24 @@ public final class ProjectFileManager {
 		 * cannot show it: say so, with an action that runs turnOn.
 		 */
 		void onNeedsNewEditor(@NonNull Runnable turnOn);
+
+		/**
+		 * The number tuned last stopped being tuned: as asked, because
+		 * the text was about to change or run, or because it could
+		 * not be tuned (errors say why; empty otherwise).
+		 */
+		default void onTuningEnded(@NonNull List<ProjectDiagnostic> errors) {
+		}
+	}
+
+	/** The engine a tuning session builds its revisions on. */
+	public interface Engine {
+		/** Run preparation as a revision of picture, with tuning. */
+		void continuePlan(@NonNull Preparation preparation, float quality,
+				@NonNull Object picture, @Nullable Tuning tuning);
+
+		/** Show the value of the tuning that runs with the next frame. */
+		void applyTuning();
 	}
 
 	/** Runs what a project runs. */
@@ -92,6 +117,22 @@ public final class ProjectFileManager {
 	private final Listener listener;
 	@NonNull
 	private final Runner runner;
+	@NonNull
+	private final Engine engine;
+	// The tuning sessions of the file in the editor, one at a time.
+	@NonNull
+	private final Tuner tuner;
+	// The number tuned now, of which file, and the text it has now from
+	// its signStart, or null while it is as it was.
+	@Nullable
+	private TunedPlace tunedPlace;
+	@Nullable
+	private ProjectPath tunedPath;
+	@Nullable
+	private String tunedText;
+	// The tuned number while its session ends and writes it.
+	@Nullable
+	private TunedPlace writing;
 	@Nullable
 	private ProjectFile file;
 	// The build of what runs asked for last, of which project and file.
@@ -122,9 +163,13 @@ public final class ProjectFileManager {
 
 	public ProjectFileManager(@NonNull AppCompatActivity activity,
 			@NonNull EditorFragment editor, @NonNull ProjectHolds holds,
-			@NonNull Listener listener, @NonNull Runner runner) {
+			@NonNull Listener listener, @NonNull Runner runner,
+			@NonNull Engine engine) {
 		this.activity = activity;
 		this.runner = runner;
+		this.engine = engine;
+		tuner = new Tuner(new TuningHost(),
+				ContextCompat.getMainExecutor(activity));
 		this.editor = editor;
 		this.holds = holds;
 		this.listener = listener;
@@ -309,6 +354,8 @@ public final class ProjectFileManager {
 		if (shown == null) {
 			return;
 		}
+		// What runs replaces the session's build.
+		endTuning(true);
 		OpenProject project = shown.getProject();
 		built = project;
 		builtEntry = project.running();
@@ -340,6 +387,7 @@ public final class ProjectFileManager {
 		if (left == null) {
 			return;
 		}
+		endTuning(true);
 		file = null;
 		deciding = null;
 		stale = false;
@@ -358,6 +406,8 @@ public final class ProjectFileManager {
 		if (checked == null) {
 			return;
 		}
+		// A refresh may read a file again.
+		endTuning(true);
 		OpenProject project = checked.getProject();
 		project.refresh(reread -> {
 			if (file != checked) {
@@ -435,10 +485,213 @@ public final class ProjectFileManager {
 
 	public void destroy() {
 		leave();
+		tuner.destroy();
 		destroyed = true;
 	}
 
+	/**
+	 * Return the number at the caret of the file in the editor that can
+	 * be tuned, or null.
+	 */
+	@Nullable
+	public TunedPlace numberAtCaret() {
+		ProjectFile shown = file;
+		Document document = shown != null
+				? shown.getProject().document(shown.getPath())
+				: null;
+		return document != null
+				? TunedPlace.at(document.text().toString(),
+				document.selection().head())
+				: null;
+	}
+
+	/**
+	 * Return whether a number is being tuned; not while its session
+	 * ends and writes it.
+	 */
+	public boolean isTuning() {
+		return tunedPlace != null && writing == null;
+	}
+
+	/**
+	 * Tune place of the file in the editor, a number from
+	 * {@link #numberAtCaret()}; tuned hears what became of it. Return
+	 * false when it cannot start.
+	 */
+	public boolean tune(@NonNull TunedPlace place,
+			@NonNull TuningSession.Listener tuned) {
+		ProjectFile shown = file;
+		if (shown == null || isTuning() || tuner.open() != null) {
+			return false;
+		}
+		tunedPlace = place;
+		tunedPath = shown.getPath();
+		tunedText = null;
+		tuner.begin(shown.getPath(), place.start, place.end, place.type,
+				new TuningSession.Listener() {
+					@Override
+					public void onLive() {
+						tuned.onLive();
+					}
+
+					@Override
+					public void onMustRebuild(
+							@NonNull List<ProjectDiagnostic> why) {
+						tuned.onMustRebuild(why);
+					}
+
+					@Override
+					public void onFailed(
+							@NonNull List<ProjectDiagnostic> errors) {
+						clearTuning();
+						tuned.onFailed(errors);
+						listener.onTuningEnded(errors);
+					}
+				});
+		return true;
+	}
+
+	/**
+	 * The tuned number has a new value: literal is the number the
+	 * literal stands for, literalText what is built in its place where
+	 * it must stay a constant, and text what Done writes from its
+	 * signStart, or null while it is as it was.
+	 */
+	public void setTuned(double literal, @NonNull String literalText,
+			@Nullable String text) {
+		TuningSession session = tuner.open();
+		if (session == null || tunedPlace == null) {
+			return;
+		}
+		tunedText = text;
+		if (session.state() == TuningSession.State.MUST_REBUILD) {
+			session.rebuild(literalText);
+		} else {
+			session.set(literal);
+		}
+	}
+
+	/**
+	 * End tuning: keep writes the tuned number's new text, as Done and
+	 * Back do; else it stays as it was, as Revert does. The listener
+	 * hears that it ended.
+	 */
+	public void endTuning(boolean keep) {
+		if (!isTuning()) {
+			return;
+		}
+		TuningSession session = tuner.open();
+		String text = keep ? tunedText : null;
+		TunedPlace place = tunedPlace;
+		try {
+			writing = place;
+			if (session != null) {
+				session.end(text);
+			}
+		} finally {
+			writing = null;
+			clearTuning();
+		}
+		listener.onTuningEnded(List.of());
+	}
+
+	private void clearTuning() {
+		tunedPlace = null;
+		tunedPath = null;
+		tunedText = null;
+	}
+
+	// The project and the engine as a tuning session needs them.
+	private final class TuningHost implements TuningSession.Host {
+		@Nullable
+		@Override
+		public String text(@NonNull ProjectPath path) {
+			OpenProject project = project();
+			Document document = project != null
+					? project.document(path)
+					: null;
+			return document != null ? document.text().toString() : null;
+		}
+
+		@Override
+		public void prepare(@NonNull OpenProject.Replacement replacement,
+				@NonNull FileTexts.Callback<Preparation> done) {
+			OpenProject project = project();
+			if (project != null) {
+				project.prepare(UniformTable.builtins(), replacement,
+						prepared -> done.done(prepared.preparation()));
+			}
+		}
+
+		@Override
+		public void prepare(@NonNull FileTexts.Callback<Preparation> done) {
+			OpenProject project = project();
+			if (project != null) {
+				project.prepare(UniformTable.builtins(),
+						prepared -> done.done(prepared.preparation()));
+			}
+		}
+
+		@Override
+		public void run(@NonNull Preparation preparation,
+				@Nullable Tuning tuning) {
+			ProjectFile shown = file;
+			if (shown == null) {
+				return;
+			}
+			engine.continuePlan(preparation, shown.getQuality(),
+					Arrays.asList(key, shown.getProject().running()),
+					tuning);
+		}
+
+		@Override
+		public void applyTuning() {
+			engine.applyTuning();
+		}
+
+		@Override
+		public void write(@NonNull ProjectPath path, int start, int end,
+				@NonNull String text) {
+			OpenProject project = project();
+			Document document = project != null
+					? project.document(path)
+					: null;
+			if (document == null) {
+				return;
+			}
+			// The minus that belongs to the value is written with it.
+			TunedPlace place = writing;
+			int from = place != null && place.start == start
+					? place.signStart
+					: start;
+			ProjectFile shown = file;
+			if (shown != null && path.equals(shown.getPath())) {
+				// The session builds the text right after.
+				editor.skipNextRun();
+			}
+			document.beginBatch();
+			try {
+				document.replace(from, end, Text.of(text));
+			} finally {
+				document.endBatch();
+			}
+		}
+
+		@Nullable
+		private OpenProject project() {
+			ProjectFile shown = file;
+			return shown != null ? shown.getProject() : null;
+		}
+	}
+
 	private void changed() {
+		// Files were renamed or deleted: what is tuned may be gone. A
+		// build or a keystroke tells this listener too, and does not.
+		ProjectFile shown = file;
+		if (isTuning() && shown != null &&
+				!shown.getProject().events(heard).isEmpty()) {
+			endTuning(true);
+		}
 		follow();
 		decide();
 		// Another file was chosen to run, or found to run; or a rename

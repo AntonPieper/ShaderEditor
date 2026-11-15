@@ -57,6 +57,14 @@ interface SourceEditor {
 		 */
 		default void onOpenFile(@NonNull String file, int line) {
 		}
+
+		/**
+		 * Called when the caret was moved, not typed, onto a number of
+		 * the code that can be tuned, with its text, and with null when
+		 * it moves off it.
+		 */
+		default void onTunable(@Nullable String number) {
+		}
 	}
 
 	/** Return the view that shows the text and takes the keyboard. */
@@ -167,6 +175,13 @@ interface SourceEditor {
 	 * mode does; an editor that always does need not be told.
 	 */
 	default void setAddsByFileRule(boolean byFileRule) {
+	}
+
+	/**
+	 * The next change of the text is not the user's typing and starts
+	 * no run of its own: the one who makes it runs it.
+	 */
+	default void skipNextRun() {
 	}
 
 	/** Return whether lookUp explains word; none does by default. */

@@ -356,4 +356,35 @@
 		<item name="closeIconSize">18dp</item>
 		<item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
 	</style>
+	<!-- − and + of the tuning bar: 48 dp icon buttons on the third
+		surface level, 8 dp corners. -->
+	<style name="TuningIconButton" parent="Widget.Material3.Button.UnelevatedButton">
+		<item name="android:insetTop">0dp</item>
+		<item name="android:insetRight">0dp</item>
+		<item name="android:insetBottom">0dp</item>
+		<item name="android:insetLeft">0dp</item>
+		<item name="android:padding">12dp</item>
+		<item name="iconPadding">0dp</item>
+		<item name="iconSize">24dp</item>
+		<item name="iconGravity">textStart</item>
+		<item name="cornerRadius">@dimen/se_corner</item>
+		<item name="backgroundTint">@color/se_surface_3</item>
+		<item name="iconTint">?attr/colorOnSurface</item>
+	</style>
+
+	<!-- The step chip of the tuning bar: 36 dp, 8 dp corners, 14 % white,
+		with tabular figures. -->
+	<style name="TuningStepChip" parent="Widget.Material3.Button.UnelevatedButton">
+		<item name="android:insetTop">0dp</item>
+		<item name="android:insetBottom">0dp</item>
+		<item name="android:minHeight">36dp</item>
+		<item name="android:paddingLeft">12dp</item>
+		<item name="android:paddingRight">8dp</item>
+		<item name="cornerRadius">@dimen/se_corner</item>
+		<item name="backgroundTint">@color/se_chip</item>
+		<item name="android:textColor">?attr/colorOnSurface</item>
+		<item name="iconTint">?attr/colorOnSurface</item>
+		<item name="iconPadding">4dp</item>
+		<item name="android:fontFeatureSettings">tnum</item>
+	</style>
 </resources>

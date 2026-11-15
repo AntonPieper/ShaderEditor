@@ -7,6 +7,7 @@ import android.os.Looper;
 import android.view.View;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,8 +16,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 import org.jetbrains.annotations.Contract;
 import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -34,9 +38,12 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
+import de.markusfisch.android.shadereditor.tuning.TunedPlace;
+import de.markusfisch.android.shadereditor.tuning.TuningSession;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.Message;
 import de.markusfisch.android.shadereditor.widget.PassesSheet;
+import de.markusfisch.android.shadereditor.widget.TuningBar;
 
 /**
  * The main screen where the shaders are files: of the library, of
@@ -127,6 +134,22 @@ public final class LibraryScreen implements ShaderScreen {
 	@Nullable
 	private AlertDialog importQuestion;
 	private boolean asksImportAgain;
+	// Tunes one number of the file in the editor while the picture
+	// shows, the steps chosen per number while that file is open, and
+	// what showed before it opened.
+	private TuningBar tuningBar;
+	private final Map<String, BigDecimal> tuningSteps = new HashMap<>();
+	@Nullable
+	private String tuningStepsFor;
+	private boolean codeBeforeTuning;
+	private boolean keyboardBeforeTuning;
+	private final OnBackPressedCallback backTunes =
+			new OnBackPressedCallback(false) {
+				@Override
+				public void handleOnBackPressed() {
+					tuningBar.back();
+				}
+			};
 
 	public LibraryScreen(@NonNull AppCompatActivity activity,
 			@NonNull EditorFragment editorFragment,
@@ -287,7 +310,10 @@ public final class LibraryScreen implements ShaderScreen {
 						showNothing();
 						shaderViewListener.onInfoLog(nothingRuns);
 					}
-				});
+				}, shaderViewManager);
+		tuningBar = activity.findViewById(R.id.tuning_bar);
+		activity.getOnBackPressedDispatcher().addCallback(activity,
+				backTunes);
 		editorFragment.setOnErrorSelectedListener((file, line) -> {
 			if (file != null) {
 				files.openAt(file, line);
@@ -406,6 +432,9 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void onSaveInstanceState(@NonNull Bundle state) {
+		// The value is kept, as Back keeps it, and the code shows again
+		// before what shows is kept.
+		files.endTuning(true);
 		state.putString(OPEN, openState().encode());
 		state.putBoolean(ASKS_IMPORT, importQuestion != null);
 		// With nothing open the editor's view is gone for that reason.
@@ -569,6 +598,8 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void run() {
+		// Run ends tuning, keeping the value: what runs is the text.
+		files.endTuning(true);
 		if (open instanceof ProjectFile) {
 			runFile();
 		} else if (!open.hasText()) {
@@ -579,7 +610,99 @@ public final class LibraryScreen implements ShaderScreen {
 	}
 
 	@Override
+	public void tune() {
+		if (!(open instanceof ProjectFile file) || files.isTuning()) {
+			return;
+		}
+		if (!ShaderEditorApp.preferences.doesRunInBackground()) {
+			// Only a picture behind the code can show the number.
+			Message.show(activity, R.string.file_runs_behind_code);
+			return;
+		}
+		TunedPlace place = files.numberAtCaret();
+		if (place == null) {
+			return;
+		}
+		// The step chosen for a number stays while its file is open.
+		String steps = files.key() + "/" + file.getPath();
+		if (!steps.equals(tuningStepsFor)) {
+			tuningSteps.clear();
+			tuningStepsFor = steps;
+		}
+		String number = String.valueOf(place.start);
+		boolean started = files.tune(place, new TuningSession.Listener() {
+			@Override
+			public void onLive() {
+			}
+
+			@Override
+			public void onMustRebuild(@NonNull List<ProjectDiagnostic> why) {
+			}
+
+			@Override
+			public void onFailed(@NonNull List<ProjectDiagnostic> errors) {
+			}
+		});
+		if (!started) {
+			return;
+		}
+		codeBeforeTuning = editorFragment.isCodeVisible();
+		keyboardBeforeTuning = SoftKeyboard.isOpen(tuningBar);
+		tuningBar.open(place, tuningSteps.get(number), new TuningBar.Session() {
+			@Override
+			public void set(@NonNull TuningBar.Tuned tuned) {
+				tuningSteps.put(number, tuned.step());
+				files.setTuned(tuned.literalValue(), tuned.literalText(),
+						tuned.changed() ? tuned.text() : null);
+			}
+
+			@Override
+			public void end(boolean keep) {
+				files.endTuning(keep);
+			}
+		});
+		backTunes.setEnabled(true);
+		// The code and the keyboard step aside; the picture shows as it
+		// is, without the limit code puts on it.
+		if (codeBeforeTuning) {
+			uiManager.toggleCodeVisibility();
+		}
+	}
+
+	@Override
+	public void onTextModified() {
+		// Changed by something else than the session, such as Undo:
+		// where the number was is not known anymore.
+		if (files.isTuning()) {
+			files.endTuning(false);
+		}
+	}
+
+	// The bar closed: what showed before comes back.
+	private void tuningEnded(@NonNull List<ProjectDiagnostic> errors) {
+		backTunes.setEnabled(false);
+		tuningBar.close();
+		if (codeBeforeTuning && !editorFragment.isCodeVisible()) {
+			uiManager.toggleCodeVisibility();
+			if (keyboardBeforeTuning) {
+				editorFragment.showKeyboard();
+			}
+		}
+		codeBeforeTuning = false;
+		keyboardBeforeTuning = false;
+		if (!errors.isEmpty()) {
+			Message.show(activity, activity.getString(R.string.tuning_failed,
+					errors.get(0).message()));
+		}
+	}
+
+	@Override
 	public void toggleCode() {
+		// The code takes input again: tuning ends, keeping the value.
+		if (files.isTuning()) {
+			files.endTuning(true);
+			return;
+		}
 		// Without a file there is no code to show.
 		if (open.hasText()) {
 			uiManager.toggleCodeVisibility();
@@ -903,6 +1026,11 @@ public final class LibraryScreen implements ShaderScreen {
 	@Contract(" -> new")
 	private ProjectFileManager.Listener createProjectFileListener() {
 		return new ProjectFileManager.Listener() {
+			@Override
+			public void onTuningEnded(@NonNull List<ProjectDiagnostic> errors) {
+				tuningEnded(errors);
+			}
+
 			@Override
 			public void onShown(@NonNull ProjectFile file) {
 				if (open == shaderManager) {
