@@ -45,6 +45,20 @@ public record RunningPasses(@NonNull List<Row> rows) {
 	}
 
 	/**
+	 * Where a pass's size is written: its {@code #pragma se target} line,
+	 * or, when it has none, the line where a new one goes in its file:
+	 * right after {@code #version}, else the first line.
+	 *
+	 * @param file   the file of the line
+	 * @param line   the 1-based line
+	 * @param exists whether the directive is on line; when false, a new
+	 *               one is inserted as line, before what is there now
+	 */
+	public record SizeLine(@NonNull ProjectPath file, int line,
+			boolean exists) {
+	}
+
+	/**
 	 * One pass.
 	 *
 	 * @param file       its file
@@ -57,6 +71,7 @@ public record RunningPasses(@NonNull List<Row> rows) {
 	 * @param pictures   the picture files it reads
 	 * @param startsFrom the picture its first frame is, or null
 	 * @param problems   the build's warnings in its file
+	 * @param sizeLine   where its size is written, or would be
 	 */
 	public record Row(
 			@NonNull ProjectPath file,
@@ -66,7 +81,8 @@ public record RunningPasses(@NonNull List<Row> rows) {
 			@NonNull List<Read> reads,
 			@NonNull List<ProjectPath> pictures,
 			@Nullable ProjectPath startsFrom,
-			@NonNull List<ProjectDiagnostic> problems) {
+			@NonNull List<ProjectDiagnostic> problems,
+			@NonNull SizeLine sizeLine) {
 		public Row {
 			reads = List.copyOf(reads);
 			pictures = List.copyOf(pictures);
@@ -151,9 +167,28 @@ public record RunningPasses(@NonNull List<Row> rows) {
 					pass.perFrame() ? Kind.PASS : Kind.FIRST_FRAME,
 					index == plan.output(),
 					pass.perFrame() || drawnOnce[index],
-					reads, pictures, startsFrom, problems));
+					reads, pictures, startsFrom, problems,
+					sizeLine(plan.programs().get(pass.program()), pass)));
 		}
 		return new RunningPasses(rows);
+	}
+
+	// The target line of pass, or where one goes: after the #version of
+	// its file, the line head ends with, else at the top.
+	@NonNull
+	static SizeLine sizeLine(@NonNull RenderPlan.Program program,
+			@NonNull RenderPlan.Pass pass) {
+		var target = pass.target();
+		if (target.line() > 0) {
+			return new SizeLine(target.file(), target.line(), true);
+		}
+		int head = program.head();
+		var version = head > 0 ? program.sourceMap().locate(head) : null;
+		return new SizeLine(program.file(),
+				version != null && program.file().equals(version.file())
+						? version.line() + 1
+						: 1,
+				false);
 	}
 
 	// The plan's index of every row, in order.

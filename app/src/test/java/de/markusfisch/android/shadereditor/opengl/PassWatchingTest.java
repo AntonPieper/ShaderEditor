@@ -40,6 +40,28 @@ public class PassWatchingTest {
 		assertEquals(List.of("pictures"), heard);
 	}
 
+	// The frame comes before the pictures, under the same rule.
+	@Test
+	public void theFrameIsToldOnlyWhileItWatches() {
+		var watching = new PassWatching();
+		var watcher = new ShaderEngine.PassWatcher() {
+			@Override
+			public void onFrame(int frame) {
+				heard.add("frame " + frame);
+			}
+
+			@Override
+			public void onPictures(@NonNull List<PassPicture> pictures) {
+				heard.add("pictures");
+			}
+		};
+		watching.set(watcher);
+		assertTrue(watching.frame(watcher, 3));
+		watching.set(null);
+		assertFalse(watching.frame(watcher, 4));
+		assertEquals(List.of("frame 3"), heard);
+	}
+
 	// Replaced from another thread while a call is under way: the
 	// replacing call waits for it, and none starts after.
 	@Test

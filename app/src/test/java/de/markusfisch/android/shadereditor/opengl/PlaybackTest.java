@@ -112,9 +112,14 @@ public class PlaybackTest {
 		assertEquals(0, first.frame);
 		assertEquals(FIRST, first.timeDelta, EPSILON);
 		assertFalse(inputs.restarted());
+		// The frame the sheet shows while paused follows the table.
+		assertEquals(0, inputs.lastFrame());
 		var next = inputs.capture(Draw.STEP, 50 * MILLI, 3f);
 		assertEquals(FIRST, next.time, EPSILON);
 		assertEquals(1, next.frame);
+		assertEquals(1, inputs.lastFrame());
+		inputs.capture(Draw.AGAIN, 60 * MILLI, 3f);
+		assertEquals(1, inputs.lastFrame());
 	}
 
 	// F8: the rate is counted from the first frame after Play, not over

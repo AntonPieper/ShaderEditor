@@ -29,6 +29,18 @@ final class PassWatching {
 		}
 	}
 
+	// GL thread. Tells watcher the frame while it still watches; false
+	// when it does not.
+	boolean frame(@NonNull ShaderEngine.PassWatcher watcher, int frame) {
+		synchronized (lock) {
+			if (this.watcher != watcher) {
+				return false;
+			}
+			watcher.onFrame(frame);
+			return true;
+		}
+	}
+
 	// GL thread. Tells watcher the pictures while it still watches;
 	// false when it does not.
 	boolean pictures(@NonNull ShaderEngine.PassWatcher watcher,

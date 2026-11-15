@@ -189,7 +189,8 @@ public class PassFactsTest {
 		}
 		var row = new RunningPasses.Row(path("a.frag"),
 				RunningPasses.Kind.PASS, false, true, List.of(), List.of(),
-				null, List.of());
+				null, List.of(),
+				new RunningPasses.SizeLine(path("a.frag"), 1, false));
 		return PassInspector.floatFacts(row, new PassInspector.Source(
 				path("a.frag"), new GlTexture2D(1), 8, 8,
 				HostDirective.Format.RGBA16F), bits, 0);
