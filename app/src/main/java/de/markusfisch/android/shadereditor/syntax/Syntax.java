@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * How the editor treats the text of one language: what it colours, what
- * it learns from the whole text, what it completes and how it indents.
+ * it knows of the whole text, what it completes and how it indents.
  * The editor holds one per open file, chosen from the file's language,
  * and asks nothing of a language but this. An implementation is
  * immutable, so the editor may call it on any thread.
@@ -39,22 +39,25 @@ public interface Syntax {
 
 	/**
 	 * Return a builder that reads a text line by line, with the tokens
-	 * {@link #lexLine} gives, for its declarations, or null when this
-	 * language collects none; the text is then not tokenized for it.
+	 * {@link #lexLine} gives, for what this language knows of it, or
+	 * null when it knows nothing of a text; the text is then not
+	 * tokenized for it. The knowledge keeps at most maxSymbols symbols
+	 * whose texts have at most maxChars characters together, the first
+	 * in the text.
 	 */
-	Outline.Builder outline(int maxDeclarations, int maxNameChars);
+	Knowledge.Builder knowledge(int maxSymbols, int maxChars);
 
 	/**
 	 * Offer the completions for the cursor at column of line.
 	 *
 	 * @param line       the cursor's line as it was tokenized
 	 * @param lineStart  the offset of the line in the text
-	 * @param declared   the declarations of the last analysis
-	 * @param current    whether declared is of the current text
+	 * @param known      what the last analysis knows of the text
+	 * @param current    whether known is of the current text
 	 * @param extraWords words the host offers besides the language's own
 	 */
 	void complete(LexedLine line, int column, int lineStart,
-			Outline declared, boolean current, List<String> extraWords,
+			Knowledge known, boolean current, List<String> extraWords,
 			Offer offer);
 
 	/** Return how a new line is indented. */

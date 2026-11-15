@@ -6,8 +6,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
-import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 /**
@@ -16,16 +16,16 @@ import de.markusfisch.android.shadereditor.syntax.Syntax;
  * made on any thread.
  *
  * It reads the text line by line and keeps neither the text nor its
- * tokens, so its memory does not grow with the text: it keeps at most
- * {@link #MAX_DECLARATIONS} declarations whose names have at most
- * {@link #MAX_NAME_CHARS} characters together, the first in the text,
- * and it leaves the outline empty if a line is longer than
+ * tokens, so its memory does not grow with the text: what the syntax
+ * knows of it has at most {@link #MAX_SYMBOLS} symbols whose texts have
+ * at most {@link #MAX_CHARS} characters together, the first in the
+ * text, and is nothing if a line is longer than
  * {@link #MAX_LINE_LENGTH}, since tokenizing a line takes memory in
  * proportion to its length.
  */
 public final class Analysis {
-	static final int MAX_DECLARATIONS = 10000;
-	static final int MAX_NAME_CHARS = 1 << 17;
+	static final int MAX_SYMBOLS = 10000;
+	static final int MAX_CHARS = 1 << 17;
 	static final int MAX_LINE_LENGTH = 1 << 16;
 	private static final Pattern UNIFORM_LINE = Pattern.compile(
 			"^([ \t]*uniform.+)$",
@@ -38,19 +38,20 @@ public final class Analysis {
 	}
 
 	/** The analysis of the empty text, for no revision. */
-	public static final Analysis NONE = new Analysis(-1, Outline.NONE,
+	public static final Analysis NONE = new Analysis(-1, Knowledge.NONE,
 			Collections.emptySet(), -1, -1);
 
 	private final int revision;
-	private final Outline outline;
+	private final Knowledge knowledge;
 	private final Set<String> typeNames;
 	private final int uniformLineEnd;
 	private final int endifEnd;
 
-	private Analysis(int revision, Outline outline, Set<String> typeNames,
+	private Analysis(int revision, Knowledge knowledge,
+			Set<String> typeNames,
 			int uniformLineEnd, int endifEnd) {
 		this.revision = revision;
-		this.outline = outline;
+		this.knowledge = knowledge;
 		this.typeNames = typeNames;
 		this.uniformLineEnd = uniformLineEnd;
 		this.endifEnd = endifEnd;
@@ -72,8 +73,8 @@ public final class Analysis {
 	 */
 	static Analysis of(Syntax syntax, Text text, int revision,
 			Analysis previous, Cancel cancel) {
-		Outline.Builder builder = syntax.outline(MAX_DECLARATIONS,
-				MAX_NAME_CHARS);
+		Knowledge.Builder builder = syntax.knowledge(MAX_SYMBOLS,
+				MAX_CHARS);
 		boolean outlined = builder != null &&
 				text.longestLineLength() <= MAX_LINE_LENGTH;
 		LineTokens tokens = new LineTokens();
@@ -100,16 +101,18 @@ public final class Analysis {
 				endifEnd = lastEnd(endif.reset(line), lineStart, endifEnd);
 			}
 		}
-		Outline outline = builder != null ? builder.build() : Outline.NONE;
+		Knowledge knowledge = builder != null
+				? builder.build()
+				: Knowledge.NONE;
 		Set<String> typeNames = new HashSet<>();
-		for (Outline.Declaration declaration : outline.declarations()) {
-			if (declaration.kind() == Outline.Kind.TYPE) {
-				typeNames.add(declaration.name());
+		for (Knowledge.Symbol symbol : knowledge.symbols()) {
+			if (symbol.kind() == Knowledge.Kind.TYPE) {
+				typeNames.add(symbol.name());
 			}
 		}
 		boolean same = previous != null &&
 				previous.typeNames.equals(typeNames);
-		return new Analysis(revision, outline, same
+		return new Analysis(revision, knowledge, same
 				? previous.typeNames
 				: Collections.unmodifiableSet(typeNames),
 				uniformLineEnd, endifEnd);
@@ -135,9 +138,12 @@ public final class Analysis {
 		return revision;
 	}
 
-	/** Return the declarations; their names are what completion offers. */
-	public Outline outline() {
-		return outline;
+	/**
+	 * Return what the syntax knows of the text; the names of its
+	 * symbols are what completion offers.
+	 */
+	public Knowledge knowledge() {
+		return knowledge;
 	}
 
 	/**

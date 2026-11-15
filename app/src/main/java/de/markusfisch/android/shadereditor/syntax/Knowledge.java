@@ -1,0 +1,116 @@
+package de.markusfisch.android.shadereditor.syntax;
+
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * What a language knows about one version of one text, in words no
+ * language owns. The syntax of a file makes one off the main thread, see
+ * {@link Syntax#knowledge}; the editor then asks it about the text it
+ * was made of. It never changes, so it may be asked on any thread, and
+ * its offsets are UTF-16 offsets into that text.
+ *
+ * A language answers what it can. One that knows nothing has none, and
+ * the editor holds {@link #NONE}.
+ */
+public interface Knowledge {
+	/** What a symbol is. */
+	enum Kind {
+		FUNCTION,
+		VARIABLE,
+		UNIFORM,
+		CONSTANT,
+		MACRO,
+		TYPE,
+		PARAMETER,
+		FIELD,
+		/** A file whose text is part of this one. */
+		INCLUDE,
+		/** Another file the text names. */
+		FILE
+	}
+
+	/**
+	 * Something with a name: a declaration, a parameter or field of
+	 * one, or a file the text names.
+	 *
+	 * @param detail        how the language writes it: a signature, a
+	 *                      type and a name, the line of a macro; for a
+	 *                      file what names it. Never null
+	 * @param documentation the comment that belongs to it, or null
+	 * @param file          null for a symbol of this text; whoever hands
+	 *                      a symbol to another file names its file here
+	 * @param start         where its name stands, for a file its path
+	 * @param end           the end of the name
+	 * @param from          where the whole declaration starts
+	 * @param to            where the whole declaration ends
+	 * @param parts         the parameters of a function or a macro, the
+	 *                      fields of a type, in their order
+	 */
+	record Symbol(String name, Kind kind, String detail,
+			String documentation, String file, int start, int end, int from,
+			int to, List<Symbol> parts) {
+		/** Return this symbol as one of file. */
+		public Symbol in(String file) {
+			return new Symbol(name, kind, detail, documentation, file, start,
+					end, from, to, parts);
+		}
+	}
+
+	/** Reads a text line by line. */
+	interface Builder {
+		/**
+		 * Add the next line, which starts at offset lineStart, with the
+		 * tokens the language gave it.
+		 */
+		void addLine(CharSequence line, int lineStart, LineTokens tokens);
+
+		/** Return the knowledge of the lines added; call it once, last. */
+		Knowledge build();
+	}
+
+	/** Knows nothing. */
+	Knowledge NONE = new Knowledge() {
+		@Override
+		public List<Symbol> symbols() {
+			return Collections.emptyList();
+		}
+
+		@Override
+		public List<Symbol> at(int offset, CharSequence word) {
+			return Collections.emptyList();
+		}
+
+		@Override
+		public List<Symbol> links() {
+			return Collections.emptyList();
+		}
+
+		@Override
+		public int[] folds() {
+			return new int[0];
+		}
+	};
+
+	/** Return the declarations of the text in its order: the outline. */
+	List<Symbol> symbols();
+
+	/**
+	 * Return what word, which stands at offset, refers to: a function
+	 * with every form it is declared in, else one symbol, or nothing.
+	 * The word says what is asked for, the offset from where.
+	 */
+	List<Symbol> at(int offset, CharSequence word);
+
+	/**
+	 * Return the files the text names, in its order, each with the path
+	 * as written for a name and where the path stands.
+	 */
+	List<Symbol> links();
+
+	/**
+	 * Return the regions that fold, as pairs of the first and the last
+	 * line, counted from 0, in the order they start.
+	 */
+	int[] folds();
+}

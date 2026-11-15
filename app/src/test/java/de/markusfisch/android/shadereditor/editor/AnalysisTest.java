@@ -21,6 +21,7 @@ import java.util.concurrent.Executor;
 import de.markusfisch.android.shadereditor.syntax.BundledShaders;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
 import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
@@ -59,16 +60,16 @@ public class AnalysisTest {
 			Analysis analysis = Analysis.of(GLSL, document, 0, Analysis.NONE);
 			// The text as the document holds it, with its line ends.
 			text = document.toString();
-			List<Outline.Declaration> declarations = Outline.of(
-					GlslLexer.lex(text), text).declarations();
+			List<Knowledge.Symbol> declarations = Outline.of(
+					GlslLexer.lex(text), text).symbols();
 			Set<String> typeNames = new HashSet<>();
-			for (Outline.Declaration declaration : declarations) {
-				if (declaration.kind() == Outline.Kind.TYPE) {
+			for (Knowledge.Symbol declaration : declarations) {
+				if (declaration.kind() == Knowledge.Kind.TYPE) {
 					typeNames.add(declaration.name());
 				}
 			}
 			assertEquals(text, declarations,
-					analysis.outline().declarations());
+					analysis.knowledge().symbols());
 			assertEquals(text, typeNames, analysis.typeNames());
 			assertEquals(text, Analysis.uniformLineEnd(text),
 					analysis.uniformLineEnd());
@@ -83,10 +84,10 @@ public class AnalysisTest {
 			sb.append("float v").append(i).append(" = 1.0;\n");
 		}
 		Analysis analysis = Analysis.of(GLSL, Text.of(sb), 0, Analysis.NONE);
-		List<Outline.Declaration> declarations =
-				analysis.outline().declarations();
-		assertEquals(Analysis.MAX_DECLARATIONS, declarations.size());
-		assertEquals("v" + (Analysis.MAX_DECLARATIONS - 1),
+		List<Knowledge.Symbol> declarations =
+				analysis.knowledge().symbols();
+		assertEquals(Analysis.MAX_SYMBOLS, declarations.size());
+		assertEquals("v" + (Analysis.MAX_SYMBOLS - 1),
 				declarations.get(declarations.size() - 1).name());
 		for (Field field : Analysis.class.getDeclaredFields()) {
 			Class<?> type = field.getType();
@@ -107,20 +108,20 @@ public class AnalysisTest {
 					.append(";\n");
 		}
 		Analysis analysis = Analysis.of(GLSL, Text.of(sb), 0, Analysis.NONE);
-		assertEquals(Analysis.MAX_NAME_CHARS / length,
-				analysis.outline().declarations().size());
+		assertEquals(Analysis.MAX_CHARS / length,
+				analysis.knowledge().symbols().size());
 	}
 
 	@Test
-	public void leavesTheOutlineEmptyWithATooLongLine() {
+	public void knowsNothingOfATextWithATooLongLine() {
 		String declarations = "uniform float a;\nstruct A { int b; };\n";
 		String fits = declarations + "x".repeat(Analysis.MAX_LINE_LENGTH);
 		assertEquals(2, Analysis.of(GLSL, Text.of(fits), 0, Analysis.NONE)
-				.outline().declarations().size());
+				.knowledge().symbols().size());
 		String tooLong = fits + "x";
 		Analysis analysis = Analysis.of(GLSL, Text.of(tooLong), 0,
 				Analysis.NONE);
-		assertEquals(List.of(), analysis.outline().declarations());
+		assertEquals(List.of(), analysis.knowledge().symbols());
 		assertEquals(Set.of(), analysis.typeNames());
 		assertEquals(declarations.indexOf("\n"), analysis.uniformLineEnd());
 	}
@@ -328,7 +329,7 @@ public class AnalysisTest {
 
 	private static List<String> names(Analysis analysis) {
 		List<String> names = new ArrayList<>();
-		analysis.outline().declarations().forEach(d -> names.add(d.name()));
+		analysis.knowledge().symbols().forEach(d -> names.add(d.name()));
 		return names;
 	}
 

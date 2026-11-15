@@ -39,9 +39,9 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
 import de.markusfisch.android.shadereditor.syntax.JsonSyntax;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
-import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 public class OpenProjectTest {
@@ -269,7 +269,7 @@ public class OpenProjectTest {
 		String line = "{\"entry\": \"";
 		manifest.complete(LexedLine.of(manifest, line, false,
 						Syntax.TEXT_START, new LineTokens()), line.length(), 0,
-				Outline.NONE, true, List.of(),
+				Knowledge.NONE, true, List.of(),
 				(words, position) -> offered.add(words));
 		assertEquals(List.of(List.of("b.glsl", "main.frag")), offered);
 		assertSame(JsonSyntax.INSTANCE,

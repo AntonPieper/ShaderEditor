@@ -52,7 +52,7 @@ public class JsonSyntaxTest {
 		List<Object> offered = new ArrayList<>();
 		PlainSyntax.INSTANCE.complete(LexedLine.of(PlainSyntax.INSTANCE,
 						"vo", false, Syntax.TEXT_START, tokens), 2, 0,
-				Outline.NONE, true, List.of("void"),
+				Knowledge.NONE, true, List.of("void"),
 				(words, position) -> offered.add(words));
 		assertEquals(List.of(List.of()), offered);
 		assertEquals("\t", indent("x\n\tf({", PlainSyntax.INSTANCE

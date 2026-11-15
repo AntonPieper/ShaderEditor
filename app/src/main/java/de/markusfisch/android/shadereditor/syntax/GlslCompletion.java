@@ -102,10 +102,13 @@ public final class GlslCompletion {
 
 	/**
 	 * The words with a parenthesis after each that names a function,
-	 * built-in or declared in outline, but main: what a tap inserts.
+	 * built-in or declared as known tells, but main: what a tap inserts.
 	 */
 	public static List<String> withParentheses(List<String> words,
-			Outline outline) {
+			Knowledge known) {
+		Outline outline = known instanceof Outline declared
+				? declared
+				: Outline.NONE;
 		List<String> result = new ArrayList<>(words.size());
 		for (String word : words) {
 			// GlslWords styles the gl_ variables as functions.

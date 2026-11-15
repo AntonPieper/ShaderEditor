@@ -76,6 +76,22 @@ public class OutlineTest {
 	}
 
 	@Test
+	public void answersAsKnowledge() {
+		String text = "float f(float a);\nuniform float x;\n" +
+				"float f(vec2 a) { return x; }\n";
+		Knowledge knowledge = Outline.of(GlslLexer.lex(text), text);
+		assertEquals(Arrays.asList("FUNCTION f 6", "UNIFORM x 32",
+				"FUNCTION f 41"), symbols(knowledge.symbols()));
+		// A function answers with every form, anything else with one.
+		assertEquals(Arrays.asList("FUNCTION f 6", "FUNCTION f 41"),
+				symbols(knowledge.at(62, "f")));
+		assertEquals(Arrays.asList("UNIFORM x 32"),
+				symbols(knowledge.at(62, "x")));
+		assertEquals(Arrays.asList(), knowledge.at(62, "a"));
+		assertEquals(Arrays.asList(), Knowledge.NONE.at(0, "f"));
+	}
+
+	@Test
 	public void declarationsInsideConditionals() {
 		assertEquals(Arrays.asList(
 						"VARIABLE high",
@@ -194,6 +210,16 @@ public class OutlineTest {
 		String text = "float x; vec3 f() { return vec3(x); }";
 		Tokens tokens = GlslLexer.lex(text);
 		assertSame(tokens, Outline.of(tokens, text).colourTypes(tokens, text));
+	}
+
+	@NonNull
+	private static List<String> symbols(List<Knowledge.Symbol> symbols) {
+		List<String> result = new ArrayList<>();
+		for (Knowledge.Symbol symbol : symbols) {
+			result.add(symbol.kind() + " " + symbol.name() + " " +
+					symbol.start());
+		}
+		return result;
 	}
 
 	@NonNull

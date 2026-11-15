@@ -19,7 +19,8 @@ public class SyntaxSeamTest {
 				"editor/AnalysisScheduler", "editor/AutoIndent",
 				"editor/EditCommands", "editor/KeyCommands",
 				"widget/CodeView", "widget/DocumentWork", "syntax/Syntax",
-				"syntax/LexedLine", "syntax/LineTokens"}) {
+				"syntax/Knowledge", "syntax/LexedLine",
+				"syntax/LineTokens"}) {
 			String text = Files.readString(
 					new File(folder + name + ".java").toPath());
 			for (String language : new String[]{"Glsl", "Outline.builder"}) {

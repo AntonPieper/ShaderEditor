@@ -32,7 +32,7 @@ import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.syntax.GlslDocs;
 import de.markusfisch.android.shadereditor.syntax.GlslWords;
-import de.markusfisch.android.shadereditor.syntax.Outline;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.DocsSheet;
@@ -48,9 +48,9 @@ import de.markusfisch.android.shadereditor.widget.DocsSheet;
  */
 final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	interface Host {
-		/** The declarations of the file, possibly of an older text. */
+		/** What is known of the file, possibly of an older text. */
 		@NonNull
-		Outline declared();
+		Knowledge declared();
 
 		/** Add statement as Add uniform does. */
 		void addUniform(@NonNull String statement);
@@ -100,7 +100,7 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	 */
 	@Nullable
 	static UniformDef undeclaredUniform(@NonNull List<String> messages,
-			@NonNull Outline declarations) {
+			@NonNull Knowledge declarations) {
 		for (String message : messages) {
 			if (!message.toLowerCase(Locale.ROOT)
 					.contains("undeclared")) {
@@ -275,14 +275,9 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		}
 	}
 
-	private static boolean declares(@NonNull Outline declarations,
+	private static boolean declares(@NonNull Knowledge declarations,
 			@NonNull String name) {
-		for (Outline.Declaration declaration : declarations.declarations()) {
-			if (declaration.name().equals(name)) {
-				return true;
-			}
-		}
-		return false;
+		return !declarations.at(0, name).isEmpty();
 	}
 
 	@Nullable
