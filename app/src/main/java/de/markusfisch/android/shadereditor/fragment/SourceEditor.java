@@ -11,6 +11,7 @@ import java.util.List;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 /**
@@ -68,6 +69,8 @@ interface SourceEditor {
 	 * is no edit. Edits go into document from then on. syntax is how
 	 * the language of its file is coloured, completed and indented.
 	 *
+	 * @param scope     what the file sees of other files: the names
+	 *                  they declare complete here
 	 * @param state     what getDocumentState returned when it was shown
 	 *                  before, or null
 	 * @param shaderToy whether text the user puts in that defines
@@ -77,7 +80,8 @@ interface SourceEditor {
 	 * @return false when this editor cannot show a document
 	 */
 	boolean showDocument(@NonNull Document document, @NonNull Syntax syntax,
-			@Nullable Object state, boolean shaderToy);
+			@NonNull Knowledge.Scope scope, @Nullable Object state,
+			boolean shaderToy);
 
 	/**
 	 * Set whether text the user puts into the document shown is

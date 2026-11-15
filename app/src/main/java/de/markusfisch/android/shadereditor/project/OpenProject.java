@@ -21,6 +21,7 @@ import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Content;
 import de.markusfisch.android.shadereditor.project.ProjectFiles.Read;
 import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 /**
@@ -296,6 +297,8 @@ public final class OpenProject {
 	private String unsynced;
 	private List<ProjectDiagnostic> diagnostics = List.of();
 	private List<Used> used = List.of();
+	// What the files of the last build know of each other.
+	private ProjectKnowledge knowledge = ProjectKnowledge.NONE;
 	// What ran when the files used were built.
 	private ProjectPath usedFor;
 	private ProjectPath running;
@@ -1638,6 +1641,7 @@ public final class OpenProject {
 		ProjectPath entry = running;
 		Edited edited = new Edited(snapshot, journaled());
 		boolean temporary = replacement != null;
+		ProjectKnowledge known = knowledge;
 		worker.execute(() -> {
 			Preparation prepared = entry != null
 					? Preparation.prepare(edited, entry,
@@ -1650,6 +1654,7 @@ public final class OpenProject {
 					? Preparation.checkManifest(edited)
 					: List.of();
 			List<Used> read = new ArrayList<>();
+			Map<ProjectPath, byte[]> texts = new LinkedHashMap<>();
 			if (preparation != null) {
 				for (SourceAssembly.Dependency dependency :
 						preparation.uses()) {
@@ -1658,16 +1663,31 @@ public final class OpenProject {
 							preparation.files().get(path);
 					if (dependency.revision() != null && content != null) {
 						// By its bytes, as the build told it.
-						read.add(new Used(path, FileKind.picture(
-								content.bytes()) != null,
+						boolean image = FileKind.picture(
+								content.bytes()) != null;
+						read.add(new Used(path, image,
 								preparation.roles().get(path)));
+						if (!image) {
+							texts.put(path, content.bytes());
+						}
 					}
 				}
 			}
+			// The texts the build read, as their languages read them;
+			// only a file that changed since the last build is read. A
+			// build for tuning has one number replaced and declares
+			// what the build before it declared: nothing is read for
+			// it, and what is known stays.
+			ProjectKnowledge built = temporary
+					? null
+					: ProjectKnowledge.of(texts, known);
 			main.execute(() -> {
 				// Not delivered when the text or what runs changed.
 				if (generation != this.generation) {
 					return;
+				}
+				if (built != null) {
+					knowledge = built;
 				}
 				used = Collections.unmodifiableList(read);
 				usedFor = entry;
@@ -1684,6 +1704,47 @@ public final class OpenProject {
 	 */
 	public List<Used> used() {
 		return used;
+	}
+
+	/**
+	 * Return what the file at path sees of the other files of the last
+	 * build of what runs: the names the files it includes declare, and
+	 * what a word refers to there. It answers for the last build at the
+	 * moment it is asked, on the thread the project is used on; a file
+	 * the build did not read sees nothing. A file that is renamed, or
+	 * moved with a folder above it, stays the file that is asked about.
+	 */
+	public Knowledge.Scope scope(ProjectPath path) {
+		return new Knowledge.Scope() {
+			private ProjectPath at = path;
+			private int heard = moves;
+
+			// Where the file is now.
+			private ProjectPath path() {
+				if (heard != moves) {
+					for (Event event : events) {
+						if (event.number() > heard && event.change()
+								instanceof Renamed renamed) {
+							ProjectPath moved = new Journal.Move(
+									renamed.from(), renamed.to()).moved(at);
+							at = moved != null ? moved : at;
+						}
+					}
+					heard = moves;
+				}
+				return at;
+			}
+
+			@Override
+			public List<String> names() {
+				return knowledge.names(path());
+			}
+
+			@Override
+			public List<Knowledge.Symbol> find(CharSequence word) {
+				return knowledge.find(path(), word);
+			}
+		};
 	}
 
 	/**
