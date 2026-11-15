@@ -856,6 +856,7 @@ public final class LibraryScreen implements ShaderScreen {
 				if (file != null) {
 					looks.saved(files.key(),
 							file.getProject().running());
+					drawer.saved(files.key(), file.getPath());
 				}
 			}
 

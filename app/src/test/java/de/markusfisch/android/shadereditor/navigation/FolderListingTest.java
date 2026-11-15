@@ -22,8 +22,8 @@ public class FolderListingTest {
 	private static final FolderListing.Words WORDS =
 			new FolderListing.Words() {
 				@Override
-				public String running() {
-					return "Running";
+				public String running(String shader) {
+					return "Running · " + shader;
 				}
 
 				@Override
@@ -160,7 +160,7 @@ public class FolderListingTest {
 				## Then
 				- [A](a.frag)
 				""", used);
-		assertEquals("Running", sections.get(0).heading());
+		assertEquals("Running · a.frag", sections.get(0).heading());
 		assertEquals("Then", sections.get(1).heading());
 		assertEquals("Other files", sections.get(2).heading());
 		assertEquals(List.of("c.frag", "b.frag", "d.frag"),
@@ -223,7 +223,7 @@ public class FolderListingTest {
 		}
 		List<Listing.Section> sections = list(entries("main.frag"), "",
 				used);
-		assertEquals("Running", sections.get(0).heading());
+		assertEquals("Running · main.frag", sections.get(0).heading());
 		assertEquals(7, sections.get(0).rows().size());
 		assertEquals("Show all 9", sections.get(0).rows().get(6).name());
 		assertEquals("INCLUDE main.frag",
@@ -276,6 +276,96 @@ public class FolderListingTest {
 		assertEquals("All files", sections.get(1).heading());
 		assertEquals("Not valid: entry is missing",
 				sections.get(1).rows().get(2).detail());
+		// Once it was built here it has a picture, and stands in its
+		// place only: the folder as it is, without a heading.
+		assertNull(FolderListing.sections(
+				new FolderListing.Facts(ROOT, Order.BY_NAME,
+						Reading.started().listed(entries("blur.frag",
+								"main.frag")),
+						Map.of("main.frag", new byte[]{1}), null, null,
+						"main.frag", List.of(), List.of(), false, "main.frag",
+						(key, name) -> null, true, Set.of(""), Set.of()),
+				WORDS).get(0).heading());
+	}
+
+	// A link with nothing after it takes the next line that is text as
+	// its line: indented or not, after blank lines; never a heading, a
+	// list item or a link, and never a line of the next entry.
+	@Test
+	public void aLineBelowTheLinkIsItsLine() {
+		List<Listing.Section> sections = list(entries("a.frag", "b.frag",
+				"c.frag", "d.frag", "e.frag"), """
+				## Start
+				- [A](a.frag)
+				  Below its link
+				- [B](b.frag)
+
+				After a blank line
+				- [C](c.frag)
+				- [D](d.frag) On its own line
+				  Not D's, it has one
+				- [E](e.frag)
+				## Heading, not E's
+				""", List.of());
+		List<Row> rows = sections.get(0).rows();
+		assertEquals(List.of("a.frag", "b.frag", "c.frag", "d.frag",
+				"e.frag"), names(sections.get(0)));
+		assertEquals("Below its link", rows.get(0).detail());
+		assertEquals("After a blank line", rows.get(1).detail());
+		// C is followed by a list item: no line from it.
+		assertEquals("date", rows.get(2).detail());
+		assertEquals("On its own line", rows.get(3).detail());
+		assertEquals("date", rows.get(4).detail());
+	}
+
+	// A link on the next line is no line, nor is a fenced block.
+	@Test
+	public void aLinkOrCodeBelowIsNoLine() {
+		List<Listing.Section> sections = list(entries("a.frag", "b.frag"),
+				"""
+				- [A](a.frag)
+				[see the website](https://example.com)
+				- [B](b.frag)
+				```
+				code
+				```
+				""", List.of());
+		List<Row> rows = sections.get(0).rows();
+		assertEquals("date", rows.get(0).detail());
+		assertEquals("date", rows.get(1).detail());
+	}
+
+	// A pass never shows a picture of its own: it shows code, as an
+	// include does, under Running and in its folder, and says it is a
+	// pass; a shader that only never ran keeps its empty frame.
+	@Test
+	public void aPassShowsCodeNotAnEmptyFrame() {
+		List<OpenProject.Used> used = List.of(
+				new OpenProject.Used(path("main.frag"), false,
+						new FileRole(FileRole.Kind.RUNS, List.of())),
+				new OpenProject.Used(path("ink.frag"), false,
+						new FileRole(FileRole.Kind.PASS,
+								List.of(path("main.frag")))),
+				new OpenProject.Used(path("seed.frag"), false,
+						new FileRole(FileRole.Kind.FIRST_FRAME,
+								List.of(path("ink.frag")))));
+		List<Listing.Section> sections = list(entries("main.frag",
+				"ink.frag", "seed.frag", "other.frag"), "", used);
+		for (Listing.Section section : sections) {
+			for (Row row : section.rows()) {
+				boolean pass = row.key().equals("ink.frag") ||
+						row.key().equals("seed.frag");
+				assertEquals(row.key(), pass, row.picture().spoken() ==
+						Row.Picture.Spoken.PASS);
+				if (pass) {
+					assertEquals(Row.Picture.Icon.CODE, row.picture().icon());
+				}
+			}
+		}
+		Row other = sections.get(1).rows().get(2);
+		assertEquals("other.frag", other.name());
+		assertEquals(Row.Picture.Spoken.SHADER_NOT_RUN,
+				other.picture().spoken());
 	}
 
 	private static List<Listing.Section> list(List<Reading.Entry> entries,

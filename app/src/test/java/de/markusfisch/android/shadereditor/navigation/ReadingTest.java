@@ -102,6 +102,40 @@ public class ReadingTest {
 		}
 	}
 
+	// The order the provider lists in never shows: by the setting,
+	// folders first, and where that ties, by name.
+	@Test
+	public void theProvidersOrderNeverShows() {
+		List<Reading.Entry> one = List.of(
+				new Reading.Entry("many", true, 5, 0),
+				new Reading.Entry("big", true, 5, 0),
+				new Reading.Entry("b.frag", false, 0, 0),
+				new Reading.Entry("A.frag", false, 0, 0),
+				new Reading.Entry("images", true, 0, 0));
+		List<Reading.Entry> other = new ArrayList<>(one);
+		java.util.Collections.reverse(other);
+		for (Order order : Order.values()) {
+			List<String> names = names(Reading.started().listed(one)
+					.rows(ROOT, "Show more", "%1$d of %2$d", order));
+			assertEquals(names, names(Reading.started().listed(other)
+					.rows(ROOT, "Show more", "%1$d of %2$d", order)));
+		}
+		assertEquals(List.of("big", "many", "images", "A.frag", "b.frag"),
+				names(Reading.started().listed(one).rows(ROOT, "Show more",
+						"%1$d of %2$d", Order.CHANGED)));
+		assertEquals(List.of("big", "images", "many", "A.frag", "b.frag"),
+				names(Reading.started().listed(one).rows(ROOT, "Show more",
+						"%1$d of %2$d", Order.BY_NAME)));
+	}
+
+	private static List<String> names(List<Row> rows) {
+		List<String> names = new ArrayList<>();
+		for (Row row : rows) {
+			names.add(row.name());
+		}
+		return names;
+	}
+
 	@Test
 	public void stopIsOfferedOnlyAfterReadingTakesLong() {
 		assertEquals(List.of(), Reading.started().notice().actions());

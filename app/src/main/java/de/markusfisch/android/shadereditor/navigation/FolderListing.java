@@ -31,7 +31,8 @@ public final class FolderListing {
 
 	/** The words a listing says, in the user's language. */
 	public interface Words {
-		String running();
+		/** "Running · Ink/main.frag". */
+		String running(String shader);
 
 		String allFiles();
 
@@ -96,11 +97,17 @@ public final class FolderListing {
 		List<Listing.Section> sections = new ArrayList<>();
 		List<Row> running = running(facts, words);
 		if (!running.isEmpty()) {
-			sections.add(new Listing.Section(words.running(),
+			// Named as its row names it, by its path from the root.
+			String shader = facts.running() != null
+					? facts.running()
+					: running.get(0).name();
+			sections.add(new Listing.Section(words.running(shader),
 					FileMarks.unsaved(running, facts.unsaved())));
 		} else if (facts.defaultShader() != null &&
-				facts.defaultShader().indexOf('/') < 0) {
-			// Nothing ran here yet: what would run comes first.
+				facts.defaultShader().indexOf('/') < 0 &&
+				facts.pictures().get(facts.defaultShader()) == null) {
+			// It was not built here yet, as it has no picture: what
+			// would run comes first.
 			for (Row row : files(facts, words, facts.reading().rowsNamed(
 					facts.level(), List.of(facts.defaultShader())))) {
 				sections.add(new Listing.Section(words.defaultShader(),
@@ -177,6 +184,7 @@ public final class FolderListing {
 		for (Reading.Entry entry : facts.reading().entries()) {
 			sizes.put(entry.name(), entry.size());
 		}
+		Set<String> passes = passes(facts);
 		List<Row> dressed = new ArrayList<>(rows.size());
 		Map<String, OpenProject.Runs> runs = new HashMap<>();
 		for (Row row : rows) {
@@ -212,8 +220,10 @@ public final class FolderListing {
 					? facts.manifestLine()
 					: words.changed(row.changed());
 			dressed.add(new Row(row.key(), row.kind(),
-					Face.of(row.kind(), row.name(), picture), row.name(),
-					detail, row.changed(), row.enters(), marks,
+					passes.contains(row.key())
+							? Face.of(Face.Of.PASS, row.name(), picture, true)
+							: Face.of(row.kind(), row.name(), picture),
+					row.name(), detail, row.changed(), row.enters(), marks,
 					row.actions()));
 		}
 		return FileMarks.unsaved(FileActions.of(dressed, facts.running(),
@@ -235,8 +245,10 @@ public final class FolderListing {
 		for (OpenProject.Used file : used.subList(0, shown)) {
 			String key = file.path().toString();
 			Row.Kind kind = file.image() ? Row.Kind.IMAGE : Row.Kind.TEXT;
-			Row row = new Row(key, kind, Face.of(kind,
-					file.path().getFileName(), facts.pictures().get(key)), key,
+			byte[] picture = facts.pictures().get(key);
+			Row row = new Row(key, kind, isPass(file.role())
+					? Face.of(Face.Of.PASS, key, picture, true)
+					: Face.of(kind, file.path().getFileName(), picture), key,
 					role(file.role(), words), 0, null,
 					EnumSet.noneOf(Row.Mark.class),
 					EnumSet.noneOf(Row.Action.class));
@@ -262,6 +274,22 @@ public final class FolderListing {
 					EnumSet.noneOf(Row.Action.class)));
 		}
 		return rows;
+	}
+
+	// The files that are passes of what runs, by their paths.
+	private static Set<String> passes(Facts facts) {
+		Set<String> passes = new HashSet<>();
+		for (OpenProject.Used file : facts.used()) {
+			if (isPass(file.role())) {
+				passes.add(file.path().toString());
+			}
+		}
+		return passes;
+	}
+
+	private static boolean isPass(FileRole role) {
+		return role != null && (role.kind() == FileRole.Kind.PASS ||
+				role.kind() == FileRole.Kind.FIRST_FRAME);
 	}
 
 	private static String role(FileRole role, Words words) {

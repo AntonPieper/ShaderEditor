@@ -402,6 +402,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 				case FOLDER -> R.string.nav_kind_folder;
 				case SHADER -> R.string.nav_kind_shader;
 				case SHADER_NOT_RUN -> R.string.nav_kind_shader_not_run;
+				case PASS -> R.string.nav_kind_pass;
 				case IMAGE -> R.string.nav_kind_image;
 				case INCLUDE -> R.string.nav_kind_include;
 				case SETTINGS -> R.string.nav_kind_settings;
