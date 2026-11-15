@@ -73,6 +73,11 @@ public final class LibrarySettings {
 			return quality != null ? quality : 1f;
 		}
 
+		/** Return every quality that is kept, by its path. */
+		Map<String, Float> qualities() {
+			return qualities;
+		}
+
 		ProjectPath template() {
 			ProjectParseResult<ProjectPath> path = template != null
 					? ProjectPath.parse(template)
