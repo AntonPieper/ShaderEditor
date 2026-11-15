@@ -294,6 +294,43 @@ public class OpenProjectTest {
 				built(prepare(project), "main.frag"));
 	}
 
+	// A build with one range of a document replaced: the build has it,
+	// the document, the journal and the file do not, and the next build
+	// is of the text as it is.
+	@Test
+	public void aReplacementIsInOneBuildOnly() throws IOException {
+		write("main.frag", SHADER);
+		OpenProject project = open();
+		Document main = document(project, "main.frag");
+		int at = SHADER.indexOf("1.0");
+		OpenProject.Build replaced = await(done -> project.prepare(
+				BuiltinNames.ALL, new OpenProject.Replacement(
+						path("main.frag"), at, at + 3, "se_tune0"), done));
+
+		assertEquals(SHADER.replace("1.0", "se_tune0"),
+				built(replaced.preparation(), "main.frag"));
+		assertTrue(replaced.preparation().temporary());
+		assertEquals(SHADER, main.text().toString());
+		assertFalse(main.isModified());
+		assertEquals(SHADER, read("main.frag"));
+		Preparation next = prepare(project);
+		assertEquals(SHADER, built(next, "main.frag"));
+		assertFalse(next.temporary());
+	}
+
+	@Test
+	public void aReplacementOfAFileWithoutDocumentRunsNothing()
+			throws IOException {
+		write("main.frag", SHADER);
+		OpenProject project = open();
+		OpenProject.Build build = await(done -> project.prepare(
+				BuiltinNames.ALL, new OpenProject.Replacement(
+						path("main.frag"), 0, 1, "x"), done));
+
+		assertNull(build.preparation());
+		assertEquals(path("main.frag"), build.nothingRuns().get(0).file());
+	}
+
 	@Test
 	public void refreshFindsAChangedManifestU10() throws IOException {
 		write("main.frag", SHADER);

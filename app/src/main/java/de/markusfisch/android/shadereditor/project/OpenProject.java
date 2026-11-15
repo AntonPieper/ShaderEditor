@@ -100,6 +100,16 @@ public final class OpenProject {
 		}
 	}
 
+	/**
+	 * One range of one document's text with other text in its place,
+	 * for a build only: from start to end of the text of path, as the
+	 * document has it when the build is asked for. The document, the
+	 * journal and the stored file never see it.
+	 */
+	public record Replacement(ProjectPath path, int start, int end,
+			String text) {
+	}
+
 	/** Whether a file's own text defines main, as far as known. */
 	public enum Runs {
 		YES, NO, UNKNOWN
@@ -1595,15 +1605,47 @@ public final class OpenProject {
 	 * gets the preparation, or null when nothing runs.
 	 */
 	public void prepare(Builtins builtins, Callback<Build> done) {
-		persist();
+		prepare(builtins, null, done);
+	}
+
+	/**
+	 * Prepare what runs as {@link #prepare(Builtins, Callback)} does,
+	 * with replacement in the text of its document, when not null. Such
+	 * a preparation is {@link Preparation#temporary()}: it runs while a
+	 * number is tuned, and is never kept, as the wallpaper is. When path
+	 * has no document a build would read, done gets nothing to run.
+	 */
+	public void prepare(Builtins builtins, Replacement replacement,
+			Callback<Build> done) {
+		Map<ProjectPath, Text> snapshot = snapshot();
 		int generation = this.generation;
+		if (replacement != null) {
+			Text text = snapshot.get(replacement.path());
+			if (text == null) {
+				main.execute(() -> done.done(new Build(null,
+						List.of(new ProjectDiagnostic(
+								ProjectDiagnostic.Severity.ERROR,
+								"not open in the editor",
+								replacement.path(), 0)),
+						generation)));
+				return;
+			}
+			snapshot.put(replacement.path(), text.replace(
+					replacement.start(), replacement.end(),
+					Text.of(replacement.text())));
+		}
+		persist();
 		ProjectPath entry = running;
-		Edited edited = new Edited(snapshot(), journaled());
+		Edited edited = new Edited(snapshot, journaled());
+		boolean temporary = replacement != null;
 		worker.execute(() -> {
-			Preparation preparation = entry != null
+			Preparation prepared = entry != null
 					? Preparation.prepare(edited, entry,
 							ProjectLimits.DEFAULT, builtins)
 					: null;
+			Preparation preparation = prepared != null && temporary
+					? prepared.asTemporary()
+					: prepared;
 			List<ProjectDiagnostic> nothingRuns = entry == null
 					? Preparation.checkManifest(edited)
 					: List.of();

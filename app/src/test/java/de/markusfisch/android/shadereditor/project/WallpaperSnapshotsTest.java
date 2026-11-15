@@ -79,6 +79,19 @@ public class WallpaperSnapshotsTest {
 		assertNotNull(shown.diagnostics().toString(), shown.plan());
 	}
 
+	// What runs while a number is tuned is not what the files say.
+	@Test
+	public void aTemporaryBuildIsNeverInstalled() throws IOException {
+		Library library = library();
+		library.move(database(), "Untitled", new LibraryMove.Chosen(0, 0), null, null);
+		WallpaperSnapshots snapshots = snapshots();
+
+		assertNotNull(snapshots.install(prepare(library, "Plasma.frag")
+						.asTemporary(), path("Plasma.frag"), 1f,
+				path("Plasma.frag")));
+		assertNull(snapshots.current());
+	}
+
 	@Test
 	public void theSnapshotBeforeStaysUntilTheNewOneIsWhole()
 			throws IOException {
