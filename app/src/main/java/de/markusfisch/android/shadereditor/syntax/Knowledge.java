@@ -73,6 +73,11 @@ public interface Knowledge {
 			public List<Symbol> find(CharSequence word) {
 				return Collections.emptyList();
 			}
+
+			@Override
+			public int line(Symbol symbol) {
+				return -1;
+			}
 		};
 
 		/**
@@ -87,6 +92,12 @@ public interface Knowledge {
 		 * else one symbol, or nothing; each with its file.
 		 */
 		List<Symbol> find(CharSequence word);
+
+		/**
+		 * Return the line, from 0, the name of symbol stands in in its
+		 * file, for a symbol find gave; -1 if it cannot be told.
+		 */
+		int line(Symbol symbol);
 	}
 
 	/** Reads a text line by line. */

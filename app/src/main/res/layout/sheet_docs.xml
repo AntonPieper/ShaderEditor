@@ -70,6 +70,15 @@
 			android:layout_marginTop="12dp" />
 
 		<Button
+			android:id="@+id/docs_link"
+			style="?attr/borderlessButtonStyle"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="end"
+			android:layout_marginHorizontal="@dimen/se_margin_sheet"
+			android:layout_marginTop="@dimen/se_margin_sheet" />
+
+		<Button
 			android:id="@+id/docs_action"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"

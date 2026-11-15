@@ -45,4 +45,20 @@ public class WordDocsTest {
 						"void main() { gl_FragColor = vec4(time); }\n"))
 				.getName());
 	}
+
+	@Test
+	public void writesOwnDeclarationsAsTheSheetShowsThem() {
+		String text = "struct Ray { vec3 o, d; float t; };\n" +
+				"float f(float x);\n" +
+				"float f(vec2 p) { return p.x; }\n" +
+				"#define SAT(x) clamp(x, 0.0, 1.0)\n";
+		GlslKnowledge known = GlslKnowledge.of(text);
+		assertEquals("struct Ray {\n  vec3 o;\n  vec3 d;\n  float t;\n}",
+				WordDocs.code(known.at(-1, "Ray")));
+		// A function with every form, each in a line.
+		assertEquals("float f(float x)\nfloat f(vec2 p)",
+				WordDocs.code(known.at(-1, "f")));
+		assertEquals("#define SAT(x) clamp(x, 0.0, 1.0)",
+				WordDocs.code(known.at(-1, "SAT")));
+	}
 }
