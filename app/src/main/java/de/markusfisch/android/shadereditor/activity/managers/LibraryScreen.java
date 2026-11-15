@@ -638,6 +638,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void showErrors(@NonNull List<ProjectDiagnostic> infoLog) {
+		passes.setProblems(infoLog);
 		if (open instanceof ProjectFile file) {
 			files.onDiagnostics(infoLog);
 			editorFragment.setErrors(infoLog, file.getPath());
@@ -648,6 +649,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void forgetErrors() {
+		passes.setProblems(List.of());
 		if (open instanceof ProjectFile) {
 			files.onDiagnostics(List.of());
 		}
