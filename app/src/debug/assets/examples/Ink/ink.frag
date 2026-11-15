@@ -18,6 +18,8 @@ uniform sampler2D ink;
 uniform vec2 resolution; // size of this pass's picture in pixels
 uniform float time; // seconds since load
 uniform int frame; // frames drawn since load
+uniform float timeDelta; // seconds the frame before took
+uniform float frameRate; // frames per second, counted over half a second
 uniform vec3 gravity; // m/s^2 along the phone's axes; 0 without the sensor
 uniform int pointerCount; // fingers on the screen now, 0..10
 uniform vec3 pointers[10]; // x, y in pixels of this picture, and pressure
@@ -42,15 +44,21 @@ void main(void) {
 	if (resolution.x > resolution.y) {
 		down = (gravity.x < 0.0 ? -1.0 : 1.0) * vec2(down.y, -down.x);
 	}
-	// Speed in pixels of this picture per frame.
+	// Speed in pixels of this picture per sixtieth of a second. A frame
+	// moves the ink by the time it took, so the ink flows as fast on a
+	// screen that draws 120 frames a second as on one that draws 60.
 	vec2 v = 0.6 * flow(2.0 * p + 0.02 * time) + 0.6 * down;
+	v *= 60.0 * timeDelta;
 
 	// Move: what is here now was a little upstream a frame ago.
 	vec3 color = texture2D(ink, (gl_FragCoord.xy - v) / resolution).rgb;
-	// Fade by one step of the 8 bits a channel has, every fourth frame:
-	// full ink is gone after about 17 s at 60 Hz. A smaller step would
-	// round back to the same value and never fade.
-	color = max(color - step(mod(float(frame), 4.0), 0.5) / 255.0, 0.0);
+	// Fade by one step of the 8 bits a channel has, 15 times a second:
+	// full ink is gone after about 17 s. A smaller step would round back
+	// to the same value and never fade, so the step cannot be scaled by
+	// timeDelta; how many frames lie between two steps comes from the
+	// frame rate instead, every fourth at 60 frames a second.
+	float between = max(1.0, floor(frameRate / 15.0 + 0.5));
+	color = max(color - step(mod(float(frame), between), 0.5) / 255.0, 0.0);
 
 	// Add. Two drops wander slowly and let ink out, so the paper never
 	// empties; each finger adds more where it is.

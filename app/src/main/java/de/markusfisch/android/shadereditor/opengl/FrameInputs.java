@@ -8,6 +8,8 @@ final class FrameInputs {
 	final float[] pointers = new float[MAX_POINTERS * 3];
 	float time;
 	float runtime;
+	float timeDelta;
+	float frameRate;
 	int frame;
 	float fTimeMax;
 	int surfaceWidth;
@@ -32,6 +34,8 @@ final class FrameInputs {
 		float sy = project.height > 0 ? height / project.height : 1;
 		time = project.time;
 		runtime = project.runtime;
+		timeDelta = project.timeDelta;
+		frameRate = project.frameRate;
 		frame = project.frame;
 		fTimeMax = project.fTimeMax;
 		surfaceWidth = project.surfaceWidth;

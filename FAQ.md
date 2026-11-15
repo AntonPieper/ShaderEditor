@@ -69,6 +69,22 @@ precision mediump float;
 Or use `second`, `subsecond`, or `ftime` uniforms instead.
 See issue [#10](https://github.com/markusfisch/ShaderEditor/issues/10#issuecomment-160463706) for details.
 
+## How can a shader that changes its picture every frame run at the same speed on every screen?
+
+A shader that reads its own previous frame (`backbuffer`) and moves or fades
+it a little in every frame runs twice as fast on a screen that draws 120
+frames a second as on one that draws 60.
+
+Use `uniform float timeDelta;` and move by what the frame took:
+`position += speed * timeDelta;`. `timeDelta` is the time between the frame
+before and this one in seconds. It is 1/60 on the first frame and on the
+first after a pause, and never more than 0.5.
+
+`uniform float frameRate;` is the number of frames per second, counted over
+half a second, and 60 until it was counted for the first time. Use it where
+whole frames matter, such as "every fourth frame at 60 frames a second".
+It is not `1.0 / timeDelta`, which jumps from frame to frame.
+
 ## How can wallpaper animations continue after a pause?
 
 Use `uniform highp float runtime;` instead of `time` for animation time.

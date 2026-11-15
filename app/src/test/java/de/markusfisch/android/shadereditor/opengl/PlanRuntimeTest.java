@@ -51,6 +51,45 @@ public class PlanRuntimeTest {
 				false));
 	}
 
+	// What a frame took and the frame rate are the frame's, whatever
+	// the size of a pass: every pass of it is drawn with the same.
+	@Test
+	public void everyPassOfAFrameSeesTheSameFrameTiming() {
+		String uniforms = "uniform float timeDelta;\n" +
+				"uniform float frameRate;\n";
+		var engine = new FakeEngine(prepare(
+				"main.frag", lines(
+						"#pragma se input \"small.frag\"",
+						"uniform sampler2D small;",
+						uniforms + "void main() {",
+						"	gl_FragColor = vec4(timeDelta * frameRate);",
+						"}"),
+				"small.frag", lines(
+						"#pragma se target scale=0.25",
+						uniforms + "void main() {",
+						"	gl_FragColor = vec4(timeDelta * frameRate);",
+						"}")), 3);
+		assertEquals(ShaderSwap.Allocation.MADE, engine.resize(8, 4));
+		engine.frame.timeDelta = .02f;
+		engine.frame.frameRate = 48f;
+		engine.draw(0);
+		engine.frame.timeDelta = .5f;
+		engine.frame.frameRate = 3f;
+		engine.draw(.5f);
+		for (String file : new String[]{"small.frag", "main.frag"}) {
+			var draws = engine.draws(file);
+			assertEquals(2, draws.size());
+			assertEquals(.02f, draws.get(0).uniforms().get("timeDelta")[0],
+					0f);
+			assertEquals(48f, draws.get(0).uniforms().get("frameRate")[0],
+					0f);
+			assertEquals(.5f, draws.get(1).uniforms().get("timeDelta")[0],
+					0f);
+			assertEquals(3f, draws.get(1).uniforms().get("frameRate")[0],
+					0f);
+		}
+	}
+
 	// Frame n draws into one texture of the target and reads the other,
 	// which holds frame n - 1; the frame drawn is the one presented.
 	@Test

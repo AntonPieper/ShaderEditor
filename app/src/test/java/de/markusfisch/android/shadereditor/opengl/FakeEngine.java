@@ -16,7 +16,9 @@ final class FakeEngine {
 	final ShaderRenderPipeline pipeline;
 	final PlanRuntime runtime;
 	final List<ProjectDiagnostic> diagnostics = new ArrayList<>();
-	private final FrameInputs frame = new FrameInputs();
+	// What every pass of a frame is drawn with; a test may set more
+	// of it than draw() does.
+	final FrameInputs frame = new FrameInputs();
 	private ActiveBuiltins builtins;
 
 	// A context of this version that draws into every format.

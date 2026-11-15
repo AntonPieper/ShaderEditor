@@ -94,6 +94,8 @@ public class UniformTableTest {
 		assertWritten(in, "second", "int", 7f);
 		assertWritten(in, "subsecond", "float", 0.25f);
 		assertWritten(in, "frame", "int", 42f);
+		assertWritten(in, "timeDelta", "float", 0.025f);
+		assertWritten(in, "frameRate", "float", 40f);
 		// 7.25 % 3 = 1.25; 1.25 / 3 * 2 - 1
 		assertWritten(in, "ftime", "float", 1.25f / 3f * 2f - 1f);
 		assertWritten(in, "startRandom", "float", 0.5f);
@@ -204,7 +206,11 @@ public class UniformTableTest {
 
 	@Test
 	public void describesDeclarations() {
-		assertEquals(40, UniformTable.BUILTINS.size());
+		assertEquals(42, UniformTable.BUILTINS.size());
+		assertEquals(R.string.time_delta,
+				UniformTable.get("timeDelta").getDescription());
+		assertEquals(R.string.frame_rate,
+				UniformTable.get("frameRate").getDescription());
 		assertEquals("vec4", UniformTable.get("date").getType().getKeyword());
 		assertEquals(UniformTable.get("date").getSource(),
 				UniformTable.get("daytime").getSource());
@@ -257,6 +263,8 @@ public class UniformTableTest {
 	private static FrameInputs frame() {
 		FrameInputs in = new FrameInputs();
 		in.time = 7.25f;
+		in.timeDelta = 0.025f;
+		in.frameRate = 40f;
 		in.frame = 42;
 		in.fTimeMax = 3f;
 		in.width = 320f;

@@ -21,7 +21,18 @@ final class EngineInputs {
 		}
 	}
 
+	// What a frame without one before it is said to have taken: the
+	// first after a restart or a pause.
+	static final float FIRST_TIME_DELTA = 1f / 60f;
+	// The most a frame is said to have taken, so that frames that
+	// stopped coming for a while are not one long step.
+	static final float LONGEST_TIME_DELTA = .5f;
+	// The rate before frames were counted for the first time.
+	static final float FIRST_FRAME_RATE = 60f;
+
 	private static final float NS_PER_SECOND = 1000000000f;
+	// Frames are counted for longer than this, then the rate is told.
+	private static final long RATE_WINDOW_NS = 500000000L;
 
 	private final RuntimeClock runtimeClock = new RuntimeClock();
 	private final FrameInputs frameInputs = new FrameInputs();
@@ -48,6 +59,16 @@ final class EngineInputs {
 	private long startTime;
 	private int frame;
 	private float startRandom;
+	// When the frame before was captured; none after a restart or a
+	// pause.
+	private long lastCapture;
+	private boolean hasLastCapture;
+	// The frames counted since rateSince for the next rate; not
+	// counting after a pause, until a frame comes.
+	private float frameRate = FIRST_FRAME_RATE;
+	private long rateSince;
+	private int rateFrames;
+	private boolean counting;
 
 	// At least one pixel, as a target has.
 	static int renderSize(int surfaceSize, float quality) {
@@ -67,8 +88,12 @@ final class EngineInputs {
 		}
 	}
 
-	void pauseRuntime() {
+	// When no frames will come for a while: the time until the next
+	// one is no frame's duration, and is not counted into the rate.
+	void pause() {
 		runtimeClock.pause();
+		hasLastCapture = false;
+		counting = false;
 	}
 
 	void post(@NonNull MotionEvent e) {
@@ -134,6 +159,11 @@ final class EngineInputs {
 		startTime = now;
 		startRandom = (float) Math.random();
 		frame = 0;
+		hasLastCapture = false;
+		frameRate = FIRST_FRAME_RATE;
+		rateSince = now;
+		rateFrames = 0;
+		counting = true;
 		// Together, so a pointer is never scaled with one of the new
 		// quality and the old size.
 		synchronized (lock) {
@@ -168,6 +198,24 @@ final class EngineInputs {
 		return renderHeight;
 	}
 
+	// The frames per second of the last time they were counted for
+	// more than half a second, which this frame may end.
+	private float countFrame(long now) {
+		if (!counting) {
+			rateSince = now;
+			rateFrames = 0;
+			counting = true;
+			return frameRate;
+		}
+		++rateFrames;
+		if (now - rateSince > RATE_WINDOW_NS) {
+			frameRate = rateFrames * NS_PER_SECOND / (now - rateSince);
+			rateSince = now;
+			rateFrames = 0;
+		}
+		return frameRate;
+	}
+
 	// GL thread, once at the start of a frame.
 	@NonNull
 	FrameInputs capture(long now, float fTimeMax) {
@@ -175,6 +223,13 @@ final class EngineInputs {
 		in.time = (now - startTime) / NS_PER_SECOND;
 		in.runtime = (float) (runtimeClock.advance(now) / 1000000000.0);
 		in.frame = frame++;
+		in.timeDelta = hasLastCapture
+				? Math.min((now - lastCapture) / NS_PER_SECOND,
+				LONGEST_TIME_DELTA)
+				: FIRST_TIME_DELTA;
+		lastCapture = now;
+		hasLastCapture = true;
+		in.frameRate = countFrame(now);
 		in.fTimeMax = fTimeMax;
 		in.startRandom = startRandom;
 		in.surfaceWidth = surfaceWidth;
