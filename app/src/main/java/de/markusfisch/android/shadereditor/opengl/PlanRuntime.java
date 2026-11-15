@@ -659,6 +659,12 @@ final class PlanRuntime implements ShaderSwap.Build {
 		return moved ? target.completed() : target.drawn();
 	}
 
+	// The file of a pass.
+	@NonNull
+	ProjectPath fileOf(int pass) {
+		return plan.programs().get(plan.passes().get(pass).program()).file();
+	}
+
 	// The pass of file to present: one drawn every frame, or a first
 	// frame that was drawn; else, and for null, the running one.
 	int shown(@Nullable ProjectPath file) {

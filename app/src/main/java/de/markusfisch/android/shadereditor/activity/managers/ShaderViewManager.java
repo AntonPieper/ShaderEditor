@@ -15,6 +15,7 @@ import androidx.annotation.Nullable;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.opengl.Fit;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.opengl.Tuning;
 import de.markusfisch.android.shadereditor.project.Preparation;
@@ -115,6 +116,15 @@ public class ShaderViewManager {
 	public void continuePlan(@NonNull Preparation preparation, float quality,
 			@NonNull Object picture, @Nullable Tuning tuning) {
 		shaderView.continuePlan(preparation, quality, picture, tuning);
+	}
+
+	/**
+	 * Map the pass of fit from its range to 0..1, the same for red,
+	 * green and blue, while it is on the screen, and its small picture;
+	 * null for none. A range across 0 puts 0 at grey.
+	 */
+	public void setFit(@Nullable Fit fit) {
+		shaderView.setFit(fit);
 	}
 
 	/**
