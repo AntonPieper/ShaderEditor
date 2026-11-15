@@ -33,8 +33,10 @@ import de.markusfisch.android.shadereditor.syntax.Syntax;
  * it is, what it means, its forms or declaration, the notes on them and
  * an example, and one action: a filled button for what changes the
  * text, a text button for what leads to where a name is declared. Code
- * is in the editor's font and colours; a form wider
- * than its box takes a line per parameter. A part that is null is not
+ * is in the editor's font and colours; a form wider than its box takes
+ * a line per parameter, indented by four characters, and any other line
+ * breaks after a comma or an operator, the rest indented by four
+ * characters too. A part that is null is not
  * shown. The sheet opens fitted to its content, at most 90 % of the
  * screen high, and scrolls inside.
  */
@@ -50,7 +52,11 @@ public final class DocsSheet {
 	}
 
 	private static final float MAX_HEIGHT = .9f;
-	private static final String INDENT = "  ";
+	// The indent of a form's parameters, and of the rest of a statement
+	// that is too wide: the same four characters.
+	private static final String INDENT = "    ";
+	private static final String CONTINUATION = INDENT;
+	private static final String OPERATORS = "+-*/%=<>&|^?:";
 
 	private final BottomSheetDialog dialog;
 
@@ -135,20 +141,31 @@ public final class DocsSheet {
 	/**
 	 * Return code with each line that is a call or declaration wider
 	 * than width in paint broken after its parenthesis and its commas,
-	 * a parameter per line.
+	 * a parameter per line indented by four characters, and any other
+	 * line wider than width broken as the code says.
 	 */
 	@NonNull
 	static String wrap(@NonNull String code, @NonNull TextPaint paint,
 			float width) {
+		return wrap(code, paint::measureText, width);
+	}
+
+	/** See wrap(String, TextPaint, float). */
+	@NonNull
+	static String wrap(@NonNull String code,
+			@NonNull MessageRow.Measure measure, float width) {
 		StringBuilder sb = new StringBuilder();
 		for (String line : code.split("\n", -1)) {
 			if (sb.length() > 0) {
 				sb.append('\n');
 			}
-			int open = line.indexOf('(');
-			if (open < 0 || !line.endsWith(")") || line.endsWith("()") ||
-					paint.measureText(line) <= width) {
+			if (measure.width(line) <= width) {
 				sb.append(line);
+				continue;
+			}
+			int open = line.indexOf('(');
+			if (open < 0 || !line.endsWith(")") || line.endsWith("()")) {
+				breakStatement(sb, line, measure, width);
 				continue;
 			}
 			sb.append(line, 0, open + 1);
@@ -160,6 +177,60 @@ public final class DocsSheet {
 			sb.setCharAt(sb.length() - 1, ')');
 		}
 		return sb.toString();
+	}
+
+	// Appends line, wider than width, to sb broken after the last comma
+	// or operator that fits, the rest indented by four characters more
+	// than the line, as often as it takes; never in the middle of a
+	// word. Where nothing fits, the box breaks it.
+	private static void breakStatement(@NonNull StringBuilder sb,
+			@NonNull String line, @NonNull MessageRow.Measure measure,
+			float width) {
+		int lead = 0;
+		while (lead < line.length() && line.charAt(lead) == ' ') {
+			++lead;
+		}
+		String indent = line.substring(0, lead) + CONTINUATION;
+		String rest = line;
+		String prefix = "";
+		while (measure.width(prefix + rest) > width) {
+			int at = -1;
+			for (int i = prefix.isEmpty() ? lead : 0, n = rest.length();
+					i < n - 1; ++i) {
+				if (breaksAfter(rest, i) && measure.width(prefix +
+						rest.substring(0, i + 1)) <= width) {
+					at = i + 1;
+				}
+			}
+			if (at < 0) {
+				break;
+			}
+			sb.append(prefix).append(stripEnd(rest.substring(0, at)))
+					.append('\n');
+			rest = rest.substring(at).trim();
+			prefix = indent;
+		}
+		sb.append(prefix).append(rest);
+	}
+
+	// Whether a line may break after the character at i of text: a
+	// comma, or an operator with a blank on both sides.
+	private static boolean breaksAfter(@NonNull String text, int i) {
+		char c = text.charAt(i);
+		if (c == ',') {
+			return true;
+		}
+		return OPERATORS.indexOf(c) > -1 && i > 0 && i + 1 < text.length() &&
+				text.charAt(i - 1) == ' ' && text.charAt(i + 1) == ' ';
+	}
+
+	@NonNull
+	private static String stripEnd(@NonNull String text) {
+		int end = text.length();
+		while (end > 0 && text.charAt(end - 1) == ' ') {
+			--end;
+		}
+		return text.substring(0, end);
 	}
 
 	private static void setText(@NonNull TextView view,

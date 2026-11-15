@@ -5,6 +5,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import java.util.List;
+
 public class AddUniformTest {
 	@Test
 	public void goesBehindTheLastUniformLine() {
@@ -31,6 +33,38 @@ public class AddUniformTest {
 	public void goesToTheTopOtherwise() {
 		assertEquals("uniform float time;\nvoid main(){}",
 				add("void main(){}", "uniform float time;"));
+	}
+
+	@Test
+	public void addsSeveralInOrderAsOneUndoStep() {
+		String text = "#version 300 es\nprecision highp float;\n" +
+				"void main(){}";
+		Document document = new Document(Text.of(text));
+		int[] at = AddUniform.apply(document, List.of(
+				"uniform mat2 cameraOrientation;",
+				"uniform vec2 cameraAddent;"));
+		String added = document.text().toString();
+		assertEquals("#version 300 es\nprecision highp float;\n" +
+				"uniform mat2 cameraOrientation;\n" +
+				"uniform vec2 cameraAddent;\n" +
+				"void main(){}", added);
+		assertTrue(added.startsWith("uniform mat2 cameraOrientation;",
+				at[0]));
+		assertTrue(added.startsWith("uniform vec2 cameraAddent;", at[1]));
+		document.undo();
+		assertEquals(text, document.text().toString());
+	}
+
+	@Test
+	public void keepsWhereEarlierOnesStartWhenALaterOneTakesOutALine() {
+		// The second takes out a line above the first one.
+		Document document = new Document(Text.of(
+				"uniform vec2  resolution;\nuniform float a;\n"));
+		int[] at = AddUniform.apply(document, List.of(
+				"uniform float time;", "uniform vec2 resolution;"));
+		String added = document.text().toString();
+		assertTrue(added.startsWith("uniform float time;", at[0]));
+		assertTrue(added.startsWith("uniform vec2 resolution;", at[1]));
 	}
 
 	@Test

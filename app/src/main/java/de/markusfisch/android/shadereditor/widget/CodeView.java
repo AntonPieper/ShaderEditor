@@ -145,14 +145,44 @@ public class CodeView extends View {
 		void lookUp(@NonNull String word);
 	}
 
+	/**
+	 * One fix a row offers: what TalkBack says for it, and the labels the
+	 * row may show, longest first; the row shows the first that fits.
+	 * When even the last does not, the characters of it from cutStart to
+	 * cutEnd, a name, are cut in the middle; -1 for a label that is never
+	 * cut.
+	 */
+	public record Fix(@NonNull String spoken, @NonNull List<String> labels,
+			int cutStart, int cutEnd) {
+		/** A fix shown and said as label, never cut. */
+		@NonNull
+		public static Fix of(@NonNull String label) {
+			return new Fix(label, List.of(label), -1, -1);
+		}
+
+		/** A fix said as spoken, shown as the first of labels that fits. */
+		@NonNull
+		public static Fix of(@NonNull String spoken,
+				@NonNull List<String> labels) {
+			return new Fix(spoken, labels, -1, -1);
+		}
+
+		/** A fix shown as label, its name from start to end cut to fit. */
+		@NonNull
+		public static Fix cutting(@NonNull String label, int start,
+				int end) {
+			return new Fix(label, List.of(label), start, end);
+		}
+	}
+
 	/** Offers certain fixes for the messages of a line, at most two. */
 	public interface RowFix {
 		/**
-		 * Return the labels of the fixes for the messages of line, from
-		 * 0, in their order; empty for none.
+		 * Return the fixes for the messages of line, from 0, in their
+		 * order; empty for none.
 		 */
 		@NonNull
-		List<String> labels(int line, @NonNull List<String> messages);
+		List<Fix> fixes(int line, @NonNull List<String> messages);
 
 		/** Apply the fix at index of labels to the messages of line. */
 		void apply(int line, @NonNull List<String> messages, int index);
@@ -166,6 +196,36 @@ public class CodeView extends View {
 
 	/** The most fixes a row offers. */
 	public static final int MAX_FIXES = 2;
+
+	private static final int[] NO_LINES = new int[0];
+
+	/**
+	 * What the open row shows, for messages of line, laid out width
+	 * wide: its lines of text and its fixes on fixLines lines of their
+	 * own under the text. NONE while no row is open.
+	 */
+	private record Row(int line, @Nullable List<String> messages, int width,
+			@NonNull String[] text, @NonNull List<MessageRow.Placed> fixes,
+			int fixLines) {
+		static final Row NONE = new Row(-1, null, 0, new String[0],
+				Collections.emptyList(), 0);
+
+		// Its height: the padding, the lines of text, 4 dp, the lines of
+		// fixes with a gap between them, the padding.
+		int height(@NonNull CodeAppearance a) {
+			return text.length * a.rowLineHeight + 2 * a.rowPaddingVertical +
+					(fixLines > 0
+							? a.fixInset + fixLines * a.fixHeight +
+							(fixLines - 1) * a.fixLineGap
+							: 0);
+		}
+
+		// Where line of fixes starts from the row's top.
+		float fixTop(int line, @NonNull CodeAppearance a) {
+			return a.rowPaddingVertical + text.length * a.rowLineHeight +
+					a.fixInset + line * (a.fixHeight + a.fixLineGap);
+		}
+	}
 
 	/** The input type of today's editor with native suggestions hidden. */
 	public static final int INPUT_TYPE_NO_SUGGESTIONS = InputType.TYPE_NULL;
@@ -205,7 +265,7 @@ public class CodeView extends View {
 		public void onChange(Document.Change change, Text before) {
 			accessibility.changed(change, before);
 			edited = true;
-			markedLine = -1;
+			markedLines = NO_LINES;
 			invalidate();
 		}
 
@@ -351,8 +411,8 @@ public class CodeView extends View {
 	private LineBackdrop backdrop;
 	private LookUp lookUp;
 	private RowFix rowFix;
-	// The line marked after a fix put it in, until the next edit.
-	private int markedLine = -1;
+	// The lines marked after a fix put them in, until the next edit.
+	private int[] markedLines = NO_LINES;
 	// The fix pressed, or -1.
 	private int fixPressed = -1;
 	private AnalysisScheduler.Callback analysisListener;
@@ -403,13 +463,10 @@ public class CodeView extends View {
 		}
 	};
 	private final RectF rowRect = new RectF();
-	private List<String> rowMessages;
-	private int rowWidth;
-	private String[] rowText = new String[0];
-	// The labels of the fixes the row offers under its text, and where
-	// they were drawn.
-	private List<String> rowFixLabels = Collections.emptyList();
-	private final RectF[] fixRects = {new RectF(), new RectF()};
+	// What the open row shows, laid out: the one value of the row,
+	// made when its messages, its fixes or its width change.
+	@NonNull
+	private Row row = Row.NONE;
 	// Whether the document changed since the last update; a row that
 	// moved with its line then moved with the text, and the scroll
 	// position stays.
@@ -477,8 +534,9 @@ public class CodeView extends View {
 
 					@Override
 					public void onLongPress(@NonNull MotionEvent e) {
-						if (dragging != 0) {
-							// After a double tap.
+						if (dragging != 0 || fixPressed >= 0) {
+							// After a double tap, or held on a fix of the
+							// row, which is not the code.
 							return;
 						}
 						if (toolbar.isShown() && inSelection(e.getX(), e.getY())) {
@@ -536,7 +594,10 @@ public class CodeView extends View {
 		dragging = 0;
 		forgetLines();
 		lines.setRow(-1, 0);
-		rowMessages = null;
+		row = Row.NONE;
+		fixPressed = -1;
+		// A mark of the last document's lines is not one of these.
+		markedLines = NO_LINES;
 		chosenFor = null;
 		scrollTo(0, 0);
 		if (isAttachedToWindow()) {
@@ -661,16 +722,15 @@ public class CodeView extends View {
 
 	/** What rowFix offers may have changed: ask it again. */
 	public void fixesChanged() {
-		rowMessages = null;
+		row = Row.NONE;
 		placeRow();
 	}
 
 	/**
-	 * Mark line, as one that was just put in, until the next edit; -1
-	 * for none.
+	 * Mark lines, as ones that were just put in, until the next edit.
 	 */
-	public void markLine(int line) {
-		markedLine = line;
+	public void markLines(@NonNull int[] lines) {
+		markedLines = lines.clone();
 		invalidate();
 	}
 
@@ -1017,6 +1077,18 @@ public class CodeView extends View {
 			return super.onKeyDown(keyCode, event);
 		}
 		int meta = event.getMetaState();
+		// Alt+Enter, the quick fix key of Android Studio, applies the
+		// first fix of the caret's line.
+		if ((keyCode == KeyEvent.KEYCODE_ENTER ||
+				keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) &&
+				event.isAltPressed() && !event.isCtrlPressed() &&
+				!caretLineFixes().isEmpty()) {
+			action("key", event.getAction(), keyCode, meta, null);
+			if (event.getRepeatCount() == 0) {
+				applyCaretLineFix(0);
+			}
+			return true;
+		}
 		int c = event.getUnicodeChar(meta);
 		if ((c & KeyCharacterMap.COMBINING_ACCENT) != 0 &&
 				KeyCommands.types(meta)) {
@@ -1263,7 +1335,7 @@ public class CodeView extends View {
 						: a.warningColor);
 				canvas.drawRect(clipLeft, top, right, top + lineHeight, fill);
 			}
-			if (n == markedLine) {
+			if (marked(n)) {
 				fill.setColor(a.selectionColor);
 				canvas.drawRect(clipLeft, top, right, top + lineHeight, fill);
 			}
@@ -2519,35 +2591,19 @@ public class CodeView extends View {
 		}
 		int line = marks != null ? marks.open() : -1;
 		List<String> messages = line >= 0 ? marks.messages(line) : null;
-		int width = Math.round(getWidth() - insets.right -
-				textLeft(document.text().lineCount()) - appearance.rowPadding);
-		if (line == lines.rowLine() && messages == rowMessages &&
-				(line < 0 || width == rowWidth)) {
+		// The text wraps short of the edge, or of the widest a row is.
+		int width = Math.round(Math.min(getWidth() - insets.right -
+						textLeft(document.text().lineCount()),
+				appearance.rowMaxWidth) - appearance.rowPadding);
+		if (line == row.line() && messages == row.messages() &&
+				(line < 0 || width == row.width())) {
 			return;
 		}
 		int anchor = anchorLine();
 		int oldLine = lines.rowLine();
 		int oldHeight = lines.rowHeight();
-		rowMessages = messages;
-		rowWidth = width;
-		rowFixLabels = Collections.emptyList();
-		if (line < 0) {
-			lines.setRow(-1, 0);
-		} else {
-			CodeAppearance a = appearance;
-			rowText = MessageRow.lines(rowFix != null
-							? rowFix.shown(line, messages)
-							: messages, Math.max(1, width),
-					rowStyle);
-			if (rowFix != null) {
-				rowFixLabels = fixes(line, messages);
-			}
-			lines.setRow(line, rowText.length * a.rowLineHeight +
-					2 * a.rowPaddingVertical +
-					(!rowFixLabels.isEmpty()
-							? Math.round(a.fixInset + a.fixHeight)
-							: 0));
-		}
+		row = line < 0 ? Row.NONE : layRow(line, messages, width);
+		lines.setRow(line, line < 0 ? 0 : row.height(appearance));
 		int scrollY = getScrollY();
 		if (!edited || line == oldLine) {
 			scrollY = lines.keep(scrollY, anchor, oldLine, oldHeight);
@@ -2629,91 +2685,138 @@ public class CodeView extends View {
 		canvas.drawRect(right - corner, top, right, bottom, fill);
 		float x = getScrollX() + textLeft;
 		float y = top + a.rowPaddingVertical + a.rowBaseline;
-		for (String text : rowText) {
+		for (String text : row.text()) {
 			canvas.drawText(text, x, y, a.rowPaint);
 			y += a.rowLineHeight;
 		}
-		// The last fix at the end of the row, the ones before it to its
-		// left, with what is left of the row to cut the first one to.
-		float end = right;
-		for (int i = rowFixLabels.size(); i-- > 0; ) {
-			end = drawFix(canvas, i, x, end, bottom);
+		for (MessageRow.Placed fix : row.fixes()) {
+			float lineTop = top + row.fixTop(fix.line(), a);
+			if (fixPressed == fix.index()) {
+				// 12 % of the accent, 32 dp centred on the label's line.
+				float middle = lineTop + a.fixHeight / 2f;
+				fill.setColor(a.fixPressedColor);
+				rowRect.set(x + fix.start(), middle - a.fixPressedHeight / 2f,
+						x + fix.end(), middle + a.fixPressedHeight / 2f);
+				canvas.drawRoundRect(rowRect, a.corner, a.corner, fill);
+			}
+			canvas.drawText(fix.label(), x + fix.start() + a.fixPadding,
+					lineTop + a.fixBaseline, a.fixPaint);
 		}
 	}
 
-	// Draws fix i of the row under its text as a text button, 40 dp
-	// high, ending at right, cut to what is left of the row; its touch
-	// target is 48 dp high. Returns where it starts.
-	private float drawFix(Canvas canvas, int i, float left, float right,
-			float bottom) {
+	// Lays out the row of line with messages for text width wide: its
+	// lines of text, and its fixes end-aligned short of its edge.
+	@NonNull
+	private Row layRow(int line, @NonNull List<String> messages,
+			int width) {
 		CodeAppearance a = appearance;
-		TextPaint paint = a.fixPaint;
-		float end = right - a.fixInset;
-		CharSequence label = TextUtils.ellipsize(rowFixLabels.get(i), paint,
-				Math.max(0, end - left - 2 * a.fixPadding),
-				TextUtils.TruncateAt.END);
-		float start = end - 2 * a.fixPadding -
-				paint.measureText(label, 0, label.length());
-		float top = bottom - a.rowPaddingVertical - a.fixHeight;
-		if (fixPressed == i) {
-			fill.setColor(a.fixPressedColor);
-			rowRect.set(start, top, end, top + a.fixHeight);
-			canvas.drawRoundRect(rowRect, a.corner, a.corner, fill);
+		String[] text = MessageRow.lines(rowFix != null
+				? rowFix.shown(line, messages)
+				: messages, Math.max(1, width), rowStyle);
+		List<MessageRow.Placed> placed = MessageRow.place(fixes(line,
+						messages), width + a.rowPadding - a.fixInset,
+				new MessageRow.FixMetrics(a.fixPadding, a.fixGap,
+						a.fixPaint::measureText, "\u2026"));
+		int fixLines = 0;
+		for (MessageRow.Placed fix : placed) {
+			fixLines = Math.max(fixLines, fix.line() + 1);
 		}
-		Paint.FontMetrics fm = paint.getFontMetrics();
-		canvas.drawText(label, 0, label.length(), start + a.fixPadding,
-				top + (a.fixHeight - fm.descent - fm.ascent) / 2, paint);
-		float slack = (a.tapTarget - a.fixHeight) / 2;
-		fixRects[i].set(start, top - slack, end, top + a.fixHeight + slack);
-		return start;
+		return new Row(line, messages, width, text, placed, fixLines);
 	}
 
-	// Returns the fix of the row at the view's point x, y, or -1.
+	// Returns the fix of the row at the view's point x, y, or -1: each
+	// target is as wide as the button and a little more, and reaches up
+	// over the last line of text, so it is at least a tap target high.
 	private int fixAt(float x, float y) {
-		if (lines.rowLine() < 0) {
+		int line = lines.rowLine();
+		if (line < 0 || row.fixes().isEmpty() || document == null) {
 			return -1;
 		}
-		for (int i = 0; i < rowFixLabels.size(); ++i) {
-			if (fixRects[i].contains(x + getScrollX(), y + getScrollY())) {
-				return i;
+		CodeAppearance a = appearance;
+		float top = lineTop(line) + a.lineHeight;
+		float left = getScrollX() + textLeft(document.text().lineCount());
+		x += getScrollX();
+		y += getScrollY();
+		for (MessageRow.Placed fix : row.fixes()) {
+			float fixTop = top + row.fixTop(fix.line(), a);
+			float targetTop = fix.line() == 0
+					? fixTop - a.fixInset - a.rowLineHeight
+					: fixTop - a.fixLineGap / 2f;
+			float targetBottom = fix.line() == row.fixLines() - 1
+					? Math.max(top + row.height(a), targetTop + a.tapTarget)
+					: fixTop + a.fixHeight + a.fixLineGap / 2f;
+			targetTop = Math.min(targetTop, targetBottom - a.tapTarget);
+			if (y >= targetTop && y <= targetBottom &&
+					x >= left + fix.start() - a.fixInset &&
+					x <= left + fix.end() + a.fixInset) {
+				return fix.index();
 			}
 		}
 		return -1;
 	}
 
+	// Whether line n was just put in by a fix.
+	private boolean marked(int n) {
+		for (int line : markedLines) {
+			if (line == n) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private void applyRowFix(int index) {
-		List<String> messages = rowMessages;
-		if (rowFix != null && messages != null) {
-			rowFix.apply(lines.rowLine(), messages, index);
+		if (rowFix != null && row.messages() != null) {
+			applyFix(row.line(), row.messages(), index);
 		}
 	}
 
-	// Returns the labels of the fixes for the messages of line, at most
-	// MAX_FIXES.
-	private List<String> fixes(int line, List<String> messages) {
-		List<String> labels = rowFix != null
-				? rowFix.labels(line, messages)
+	// Applies fix index of messages of line. A fix puts text in, so only
+	// where the code is seen from above may change; the sideways scroll
+	// stays.
+	private void applyFix(int line, @NonNull List<String> messages,
+			int index) {
+		int scrollX = getScrollX();
+		rowFix.apply(line, messages, index);
+		scrollInside(scrollX, getScrollY());
+	}
+
+	// Returns the fixes for the messages of line, at most MAX_FIXES.
+	@NonNull
+	private List<Fix> fixes(int line, List<String> messages) {
+		List<Fix> fixes = rowFix != null
+				? rowFix.fixes(line, messages)
 				: Collections.emptyList();
-		return labels.size() > MAX_FIXES
-				? labels.subList(0, MAX_FIXES)
-				: labels;
+		return fixes.size() > MAX_FIXES
+				? fixes.subList(0, MAX_FIXES)
+				: fixes;
+	}
+
+	// The spoken labels of fixes.
+	@NonNull
+	private static List<String> spoken(@NonNull List<Fix> fixes) {
+		List<String> spoken = new ArrayList<>(fixes.size());
+		for (Fix fix : fixes) {
+			spoken.add(fix.spoken());
+		}
+		return spoken;
 	}
 
 	// Returns what is said of an error, and of its fixes if it has any.
 	private String withFix(String said, int line, List<String> messages) {
-		List<String> fixes = fixes(line, messages);
+		List<String> fixes = spoken(fixes(line, messages));
 		return !fixes.isEmpty()
 				? said + " " + getResources().getString(
 				R.string.a11y_fix_available, TextUtils.join(", ", fixes))
 				: said;
 	}
 
-	/** Return the labels of the fixes for the caret's line. */
+	/** Return what is said of the fixes for the caret's line. */
 	@NonNull
 	List<String> caretLineFixes() {
 		List<String> messages = caretLineMessages();
 		return messages != null
-				? fixes(caretLine(), messages)
+				? spoken(fixes(caretLine(), messages))
 				: Collections.emptyList();
 	}
 
@@ -2727,7 +2830,7 @@ public class CodeView extends View {
 				index >= fixes(caretLine(), messages).size()) {
 			return false;
 		}
-		rowFix.apply(caretLine(), messages, index);
+		applyFix(caretLine(), messages, index);
 		return true;
 	}
 

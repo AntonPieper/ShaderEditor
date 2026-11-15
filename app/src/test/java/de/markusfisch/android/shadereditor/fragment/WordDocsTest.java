@@ -2,11 +2,13 @@ package de.markusfisch.android.shadereditor.fragment;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.syntax.GlslKnowledge;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 
@@ -23,27 +25,53 @@ public class WordDocsTest {
 
 	@Test
 	public void fixesAnUndeclaredUniformOfTheApp() {
-		assertEquals("time", WordDocs.undeclaredUniform(List.of(
-				"'time' : undeclared identifier"), Knowledge.NONE).getName());
-		assertEquals("touch", WordDocs.undeclaredUniform(List.of(
+		assertEquals("time", only(WordDocs.undeclaredUniforms(List.of(
+				"'time' : undeclared identifier"), Knowledge.NONE)));
+		assertEquals("touch", only(WordDocs.undeclaredUniforms(List.of(
 				"'x' : syntax error",
-				"use of undeclared identifier 'touch'"), Knowledge.NONE)
-				.getName());
+				"use of undeclared identifier 'touch'"), Knowledge.NONE)));
 		// Not one of the app's, not undeclared, or declared after all.
-		assertNull(WordDocs.undeclaredUniform(List.of(
-				"'timeScale' : undeclared identifier"), Knowledge.NONE));
-		assertNull(WordDocs.undeclaredUniform(List.of(
-				"'time' : redefinition"), Knowledge.NONE));
+		assertTrue(WordDocs.undeclaredUniforms(List.of(
+				"'timeScale' : undeclared identifier"), Knowledge.NONE)
+				.isEmpty());
+		assertTrue(WordDocs.undeclaredUniforms(List.of(
+				"'time' : redefinition"), Knowledge.NONE).isEmpty());
 		String text = "float time;\n";
-		assertNull(WordDocs.undeclaredUniform(List.of(
+		assertTrue(WordDocs.undeclaredUniforms(List.of(
 						"'time' : undeclared identifier"),
-				GlslKnowledge.of(text)));
+				GlslKnowledge.of(text)).isEmpty());
 		// A parameter of the first function is no declaration.
-		assertEquals("time", WordDocs.undeclaredUniform(List.of(
+		assertEquals("time", only(WordDocs.undeclaredUniforms(List.of(
 						"'time' : undeclared identifier"),
 				GlslKnowledge.of("float f(float time) { return time; }\n" +
-						"void main() { gl_FragColor = vec4(time); }\n"))
-				.getName());
+						"void main() { gl_FragColor = vec4(time); }\n"))));
+	}
+
+	@Test
+	public void fixesAllUndeclaredUniformsOfALineOnceInTheirOrder() {
+		List<UniformDef> uniforms = WordDocs.undeclaredUniforms(List.of(
+				"'cameraOrientation' : undeclared identifier",
+				"'cameraAddent' : undeclared identifier",
+				"'cameraOrientation' : undeclared identifier"),
+				Knowledge.NONE);
+		assertEquals(2, uniforms.size());
+		assertEquals("cameraOrientation", uniforms.get(0).getName());
+		assertEquals("cameraAddent", uniforms.get(1).getName());
+	}
+
+	@Test
+	public void joinsWithCommasAndAnd() {
+		String and = "%1$s and %2$s";
+		assertEquals("", WordDocs.joinAnd(List.of(), and));
+		assertEquals("a", WordDocs.joinAnd(List.of("a"), and));
+		assertEquals("a and b", WordDocs.joinAnd(List.of("a", "b"), and));
+		assertEquals("a, b and c",
+				WordDocs.joinAnd(List.of("a", "b", "c"), and));
+	}
+
+	private static String only(List<UniformDef> uniforms) {
+		assertEquals(1, uniforms.size());
+		return uniforms.get(0).getName();
 	}
 
 	@Test

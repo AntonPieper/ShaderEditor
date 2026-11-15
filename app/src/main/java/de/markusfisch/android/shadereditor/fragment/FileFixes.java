@@ -48,18 +48,33 @@ final class FileFixes implements CodeView.RowFix {
 
 	@NonNull
 	@Override
-	public List<String> labels(int line, @NonNull List<String> messages) {
-		List<String> labels = new ArrayList<>();
+	public List<CodeView.Fix> fixes(int line,
+			@NonNull List<String> messages) {
+		List<CodeView.Fix> fixes = new ArrayList<>();
 		HostCompletion.Missing missing = missing(line, messages);
 		if (missing != null && missing.near() != null) {
-			labels.add(context.getString(R.string.fix_use,
-					missing.use().text()));
+			fixes.add(use(context.getString(R.string.fix_use,
+					missing.use().text()), missing.use().text()));
 		}
 		if (missing != null && missing.creatable()) {
-			labels.add(context.getString(R.string.fix_create));
+			fixes.add(CodeView.Fix.of(context.getString(R.string.fix_create)));
 		}
-		labels.addAll(other.labels(line, messages));
-		return labels;
+		fixes.addAll(other.fixes(line, messages));
+		return fixes;
+	}
+
+	// "Use name": where it does not fit, the name is cut in the middle,
+	// keeping "Use" and the name's extension.
+	@NonNull
+	static CodeView.Fix use(@NonNull String label, @NonNull String name) {
+		int start = label.lastIndexOf(name);
+		if (start < 0) {
+			return CodeView.Fix.of(label);
+		}
+		int slash = name.lastIndexOf('/');
+		int dot = name.lastIndexOf('.');
+		int end = start + (dot > slash + 1 ? dot : name.length());
+		return CodeView.Fix.cutting(label, start, end);
 	}
 
 	@Override

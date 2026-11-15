@@ -74,8 +74,11 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		/** The docs are read: what waited for them can be asked again. */
 		void onDocsRead();
 
-		/** Add statement as Add uniform does. */
-		void addUniform(@NonNull String statement);
+		/**
+		 * Add statements as Add uniform does, in this order, as one
+		 * undo step.
+		 */
+		void addUniforms(@NonNull List<String> statements);
 	}
 
 	private static final String ASSET = "glsl-docs.txt";
@@ -121,12 +124,14 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	}
 
 	/**
-	 * The app's uniform a message of messages says is undeclared, while
-	 * the declarations do not have its name, or null.
+	 * The app's uniforms messages say are undeclared, while the
+	 * declarations do not have their names, each once, in the order the
+	 * messages name them.
 	 */
-	@Nullable
-	static UniformDef undeclaredUniform(@NonNull List<String> messages,
+	@NonNull
+	static List<UniformDef> undeclaredUniforms(@NonNull List<String> messages,
 			@NonNull Knowledge declarations) {
+		List<UniformDef> found = new ArrayList<>();
 		for (String message : messages) {
 			if (!message.toLowerCase(Locale.ROOT)
 					.contains("undeclared")) {
@@ -135,30 +140,78 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 			Matcher m = QUOTED.matcher(message);
 			while (m.find()) {
 				UniformDef uniform = UNIFORMS.get(m.group(1));
-				if (uniform != null && declarations.at(-1,
-						uniform.getName()).isEmpty()) {
-					return uniform;
+				if (uniform != null && !found.contains(uniform) &&
+						declarations.at(-1, uniform.getName()).isEmpty()) {
+					found.add(uniform);
 				}
 			}
 		}
-		return null;
+		return found;
 	}
 
+	/**
+	 * items joined by ", " but the last, which and joins, a format of
+	 * two strings such as "%1$s and %2$s".
+	 */
+	@NonNull
+	static String joinAnd(@NonNull List<String> items, @NonNull String and) {
+		int last = items.size() - 1;
+		if (last < 0) {
+			return "";
+		}
+		StringBuilder head = new StringBuilder(items.get(0));
+		for (int i = 1; i < last; ++i) {
+			head.append(", ").append(items.get(i));
+		}
+		return last == 0
+				? head.toString()
+				: String.format(and, head, items.get(last));
+	}
+
+	// One fix adds all of the app's uniforms a line misses: "Add uniform
+	// float time", shorter where it does not fit; "Add 2 uniforms" for
+	// more than one.
 	@NonNull
 	@Override
-	public List<String> labels(int line, @NonNull List<String> messages) {
-		UniformDef uniform = undeclaredUniform(messages, host.declared());
-		return uniform != null
-				? List.of(view.getContext().getString(R.string.fix_add_uniform,
-				uniform.getType().getKeyword(), uniform.getDeclarator()))
-				: List.of();
+	public List<CodeView.Fix> fixes(int line,
+			@NonNull List<String> messages) {
+		List<UniformDef> uniforms = undeclaredUniforms(messages,
+				host.declared());
+		if (uniforms.isEmpty()) {
+			return List.of();
+		}
+		Context context = view.getContext();
+		if (uniforms.size() == 1) {
+			UniformDef uniform = uniforms.get(0);
+			String full = context.getString(R.string.fix_add_uniform,
+					uniform.getType().getKeyword(), uniform.getDeclarator());
+			return List.of(CodeView.Fix.of(full, List.of(full,
+					context.getString(R.string.fix_add_uniform_name,
+							uniform.getName()),
+					context.getString(R.string.fix_add_uniform_short))));
+		}
+		List<String> pairs = new ArrayList<>();
+		for (UniformDef uniform : uniforms) {
+			pairs.add(uniform.getType().getKeyword() + " " +
+					uniform.getDeclarator());
+		}
+		return List.of(CodeView.Fix.of(context.getString(
+						R.string.a11y_fix_add_uniforms, joinAnd(pairs,
+								context.getString(R.string.a11y_list_and))),
+				List.of(context.getResources().getQuantityString(
+						R.plurals.fix_add_uniforms, uniforms.size(),
+						uniforms.size()))));
 	}
 
 	@Override
 	public void apply(int line, @NonNull List<String> messages, int index) {
-		UniformDef uniform = undeclaredUniform(messages, host.declared());
-		if (uniform != null) {
-			host.addUniform(statement(uniform));
+		List<String> statements = new ArrayList<>();
+		for (UniformDef uniform : undeclaredUniforms(messages,
+				host.declared())) {
+			statements.add(statement(uniform));
+		}
+		if (!statements.isEmpty()) {
+			host.addUniforms(statements);
 		}
 	}
 
@@ -265,7 +318,7 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 						declared ? null : context.getString(
 								R.string.docs_not_declared), null),
 				declared ? null : context.getString(R.string.docs_add_uniform),
-				() -> host.addUniform(statement), false);
+				() -> host.addUniforms(List.of(statement)), false);
 	}
 
 	/**
