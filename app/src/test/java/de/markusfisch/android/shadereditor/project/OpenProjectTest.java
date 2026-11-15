@@ -318,6 +318,67 @@ public class OpenProjectTest {
 		assertFalse(next.temporary());
 	}
 
+	// While a number is tuned, the draft written at a pause, Save a copy
+	// and a save take the documents' text, never a build's.
+	@Test
+	public void aReplacementNeverReachesTheJournalOrASave()
+			throws IOException {
+		write("main.frag", SHADER);
+		OpenProject project = open();
+		document(project, "main.frag");
+		String edited = SHADER + "// edited\n";
+		edit(project, "main.frag", edited);
+		int at = edited.indexOf("1.0");
+		OpenProject.Replacement replacement = new OpenProject.Replacement(
+				path("main.frag"), at, at + 3, "se_tune0");
+		OpenProject.Build replaced = await(done -> project.prepare(
+				BuiltinNames.ALL, replacement, done));
+		assertTrue(built(replaced.preparation(), "main.frag")
+				.contains("se_tune0"));
+
+		flush(project);
+		assertEquals(edited, journaled("main.frag"));
+		MemoryProjectFiles copy = new MemoryProjectFiles();
+		copy.writable = true;
+		Map<ProjectPath, String> copied = await(done -> project.copyTo(copy,
+				List.of(path("main.frag")), done));
+		assertNull(copied.get(path("main.frag")));
+		assertEquals(edited, new String(copy.read(path("main.frag")).bytes(),
+				StandardCharsets.UTF_8));
+		save(project, true);
+		assertEquals(edited, read("main.frag"));
+	}
+
+	// A file renamed while a number of it is tuned: the build asked for
+	// before is of the text as it was, the moved document and file hold
+	// the user's text, and the old path has no document to replace in.
+	@Test
+	public void aReplacementOfAFileRenamedMeanwhileStaysInTheBuild()
+			throws IOException {
+		write("main.frag", SHADER);
+		OpenProject project = open();
+		document(project, "main.frag");
+		int at = SHADER.indexOf("1.0");
+		OpenProject.Replacement replacement = new OpenProject.Replacement(
+				path("main.frag"), at, at + 3, "se_tune0");
+		List<OpenProject.Build> builds = new ArrayList<>();
+		project.prepare(BuiltinNames.ALL, replacement, builds::add);
+		OpenProject.Moved moved = await(done -> project.rename(
+				path("main.frag"), path("b.frag"), done));
+
+		assertEquals(new OpenProject.Renamed(path("main.frag"),
+				path("b.frag")), moved);
+		for (OpenProject.Build build : builds) {
+			assertTrue(build.preparation().temporary());
+		}
+		assertEquals(SHADER, project.document(path("b.frag")).text()
+				.toString());
+		assertEquals(SHADER, read("b.frag"));
+		OpenProject.Build after = await(done -> project.prepare(
+				BuiltinNames.ALL, replacement, done));
+		assertNull(after.preparation());
+	}
+
 	@Test
 	public void aReplacementOfAFileWithoutDocumentRunsNothing()
 			throws IOException {

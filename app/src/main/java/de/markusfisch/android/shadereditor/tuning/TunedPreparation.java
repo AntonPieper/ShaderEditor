@@ -40,6 +40,8 @@ public final class TunedPreparation {
 	/** What the uniform's names start with; a number follows. */
 	static final String PREFIX = "se_tune";
 
+	private static final Pattern SPLICE = Pattern.compile(
+			"\\\\(?:\r\n|\n|\r)");
 	private static final Pattern NAMES = Pattern.compile(
 			"(?<![A-Za-z0-9_])" + PREFIX + "(\\d+)(?![A-Za-z0-9_])");
 
@@ -178,8 +180,11 @@ public final class TunedPreparation {
 			if (FileKind.picture(bytes) != null) {
 				continue;
 			}
-			Matcher matcher = NAMES.matcher(
-					new String(bytes, StandardCharsets.UTF_8));
+			// After splicing, as GLSL reads names (GLSL ES 3.00, 3.3): a
+			// name split by a backslash at a line's end is one name. No
+			// other way makes a name: GLSL ES has no token pasting.
+			Matcher matcher = NAMES.matcher(SPLICE.matcher(
+					new String(bytes, StandardCharsets.UTF_8)).replaceAll(""));
 			while (matcher.find()) {
 				found += matcher.group().equals(name) ? 1 : 0;
 				try {

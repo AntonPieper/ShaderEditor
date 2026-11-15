@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
@@ -45,6 +46,13 @@ public final class Tuning {
 		void onRefused(@NonNull List<ProjectDiagnostic> errors);
 	}
 
+	/**
+	 * Macros the engine reads from the text itself: a number in one is
+	 * not compiled, so it cannot become a uniform.
+	 */
+	public static final Set<String> HOST_MACROS = Set.of(
+			PlanSource.FTIME_PERIOD);
+
 	@NonNull
 	final String name;
 	@NonNull
@@ -57,7 +65,8 @@ public final class Tuning {
 	 * name is the uniform's name, unused by the text; value is the
 	 * number's own value, so that the first frame shows what the text
 	 * shows. Integers are kept exactly: a double holds every int and
-	 * every uint.
+	 * every uint. An int or uint outside its range is written with the
+	 * language's 32-bit wrap.
 	 */
 	public Tuning(@NonNull String name, @NonNull Type type, double value,
 			@NonNull Listener listener) {

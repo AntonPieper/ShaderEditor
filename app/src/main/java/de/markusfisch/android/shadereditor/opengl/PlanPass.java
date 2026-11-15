@@ -124,7 +124,10 @@ final class PlanPass {
 		double value = tuning.value();
 		switch (tuning.type) {
 			case FLOAT -> device.uniform1f(uniform.location(), (float) value);
-			case INT -> device.uniform1i(uniform.location(), (int) value);
+			// Wrapped to 32 bits as the language wraps an int, never
+			// clamped.
+			case INT -> device.uniform1i(uniform.location(),
+					(int) (long) value);
 			// The bits of the unsigned value, as glUniform1ui takes them.
 			case UINT -> device.uniform1ui(uniform.location(),
 					(int) (long) value);

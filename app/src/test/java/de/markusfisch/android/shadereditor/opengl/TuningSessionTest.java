@@ -29,6 +29,7 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectLimits;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.tuning.Tuner;
 import de.markusfisch.android.shadereditor.tuning.TuningSession;
 
 // A session tunes one number: one build to enter, values without a
@@ -58,6 +59,7 @@ public class TuningSessionTest {
 	private final List<String> heard = new ArrayList<>();
 	private final List<String> written = new ArrayList<>();
 	private int applied;
+	private final Tuner tuner = new Tuner(new Host(false), Runnable::run);
 
 	private record Run(@NonNull String text, boolean temporary,
 			@Nullable Tuning tuning) {
@@ -76,11 +78,13 @@ public class TuningSessionTest {
 		tuning.live();
 		assertEquals(List.of("live"), heard);
 		assertEquals(TuningSession.State.LIVE, session.state());
+		// Once as it draws, for a value set meanwhile.
+		assertEquals(1, applied);
 
 		for (int i = 1; i <= 100; ++i) {
 			session.set(0.3 + i * 0.01);
 		}
-		assertEquals(100, applied);
+		assertEquals(101, applied);
 		assertEquals(1.3, tuning.value(), 1e-9);
 		assertEquals(1, runs.size());
 
@@ -94,7 +98,20 @@ public class TuningSessionTest {
 		assertEquals(List.of(), written);
 		// Nothing after the end.
 		session.set(2.0);
-		assertEquals(100, applied);
+		assertEquals(101, applied);
+	}
+
+	// F1: the GL thread wrote the first value and posted that the build
+	// draws; a value set before main heard it must still be shown.
+	@Test
+	public void aValueSetWhileLiveIsOnItsWayShows() {
+		var session = begin("0.3", Tuning.Type.FLOAT);
+		var tuning = runs.get(0).tuning;
+		session.set(0.6);
+		assertEquals(0, applied);
+		tuning.live();
+		assertEquals(1, applied);
+		assertEquals(0.6, tuning.value(), 0);
 	}
 
 	@Test
@@ -116,13 +133,81 @@ public class TuningSessionTest {
 		assertThrows(IllegalArgumentException.class,
 				() -> session.end("se_tune0"));
 		assertEquals(List.of(), written);
+		// Still open: it can end as it should.
+		session.end(null);
+		assertEquals(SHADER, runs.get(1).text);
+	}
+
+	@Test
+	public void oneSessionAtATime() {
+		var first = begin("0.3", Tuning.Type.FLOAT);
+		assertThrows(IllegalStateException.class,
+				() -> begin("0.0", Tuning.Type.FLOAT));
+		first.end(null);
+		var second = begin("0.0", Tuning.Type.FLOAT);
+		assertEquals(second, tuner.open());
+		// One that failed is not open.
+		second.end(null);
+		var failed = begin("0.0", Tuning.Type.INT);
+		assertEquals(TuningSession.State.FAILED, failed.state());
+		assertNull(tuner.open());
+		begin("0.3", Tuning.Type.FLOAT);
+	}
+
+	// The screen goes: nothing is written or built, and what the session
+	// waited for is not heard.
+	@Test
+	public void destroyLetsTheOpenSessionGo() {
+		texts.put("main.frag", SHADER);
+		int at = SHADER.indexOf("0.3");
+		var waiting = new Tuner(new Host(true), Runnable::run);
+		var session = waiting.begin(path("main.frag"), at, at + 3,
+				Tuning.Type.FLOAT, listener());
+		waiting.destroy();
+		settle();
+		assertEquals(List.of(), runs);
+		assertEquals(List.of(), heard);
+		assertEquals(TuningSession.State.ENDED, session.state());
+		assertNull(waiting.open());
+
+		var live = begin("0.3", Tuning.Type.FLOAT);
+		var tuning = runs.get(0).tuning;
+		tuner.destroy();
+		tuning.live();
+		live.set(0.5);
+		live.end("0.5");
+		assertEquals(1, runs.size());
+		assertEquals(List.of(), heard);
+		assertEquals(0, applied);
+		assertEquals(List.of(), written);
+	}
+
+	// The build of the session may begin to draw after end(): nothing
+	// it tells is heard, and the text's build follows it.
+	@Test
+	public void aBuildThatDrawsAfterTheEndChangesNothing() {
+		texts.put("main.frag", SHADER);
+		int at = SHADER.indexOf("0.3");
+		var session = new Tuner(new Host(true), Runnable::run).begin(
+				path("main.frag"), at, at + 3, Tuning.Type.FLOAT, listener());
+		settle();
+		var tuning = runs.get(0).tuning;
+		session.set(0.8);
+		session.end(null);
+		tuning.live();
+		assertEquals(List.of(), heard);
+		assertEquals(0, applied);
+		settle();
+		assertEquals(2, runs.size());
+		assertEquals(SHADER, runs.get(1).text);
+		assertNull(runs.get(1).tuning);
 	}
 
 	// What is set while the build is made is what it starts with.
 	@Test
 	public void aValueSetBeforeTheBuildIsItsFirst() {
 		int at = SHADER.indexOf("0.3");
-		var session = TuningSession.begin(new Host(true), Runnable::run,
+		var session = new Tuner(new Host(true), Runnable::run).begin(
 				path("main.frag"), at, at + 3, Tuning.Type.FLOAT, listener());
 		session.set(0.9);
 		settle();
@@ -170,7 +255,7 @@ public class TuningSessionTest {
 	@Test
 	public void rebuildsFollowOneAnother() {
 		int at = SHADER.indexOf("3;");
-		var session = TuningSession.begin(new Host(true), Runnable::run,
+		var session = new Tuner(new Host(true), Runnable::run).begin(
 				path("main.frag"), at, at + 1, Tuning.Type.INT, listener());
 		settle();
 		session.rebuild("4");
@@ -194,7 +279,7 @@ public class TuningSessionTest {
 	@Test
 	public void anEndBeforeTheBuildIsReadyBuildsNothing() {
 		int at = SHADER.indexOf("0.3");
-		var session = TuningSession.begin(new Host(true), Runnable::run,
+		var session = new Tuner(new Host(true), Runnable::run).begin(
 				path("main.frag"), at, at + 3, Tuning.Type.FLOAT, listener());
 		session.end(null);
 		settle();
@@ -207,8 +292,8 @@ public class TuningSessionTest {
 			@NonNull Tuning.Type type) {
 		texts.put("main.frag", SHADER);
 		int at = SHADER.indexOf(number);
-		return TuningSession.begin(new Host(false), Runnable::run,
-				path("main.frag"), at, at + number.length(), type, listener());
+		return tuner.begin(path("main.frag"), at, at + number.length(), type,
+				listener());
 	}
 
 	@NonNull

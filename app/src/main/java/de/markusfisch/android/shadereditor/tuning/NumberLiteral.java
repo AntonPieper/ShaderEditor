@@ -61,11 +61,14 @@ public record NumberLiteral(@NonNull Tuning.Type type, double value) {
 			} else {
 				value = Long.parseLong(digits);
 			}
-			return value > MAX_BITS
-					? null
-					: new NumberLiteral(unsigned
-							? Tuning.Type.UINT
-							: Tuning.Type.INT, value);
+			if (value > MAX_BITS) {
+				return null;
+			}
+			// An int is its bit pattern read as signed, as GLSL ES 3.00
+			// (4.1.3) says: 0xffffffff is -1. A uint keeps it unsigned.
+			return unsigned
+					? new NumberLiteral(Tuning.Type.UINT, value)
+					: new NumberLiteral(Tuning.Type.INT, (int) value);
 		} catch (NumberFormatException e) {
 			return null;
 		}

@@ -30,6 +30,9 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
  * are temporary (Preparation.temporary()), so the wallpaper never
  * installs one. At end(), the host writes the caller's new text in
  * place of the number. Main thread.
+ *
+ * Sessions start through a {@link Tuner}, one at a time; it lists what
+ * the screen that owns it must do.
  */
 public final class TuningSession {
 	public enum State {
@@ -128,7 +131,7 @@ public final class TuningSession {
 	 * on the main thread what the engine tells on the GL thread.
 	 */
 	@NonNull
-	public static TuningSession begin(@NonNull Host host,
+	static TuningSession begin(@NonNull Host host,
 			@NonNull Executor main, @NonNull ProjectPath path, int start,
 			int end, @NonNull Tuning.Type type, @NonNull Listener listener) {
 		var session = new TuningSession(host, main, path, start, end, type,
@@ -191,17 +194,24 @@ public final class TuningSession {
 	 * number (Done), else the text stays as it was (Revert). The text is
 	 * built once more, going on from the picture, when a build of the
 	 * session ran or the text changed.
+	 *
+	 * A build of the session handed to the engine just before may still
+	 * begin to draw until the text's build replaces it: it is a revision
+	 * of the same picture with the session's last value, which draws
+	 * the same way while a session's last build waits for its successor;
+	 * what it tells the session is not heard anymore.
 	 */
 	public void end(@Nullable String commit) {
 		if (state == State.ENDED) {
 			return;
 		}
+		if (commit != null && tuning != null &&
+				commit.contains(tuning.name())) {
+			throw new IllegalArgumentException(
+					"the uniform of a session is never written");
+		}
 		state = State.ENDED;
 		if (commit != null) {
-			if (tuning != null && commit.contains(tuning.name())) {
-				throw new IllegalArgumentException(
-						"the uniform of a session is never written");
-			}
 			host.write(path, start, end, commit);
 		}
 		if (ran || commit != null) {
@@ -211,6 +221,12 @@ public final class TuningSession {
 				}
 			});
 		}
+	}
+
+	// The screen went with the engine: nothing is written or built, and
+	// nothing the session still waits for is heard.
+	void drop() {
+		state = State.ENDED;
 	}
 
 	private void started(@NonNull TunedPreparation.Result result) {
@@ -252,6 +268,10 @@ public final class TuningSession {
 	private void live(@NonNull Tuning tuning) {
 		if (state == State.STARTING && tuning == this.tuning) {
 			state = State.LIVE;
+			// The build took the value of the moment it began to draw;
+			// one set while this news was on its way would wait for
+			// the next set() otherwise.
+			host.applyTuning();
 			listener.onLive();
 		}
 	}
@@ -279,6 +299,7 @@ public final class TuningSession {
 	private static String where(@NonNull ConstantContext.Kind kind) {
 		return switch (kind) {
 			case DIRECTIVE -> "a directive";
+			case HOST -> "a value the app reads from the text";
 			case LAYOUT -> "a layout";
 			case ARRAY -> "an array size or index";
 			case LOOP -> "a for loop of GLSL ES 1.00";
