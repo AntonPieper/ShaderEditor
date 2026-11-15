@@ -9,10 +9,12 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.Samples;
+import de.markusfisch.android.shadereditor.navigation.Face;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Order;
@@ -40,6 +42,11 @@ final class FoldersSource implements Source {
 	// What was found to be lost when it was gone into.
 	private final Set<String> lost = new HashSet<>();
 	private List<ProjectSessions.Recent> sessions = List.of();
+	// The picture of what runs in each folder opened before, by its
+	// session, and in the examples.
+	private Map<String, byte[]> pictures = Map.of();
+	@Nullable
+	private byte[] examples;
 
 	FoldersSource(@NonNull Context context, @NonNull Remover remover) {
 		this.context = context;
@@ -54,6 +61,16 @@ final class FoldersSource implements Source {
 	void setLibrary(@Nullable String key, int shaders) {
 		library = key;
 		this.shaders = shaders;
+	}
+
+	/**
+	 * Takes the picture of what runs in each folder opened before, by
+	 * its session, the library's among them, and in the examples.
+	 */
+	void setPictures(@NonNull Map<String, byte[]> pictures,
+			@Nullable byte[] examples) {
+		this.pictures = pictures;
+		this.examples = examples;
 	}
 
 	/** Takes the recent projects, the one opened last first. */
@@ -83,7 +100,8 @@ final class FoldersSource implements Source {
 	public Listing list(Order order) {
 		List<Row> top = new ArrayList<>();
 		if (library != null) {
-			top.add(folder(Level.root(library), Row.Picture.Icon.LIBRARY,
+			top.add(folder(Level.root(library), Face.of(Face.Of.LIBRARY,
+							pictures.get(library)),
 					context.getString(R.string.nav_shaders), shaders < 0
 							? null
 							: shaders == 0
@@ -97,7 +115,7 @@ final class FoldersSource implements Source {
 			// row stands where it will be, so that the list does not
 			// change shape under the user, and leads nowhere yet.
 			top.add(new Row("library", Row.Kind.OTHER,
-					Row.Picture.of(Row.Picture.Icon.LIBRARY),
+					Face.of(Face.Of.LIBRARY, null),
 					context.getString(R.string.nav_shaders),
 					context.getString(R.string.library_moving), 0, null,
 					EnumSet.noneOf(Row.Mark.class),
@@ -105,7 +123,7 @@ final class FoldersSource implements Source {
 		}
 		List<Listing.Section> sections = new ArrayList<>();
 		sections.add(new Listing.Section(null, List.of(
-				folder(Level.EXAMPLES, Row.Picture.Icon.EXAMPLES,
+				folder(Level.EXAMPLES, Face.of(Face.Of.EXAMPLES, examples),
 						context.getString(R.string.load_sample),
 						context.getString(R.string.nav_examples_count,
 								Samples.ALL.size()),
@@ -116,7 +134,7 @@ final class FoldersSource implements Source {
 		if (!recent.isEmpty()) {
 			sections.add(new Listing.Section(
 					context.getString(R.string.nav_recent),
-					Recent.rows(recent,
+					Recent.rows(recent, pictures,
 							context.getString(R.string.nav_single_file),
 							context.getString(R.string.nav_cannot_be_opened))));
 		}
@@ -161,11 +179,11 @@ final class FoldersSource implements Source {
 
 	@NonNull
 	private static Row folder(@NonNull Level level,
-			@NonNull Row.Picture.Icon icon,
+			@NonNull Row.Picture picture,
 			@NonNull String name,
 			String detail,
 			@NonNull Set<Row.Mark> marks) {
-		return new Row(level.name(), Row.Kind.FOLDER, Row.Picture.of(icon),
+		return new Row(level.name(), Row.Kind.FOLDER, picture,
 				name, detail, 0, level, marks,
 				EnumSet.noneOf(Row.Action.class));
 	}

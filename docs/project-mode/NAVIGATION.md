@@ -504,7 +504,7 @@ All behind the existing gate `@bool/project_mode` (on in debug builds only). Thi
 | N9 ★ | Read-only, the conflict bar, Save a copy through the New sheet (with M13) | Emulator |
 | N10 ★ | Examples as a folder (with X10); the Examples menu entry opens the drawer there | Emulator |
 | N11 ★ | Filter; landscape; the drawer kept open from 840 dp; keyboard shortcuts; spoken names and row actions | Emulator; TalkBack on the phone |
-| N12 | Thumbnails for shader files | Emulator |
+| N12 | Thumbnails for shader files, in every folder: a picture is taken when a shader of any folder runs, and the top level shows the picture of what runs in each place | Emulator |
 | N13 ★ | With the gate lifted: delete `ShaderListManager`, `ShaderAdapter`, `drawer.xml`, `row_shader.xml`, the fixed `main_menu.xml`, the "Sort by last modification" setting, and after X10 the Examples screen with its fragment and adapter | Emulator |
 | — | With M21: delete the database list source and the database implementation of N1's adapter | JVM |
 

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A folder or a single file opened before, as the top level lists it
@@ -21,11 +22,12 @@ public record Recent(String key, boolean file, String name,
 	 * last first. A single file says so after where it is, and one
 	 * that was lost says so first. Each can be removed from the list.
 	 *
+	 * @param pictures   the picture of what runs in each, by key
 	 * @param singleFile what a single file is called
 	 * @param lost       how to say that it cannot be opened
 	 */
-	public static List<Row> rows(List<Recent> recent, String singleFile,
-			String lost) {
+	public static List<Row> rows(List<Recent> recent,
+			Map<String, byte[]> pictures, String singleFile, String lost) {
 		List<Recent> sorted = new ArrayList<>(recent);
 		Collections.sort(sorted, (a, b) -> a.opened != b.opened
 				? Long.compare(b.opened, a.opened)
@@ -34,9 +36,9 @@ public record Recent(String key, boolean file, String name,
 		for (Recent opened : sorted) {
 			rows.add(new Row(opened.key,
 					Row.Kind.FOLDER,
-					Row.Picture.of(opened.file
-							? Row.Picture.Icon.SHADER
-							: Row.Picture.Icon.FOLDER),
+					Face.of(opened.file
+							? Face.Of.SINGLE_FILE
+							: Face.Of.FOLDER, pictures.get(opened.key)),
 					opened.name,
 					opened.detail(singleFile, lost),
 					opened.opened,

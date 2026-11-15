@@ -24,12 +24,12 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
 
 /**
- * What the library keeps of its files besides their text, as the
- * database kept it of its shaders: the picture of a file, the quality
- * it runs at, and whether the wallpaper shows it. A file that runs
- * without a picture gets one of its first frame, and a file saved on
- * request one of what it draws then. Files of other folders keep none
- * of it. Call it on the main thread; nothing it hears after it was
+ * What the app keeps of files besides their text, as the database
+ * kept it of its shaders: the picture of a shader of any folder, and
+ * for the library's files the quality each runs at and whether the
+ * wallpaper shows it. A file that runs without a picture gets one of
+ * its first frame, and a file saved on request one of what it draws
+ * then. Call it on the main thread; nothing it hears after it was
  * destroyed does anything.
  */
 public final class LibraryLooks {
@@ -113,18 +113,20 @@ public final class LibraryLooks {
 
 	/** The file at path of the folder key runs now. */
 	public void ran(@Nullable String key, @Nullable ProjectPath path) {
-		if (path == null || !inLibrary(key)) {
+		if (path == null || key == null) {
 			return;
 		}
 		execute(() -> {
-			Previews.Picture picture = projects.library().previews()
-					.get(path);
+			Previews previews = projects.previews(key);
+			Previews.Picture picture = previews != null
+					? previews.get(path)
+					: null;
 			// The database's grey square is no picture either.
-			boolean missing = picture == null ||
-					OldPlaceholder.real(context, picture.png()) == null;
+			boolean missing = previews != null && (picture == null ||
+					OldPlaceholder.real(context, picture.png()) == null);
 			handler.post(() -> {
 				if (missing && !destroyed) {
-					capture(path);
+					capture(key, path);
 				}
 			});
 		});
@@ -132,8 +134,8 @@ public final class LibraryLooks {
 
 	/** The file at path of the folder key, which runs, was saved. */
 	public void saved(@Nullable String key, @Nullable ProjectPath path) {
-		if (path != null && inLibrary(key)) {
-			capture(path);
+		if (path != null && key != null) {
+			capture(key, path);
 		}
 	}
 
@@ -235,14 +237,14 @@ public final class LibraryLooks {
 	}
 
 	// The preview answers after its next complete frame.
-	private void capture(@NonNull ProjectPath path) {
+	private void capture(@NonNull String key, @NonNull ProjectPath path) {
 		view.requestThumbnail(png -> {
 			if (png == null) {
 				return;
 			}
 			handler.post(() -> {
 				if (!destroyed) {
-					projects.setPreview(path, null, png, problem -> {
+					projects.setPreview(key, path, null, png, problem -> {
 						tell(problem);
 						if (problem == null && !destroyed) {
 							kept.run();

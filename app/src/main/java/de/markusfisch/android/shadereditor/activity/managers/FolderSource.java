@@ -21,6 +21,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.navigation.Face;
 import de.markusfisch.android.shadereditor.navigation.FileActions;
 import de.markusfisch.android.shadereditor.navigation.FileMarks;
 import de.markusfisch.android.shadereditor.navigation.Level;
@@ -66,9 +67,10 @@ final class FolderSource {
 	}
 
 	/**
-	 * What a list shows of the files of a folder besides their names,
-	 * as for the library: their pictures, the file the wallpaper shows,
-	 * and when each was changed. Read off the main thread.
+	 * What a list shows of the files of a folder besides their names
+	 * and when each was changed: the pictures of its shaders that ran,
+	 * and in the library the file the wallpaper shows. Read off the
+	 * main thread.
 	 */
 	interface Looks {
 		/** Return the picture of the file at path, or null. */
@@ -95,7 +97,7 @@ final class FolderSource {
 	private final String key;
 	private final FoldersSource folders;
 	private final Runnable changed;
-	@Nullable
+	@NonNull
 	private Looks looks;
 	// The pictures of the files read, by path, and the wallpaper's file.
 	private final Map<String, byte[]> pictures = new HashMap<>();
@@ -118,15 +120,14 @@ final class FolderSource {
 	 *                is lost
 	 * @param opener  opens its files in the editor
 	 * @param actor   does what the menus of its rows offer
-	 * @param looks   what its rows show besides names, or null for a
-	 *                list of names
+	 * @param looks   what its rows show besides names
 	 * @param changed called when what a level lists changed
 	 */
 	FolderSource(@NonNull Context context, @NonNull ProjectHolds holds,
 			@NonNull Executor listings, @NonNull Handler handler,
 			@NonNull String key, @NonNull FoldersSource folders,
 			@NonNull Opener opener, @NonNull Actor actor,
-			@Nullable Looks looks, @NonNull Runnable changed) {
+			@NonNull Looks looks, @NonNull Runnable changed) {
 		this.looks = looks;
 		this.context = context;
 		this.holds = holds;
@@ -267,19 +268,19 @@ final class FolderSource {
 		changed.run();
 	}
 
-	/** Forgets every folder read, so that each is read again. */
 	/**
-	 * Takes what its rows show besides names, or null for names only,
-	 * when it is known only after the source was made, as the library
-	 * is after a start: what was read is read again, with pictures.
+	 * Takes what its rows show besides names when it is known only
+	 * after the source was made, as the library's wallpaper is after a
+	 * start: what was read is read again.
 	 */
-	void setLooks(@Nullable Looks looks) {
+	void setLooks(@NonNull Looks looks) {
 		if (this.looks != looks) {
 			this.looks = looks;
 			forget();
 		}
 	}
 
+	/** Forgets every folder read, so that each is read again. */
 	void forget() {
 		readings.clear();
 		changed.run();
@@ -323,18 +324,14 @@ final class FolderSource {
 				}
 			}, Reading.SLOW_MILLIS);
 		}
-		// A level that is sorted is sorted whole, then cut into pages.
-		List<Row> rows = reading.rows(level,
+		// A level is sorted whole, then cut into pages.
+		List<Row> rows = dressed(reading.rows(level,
 				context.getString(R.string.nav_show_more),
-				context.getString(R.string.nav_shown_of),
-				looks != null ? order : null);
-		if (looks != null) {
-			rows = dressed(rows);
-		}
+				context.getString(R.string.nav_shown_of), order));
 		return new Listing(title(level),
 				location == null || location.isEmpty() ? null : location,
 				false,
-				looks != null,
+				true,
 				// A single file's folder can be opened to load the rest;
 				// nothing can be created in a folder that is lost.
 				file ? Listing.Bar.OPEN_FOLDER : reading.isLost()
@@ -358,15 +355,13 @@ final class FolderSource {
 				dressed.add(row);
 				continue;
 			}
-			byte[] png = pictures.get(row.key());
 			Set<Row.Mark> marks = EnumSet.noneOf(Row.Mark.class);
 			marks.addAll(row.marks());
 			if (row.key().equals(wallpaper)) {
 				marks.add(Row.Mark.WALLPAPER);
 			}
-			dressed.add(new Row(row.key(), row.kind(), png != null
-					? Row.Picture.png(png)
-					: row.picture(), row.name(),
+			dressed.add(new Row(row.key(), row.kind(),
+					Face.of(row.kind(), pictures.get(row.key())), row.name(),
 					ChangeTimes.describe(context, row.changed(), now),
 					row.changed(), row.enters(), marks, row.actions()));
 		}
@@ -440,26 +435,20 @@ final class FolderSource {
 				boolean changes = listed != null && reachable &&
 						listed.offers(folder).create();
 				Map<String, byte[]> read = new HashMap<>();
-				ProjectPath shown = null;
-				if (looks != null) {
-					for (OpenProject.Item item : items.items()) {
-						byte[] png = item.folder()
-								? null
-								: looks.picture(item.path());
-						if (png != null) {
-							read.put(item.path().toString(), png);
-						}
+				for (OpenProject.Item item : items.items()) {
+					byte[] png = item.folder()
+							? null
+							: looks.picture(item.path());
+					if (png != null) {
+						read.put(item.path().toString(), png);
 					}
-					shown = looks.wallpaper();
 				}
-				ProjectPath wallpaperFile = shown;
+				ProjectPath wallpaperFile = looks.wallpaper();
 				handler.post(() -> {
 					// What was read replaces the folder's pictures: a
 					// file made again under a gone file's name never shows
 					// the gone file's picture.
-					if (looks != null) {
-						forgetPictures(path);
-					}
+					forgetPictures(path);
 					pictures.putAll(read);
 					wallpaper = wallpaperFile != null
 							? wallpaperFile.toString()

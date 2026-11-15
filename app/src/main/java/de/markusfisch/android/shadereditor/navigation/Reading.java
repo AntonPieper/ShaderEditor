@@ -125,11 +125,7 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 					: Row.Kind.TEXT;
 			rows.add(new Row(path != null ? path + "/" + name : name,
 					kind,
-					Row.Picture.of(switch (kind) {
-						case FOLDER -> Row.Picture.Icon.FOLDER;
-						case IMAGE -> Row.Picture.Icon.IMAGE;
-						default -> Row.Picture.Icon.SHADER;
-					}),
+					Face.of(kind, null),
 					name,
 					null,
 					Math.max(0, entry.modified),
@@ -138,8 +134,8 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 					EnumSet.noneOf(Row.Action.class)));
 		}
 		if (visible.size() > shown) {
-			rows.add(new Row("", Row.Kind.MORE, Row.Picture.of(
-					Row.Picture.Icon.SHADER), more,
+			rows.add(new Row("", Row.Kind.MORE, Face.of(Row.Kind.MORE,
+					null), more,
 					String.format(Locale.getDefault(), shownOf, shown,
 							visible.size()), 0, null,
 					EnumSet.noneOf(Row.Mark.class),
