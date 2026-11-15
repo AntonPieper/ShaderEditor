@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -56,11 +57,35 @@ public class PreferencesFragment
 	private ActivityResultLauncher<String> requestReadPermissionLauncher;
 	private ActivityResultLauncher<String> requestWritePermissionLauncher;
 	private DataSource dataSource;
+	// Where the shaders are files: the library is what is exported.
+	@Nullable
+	private LibraryBackup libraryBackup;
 
 	@Override
 	public void onCreate(@Nullable Bundle state) {
-		super.onCreate(state);
 		dataSource = Database.getInstance(requireContext()).getDataSource();
+		// Before the rows are made, which is in super.onCreate().
+		if (getResources().getBoolean(R.bool.project_mode)) {
+			libraryBackup = new LibraryBackup(this, dataSource,
+					new LibraryBackup.Host() {
+						@Override
+						public void importDatabase(@NonNull Uri uri) {
+							Context app = requireContext()
+									.getApplicationContext();
+							runDatabaseOperation(() ->
+											DatabaseImporter.importDatabase(
+													app, uri),
+									R.string.import_failed, true);
+						}
+
+						@Override
+						public void onRunning() {
+							setDatabaseOperationInProgress(
+									databaseOperationInProgress);
+						}
+					});
+		}
+		super.onCreate(state);
 
 		// Register ActivityResultLaunchers
 		pickFileLauncher = registerForActivityResult(
@@ -99,6 +124,14 @@ public class PreferencesFragment
 								R.string.write_access_required);
 					}
 				});
+	}
+
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		if (libraryBackup != null) {
+			libraryBackup.destroy();
+		}
 	}
 
 	@Override
@@ -284,7 +317,15 @@ public class PreferencesFragment
 		}
 		Preference importDatabase = findPreference(Preferences.IMPORT_DATABASE);
 		Preference exportDatabase = findPreference(Preferences.EXPORT_DATABASE);
-		if (importDatabase != null && exportDatabase != null) {
+		if (importDatabase != null && exportDatabase != null &&
+				libraryBackup != null) {
+			// The database's shaders are not what the user has now.
+			PreferenceCategory category = findPreference("import_export");
+			if (category != null && exportToDirectory != null) {
+				category.removePreference(exportToDirectory);
+			}
+			libraryBackup.wire(importDatabase, exportDatabase);
+		} else if (importDatabase != null && exportDatabase != null) {
 			importDatabase.setOnPreferenceClickListener(preference -> {
 				Intent chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
 				// In theory, it should be "application/x-sqlite3"
@@ -393,7 +434,8 @@ public class PreferencesFragment
 		for (String key : new String[]{Preferences.IMPORT_DATABASE, Preferences.EXPORT_DATABASE}) {
 			Preference preference = findPreference(key);
 			if (preference != null) {
-				preference.setEnabled(!inProgress);
+				preference.setEnabled(!inProgress &&
+						!LibraryBackup.running());
 			}
 		}
 	}

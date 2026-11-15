@@ -453,4 +453,22 @@
 	<string name="file_runs_behind_code">Files of a folder run only behind the code. Choose another run mode in Settings.</string>
 	<string name="share_selection">分享</string>
 	<string name="selection_too_large">所选文本过多，无法执行此操作</string>
+	<string name="export_library">Export library</string>
+	<string name="export_library_summary">Save all shaders, textures and folders as one zip file</string>
+	<string name="import_library">Import library</string>
+	<string name="import_library_summary">Add the shaders of a zip file or of an old database backup</string>
+	<string name="library_no_chooser">No app on this device can choose where to save the file.</string>
+	<string name="library_exported">Files exported: %1$d.</string>
+	<string name="library_exported_unmoved">Shaders still in the database, not in this file: %1$d.</string>
+	<string name="library_exported_unsaved">Files with unsaved changes, exported as last saved: %1$d.</string>
+	<string name="library_hidden_left_out">Hidden files left out: %1$d.</string>
+	<string name="library_not_exported">The library was not exported: %1$s</string>
+	<string name="library_imported">Shaders imported: %1$d. Other files: %2$d. Already there: %3$d.</string>
+	<string name="library_imported_renamed">Imported under another name, because the name was taken:%1$s</string>
+	<string name="library_imported_kept">Kept as they are, because your library has them with other content. The imported shaders use yours:%1$s</string>
+	<string name="library_hidden_skipped">Hidden files skipped: %1$d.</string>
+	<string name="library_qualities_not_kept">The quality settings of the imported shaders could not be kept.</string>
+	<string name="library_not_imported">Nothing was imported: %1$s</string>
+	<string name="library_unknown">this file is neither a zip file nor a database backup</string>
+	<string name="library_left">the settings were closed; choose the file again</string>
 </resources>
