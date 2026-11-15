@@ -667,6 +667,41 @@ public final class LibraryScreen implements ShaderScreen {
 						shaderManager.selectShader(id);
 					}
 
+					@Nullable
+					@Override
+					public ProjectPath textOf(@NonNull String key) {
+						return open instanceof ProjectFile file &&
+								key.equals(files.key())
+								? file.getPath()
+								: null;
+					}
+
+					@NonNull
+					@Override
+					public String text() {
+						String text = editorFragment.getText();
+						return text != null ? text : "";
+					}
+
+					// As Add uniform adds a statement: one step to undo.
+					// The caret goes to the sampler's line.
+					@Override
+					public void insertTexture(@NonNull String statement,
+							@NonNull String name) {
+						editorFragment.addUniform(statement);
+						String text = text();
+						int at = text.indexOf("uniform sampler2D " + name + ";");
+						if (at > -1) {
+							int line = 1;
+							for (int i = 0; i < at; ++i) {
+								if (text.charAt(i) == '\n') {
+									++line;
+								}
+							}
+							editorFragment.navigateToLine(line);
+						}
+					}
+
 					// Opened where it is, in the read-only examples;
 					// Save a copy keeps it.
 					@Override

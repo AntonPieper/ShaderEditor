@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What Insert as texture adds, before it is tapped. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+	android:shape="rectangle">
+	<corners android:radius="@dimen/se_corner" />
+	<solid android:color="?attr/colorSurfaceContainerHighest" />
+</shape>
