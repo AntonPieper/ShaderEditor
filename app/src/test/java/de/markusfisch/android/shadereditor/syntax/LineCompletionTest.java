@@ -55,7 +55,7 @@ public class LineCompletionTest {
 	@Test
 	public void leavesOutTheDeclarationBeingTyped() {
 		String text = "float tim";
-		Outline outline = Outline.of(GlslLexer.lex(text), text);
+		GlslKnowledge outline = GlslKnowledge.of(text);
 		assertEquals(new GlslCompletion.Completions(List.of("time"), 3),
 				GlslCompletion.atColumn(LexedLine.of(GLSL, text, false,
 						GlslLexer.TEXT_START, new LineTokens()), 9, 0,
@@ -63,10 +63,10 @@ public class LineCompletionTest {
 	}
 
 	@Test
-	public void anOlderOutlineLeavesOutNoDeclaration() {
+	public void olderKnowledgeLeavesOutNoDeclaration() {
 		String text = "float target;";
 		GlslCompletion.Names names = GlslCompletion.Names.of(
-				Outline.of(GlslLexer.lex(text), text));
+				GlslKnowledge.of(text));
 		// The declaration started at 6, where "ta" starts now.
 		LexedLine line = LexedLine.of(GLSL, "      ta", false,
 				GlslLexer.TEXT_START, new LineTokens());
@@ -86,7 +86,7 @@ public class LineCompletionTest {
 		}
 		String text = sb.toString();
 		GlslCompletion.Names names = GlslCompletion.Names.of(
-				Outline.of(GlslLexer.lex(text), text));
+				GlslKnowledge.of(text));
 		List<String> words = GlslCompletion.atColumn(LexedLine.of(GLSL, "v",
 				false, GlslLexer.TEXT_START, new LineTokens()), 1, 0, names,
 				true, List.of()).words();
@@ -100,7 +100,7 @@ public class LineCompletionTest {
 	public void completesFromTheLinesOfADocument() {
 		String text = "/* a\nb */ fl";
 		Tokens tokens = GlslLexer.lex(text);
-		Outline outline = Outline.of(tokens, text);
+		GlslKnowledge outline = GlslKnowledge.of(text);
 		LexedLine line = new LineStyles(new Document(Text.of(text)), GLSL, 10)
 				.runs(1).line();
 		assertEquals(GlslLexer.BLOCK_COMMENT,
@@ -114,7 +114,7 @@ public class LineCompletionTest {
 	private static void assertEveryOffset(String name, String source) {
 		String text = source.replace("\r\n", "\n").replace('\r', '\n');
 		Tokens tokens = GlslLexer.lex(text);
-		Outline outline = Outline.of(tokens, text);
+		GlslKnowledge outline = GlslKnowledge.of(text);
 		GlslCompletion.Names names = GlslCompletion.Names.of(outline);
 		String[] lines = text.split("\n", -1);
 		LineTokens lineTokens = new LineTokens();

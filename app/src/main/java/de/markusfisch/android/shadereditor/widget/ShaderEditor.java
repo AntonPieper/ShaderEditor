@@ -53,8 +53,8 @@ import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
+import de.markusfisch.android.shadereditor.syntax.GlslKnowledge;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
-import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
 import de.markusfisch.android.shadereditor.view.UndoRedo;
@@ -67,7 +67,7 @@ public class ShaderEditor extends LineNumberEditText {
 			"\\xA0");
 	private static final Tokens NO_TOKENS = GlslLexer.lex("");
 	private static final Analysis NO_ANALYSIS = new Analysis(NO_TOKENS,
-			Outline.of(NO_TOKENS, ""));
+			GlslKnowledge.NONE);
 	private static final List<String> BUILTIN_UNIFORMS = new ArrayList<>();
 
 	static {
@@ -654,7 +654,7 @@ public class ShaderEditor extends LineNumberEditText {
 		}
 		GlslCompletion.Completions completions = GlslCompletion.atOffset(
 				analysis.tokens(), text, getSelectionStart(),
-				analysis.outline(), BUILTIN_UNIFORMS);
+				analysis.knowledge(), BUILTIN_UNIFORMS);
 		listener.onCodeCompletions(completions.words(),
 				completions.position());
 	}
@@ -819,7 +819,8 @@ public class ShaderEditor extends LineNumberEditText {
 		void onTokens(int revision, @NonNull Analysis analysis, @NonNull CharSequence text);
 	}
 
-	record Analysis(@NonNull Tokens tokens, @NonNull Outline outline) {
+	record Analysis(@NonNull Tokens tokens,
+			@NonNull GlslKnowledge knowledge) {
 	}
 
 	/**
@@ -901,9 +902,9 @@ public class ShaderEditor extends LineNumberEditText {
 		@Override
 		public Analysis call() {
 			Tokens tokens = GlslLexer.lex(text);
-			Outline outline = Outline.of(tokens, text);
+			GlslKnowledge knowledge = GlslKnowledge.of(tokens, text);
 			Analysis analysis = new Analysis(
-					outline.colourTypes(tokens, text), outline);
+					knowledge.colourTypes(tokens, text), knowledge);
 			onTokenized.onTokens(revision, analysis, text);
 			return analysis;
 		}

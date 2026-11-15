@@ -42,7 +42,7 @@ public final class GlslCompletion {
 	 * @param tokens the tokens of text
 	 */
 	public static Completions atOffset(Tokens tokens, CharSequence text,
-			int cursor, Outline outline, List<String> extraWords) {
+			int cursor, GlslKnowledge known, List<String> extraWords) {
 		int index = tokenBefore(tokens, cursor);
 		if (index < 0) {
 			return NO_WORD;
@@ -51,7 +51,7 @@ public final class GlslCompletion {
 		}
 		int start = tokens.start(index);
 		return of(text.subSequence(start, cursor).toString(),
-				tokens.inDirective(index), outline, start, extraWords);
+				tokens.inDirective(index), known, start, extraWords);
 	}
 
 	/**
@@ -106,16 +106,16 @@ public final class GlslCompletion {
 	 */
 	public static List<String> withParentheses(List<String> words,
 			Knowledge known) {
-		Outline outline = known instanceof Outline declared
-				? declared
-				: Outline.NONE;
+		GlslKnowledge declared = known instanceof GlslKnowledge glsl
+				? glsl
+				: GlslKnowledge.NONE;
 		List<String> result = new ArrayList<>(words.size());
 		for (String word : words) {
 			// GlslWords styles the gl_ variables as functions.
 			boolean function = !word.startsWith("gl_") &&
 					(GlslWords.style(word, 0, word.length()) ==
 							Style.BUILTIN_FUNCTION ||
-							(outline.isFunction(word) &&
+							(declared.isFunction(word) &&
 									!"main".equals(word)));
 			result.add(function ? word + "(" : word);
 		}
@@ -151,12 +151,12 @@ public final class GlslCompletion {
 
 	/**
 	 * Words that start with prefix, each once: in a directive the directive
-	 * names, then the names the outline declares, then the language words,
+	 * names, then the names the text declares, then the language words,
 	 * then the extra words in their order. A declaration whose name starts
 	 * at wordStart is the word being typed and is left out.
 	 */
 	public static List<String> words(String prefix, boolean inDirective,
-			Outline outline, int wordStart, List<String> extraWords) {
+			GlslKnowledge known, int wordStart, List<String> extraWords) {
 		if (prefix.isEmpty()) {
 			return new ArrayList<>();
 		}
@@ -165,7 +165,7 @@ public final class GlslCompletion {
 			words.addAll(GlslWords.matchingDirectives(prefix));
 		}
 		List<String> names = new ArrayList<>();
-		for (Outline.Declaration declaration : outline.declarations()) {
+		for (Knowledge.Symbol declaration : known.symbols()) {
 			if (declaration.start() != wordStart &&
 					declaration.name().startsWith(prefix)) {
 				names.add(declaration.name());
@@ -183,8 +183,8 @@ public final class GlslCompletion {
 	}
 
 	private static Completions of(String prefix, boolean inDirective,
-			Outline outline, int wordStart, List<String> extraWords) {
-		return of(prefix, words(prefix, inDirective, outline, wordStart,
+			GlslKnowledge known, int wordStart, List<String> extraWords) {
+		return of(prefix, words(prefix, inDirective, known, wordStart,
 				extraWords));
 	}
 
@@ -197,23 +197,23 @@ public final class GlslCompletion {
 	}
 
 	/**
-	 * The names an outline declares, sorted, for completing them without
-	 * looking at every declaration. Immutable; the outline sorted them.
+	 * The names a text declares, sorted, for completing them without
+	 * looking at every declaration. Immutable; its knowledge sorted them.
 	 */
 	public static final class Names {
-		private final Outline outline;
+		private final GlslKnowledge known;
 		// Each name once, sorted, and how many declarations have it.
 		private final String[] names;
 		private final int[] counts;
 
-		private Names(Outline outline, String[] names, int[] counts) {
-			this.outline = outline;
+		private Names(GlslKnowledge known, String[] names, int[] counts) {
+			this.known = known;
 			this.names = names;
 			this.counts = counts;
 		}
 
-		public static Names of(Outline outline) {
-			return new Names(outline, outline.names, outline.counts);
+		public static Names of(GlslKnowledge known) {
+			return new Names(known, known.names, known.counts);
 		}
 
 		// Returns what words returns, but at most MAX_WORDS of them.
@@ -242,12 +242,12 @@ public final class GlslCompletion {
 
 		// Returns the name declared at start, or null.
 		private String declaredAt(int start) {
-			List<Outline.Declaration> declarations = outline.declarations();
+			List<Knowledge.Symbol> declarations = known.symbols();
 			int low = 0;
 			int high = declarations.size() - 1;
 			while (low <= high) {
 				int mid = (low + high) >>> 1;
-				Outline.Declaration declaration = declarations.get(mid);
+				Knowledge.Symbol declaration = declarations.get(mid);
 				if (declaration.start() < start) {
 					low = mid + 1;
 				} else if (declaration.start() > start) {

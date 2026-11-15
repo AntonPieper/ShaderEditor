@@ -277,7 +277,9 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 
 	private static boolean declares(@NonNull Knowledge declarations,
 			@NonNull String name) {
-		return !declarations.at(0, name).isEmpty();
+		// Asked from outside of the text: a parameter of that name, of
+		// a function at its start, is no declaration of the file.
+		return !declarations.at(-1, name).isEmpty();
 	}
 
 	@Nullable

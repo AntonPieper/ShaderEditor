@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.syntax;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -40,26 +41,6 @@ public class GlslDeclarationsTest {
 			}
 			assertTrue(shader.getKey(), found > 0);
 			assertRanges(text, GlslKnowledge.of(text));
-		}
-	}
-
-	// What the outline's scan found, the parser finds, in the same
-	// places; a constant is told from a variable now.
-	@Test
-	public void findsWhatTheOutlineFound() throws IOException {
-		for (Map.Entry<String, String> shader :
-				BundledShaders.read().entrySet()) {
-			String text = shader.getValue().replace("\r\n", "\n");
-			List<String> expected = new ArrayList<>();
-			for (Outline.Declaration d : Outline.of(GlslLexer.lex(text),
-					text).declarations()) {
-				expected.add(d.name() + " " + d.start() + " " + d.end());
-			}
-			List<String> found = new ArrayList<>();
-			for (Symbol s : GlslKnowledge.of(text).symbols()) {
-				found.add(s.name() + " " + s.start() + " " + s.end());
-			}
-			assertEquals(shader.getKey(), expected, found);
 		}
 	}
 
@@ -229,6 +210,13 @@ public class GlslDeclarationsTest {
 		assertEquals(Arrays.asList("float t"), details(knowledge.at(
 				text.indexOf("return"), "t")));
 		assertEquals(Arrays.asList(), details(knowledge.at(40, "t")));
+	}
+
+	@Test
+	public void colourTypesKeepsTokensWithoutTypes() {
+		String text = "float x; vec3 f() { return vec3(x); }";
+		Tokens tokens = GlslLexer.lex(text);
+		assertSame(tokens, GlslKnowledge.of(text).colourTypes(tokens, text));
 	}
 
 	@Test

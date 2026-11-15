@@ -229,7 +229,7 @@ public class GlslCompletionTest {
 				"float disc(vec2 p) { return 0.0; }\n" +
 				"uniform float dim;\n" +
 				"void main() {}\n";
-		Outline outline = Outline.of(GlslLexer.lex(text), text);
+		GlslKnowledge outline = GlslKnowledge.of(text);
 		assertEquals(Arrays.asList("mix(", "max(", "disc(", "dim", "main",
 						"mat2", "Ray", "gl_FragCoord", "{"),
 				GlslCompletion.withParentheses(Arrays.asList("mix", "max",
@@ -246,7 +246,7 @@ public class GlslCompletionTest {
 	private static List<String> words(@NonNull String prefix,
 			boolean inDirective) {
 		return GlslCompletion.words(prefix, inDirective,
-				Outline.of(GlslLexer.lex(""), ""), -1, Collections.emptyList());
+				GlslKnowledge.NONE, -1, Collections.emptyList());
 	}
 
 	/**
@@ -265,7 +265,7 @@ public class GlslCompletionTest {
 		return GlslCompletion.words(
 				text.substring(tokens.start(index), cursor),
 				tokens.inDirective(index),
-				Outline.of(tokens, text),
+				GlslKnowledge.of(text),
 				tokens.start(index),
 				uniforms);
 	}

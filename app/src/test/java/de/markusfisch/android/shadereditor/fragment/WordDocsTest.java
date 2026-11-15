@@ -7,9 +7,8 @@ import org.junit.Test;
 
 import java.util.List;
 
-import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.GlslKnowledge;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
-import de.markusfisch.android.shadereditor.syntax.Outline;
 
 /** What Look up and the row's fix add for the app's uniforms. */
 public class WordDocsTest {
@@ -38,6 +37,12 @@ public class WordDocsTest {
 		String text = "float time;\n";
 		assertNull(WordDocs.undeclaredUniform(List.of(
 						"'time' : undeclared identifier"),
-				Outline.of(GlslLexer.lex(text), text)));
+				GlslKnowledge.of(text)));
+		// A parameter of the first function is no declaration.
+		assertEquals("time", WordDocs.undeclaredUniform(List.of(
+						"'time' : undeclared identifier"),
+				GlslKnowledge.of("float f(float time) { return time; }\n" +
+						"void main() { gl_FragColor = vec4(time); }\n"))
+				.getName());
 	}
 }

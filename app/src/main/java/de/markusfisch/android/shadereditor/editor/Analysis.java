@@ -25,7 +25,7 @@ import de.markusfisch.android.shadereditor.syntax.Syntax;
  */
 public final class Analysis {
 	static final int MAX_SYMBOLS = 10000;
-	static final int MAX_CHARS = 1 << 17;
+	static final int MAX_CHARS = 1 << 19;
 	static final int MAX_LINE_LENGTH = 1 << 16;
 	private static final Pattern UNIFORM_LINE = Pattern.compile(
 			"^([ \t]*uniform.+)$",

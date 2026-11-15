@@ -19,10 +19,9 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 
 import de.markusfisch.android.shadereditor.syntax.BundledShaders;
-import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.GlslKnowledge;
 import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
-import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
 
@@ -60,8 +59,8 @@ public class AnalysisTest {
 			Analysis analysis = Analysis.of(GLSL, document, 0, Analysis.NONE);
 			// The text as the document holds it, with its line ends.
 			text = document.toString();
-			List<Knowledge.Symbol> declarations = Outline.of(
-					GlslLexer.lex(text), text).symbols();
+			List<Knowledge.Symbol> declarations =
+					GlslKnowledge.of(text).symbols();
 			Set<String> typeNames = new HashSet<>();
 			for (Knowledge.Symbol declaration : declarations) {
 				if (declaration.kind() == Knowledge.Kind.TYPE) {
@@ -99,17 +98,39 @@ public class AnalysisTest {
 	}
 
 	@Test
-	public void keepsDeclarationsWhileTheirNamesFitTheBudget() {
+	public void keepsSymbolsWhileTheirNamesFitTheBudget() {
 		int length = 1000;
 		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < 200; ++i) {
+		for (int i = 0; i < 600; ++i) {
 			sb.append("float ").append("n".repeat(length - 3))
 					.append(String.format(Locale.ROOT, "%03d", i))
 					.append(";\n");
 		}
 		Analysis analysis = Analysis.of(GLSL, Text.of(sb), 0, Analysis.NONE);
-		assertEquals(Analysis.MAX_CHARS / length,
+		// A quarter of the characters is for names alone.
+		assertEquals(Analysis.MAX_CHARS / 4 / length,
 				analysis.knowledge().symbols().size());
+	}
+
+	@Test
+	public void keepsEveryNameWhateverTheCommentsSay() {
+		// Six hundred functions, each with a comment of a thousand
+		// characters: more text than is kept, but no name is lost.
+		String comment = "// " + "c".repeat(1000) + "\n";
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 600; ++i) {
+			sb.append(comment).append("float f").append(i)
+					.append("(float x) { return x; }\n");
+		}
+		List<Knowledge.Symbol> symbols = Analysis.of(GLSL, Text.of(sb), 0,
+				Analysis.NONE).knowledge().symbols();
+		assertEquals(600, symbols.size());
+		assertEquals(1000, symbols.get(0).documentation().length());
+		assertEquals("float f0(float x)", symbols.get(0).detail());
+		// Behind the budget a symbol says its name and nothing else.
+		assertEquals("f599", symbols.get(599).name());
+		assertNull(symbols.get(599).documentation());
+		assertEquals("f599", symbols.get(599).detail());
 	}
 
 	@Test
@@ -119,9 +140,12 @@ public class AnalysisTest {
 		assertEquals(2, Analysis.of(GLSL, Text.of(fits), 0, Analysis.NONE)
 				.knowledge().symbols().size());
 		String tooLong = fits + "x";
-		Analysis analysis = Analysis.of(GLSL, Text.of(tooLong), 0,
-				Analysis.NONE);
+		// Nor does it keep what it knew of the text before.
+		Analysis analysis = Analysis.of(GLSL, Text.of(tooLong), 1,
+				Analysis.of(GLSL, Text.of(fits), 0, Analysis.NONE));
+		assertEquals(1, analysis.revision());
 		assertEquals(List.of(), analysis.knowledge().symbols());
+		assertEquals(List.of(), analysis.knowledge().at(-1, "a"));
 		assertEquals(Set.of(), analysis.typeNames());
 		assertEquals(declarations.indexOf("\n"), analysis.uniformLineEnd());
 	}

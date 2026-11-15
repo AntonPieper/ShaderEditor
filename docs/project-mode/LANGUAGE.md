@@ -185,7 +185,7 @@ The editor holds one `Syntax`, chosen where a file is opened from the language o
 | `complete(line, column, lineStart, known, current, extraWords, offer)` | the strip above the keyboard; the words reach the host through `offer`, so there is no result type per language |
 | `indentation()` | `AutoIndent`: the line comment a new line continues, the characters that add a level at the end of a line, and those that open and close one anywhere |
 
-`LineStyles` holds the file's one syntax; `Analysis`, completion and the indentation of `EditCommands` take it from there. The tokens of a line (`LineTokens`, `LexedLine`), the styles (`Style`) and the declarations (`Outline`) are shared by every language. `GlslSyntax` is GLSL's implementation; it hands each call to the classes that existed before (`GlslLexer`, `Outline.builder`, `GlslCompletion`). The characters of a word, for double-tap selection and the completion prefix, are the same for every language today (letters, digits, `_`) and are not part of the seam. A test keeps the generic classes free of GLSL names. A database shader is always GLSL; a file of a folder gets the syntax of its language.
+`LineStyles` holds the file's one syntax; `Analysis`, completion and the indentation of `EditCommands` take it from there. The tokens of a line (`LineTokens`, `LexedLine`), the styles (`Style`) and what a language knows of a text (`Knowledge`, section 8) are shared by every language. `GlslSyntax` is GLSL's implementation; it hands each call to GLSL's own classes (`GlslLexer`, `GlslKnowledge.builder`, `GlslCompletion`). The characters of a word, for double-tap selection and the completion prefix, are the same for every language today (letters, digits, `_`) and are not part of the seam. A test keeps the generic classes free of GLSL names. A database shader is always GLSL; a file of a folder gets the syntax of its language.
 
 **JSON, the second language.** `JsonSyntax` is 150 lines with its checks of numbers and escapes: strings with their escapes, numbers by JSON's grammar, `true`, `false` and `null`, punctuation, and the invalid style for what cannot be JSON, an unterminated string or a bad escape among it. A JSON string holds no line break, so every line starts in the same state and nothing is carried. It completes nothing, collects nothing, and indents after `{` and `[` until they close. Markdown and the shading languages v1 does not run get `PlainSyntax`: no colours, no completions, the indentation of the line before. All three are rows of the one table (SPEC 2.1), the same rows that tell the build what may run; there is no second table from names to languages.
 
@@ -333,7 +333,9 @@ Three points of its shape:
 
 **Half 2, statements and expressions** (later): scopes, the type of every expression, overloads chosen by argument types, usages, rename, members after a `.`.
 
-Both read the text one top-level declaration at a time from the line lexer's tokens, so memory does not grow with the file: what is kept is the declarations, bounded as the outline was (10,000 symbols, a bound on their text).
+Both read the text one top-level declaration at a time from the line lexer's tokens, so memory does not grow with the file: what is kept is the declarations, bounded as the outline was (10,000 symbols, 524,288 characters of their names, texts and comments).
+
+Half 1 as built (`GlslDeclarations`, `GlslKnowledge`), against the scan it replaced, on a desktop JVM with the bundled shaders repeated: 0.46 ms for 1,000 lines (the scan: 0.40), 2.5 ms for 5,000 (2.0), 27 ms for 50,000 (22), of which the line lexer alone is 15. It keeps 39 KB, 192 KB and 1.9 MB (the scan: 5, 84 and 828 KB), because a symbol now carries how it is written, its comment and its parts.
 
 The rules that make it tolerant, each a thing GLSL cannot mean:
 
@@ -450,7 +452,7 @@ Comments and strings are not touched. Before the first change every file's revis
 
 | Part | State |
 | --- | --- |
-| The seam: `Knowledge`, `Syntax.knowledge`, `complete` reading it | Built. GLSL answers from the outline's scan until the parser replaces it |
-| Half 1 of the parser | Not yet |
+| The seam: `Knowledge`, `Syntax.knowledge`, `complete` reading it | Built |
+| Half 1 of the parser | Built; the outline and its scan are gone. Both editors read it: the one release builds ship reads the names it completes and the struct names it colours from it |
 | Files know each other | Not yet |
 | Half 2, usages, rename | Not built |
