@@ -161,6 +161,18 @@ public final class SafProjectFiles implements ProjectFiles {
 	}
 
 	@Override
+	public android.graphics.Bitmap thumbnail(ProjectPath path, int size) {
+		try {
+			Document file = known(segments(path));
+			return file == null || file.folder()
+					? null
+					: resolver.thumbnail(file.id(), size);
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
+	}
+
+	@Override
 	public byte[] head(ProjectPath path, int count) {
 		try {
 			Document file = known(segments(path));

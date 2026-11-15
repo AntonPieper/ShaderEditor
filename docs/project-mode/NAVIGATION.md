@@ -77,7 +77,7 @@ Each is followed by its reason. They are numbered because the comparison refers 
 1. **The picture and the code own the screen; navigation appears when asked for.** With the keyboard up about 30 lines of code remain on a 412 × 915 dp phone (mock-up `r-26-keyboard.png`; the soft keyboard did not appear on the emulator, so this is not measured). A permanent bar or tab row costs three of them, on every screen, for everybody.
 2. **One column, one direction.** Every level is the same list: a tap goes in, the arrow goes out. No tree, because indentation eats a narrow column, targets shrink, and what is expanded becomes state to keep. No second list in a second place, because then "where am I" has two answers; that is what the first attempt did.
 3. **What I am working on is one tap from the open drawer, at any depth.** The trips made most (stories 2 and 5) must not get longer as folders get deeper.
-4. **A shader is known by its picture, a source file by its name and place.** Thumbnails for what has a picture: a shader that has run, an image. Nothing is rendered or decoded in the background just to fill a list.
+4. **A shader is known by its picture, a source file by its name and place.** Thumbnails for what has a picture: a shader that has run, an image, a folder by its default shader. Nothing is rendered to fill a list. An image is its own picture and is read small for the rows on screen.
 5. **Looking changes nothing.** Only a tap on a file changes what is edited. Browsing a folder, the examples or the folder list never stops or starts a shader. Reason: observation 3, and it makes exploring free.
 6. **What runs and what is edited can both be read without opening anything**, and every mark is an icon with a spoken text, not a colour. Reason: story 6 and 7, UX 9.
 7. **A folder is shown as it is, one level per look.** Nothing is scanned or guessed (SPEC 1, UX 3). What the app knows by itself (what runs, what is unsaved, where the errors are, what was open last) comes from memory and is there at once, before storage answers.
@@ -244,7 +244,7 @@ Why the others lose:
 ├ bar ─ New ───────────────────────────────────────────────┤   60 dp
 ```
 
-**A row**: a 40 dp place for a thumbnail (a shader that has one, an image) or an icon (folder, file, image), chosen from a hint, the type the provider reports or the name, and never from the file's bytes (SPEC 2.1: a hint is not the truth; what a file is, is read when it is opened); the name, with its folder in front in dimmer type where the row is not in its folder; an optional second line; marks at the end. 48 dp high, 56 dp with a second line, 44 dp for the files under the running shader.
+**A row**: a 40 dp place for a picture (a shader that has run; an image, read small while its row is shown, with its size in pixels as the second line; a folder, by the picture of its `main.frag`; a place on the top level, by the picture of what runs there) or else an icon (folder, file, image), chosen in one place (`navigation/Face`) from a hint, the type the provider reports or the name, and never from the file's bytes (SPEC 2.1: a hint is not the truth; what a file is, is read when it is opened); the name, with its folder in front in dimmer type where the row is not in its folder; an optional second line; marks at the end. 48 dp high, 56 dp with a second line, 44 dp for the files under the running shader.
 
 **Marks**, in this order at the end of a row, each with a spoken text:
 
