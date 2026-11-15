@@ -1,0 +1,36 @@
+{
+	"Shader": {
+		"ver": "0.1",
+		"info": {
+			"id": "fixture1",
+			"date": "1763164800",
+			"viewed": 0,
+			"name": "Rings",
+			"username": "the tests",
+			"description": "A fixture of ShaderEditor's tests, written for them.",
+			"likes": 0,
+			"published": 3,
+			"flags": 0,
+			"usePreview": 0,
+			"tags": [
+				"test"
+			],
+			"hasliked": 0
+		},
+		"renderpass": [
+			{
+				"inputs": [],
+				"outputs": [
+					{
+						"id": 37,
+						"channel": 0
+					}
+				],
+				"code": "// Rings around the middle, or around the finger while it is down.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\t// iResolution is a vec3 on ShaderToy; z is the pixel's aspect, 1.\n\tvec3 aspect = iResolution / iResolution.y;\n\tvec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;\n\tvec2 m = (2.0 * iMouse.xy - iResolution.xy) / iResolution.y;\n\tfloat d = length(p - (iMouse.z > 0.0 ? m : vec2(0.0)));\n\tfloat rings = 0.5 + 0.5 * cos(24.0 * d - 3.0 * iTime);\n\tfragColor = vec4(rings * vec3(0.9, 0.6, 0.3) * aspect.z, 1.0);\n}\n",
+				"name": "Image",
+				"description": "",
+				"type": "image"
+			}
+		]
+	}
+}
