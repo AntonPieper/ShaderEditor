@@ -1,0 +1,68 @@
+<!-- A pass in the passes sheet: its picture, its file and, only when it
+	says something, a second line; the running mark at the end. The
+	picture stays at the top when the row grows. Margins are set by the
+	sheet: the picture's left follows the lanes of the rail. -->
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:layout_marginEnd="8dp"
+	android:background="@drawable/pass_row"
+	android:minHeight="56dp"
+	android:orientation="horizontal"
+	android:paddingHorizontal="8dp"
+	android:paddingVertical="6dp">
+
+	<FrameLayout
+		android:layout_width="40dp"
+		android:layout_height="40dp"
+		android:layout_marginTop="2dp">
+
+		<com.google.android.material.imageview.ShapeableImageView
+			android:id="@+id/pass_picture"
+			android:layout_width="40dp"
+			android:layout_height="40dp"
+			android:layout_gravity="center"
+			android:importantForAccessibility="no"
+			android:scaleType="centerCrop"
+			app:shapeAppearance="?attr/shapeAppearanceCornerSmall" />
+	</FrameLayout>
+
+	<LinearLayout
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="16dp"
+		android:layout_weight="1"
+		android:gravity="center_vertical"
+		android:minHeight="44dp"
+		android:orientation="vertical">
+
+		<TextView
+			android:id="@+id/pass_name"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:ellipsize="middle"
+			android:singleLine="true"
+			android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+		<TextView
+			android:id="@+id/pass_line"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:fontFeatureSettings="tnum"
+			android:textAppearance="?attr/textAppearanceBodyMedium"
+			android:textColor="?attr/colorOnSurfaceVariant"
+			android:visibility="gone" />
+	</LinearLayout>
+
+	<ImageView
+		android:id="@+id/pass_runs"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
+		android:layout_marginTop="10dp"
+		android:importantForAccessibility="no"
+		android:padding="4dp"
+		android:src="@drawable/ic_play_arrow_filled"
+		app:tint="?attr/colorPrimary" />
+</LinearLayout>

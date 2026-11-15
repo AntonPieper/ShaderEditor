@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A row of the passes sheet: the shown pass is filled, as a selected
+	row is; a ripple on every row. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+	android:color="?attr/colorControlHighlight">
+	<item android:id="@android:id/mask">
+		<shape android:shape="rectangle">
+			<corners android:radius="@dimen/se_corner" />
+			<solid android:color="@android:color/white" />
+		</shape>
+	</item>
+	<item>
+		<selector>
+			<item android:state_activated="true">
+				<shape android:shape="rectangle">
+					<corners android:radius="@dimen/se_corner" />
+					<solid android:color="?attr/colorSecondaryContainer" />
+				</shape>
+			</item>
+		</selector>
+	</item>
+</ripple>
