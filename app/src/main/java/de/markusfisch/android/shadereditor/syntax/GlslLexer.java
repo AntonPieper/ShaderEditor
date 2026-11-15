@@ -237,6 +237,10 @@ public final class GlslLexer {
 					++end;
 				} while (end < length &&
 						Character.digit(text.charAt(end), 16) != -1);
+				c = charAt(end);
+				if (end > start + 2 && (c == 'u' || c == 'U')) {
+					++end;
+				}
 				return code(start, end, Style.NUMBER, OTHER);
 			}
 		}
