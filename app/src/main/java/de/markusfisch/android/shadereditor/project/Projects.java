@@ -562,6 +562,17 @@ public final class Projects {
 	}
 
 	/**
+	 * Keep the most frames a second for the file of the library at
+	 * path, none for 0, on the queue; done gets why it is not kept, or
+	 * null. The editor and the wallpaper draw it at most that fast.
+	 */
+	public void setFrameRateLimit(ProjectPath path, int limit,
+			Callback<String> done) {
+		change(() -> library().setFrameRateLimit(path, limit,
+				this::relocated), done);
+	}
+
+	/**
 	 * Keep path, a file in the library's root, as the shader new ones
 	 * are copied from, none when null, on the queue; done gets why it
 	 * is not kept, or null.
@@ -635,8 +646,19 @@ public final class Projects {
 	public void setWallpaper(Preparation preparation, ProjectPath entry,
 			float quality, ProjectPath origin, String source,
 			Callback<String> done) {
+		setWallpaper(preparation, entry, quality, 0, origin, source, done);
+	}
+
+	/**
+	 * As {@link #setWallpaper(Preparation, ProjectPath, float,
+	 * ProjectPath, String, Callback)}, drawn at most frameRateLimit
+	 * frames a second, as fast as the screen for 0.
+	 */
+	public void setWallpaper(Preparation preparation, ProjectPath entry,
+			float quality, int frameRateLimit, ProjectPath origin,
+			String source, Callback<String> done) {
 		change(() -> wallpaper().install(preparation, entry, quality,
-				origin, source), done);
+				frameRateLimit, origin, source), done);
 	}
 
 	/**

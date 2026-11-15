@@ -137,6 +137,14 @@ public class ShaderViewManager {
 	}
 
 	/**
+	 * Draw at most limit frames a second, as fast as the screen for 0,
+	 * as the shader's settings keep it. Main thread.
+	 */
+	public void setFrameRateLimit(int limit) {
+		shaderView.setFrameRateLimit(limit);
+	}
+
+	/**
 	 * Pause the picture at the frame drawn last, or let it run on from
 	 * there. Paused, nothing is drawn but what is asked for.
 	 */

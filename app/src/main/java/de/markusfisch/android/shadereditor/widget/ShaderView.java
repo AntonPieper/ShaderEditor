@@ -3,8 +3,12 @@ package de.markusfisch.android.shadereditor.widget;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
+import android.os.Build;
 import android.util.AttributeSet;
+import android.view.Choreographer;
 import android.view.MotionEvent;
+import android.view.Surface;
+import android.view.SurfaceHolder;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -77,6 +81,19 @@ public class ShaderView extends GLSurfaceView {
 	// paused, which draws only on demand.
 	private int requestedRenderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY;
 	private boolean paused;
+	// The most frames a second, 0 for as fast as the screen, and whether
+	// the view is resumed, which a limit's frames wait for.
+	private int frameRateLimit;
+	private boolean resumed = true;
+	private boolean pacing;
+	// Asks for the next frame on the first display frame after a frame
+	// of the limit is over: the GL thread draws only then.
+	private final Choreographer.FrameCallback pace = frameTimeNanos -> {
+		if (pacing) {
+			requestRender();
+			schedulePace(frameTimeNanos);
+		}
+	};
 
 	public ShaderView(Context context, int renderMode) {
 		super(context);
@@ -100,6 +117,32 @@ public class ShaderView extends GLSurfaceView {
 		queueEvent(engine::answerThumbnails);
 		super.onPause();
 		engine.onContextLost();
+		resumed = false;
+		applyRenderMode();
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		resumed = true;
+		applyRenderMode();
+	}
+
+	// Draws at most limit frames a second, as fast as the screen for 0:
+	// the view then draws on demand, asked from the display's frame
+	// callback once a frame of the limit is over, and on Android 11 and
+	// later tells its surface the rate, so a display that can go slower
+	// may. timeDelta and frameRate say what really happens. Main thread.
+	public void setFrameRateLimit(int limit) {
+		frameRateLimit = Math.max(0, limit);
+		applyRenderMode();
+		tellFrameRate();
+	}
+
+	@Override
+	public void surfaceCreated(@NonNull SurfaceHolder holder) {
+		super.surfaceCreated(holder);
+		tellFrameRate();
 	}
 
 	@Override
@@ -202,9 +245,45 @@ public class ShaderView extends GLSurfaceView {
 	}
 
 	private void applyRenderMode() {
-		super.setRenderMode(paused
+		boolean paced = !paused && frameRateLimit > 0 &&
+				requestedRenderMode == GLSurfaceView.RENDERMODE_CONTINUOUSLY;
+		super.setRenderMode(paused || paced
 				? GLSurfaceView.RENDERMODE_WHEN_DIRTY
 				: requestedRenderMode);
+		boolean pace = paced && resumed;
+		if (pace != pacing) {
+			pacing = pace;
+			if (pace) {
+				requestRender();
+				schedulePace(System.nanoTime());
+			} else {
+				Choreographer.getInstance().removeFrameCallback(this.pace);
+			}
+		}
+	}
+
+	// The next frame of the limit, on the first display frame after one
+	// frame of the limit from the display frame at frameTimeNanos: timed
+	// from that display frame, not from when its callback ran, so a late
+	// callback does not make the next frame late; a quarter of a 60 Hz
+	// frame early, as display frames do not come exactly evenly.
+	private void schedulePace(long frameTimeNanos) {
+		long due = frameTimeNanos + 1000000000L / frameRateLimit - 4000000L;
+		Choreographer.getInstance().postFrameCallbackDelayed(pace,
+				Math.max(0, (due - System.nanoTime()) / 1000000L));
+	}
+
+	// The rate the surface is drawn at, so a display that can go slower
+	// may: 0 for no preference.
+	private void tellFrameRate() {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+			return;
+		}
+		Surface surface = getHolder().getSurface();
+		if (surface != null && surface.isValid()) {
+			surface.setFrameRate(frameRateLimit,
+					Surface.FRAME_RATE_COMPATIBILITY_DEFAULT);
+		}
 	}
 
 	// Maps the pass of fit as it says while it is on the screen, and its

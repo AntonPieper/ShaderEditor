@@ -79,6 +79,23 @@ public class WallpaperSnapshotsTest {
 		assertNotNull(shown.diagnostics().toString(), shown.plan());
 	}
 
+	// The most frames a second go with the snapshot, as its quality.
+	@Test
+	public void theFrameRateLimitIsInstalledWithTheShader() throws IOException {
+		Library library = library();
+		library.move(database(), "Untitled", new LibraryMove.Chosen(0, 0), null, null);
+		WallpaperSnapshots snapshots = snapshots();
+		assertNull(snapshots.install(prepare(library, "Plasma.frag"),
+				path("Plasma.frag"), .5f, 15, path("Plasma.frag"), null));
+		WallpaperSnapshots.Snapshot snapshot = snapshots().current();
+		assertEquals(15, snapshot.frameRateLimit());
+		assertEquals(.5f, snapshot.quality(), 0f);
+		// Installed without one, it has none.
+		assertNull(snapshots.install(prepare(library, "Plasma.frag"),
+				path("Plasma.frag"), 1f, path("Plasma.frag")));
+		assertEquals(0, snapshots().current().frameRateLimit());
+	}
+
 	// What runs while a number is tuned is not what the files say.
 	@Test
 	public void aTemporaryBuildIsNeverInstalled() throws IOException {

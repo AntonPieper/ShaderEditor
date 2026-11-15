@@ -9,8 +9,8 @@ import java.util.Map;
 
 /**
  * What the app keeps about the files of the library that a file has
- * no place for: the quality a shader is drawn at, and the shader new
- * ones are copied from. One small file, replaced whole in one rename.
+ * no place for: the quality a shader is drawn at, the most frames a
+ * second it is drawn at, and the shader new ones are copied from. One small file, replaced whole in one rename.
  * <p>
  * Anyone may read it, off the main thread; a file that cannot be read
  * then shows as the defaults. Only the queue the projects work on
@@ -19,6 +19,7 @@ import java.util.Map;
  */
 public final class LibrarySettings {
 	private static final String QUALITY = "quality";
+	private static final String LIMIT = "limit";
 	private static final String TEMPLATE = "template";
 
 	private final File file;
@@ -51,6 +52,21 @@ public final class LibrarySettings {
 		}
 	}
 
+	/**
+	 * Return the most frames a second the shader at path is drawn at,
+	 * 0 when none is kept: as fast as the screen.
+	 */
+	public int frameRateLimit(ProjectPath path) {
+		ProjectPath stored = following != null
+				? following.stored(path)
+				: path;
+		try {
+			return stored != null ? read().limit(stored) : 0;
+		} catch (IOException e) {
+			return 0;
+		}
+	}
+
 	/** Return the shader new ones are copied from, or null for none. */
 	public ProjectPath template() {
 		try {
@@ -66,7 +82,13 @@ public final class LibrarySettings {
 	/** What the file holds. */
 	static final class State {
 		private final Map<String, Float> qualities = new LinkedHashMap<>();
+		private final Map<String, Integer> limits = new LinkedHashMap<>();
 		private String template;
+
+		int limit(ProjectPath path) {
+			Integer limit = limits.get(path.toString());
+			return limit != null ? limit : 0;
+		}
 
 		float quality(ProjectPath path) {
 			Float quality = qualities.get(path.toString());
@@ -121,6 +143,15 @@ public final class LibrarySettings {
 				} catch (NumberFormatException e) {
 					// A line nothing wrote; the default applies.
 				}
+			} else if (fields.length == 3 && fields[0].equals(LIMIT)) {
+				try {
+					int limit = Integer.parseInt(fields[1]);
+					if (limit > 0) {
+						state.limits.put(fields[2], limit);
+					}
+				} catch (NumberFormatException e) {
+					// A line nothing wrote; the default applies.
+				}
 			}
 		}
 		return state;
@@ -138,6 +169,25 @@ public final class LibrarySettings {
 			state.qualities.remove(path.toString());
 		} else {
 			state.qualities.put(path.toString(), quality);
+		}
+		return write(state);
+	}
+
+	/**
+	 * Keep the most frames a second for the shader at path, none for 0
+	 * or less. Return whether it is kept.
+	 */
+	synchronized boolean setFrameRateLimit(ProjectPath path, int limit) {
+		State state;
+		try {
+			state = read();
+		} catch (IOException e) {
+			return false;
+		}
+		if (limit > 0) {
+			state.limits.put(path.toString(), limit);
+		} else {
+			state.limits.remove(path.toString());
 		}
 		return write(state);
 	}
@@ -197,21 +247,8 @@ public final class LibrarySettings {
 			return false;
 		}
 		State next = new State();
-		Map<String, Float> followed = new LinkedHashMap<>();
-		boolean changed = false;
-		for (Map.Entry<String, Float> quality :
-				state.qualities.entrySet()) {
-			String now = followed(quality.getKey(), move);
-			if (quality.getKey().equals(now)) {
-				next.qualities.put(now, quality.getValue());
-			} else if (now != null) {
-				followed.put(now, quality.getValue());
-			}
-			changed |= !quality.getKey().equals(now);
-		}
-		// What followed the file is what is kept for where it is
-		// now, whatever was left there of a file that is gone.
-		next.qualities.putAll(followed);
+		boolean changed = follow(state.qualities, next.qualities, move);
+		changed |= follow(state.limits, next.limits, move);
 		String template = state.template != null
 				? followed(state.template, move)
 				: null;
@@ -222,6 +259,27 @@ public final class LibrarySettings {
 		changed |= state.template != null &&
 				!state.template.equals(next.template);
 		return !changed || write(next);
+	}
+
+	// Puts what from keeps by path into to, by where each path is after
+	// move. Return whether a path moved or went.
+	private static <V> boolean follow(Map<String, V> from, Map<String, V> to,
+			Journal.Move move) {
+		Map<String, V> followed = new LinkedHashMap<>();
+		boolean changed = false;
+		for (Map.Entry<String, V> kept : from.entrySet()) {
+			String now = followed(kept.getKey(), move);
+			if (kept.getKey().equals(now)) {
+				to.put(now, kept.getValue());
+			} else if (now != null) {
+				followed.put(now, kept.getValue());
+			}
+			changed |= !kept.getKey().equals(now);
+		}
+		// What followed the file is what is kept for where it is
+		// now, whatever was left there of a file that is gone.
+		to.putAll(followed);
+		return changed;
 	}
 
 	// Where path is after move, null when it was deleted.
@@ -245,6 +303,10 @@ public final class LibrarySettings {
 					.append(String.format(Locale.ROOT, "%s",
 							quality.getValue()))
 					.append('\t').append(quality.getKey()).append('\n');
+		}
+		for (Map.Entry<String, Integer> limit : state.limits.entrySet()) {
+			sb.append(LIMIT).append('\t').append(limit.getValue())
+					.append('\t').append(limit.getKey()).append('\n');
 		}
 		return gate.open() && StateFile.replace(file,
 				sb.toString().getBytes(StandardCharsets.UTF_8));

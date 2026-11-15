@@ -30,6 +30,36 @@ public class LibrarySettingsTest {
 		assertEquals(1f, settings().quality(path("Plasma.frag")), 0f);
 	}
 
+	// The most frames a second, kept with the shader like its quality.
+	@Test
+	public void keepsTheFrameRateLimitByPathAndNoneByDefault() {
+		LibrarySettings settings = settings();
+		assertEquals(0, settings.frameRateLimit(path("Life.frag")));
+		assertTrue(settings.setFrameRateLimit(path("Life.frag"), 5));
+		assertTrue(settings.setQuality(path("Life.frag"), .5f));
+		assertTrue(settings.setFrameRateLimit(path("a/Calm.frag"), 15));
+		LibrarySettings again = settings();
+		assertEquals(5, again.frameRateLimit(path("Life.frag")));
+		assertEquals(15, again.frameRateLimit(path("a/Calm.frag")));
+		assertEquals(.5f, again.quality(path("Life.frag")), 0f);
+		assertTrue(again.setFrameRateLimit(path("Life.frag"), 0));
+		assertEquals(0, settings().frameRateLimit(path("Life.frag")));
+		assertEquals(.5f, settings().quality(path("Life.frag")), 0f);
+	}
+
+	@Test
+	public void theFrameRateLimitFollowsARenameAndGoesWithADeletion() {
+		LibrarySettings settings = settings();
+		settings.setFrameRateLimit(path("old/Life.frag"), 5);
+		settings.setFrameRateLimit(path("gone.frag"), 30);
+		assertTrue(settings.follow(new Journal.Move(path("old"), path("new"))));
+		assertEquals(5, settings.frameRateLimit(path("new/Life.frag")));
+		assertEquals(0, settings.frameRateLimit(path("old/Life.frag")));
+		assertTrue(settings.follow(new Journal.Move(path("gone.frag"), null)));
+		assertEquals(0, settings.frameRateLimit(path("gone.frag")));
+		assertEquals(5, settings().frameRateLimit(path("new/Life.frag")));
+	}
+
 	@Test
 	public void keepsTheShaderNewOnesAreCopiedFrom() {
 		LibrarySettings settings = settings();
@@ -81,10 +111,13 @@ public class LibrarySettingsTest {
 		File file = new File(temp.getRoot(), "library/settings");
 		assertTrue(file.getParentFile().mkdirs());
 		try (FileOutputStream out = new FileOutputStream(file)) {
-			out.write("quality\tfast\tA.frag\n\u0000\nnonsense".getBytes());
+			out.write(("quality\tfast\tA.frag\n\u0000\nnonsense\n" +
+					"limit\tslow\tA.frag\nlimit\t-5\tB.frag\n").getBytes());
 		}
 		LibrarySettings settings = settings();
 		assertEquals(1f, settings.quality(path("A.frag")), 0f);
+		assertEquals(0, settings.frameRateLimit(path("A.frag")));
+		assertEquals(0, settings.frameRateLimit(path("B.frag")));
 		assertNull(settings.template());
 		assertTrue(settings.setQuality(path("A.frag"), .5f));
 		assertEquals(.5f, settings().quality(path("A.frag")), 0f);
