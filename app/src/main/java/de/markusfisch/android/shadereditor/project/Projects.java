@@ -437,18 +437,12 @@ public final class Projects {
 	}
 
 	/**
-	 * Return the pictures of the files of session id: the library's
-	 * where id is the library's session, else those kept beside the
-	 * session; null for an id that names none. Off the main thread.
+	 * Return the pictures of the files of session id, null for an id
+	 * that names none. Off the main thread.
 	 */
 	public Previews previews(String id) {
-		Locator locator = sessions.locator(id);
-		if (locator == null) {
-			return null;
-		}
-		return locator.equals(libraryLocator())
-				? library().previews()
-				: sessions.previews(id);
+		PictureStore store = store(id);
+		return store != null ? store.previews() : null;
 	}
 
 	/**
@@ -460,18 +454,24 @@ public final class Projects {
 	public void setPreview(String id, ProjectPath path, String revision,
 			byte[] png, Callback<String> done) {
 		change(() -> {
-			Locator locator = sessions.locator(id);
-			if (locator == null) {
-				return "the folder is not known";
-			} else if (locator.equals(libraryLocator())) {
-				return library().setPreview(path, revision, png,
-						this::relocated);
-			}
-			Previews previews = sessions.previews(id);
-			return previews != null && previews.put(path, revision, png)
-					? null
-					: "the picture cannot be kept";
+			PictureStore store = store(id);
+			return store != null
+					? store.put(path, revision, png)
+					: "the folder is not known";
 		}, done);
+	}
+
+	// What is kept by path about the files of session id: the one place
+	// that knows the library's store from any other folder's, which are
+	// of the same kind; null for an id that names no session.
+	private PictureStore store(String id) {
+		Locator locator = sessions.locator(id);
+		if (locator == null) {
+			return null;
+		}
+		return locator.equals(libraryLocator())
+				? library().store(this::relocated)
+				: sessions.pictures(id);
 	}
 
 	/**
@@ -657,11 +657,8 @@ public final class Projects {
 					// its files.
 					@Override
 					public FileTexts.Kept kept(String id, Locator locator) {
-						if (locator.equals(libraryLocator())) {
-							return library().kept();
-						}
-						Previews previews = sessions.previews(id);
-						return previews != null ? previews::follow : null;
+						PictureStore store = store(id);
+						return store != null ? store.kept() : null;
 					}
 				},
 				project -> {

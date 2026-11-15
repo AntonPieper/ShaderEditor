@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -16,6 +17,7 @@ import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.Samples;
+import de.markusfisch.android.shadereditor.project.PictureStore;
 import de.markusfisch.android.shadereditor.project.Previews;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
@@ -23,8 +25,9 @@ import de.markusfisch.android.shadereditor.project.Projects;
 /**
  * The pictures that come with the examples, put into the examples'
  * store of pictures by path, as any folder keeps the pictures of its
- * shaders: only where it has none yet, so a picture taken when an
- * example ran on this phone stays. The drawer then shows the examples
+ * shaders, marked as bundled: only where it has none yet, so a picture
+ * taken when an example ran on this phone stays, and a run replaces a
+ * bundled one. The drawer then shows the examples
  * as any folder, and knows nothing of them.
  */
 final class ExamplePictures {
@@ -52,11 +55,18 @@ final class ExamplePictures {
 				for (Samples.Sample sample : Samples.ALL) {
 					ProjectPath path = ProjectPath.parse(sample.path())
 							.value();
-					if (path == null || previews.get(path) != null) {
+					Previews.Picture stored = path != null
+							? previews.get(path)
+							: null;
+					if (path == null || (stored != null && PictureStore
+							.BUNDLED.equals(stored.revision()))) {
 						continue;
 					}
 					byte[] picture = read(app, sample.thumbId());
-					if (picture != null) {
+					// A capture stays; the bundled picture, kept before it
+					// was marked so, is marked now.
+					if (picture != null && (stored == null ||
+							Arrays.equals(stored.png(), picture))) {
 						missing.put(path, picture);
 					}
 				}
@@ -64,8 +74,11 @@ final class ExamplePictures {
 				int[] left = {missing.size()};
 				for (Map.Entry<ProjectPath, byte[]> picture :
 						missing.entrySet()) {
-					projects.setPreview(key, picture.getKey(), null,
-							picture.getValue(), problem -> {
+					// Marked as bundled: a capture of the example as it
+					// runs here replaces it.
+					projects.setPreview(key, picture.getKey(),
+							PictureStore.BUNDLED, picture.getValue(),
+							problem -> {
 								if (--left[0] == 0) {
 									main.post(kept);
 								}

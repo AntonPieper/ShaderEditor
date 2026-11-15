@@ -164,8 +164,19 @@ public final class Library {
 	}
 
 	public Previews previews() {
-		return new Previews(new File(state(), "previews"), following(),
-				this::settled);
+		return store(null).previews();
+	}
+
+	/**
+	 * What is kept by path about the library's files: its pictures and
+	 * its settings, which follow its renames together; nothing is
+	 * written to it before a redo begun is finished with relocation.
+	 */
+	PictureStore store(Relocation relocation) {
+		return new PictureStore(state(), this::settled,
+				() -> enter(relocation), List.of(move -> new LibrarySettings(
+				new File(state(), "settings"), null, this::settled)
+				.follow(move)));
 	}
 
 	/**
@@ -205,26 +216,7 @@ public final class Library {
 	 * or deletes one: the settings and the pictures kept by path.
 	 */
 	FileTexts.Kept kept() {
-		// Those that could not even be noted, for as long as the
-		// project is open.
-		List<Journal.Move> unnoted = new ArrayList<>();
-		follow();
-		return move -> {
-			synchronized (unnoted) {
-				unnoted.add(move);
-				Following following = following();
-				while (!unnoted.isEmpty() &&
-						following.add(unnoted.get(0))) {
-					unnoted.remove(0);
-				}
-				if (!unnoted.isEmpty()) {
-					return false;
-				}
-			}
-			// Noted, it is not lost when it cannot follow now.
-			follow();
-			return true;
-		};
+		return store(null).kept();
 	}
 
 	/**
@@ -233,24 +225,7 @@ public final class Library {
 	 * left to follow.
 	 */
 	boolean follow() {
-		Following following = following();
-		List<Journal.Move> noted;
-		try {
-			noted = following.read();
-		} catch (IOException e) {
-			return false;
-		}
-		LibrarySettings settings = new LibrarySettings(
-				new File(state(), "settings"), null, this::settled);
-		Previews previews = new Previews(new File(state(), "previews"),
-				null, this::settled);
-		for (Journal.Move move : noted) {
-			if (!settings.follow(move) || !previews.follow(move) ||
-					!following.done(move)) {
-				return false;
-			}
-		}
-		return true;
+		return store(null).follow();
 	}
 
 	private Following following() {
@@ -297,10 +272,7 @@ public final class Library {
 	 */
 	String setPreview(ProjectPath path, String revision, byte[] png,
 			Relocation relocation) {
-		String refused = enter(relocation);
-		return refused != null ? refused
-				: previews().put(path, revision, png) ? null
-				: "the picture cannot be kept";
+		return store(relocation).put(path, revision, png);
 	}
 
 	/**
