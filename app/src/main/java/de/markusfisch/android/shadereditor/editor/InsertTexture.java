@@ -94,7 +94,12 @@ public final class InsertTexture {
 		/** The shader in the editor cannot be changed. */
 		READ_ONLY,
 		/** The shader in the editor reads the image already. */
-		READS_ALREADY
+		READS_ALREADY,
+		/**
+		 * The editor shows another file than when the offer was made,
+		 * as after an import that opened its shader.
+		 */
+		ANOTHER_FILE
 	}
 
 	private InsertTexture() {
@@ -125,6 +130,20 @@ public final class InsertTexture {
 			return Offer.READS_ALREADY;
 		}
 		return Offer.OFFERED;
+	}
+
+	/**
+	 * Whether the lines offered for opened may be added when Insert is
+	 * pressed, to now, the file in the editor then: only to the same
+	 * file, and only where the rule still offers them, for its text now.
+	 */
+	public static Offer atInsert(Target opened, Target now,
+			ProjectPath image) {
+		if (opened == null || now == null ||
+				!opened.path().equals(now.path())) {
+			return Offer.ANOTHER_FILE;
+		}
+		return offer(now, image);
 	}
 
 	/**

@@ -14,6 +14,7 @@ import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.widget.ImageSheet;
+import de.markusfisch.android.shadereditor.widget.Message;
 
 /**
  * The sheet of an image of a folder: what it looks like, whether the
@@ -108,6 +109,9 @@ final class ImageSheets {
 			case READS_ALREADY -> activity.getString(
 					R.string.nav_insert_reads_already,
 					edited.path().getFileName());
+			// Not when the sheet opens: then the file is the one shown.
+			case ANOTHER_FILE -> activity.getString(
+					R.string.nav_insert_where);
 		};
 		// Where Rename and Delete are not offered, why: its folder
 		// cannot be changed, or was not read yet, as for a file under
@@ -122,13 +126,30 @@ final class ImageSheets {
 		ImageSheet shown = new ImageSheet(activity, row.name(), where,
 				lines != null ? edited.path().getFileName() : null, says,
 				noChanges, new ImageSheet.Listener() {
+					// Into the file shown now, by the rule for its text
+					// now: the editor may show another file than when
+					// the sheet opened, as after an import.
 					@Override
 					public void onInsert() {
-						if (lines != null) {
-							editor.insertTexture(lines.statement(),
-									lines.name());
-							inserted.run();
+						InsertTexture.Target now = editor.edited(key);
+						InsertTexture.Offer still = InsertTexture.atInsert(
+								edited, now, path);
+						if (still != InsertTexture.Offer.OFFERED) {
+							Message.show(activity, still ==
+									InsertTexture.Offer.ANOTHER_FILE
+									? activity.getString(
+											R.string.nav_insert_another_file)
+									: activity.getString(
+											R.string.nav_insert_not_now,
+											now.path().getFileName()));
+							return;
 						}
+						InsertTexture.Lines added = InsertTexture.of(
+								now.text(), now.path().toString(),
+								path.toString());
+						editor.insertTexture(added.statement(),
+								added.name());
+						inserted.run();
 					}
 
 					@Override
