@@ -28,7 +28,8 @@ import de.markusfisch.android.shadereditor.widget.PassesSheet;
 import de.markusfisch.android.shadereditor.widget.QualityChip;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
-public class ShaderViewManager implements PassesSheet.Engine {
+public class ShaderViewManager implements PassesSheet.Engine,
+		ProjectFileManager.Engine {
 	// A frame rate as the chip shows it.
 	private static final Pattern FPS = Pattern.compile("(\\d+) fps");
 
@@ -125,6 +126,7 @@ public class ShaderViewManager implements PassesSheet.Engine {
 	 * tuned number of the text, and hears whether the build draws. The
 	 * quality stays as it is.
 	 */
+	@Override
 	public void continuePlan(@NonNull Preparation preparation, float quality,
 			@NonNull Object picture, @Nullable Tuning tuning) {
 		shaderView.continuePlan(preparation, quality, picture, tuning);
@@ -185,6 +187,7 @@ public class ShaderViewManager implements PassesSheet.Engine {
 	}
 
 	/** Show the value tuning has now with the next frame. */
+	@Override
 	public void applyTuning() {
 		shaderView.applyTuning();
 	}

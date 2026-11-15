@@ -30,4 +30,6 @@
 	<color name="se_error">#ff7b8a</color>
 	<!-- The bars over the picture: se_surface at 80 % -->
 	<color name="se_level_bar">#cc121316</color>
+	<!-- A chip over a bar: white at 14 % (STYLE 7, 11) -->
+	<color name="se_chip">#24ffffff</color>
 </resources>

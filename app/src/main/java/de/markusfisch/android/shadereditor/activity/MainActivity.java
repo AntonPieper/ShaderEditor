@@ -139,10 +139,15 @@ public class MainActivity extends AppCompatActivity {
 
 		editorFragment.setOnEditPausedListener(text ->
 				screen.onEditPaused(text));
-		editorFragment.setOnTextModifiedListener(() ->
-				screen.open().onTextModified());
+		editorFragment.setOnTextModifiedListener(() -> {
+			screen.onTextModified();
+			screen.open().onTextModified();
+		});
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
 		editorFragment.setOnSignatureListener(extraKeysManager::setSignature);
+		// Only the new editor in project mode offers it.
+		editorFragment.setOnTunableListener(number ->
+				extraKeysManager.setTunable(number, () -> screen.tune()));
 	}
 
 	@Override

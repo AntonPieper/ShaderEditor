@@ -55,6 +55,10 @@ public final class TunedPlace {
 	private final boolean afterBinary;
 	@Nullable
 	private Vector vector;
+	// The line it is in, and where that starts in the text.
+	@NonNull
+	private String line = "";
+	private int lineStart;
 
 	private TunedPlace(int signStart, int start, int end,
 			@NonNull String literal, @NonNull Tuning.Type type,
@@ -86,6 +90,16 @@ public final class TunedPlace {
 			return null;
 		}
 		place.vector = vector(text, tokens, index);
+		int lineStart = place.signStart;
+		while (lineStart > 0 && !isLineEnd(text.charAt(lineStart - 1))) {
+			--lineStart;
+		}
+		int lineEnd = place.end;
+		while (lineEnd < text.length() && !isLineEnd(text.charAt(lineEnd))) {
+			++lineEnd;
+		}
+		place.lineStart = lineStart;
+		place.line = text.subSequence(lineStart, lineEnd).toString();
 		return place;
 	}
 
@@ -96,6 +110,17 @@ public final class TunedPlace {
 	 */
 	public static boolean isNumberAt(@NonNull Tokens tokens, int offset) {
 		return numberAt(tokens, offset) > -1;
+	}
+
+	/** The line of text it is in. */
+	@NonNull
+	public String line() {
+		return line;
+	}
+
+	/** Where its line starts in the text. */
+	public int lineStart() {
+		return lineStart;
 	}
 
 	/** The vector constructor it is a part of, or null. */
@@ -110,7 +135,17 @@ public final class TunedPlace {
 	 */
 	@NonNull
 	public String text(@NonNull BigDecimal value, @NonNull BigDecimal step) {
-		String written = LiteralText.write(literal, value, step);
+		return text(literal, value, step);
+	}
+
+	/**
+	 * Return what to write from signStart to end for value, in the
+	 * style of style, a literal of the same type (what was typed).
+	 */
+	@NonNull
+	public String text(@NonNull String style, @NonNull BigDecimal value,
+			@NonNull BigDecimal step) {
+		String written = LiteralText.write(style, value, step);
 		return afterBinary && value.signum() < 0
 				? "(" + written + ")"
 				: written;
@@ -124,11 +159,18 @@ public final class TunedPlace {
 	@NonNull
 	public String literalText(@NonNull BigDecimal value,
 			@NonNull BigDecimal step) {
+		return literalText(literal, value, step);
+	}
+
+	/** {@link #literalText(BigDecimal, BigDecimal)} in style's style. */
+	@NonNull
+	public String literalText(@NonNull String style,
+			@NonNull BigDecimal value, @NonNull BigDecimal step) {
 		if (signStart == start) {
-			return text(value, step);
+			return text(style, value, step);
 		}
 		BigDecimal own = value.negate();
-		String written = LiteralText.write(literal, own, step);
+		String written = LiteralText.write(style, own, step);
 		return own.signum() < 0 ? "(" + written + ")" : written;
 	}
 
@@ -138,6 +180,10 @@ public final class TunedPlace {
 	 */
 	public double literalValue(@NonNull BigDecimal value) {
 		return (signStart == start ? value : value.negate()).doubleValue();
+	}
+
+	private static boolean isLineEnd(char c) {
+		return c == '\n' || c == '\r';
 	}
 
 	private static int numberAt(@NonNull Tokens tokens, int offset) {

@@ -562,4 +562,16 @@
 	<string name="passes_a11y_read_by">read by %1$s</string>
 	<string name="passes_a11y_shown">shown</string>
 	<string name="passes_frame">frame %1$,d</string>
+	<string name="tune_offer">⇆ %1$s</string>
+	<string name="a11y_tune">Tune %1$s</string>
+	<string name="tuning_value">Value</string>
+	<string name="tuning_revert">Revert</string>
+	<string name="tuning_done">Done</string>
+	<string name="tuning_step">Step %1$s</string>
+	<string name="tuning_step_title">Step</string>
+	<string name="tuning_step_other">Other…</string>
+	<string name="tuning_decrease">Decrease by %1$s</string>
+	<string name="tuning_increase">Increase by %1$s</string>
+	<string name="tuning_not_a_number">Not a number of this type</string>
+	<string name="tuning_failed">This number cannot be tuned: %1$s</string>
 </resources>

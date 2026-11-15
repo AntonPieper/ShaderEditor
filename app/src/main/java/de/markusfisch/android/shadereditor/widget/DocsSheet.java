@@ -194,7 +194,7 @@ public final class DocsSheet {
 	// Colours code as the editor does, but for names it takes for types,
 	// which here are the letters of the forms, T, B and the like.
 	@NonNull
-	private static SpannableString colour(@NonNull Context context,
+	static SpannableString colour(@NonNull Context context,
 			@NonNull String code) {
 		SpannableString spans = new SpannableString(code);
 		LineTokens tokens = new LineTokens();

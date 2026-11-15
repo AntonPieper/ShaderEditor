@@ -138,4 +138,15 @@ public interface ShaderScreen {
 	 * of what was open before, whose report may come after.
 	 */
 	boolean isAbout(@NonNull ProjectDiagnostic diagnostic);
+
+	/**
+	 * Tune the number the caret is on, as the strip offers it; only
+	 * where the shaders are files.
+	 */
+	default void tune() {
+	}
+
+	/** The text in the editor changed. */
+	default void onTextModified() {
+	}
 }
