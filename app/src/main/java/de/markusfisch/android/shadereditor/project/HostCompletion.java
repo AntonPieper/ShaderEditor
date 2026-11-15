@@ -102,30 +102,55 @@ public final class HostCompletion {
 	 */
 	public static Offer offer(String line, int column, ProjectPath file,
 			Listing listing, boolean halfFloat) {
-		Tokens tokens = Tokens.of(line, column);
-		if (tokens == null) {
+		if (!owns(line, column, true)) {
 			return null;
 		}
+		Tokens tokens = Tokens.of(line, column);
 		Path path = tokens.path;
 		if (path != null && path.start <= column && column <= path.end) {
 			return files(line, column, path, file, listing,
 					tokens.has("frame"));
-		} else if (tokens.include) {
-			return null;
 		}
 		Token at = tokens.at;
 		if (tokens.command == null) {
-			return at != null && at.index == 1
-					? words(COMMANDS, at, line, column, " ")
-					: null;
-		} else if (at == null || at.index < 2) {
-			return null;
+			return words(COMMANDS, at, line, column, " ");
 		}
 		int equals = line.indexOf('=', at.start);
 		if (equals >= 0 && equals < at.end && column > equals) {
 			return values(line, column, at, equals, tokens, halfFloat);
 		}
 		return options(line, column, at, tokens);
+	}
+
+	/**
+	 * Return whether the strip at column of line is this class's, the
+	 * one rule between the lines that name files and the language: in
+	 * the path of {@code #pragma se input "}, {@code #include "} and
+	 * {@code initial="}, after the path among the options and their
+	 * values, and at the command of a {@code #pragma se} line, the strip
+	 * offers what {@link #offer} gives, or the file the path names, and
+	 * no call is shown behind its keys. Anywhere else, on these lines
+	 * after an {@code #include}'s path or in a comment too, the language
+	 * completes and shows the call being typed.
+	 *
+	 * @param directive whether the lexer read the line as a directive,
+	 *                  which a line inside a block comment is not
+	 */
+	public static boolean owns(String line, int column, boolean directive) {
+		Tokens tokens = directive ? Tokens.of(line, column) : null;
+		if (tokens == null) {
+			return false;
+		}
+		Path path = tokens.path;
+		if (path != null && path.start <= column && column <= path.end) {
+			return true;
+		} else if (tokens.include) {
+			return false;
+		}
+		Token at = tokens.at;
+		return tokens.command == null
+				? at != null && at.index == 1
+				: at != null && at.index >= 2;
 	}
 
 	/**

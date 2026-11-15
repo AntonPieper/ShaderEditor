@@ -176,6 +176,8 @@ public final class ShaderEngine {
 	private final AtomicInteger steps = new AtomicInteger();
 	private final AtomicBoolean restartAsked = new AtomicBoolean();
 	private final AtomicBoolean againAsked = new AtomicBoolean();
+	// What formats says of rgba16f targets, for any thread.
+	private volatile boolean halfFloat;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
 	private volatile long nextFpsUpdate;
@@ -337,6 +339,14 @@ public final class ShaderEngine {
 
 	// Any thread. Builds the shader requested last again with this
 	// quality, or with it once it is prepared.
+	/**
+	 * Return whether the current context draws into rgba16f targets;
+	 * false before there is one. Any thread.
+	 */
+	public boolean drawsHalfFloat() {
+		return halfFloat;
+	}
+
 	public void setQuality(float quality) {
 		shaders.offerChanged(offer -> new Offer(
 				offer.shader().withQuality(quality),
@@ -374,6 +384,7 @@ public final class ShaderEngine {
 		discardContextResources();
 		device.createContextResources(version);
 		formats = device.targetFormats(version);
+		halfFloat = formats.halfFloatRendering();
 		var errors = renderPipeline.createContextResources();
 		if (!errors.isEmpty()) {
 			submitErrors(errors);

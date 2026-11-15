@@ -27,7 +27,8 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.ViewHolder> {
 	@FunctionalInterface
 	public interface OnInsertListener {
-		void onInsert(@NonNull CharSequence sequence);
+		/** word was chosen; typed of its characters are typed already. */
+		void onChoose(@NonNull String word, int typed);
 	}
 
 	/** Explains words; a long press on a word asks it. */
@@ -87,7 +88,7 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 			typedColor = MaterialColors.getColor(btn,
 					androidx.appcompat.R.attr.colorPrimary);
 			btn.setOnClickListener((v) -> {
-				onInsertListener.onInsert(item.substring(prefixLength()));
+				onInsertListener.onChoose(item, prefixLength());
 			});
 			itemView.setOnTouchListener(new View.OnTouchListener() {
 				@SuppressLint("ClickableViewAccessibility")

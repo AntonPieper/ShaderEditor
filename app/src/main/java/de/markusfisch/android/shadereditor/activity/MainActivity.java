@@ -89,8 +89,8 @@ public class MainActivity extends AppCompatActivity {
 				findViewById(android.R.id.content),
 				new ExtraKeysManager.Editor() {
 					@Override
-					public void insert(@NonNull CharSequence text) {
-						editorFragment.insert(text);
+					public void complete(@NonNull String word, int typed) {
+						editorFragment.complete(word, typed);
 					}
 
 					@Override
