@@ -529,4 +529,7 @@
 	<string name="passes_key">read the last frame</string>
 	<string name="passes_first_frame">first frame</string>
 	<string name="passes_key_badge">reads the last frame</string>
+	<string name="passes_paused">paused</string>
+	<string name="passes_showing">Showing %1$s</string>
+	<string name="passes_show_output">Show the output again</string>
 </resources>

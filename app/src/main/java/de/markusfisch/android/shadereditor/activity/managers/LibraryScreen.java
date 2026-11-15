@@ -296,7 +296,10 @@ public final class LibraryScreen implements ShaderScreen {
 			}
 		});
 		editorFragment.setOnShaderToyShaderListener(this::askToImport);
-		passes = new PassesSheet(activity, shaderViewManager, editorFragment);
+		passes = new PassesSheet(activity, shaderViewManager, editorFragment,
+				uiManager);
+		// Show in the strip shows the pass the line names, as the sheet does.
+		links.setPassShow(passes::show);
 	
 		drawer = createDrawer();
 		shaderListManager = drawer;
@@ -1068,9 +1071,7 @@ public final class LibraryScreen implements ShaderScreen {
 		cover.setText(moving ? "" : activity.getString(R.string.no_file_open));
 		cover.setVisibility(text ? View.GONE : View.VISIBLE);
 		// A quality is chosen for what runs, a key inserts into a text.
-		activity.findViewById(R.id.quality).setVisibility(text
-				? View.VISIBLE
-				: View.GONE);
+		passes.setAvailable(text);
 		extraKeysManager.setHasText(text);
 		// The editor's view is made after this screen is: it must not
 		// come to lie over the cover.

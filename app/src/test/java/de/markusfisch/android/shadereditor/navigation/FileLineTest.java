@@ -14,8 +14,8 @@ public class FileLineTest {
 	}
 
 	@Test
-	public void anotherFileThatRunsComesBeforeTheFolder() {
-		assertEquals("▶ main.frag · aurora / lib",
+	public void anotherFileThatRunsTakesThePlaceOfTheFolder() {
+		assertEquals("▶ main.frag",
 				FileLine.of("aurora", "lib/common.glsl", "main.frag"));
 	}
 }

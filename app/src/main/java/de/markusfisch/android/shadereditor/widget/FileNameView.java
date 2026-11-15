@@ -24,6 +24,8 @@ public class FileNameView extends AppCompatTextView {
 	@Nullable
 	private String name;
 	private boolean wholeOnLongPress;
+	// Cut at the end by the view's own ellipsis instead of in the middle.
+	private boolean cutsAtEnd;
 
 	public FileNameView(@NonNull Context context) {
 		super(context);
@@ -45,6 +47,23 @@ public class FileNameView extends AppCompatTextView {
 		// After the text, which forgets the name of text set otherwise.
 		this.name = name != null ? name.toString() : null;
 		requestLayout();
+	}
+
+	/** The whole name shown, or null when the text is not a name. */
+	@Nullable
+	public String getName() {
+		return name;
+	}
+
+	/**
+	 * Cut the name at its end where it does not fit, as the last thing
+	 * that gives way in a crowded toolbar, instead of in its middle.
+	 */
+	public void setCutsAtEnd(boolean atEnd) {
+		if (cutsAtEnd != atEnd) {
+			cutsAtEnd = atEnd;
+			requestLayout();
+		}
 	}
 
 	/**
@@ -80,15 +99,20 @@ public class FileNameView extends AppCompatTextView {
 			// cut once more by the view's own ellipsis.
 			float room = MeasureSpec.getSize(widthSpec) -
 					getCompoundPaddingLeft() - getCompoundPaddingRight() - 1;
-			String shown = NameCut.cut(whole,
-					text -> getPaint().measureText(text) <= room);
+			String shown = cutsAtEnd
+					? whole
+					: NameCut.cut(whole,
+							text -> getPaint().measureText(text) <= room);
 			if (!TextUtils.equals(shown, getText())) {
 				super.setText(shown, BufferType.NORMAL);
 				name = whole;
 			}
 			if (wholeOnLongPress) {
 				TooltipCompat.setTooltipText(this,
-						shown.equals(whole) ? null : whole);
+						shown.equals(whole) &&
+								getPaint().measureText(whole) <= room
+								? null
+								: whole);
 			}
 		}
 		super.onMeasure(widthSpec, heightSpec);

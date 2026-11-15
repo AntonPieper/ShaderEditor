@@ -261,7 +261,7 @@ Why the others lose:
 
 The file in the editor has the selected background and is announced as selected.
 
-**The toolbar**: menu button; title; frame rate and quality; error button with a count when the last build has errors or warnings; Run when the run mode is manual; the eye; the menu. The title is the name of the file in the editor, with ● while it has unsaved text. The second line is, when a picture of another file is being drawn, "▶ that file · folder" (the same report as the row's ▶), otherwise the folder ("Shaders", "aurora"). A tap on the title opens the drawer.
+**The toolbar**: menu button; title; frame rate and quality; error button with a count when the last build has errors or warnings; Run when the run mode is manual; the eye; the menu. The title is the name of the file in the editor, with ● while it has unsaved text. The second line is, when a picture of another file is being drawn, "▶ that file" (the same report as the row's ▶), otherwise the folder ("Shaders", "aurora"); while a pass is shown full size, the frame rate stands at its start ("60 fps · ▶ main.frag"). A tap on the title opens the drawer.
 
 ### 6.2 Levels
 
@@ -624,7 +624,7 @@ At every start, in this order, without asking anything:
 
 ### 11.5 The toolbar for a library file
 
-As for any file (6.1): the title is the file's name, `Plasma.frag`, with the unsaved dot; the second line is the folder, **Shaders**, and with another file running, **▶ Other.frag · Shaders**. A "not moved" shader keeps today's title, its database title, and its second line says **Not moved**, so it is never taken for a file.
+As for any file (6.1): the title is the file's name, `Plasma.frag`, with the unsaved dot; the second line is the folder, **Shaders**, and with another file running, **▶ Other.frag**. A "not moved" shader keeps today's title, its database title, and its second line says **Not moved**, so it is never taken for a file.
 
 ### 11.6 The two worlds of the main screen, in code
 

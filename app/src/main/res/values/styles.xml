@@ -301,4 +301,20 @@
 		<item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
 		<item name="android:fontFeatureSettings">tnum</item>
 	</style>
+	<!-- The pass shown, in the toolbar: filled as what is selected is,
+	so that its picture is never taken for the output. -->
+	<style name="Widget.ShaderEditor.Chip.Shown" parent="Widget.Material3.Chip.Input">
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+		<item name="chipMinHeight">@dimen/quality_chip_height</item>
+		<item name="chipStrokeWidth">0dp</item>
+		<item name="chipBackgroundColor">?attr/colorSecondaryContainer</item>
+		<item name="android:textColor">?attr/colorOnSecondaryContainer</item>
+		<item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+		<item name="android:checkable">false</item>
+		<item name="chipIconSize">16dp</item>
+		<item name="chipIconTint">?attr/colorOnSecondaryContainer</item>
+		<item name="closeIcon">@drawable/ic_close</item>
+		<item name="closeIconSize">18dp</item>
+		<item name="closeIconTint">?attr/colorOnSecondaryContainer</item>
+	</style>
 </resources>
