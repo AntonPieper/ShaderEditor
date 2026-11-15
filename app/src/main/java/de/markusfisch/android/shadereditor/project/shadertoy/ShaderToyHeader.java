@@ -16,19 +16,9 @@ import de.markusfisch.android.shadereditor.project.SourceText;
  * that the code is not touched and a name of its own never hides one.
  */
 final class ShaderToyHeader {
-	// Inputs the app has no uniform for: type, name, value, and what to
-	// tell about the value, or null when it is ShaderToy's.
-	private static final String[][] CONSTANTS = {
-			{"float", "iTimeDelta", "1.0 / 60.0",
-					"iTimeDelta is always 1/60 s here, as the app does not " +
-							"tell a shader how long a frame took. On a " +
-							"screen that is not 60 Hz, what is computed " +
-							"from it runs at another speed."},
-			{"float", "iFrameRate", "60.0",
-					"iFrameRate is always 60 here, as the app does not " +
-							"tell a shader its frame rate."},
-			{"float", "iSampleRate", "44100.0", null},
-	};
+	// What a sound card usually plays at; only sound, which the app
+	// does not make, depends on it.
+	private static final String SAMPLE_RATE = "44100.0";
 
 	private static final ProjectPath ANY = ProjectPath.parse("any").value();
 
@@ -37,11 +27,9 @@ final class ShaderToyHeader {
 
 	/**
 	 * The uniforms, variables and the function shaderToyInputs() for
-	 * the inputs code names; warnings gets what is not ShaderToy's
-	 * value, told of file.
+	 * the inputs code names.
 	 */
-	static String inputs(String code, List<ShaderToyChannel> channels,
-			String file, List<String> warnings) {
+	static String inputs(String code, List<ShaderToyChannel> channels) {
 		Set<String> uniforms = new LinkedHashSet<>();
 		StringBuilder variables = new StringBuilder();
 		StringBuilder filled = new StringBuilder();
@@ -52,14 +40,8 @@ final class ShaderToyHeader {
 						input.value());
 			}
 		}
-		for (String[] constant : CONSTANTS) {
-			if (ShaderToyInputs.names(code, constant[1])) {
-				add(variables, filled, constant[0], constant[1], "",
-						constant[2]);
-				if (constant[3] != null) {
-					warnings.add(file + ": " + constant[3]);
-				}
-			}
+		if (ShaderToyInputs.names(code, "iSampleRate")) {
+			add(variables, filled, "float", "iSampleRate", "", SAMPLE_RATE);
 		}
 		if (ShaderToyInputs.names(code, "iChannelTime")) {
 			add(variables, filled, "float", "iChannelTime", "[4]",

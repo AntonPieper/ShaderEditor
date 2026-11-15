@@ -31,7 +31,8 @@ public class ShaderToyImportTest {
 	@Test
 	public void everyFixturePreparesWithoutADiagnostic() {
 		for (String name : new String[]{
-				"rings.json", "trail.json", "ripples.json", "media.json"}) {
+				"rings.json", "trail.json", "ripples.json", "media.json",
+				"pace.json"}) {
 			ShaderToyProject.Converted converted =
 					ShaderToyProject.ofJson(Fixtures.text(name));
 			assertNull(name, converted.refusal());
@@ -63,6 +64,21 @@ public class ShaderToyImportTest {
 		assertEquals(Format.RGBA16F, buffer.target().format());
 		assertEquals(Filter.LINEAR,
 				buffer.inputs().get(0).sampling().min());
+	}
+
+	// What a frame took and the frame rate are the app's uniforms in
+	// the passes that name them, and nothing is said about them.
+	@Test
+	public void frameTimingIsCarriedOverWithoutAWarning() {
+		ShaderToyProject.Converted converted = ShaderToyProject.ofJson(
+				Fixtures.text("pace.json"));
+		assertEquals(List.of(), converted.warnings());
+		String buffer = converted.files().get("bufferA.frag");
+		assertTrue(buffer, buffer.contains("uniform float timeDelta;\n"));
+		assertTrue(buffer, buffer.contains("\tiTimeDelta = timeDelta;\n"));
+		String main = converted.files().get("main.frag");
+		assertTrue(main, main.contains("uniform float frameRate;\n"));
+		assertTrue(main, main.contains("\tiFrameRate = frameRate;\n"));
 	}
 
 	// A reads itself and B, which is drawn after it: both of the frame

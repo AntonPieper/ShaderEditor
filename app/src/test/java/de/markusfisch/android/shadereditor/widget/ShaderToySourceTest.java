@@ -59,6 +59,14 @@ public class ShaderToySourceTest {
 		assertNotNull(converted);
 		assertTrue(converted.contains("uniform float time;\n"));
 		assertTrue(converted.contains("uniform int frame;\n"));
+		// What a frame took and the frame rate are uniforms too.
+		String timed = ShaderToySource.convert(
+				"void mainImage(out vec4 c, in vec2 p) {\n" +
+						"\tc = vec4(iTimeDelta * iFrameRate);\n}\n");
+		assertNotNull(timed);
+		assertTrue(timed.contains("uniform float timeDelta;\n" +
+				"uniform float frameRate;\n"));
+		assertTrue(timed.contains("c = vec4(timeDelta * frameRate);"));
 		assertTrue(converted.contains(
 				"c = vec4(p / resolution.xy, sin(time) + float(frame), 1.0);"));
 		assertNull(ShaderToySource.convert(converted));

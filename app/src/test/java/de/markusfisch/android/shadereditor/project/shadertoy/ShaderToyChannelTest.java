@@ -28,13 +28,14 @@ public class ShaderToyChannelTest {
 				"#pragma se input \"bufferB.frag\" frame=previous " +
 				"filter=linear wrap=repeat\n" +
 				"uniform sampler2D iChannel3;\n", before.lines());
-		// Passes have no mipmaps: linear, and said.
+		// Passes have no mipmaps: linear, and said. ShaderToy has two
+		// ways to wrap: what is not clamp repeats.
 		ShaderToyChannel mipmap = ShaderToyChannel.buffer(1,
 				input("buffer", "", "mipmap", "mirror", true),
 				"bufferA.frag", "Buffer A", false);
 		assertEquals("// iChannel1: Buffer A, as drawn in this frame.\n" +
 				"#pragma se input \"bufferA.frag\" filter=linear " +
-				"wrap=mirror\n" +
+				"wrap=repeat\n" +
 				"uniform sampler2D iChannel1;\n", mipmap.lines());
 		assertEquals("iChannel1 read Buffer A with mipmaps, which passes " +
 				"do not have here. It is read with filter=linear.",
@@ -60,8 +61,9 @@ public class ShaderToyChannelTest {
 				"(/media/a/stone.jpg), which is not part of the shader. " +
 				"It reads black until you attach a picture; the file " +
 				"says how.", texture.warning());
+		// What is neither linear nor mipmap is nearest.
 		ShaderToyChannel flipped = ShaderToyChannel.missing(0, input(
-				"texture", "", "nearest", "clamp", false));
+				"texture", "", "none", "clamp", false));
 		assertEquals("// iChannel0 read a texture of ShaderToy,\n" +
 				"// which is not part of the shader. It reads black until " +
 				"you attach a picture; the file says how.\n" +

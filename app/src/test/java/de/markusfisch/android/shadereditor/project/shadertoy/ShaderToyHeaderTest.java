@@ -6,7 +6,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class ShaderToyHeaderTest {
@@ -14,7 +13,6 @@ public class ShaderToyHeaderTest {
 	// app's uniforms; only what the code names is declared.
 	@Test
 	public void theInputsTheCodeNames() {
-		List<String> warnings = new ArrayList<>();
 		assertEquals("// ShaderToy's inputs, filled from the app's in " +
 				"main().\n" +
 				"uniform vec2 resolution;\n" +
@@ -30,28 +28,28 @@ public class ShaderToyHeaderTest {
 				"\tiTime = time;\n" +
 				"}\n",
 				ShaderToyHeader.inputs("iResolution.xy * iTime + " +
-						"iGlobalTime + iTimeDeltas", List.of(), "main.frag",
-						warnings));
-		assertEquals(List.of(), warnings);
+						"iGlobalTime + iTimeDeltas", List.of()));
 		assertEquals("// ShaderToy's inputs, filled from the app's in " +
 				"main().\n\nvoid shaderToyInputs() {\n}\n",
-				ShaderToyHeader.inputs("fragCoord", List.of(), "main.frag",
-						warnings));
+				ShaderToyHeader.inputs("fragCoord", List.of()));
 	}
 
-	// What the app has no uniform for is a value that is said.
+	// What a frame took and the frame rate are uniforms of the app
+	// with ShaderToy's meaning; the rest has no uniform and one value.
 	@Test
-	public void inputsWithoutAnAppUniform() {
-		List<String> warnings = new ArrayList<>();
+	public void frameTimingAndWhatHasNoUniform() {
 		String header = ShaderToyHeader.inputs(
 				"iTimeDelta iFrameRate iSampleRate iChannelTime[0] " +
 						"iChannelResolution[2]",
 				List.of(ShaderToyChannel.unattached(0),
-						new ShaderToyChannel(2, "sampler3D", "", null)),
-				"bufferA.frag", warnings);
+						new ShaderToyChannel(2, "sampler3D", "", null)));
+		assertTrue(header, header.startsWith(
+				"// ShaderToy's inputs, filled from the app's in main().\n" +
+						"uniform float timeDelta;\n" +
+						"uniform float frameRate;\n\n"));
 		assertTrue(header, header.endsWith("void shaderToyInputs() {\n" +
-				"\tiTimeDelta = 1.0 / 60.0;\n" +
-				"\tiFrameRate = 60.0;\n" +
+				"\tiTimeDelta = timeDelta;\n" +
+				"\tiFrameRate = frameRate;\n" +
 				"\tiSampleRate = 44100.0;\n" +
 				"\tiChannelTime = float[4](0.0, 0.0, 0.0, 0.0);\n" +
 				"\tiChannelResolution = vec3[4](" +
@@ -59,13 +57,6 @@ public class ShaderToyHeaderTest {
 				"vec3(textureSize(iChannel2, 0)), vec3(0.0));\n}\n"));
 		assertTrue(header, header.contains("float iChannelTime[4];\n" +
 				"vec3 iChannelResolution[4];\n"));
-		assertEquals(List.of(
-				"bufferA.frag: iTimeDelta is always 1/60 s here, as the " +
-						"app does not tell a shader how long a frame took. " +
-						"On a screen that is not 60 Hz, what is computed " +
-						"from it runs at another speed.",
-				"bufferA.frag: iFrameRate is always 60 here, as the app " +
-						"does not tell a shader its frame rate."), warnings);
 	}
 
 	@Test
