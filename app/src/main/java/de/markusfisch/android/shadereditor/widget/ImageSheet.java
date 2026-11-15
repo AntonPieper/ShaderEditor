@@ -5,12 +5,13 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
+import android.graphics.ColorFilter;
 import android.graphics.Paint;
+import android.graphics.PixelFormat;
+import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.ShapeDrawable;
-import android.graphics.drawable.shapes.RectShape;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -50,21 +51,21 @@ public final class ImageSheet {
 	 * @param into     the file Insert as texture adds to, or null when
 	 *                 it cannot be offered
 	 * @param lines    the lines it adds, or why it cannot be offered
-	 * @param changes  whether the folder can be changed: Rename and
-	 *                 Delete
+	 * @param noChanges why the image cannot be renamed or deleted
+	 *                  here, or null when Rename and Delete are offered
 	 */
 	// The sheet gives its content a parent only once it is set.
 	@SuppressLint("InflateParams")
 	public ImageSheet(@NonNull Context context, @NonNull String name,
 			@NonNull String where, @Nullable String into,
-			@NonNull String lines, boolean changes,
+			@NonNull String lines, @Nullable String noChanges,
 			@NonNull Listener listener) {
 		View view = LayoutInflater.from(context).inflate(R.layout.sheet_image,
 				null);
 		((TextView) view.findViewById(R.id.image_name)).setText(name);
 		((TextView) view.findViewById(R.id.image_where)).setText(where);
 		picture = view.findViewById(R.id.image_picture);
-		picture.setBackground(checkerboard(context));
+		picture.setBackground(new Checks(picture, checks(context)));
 		picture.setClipToOutline(true);
 		info = view.findViewById(R.id.image_info);
 		TextView says = view.findViewById(R.id.image_insert_says);
@@ -81,8 +82,15 @@ public final class ImageSheet {
 		}
 		View rename = view.findViewById(R.id.image_rename);
 		View delete = view.findViewById(R.id.image_delete);
+		boolean changes = noChanges == null;
 		rename.setVisibility(changes ? View.VISIBLE : View.GONE);
 		delete.setVisibility(changes ? View.VISIBLE : View.GONE);
+		if (!changes) {
+			// No button that is gone without a word.
+			TextView why = view.findViewById(R.id.image_no_changes);
+			why.setText(noChanges);
+			why.setVisibility(View.VISIBLE);
+		}
 		dialog = new BottomSheetDialog(context);
 		insert.setOnClickListener(v -> {
 			dialog.dismiss();
@@ -140,7 +148,7 @@ public final class ImageSheet {
 
 	// Transparent pixels show over a checkerboard of 8 dp squares.
 	@NonNull
-	private static Drawable checkerboard(@NonNull Context context) {
+	private static Paint checks(@NonNull Context context) {
 		int check = Math.round(8 * context.getResources()
 				.getDisplayMetrics().density);
 		Bitmap tile = Bitmap.createBitmap(check * 2, check * 2,
@@ -151,9 +159,50 @@ public final class ImageSheet {
 		paint.setColor(0xff2a2c32);
 		canvas.drawRect(0, 0, check, check, paint);
 		canvas.drawRect(check, check, check * 2, check * 2, paint);
-		ShapeDrawable board = new ShapeDrawable(new RectShape());
-		board.getPaint().setShader(new BitmapShader(tile,
-				Shader.TileMode.REPEAT, Shader.TileMode.REPEAT));
+		Paint board = new Paint();
+		board.setShader(new BitmapShader(tile, Shader.TileMode.REPEAT,
+				Shader.TileMode.REPEAT));
 		return board;
+	}
+
+	// The checkerboard behind the picture only, where it is fitted: no
+	// bars beside an image that is not as wide as the place.
+	private static final class Checks extends Drawable {
+		private final ImageView view;
+		private final Paint paint;
+		private final RectF fitted = new RectF();
+
+		Checks(@NonNull ImageView view, @NonNull Paint paint) {
+			this.view = view;
+			this.paint = paint;
+		}
+
+		@Override
+		public void draw(@NonNull Canvas canvas) {
+			Drawable image = view.getDrawable();
+			if (image == null) {
+				return;
+			}
+			fitted.set(0, 0, image.getIntrinsicWidth(),
+					image.getIntrinsicHeight());
+			view.getImageMatrix().mapRect(fitted);
+			fitted.offset(view.getPaddingLeft(), view.getPaddingTop());
+			canvas.drawRect(fitted, paint);
+		}
+
+		@Override
+		public void setAlpha(int alpha) {
+			paint.setAlpha(alpha);
+		}
+
+		@Override
+		public void setColorFilter(@Nullable ColorFilter filter) {
+			paint.setColorFilter(filter);
+		}
+
+		@Override
+		public int getOpacity() {
+			return PixelFormat.TRANSLUCENT;
+		}
 	}
 }

@@ -419,9 +419,7 @@ final class FolderSource {
 						writableRead(), unsaved()), words);
 		// A folder that cannot be changed, such as the examples, says
 		// so; New there makes a shader in the library.
-		boolean readOnly = !file && !reading.isLost() && (this.readOnly ||
-				project != null && project.storage().access() ==
-						OpenProject.Access.READ_ONLY);
+		boolean readOnly = !file && !reading.isLost() && isReadOnly();
 		String where = location == null || location.isEmpty()
 				? null
 				: location;
@@ -509,6 +507,12 @@ final class FolderSource {
 			}
 		}
 		return read;
+	}
+
+	/** Whether nothing of it can be changed, as the examples'. */
+	boolean isReadOnly() {
+		return readOnly || project != null && project.storage().access() ==
+				OpenProject.Access.READ_ONLY;
 	}
 
 	@Nullable

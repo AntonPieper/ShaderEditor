@@ -390,6 +390,10 @@
 	<string name="nav_insert_adds">Insert as texture adds to %1$s:</string>
 	<string name="nav_insert_where">Open a shader of this folder to insert it as a texture.</string>
 	<string name="nav_insert_not_shader">%1$s is no shader: open a shader of this folder to insert this image as a texture.</string>
+	<string name="nav_insert_read_only">%1$s cannot be changed here, so this image cannot be inserted into it.</string>
+	<string name="nav_insert_reads_already">%1$s reads this picture already.</string>
+	<string name="nav_image_read_only">This folder cannot be changed here, so the image cannot be renamed or deleted.</string>
+	<string name="nav_image_open_folder">Open %1$s to rename or delete this image.</string>
 	<string name="nav_image_info">%1$d × %2$d · %3$s · %4$s</string>
 	<string name="nav_image_unreadable">%1$s cannot be shown as a picture</string>
 	<string name="nav_image_not_read">%1$s could not be read now; open it again to try once more</string>

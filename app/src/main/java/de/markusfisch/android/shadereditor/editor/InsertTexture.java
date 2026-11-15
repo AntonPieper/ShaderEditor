@@ -5,20 +5,40 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.project.HostDirective;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
+import de.markusfisch.android.shadereditor.project.SourceLocation;
 
 /**
  * The two lines that make an image a texture of a shader (UX 4): the
  * directive that reads it, with its path from the shader's folder,
  * and a sampler of a name the shader does not use yet, from the
- * image's name.
+ * image's name. They are added only to a shader that runs and can be
+ * changed, and that does not read the image yet.
  */
 public final class InsertTexture {
 	/** The lines to add, and the name of the sampler they declare. */
 	public record Lines(String statement, String name) {
 	}
+
+	/**
+	 * The file in the editor, as Insert as texture asks: its path from
+	 * the root, its text, its language, whether its text defines what
+	 * it starts at as its project knows (null while that is not
+	 * known), whether the running shader includes it, and whether its
+	 * folder cannot be changed.
+	 */
+	public record Target(ProjectPath path, String text,
+			ShaderLanguage language, Boolean runs, boolean included,
+			boolean readOnly) {
+	}
+
+	private static final Pattern PRAGMA = Pattern.compile(
+			"^[ \\t]*#[ \\t]*pragma(.*)$", Pattern.MULTILINE);
 
 	// Words a sampler cannot be named, besides what the text uses: the
 	// keywords and reserved words of GLSL ES 1.00 and 3.00, and the
@@ -66,33 +86,67 @@ public final class InsertTexture {
 		OFFERED,
 		/** Nothing of the image's folder is in the editor. */
 		NO_SHADER_HERE,
-		/** The file in the editor is of the folder but no shader. */
-		NOT_A_SHADER
+		/**
+		 * The file in the editor is of the folder but no shader: no
+		 * GLSL, no file that runs, or one the running shader includes.
+		 */
+		NOT_A_SHADER,
+		/** The shader in the editor cannot be changed. */
+		READ_ONLY,
+		/** The shader in the editor reads the image already. */
+		READS_ALREADY
 	}
 
 	private InsertTexture() {
 	}
 
 	/**
-	 * Whether the two lines may be added to the file in the editor,
-	 * named edited, null for none or a file of another folder: only to
-	 * a GLSL file that can run, as a directive may stand only there
-	 * (SPEC 2.1, 3.1): no JSON, no Markdown, no include.
-	 *
-	 * @param runs whether its text defines what it starts at, as its
-	 *             project knows, or null while that is not known; then
-	 *             its name decides
+	 * Whether the two lines that read image, a path from the root, may
+	 * be added to target, the file in the editor, null for none or a
+	 * file of another folder: only to a GLSL file that runs, as a
+	 * directive may stand only there (SPEC 2.1, 3.1), no JSON, no
+	 * Markdown, never an include, also one that defines main, when the
+	 * running shader includes it; only where it can be changed; and
+	 * not where the file reads the image already. Where its project
+	 * does not know yet whether it runs, its name decides.
 	 */
-	public static Offer offer(String edited, ShaderLanguage language,
-			Boolean runs) {
-		if (edited == null) {
+	public static Offer offer(Target target, ProjectPath image) {
+		if (target == null) {
 			return Offer.NO_SHADER_HERE;
-		} else if (language != ShaderLanguage.GLSL || Boolean.FALSE.equals(
-				runs) || (runs == null && edited.toLowerCase(Locale.ROOT)
-				.endsWith(ShaderLanguage.INCLUDE))) {
+		} else if (target.language() != ShaderLanguage.GLSL ||
+				target.included() || Boolean.FALSE.equals(target.runs()) ||
+				(target.runs() == null && target.path().getFileName()
+						.toLowerCase(Locale.ROOT)
+						.endsWith(ShaderLanguage.INCLUDE))) {
 			return Offer.NOT_A_SHADER;
+		} else if (target.readOnly()) {
+			return Offer.READ_ONLY;
+		} else if (reads(target.text(), target.path(), image)) {
+			return Offer.READS_ALREADY;
 		}
 		return Offer.OFFERED;
+	}
+
+	/**
+	 * Whether text, of the file at edited, reads image, both paths from
+	 * the root, with a {@code #pragma se input} outside comments.
+	 */
+	public static boolean reads(String text, ProjectPath edited,
+			ProjectPath image) {
+		Matcher pragma = PRAGMA.matcher(blank(text, false));
+		while (pragma.find()) {
+			String argument = pragma.group(1).trim();
+			if (!HostDirective.isHostPragma(argument)) {
+				continue;
+			}
+			HostDirective directive = HostDirective.parse(argument,
+					new SourceLocation(edited, 1, null));
+			if (directive.command() == HostDirective.Command.INPUT &&
+					image.equals(directive.path())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -158,10 +212,53 @@ public final class InsertTexture {
 		return candidate;
 	}
 
+	// A word in a comment or a string, such as the path of a directive,
+	// is no use of a name.
 	private static boolean used(String text, String name) {
 		return RESERVED.contains(name) ||
 				name.toLowerCase(Locale.ROOT).startsWith("gl_") ||
 				Pattern.compile("\\b" + Pattern.quote(name) + "\\b")
-						.matcher(text).find();
+						.matcher(blank(text, true)).find();
+	}
+
+	// The text with its comments, and with strings their contents,
+	// blanked; lines stay where they are.
+	private static String blank(String text, boolean strings) {
+		StringBuilder code = new StringBuilder(text);
+		int length = text.length();
+		for (int i = 0; i < length; ++i) {
+			char c = text.charAt(i);
+			char next = i + 1 < length ? text.charAt(i + 1) : 0;
+			int end;
+			int from = i;
+			if (c == '/' && next == '/') {
+				end = text.indexOf('\n', i);
+			} else if (c == '/' && next == '*') {
+				end = text.indexOf("*/", i + 2);
+				end = end < 0 ? -1 : end + 2;
+			} else if (c == '"' && strings) {
+				from = i + 1;
+				end = text.indexOf('"', from);
+				int line = text.indexOf('\n', from);
+				if (end < 0 || (line > -1 && line < end)) {
+					end = line;
+				}
+			} else {
+				continue;
+			}
+			if (end < 0) {
+				end = length;
+			}
+			for (int j = from; j < end; ++j) {
+				if (code.charAt(j) != '\n') {
+					code.setCharAt(j, ' ');
+				}
+			}
+			// The closing quote is no opening one.
+			i = c == '"' && end < length && text.charAt(end) == '"'
+					? end
+					: end - 1;
+		}
+		return code.toString();
 	}
 }

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 
 public class InsertTextureTest {
@@ -71,25 +72,101 @@ public class InsertTextureTest {
 	// include, no file of another folder.
 	@Test
 	public void offeredOnlyForAShaderOfTheFolder() {
-		assertEquals(InsertTexture.Offer.OFFERED, InsertTexture.offer(
-				"main.frag", ShaderLanguage.GLSL, true));
-		assertEquals(InsertTexture.Offer.OFFERED, InsertTexture.offer(
-				"main.frag", ShaderLanguage.GLSL, null));
+		assertEquals(InsertTexture.Offer.OFFERED, offer("main.frag",
+				ShaderLanguage.GLSL, true));
+		assertEquals(InsertTexture.Offer.OFFERED, offer("main.frag",
+				ShaderLanguage.GLSL, null));
 		assertEquals(InsertTexture.Offer.NO_SHADER_HERE,
-				InsertTexture.offer(null, null, null));
-		assertEquals(InsertTexture.Offer.NOT_A_SHADER, InsertTexture.offer(
+				InsertTexture.offer(null, path("noise.png")));
+		assertEquals(InsertTexture.Offer.NOT_A_SHADER, offer(
 				"shader-project.json", ShaderLanguage.JSON, false));
-		assertEquals(InsertTexture.Offer.NOT_A_SHADER, InsertTexture.offer(
-				"README.md", ShaderLanguage.MARKDOWN, false));
-		assertEquals(InsertTexture.Offer.NOT_A_SHADER, InsertTexture.offer(
-				"blur.wgsl", ShaderLanguage.UNSUPPORTED, null));
-		assertEquals(InsertTexture.Offer.NOT_A_SHADER, InsertTexture.offer(
-				"sdf.glsl", ShaderLanguage.GLSL, false));
-		assertEquals(InsertTexture.Offer.NOT_A_SHADER, InsertTexture.offer(
-				"sdf.glsl", ShaderLanguage.GLSL, null));
+		assertEquals(InsertTexture.Offer.NOT_A_SHADER, offer("README.md",
+				ShaderLanguage.MARKDOWN, false));
+		assertEquals(InsertTexture.Offer.NOT_A_SHADER, offer("blur.wgsl",
+				ShaderLanguage.UNSUPPORTED, null));
+		assertEquals(InsertTexture.Offer.NOT_A_SHADER, offer("sdf.glsl",
+				ShaderLanguage.GLSL, false));
+		assertEquals(InsertTexture.Offer.NOT_A_SHADER, offer("sdf.glsl",
+				ShaderLanguage.GLSL, null));
 		// An include that defines main runs, and may read a texture.
+		assertEquals(InsertTexture.Offer.OFFERED, offer("pass.glsl",
+				ShaderLanguage.GLSL, true));
+	}
+
+	// A file the running shader includes is never the target, also
+	// when it defines main; neither is one that cannot be changed.
+	@Test
+	public void neverIntoAnIncludeOrAFileThatCannotChange() {
+		assertEquals(InsertTexture.Offer.NOT_A_SHADER, InsertTexture.offer(
+				new InsertTexture.Target(path("lib/noise.glsl"), "",
+						ShaderLanguage.GLSL, true, true, false),
+				path("textures/paper.png")));
+		assertEquals(InsertTexture.Offer.NOT_A_SHADER, InsertTexture.offer(
+				new InsertTexture.Target(path("lib/noise.glsl"), "",
+						ShaderLanguage.GLSL, null, true, true),
+				path("textures/paper.png")));
+		assertEquals(InsertTexture.Offer.READ_ONLY, InsertTexture.offer(
+				new InsertTexture.Target(path("Ink/main.frag"), "",
+						ShaderLanguage.GLSL, true, false, true),
+				path("textures/paper.png")));
+	}
+
+	// A shader that reads the image already is not offered it again;
+	// a directive in a comment reads nothing.
+	@Test
+	public void notOfferedWhereTheImageIsReadAlready() {
+		String reads = "#pragma se input \"../textures/paper.png\"\n" +
+				"uniform sampler2D paper;\nvoid main() {}";
+		assertEquals(InsertTexture.Offer.READS_ALREADY, InsertTexture.offer(
+				new InsertTexture.Target(path("Ink/main.frag"), reads,
+						ShaderLanguage.GLSL, true, false, false),
+				path("textures/paper.png")));
+		assertEquals(InsertTexture.Offer.READS_ALREADY, InsertTexture.offer(
+				new InsertTexture.Target(path("Ink/main.frag"),
+						"  #  pragma se input \"../textures/paper.png\" " +
+								"filter=nearest\nuniform sampler2D p;",
+						ShaderLanguage.GLSL, true, false, false),
+				path("textures/paper.png")));
 		assertEquals(InsertTexture.Offer.OFFERED, InsertTexture.offer(
-				"pass.glsl", ShaderLanguage.GLSL, true));
+				new InsertTexture.Target(path("Ink/main.frag"), reads,
+						ShaderLanguage.GLSL, true, false, false),
+				path("textures/noise.png")));
+		assertEquals(InsertTexture.Offer.OFFERED, InsertTexture.offer(
+				new InsertTexture.Target(path("Ink/main.frag"),
+						"// #pragma se input \"../textures/paper.png\"\n" +
+								"/* #pragma se input " +
+								"\"../textures/paper.png\" */",
+						ShaderLanguage.GLSL, true, false, false),
+				path("textures/paper.png")));
+	}
+
+	// A word in a comment or in a path is no use of a name: no noise2
+	// where no noise is declared.
+	@Test
+	public void wordsInCommentsAndPathsAreNoUse() {
+		assertEquals("noise", InsertTexture.name(
+				"// noise from the old version\n" +
+						"/* paper and noise */\n" +
+						"#pragma se input \"lib/noise.png\"\n" +
+						"uniform sampler2D grain;\n" +
+						"#include \"noise.glsl\"\n" +
+						"void main() {}", "textures/noise.png"));
+		assertEquals("noise2", InsertTexture.name(
+				"// a comment\nuniform sampler2D noise; // \"quoted\"",
+				"textures/noise.png"));
+		assertEquals("noise2", InsertTexture.name(
+				"float a = 1.0; /* open\n close */ float noise;",
+				"noise.png"));
+	}
+
+	private static InsertTexture.Offer offer(String name,
+			ShaderLanguage language, Boolean runs) {
+		return InsertTexture.offer(new InsertTexture.Target(path(name), "",
+				language, runs, false, false), path("noise.png"));
+	}
+
+	private static ProjectPath path(String path) {
+		return ProjectPath.parse(path).value();
 	}
 
 	// A uniform of that name already there: the next free name.
