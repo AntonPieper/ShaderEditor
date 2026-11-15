@@ -215,6 +215,66 @@ public class HostCompletionTest {
 		assertNull(HostCompletion.named(line, 15, INK, folder -> null));
 	}
 
+	@Test
+	public void offersTheNearestNameOfAMissingFile() {
+		HostCompletion.Missing missing = HostCompletion.missing(
+				"#pragma se input \"blurr.frag\" filter=linear", INK,
+				"File not found: fx/blurr.frag", HostCompletionTest::list);
+		assertEquals(path("fx/blurr.frag"), missing.path());
+		assertEquals("Blur.frag", missing.near());
+		assertTrue(missing.creatable());
+		assertEquals(new Choice("Blur.frag", 18, 28, "Blur.frag", 27),
+				missing.use());
+	}
+
+	@Test
+	public void offersANearNameOnlyWhenOneIsClearlyNearest() {
+		List<Entry> entries = FOLDERS.get("fx");
+		// Case alone.
+		assertEquals("Blur.frag", HostCompletion.nearest("blur.frag",
+				HostCompletion.Kind.INPUT, entries));
+		// A swap of two letters.
+		assertEquals("seed.frag", HostCompletion.nearest("sede.frag",
+				HostCompletion.Kind.INPUT, entries));
+		// Three letters off.
+		assertNull(HostCompletion.nearest("glow.frag",
+				HostCompletion.Kind.INPUT, entries));
+		// Two files one letter off.
+		assertNull(HostCompletion.nearest("aa.frag",
+				HostCompletion.Kind.INPUT, List.of(new Entry("ab.frag", false),
+						new Entry("ac.frag", false))));
+		// Only a file of the same kind.
+		assertNull(HostCompletion.nearest("noise.frag",
+				HostCompletion.Kind.INPUT, entries));
+		assertEquals("noise.png", HostCompletion.nearest("nose.png",
+				HostCompletion.Kind.INPUT, entries));
+	}
+
+	@Test
+	public void saysNothingOfOtherMessagesOrPaths() {
+		assertNull(HostCompletion.missing("#pragma se input \"a.frag\"",
+				INK, "Unknown key", HostCompletionTest::list));
+		assertNull(HostCompletion.missing("#pragma se input \"a.frag\"",
+				INK, "File not found: fx/b.frag", HostCompletionTest::list));
+		HostCompletion.Missing picture = HostCompletion.missing(
+				"#pragma se input \"../tile.png\"", INK,
+				"File not found: tile.png", HostCompletionTest::list);
+		assertNull(picture.near());
+		assertTrue(!picture.creatable());
+	}
+
+	@Test
+	public void retargetsOnlyThePathThatNamesTheFile() {
+		String line = "#include \"../lib/noise.glsl\" // noise";
+		HostCompletion.Choice choice = HostCompletion.retarget(line, INK,
+				path("lib/noise.glsl"), path("lib/value.glsl"));
+		assertEquals("#include \"../lib/value.glsl\" // noise",
+				line.substring(0, choice.start()) + choice.text() +
+						line.substring(choice.end()));
+		assertNull(HostCompletion.retarget(line, INK, path("noise.glsl"),
+				path("value.glsl")));
+	}
+
 	private static List<String> words(String marked) {
 		return offer(marked).words();
 	}

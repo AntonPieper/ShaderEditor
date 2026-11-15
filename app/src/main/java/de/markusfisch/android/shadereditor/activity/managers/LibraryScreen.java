@@ -171,6 +171,20 @@ public final class LibraryScreen implements ShaderScreen {
 							@Nullable Runnable back) {
 						extraKeysManager.showBack(name, line, back);
 					}
+
+					@Override
+					public void made() {
+						files.run();
+						String key = files.key();
+						if (key != null) {
+							drawer.reread(key);
+						}
+					}
+
+					@Override
+					public void failed(@NonNull String message) {
+						Message.show(activity, message);
+					}
 				});
 		libraryAdd = new LibraryAdd(activity, holds.projects(), dataSource,
 				new LibraryAdd.Listener() {
