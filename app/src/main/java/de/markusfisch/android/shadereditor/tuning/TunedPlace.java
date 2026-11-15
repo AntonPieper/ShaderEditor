@@ -112,6 +112,12 @@ public final class TunedPlace {
 		return numberAt(tokens, offset) > -1;
 	}
 
+	/** The literal with the minus that belongs to it, as written. */
+	@NonNull
+	public String literalWithSign() {
+		return signStart == start ? literal : "-" + literal;
+	}
+
 	/** The line of text it is in. */
 	@NonNull
 	public String line() {

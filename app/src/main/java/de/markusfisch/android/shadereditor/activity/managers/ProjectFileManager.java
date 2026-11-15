@@ -151,6 +151,12 @@ public final class ProjectFileManager {
 			new android.os.Handler(android.os.Looper.getMainLooper());
 	private final Runnable rested = this::rebuildTuned;
 	private boolean tunedBuilds;
+	// While the parts of one vector are tuned one after the other, the
+	// document that holds them is in a batch, so that all of them are
+	// one step of undo; the last write ends it.
+	@Nullable
+	private Document partsBatch;
+	private boolean retuning;
 	@Nullable
 	private ProjectFile file;
 	// The build of what runs asked for last, of which project and file.
@@ -607,6 +613,10 @@ public final class ProjectFileManager {
 		TuningSession session = tuner.open();
 		String text = keep ? tunedText : null;
 		TunedPlace place = tunedPlace;
+		if (text == null) {
+			// Nothing is written: the parts written before are one step.
+			endPartsBatch();
+		}
 		try {
 			writing = place;
 			if (session != null) {
@@ -619,7 +629,82 @@ public final class ProjectFileManager {
 		listener.onTuningEnded(List.of());
 	}
 
+	/**
+	 * Tune part index of the vector the tuned number is in instead:
+	 * the value tuned now is written and the part's own session
+	 * begins. Return the part, or null when it cannot be tuned; then
+	 * tuning has ended.
+	 */
+	@Nullable
+	public TunedPlace retune(int index,
+			@NonNull TuningSession.Listener tuned) {
+		TunedPlace place = tunedPlace;
+		TunedPlace.Vector vector = place != null ? place.vector() : null;
+		if (vector == null || index < 0 || index >= vector.parts().size()) {
+			return null;
+		}
+		// The first part does not move when a part is written.
+		int first = vector.parts().get(0).start;
+		TuningSession session = tuner.open();
+		String text = tunedText;
+		if (partsBatch == null) {
+			ProjectFile shown = file;
+			partsBatch = shown != null
+					? shown.getProject().document(shown.getPath())
+					: null;
+			if (partsBatch != null) {
+				partsBatch.beginBatch();
+			}
+		}
+		try {
+			writing = place;
+			retuning = true;
+			if (session != null) {
+				session.end(text);
+			}
+		} finally {
+			writing = null;
+			clearTuning();
+			retuning = false;
+		}
+		TunedPlace again = numberAt(first);
+		TunedPlace part = again != null && again.vector() != null &&
+				index < again.vector().parts().size()
+				? numberAt(again.vector().parts().get(index).start)
+				: null;
+		if (part == null || !tune(part, tuned)) {
+			listener.onTuningEnded(List.of());
+			return null;
+		}
+		return part;
+	}
+
+	@Nullable
+	private TunedPlace numberAt(int offset) {
+		ProjectFile shown = file;
+		Document document = shown != null
+				? shown.getProject().document(shown.getPath())
+				: null;
+		return document != null
+				? TunedPlace.at(document.text().toString(), offset)
+				: null;
+	}
+
+	// Ends the batch of the parts of a vector, if one is open. Before a
+	// build is prepared: a batch's end tells the project the text
+	// changed, which drops a build prepared before.
+	private void endPartsBatch() {
+		Document batch = partsBatch;
+		partsBatch = null;
+		if (batch != null) {
+			batch.endBatch();
+		}
+	}
+
 	private void clearTuning() {
+		if (!retuning) {
+			endPartsBatch();
+		}
 		tunedPlace = null;
 		tunedPath = null;
 		tunedText = null;
@@ -725,6 +810,9 @@ public final class ProjectFileManager {
 				document.replace(from, end, Text.of(text));
 			} finally {
 				document.endBatch();
+			}
+			if (!retuning) {
+				endPartsBatch();
 			}
 		}
 
