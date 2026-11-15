@@ -251,7 +251,7 @@ Why the others lose:
 | Mark | Means | Spoken |
 | --- | --- | --- |
 | ▶ | a picture of this file is being drawn now, as the engine reports; a file chosen to run that draws nothing (its build failed, or it is held after a crash) has no ▶, and its errors show on the error button | "running" |
-| ● | unsaved text; on a folder: in it | "unsaved" |
+| ● | unsaved text; on a folder: in it. Also in a folder that cannot be changed, as the examples: the edits stay there, kept, until they are undone or Save a copy takes them along (UX 5) | "unsaved" |
 | error icon and a number | errors of the last build in this file; on a folder: in it | "3 errors" |
 | warning icon and a number | the same for warnings | "1 warning" |
 | two arrows with an exclamation mark | changed outside while it has unsaved text | "changed outside" |
@@ -277,7 +277,7 @@ The file in the editor has the selected background and is announced as selected.
 
 | Gesture | Where | Effect |
 | --- | --- | --- |
-| Tap | menu button, or the title | Opens the drawer on the folder of the file in the editor, that row selected and scrolled into view |
+| Tap | menu button, or the title | Opens the drawer on the folder of the file in the editor, that row selected and scrolled into view. A level read again while it is shown (after a rename, a delete, a new file, a saved README) keeps its rows until the new ones come, and its place in the list; so does a rotation |
 | Tap | the arrow in the header | One level up; from a folder's root to Folders |
 | Tap | a part of the path | That level. The "…" at the start opens the whole path as a menu |
 | Tap | a folder row | Into that folder. Nothing else changes (principle 5) |

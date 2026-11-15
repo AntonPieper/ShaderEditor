@@ -311,6 +311,22 @@ final class FolderSource {
 	}
 
 	/**
+	 * Reads the folder of level again after it was changed here, as by
+	 * a rename, showing what was read until then.
+	 */
+	void reread(@NonNull Level level) {
+		String path = path(level);
+		Reading reading = readings.get(path);
+		if (reading == null) {
+			changed.run();
+			return;
+		}
+		put(path, reading.again());
+		handler.post(() -> read(path));
+		slowAfter(path);
+	}
+
+	/**
 	 * Takes what its rows show besides names when it is known only
 	 * after the source was made, as the library's wallpaper is after a
 	 * start: what was read is read again.
@@ -352,6 +368,23 @@ final class FolderSource {
 	}
 
 	/**
+	 * Forgets what was read, as {@link #forget()}, but the level shown
+	 * keeps its rows until it is read again, so that its list stays
+	 * where it was scrolled to.
+	 */
+	void forgetBut(@NonNull Level shown) {
+		String path = key.equals(shown.key()) ? path(shown) : null;
+		Reading reading = path != null ? readings.get(path) : null;
+		if (reading == null) {
+			forget();
+			return;
+		}
+		readings.clear();
+		readings.put(path, reading);
+		reread(shown);
+	}
+
+	/**
 	 * Forgets the folders that are not level or above it, so that they
 	 * are read again when entered again.
 	 */
@@ -382,12 +415,7 @@ final class FolderSource {
 			readings.put(path, reading);
 			// After this listing is shown, since reading changes it.
 			handler.post(() -> read(path));
-			handler.postDelayed(() -> {
-				Reading slow = readings.get(path);
-				if (!closed && slow != null) {
-					put(path, slow.slow());
-				}
-			}, Reading.SLOW_MILLIS);
+			slowAfter(path);
 		}
 		// The level as FolderListing builds it from what is known.
 		Ordered ordered = readmes.get(path);
@@ -728,6 +756,16 @@ final class FolderSource {
 					item.folder(), item.modified(), item.size()));
 		}
 		put(path, reading.listed(entries));
+	}
+
+	// Reading that takes long may be stopped.
+	private void slowAfter(@NonNull String path) {
+		handler.postDelayed(() -> {
+			Reading slow = readings.get(path);
+			if (!closed && slow != null) {
+				put(path, slow.slow());
+			}
+		}, Reading.SLOW_MILLIS);
 	}
 
 	private void put(@NonNull String path, @NonNull Reading reading) {
