@@ -63,9 +63,15 @@ final class FakeEngine {
 
 	// Draws one frame at this time and counts the frame number up.
 	void draw(float time) {
+		draw(time, null);
+	}
+
+	// Like draw(time), showing the pass of file as ShaderEngine does.
+	void draw(float time, @androidx.annotation.Nullable String file) {
 		frame.time = time;
 		frame.fTimeMax = runtime.fTimeMax();
-		runtime.draw(pipeline, builtins, frame);
+		runtime.draw(pipeline, builtins, frame,
+				runtime.shown(file != null ? path(file) : null));
 		++frame.frame;
 	}
 

@@ -19,6 +19,7 @@ import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 
 // The only class a host talks to. Hosts set the plan and post input
 // from any thread; the GL thread calls the context, surface and frame
@@ -128,6 +129,9 @@ public final class ShaderEngine {
 	private TargetFormats formats = TargetFormats.of(2, "");
 	@NonNull
 	private volatile RunningPasses passes = RunningPasses.NONE;
+	// The file of the pass shown instead of the output, or null.
+	@Nullable
+	private volatile ProjectPath shown;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
 	private volatile long nextFpsUpdate;
@@ -217,6 +221,19 @@ public final class ShaderEngine {
 		var build = shaders.current();
 		if (build != null) {
 			build.applyTuning();
+		}
+	}
+
+	// Any thread. Shows the pass of file full size instead of the output
+	// from the next frame on, or the output again for null: one drawn
+	// every frame, or a first frame that was drawn, from a build of any
+	// revision that has it; else the output. Nothing that runs changes,
+	// and thumbnails stay of the output.
+	public void showPass(@Nullable ProjectPath file) {
+		shown = file;
+		var requester = renderRequester;
+		if (requester != null) {
+			requester.run();
 		}
 	}
 
@@ -331,7 +348,7 @@ public final class ShaderEngine {
 		// Once for every program the frame draws.
 		sources.update(now);
 		renderPipeline.setLimit(limitAt(now));
-		build.draw(renderPipeline, builtins, frame);
+		build.draw(renderPipeline, builtins, frame, build.shown(shown));
 		// A source that failed after it started, such as a camera that
 		// did not open.
 		if (sources.takeWarned()) {

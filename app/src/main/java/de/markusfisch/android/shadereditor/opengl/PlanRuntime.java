@@ -81,6 +81,10 @@ final class PlanRuntime implements ShaderSwap.Build {
 	private final boolean[] backbuffer;
 	@Nullable
 	private RunningPasses running;
+	// The pass shown() found for shownFile last.
+	@Nullable
+	private ProjectPath shownFile;
+	private int shownIndex;
 	private boolean complete;
 	private boolean failed;
 
@@ -520,6 +524,17 @@ final class PlanRuntime implements ShaderSwap.Build {
 			@NonNull ShaderRenderPipeline pipeline,
 			@NonNull ActiveBuiltins builtins,
 			@NonNull FrameInputs frame) {
+		draw(pipeline, builtins, frame, plan.output());
+	}
+
+	// Like draw(pipeline, builtins, frame), presenting pass shown, as
+	// shown() says, instead of the running one; the running one stays
+	// what a thumbnail is of.
+	void draw(
+			@NonNull ShaderRenderPipeline pipeline,
+			@NonNull ActiveBuiltins builtins,
+			@NonNull FrameInputs frame,
+			int shown) {
 		var output = targets[plan.output()];
 		if (output == null) {
 			return;
@@ -531,14 +546,47 @@ final class PlanRuntime implements ShaderSwap.Build {
 		for (int pass : schedule.frame) {
 			drawPass(pass, builtins, frame, false);
 		}
-		var shown = output.drawn();
-		device.applySampling(shown, presentSampling);
-		pipeline.present(shown, frame.surfaceWidth, frame.surfaceHeight);
-		for (var target : targets) {
-			if (target != null) {
-				target.swap();
+		var picture = output.drawn();
+		device.applySampling(picture, presentSampling);
+		var texture = picture;
+		if (shown != plan.output() && targets[shown] != null) {
+			// With its own pixels, as a pass reads another.
+			texture = targets[shown].drawn();
+			device.applySampling(texture, Sampling.PASS);
+		}
+		pipeline.present(texture, picture, frame.surfaceWidth,
+				frame.surfaceHeight);
+		// Only what is drawn every frame moves on: a first frame keeps
+		// the texture it was drawn into, to be shown.
+		for (int pass : schedule.frame) {
+			if (targets[pass] != null) {
+				targets[pass].swap();
 			}
 		}
+	}
+
+	// The pass of file to present: one drawn every frame, or a first
+	// frame that was drawn; else, and for null, the running one.
+	int shown(@Nullable ProjectPath file) {
+		if (file == null) {
+			return plan.output();
+		}
+		if (file.equals(shownFile)) {
+			return shownIndex;
+		}
+		int index = plan.output();
+		for (int i = 0; i < passes.size(); ++i) {
+			var pass = plan.passes().get(i);
+			if (file.equals(plan.programs().get(pass.program()).file()) &&
+					(pass.perFrame() || schedule.isDrawnOnReset(i)) &&
+					schedule.hasTarget(i)) {
+				index = i;
+				break;
+			}
+		}
+		shownFile = file;
+		shownIndex = index;
+		return index;
 	}
 
 	@Override

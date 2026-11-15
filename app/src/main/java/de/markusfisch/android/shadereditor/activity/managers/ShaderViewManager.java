@@ -19,6 +19,7 @@ import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.opengl.Tuning;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
 public class ShaderViewManager {
@@ -114,6 +115,15 @@ public class ShaderViewManager {
 	public void continuePlan(@NonNull Preparation preparation, float quality,
 			@NonNull Object picture, @Nullable Tuning tuning) {
 		shaderView.continuePlan(preparation, quality, picture, tuning);
+	}
+
+	/**
+	 * Show the pass of file full size instead of the output, or the
+	 * output again for null. Nothing that runs changes; the library's
+	 * picture stays of the output.
+	 */
+	public void showPass(@Nullable ProjectPath file) {
+		shaderView.showPass(file);
 	}
 
 	/** Show the value tuning has now with the next frame. */
