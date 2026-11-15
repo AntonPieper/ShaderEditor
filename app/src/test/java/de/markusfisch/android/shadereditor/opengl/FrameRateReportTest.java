@@ -81,6 +81,27 @@ public class FrameRateReportTest {
 		assertTrue("told " + told, told > 50);
 	}
 
+	// A limit of 15 set after 25 s at 60: measured on, the mean of all
+	// frames creeps down for seconds; measured again from the change, the
+	// first rate is the new one, after its window.
+	@Test
+	public void aNewLimitIsMeasuredAgain() {
+		long limited = 1000000000L / 14;
+		var creeping = playedFor25sAt60();
+		long t = 25_000 * MILLI;
+		int told = NOTHING;
+		for (long end = t + 2000 * MILLI; t < end; t += limited) {
+			int fps = creeping.frame(t);
+			if (fps != NOTHING) {
+				told = fps;
+			}
+		}
+		assertTrue("told " + told, told > 40);
+		var again = playedFor25sAt60();
+		again.start();
+		assertEquals(14, firstTold(again, 25_000 * MILLI, limited));
+	}
+
 	// The host cleared its label for the new shader: the same rate is
 	// told again, once its window is in.
 	@Test
@@ -119,6 +140,15 @@ public class FrameRateReportTest {
 			}
 		}
 		return NOTHING;
+	}
+
+	private static FrameRateReport playedFor25sAt60() {
+		var report = new FrameRateReport();
+		report.start();
+		for (long t = 0; t < 25_000 * MILLI; t += 16_667_000L) {
+			report.frame(t);
+		}
+		return report;
 	}
 
 	private static FrameRateReport playedAt60() {

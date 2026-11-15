@@ -183,6 +183,7 @@ public final class ShaderEngine {
 	private final AtomicInteger steps = new AtomicInteger();
 	private final AtomicBoolean restartAsked = new AtomicBoolean();
 	private final AtomicBoolean againAsked = new AtomicBoolean();
+	private final AtomicBoolean paceChanged = new AtomicBoolean();
 	// What formats says of rgba16f targets, for any thread.
 	private volatile boolean halfFloat;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
@@ -305,6 +306,13 @@ public final class ShaderEngine {
 			steps.incrementAndGet();
 			requestRender();
 		}
+	}
+
+	// Any thread. The host changed how often it asks for frames, as a
+	// frame rate limit does: the rate is measured again from the next
+	// frame, as after a new build, and told even when it is the same.
+	public void paceChanged() {
+		paceChanged.set(true);
 	}
 
 	// Any thread. Clears the histories and the clock: the first frames
@@ -451,6 +459,10 @@ public final class ShaderEngine {
 		wasPaused = paused;
 		if (pauseChanged && !paused) {
 			// Play: the stopped time is in no sample.
+			rate.start();
+		}
+		if (paceChanged.getAndSet(false)) {
+			// A new limit: no sample is of the pace before.
 			rate.start();
 		}
 		if (restartAsked.getAndSet(false)) {

@@ -137,7 +137,12 @@ public class ShaderView extends GLSurfaceView {
 	// later tells its surface the rate, so a display that can go slower
 	// may. timeDelta and frameRate say what really happens. Main thread.
 	public void setFrameRateLimit(int limit) {
-		frameRateLimit = Math.max(0, limit);
+		limit = Math.max(0, limit);
+		if (limit != frameRateLimit) {
+			// The rate it tells was of the limit before.
+			engine.paceChanged();
+		}
+		frameRateLimit = limit;
 		applyRenderMode();
 		tellFrameRate();
 	}
