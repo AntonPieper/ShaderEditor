@@ -137,7 +137,7 @@ Its weak points, plainly:
 
 - **Two accents have to keep working.** With "Use device colours" on, the accent is whatever the wallpaper gives: it can sit next to a syntax colour of the same hue, or look like the error red. The rules of 6.1 keep that harmless, and every screen has to be looked at in both.
 - **The limit costs picture.** It is a fixed curve, not an adaptation (5.5), but it pulls everything bright under one ceiling: a white shader appears as #333 grey, bright detail that differs only in brightness is squeezed into a narrow range, and **small bright features on a dark picture become faint**: the white discs of the Touch example stand out 1.7 : 1 instead of today's 4.7 : 1 (`sheet-reading-3-questions.png`). The eye button shows the truth, one tap, as it does today. The Bright level of the setting is for those who weigh the picture higher.
-- **The accent is also the keyword colour.** Inside code, blue cannot mean "interactive". The selection therefore is a dark blue, not the accent, and still leaves comments at 3.8 : 1 in the worst case (computed).
+- **The accent is also the keyword colour.** Inside code, blue cannot mean "interactive". The selection therefore is a dark blue, not the accent, and still leaves comments at 2.9 : 1 in the worst case (computed).
 - **A solid drawer makes it look less particular** than it could. The character is left to the main screen, where the picture is.
 - **The scheme is hand-made.** I chose the tones by eye and checked them by contrast arithmetic, not with Material's tone generator, and never on a device. An OLED panel at low brightness may want the surfaces a step lighter.
 - **Blue is taste**, argued from the icon.
@@ -198,19 +198,19 @@ Feasibility I checked in the code: the presentation step exists for every frame 
 ### 5.3 What is decided
 
 - **The limit, default ceiling `#333`, with the lighter palette of 5.4.** The scrim `@color/background_editor` becomes transparent.
-- **Target: 4.5 : 1 for every code colour, comments included, against the brightest pixel the limit allows.** That is WCAG's AA for body text. Not 3 : 1, because 12 sp regular monospace is the opposite of large text. Not 7 : 1, because that needs a ceiling near `#1A` and leaves a mean brightness under 20 of 255. Line numbers are held to 3 : 1.
-- **It holds for every shader, by construction, not only for the examples**: no pixel behind code is brighter than `#333`, and on `#333` the palette has 4.8 (comments), 5.9 (keywords), 6.5 to 8.7 (the others), 12.6 (text), 3.9 (line numbers). Measured on the eight frames the worst is 5.0 and 6.0, a first-percentile figure on frames that never reach white; in the running app, on shaders that do reach the ceiling (Texture, Electric Fade), the measured worst is the computed 4.85 and 5.9.
-- **What stays adjustable:** one setting, "Picture behind code", with three values (`sheet-reading-2-levels.png`): **Bright** (ceiling `#4D`: in the worst case comments 3.2, invalid characters 3.4, keywords 3.9, control-flow words 4.4 and line numbers 2.6, all measured in the app and all below the target; for people who prefer the picture), **Balanced** (`#33`, default), **Dim** (`#1A`: 6.7). A list of three, like the other settings, not a slider: each value has a known guarantee.
+- **Target: 4.5 : 1 for every code colour against the brightest pixel the limit allows.** That is WCAG's AA for body text. Not 3 : 1, because 12 sp regular monospace is the opposite of large text. Not 7 : 1, because that needs a ceiling near `#1A` and leaves a mean brightness under 20 of 255. **Comments and line numbers are held to 3 : 1** instead: they are read when one wants to, not at a glance, and at 4.8 comments stood as bright as the code beside them, so they could not be skipped (the owner, 2026-11-15: "too strong, making them hard to ignore"). 3 : 1 is WCAG's floor for large text and for parts of the screen one must still make out; comments keep a margin above it at Balanced (3.8) and are 6.3 on a dark picture (`show/comment-colour-1/`).
+- **It holds for every shader, by construction, not only for the examples**: no pixel behind code is brighter than `#333`, and on `#333` the palette has 5.9 (keywords), 6.5 to 8.7 (the others), 12.6 (text), and 3.8 (comments) and 3.9 (line numbers) against their own target. Measured on the eight frames for the earlier comment colour `#9BA1A8` the worst was 5.0 and 6.0, a first-percentile figure on frames that never reach white; in the running app, on shaders that do reach the ceiling (Texture, Electric Fade), the measured worst was the computed 4.85 and 5.9.
+- **What stays adjustable:** one setting, "Picture behind code", with three values (`sheet-reading-2-levels.png`): **Bright** (ceiling `#4D`: in the worst case comments 2.5, invalid characters 3.4, keywords 3.9, control-flow words 4.4 and line numbers 2.6, all below their target; for people who prefer the picture), **Balanced** (`#33`, default), **Dim** (`#1A`: comments 5.2, every other code colour 8.1 or more). A list of three, like the other settings, not a slider: each value has a known guarantee.
 - **The eye button** shows the picture untouched, as today.
 - **How it fits the rest:** it is the first of the two translucency levels of 6.2, and both follow one rule: fix the brightest thing that can be behind a surface's text, so that the surface's dimmest text keeps 4.5 : 1. For code the limit does it in the engine; for the bars a view colour does it.
 - **It changes on one occasion only:** the eye button, which today removes the black and then removes the limit. Nothing else moves it: not the shader, not typing, not the drawer.
-- **Line marks and selection darken, never lighten.** A light tint over the ceiling would eat the margin: an error band at 20 % red would leave comments at 3.8. The marks in 6.9 are dark tints: comments keep 5.4 on an error line and 4.8 on a warning line; on a selection text has 9.8, keywords 4.6, comments 3.8 (all computed for the worst case).
+- **Line marks and selection darken, never lighten.** A light tint over the ceiling would eat the margin that comments have. The marks in 6.9 are dark tints: comments keep 4.2 on an error line and 3.8 on a warning line; on a selection text has 9.8, keywords 4.6, comments 2.9 (all computed for the worst case).
 
 ![levels](../show/style/sheet-reading-2-levels.png)
 
 ### 5.4 The syntax palette
 
-Today: twelve values, of which keyword, sampler, built-in and qualifier are four blues between 3 and 15 ΔE apart, which is one colour at 12 sp; comment and keyword are too dark for any picture. Proposed: seven colours and two greys, none with a luminance under 0.35, hues taken from the icon (blue, green, white) plus orange and one red.
+Today: twelve values, of which keyword, sampler, built-in and qualifier are four blues between 3 and 15 ΔE apart, which is one colour at 12 sp; comment and keyword are too dark for any picture. Proposed: seven colours and two greys, none with a luminance under 0.35 but the grey of comments (0.26, quieter on purpose, see 5.3), hues taken from the icon (blue, green, white) plus orange and one red.
 
 | Resource | Value | L* | On `#333` | Role | Today's resources that take it |
 | --- | --- | --- | --- | --- | --- |
@@ -219,18 +219,18 @@ Today: twelve values, of which keyword, sampler, built-in and qualifier are four
 | `code_builtin` | `#8FE3EE` | 85 | 8.7 | Built-in functions and `gl_` variables | `syntax_builtin_function` |
 | `code_number` | `#A5D66F` | 80 | 7.5 | Numbers, `true`, `false`, strings | `syntax_number_literal`, `_bool_literal`, `_string` |
 | `code_flow` | `#FFA657` | 76 | 6.5 | `if`, `for`, `return`, `discard` … | `syntax_control_flow` |
-| `code_comment` | `#9BA1A8` | 66 | 4.8 | Comments | `syntax_comment` |
+| `code_comment` | `#888D94` | 58 | 3.8 | Comments: the grey of the line numbers, one step under the code, so that they can be skipped | `syntax_comment` |
 | `code_directive` | `#C8CCD2` | 82 | 7.8 | `#version`, `#define`, `#pragma` … | `syntax_directive` |
 | `code_invalid` | `#FF7B8A` | 67 | 5.1 | Characters GLSL does not allow | `syntax_invalid` |
 | `code_line_number` | `#8A8F96` | 59 | 3.9 | Line numbers | `editor_line_numbers` |
 
 The 21 `syntax_*` names stay as they are and point at these nine, so the highlighter does not change.
 
-**Colour-vision deficiencies** (`sheet-palette.png`; simulation after Machado, Oliveira and Fernandes 2009, full dichromacy; distances are ΔE76, under about 20 two colours are hard to tell apart at this size). The palette is built so that the roles that are all *words* differ in lightness, which no deficiency removes: text 100, built-in 85, keyword 72, comment 66.
+**Colour-vision deficiencies** (`sheet-palette.png`; simulation after Machado, Oliveira and Fernandes 2009, full dichromacy; distances are ΔE76, under about 20 two colours are hard to tell apart at this size). The palette is built so that the roles that are all *words* differ in lightness, which no deficiency removes: text 100, built-in 85, keyword 72, comment 58.
 
 | Seen with | Closest pairs in the proposed palette | Why it is acceptable |
 | --- | --- | --- |
-| Full colour vision | comment / directive 16; text / directive 18 | A directive starts with `#`, a comment with `//` |
+| Full colour vision | comment / line number 1; text / directive 18 | The same grey on purpose: line numbers stand in the gutter. A directive starts with `#` |
 | Protanopia | built-in / directive 9; number / flow 10 | Numbers are digits, flow words are words; directives start with `#` |
 | Deuteranopia | number / flow 13; built-in / directive 13 | The same |
 | Tritanopia | keyword / built-in 14; number / directive 15 | Keyword and built-in still differ by 13 L* |
@@ -246,7 +246,7 @@ The owner asked what happens with a shader that is mostly black with a few brigh
 **Mostly black, a few bright spots** (the Touch example with two fingers down, a real frame: 11 % of it is white).
 
 - Black stays black. Only the pixels of the spots change, each by itself; there is no overall dimming and nothing to get wrong about "how bright is this frame".
-- Text on a spot: comments 4.8, keywords 5.9 (today: 1.1 and 1.4, measured).
+- Text on a spot: comments 3.8, keywords 5.9 (before the limit: 1.1 and 1.4, measured).
 - **The cost is the spot.** Against the black around it a white disc stands out 1.7 : 1 with the Balanced level, 2.5 : 1 with Bright, 4.7 : 1 today. It keeps its shape, place and hue, and it is faint. For a shader whose whole picture is a few bright things (Touch, Shapes, Trails), that is a real loss of what the user is watching.
 - The band is the one treatment that leaves the spots as they are, because it darkens only behind text; it pays for that on bright pictures, and was not chosen.
 - An adaptive level would fail here in the other direction: a frame whose bright part is under 5 % counts as dark, gets no black, and the text on the spots is unreadable.
@@ -254,7 +254,7 @@ The owner asked what happens with a shader that is mostly black with a few brigh
 **Brightness that keeps changing** (a whole frame going from black to white).
 
 - Each frame is treated alone, so there is nothing that could lag, pump or overshoot. The UI does not change at all.
-- The picture's swing is squeezed from 0…255 into 0…51: a flashing shader flashes less behind the code, and comments stay between 8.1 and 4.8.
+- The picture's swing is squeezed from 0…255 into 0…51: a flashing shader flashes less behind the code, and comments stay between 6.3 and 3.8.
 - Today the swing is halved (0…119) and the text is lost at the top of it (1.7).
 - An adaptive level would be right on paper for a flat frame, but it can know a frame's brightness only some frames later, so its black arrives after the flash and stays after it.
 
@@ -315,7 +315,7 @@ Fixed colours exist because of the picture: a surface that takes the device's co
 
 | Level | What it is | Where | Over white, computed |
 | --- | --- | --- | --- |
-| **Code** | No colour. The engine limits the picture: `limit` uniform, ceiling from the setting, default `@integer/code_picture_ceiling` = 51 | The editor | Comments 4.8, text 12.6 |
+| **Code** | No colour. The engine limits the picture: `limit` uniform, ceiling from the setting, default `@integer/code_picture_ceiling` = 51 | The editor | Comments 3.8, text 12.6 |
 | **Bar** | `se_level_bar` = `#CC121316` (80 % of `se_surface`) | Toolbar with the status bar, the extra-keys row, the gesture or navigation bar strip | Becomes `#414245`; text 8.6, dim text 4.5 |
 | **Solid** | `se_surface` … `_3`, opaque | The drawer, sheets, menus, dialogs, the conflict bar, every screen without a picture | – |
 

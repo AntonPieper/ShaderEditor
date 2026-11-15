@@ -4,7 +4,8 @@
 	<color name="code_builtin">#8FE3EE</color>
 	<color name="code_number">#A5D66F</color>
 	<color name="code_flow">#FFA657</color>
-	<color name="code_comment">#9BA1A8</color>
+	<!-- One step under the code, so that comments can be skipped -->
+	<color name="code_comment">#888D94</color>
 	<color name="code_directive">#C8CCD2</color>
 	<color name="code_invalid">#FF7B8A</color>
 	<color name="code_line_number">#8A8F96</color>
