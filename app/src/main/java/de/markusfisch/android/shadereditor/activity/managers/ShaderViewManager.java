@@ -39,6 +39,10 @@ public class ShaderViewManager {
 	private final Spinner qualitySpinner;
 	@NonNull
 	private final Listener listener;
+	// Told whether a picture is being drawn, from the engine's frame
+	// rate; on any thread.
+	@Nullable
+	private volatile DrawingListener drawing;
 	@NonNull
 	private float[] qualityValues;
 	private float quality = 1f;
@@ -172,11 +176,29 @@ public class ShaderViewManager {
 		}
 	}
 
+	/** Hears whether a picture is being drawn. */
+	public interface DrawingListener {
+		/** On any thread. */
+		void onDrawing(boolean drawing);
+	}
+
+	/**
+	 * Tell drawing whether a picture is being drawn, as the engine
+	 * reports its frame rate: frames come, or none does.
+	 */
+	public void setDrawingListener(@Nullable DrawingListener drawing) {
+		this.drawing = drawing;
+	}
+
 	private void initShaderView() {
 		shaderView.getEngine().setListener(new ShaderEngine.Listener() {
 			@Override
 			public void onFramesPerSecond(int fps) {
 				listener.onFramesPerSecond(fps);
+				DrawingListener told = drawing;
+				if (told != null) {
+					told.onDrawing(fps > 0);
+				}
 			}
 
 			@Override

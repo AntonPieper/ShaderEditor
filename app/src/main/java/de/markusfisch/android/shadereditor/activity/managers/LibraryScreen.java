@@ -46,6 +46,10 @@ public final class LibraryScreen implements ShaderScreen {
 	private final ExecutorService newest =
 			Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
+	// Whether a picture of what runs is being drawn, as the engine
+	// reports it: the one truth of "runs now", for the toolbar's ▶ and
+	// the drawer's.
+	private boolean drawing;
 	private boolean destroyed;
 
 	private static final String OPEN = "open";
@@ -162,6 +166,9 @@ public final class LibraryScreen implements ShaderScreen {
 		// The quality chosen is told once it changes, also when the
 		// spinner first shows what it holds: what it holds now.
 		shaderViewManager.setQuality(1f);
+		// "Runs now" is what the engine draws.
+		shaderViewManager.setDrawingListener(drawn ->
+				handler.post(() -> setDrawing(drawn)));
 		guard = new RunGuard(new RunGuard.Store() {
 			@NonNull
 			@Override
@@ -219,7 +226,7 @@ public final class LibraryScreen implements ShaderScreen {
 						// No build reports, so only the manifest
 						// can be wrong.
 						forgetHeldMessage();
-						shaderViewManager.showNothing();
+						showNothing();
 						shaderViewListener.onInfoLog(nothingRuns);
 					}
 				});
@@ -368,6 +375,7 @@ public final class LibraryScreen implements ShaderScreen {
 			holds.keepOpen();
 		}
 		destroyed = true;
+		shaderViewManager.setDrawingListener(null);
 		newest.shutdownNow();
 		handler.removeCallbacksAndMessages(null);
 		files.destroy();
@@ -548,6 +556,40 @@ public final class LibraryScreen implements ShaderScreen {
 			editorFragment.setErrors(infoLog, file.getPath());
 		} else {
 			editorFragment.setErrors(infoLog);
+		}
+	}
+
+	// Nothing is drawn: ▶ goes wherever it stands.
+	private void showNothing() {
+		shaderViewManager.showNothing();
+		setDrawing(false);
+	}
+
+	private void setDrawing(boolean drawing) {
+		if (this.drawing != drawing) {
+			this.drawing = drawing;
+			showRunning();
+		}
+	}
+
+	// What runs, as the toolbar and the drawer show it: ▶ only on a
+	// file whose picture is being drawn, not on one chosen to run that
+	// does not draw, such as one whose build failed or one held back
+	// after a crash.
+	private void showRunning() {
+		ProjectFile file = files.file();
+		if (file != null) {
+			file.setDrawing(drawing);
+		}
+		showOpenTitle();
+		if (file != null && file == open) {
+			OpenProject project = file.getProject();
+			List<ProjectPath> used = new ArrayList<>();
+			for (OpenProject.Used use : project.used()) {
+				used.add(use.path());
+			}
+			drawer.setOpenFile(files.key(), file.getPath(),
+					drawing ? project.running() : null, used);
 		}
 	}
 
@@ -750,6 +792,7 @@ public final class LibraryScreen implements ShaderScreen {
 					shaderManager.deselect();
 				}
 				open = file;
+				file.setDrawing(drawing);
 				moving = false;
 				showOpen();
 				// The last build's, until the next one reports.
@@ -791,17 +834,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 			@Override
 			public void onChanged() {
-				showOpenTitle();
-				ProjectFile file = files.file();
-				if (file != null && file == open) {
-					OpenProject project = file.getProject();
-					List<ProjectPath> used = new ArrayList<>();
-					for (OpenProject.Used use : project.used()) {
-						used.add(use.path());
-					}
-					drawer.setOpenFile(files.key(), file.getPath(),
-							project.running(), used);
-				}
+				showRunning();
 			}
 
 			@Override
@@ -940,7 +973,7 @@ public final class LibraryScreen implements ShaderScreen {
 			if (editor != null) {
 				// Tells the editor that nothing is reported, so not
 				// before its view is there; nothing ran until then.
-				shaderViewManager.showNothing();
+				showNothing();
 			}
 		} else {
 			editorFragment.setCovered(false);
@@ -1041,7 +1074,7 @@ public final class LibraryScreen implements ShaderScreen {
 			}
 			return true;
 		}
-		shaderViewManager.showNothing();
+		showNothing();
 		if (heldMessage == null || !heldMessage.isShownOrQueued()) {
 			heldMessage = Message.make(activity, activity.getString(
 							R.string.file_not_run_after_crash,

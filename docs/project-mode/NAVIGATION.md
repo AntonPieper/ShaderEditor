@@ -250,7 +250,7 @@ Why the others lose:
 
 | Mark | Means | Spoken |
 | --- | --- | --- |
-| ▶ | this file runs | "running" |
+| ▶ | a picture of this file is being drawn now, as the engine reports; a file chosen to run that draws nothing (its build failed, or it is held after a crash) has no ▶, and its errors show on the error button | "running" |
 | ● | unsaved text; on a folder: in it | "unsaved" |
 | error icon and a number | errors of the last build in this file; on a folder: in it | "3 errors" |
 | warning icon and a number | the same for warnings | "1 warning" |
@@ -261,7 +261,7 @@ Why the others lose:
 
 The file in the editor has the selected background and is announced as selected.
 
-**The toolbar**: menu button; title; frame rate and quality; error button with a count when the last build has errors or warnings; Run when the run mode is manual; the eye; the menu. The title is the name of the file in the editor, with ● while it has unsaved text. The second line is, when another file runs, "▶ that file · folder", otherwise the folder ("Shaders", "aurora"). A tap on the title opens the drawer.
+**The toolbar**: menu button; title; frame rate and quality; error button with a count when the last build has errors or warnings; Run when the run mode is manual; the eye; the menu. The title is the name of the file in the editor, with ● while it has unsaved text. The second line is, when a picture of another file is being drawn, "▶ that file · folder" (the same report as the row's ▶), otherwise the folder ("Shaders", "aurora"). A tap on the title opens the drawer.
 
 ### 6.2 Levels
 
