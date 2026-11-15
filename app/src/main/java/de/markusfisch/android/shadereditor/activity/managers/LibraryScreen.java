@@ -338,6 +338,17 @@ public final class LibraryScreen implements ShaderScreen {
 								? file.getProject().running()
 								: null, limit);
 					}
+
+					@Override
+					public void opening() {
+						// The sheet would lie over the bar: the number is
+						// kept, as Done keeps it, and the code comes back
+						// behind the sheet, without the keyboard.
+						if (files.isTuning()) {
+							keyboardBeforeTuning = false;
+							tuningBar.done();
+						}
+					}
 				});
 		// Show in the strip shows the pass the line names, as the sheet does.
 		links.setPassShow(passes::show);
@@ -635,6 +646,9 @@ public final class LibraryScreen implements ShaderScreen {
 		if (!started) {
 			return;
 		}
+		// The bar takes the sheet's place: the sheet closes, a pass it
+		// shows stays shown, so the number is tuned in what is seen.
+		passes.close();
 		codeBeforeTuning = editorFragment.isCodeVisible();
 		keyboardBeforeTuning = SoftKeyboard.isOpen(tuningBar);
 		tuningBar.open(place, tuningSteps.get(number), new TuningBar.Session() {

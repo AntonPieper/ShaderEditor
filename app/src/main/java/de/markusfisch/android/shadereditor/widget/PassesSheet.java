@@ -145,6 +145,9 @@ public final class PassesSheet {
 		 * 0, and keep it with what runs.
 		 */
 		void keepFrameRateLimit(int limit);
+
+		/** The sheet opens: what would lie in its place makes way. */
+		void opening();
 	}
 
 	// What the frame-rate limit offers, 0 for none.
@@ -541,6 +544,7 @@ public final class PassesSheet {
 	}
 
 	private void open() {
+		files.opening();
 		if (behavior != null) {
 			behavior.setMaxHeight(Math.round(
 					((View) sheet.getParent()).getHeight() * .7f));
