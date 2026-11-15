@@ -217,6 +217,9 @@ public class MainActivity extends AppCompatActivity {
 					ShaderEditorApp.preferences.setPendingCrashShaderId(0);
 					screen.onFrame();
 					uiManager.setFrameRate(fps + " fps");
+				} else {
+					// No rate without a picture that runs.
+					uiManager.setFrameRate(null);
 				}
 			}
 

@@ -184,8 +184,11 @@ public class UIManager {
 		drawerLayout.closeDrawers();
 	}
 
-	/** Set the frame rate; it may be called from any thread. */
-	public void setFrameRate(@NonNull String frameRate) {
+	/**
+	 * Set the frame rate, none when null; it may be called from any
+	 * thread.
+	 */
+	public void setFrameRate(@Nullable String frameRate) {
 		toolbar.post(() -> {
 			secondLine.setFrameRate(frameRate);
 			showFrameRate();
