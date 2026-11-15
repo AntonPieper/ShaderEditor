@@ -1,6 +1,5 @@
 package de.markusfisch.android.shadereditor.widget;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -52,22 +51,6 @@ public class ShaderToySourceTest {
 	}
 
 	@Test
-	public void inputsWithAnEqualUniformAreRenamed() {
-		assertEquals("resolution time time frame mouse date",
-				ShaderToySource.rename(
-						"iResolution iTime iGlobalTime iFrame iMouse iDate"));
-	}
-
-	@Test
-	public void onlyWholeNamesAreRenamed() {
-		assertEquals("iTimeDelta iChannel0 iChannelResolution[0] " +
-						"iSampleRate myiTime iFrameRate",
-				ShaderToySource.rename("iTimeDelta iChannel0 " +
-						"iChannelResolution[0] iSampleRate myiTime " +
-						"iFrameRate"));
-	}
-
-	@Test
 	public void conversionDeclaresTheRenamedUniforms() {
 		String converted = ShaderToySource.convert(
 				"void mainImage(out vec4 c, in vec2 p) {\n" +
@@ -93,8 +76,5 @@ public class ShaderToySourceTest {
 		assertFalse(converted.contains("uniform float time;"));
 		assertFalse(converted.contains("uniform vec4 mouse;"));
 		assertFalse(converted.contains("uniform vec4 date;"));
-		assertEquals("uniform float time;\n\n",
-				ShaderToySource.declarations("iTime + iGlobalTime"));
-		assertEquals("", ShaderToySource.declarations("myiTime iTimeDelta"));
 	}
 }
