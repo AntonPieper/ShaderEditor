@@ -1708,9 +1708,9 @@ public final class OpenProject {
 	/**
 	 * Return whether path, open in the editor, can run: a text file
 	 * whose own text defines what its language starts at. Until that is
-	 * known for its text,
-	 * UNKNOWN, and the text is read on the worker, once per revision;
-	 * the listener hears when it is known.
+	 * known for its text, the answer for its text before, or UNKNOWN
+	 * before the first, and the text is read on the worker, once per
+	 * revision; the listener hears when the answer changed.
 	 */
 	public Runs runs(ProjectPath path) {
 		FileRecord record = loaded(path);
@@ -1719,9 +1719,8 @@ public final class OpenProject {
 		}
 		Document document = record.document();
 		int revision = document.revision();
-		if (record.runsRevision == revision) {
-			return record.runs;
-		} else if (record.runsAsked != revision) {
+		if (record.runsRevision != revision &&
+				record.runsAsked != revision) {
 			record.runsAsked = revision;
 			Text text = document.text();
 			worker.execute(() -> {
@@ -1737,7 +1736,7 @@ public final class OpenProject {
 				});
 			});
 		}
-		return Runs.UNKNOWN;
+		return record.runs;
 	}
 
 	/** Keep the diagnostics of the last build of what runs. */
@@ -2127,15 +2126,12 @@ public final class OpenProject {
 				2L * document.historyChars();
 	}
 
-	// Flush record after the delay since its last change, and at the
-	// latest after the limit since the first one not flushed.
+	// Flush record after the delay without a change, and at the latest
+	// after the limit since the first one not flushed. A key posts no
+	// timer: one waits for the delay at a time, and posts the next when
+	// a change came meanwhile.
 	private void schedule(FileRecord record) {
 		int timer = ++record.timer;
-		later.post(() -> {
-			if (record.timer == timer) {
-				flush(record);
-			}
-		}, FLUSH_DELAY);
 		if (record.limit == 0) {
 			int limit = record.limit = timer;
 			later.post(() -> {
@@ -2143,7 +2139,20 @@ public final class OpenProject {
 					flush(record);
 				}
 			}, FLUSH_LIMIT);
+			delay(record, limit, timer);
 		}
+	}
+
+	private void delay(FileRecord record, int limit, int timer) {
+		later.post(() -> {
+			if (record.limit != limit) {
+				return;
+			} else if (record.timer == timer) {
+				flush(record);
+			} else {
+				delay(record, limit, record.timer);
+			}
+		}, FLUSH_DELAY);
 	}
 
 	// Send what changed in the document of record since it was last
@@ -2281,8 +2290,8 @@ public final class OpenProject {
 		Map<ProjectPath, Runs> runs = new HashMap<>();
 		Map<ProjectPath, String> unreadable = new HashMap<>();
 		for (FileRecord record : records.values()) {
-			if (record.document() != null &&
-					record.runsRevision == record.document().revision()) {
+			// A key does not change what is known until it is known.
+			if (record.document() != null && record.runs != Runs.UNKNOWN) {
 				runs.put(record.path, record.runs);
 			}
 			if (record.unreadable != null) {

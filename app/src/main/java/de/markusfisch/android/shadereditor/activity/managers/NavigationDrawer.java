@@ -156,6 +156,9 @@ public class NavigationDrawer implements ShaderList {
 	private Item.Place open;
 	private Item.Place running;
 	private Set<Item.Place> used = Collections.emptySet();
+	// Whether what the rows show changed while the drawer was closed;
+	// they are made when it opens.
+	private boolean unlisted;
 	// The library's session, or null until the start opened it.
 	@Nullable
 	private String libraryKey;
@@ -325,6 +328,10 @@ public class NavigationDrawer implements ShaderList {
 			public void onDrawerStateChanged(int newState) {
 				if (newState != DrawerLayout.STATE_IDLE &&
 						!drawerLayout.isDrawerOpen(drawer)) {
+					if (unlisted) {
+						unlisted = false;
+						refresh();
+					}
 					scrollToSelected();
 					loadRecent();
 					// Faces let go when it closed are asked for again.
@@ -531,8 +538,13 @@ public class NavigationDrawer implements ShaderList {
 		this.used = places;
 		if (!drawerLayout.isDrawerVisible(drawer)) {
 			// It opens where the file in the editor is, also when that
-			// came after the drawer closed.
-			go(home());
+			// came after the drawer closed; the rows of the level it is
+			// at already are made when it opens.
+			if (home().equals(level)) {
+				unlisted = true;
+			} else {
+				go(home());
+			}
 		} else if (listing != null) {
 			refresh();
 		}

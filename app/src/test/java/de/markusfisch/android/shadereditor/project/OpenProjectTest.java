@@ -3220,9 +3220,63 @@ public class OpenProjectTest {
 		assertEquals(OpenProject.Runs.YES, project.runs(path("big.glsl")));
 
 		edit(project, big, "void f() {}");
-		assertEquals(OpenProject.Runs.UNKNOWN, project.runs(path("big.glsl")));
+		drain(posted);
+		// The answer before stays until the new one is known and told.
+		assertEquals(OpenProject.Runs.YES, project.runs(path("big.glsl")));
+		assertEquals(1, worker.size());
 		settle();
+		assertEquals(1, drain(posted));
 		assertEquals(OpenProject.Runs.NO, project.runs(path("big.glsl")));
+	}
+
+	// The bar of the editor: a key costs no work in proportion to the
+	// text or the folder. The journal needs only its timers, a delay
+	// after the last key and a limit after the first, which post one
+	// write to the worker when they ring.
+	@Test
+	public void keysAreNotToldAndQueueNoWorkButTheJournalsTimers()
+			throws IOException {
+		OpenProject project = open();
+		Document a = shown(project, "a.glsl", SHADER);
+		ProjectPath path = path("a.glsl");
+		List<Runnable> posted = new ArrayList<>();
+		int[] heard = {0};
+		// As the screen: what it is told lists the drawer, whose row of
+		// the file asks whether it runs.
+		project.setListener(posted::add, () -> {
+			++heard[0];
+			project.runs(path);
+		});
+		project.runs(path);
+		// The file turns unsaved: that is told once.
+		a.replace(0, 0, Text.of(" "));
+		settle(posted);
+		steps.later.run();
+		settle(posted);
+		heard[0] = 0;
+		int queued = 0;
+
+		for (int i = 0; i < 50; ++i) {
+			a.replace(0, 0, Text.of("x"));
+			do {
+				queued += worker.size();
+				settle();
+			} while (drain(posted) > 0);
+		}
+
+		assertEquals(0, heard[0]);
+		assertEquals(0, queued);
+		assertEquals(2, steps.later.size());
+		steps.later.run();
+		assertEquals(1, worker.size());
+		settle(posted);
+		assertEquals(a.text().toString(), journaled("a.glsl"));
+		// Asked, it answers what it knew and reads the text once; the
+		// same answer is not told.
+		assertEquals(OpenProject.Runs.YES, project.runs(path));
+		assertEquals(1, worker.size());
+		settle(posted);
+		assertEquals(0, heard[0]);
 	}
 
 	@Test
@@ -3664,6 +3718,14 @@ public class OpenProjectTest {
 	private String read(String name) throws IOException {
 		return new String(Files.readAllBytes(new File(root, name).toPath()),
 				StandardCharsets.UTF_8);
+	}
+
+	// Run the worker, main and what the listener was told until all
+	// are idle.
+	private void settle(List<Runnable> posted) {
+		do {
+			settle();
+		} while (drain(posted) > 0);
 	}
 
 	private static int drain(List<Runnable> posted) {
