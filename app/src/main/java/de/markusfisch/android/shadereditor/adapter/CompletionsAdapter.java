@@ -107,10 +107,19 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 					Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 			btn.setText(text);
 			// A word with docs looks itself up on a long press, which
-			// TalkBack offers as Look up.
-			if (lookUp.hasDocs(item)) {
+			// TalkBack offers as Look up; a function without its
+			// parenthesis.
+			boolean function = item.endsWith("(");
+			String word = function
+					? item.substring(0, item.length() - 1)
+					: item;
+			btn.setContentDescription(function
+					? btn.getContext().getString(
+					R.string.a11y_completion_function, word)
+					: null);
+			if (lookUp.hasDocs(word)) {
 				btn.setOnLongClickListener(v -> {
-					lookUp.lookUp(this.item);
+					lookUp.lookUp(word);
 					return true;
 				});
 				ViewCompat.replaceAccessibilityAction(btn,

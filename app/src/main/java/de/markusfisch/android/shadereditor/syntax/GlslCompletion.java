@@ -101,6 +101,25 @@ public final class GlslCompletion {
 	}
 
 	/**
+	 * The words with a parenthesis after each that names a function,
+	 * built-in or declared in outline, but main: what a tap inserts.
+	 */
+	public static List<String> withParentheses(List<String> words,
+			Outline outline) {
+		List<String> result = new ArrayList<>(words.size());
+		for (String word : words) {
+			// GlslWords styles the gl_ variables as functions.
+			boolean function = !word.startsWith("gl_") &&
+					(GlslWords.style(word, 0, word.length()) ==
+							Style.BUILTIN_FUNCTION ||
+							(outline.isFunction(word) &&
+									!"main".equals(word)));
+			result.add(function ? word + "(" : word);
+		}
+		return result;
+	}
+
+	/**
 	 * Index of the token that holds the character before the cursor, or
 	 * -1 if there is none. The text to complete runs from its start to the
 	 * cursor.

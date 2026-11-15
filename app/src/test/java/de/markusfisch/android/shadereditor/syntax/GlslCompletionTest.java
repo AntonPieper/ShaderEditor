@@ -223,6 +223,20 @@ public class GlslCompletionTest {
 		assertFalse(inComment("// a\nfl", 7));
 	}
 
+	@Test
+	public void functionsCompleteWithTheirParenthesis() {
+		String text = "struct Ray { vec3 o; };\n" +
+				"float disc(vec2 p) { return 0.0; }\n" +
+				"uniform float dim;\n" +
+				"void main() {}\n";
+		Outline outline = Outline.of(GlslLexer.lex(text), text);
+		assertEquals(Arrays.asList("mix(", "max(", "disc(", "dim", "main",
+						"mat2", "Ray", "gl_FragCoord", "{"),
+				GlslCompletion.withParentheses(Arrays.asList("mix", "max",
+						"disc", "dim", "main", "mat2", "Ray", "gl_FragCoord",
+						"{"), outline));
+	}
+
 	@NonNull
 	private static List<String> complete(@NonNull String prefix) {
 		return words(prefix, false);
