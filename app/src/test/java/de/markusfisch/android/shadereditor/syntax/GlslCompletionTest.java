@@ -289,4 +289,70 @@ public class GlslCompletionTest {
 		return index > -1 &&
 				GlslCompletion.isInComment(tokens, text, index, cursor);
 	}
+
+	// The call the caret is in, from the tokens before it.
+	@Test
+	public void theCallAroundTheCaret() {
+		assertEquals("smoothstep 1", call("float g = smoothstep(0.3, |"));
+		assertEquals("smoothstep 0", call("float g = smoothstep(|"));
+		assertEquals("smoothstep 2", call("smoothstep(0.3, 0.0, x|"));
+		// Arguments of a call inside count for that call.
+		assertEquals("mix 2", call("mix(a, max(b, c), |"));
+		assertEquals("max 1", call("mix(a, max(b, |"));
+		// A constructor, a group and an index are arguments of the
+		// call around them.
+		assertEquals("mix 1", call("mix(a, vec3(1.0, |"));
+		assertEquals("mix 0", call("mix((a + |"));
+		assertEquals("mix 1", call("mix(a, b[i, |"));
+		// Over lines, and past a comment.
+		assertEquals("mix 2", call("x = mix(a,\n\t// (not, this\n\tb, |"));
+		assertEquals("SAT 0", call("#define A SAT /* c */ (|"));
+		// No call: a closed one, a statement, a condition, a type.
+		assertEquals(null, call("mix(a, b, c)|"));
+		assertEquals(null, call("mix(a, b); float x = |"));
+		assertEquals(null, call("if (x > |"));
+		assertEquals(null, call("void main() { |"));
+		assertEquals(null, call("vec3(1.0, |"));
+		assertEquals(null, call("|mix(a"));
+		// It looks back a bounded way.
+		assertEquals(null, call("mix(a," + "\n".repeat(
+				GlslCompletion.CALL_LINES) + "b|"));
+	}
+
+	// The call at the mark "|" of text, as "name argument", or null.
+	@Test
+	public void theCallAroundTheCaretOfALongLine() {
+		// The caret is at the start of a line with a hundred thousand
+		// tokens behind it: they are not walked over.
+		StringBuilder sb = new StringBuilder("mix(a, |");
+		for (int i = 0; i < 20000; ++i) {
+			sb.append(" + b[").append(i).append("]");
+		}
+		assertEquals("mix 1", call(sb.toString()));
+		assertEquals("mix 1", call("mix(a, |b, c)"));
+		assertEquals("mix 0", call("mix(|a, b, c)"));
+		assertEquals("null", String.valueOf(call("|mix(a, b, c)")));
+	}
+
+	private static String call(String text) {
+		int caret = text.indexOf('|');
+		String[] lines = (text.substring(0, caret) +
+				text.substring(caret + 1)).split("\n", -1);
+		LexedLine[] lexed = new LexedLine[lines.length];
+		int state = GlslLexer.TEXT_START;
+		int line = 0;
+		int column = caret;
+		for (int n = 0; n < lines.length; ++n) {
+			lexed[n] = LexedLine.of(GlslSyntax.INSTANCE, lines[n],
+					n < lines.length - 1, state, new LineTokens());
+			state = lexed[n].endState();
+			if (column > lines[n].length() && n < lines.length - 1) {
+				column -= lines[n].length() + 1;
+				line = n + 1;
+			}
+		}
+		Syntax.Call call = GlslSyntax.INSTANCE.call(n -> lexed[n], line,
+				column);
+		return call == null ? null : call.name() + " " + call.argument();
+	}
 }

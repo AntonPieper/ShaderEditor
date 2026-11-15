@@ -64,4 +64,25 @@ public interface Syntax {
 
 	/** Return how a new line is indented. */
 	Indentation indentation();
+
+	/** The lines of a text as they are now, tokenized when asked for. */
+	interface Lines {
+		LexedLine line(int n);
+	}
+
+	/**
+	 * A call being written: the name called, the line it stands in and
+	 * where in it, and which argument the caret is in, from 0.
+	 */
+	record Call(String name, int line, int start, int argument) {
+	}
+
+	/**
+	 * Return the call the caret at column of line is an argument of,
+	 * from the tokens before it alone, or null; a language without
+	 * calls has none.
+	 */
+	default Call call(Lines lines, int line, int column) {
+		return null;
+	}
 }

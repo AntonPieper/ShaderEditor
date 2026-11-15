@@ -3,9 +3,12 @@ package de.markusfisch.android.shadereditor.activity.managers;
 import android.app.Activity;
 import android.content.res.Configuration;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -19,6 +22,7 @@ import java.util.Objects;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.CompletionsAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeListener {
 	public interface Editor extends CompletionsAdapter.LookUp {
@@ -34,6 +38,10 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	private final View insertTabView;
 	@NonNull
 	private final CompletionsAdapter completionsAdapter;
+	@NonNull
+	private final RecyclerView completions;
+	@NonNull
+	private final SignatureView signatureView;
 	private boolean hasText = true;
 
 	public ExtraKeysManager(@NonNull Activity activity,
@@ -43,7 +51,14 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		insertTabView = extraKeysView.findViewById(R.id.insert_tab);
 		insertTabView.setOnClickListener(v -> editor.tab());
 
-		RecyclerView completions = extraKeysView.findViewById(R.id.completions);
+		completions = extraKeysView.findViewById(R.id.completions);
+		signatureView = extraKeysView.findViewById(R.id.signature);
+		// A tap or a long press explains the function called.
+		signatureView.setOnClickListener(v -> lookUp(editor));
+		signatureView.setOnLongClickListener(v -> {
+			lookUp(editor);
+			return true;
+		});
 		completions.setLayoutManager(new LinearLayoutManager(
 				activity, RecyclerView.HORIZONTAL, false));
 		completionsAdapter = new CompletionsAdapter(editor::insert, editor);
@@ -74,6 +89,41 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 
 	public void setCompletions(List<String> completions, int position) {
 		completionsAdapter.submitCompletions(completions, position);
+	}
+
+	/**
+	 * Show the call being written behind the keys, which keep their
+	 * places while it fills the rest of the strip, or none for null.
+	 * TalkBack hears a call once when it opens, not at every comma.
+	 */
+	public void setSignature(@Nullable SignatureView.Signature signature) {
+		SignatureView.Signature before = signatureView.getSignature();
+		boolean shown = signature != null;
+		if (shown != (before != null)) {
+			signatureView.setVisibility(getVisibility(shown));
+			// With a call the keys take the room they need, without
+			// one the completions take all of it.
+			LinearLayout.LayoutParams params = (LinearLayout.LayoutParams)
+					completions.getLayoutParams();
+			params.width = shown ? ViewGroup.LayoutParams.WRAP_CONTENT : 0;
+			params.weight = shown ? 0 : 1;
+			completions.setLayoutParams(params);
+		}
+		signatureView.setSignature(signature);
+		if (shown && (before == null ||
+				!before.name().equals(signature.name()))) {
+			signatureView.announceForAccessibility(
+					signatureView.getContext().getString(
+							R.string.a11y_signature_open, signature.name(),
+							String.join(", ", signature.parameters())));
+		}
+	}
+
+	private void lookUp(@NonNull Editor editor) {
+		SignatureView.Signature signature = signatureView.getSignature();
+		if (signature != null && editor.hasDocs(signature.name())) {
+			editor.lookUp(signature.name());
+		}
 	}
 
 	public void updateVisibility() {

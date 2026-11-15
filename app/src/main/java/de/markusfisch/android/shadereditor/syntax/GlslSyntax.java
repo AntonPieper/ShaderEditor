@@ -37,6 +37,11 @@ public final class GlslSyntax implements Syntax {
 	}
 
 	@Override
+	public Call call(Lines lines, int line, int column) {
+		return GlslCompletion.call(lines, line, column);
+	}
+
+	@Override
 	public Indentation indentation() {
 		return Indentation.C;
 	}

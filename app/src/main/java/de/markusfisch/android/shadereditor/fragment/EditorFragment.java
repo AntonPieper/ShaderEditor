@@ -30,6 +30,7 @@ import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
 import de.markusfisch.android.shadereditor.widget.ShaderEditor;
+import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 public class EditorFragment extends Fragment implements ErrorListModal.Host {
 	public static final String TAG = "EditorFragment";
@@ -60,6 +61,8 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 	private ShaderEditor.OnTextModifiedListener textModifiedListener;
 	@Nullable
 	private ShaderEditor.CodeCompletionListener codeCompletionListener;
+	@Nullable
+	private OnSignatureListener signatureListener;
 	@Nullable
 	private OnShaderToyShaderListener shaderToyShaderListener;
 	@Nullable
@@ -139,6 +142,14 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 			public void onShaderToyShader(@NonNull String json) {
 				if (shaderToyShaderListener != null) {
 					shaderToyShaderListener.onShaderToyShader(json);
+				}
+			}
+
+			@Override
+			public void onSignature(
+					@Nullable SignatureView.Signature signature) {
+				if (signatureListener != null) {
+					signatureListener.onSignature(signature);
 				}
 			}
 
@@ -276,6 +287,16 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 
 	public void setCodeCompletionListener(@Nullable ShaderEditor.CodeCompletionListener listener) {
 		codeCompletionListener = listener;
+	}
+
+	/** Hears the call being written, and null when there is none. */
+	public interface OnSignatureListener {
+		void onSignature(@Nullable SignatureView.Signature signature);
+	}
+
+	public void setOnSignatureListener(
+			@Nullable OnSignatureListener listener) {
+		signatureListener = listener;
 	}
 
 	/** Hears when the text has become a shader from ShaderToy as JSON. */

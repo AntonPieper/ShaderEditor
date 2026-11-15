@@ -319,6 +319,8 @@ What stays as decided: no incremental parsing (a whole file of 5,000 lines is mi
 | `links()` | The files the text names: an include (its text is part of this one) or another file | Files knowing each other (8.5), following a path |
 | `folds()` | The regions that fold, as pairs of lines | Folding and the partner of a bracket, when they are built |
 
+For the strip `Syntax` has a fifth method, `call(lines, line, column)`: the call the caret is an argument of, as the name called and the number of the argument, from the tokens before the caret alone, on the main thread, per keystroke. GLSL scans back to the open parenthesis that follows a name, over at most 20 lines and 400 tokens, so its work does not grow with the file (0.2 µs on a desktop JVM); a language without calls answers null. What is called is then asked of the knowledge and the scope, and for a built-in of the docs.
+
 Beside it stands `Knowledge.Scope`: what is declared outside of a text and known in it. The editor is given one with the document it shows and asks it at the moment it needs to: `names()` for completion, `find(word)` for what a word refers to in another file. Plain text and a shader of the database have the empty one.
 
 A `Symbol` is a name, a kind (function, variable, uniform, constant, macro, type, parameter, field, include, file), its **detail** (how the language writes it: `vec2 flow(vec2 p)`, `uniform vec2 resolution`, the line of a macro), its **documentation** (the comment that belongs to it, 8.4), the place of its name and of the whole declaration, its **parts** (the parameters of a function or macro, the fields of a struct) and, once it is handed to another file, the file it comes from.
@@ -457,4 +459,6 @@ Comments and strings are not touched. Before the first change every file's revis
 | The seam: `Knowledge`, `Syntax.knowledge`, `complete` reading it | Built |
 | Half 1 of the parser | Built; the outline and its scan are gone. Both editors read it: the one release builds ship reads the names it completes and the struct names it colours from it |
 | Files know each other | Built for the files of the running shader as the last build read them: completion, and `Scope.find` for Look up and the call in the strip |
+| Look up for one's own names | Built, in project mode: the declaration, its comment, and the way to its line or its file |
+| The call in the strip | Built, in project mode: the form chosen by the number of arguments; by their types with half 2 |
 | Half 2, usages, rename | Not built |
