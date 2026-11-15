@@ -24,7 +24,9 @@ import java.util.regex.Pattern;
  * files that are not there, images, text, other headings. Nothing in
  * a README is ever an error, and it never changes what a tap does. An
  * entry linked twice counts once, where it is first linked. A fenced
- * code block is text, and a heading's closing hashes are not its name.
+ * code block is text, up to a fence of its character at least as long
+ * as the one that opened it, and a heading's closing hashes are not
+ * its name.
  */
 public final class Readme {
 	/** An entry the README links, and the line it gives it, or null. */
@@ -92,12 +94,17 @@ public final class Readme {
 				waiting = null;
 			}
 			if (fence != null) {
-				if (trimmed.startsWith(fence)) {
+				// Only a fence of the same character, at least as long
+				// and with nothing after it, closes the block.
+				if (fence(trimmed).length() >= fence.length() &&
+						fence(trimmed).charAt(0) == fence.charAt(0) &&
+						trimmed.substring(fence(trimmed).length()).trim()
+								.isEmpty()) {
 					fence = null;
 				}
 				continue;
-			} else if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
-				fence = trimmed.substring(0, 3);
+			} else if (!fence(trimmed).isEmpty()) {
+				fence = fence(trimmed);
 				continue;
 			}
 			if (line.startsWith("## ")) {
@@ -132,6 +139,20 @@ public final class Readme {
 					: section.getKey(), section.getValue()));
 		}
 		return list;
+	}
+
+	// The fence a line starts with, three or more backticks or tildes,
+	// or "".
+	private static String fence(String line) {
+		if (line.isEmpty() || (line.charAt(0) != '`' &&
+				line.charAt(0) != '~')) {
+			return "";
+		}
+		int end = 0;
+		while (end < line.length() && line.charAt(end) == line.charAt(0)) {
+			++end;
+		}
+		return end >= 3 ? line.substring(0, end) : "";
 	}
 
 	// The name of the entry target links to when it is directly in the

@@ -143,4 +143,12 @@ public class NameCutTest {
 				chars(18));
 		assertTrue(cut, !cut.contains(" \u2026") && !cut.contains("\u2026 "));
 	}
+
+	// Where only the ellipsis and the ending fit, they are shown (from a
+	// review's probe).
+	@Test
+	public void aNarrowNameKeepsTheEndingWhenEllipsisAndEndingFit() {
+		assertEquals("\u2026.frag", NameCut.cut("ab.frag",
+				text -> text.length() <= 6));
+	}
 }

@@ -399,4 +399,40 @@ public class FolderListingTest {
 	private static ProjectPath path(String path) {
 		return ProjectPath.parse(path).value();
 	}
+
+	// README links before its first heading follow the Default shader
+	// under a heading of their own, never inside its section (from a
+	// review's probe).
+	@Test
+	public void untitledReadmeLinksMustNotAppearUnderDefaultShader() {
+		List<Listing.Section> sections = FolderListing.sections(
+				new FolderListing.Facts(ROOT, Order.BY_NAME,
+						Reading.started().listed(entries("main.frag",
+								"b.frag")), Map.of(), null, null, "main.frag",
+						Readme.sections("- [B](b.frag)", Set.of("b.frag")),
+						List.of(), false, null, (key, name) -> null, true,
+						Set.of(""), Set.of()), WORDS);
+		assertEquals("Default shader", sections.get(0).heading());
+		assertEquals(List.of("main.frag"), names(sections.get(0)));
+		assertEquals("Other files", sections.get(1).heading());
+		assertEquals("b.frag", sections.get(1).rows().get(0).name());
+	}
+
+	// A manifest's entry in a folder below is the default shader too,
+	// named by its path from the root (from a review's probe).
+	@Test
+	public void aNestedManifestEntryIsAlsoADefaultShader() {
+		List<Listing.Section> sections = FolderListing.sections(
+				new FolderListing.Facts(ROOT, Order.BY_NAME,
+						Reading.started().listed(List.of(
+								new Reading.Entry("passes", true))),
+						Map.of(), null, null, "passes/main.frag", List.of(),
+						List.of(), false, null, (key, name) -> null, true,
+						Set.of(""), Set.of()), WORDS);
+		assertEquals("Default shader", sections.get(0).heading());
+		Row row = sections.get(0).rows().get(0);
+		assertEquals("passes/main.frag", row.key());
+		assertEquals("passes/main.frag", row.name());
+		assertEquals("Tap to run it", row.detail());
+	}
 }
