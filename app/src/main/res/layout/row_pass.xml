@@ -102,6 +102,16 @@
 				android:minWidth="0dp"
 				android:text="@string/passes_size_line"
 				android:textColor="?attr/colorOnSecondaryContainer" />
+
+			<!-- Only while values leave 0 to 1, or while it is on. -->
+			<com.google.android.material.chip.Chip
+				android:id="@+id/pass_fit"
+				style="@style/Widget.ShaderEditor.Chip.Fit"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginStart="8dp"
+				android:text="@string/passes_fit"
+				android:visibility="gone" />
 		</LinearLayout>
 	</LinearLayout>
 

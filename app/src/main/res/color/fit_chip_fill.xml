@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fit on the selected row: filled light while on, otherwise only its
+	outline, so that it reads on the row's own fill. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+	<item android:color="?attr/colorOnSecondaryContainer" android:state_checked="true" />
+	<item android:color="@android:color/transparent" />
+</selector>

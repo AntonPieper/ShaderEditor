@@ -127,13 +127,14 @@ public final class PassesSheet {
 	 * @param quality   the quality chosen
 	 * @param pictures  the latest small picture of each pass that draws
 	 * @param facts     the latest facts of each pass
+	 * @param fit       the range the pass shown is fitted from, or null
 	 */
 	record State(boolean open, boolean available, boolean paused,
 			@NonNull RunningPasses passes, @Nullable ProjectPath shown,
 			float quality, @NonNull Map<ProjectPath, Bitmap> pictures,
-			@NonNull Map<ProjectPath, PassFacts> facts) {
+			@NonNull Map<ProjectPath, PassFacts> facts, @Nullable Fit fit) {
 		static final State CLOSED = new State(false, false, false,
-				RunningPasses.NONE, null, 1f, Map.of(), Map.of());
+				RunningPasses.NONE, null, 1f, Map.of(), Map.of(), null);
 
 		boolean runs() {
 			return !passes.rows().isEmpty();
@@ -153,42 +154,47 @@ public final class PassesSheet {
 
 		State withOpen(boolean open) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts);
+					pictures, facts, fit);
 		}
 
 		State withAvailable(boolean available) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts);
+					pictures, facts, fit);
 		}
 
 		State withPaused(boolean paused) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts);
+					pictures, facts, fit);
 		}
 
 		State withPasses(@NonNull RunningPasses passes) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts);
+					pictures, facts, fit);
 		}
 
 		State withShown(@Nullable ProjectPath shown) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts);
+					pictures, facts, fit);
 		}
 
 		State withQuality(float quality) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts);
+					pictures, facts, fit);
 		}
 
 		State withPictures(@NonNull Map<ProjectPath, Bitmap> pictures) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts);
+					pictures, facts, fit);
 		}
 
 		State withFacts(@NonNull Map<ProjectPath, PassFacts> facts) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts);
+					pictures, facts, fit);
+		}
+
+		State withFit(@Nullable Fit fit) {
+			return new State(open, available, paused, passes, shown, quality,
+					pictures, facts, fit);
 		}
 	}
 
@@ -394,7 +400,24 @@ public final class PassesSheet {
 	 */
 	public void show(@Nullable ProjectPath file) {
 		view.showPass(file);
+		fit(null);
 		set(state.withShown(file));
+	}
+
+	// Map the pass shown from range of facts to black and white, or not
+	// for null; one range for red, green and blue.
+	private void fit(@Nullable PassFacts facts) {
+		Fit fit = null;
+		if (facts != null && PassFactLine.outside(facts)) {
+			float low = PassFactLine.low(facts);
+			float high = PassFactLine.high(facts);
+			if (high > low && !Float.isInfinite(low) &&
+					!Float.isInfinite(high)) {
+				fit = new Fit(facts.file(), low, high);
+			}
+		}
+		view.setFit(fit);
+		set(state.withFit(fit));
 	}
 
 	// What draws now: a pass shown that no longer draws is not shown.
@@ -404,6 +427,7 @@ public final class PassesSheet {
 			int row = passes.indexOf(shown);
 			if (row < 0 || !passes.rows().get(row).drawn()) {
 				view.showPass(null);
+				fit(null);
 				shown = null;
 			}
 		}
@@ -519,7 +543,8 @@ public final class PassesSheet {
 				!Objects.equals(state.shown, was.shown)) {
 			renderRows();
 			renderFacts();
-		} else if (state.facts != was.facts || state.paused != was.paused) {
+		} else if (state.facts != was.facts || state.paused != was.paused ||
+				state.fit != was.fit) {
 			renderFacts();
 		}
 		var rows = state.passes.rows();
@@ -778,6 +803,14 @@ public final class PassesSheet {
 			view.findViewById(R.id.pass_size).setVisibility(error
 					? View.GONE
 					: View.VISIBLE);
+			boolean fitted = state.fit != null && state.fit.file().equals(file);
+			Chip fit = view.findViewById(R.id.pass_fit);
+			fit.setVisibility(!error && (fitted ||
+					(facts != null && PassFactLine.outside(facts)))
+					? View.VISIBLE
+					: View.GONE);
+			fit.setChecked(fitted);
+			fit.setOnClickListener(v -> fit(fitted ? null : facts));
 		}
 	}
 
@@ -852,7 +885,10 @@ public final class PassesSheet {
 		String name = state.shown.getFileName();
 		var paint = shownChip.getPaint();
 		float most = nameRoom;
-		shownChip.setText(NameCut.cut(name, t -> paint.measureText(t) <= most));
+		String cut = NameCut.cut(name, t -> paint.measureText(t) <= most);
+		shownChip.setText(state.fit != null
+				? activity.getString(R.string.passes_name_fit, cut)
+				: cut);
 		shownChip.setContentDescription(activity.getString(
 				R.string.passes_showing, name));
 		shownChip.setChipIconResource(R.drawable.ic_pause);

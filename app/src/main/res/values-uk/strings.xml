@@ -592,4 +592,6 @@
 	<string name="passes_read_by">Read by</string>
 	<string name="passes_itself_last">itself, last frame</string>
 	<string name="passes_last_chip">%1$s, last frame</string>
+	<string name="passes_fit">Fit</string>
+	<string name="passes_name_fit">%1$s · fit</string>
 </resources>
