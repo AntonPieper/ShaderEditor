@@ -351,6 +351,13 @@ public class NavigationDrawer implements ShaderList {
 		// The database's list, which was a level, is none any more.
 		if (restored != null) {
 			level = restored;
+			// A screen made again in the same process knows the library
+			// at once; then its level is a place to go to before the
+			// start told it.
+			String key = restored.key();
+			if (key != null && projects.isLibrary(key)) {
+				libraryKey = key;
+			}
 		}
 		activity.getSavedStateRegistry().registerSavedStateProvider(STATE,
 				() -> {
@@ -358,6 +365,17 @@ public class NavigationDrawer implements ShaderList {
 					bundle.putString(LEVEL, level.name());
 					return bundle;
 				});
+		// The level is listed at once: a drawer left open over a
+		// rotation shows it, and New acts on it, before anything else
+		// tells the drawer what to show.
+		refresh();
+		// Open again over a rotation, it shows the file in the editor,
+		// as when opened (NAVIGATION 6.2).
+		drawer.post(() -> {
+			if (drawerLayout.isDrawerOpen(drawer)) {
+				scrollToSelected();
+			}
+		});
 		loadRecent();
 	}
 
@@ -373,6 +391,11 @@ public class NavigationDrawer implements ShaderList {
 	 */
 	public void setLibrary(@NonNull String key) {
 		libraryKey = key;
+		// A level of it listed before it was known lists it as the
+		// library from now on.
+		if (folder != null && folder.key().equals(key)) {
+			folder.setLooks(libraryLooks);
+		}
 		// The screen can show a file by now.
 		newFile.resume();
 		loadRecent();
@@ -760,7 +783,10 @@ public class NavigationDrawer implements ShaderList {
 						}
 					},
 					folderActions::act,
-					key.equals(libraryKey) ? libraryLooks : null,
+					// Asked where it is known, not of what the drawer
+					// was told so far: a level listed before the start
+					// told it is the library's all the same.
+					projects.isLibrary(key) ? libraryLooks : null,
 					() -> {
 				if (folder != null && folder.key().equals(level.key())) {
 					refresh();
