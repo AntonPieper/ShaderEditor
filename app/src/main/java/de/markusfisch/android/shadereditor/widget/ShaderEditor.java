@@ -167,10 +167,6 @@ public class ShaderEditor extends LineNumberEditText {
 		codeCompletionListener = listener;
 	}
 
-	/**
-	 * Use the app's undo history for Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y and
-	 * a keyboard's undo and redo, so they match the toolbar's.
-	 */
 	public void setUndoRedo(@Nullable UndoRedo undoRedo) {
 		this.undoRedo = undoRedo;
 	}
@@ -192,6 +188,7 @@ public class ShaderEditor extends LineNumberEditText {
 
 	@Override
 	public boolean onTextContextMenuItem(int id) {
+		// Keyboards ask for undo and redo through this too.
 		if (undoRedo != null && id == android.R.id.undo) {
 			undoRedo.undo();
 			return true;
@@ -468,11 +465,8 @@ public class ShaderEditor extends LineNumberEditText {
 	private void init(@NonNull Context context) {
 		// Setting this through XML does not work
 		setHorizontallyScrolling(true);
-		// EditText saves its text with spans and its undo history, every
-		// cut, deleted or pasted text, in the instance state. That makes
-		// the state too big for the Binder transaction that carries it,
-		// which crashes the app when it goes to the background. The text
-		// and the selection are saved by EditorFragment instead.
+		// EditorFragment saves text and selection because the view state
+		// would include all spans and the undo history and get too big.
 		setSaveEnabled(false);
 
 		setFilters(new InputFilter[]{(source,
