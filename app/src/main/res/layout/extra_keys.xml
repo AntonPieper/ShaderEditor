@@ -11,6 +11,17 @@
 	android:paddingHorizontal="4dp">
 
 	<Button
+		android:id="@+id/back_to_file"
+		style="@style/BarButton.Back"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginEnd="4dp"
+		android:layout_weight="0"
+		android:visibility="gone"
+		app:icon="@drawable/ic_arrow_back"
+		app:iconSize="18dp" />
+
+	<Button
 		android:id="@+id/insert_tab"
 		style="@style/BarButton.Tab"
 		android:layout_width="@dimen/se_key_height"

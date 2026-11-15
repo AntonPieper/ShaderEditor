@@ -32,6 +32,13 @@ public interface FileLinks extends HostCompletion.Listing {
 	 */
 	void refresh();
 
+	/**
+	 * Open path at line, from 1, or where its caret is when 0, from the
+	 * line the caret is on: the one way a file is opened from a line,
+	 * after which a key leads back to that line once.
+	 */
+	void open(@NonNull ProjectPath path, int line);
+
 	/** Run changed when a folder asked for is listed, none when null. */
 	void setListener(@Nullable Runnable changed);
 }

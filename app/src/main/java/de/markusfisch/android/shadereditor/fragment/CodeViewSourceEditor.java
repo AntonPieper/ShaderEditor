@@ -30,6 +30,8 @@ import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectParseResult;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
@@ -170,7 +172,12 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 				@Override
 				public void open(@NonNull String file, int line) {
-					if (listener != null) {
+					// As Open in the strip does, with the way back.
+					ProjectParseResult<ProjectPath> path =
+							ProjectPath.parse(file);
+					if (links != null && path.isSuccess()) {
+						links.open(path.value(), line + 1);
+					} else if (listener != null) {
 						listener.onOpenFile(file, line + 1);
 					}
 				}
