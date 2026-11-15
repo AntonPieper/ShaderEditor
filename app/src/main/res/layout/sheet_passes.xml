@@ -70,6 +70,38 @@
 			android:paddingHorizontal="@dimen/se_margin_screen" />
 	</HorizontalScrollView>
 
+	<!-- The passes: not shown for a shader of one pass. -->
+	<View
+		android:id="@+id/passes_divider"
+		android:layout_width="match_parent"
+		android:layout_height="@dimen/se_hairline"
+		android:layout_marginVertical="8dp"
+		android:background="?attr/colorOutlineVariant" />
+
+	<androidx.core.widget.NestedScrollView
+		android:id="@+id/passes_scroll"
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		android:layout_weight="1">
+
+		<de.markusfisch.android.shadereditor.widget.PassList
+			android:id="@+id/passes_list"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content" />
+	</androidx.core.widget.NestedScrollView>
+
+	<!-- Only while a badge or a dashed line is on screen. -->
+	<TextView
+		android:id="@+id/passes_key"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:drawablePadding="8dp"
+		android:gravity="center_vertical"
+		android:minHeight="32dp"
+		android:text="@string/passes_key"
+		android:textAppearance="?attr/textAppearanceBodyMedium"
+		android:textColor="?attr/colorOnSurfaceVariant" />
+
 	<Space
 		android:layout_width="match_parent"
 		android:layout_height="8dp" />
