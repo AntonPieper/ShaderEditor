@@ -7,6 +7,8 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.project.ShaderLanguage;
+
 /**
  * The two lines that make an image a texture of a shader (UX 4): the
  * directive that reads it, with its path from the shader's folder,
@@ -18,15 +20,79 @@ public final class InsertTexture {
 	public record Lines(String statement, String name) {
 	}
 
-	// Words a sampler cannot be named, besides what the text uses.
-	private static final Set<String> RESERVED = Set.of("texture",
-			"texture2D", "sampler2D", "uniform", "main", "in", "out",
-			"input", "output", "sample", "filter", "precision", "float",
-			"int", "bool", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4",
-			"if", "else", "for", "while", "do", "return", "true", "false",
-			"const", "struct", "void", "discard", "break", "continue");
+	// Words a sampler cannot be named, besides what the text uses: the
+	// keywords and reserved words of GLSL ES 1.00 and 3.00, and the
+	// functions that read a texture.
+	private static final Set<String> RESERVED = Set.of(
+			"attribute", "const", "uniform", "varying", "break", "continue",
+			"do", "for", "while", "if", "else", "in", "out", "inout", "float",
+			"int", "void", "bool", "true", "false", "lowp", "mediump", "highp",
+			"precision", "invariant", "discard", "return", "mat2", "mat3",
+			"mat4", "vec2", "vec3", "vec4", "ivec2", "ivec3", "ivec4", "bvec2",
+			"bvec3", "bvec4", "sampler2D", "samplerCube", "struct", "asm",
+			"class", "union", "enum", "typedef", "template", "this", "packed",
+			"goto", "switch", "default", "inline", "noinline", "volatile",
+			"public", "static", "extern", "external", "interface", "flat",
+			"long", "short", "double", "half", "fixed", "unsigned", "superp",
+			"input", "output", "hvec2", "hvec3", "hvec4", "dvec2", "dvec3",
+			"dvec4", "fvec2", "fvec3", "fvec4", "sampler1D", "sampler3D",
+			"sampler1DShadow", "sampler2DShadow", "sampler2DRect",
+			"sampler3DRect", "sampler2DRectShadow", "sizeof", "cast",
+			"namespace", "using", "layout", "centroid", "smooth", "case",
+			"uint", "uvec2", "uvec3", "uvec4", "mat2x2", "mat2x3", "mat2x4",
+			"mat3x2", "mat3x3", "mat3x4", "mat4x2", "mat4x3", "mat4x4",
+			"samplerCubeShadow", "sampler2DArray", "sampler2DArrayShadow",
+			"isampler2D", "isampler3D", "isamplerCube", "isampler2DArray",
+			"usampler2D", "usampler3D", "usamplerCube", "usampler2DArray",
+			"coherent", "restrict", "readonly", "writeonly", "resource",
+			"atomic_uint", "noperspective", "patch", "sample", "subroutine",
+			"common", "partition", "active", "filter", "image1D", "image2D",
+			"image3D", "imageCube", "iimage1D", "iimage2D", "iimage3D",
+			"iimageCube", "uimage1D", "uimage2D", "uimage3D", "uimageCube",
+			"image1DArray", "image2DArray", "iimage1DArray", "iimage2DArray",
+			"uimage1DArray", "uimage2DArray", "imageBuffer", "iimageBuffer",
+			"uimageBuffer", "sampler1DArray", "sampler1DArrayShadow",
+			"isampler1D", "isampler1DArray", "usampler1D", "usampler1DArray",
+			"isampler2DRect", "usampler2DRect", "samplerBuffer",
+			"isamplerBuffer", "usamplerBuffer", "sampler2DMS", "isampler2DMS",
+			"usampler2DMS", "sampler2DMSArray", "isampler2DMSArray",
+			"usampler2DMSArray", "texture", "texture2D", "texture2DProj",
+			"texture2DLod", "textureCube", "textureLod", "textureSize",
+			"texelFetch", "main");
+
+	/** Whether Insert as texture is offered, and else why not. */
+	public enum Offer {
+		/** The two lines can be added to the file in the editor. */
+		OFFERED,
+		/** Nothing of the image's folder is in the editor. */
+		NO_SHADER_HERE,
+		/** The file in the editor is of the folder but no shader. */
+		NOT_A_SHADER
+	}
 
 	private InsertTexture() {
+	}
+
+	/**
+	 * Whether the two lines may be added to the file in the editor,
+	 * named edited, null for none or a file of another folder: only to
+	 * a GLSL file that can run, as a directive may stand only there
+	 * (SPEC 2.1, 3.1): no JSON, no Markdown, no include.
+	 *
+	 * @param runs whether its text defines what it starts at, as its
+	 *             project knows, or null while that is not known; then
+	 *             its name decides
+	 */
+	public static Offer offer(String edited, ShaderLanguage language,
+			Boolean runs) {
+		if (edited == null) {
+			return Offer.NO_SHADER_HERE;
+		} else if (language != ShaderLanguage.GLSL || Boolean.FALSE.equals(
+				runs) || (runs == null && edited.toLowerCase(Locale.ROOT)
+				.endsWith(ShaderLanguage.INCLUDE))) {
+			return Offer.NOT_A_SHADER;
+		}
+		return Offer.OFFERED;
 	}
 
 	/**
