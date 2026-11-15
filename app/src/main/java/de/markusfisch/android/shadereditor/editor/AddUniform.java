@@ -30,8 +30,11 @@ public final class AddUniform {
 			String inserted) {
 	}
 
-	/** Add statement to document as one undo step. */
-	public static void apply(Document document, String statement) {
+	/**
+	 * Add statement to document as one undo step; return the offset it
+	 * starts at.
+	 */
+	public static int apply(Document document, String statement) {
 		Change change = change(document.text().toString(), statement);
 		document.beginBatch();
 		try {
@@ -44,6 +47,7 @@ public final class AddUniform {
 		} finally {
 			document.endBatch();
 		}
+		return change.insertAt() + change.inserted().indexOf(statement);
 	}
 
 	/** What adding statement to text does; see the class. */

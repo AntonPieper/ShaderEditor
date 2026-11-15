@@ -43,6 +43,15 @@ public class AddUniformTest {
 				document.text().toString());
 	}
 
+	@Test
+	public void returnsWhereTheStatementStarts() {
+		Document document = new Document(Text.of(
+				"#version 300 es\nprecision highp float;\nvoid main(){}"));
+		int at = AddUniform.apply(document, "uniform float time;");
+		assertEquals("uniform float time;", document.text().substring(at,
+				at + "uniform float time;".length()));
+	}
+
 	// GLSL ES 3.00: #version must come first. A shader without a
 	// uniform line gets the statement after its head, never above it.
 	@Test

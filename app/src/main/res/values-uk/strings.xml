@@ -534,4 +534,7 @@
 	<string name="docs_not_declared">Not declared in this file yet, so the shader cannot read it.</string>
 	<string name="docs_add_uniform">Add uniform</string>
 	<string name="a11y_completion_function">%1$s, function</string>
+	<string name="fix_add_uniform">Add uniform %1$s %2$s</string>
+	<string name="a11y_added_uniform">Added %1$s on line %2$d</string>
+	<string name="a11y_fix_available">Fix in the actions menu: %1$s</string>
 </resources>

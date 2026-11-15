@@ -115,7 +115,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 				@Override
 				public void addUniform(@NonNull String statement) {
-					CodeViewSourceEditor.this.addUniform(statement);
+					addMarked(statement);
 				}
 			});
 		} else {
@@ -237,6 +237,17 @@ final class CodeViewSourceEditor implements SourceEditor {
 	public void addUniform(@NonNull String statement) {
 		AddUniform.apply(document, statement);
 		view.bringCaretIntoView();
+	}
+
+	// Adds statement as Add uniform does, for a fix: marks its line until
+	// the next edit and says where it went.
+	private void addMarked(@NonNull String statement) {
+		int line = document.text().lineOf(AddUniform.apply(document,
+				statement));
+		view.markLine(line);
+		view.announceForAccessibility(view.getResources().getString(
+				R.string.a11y_added_uniform, statement.substring(0,
+						statement.length() - 1), line + 1));
 	}
 
 	@Override
@@ -369,6 +380,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.setLookUp(syntax == DATABASE ? docs : null);
 		marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
+		view.setRowFix(syntax == DATABASE ? docs : null);
 		document.addListener(documentListener);
 		// JSON that is there when a file is opened is not put in.
 		toldJson = beginsAsJson();
