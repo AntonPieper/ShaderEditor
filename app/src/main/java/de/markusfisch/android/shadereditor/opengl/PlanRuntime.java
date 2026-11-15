@@ -75,6 +75,12 @@ final class PlanRuntime implements ShaderSwap.Build {
 	private RenderPlan.Size[] madeSizes;
 	// Whether the targets were made since the last frame.
 	private boolean reset;
+	// By pass: whether its program reads its own last frame through an
+	// unannotated backbuffer.
+	@NonNull
+	private final boolean[] backbuffer;
+	@Nullable
+	private RunningPasses running;
 	private boolean complete;
 	private boolean failed;
 
@@ -101,7 +107,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 		onReset = (pass, frame) -> targets[pass] == null
 				? null
 				: targets[pass].completed();
-		var backbuffer = new boolean[passes.size()];
+		var backbuffer = this.backbuffer = new boolean[passes.size()];
 		// The running pass first: its camera opens.
 		var bindings = new ArrayList<PlanBindings>();
 		bindings.add(passes.get(plan.output()).bindings);
@@ -212,6 +218,15 @@ final class PlanRuntime implements ShaderSwap.Build {
 	@Nullable
 	Tuning tuning() {
 		return tuning;
+	}
+
+	// The passes as a host shows them, with the warnings of this build.
+	@NonNull
+	RunningPasses running() {
+		if (running == null) {
+			running = RunningPasses.of(plan, schedule, backbuffer, warnings);
+		}
+		return running;
 	}
 
 	// The passes whose builtins it reads, by their index in the plan.
