@@ -490,4 +490,5 @@
 	<string name="docs_builtin_uniform">Built-in uniform</string>
 	<string name="docs_not_declared">Not declared in this file yet, so the shader cannot read it.</string>
 	<string name="docs_add_uniform">Add uniform</string>
+	<string name="a11y_completion_function">%1$s, function</string>
 </resources>

@@ -35,6 +35,8 @@ public final class Outline {
 	// Each name once, sorted, and how many declarations have it.
 	final String[] names;
 	final int[] counts;
+	// Whether a function has the name.
+	private final boolean[] functions;
 
 	private Outline(List<Declaration> declarations) {
 		this.declarations = Collections.unmodifiableList(declarations);
@@ -55,6 +57,19 @@ public final class Outline {
 		}
 		this.names = Arrays.copyOf(names, size);
 		this.counts = Arrays.copyOf(counts, size);
+		functions = new boolean[size];
+		for (Declaration declaration : declarations) {
+			if (declaration.kind() == Kind.FUNCTION) {
+				functions[Arrays.binarySearch(this.names,
+						declaration.name())] = true;
+			}
+		}
+	}
+
+	/** Return whether a declared function has name. */
+	public boolean isFunction(String name) {
+		int i = Arrays.binarySearch(names, name);
+		return i > -1 && functions[i];
 	}
 
 	public static Outline of(Tokens tokens, CharSequence text) {

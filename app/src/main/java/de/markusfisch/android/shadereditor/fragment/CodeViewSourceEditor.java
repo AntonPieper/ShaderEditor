@@ -29,6 +29,8 @@ import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
+import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
+import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.widget.CodeView;
@@ -444,10 +446,19 @@ final class CodeViewSourceEditor implements SourceEditor {
 		int n = text.lineOf(caret);
 		int lineStart = text.lineStart(n);
 		Analysis analysis = view.getAnalysis();
-		styles.syntax().complete(styles.runs(n).line(), caret - lineStart,
-				lineStart, analysis.outline(),
+		Outline outline = analysis.outline();
+		LexedLine line = styles.runs(n).line();
+		int column = caret - lineStart;
+		// Functions with their parenthesis, unless one follows already.
+		boolean parentheses = docs != null && styles.syntax() == DATABASE &&
+				(column == line.text().length() ||
+						line.text().charAt(column) != '(');
+		styles.syntax().complete(line, column,
+				lineStart, outline,
 				analysis.revision() == document.revision(), BUILTIN_UNIFORMS,
-				listener::onCompletions);
+				(words, position) -> listener.onCompletions(parentheses
+						? GlslCompletion.withParentheses(words, outline)
+						: words, position));
 	}
 
 	// Whether the text defines mainImage and no main, as ShaderToy's do;
