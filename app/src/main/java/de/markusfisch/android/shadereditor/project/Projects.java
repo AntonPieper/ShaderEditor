@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.legacy.KeptText;
+import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyProject;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 import de.markusfisch.android.shadereditor.provider.UserFilesProvider;
@@ -403,6 +404,43 @@ public final class Projects {
 						quality, this::relocated);
 			}, problem -> new Library.Created(null, problem));
 			main.post(() -> done.done(created));
+		});
+	}
+
+	/**
+	 * What became of a shader from ShaderToy: the path of its running
+	 * shader in the library, or null with why it was not imported,
+	 * its title, and what the import did not carry over.
+	 */
+	public record Imported(ProjectPath path, String name,
+			List<String> warnings, String problem) {
+	}
+
+	/**
+	 * Make a folder in the library from text, a shader in ShaderToy's
+	 * JSON, on the queue, where it is read, converted and written: see
+	 * {@link ShaderToyProject} and {@link Library#addFolder}. To show
+	 * it, as for {@link #newShader}.
+	 *
+	 * @param untitled the name of the folder of a shader without a title
+	 */
+	public void importShaderToy(String text, String untitled,
+			Callback<Imported> done) {
+		QUEUE.execute(() -> {
+			Imported imported = guarded(() -> {
+				ShaderToyProject.Converted converted =
+						ShaderToyProject.ofJson(text);
+				if (converted.refusal() != null) {
+					return new Imported(null, converted.name(), List.of(),
+							converted.refusal());
+				}
+				Library.Created created = library().addFolder(
+						converted.name(), untitled, converted.files(),
+						ShaderToyProject.ENTRY, this::relocated);
+				return new Imported(created.path(), converted.name(),
+						converted.warnings(), created.problem());
+			}, problem -> new Imported(null, null, List.of(), problem));
+			main.post(() -> done.done(imported));
 		});
 	}
 
