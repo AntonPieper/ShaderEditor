@@ -565,6 +565,25 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Return the file the manifest at the root names to run, or null
+	 * where there is no valid manifest. Reads storage, as
+	 * {@link #list} does: off the main thread.
+	 */
+	public ProjectPath manifestEntry() {
+		if (lone != null || !(store.read(ProjectManifest.FILE,
+				Document.MAX_BYTES) instanceof Content content)) {
+			return null;
+		}
+		String text = SourceText.decode(content.bytes());
+		ProjectParseResult<ProjectManifest> manifest = text != null
+				? ProjectManifest.parse(text)
+				: null;
+		return manifest != null && manifest.isSuccess()
+				? manifest.value().entry()
+				: null;
+	}
+
+	/**
 	 * Return how the editor treats the file at path: as its language
 	 * says, and the manifest of a folder as the manifest, which
 	 * completes the names of the files in the root that may be shaders

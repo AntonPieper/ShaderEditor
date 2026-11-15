@@ -1,11 +1,20 @@
 package de.markusfisch.android.shadereditor.navigation;
 
+import java.util.Locale;
+
+import de.markusfisch.android.shadereditor.project.ProjectManifest;
+import de.markusfisch.android.shadereditor.project.ShaderLanguage;
+
 /**
  * What stands at the start of a row, decided here and nowhere else,
- * from what the row stands for and what is known of it: an image is
- * its own picture; anything else shows the picture known for it, a
- * folder the one of its default shader; else an icon of what it is.
- * How a row looks is changed in this one place.
+ * from what the row stands for, its name and what is known of it. A
+ * picture stands on a tile: a shader's edge to edge, a folder's by its
+ * default shader, an image's whole on a mat. Anything without one gets
+ * a stock icon without a tile, so it never looks like a missing
+ * picture; a shader that never ran is the one exception, an empty
+ * frame where its picture will be, with nothing in it. A file that
+ * cannot be opened is dimmed. Every face says what the row is, for
+ * TalkBack. How a row looks is changed in this one place.
  */
 public final class Face {
 	/** What a row stands for, as far as its face is concerned. */
@@ -37,8 +46,87 @@ public final class Face {
 
 	/** A strip longer than this to one is shown by its middle. */
 	public static final int LONGEST = 3;
+	/** The largest file the editor opens, in bytes. */
+	public static final long LARGEST = 16L * 1024 * 1024;
 
 	private Face() {
+	}
+
+	/** The face of a row of kind named name, with its picture or null. */
+	public static Row.Picture of(Row.Kind kind, String name, byte[] picture) {
+		return switch (kind) {
+			case FOLDER -> of(Of.FOLDER, name, picture, true);
+			case IMAGE -> of(Of.IMAGE, name, picture, true);
+			case MORE -> of(Of.MORE, name, picture, true);
+			case OTHER -> of(Of.FILE, name, picture, false);
+			default -> of(Of.FILE, name, picture, true);
+		};
+	}
+
+	/**
+	 * The face of a row standing for of, named name, with the picture
+	 * kept for it, or null when none is known: the picture of a shader
+	 * that ran, of what runs in a folder.
+	 *
+	 * @param openable whether the editor can open the file
+	 */
+	public static Row.Picture of(Of of, String name, byte[] picture,
+			boolean openable) {
+		boolean known = picture != null && picture.length > 0;
+		switch (of) {
+			case MORE:
+				return icon(Row.Picture.Icon.FILE, Row.Picture.Spoken.NONE,
+						false);
+			case LIBRARY:
+			case EXAMPLES:
+			case FOLDER:
+				return known
+						? png(picture, Row.Picture.Spoken.FOLDER)
+						: icon(of == Of.LIBRARY
+								? Row.Picture.Icon.LIBRARY
+								: of == Of.EXAMPLES
+								? Row.Picture.Icon.EXAMPLES
+								: Row.Picture.Icon.FOLDER,
+								Row.Picture.Spoken.FOLDER, false);
+			case IMAGE:
+				return openable
+						? new Row.Picture(Row.Picture.Icon.IMAGE, null, 0,
+								true, false, false, Row.Picture.Spoken.IMAGE)
+						: icon(Row.Picture.Icon.IMAGE,
+								Row.Picture.Spoken.CANNOT_OPEN, true);
+			default:
+				break;
+		}
+		if (!openable) {
+			return icon(Row.Picture.Icon.FILE,
+					Row.Picture.Spoken.CANNOT_OPEN, true);
+		} else if (known) {
+			return png(picture, Row.Picture.Spoken.SHADER);
+		}
+		String lower = name != null ? name.toLowerCase(Locale.ROOT) : "";
+		ShaderLanguage language = ShaderLanguage.listed(lower);
+		if (language == ShaderLanguage.GLSL &&
+				!lower.endsWith(ShaderLanguage.INCLUDE)) {
+			// The empty place of its picture: one run fills it.
+			return new Row.Picture(Row.Picture.Icon.FILE, null, 0, false,
+					true, false, Row.Picture.Spoken.SHADER_NOT_RUN);
+		} else if (language == ShaderLanguage.GLSL) {
+			return icon(Row.Picture.Icon.CODE, Row.Picture.Spoken.INCLUDE,
+					false);
+		} else if (language == ShaderLanguage.UNSUPPORTED) {
+			return icon(Row.Picture.Icon.CODE,
+					Row.Picture.Spoken.OTHER_LANGUAGE, true);
+		} else if (language == ShaderLanguage.JSON) {
+			return lower.equals(ProjectManifest.FILE.toString())
+					? icon(Row.Picture.Icon.SETTINGS,
+							Row.Picture.Spoken.SETTINGS, false)
+					: icon(Row.Picture.Icon.DATA, Row.Picture.Spoken.JSON,
+							false);
+		} else if (language == ShaderLanguage.MARKDOWN) {
+			return icon(Row.Picture.Icon.NOTES, Row.Picture.Spoken.MARKDOWN,
+					false);
+		}
+		return icon(Row.Picture.Icon.FILE, Row.Picture.Spoken.FILE, false);
 	}
 
 	/**
@@ -77,34 +165,13 @@ public final class Face {
 						false);
 	}
 
-	/** The face of a row of kind, with its kept picture, or null. */
-	public static Row.Picture of(Row.Kind kind, byte[] picture) {
-		return of(switch (kind) {
-			case FOLDER -> Of.FOLDER;
-			case IMAGE -> Of.IMAGE;
-			case MORE -> Of.MORE;
-			default -> Of.FILE;
-		}, picture);
+	private static Row.Picture png(byte[] png, Row.Picture.Spoken spoken) {
+		return new Row.Picture(Row.Picture.Icon.FILE, png, 0, false, false,
+				false, spoken);
 	}
 
-	/**
-	 * The face of a row standing for of, with the picture kept for it,
-	 * or null when none is known: the picture of a shader that ran, of
-	 * what runs in a folder.
-	 */
-	public static Row.Picture of(Of of, byte[] picture) {
-		if (of == Of.IMAGE) {
-			// An image is its own picture.
-			return Row.Picture.ofItself();
-		} else if (picture != null && picture.length > 0 && of != Of.MORE) {
-			return Row.Picture.png(picture);
-		}
-		return Row.Picture.of(switch (of) {
-			case LIBRARY -> Row.Picture.Icon.LIBRARY;
-			case EXAMPLES -> Row.Picture.Icon.EXAMPLES;
-			case FOLDER -> Row.Picture.Icon.FOLDER;
-			case IMAGE -> Row.Picture.Icon.IMAGE;
-			case SINGLE_FILE, FILE, MORE -> Row.Picture.Icon.SHADER;
-		});
+	private static Row.Picture icon(Row.Picture.Icon icon,
+			Row.Picture.Spoken spoken, boolean dim) {
+		return new Row.Picture(icon, null, 0, false, false, dim, spoken);
 	}
 }

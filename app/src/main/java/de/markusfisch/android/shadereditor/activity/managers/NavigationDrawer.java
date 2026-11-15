@@ -84,6 +84,7 @@ import de.markusfisch.android.shadereditor.project.Previews;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
+import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.widget.Message;
 import de.markusfisch.android.shadereditor.widget.NewSheet;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
@@ -668,6 +669,16 @@ public class NavigationDrawer implements ShaderList {
 						: null;
 			}
 
+			@Nullable
+			@Override
+			public String spoken(@NonNull Row row) {
+				ImageFaces.Small small = small(row);
+				return small != null
+						? activity.getString(R.string.nav_kind_image_size,
+								small.width(), small.height())
+						: null;
+			}
+
 			@Override
 			public void want(@NonNull Row row, @NonNull Runnable ready) {
 				String id = imageId(row);
@@ -1020,7 +1031,8 @@ public class NavigationDrawer implements ShaderList {
 			String title = failed.title();
 			byte[] png = notMovedPictures.get(failed.id());
 			rows.add(new Row(NOT_MOVED + failed.id(), Row.Kind.SHADER,
-					Face.of(Face.Of.FILE, png),
+					// A shader of the database, named as a shader is.
+					Face.of(Face.Of.FILE, ShaderLanguage.PASS, png, true),
 					title != null && !title.isEmpty()
 							? title
 							: activity.getString(R.string.nav_untitled),
@@ -1110,6 +1122,15 @@ public class NavigationDrawer implements ShaderList {
 						item.tap() == Tap.OPEN_AND_RUN)) {
 					close();
 				}
+			}
+			case SAY_WHY -> {
+				// A file too large, or the library while it moves:
+				// nothing a tap does is nothing.
+				Row row = item.row();
+				tell(row.picture().spoken() == Row.Picture.Spoken.CANNOT_OPEN
+						? activity.getString(R.string.nav_cannot_open_tap,
+								row.name())
+						: activity.getString(R.string.library_moving));
 			}
 			case MORE -> {
 				if (folder != null) {

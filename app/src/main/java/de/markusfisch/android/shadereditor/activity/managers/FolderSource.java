@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.UriPermission;
 import android.net.Uri;
 import android.os.Handler;
+import android.text.format.Formatter;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -33,6 +34,7 @@ import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
 import de.markusfisch.android.shadereditor.project.OpenProject;
+import de.markusfisch.android.shadereditor.project.ProjectManifest;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.SafProjects;
@@ -102,6 +104,8 @@ final class FolderSource {
 	// The pictures of the files read, by path, and the wallpaper's file.
 	private final Map<String, byte[]> pictures = new HashMap<>();
 	private String wallpaper;
+	// The file the manifest at the root names to run, or null.
+	private String manifestRuns;
 	// How far each folder is read, by its path; the root is "".
 	private final Map<String, Reading> readings = new HashMap<>();
 	// The paths of the folders that can be changed.
@@ -327,7 +331,7 @@ final class FolderSource {
 		// A level is sorted whole, then cut into pages.
 		List<Row> rows = dressed(reading.rows(level,
 				context.getString(R.string.nav_show_more),
-				context.getString(R.string.nav_shown_of), order));
+				context.getString(R.string.nav_shown_of), order), reading);
 		return new Listing(title(level),
 				location == null || location.isEmpty() ? null : location,
 				false,
@@ -344,11 +348,17 @@ final class FolderSource {
 				reading.notice());
 	}
 
-	// The rows with their pictures, when they were changed, and the
-	// wallpaper's mark.
+	// The rows with their faces, when they were changed, and the
+	// wallpaper's mark; a file that cannot be opened says so with its
+	// size, and the manifest says what it runs.
 	@NonNull
-	private List<Row> dressed(@NonNull List<Row> rows) {
+	private List<Row> dressed(@NonNull List<Row> rows,
+			@NonNull Reading reading) {
 		long now = System.currentTimeMillis();
+		Map<String, Long> sizes = new HashMap<>();
+		for (Reading.Entry entry : reading.entries()) {
+			sizes.put(entry.name(), entry.size());
+		}
 		List<Row> dressed = new ArrayList<>(rows.size());
 		for (Row row : rows) {
 			if (row.kind() == Row.Kind.MORE) {
@@ -356,7 +366,8 @@ final class FolderSource {
 				continue;
 			} else if (row.kind() == Row.Kind.FOLDER) {
 				dressed.add(new Row(row.key(), row.kind(),
-						Face.of(row.kind(), pictures.get(row.key())),
+						Face.of(row.kind(), row.name(),
+								pictures.get(row.key())),
 						row.name(), row.detail(), row.changed(), row.enters(),
 						row.marks(), row.actions()));
 				continue;
@@ -366,10 +377,19 @@ final class FolderSource {
 			if (row.key().equals(wallpaper)) {
 				marks.add(Row.Mark.WALLPAPER);
 			}
+			Long size = sizes.get(row.name());
+			String detail = row.kind() == Row.Kind.OTHER
+					? context.getString(R.string.nav_cannot_open_size,
+							Formatter.formatShortFileSize(context,
+									size != null ? size : 0))
+					: manifestRuns != null &&
+					row.key().equals(ProjectManifest.FILE.toString())
+					? context.getString(R.string.nav_runs, manifestRuns)
+					: ChangeTimes.describe(context, row.changed(), now);
 			dressed.add(new Row(row.key(), row.kind(),
-					Face.of(row.kind(), pictures.get(row.key())), row.name(),
-					ChangeTimes.describe(context, row.changed(), now),
-					row.changed(), row.enters(), marks, row.actions()));
+					Face.of(row.kind(), row.name(), pictures.get(row.key())),
+					row.name(), detail, row.changed(), row.enters(), marks,
+					row.actions()));
 		}
 		return dressed;
 	}
@@ -453,12 +473,18 @@ final class FolderSource {
 					}
 				}
 				ProjectPath wallpaperFile = looks.wallpaper();
+				ProjectPath runs = folder == null && listed != null
+						? listed.manifestEntry()
+						: null;
 				handler.post(() -> {
 					// What was read replaces the folder's pictures: a
 					// file made again under a gone file's name never shows
 					// the gone file's picture.
 					forgetPictures(path);
 					pictures.putAll(read);
+					if (folder == null) {
+						manifestRuns = runs != null ? runs.toString() : null;
+					}
 					wallpaper = wallpaperFile != null
 							? wallpaperFile.toString()
 							: null;
@@ -560,7 +586,7 @@ final class FolderSource {
 		List<Reading.Entry> entries = new ArrayList<>();
 		for (OpenProject.Item item : folder.items()) {
 			entries.add(new Reading.Entry(item.path().getFileName(),
-					item.folder(), item.modified()));
+					item.folder(), item.modified(), item.size()));
 		}
 		put(path, reading.listed(entries));
 	}
