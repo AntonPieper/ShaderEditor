@@ -5,6 +5,8 @@ import android.os.StrictMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,10 +31,12 @@ import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
+import de.markusfisch.android.shadereditor.widget.PassesSheet;
 import de.markusfisch.android.shadereditor.widget.ShaderEditor;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 
-public class EditorFragment extends Fragment implements ErrorListModal.Host {
+public class EditorFragment extends Fragment implements ErrorListModal.Host,
+		PassesSheet.Code {
 	public static final String TAG = "EditorFragment";
 
 	private static final String DRAFT_KEY = "editor_draft_key";
@@ -622,7 +626,8 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 	}
 
 	public boolean isCodeVisible() {
-		return editorContainer.getVisibility() == View.VISIBLE;
+		// Set aside behind the passes sheet it is still visible.
+		return editorContainer.getVisibility() != View.GONE;
 	}
 
 	/**
@@ -650,14 +655,55 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 			view.setVisibility(covered ||
 					(view == editorContainer && codeShown.hidden())
 					? View.GONE
-					: View.VISIBLE);
+					: codeShown.aside() ? View.INVISIBLE : View.VISIBLE);
 		}
 		codeShown.setCovered(covered);
 	}
 
+	/**
+	 * Set the code aside while the passes sheet is open, so that the
+	 * pictures are seen as they are and nothing is typed into what
+	 * cannot be seen, or give it back: it fades out in 100 ms and back
+	 * in 150 ms, at once without animations.
+	 */
+	@Override
+	public void setAside(boolean aside, boolean animate) {
+		codeShown.setAside(aside);
+		View view = getView();
+		if (view == null) {
+			return;
+		}
+		view.animate().cancel();
+		if (aside) {
+			SoftKeyboard.hide(getActivity(), view);
+		} else if (view.getVisibility() == View.INVISIBLE) {
+			view.setVisibility(View.VISIBLE);
+		}
+		Runnable put = () -> {
+			if (codeShown.aside() && view.getVisibility() == View.VISIBLE) {
+				view.setVisibility(View.INVISIBLE);
+			}
+		};
+		if (!animate) {
+			view.setAlpha(aside ? 0f : 1f);
+			put.run();
+			return;
+		}
+		view.animate().alpha(aside ? 0f : 1f)
+				.setDuration(aside ? 100 : 150)
+				.setInterpolator(aside
+						? new LinearInterpolator()
+						: new DecelerateInterpolator())
+				.withEndAction(put);
+	}
+
 	public boolean toggleCode() {
 		boolean visible = isCodeVisible();
-		editorContainer.setVisibility(visible ? View.GONE : View.VISIBLE);
+		editorContainer.setVisibility(visible
+				? View.GONE
+				: editorContainer == getView() && codeShown.aside()
+						? View.INVISIBLE
+						: View.VISIBLE);
 		if (visible) {
 			SoftKeyboard.hide(getActivity(), editor.getView());
 		}

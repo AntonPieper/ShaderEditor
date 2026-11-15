@@ -285,4 +285,20 @@
 	<style name="ThemeOverlay.ShaderEditor.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
 		<item name="android:backgroundDimAmount">@dimen/se_dialog_dim</item>
 	</style>
+	<!-- A quality in the passes sheet: 48 x 32, the one radius, no check
+	mark, which a 48 dp chip has no room for; the fill says which. -->
+	<style name="Widget.ShaderEditor.Chip.Quality" parent="Widget.Material3.Chip.Filter">
+		<item name="chipSurfaceColor">@android:color/transparent</item>
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+		<item name="checkedIconVisible">false</item>
+		<item name="chipMinHeight">32dp</item>
+		<item name="android:minWidth">48dp</item>
+		<item name="android:gravity">center</item>
+		<item name="chipStartPadding">4dp</item>
+		<item name="chipEndPadding">4dp</item>
+		<item name="textStartPadding">0dp</item>
+		<item name="textEndPadding">0dp</item>
+		<item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+		<item name="android:fontFeatureSettings">tnum</item>
+	</style>
 </resources>

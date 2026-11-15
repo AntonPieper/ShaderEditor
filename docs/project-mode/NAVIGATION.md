@@ -398,7 +398,7 @@ On a phone in landscape the drawer is the same, with 44 dp rows. From 840 dp of 
 | Drawer: "No shaders" text | The empty state of 6.7 |
 | Drawer: sorted by last change when the setting says so | The same order, chosen in the drawer menu. The setting "Sort by last modification" leaves Settings; its value is carried over |
 | Toolbar: title, frame rate below | Title; below it what runs and the folder; the frame rate joins quality (D3) |
-| Toolbar: quality spinner | The same list, behind the control that also shows the frame rate |
+| Toolbar: quality spinner | The control that also shows the frame rate opens the passes sheet, whose row of seven quality chips sets the quality: two taps, as the list took, then one per change while the sheet is open |
 | Toolbar: error button, Run, eye, menu | Unchanged; the error button gains the count. Eye and menu get spoken names, which they lack today |
 | Menu: Undo, Redo | Unchanged |
 | Menu: New shader | Stays, and is also the drawer's New. Opens the sheet of UX 2; that sheet costs one tap more than today's immediate creation, which is UX 2's decision, not this proposal's |
@@ -529,7 +529,7 @@ Each with my recommendation first.
 - c. The picker runs it, a row in the list only shows it. Follows UX 3 to the letter; two behaviours for one act.
 
 **D3. Where the frame rate goes.** Picture: `sheet-decisions.png`, first row.
-- **a (recommended).** Into the quality control ("58 fps · 1/2"), which still opens the quality list with one tap. Frees the second line for what runs and the folder.
+- **a (recommended).** Into the quality control ("58 fps · 1/2"), which opens the passes sheet with one tap; its row of quality chips sets the quality with the second (it opened the quality list before the sheet was built). Frees the second line for what runs and the folder.
 - b. It stays in the second line, after the running file. Nothing moves; the folder has no place, and with the error button or longer names the line is cut off as in the first attempt.
 
 **D4. A faster way back to the file before.** Picture: second row.

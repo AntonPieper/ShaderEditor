@@ -36,6 +36,7 @@ import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.Message;
+import de.markusfisch.android.shadereditor.widget.PassesSheet;
 
 /**
  * The main screen where the shaders are files: of the library, of
@@ -88,6 +89,8 @@ public final class LibraryScreen implements ShaderScreen {
 	private LibraryLooks looks;
 	@Nullable
 	private LibraryAdd libraryAdd;
+	// What the running shader is made of, from the frame-rate chip.
+	private final PassesSheet passes;
 	// The editor was given back the text of a file of a folder that the
 	// old editor cannot show; it is not a shader to run.
 	private boolean holdsUnshownFile = false;
@@ -293,6 +296,7 @@ public final class LibraryScreen implements ShaderScreen {
 			}
 		});
 		editorFragment.setOnShaderToyShaderListener(this::askToImport);
+		passes = new PassesSheet(activity, shaderViewManager, editorFragment);
 	
 		drawer = createDrawer();
 		shaderListManager = drawer;
@@ -412,6 +416,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void onStop() {
+		passes.onStop();
 		files.onStop();
 	}
 
@@ -447,6 +452,7 @@ public final class LibraryScreen implements ShaderScreen {
 		}
 		libraryAdd.destroy();
 		looks.destroy();
+		passes.destroy();
 		shaderManager.destroy();
 		shaderListManager.destroy();
 	}
