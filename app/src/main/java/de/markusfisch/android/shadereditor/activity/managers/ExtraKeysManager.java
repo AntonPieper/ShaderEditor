@@ -23,6 +23,9 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeListener {
 	public interface Editor {
 		void insert(@NonNull CharSequence text);
+
+		/** Do what the Tab key does. */
+		void tab();
 	}
 
 	@NonNull
@@ -38,7 +41,7 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		this.extraKeysView = rootView.findViewById(R.id.extra_keys);
 
 		insertTabView = extraKeysView.findViewById(R.id.insert_tab);
-		insertTabView.setOnClickListener(v -> editor.insert("\t"));
+		insertTabView.setOnClickListener(v -> editor.tab());
 
 		RecyclerView completions = extraKeysView.findViewById(R.id.completions);
 		completions.setLayoutManager(new LinearLayoutManager(

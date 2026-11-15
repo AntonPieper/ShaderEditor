@@ -116,6 +116,11 @@ final class EditTextSourceEditor implements SourceEditor {
 	}
 
 	@Override
+	public void tab() {
+		shaderEditor.insert("\t");
+	}
+
+	@Override
 	public void addUniform(@NonNull String statement) {
 		shaderEditor.addUniform(statement);
 	}

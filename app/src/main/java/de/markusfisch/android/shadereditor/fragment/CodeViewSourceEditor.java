@@ -208,6 +208,11 @@ final class CodeViewSourceEditor implements SourceEditor {
 	}
 
 	@Override
+	public void tab() {
+		view.tab();
+	}
+
+	@Override
 	public void addUniform(@NonNull String statement) {
 		AddUniform.apply(document, statement);
 		view.bringCaretIntoView();
