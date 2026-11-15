@@ -71,6 +71,11 @@ final class EngineInputs {
 	private long rateSince;
 	private int rateFrames;
 	private boolean counting;
+	// The clock of the frame drawn last, where a paused clock stands.
+	private float lastTime;
+	private int lastFrame;
+	private float lastDelta = FIRST_TIME_DELTA;
+	private boolean paused;
 
 	// At least one pixel, as a target has.
 	static int renderSize(int surfaceSize, float quality) {
@@ -157,11 +162,14 @@ final class EngineInputs {
 	}
 
 	// GL thread. Restarts the clock for a new shader of this quality.
+	// Paused, it stands just before frame 0, which the next step draws.
 	void restart(float quality, long now) {
 		runtimeClock.pause();
 		startTime = now;
 		startRandom = (float) Math.random();
 		frame = 0;
+		lastTime = -lastDelta;
+		lastFrame = -1;
 		hasLastCapture = false;
 		frameRate = FIRST_FRAME_RATE;
 		rateSince = now;
@@ -219,6 +227,50 @@ final class EngineInputs {
 		return frameRate;
 	}
 
+	// GL thread. Stops the clock at the frame drawn last, or lets it run
+	// on from there: the first frame after is one frame's time later.
+	void setPaused(boolean paused, long now) {
+		if (this.paused == paused) {
+			return;
+		}
+		this.paused = paused;
+		if (paused) {
+			runtimeClock.pause();
+			counting = false;
+			return;
+		}
+		long delta = (long) (lastDelta * NS_PER_SECOND);
+		startTime = now - (long) (lastTime * NS_PER_SECOND) - delta;
+		lastCapture = now - delta;
+		hasLastCapture = true;
+	}
+
+	// GL thread, while paused: the next frame, one frame's time after
+	// the frame drawn last, the time that frame took.
+	@NonNull
+	FrameInputs captureStep(float fTimeMax) {
+		var in = frameInputs;
+		in.time = lastTime + lastDelta;
+		in.frame = frame++;
+		in.timeDelta = lastDelta;
+		in.frameRate = frameRate;
+		lastTime = in.time;
+		lastFrame = in.frame;
+		return fill(in, fTimeMax);
+	}
+
+	// GL thread, while paused: the frame drawn last again, as when what
+	// draws it changed.
+	@NonNull
+	FrameInputs captureAgain(float fTimeMax) {
+		var in = frameInputs;
+		in.time = lastTime;
+		in.frame = Math.max(0, lastFrame);
+		in.timeDelta = lastDelta;
+		in.frameRate = frameRate;
+		return fill(in, fTimeMax);
+	}
+
 	// GL thread, once at the start of a frame.
 	@NonNull
 	FrameInputs capture(long now, float fTimeMax) {
@@ -233,6 +285,15 @@ final class EngineInputs {
 		lastCapture = now;
 		hasLastCapture = true;
 		in.frameRate = countFrame(now);
+		lastTime = in.time;
+		lastFrame = in.frame;
+		lastDelta = in.timeDelta;
+		return fill(in, fTimeMax);
+	}
+
+	// What every kind of frame takes as it is now.
+	@NonNull
+	private FrameInputs fill(@NonNull FrameInputs in, float fTimeMax) {
 		in.fTimeMax = fTimeMax;
 		in.startRandom = startRandom;
 		in.surfaceWidth = surfaceWidth;

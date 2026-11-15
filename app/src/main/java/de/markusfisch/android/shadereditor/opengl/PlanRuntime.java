@@ -81,6 +81,10 @@ final class PlanRuntime implements ShaderSwap.Build {
 	private final boolean[] backbuffer;
 	@Nullable
 	private RunningPasses running;
+	// Whether a frame was drawn, and whether the last one moved on, so
+	// that its passes' frames are their completed ones.
+	private boolean drawn;
+	private boolean advanced;
 	// The pass shown() found for shownFile last.
 	@Nullable
 	private ProjectPath shownFile;
@@ -535,6 +539,19 @@ final class PlanRuntime implements ShaderSwap.Build {
 			@NonNull ActiveBuiltins builtins,
 			@NonNull FrameInputs frame,
 			int shown) {
+		draw(pipeline, builtins, frame, shown, true);
+	}
+
+	// Like draw(pipeline, builtins, frame, shown). Unless advance, what
+	// the passes drew does not become their previous frame: the frame
+	// is drawn again from the same last frame, as often as asked, and
+	// the next frame that advances replaces it.
+	void draw(
+			@NonNull ShaderRenderPipeline pipeline,
+			@NonNull ActiveBuiltins builtins,
+			@NonNull FrameInputs frame,
+			int shown,
+			boolean advance) {
 		var output = targets[plan.output()];
 		if (output == null) {
 			return;
@@ -556,6 +573,11 @@ final class PlanRuntime implements ShaderSwap.Build {
 		}
 		pipeline.present(texture, picture, frame.surfaceWidth,
 				frame.surfaceHeight);
+		drawn = true;
+		advanced = advance;
+		if (!advance) {
+			return;
+		}
 		// Only what is drawn every frame moves on: a first frame keeps
 		// the texture it was drawn into, to be shown.
 		for (int pass : schedule.frame) {
@@ -563,6 +585,54 @@ final class PlanRuntime implements ShaderSwap.Build {
 				targets[pass].swap();
 			}
 		}
+	}
+
+	// GL thread. Presents what the frame drawn last drew, of pass shown,
+	// drawing no pass, as while paused.
+	void present(
+			@NonNull ShaderRenderPipeline pipeline,
+			int surfaceWidth,
+			int surfaceHeight,
+			int shown) {
+		var picture = last(plan.output());
+		if (picture == null) {
+			return;
+		}
+		device.applySampling(picture, presentSampling);
+		var texture = picture;
+		if (shown != plan.output()) {
+			var last = last(shown);
+			if (last != null) {
+				texture = last;
+				device.applySampling(texture, Sampling.PASS);
+			}
+		}
+		pipeline.present(texture, picture, surfaceWidth, surfaceHeight);
+	}
+
+	// Whether present() has nothing to show: no frame was drawn since
+	// the targets were made, or a restart asks for its first frame.
+	boolean needsFrame() {
+		return !drawn || reset;
+	}
+
+	// GL thread. Clears the histories and draws the first frames again
+	// with the next frame.
+	void restart() {
+		if (madeSizes != null) {
+			reset = true;
+		}
+	}
+
+	// What pass drew in the frame drawn last.
+	@Nullable
+	private GlTexture2D last(int pass) {
+		var target = targets[pass];
+		if (target == null || !drawn) {
+			return null;
+		}
+		boolean moved = advanced && passes.get(pass).pass.perFrame();
+		return moved ? target.completed() : target.drawn();
 	}
 
 	// The pass of file to present: one drawn every frame, or a first
