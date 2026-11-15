@@ -301,7 +301,7 @@ public class FileTextsTest {
 	}
 
 	@Test
-	public void journalOfReloadedTextGoesOnlyWithAHistoryOrWhenStored() {
+	public void reloadPutsTheJournalAsideOnlyWhenItHoldsTheWriteNamed() {
 		store.put("main.frag", "stored");
 		document = new Document(opened(MAIN, 6));
 		document.replace(0, 6, Text.of("mine"));
@@ -309,27 +309,74 @@ public class FileTextsTest {
 		texts = new FileTexts(store, journal, histories(), worker, main);
 		assertTrue(journal.snapshot(new Journal.Header(MAIN, base, false,
 				null), 1, document.text()));
-		List<Boolean> done = new ArrayList<>();
-		FileRecord.Flush remove = new FileRecord.Flush(null, null, -1, 2,
-				List.of(), null);
+		List<Integer> aside = new ArrayList<>();
 
-		// Whoever asks to remove it, and whatever they remember.
-		texts.reload(MAIN, true, false, null, reloaded -> done.add(
-				reloaded.marked()));
-		texts.journal(MAIN, remove, done::add);
+		// Not the write the journal holds; then a file that changed
+		// again; then as asked.
+		texts.reload(MAIN, 2, false, null, reloaded -> aside.add(
+				reloaded.aside()));
+		texts.reload(MAIN, 1, true, "another", reloaded -> aside.add(
+				reloaded.aside()));
 		worker.run();
 		main.run();
-		assertEquals(List.of(true, false), done);
-		assertTrue(journal.header(MAIN).replaced());
+		assertEquals(List.of(-1, -1), aside);
 		assertEquals("mine", journal.read(MAIN).text().toString());
-
-		// With the history that holds it, or once storage holds it.
-		store.put("main.frag", "mine");
-		texts.journal(MAIN, remove, done::add);
+		texts.reload(MAIN, 1, true, base, reloaded -> aside.add(
+				reloaded.aside()));
 		worker.run();
 		main.run();
-		assertEquals(List.of(true, false, true), done);
+
+		assertEquals(List.of(-1, -1, 1), aside);
 		assertNull(journal.read(MAIN));
+		// Opened again, undo leads to the text, without any history.
+		Opened opened = (Opened) open(MAIN, 6);
+		assertEquals("stored", opened.text().toString());
+		assertFalse(opened.document().isModified());
+		assertEquals(1, opened.replaced().size());
+		opened.document().undo();
+		assertEquals("mine", opened.text().toString());
+		assertEquals(opened.replaced().get(0).state(),
+				opened.document().state());
+		assertTrue(opened.document().isModified());
+	}
+
+	@Test
+	public void aHistoryThatLeadsToWhatAReloadReplacedIsTaken() {
+		store.put("main.frag", "stored");
+		document = new Document(opened(MAIN, 6));
+		document.replace(0, 6, Text.of("first"));
+		document.replace(0, 5, Text.of("mine"));
+		Journal journal = new Journal(drafts).own();
+		Histories histories = histories();
+		texts = new FileTexts(store, journal, histories, worker, main);
+		assertTrue(journal.snapshot(new Journal.Header(MAIN, base, false,
+				null), 1, document.text()));
+		assertEquals(1, journal.putAside(MAIN, 1));
+		int state = document.state();
+		document.replace(0, 4, Text.of("stored"));
+		assertTrue(histories.write(MAIN, Histories.hash(document.text()),
+				document.history()));
+
+		Opened opened = (Opened) open(MAIN, 6);
+
+		// Every step of it, and the state the text is found at.
+		assertEquals(List.of(new FileRecord.Replaced(1, state)),
+				opened.replaced());
+		opened.document().undo();
+		assertEquals("mine", opened.text().toString());
+		opened.document().undo();
+		assertEquals("first", opened.text().toString());
+
+		// One that does not lead there gives way to a step that does.
+		document = new Document(Text.of("stored"));
+		document.replace(0, 6, Text.of("other"));
+		document.replace(0, 5, Text.of("stored"));
+		assertTrue(histories.write(MAIN, Histories.hash(document.text()),
+				document.history()));
+		opened = (Opened) open(MAIN, 6);
+		opened.document().undo();
+		assertEquals("mine", opened.text().toString());
+		assertFalse(opened.document().canUndo());
 	}
 
 	private Histories histories() {

@@ -26,10 +26,10 @@ public class FileRecordTest {
 		Request again = record.start(Kind.OPEN);
 
 		assertFalse(record.adoptOpened(open, new Document(Text.of("old")),
-				"r1", -1, false));
+				"r1", -1, List.of()));
 		assertNull(record.document());
 		assertTrue(record.adoptOpened(again, new Document(Text.of("new")),
-				"r2", -1, false));
+				"r2", -1, List.of()));
 		assertEquals("r2", record.base());
 	}
 
@@ -40,7 +40,7 @@ public class FileRecordTest {
 		record.document().replace(0, 6, Text.of("mine"));
 
 		assertFalse(record.adoptStored(check, check.document(),
-				check.revision(), Text.of("theirs"), "r2"));
+				check.revision(), Text.of("theirs"), "r2", -1, -1));
 
 		assertEquals("mine", record.document().text().toString());
 		assertTrue(record.document().isModified());
@@ -60,7 +60,7 @@ public class FileRecordTest {
 
 		Request check = record.start(Kind.CHECK);
 		assertTrue(record.adoptStored(check, check.document(),
-				check.revision(), Text.of("theirs"), "r2"));
+				check.revision(), Text.of("theirs"), "r2", -1, -1));
 
 		assertEquals(List.of("theirs at r2"), heard);
 		assertFalse(record.document().isModified());
@@ -119,7 +119,8 @@ public class FileRecordTest {
 		document.undo();
 		document.undo();
 		assertTrue(record.flush().removes());
-		assertFalse(record.journaled);
+		assertFalse(record.needed() && record.document() == null);
+		assertFalse(record.journaled());
 	}
 
 	@Test
@@ -158,11 +159,11 @@ public class FileRecordTest {
 
 		// The first failed; whether the second held is not known yet.
 		record.acknowledge(first, false);
-		assertEquals("the journal cannot be written", record.failure);
+		assertEquals("the journal cannot be written", record.failure());
 		assertFalse(record.settled());
 
 		record.acknowledge(again, true);
-		assertNull(record.failure);
+		assertNull(record.failure());
 		assertTrue(record.settled());
 	}
 
@@ -216,10 +217,121 @@ public class FileRecordTest {
 		assertTrue(record.edited());
 	}
 
+	@Test
+	public void typingIsSentWhateverAReloadReplaced() {
+		open("stored", "r1");
+		Document document = record.document();
+		document.replace(0, 6, Text.of("mine"));
+		FileRecord.Flush held = record.flush();
+		record.acknowledge(held, true);
+		assertEquals(held.to(), record.holding());
+
+		// Unsaved text is replaced only with its journal put aside.
+		Request reload = record.start(Kind.RELOAD);
+		assertFalse(record.adoptStored(reload, document,
+				document.revision(), Text.of("theirs"), "r2", -1, -1));
+		int mine = document.state();
+		assertTrue(record.adoptStored(reload, document,
+				document.revision(), Text.of("theirs"), "r2", 7,
+				held.to()));
+		record.end(reload);
+
+		// The file has no journal now: nothing is to remove, and what
+		// is typed next is a journal like any other, whole.
+		assertFalse(document.isModified());
+		assertNull(record.flush());
+		assertTrue(record.settled());
+		for (String typed : List.of("typed 1", "typed 2", "typed 3")) {
+			document.replace(0, document.text().length(), Text.of(typed));
+			FileRecord.Flush flush = record.flush();
+			assertEquals(typed, flush.text().toString());
+			assertFalse(flush.removes());
+			record.acknowledge(flush, true);
+			assertTrue(record.settled());
+			assertNull(record.failure());
+		}
+		assertTrue(record.unreachable().isEmpty());
+
+		// Undone past the text and typed there, nothing leads to it.
+		while (document.state() != mine) {
+			document.undo();
+		}
+		assertTrue(record.unreachable().isEmpty());
+		document.undo();
+		assertTrue(record.unreachable().isEmpty());
+		document.replace(0, 0, Text.of("other "));
+		assertEquals(List.of(7), record.unreachable());
+		assertTrue(record.unreachable().isEmpty());
+	}
+
+	@Test
+	public void aJournalThatCannotBeReadStaysUntilGivenUpOrTypedOver() {
+		open("stored", "r1");
+		record.unread("its text is damaged", true);
+
+		assertEquals("its text is damaged", record.unreadable());
+		assertTrue(record.damaged());
+		assertTrue(record.unsaved());
+		assertFalse(record.edited());
+		// Not this record's to remove, at a fence either.
+		assertNull(record.flush());
+		assertNull(record.flush(true));
+		assertTrue(record.settled());
+
+		record.document().replace(0, 0, Text.of("typed "));
+		FileRecord.Flush flush = record.flush();
+		assertEquals(-1, flush.from());
+		assertNull(record.unreadable());
+
+		// One the device had no memory for is not given up.
+		record.unread("too large for this device", false);
+		assertFalse(record.damaged());
+		record.dismissed();
+		assertNull(record.unreadable());
+	}
+
+	@Test
+	public void aFileNotInMemoryLosesItsJournalOnceStorageHoldsItsText() {
+		record.recover(new Journal.Header(record.path, "r1", true, "r1"),
+				FileTexts.Found.SAME, "r1");
+		assertTrue(record.edited());
+		assertTrue(record.kept());
+		assertTrue(record.journaled());
+		assertNull(record.flush());
+
+		Request check = record.start(Kind.CHECK);
+		assertTrue(record.adoptSaved(check, "r2"));
+		record.end(check);
+
+		assertFalse(record.edited());
+		assertFalse(record.kept());
+		assertTrue(record.needed());
+		FileRecord.Flush remove = record.flush();
+		assertTrue(remove.removes());
+		assertNull(record.flush());
+		record.acknowledge(remove, true);
+		assertFalse(record.needed());
+	}
+
+	@Test
+	public void textTypedAfterTheAppDeletedTheFileIsOfNoFile() {
+		open("stored", "r1");
+		Document document = record.document();
+		record.discard(true);
+		document.replace(0, 0, Text.of("typed "));
+
+		record.orphan();
+
+		// Not deleted elsewhere: nothing to consent to, a save makes it.
+		assertNull(record.conflict());
+		assertNull(record.expected());
+		assertEquals("typed stored", record.flush().text().toString());
+	}
+
 	private void open(String text, String revision) {
 		Request open = record.start(Kind.OPEN);
 		assertTrue(record.adoptOpened(open, new Document(Text.of(text)),
-				revision, -1, false));
+				revision, -1, List.of()));
 		record.end(open);
 	}
 }

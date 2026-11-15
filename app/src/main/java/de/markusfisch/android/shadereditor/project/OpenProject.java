@@ -148,9 +148,11 @@ public final class OpenProject {
 
 	/**
 	 * The unsaved text of the file cannot be read, for reason. Nothing
-	 * was written, and the journal stays until {@link #dismiss}.
+	 * was written, and the journal stays until {@link #dismiss}, which
+	 * gives it up only when it is damaged.
 	 */
-	public record Unreadable(String reason) implements Outcome {
+	public record Unreadable(String reason, boolean damaged)
+			implements Outcome {
 	}
 
 	/**
@@ -252,7 +254,7 @@ public final class OpenProject {
 			String unkept,
 			Map<ProjectPath, FileTexts.Found> found,
 			Map<ProjectPath, Runs> runs, Map<ProjectPath, String> unreadable,
-			Set<ProjectPath> replaced, int damaged, int moves) {
+			int damaged, int moves) {
 	}
 
 	// The files opened, being opened or worked on in storage.
@@ -447,13 +449,36 @@ public final class OpenProject {
 		for (Journal.Header header : journals.headers().values()) {
 			FileTexts.Checked checked = project.texts.check(header.path(),
 					header.base(), null, true);
+			boolean stored = checked.found() == FileTexts.Found.SAME ||
+					checked.found() == FileTexts.Found.CHANGED;
 			if (checked.equal()) {
 				// Storage holds the text: saved before the process died,
 				// or written elsewhere.
 				journal.remove(header.path());
+			} else if (header.replaced() && stored &&
+					journal.putAside(header.path(), -1) >= 0) {
+				// A journal of the form before this one that held text
+				// a reload replaced: the file opens as stored, as the
+				// user asked, and undo leads to the text.
 			} else {
 				project.record(header.path()).recover(header,
 						checked.found(), checked.revision());
+			}
+		}
+		// Text a reload replaced, of a file that is gone and has no
+		// journal: there is no stored text for undo to lead back from,
+		// so the newest of it is the unsaved text of a file that is
+		// not there, to be found where such text is listed.
+		for (ProjectPath path : journal.replacedPaths()) {
+			if (!journals.headers().containsKey(path) &&
+					project.texts.check(path, null, null, false).found() ==
+							FileTexts.Found.MISSING &&
+					journal.promote(path)) {
+				Journal.Header header = journal.header(path);
+				if (header != null) {
+					project.record(path).recover(header,
+							FileTexts.Found.MISSING, null);
+				}
 			}
 		}
 		project.shown = project.keptShown = sessions.shown(id);
@@ -926,9 +951,9 @@ public final class OpenProject {
 	 */
 	public String unprotected() {
 		for (FileRecord record : records.values()) {
-			if (record.failure != null) {
+			if (record.failure() != null) {
 				return "the unsaved text of " + record.path +
-						" is not protected: " + record.failure;
+						" is not protected: " + record.failure();
 			}
 		}
 		return unsynced;
@@ -969,8 +994,9 @@ public final class OpenProject {
 		};
 		for (FileRecord record : new ArrayList<>(records.values())) {
 			ProjectPath path = record.path;
-			if (!record.edited() && record.unreadable != null) {
-				outcomes.put(path, new Unreadable(record.unreadable));
+			if (!record.edited() && record.unreadable() != null) {
+				outcomes.put(path, new Unreadable(record.unreadable(),
+						record.damaged()));
 				continue;
 			} else if (!record.edited() && !(explicit &&
 					record.document() != null &&
@@ -979,7 +1005,7 @@ public final class OpenProject {
 			} else if (record.conflict() != null) {
 				outcomes.put(path, new Conflict(record.conflict()));
 				continue;
-			} else if (!explicit && record.kept) {
+			} else if (!explicit && record.kept()) {
 				outcomes.put(path, new Conflict("the file changed elsewhere"));
 				continue;
 			}
@@ -1049,11 +1075,14 @@ public final class OpenProject {
 	 * when the read waits for a save or a check of the file. Unsaved
 	 * text not in memory is opened first, so undo brings it back; it is
 	 * replaced as the journal had it, so what anyone typed once it was
-	 * in memory stays too. The journal of the replaced text is removed
-	 * only together with a history that holds it; while none can be
-	 * written, the journal stays, and the text comes back as unsaved
-	 * when the project opens again. done gets null when done, or why
-	 * the file cannot be read; what was found in its place is seen.
+	 * in memory stays too. Unsaved text is written to the journal
+	 * first, and that journal is put aside before the stored text is
+	 * taken: it is kept for as long as undo or redo lead to the text,
+	 * also when the process ends, and the file has no journal from
+	 * then on, so what is typed afterwards is kept like any unsaved
+	 * text. When the journal cannot hold the text first, nothing is
+	 * replaced. done gets null when done, or why the text is as it
+	 * was; what was found in the file's place is seen.
 	 */
 	public void reload(ProjectPath path, Callback<String> done) {
 		reload(path, false, null, done);
@@ -1062,7 +1091,7 @@ public final class OpenProject {
 	private void reload(ProjectPath path, boolean expect, String seen,
 			Callback<String> done) {
 		FileRecord record = record(path);
-		if (record.document() == null && record.journaled) {
+		if (record.document() == null && record.edited()) {
 			// The user consents to losing the unsaved text as the
 			// journal has it: what is typed once it is in memory, also
 			// by whoever asked for it before, stays.
@@ -1108,9 +1137,7 @@ public final class OpenProject {
 		} else {
 			texts.header(new Journal.Header(path, seen, true, seen),
 					kept -> {
-						record.failure = kept
-								? null
-								: "the journal cannot be written";
+						record.headerKept(kept);
 						changed();
 					});
 		}
@@ -1126,22 +1153,55 @@ public final class OpenProject {
 	 */
 	public String unreadable(ProjectPath path) {
 		FileRecord record = records.get(path);
-		return record != null ? record.unreadable : null;
+		return record != null ? record.unreadable() : null;
+	}
+
+	/**
+	 * Return whether the unsaved text of path that could not be read,
+	 * see {@link #unreadable}, is damaged, so that reading it again
+	 * finds the same and {@link #dismiss} gives it up. Else the device
+	 * had no memory to read it: it may be whole, and is only ever read
+	 * again, by {@link #reread}.
+	 */
+	public boolean damaged(ProjectPath path) {
+		FileRecord record = records.get(path);
+		return record != null && record.damaged();
+	}
+
+	/**
+	 * Read the unsaved text of path that could not be read once more:
+	 * its document, which has the stored text and no unsaved text of
+	 * its own, leaves memory and the file is opened again. done gets
+	 * what {@link #load} tells; nothing happens to a document that was
+	 * edited since.
+	 */
+	public void reread(ProjectPath path, Callback<String> done) {
+		FileRecord record = records.get(path);
+		if (record == null || record.unreadable() == null ||
+				record.edited() || record.pending() != null) {
+			main.execute(() -> done.done(unreadable(path)));
+			return;
+		}
+		if (record.document() != null) {
+			drop(record);
+		}
+		load(path, ProjectFiles.UNKNOWN, done);
 	}
 
 	/**
 	 * Give up the unsaved text of path that could not be read: its
-	 * journal is deleted, unless text typed since took its place, and
-	 * the file no longer counts as unsaved for it.
+	 * journal is deleted when it is damaged, unless text typed since
+	 * took its place, and the file no longer counts as unsaved for it.
+	 * One the device only had no memory to read stays.
 	 */
 	public void dismiss(ProjectPath path) {
 		FileRecord record = records.get(path);
-		if (record == null || record.unreadable == null) {
+		if (record == null || !record.damaged()) {
 			return;
 		}
 		texts.dismiss(path, removed -> {
-			if (removed && record.unreadable != null) {
-				record.unreadable = null;
+			if (removed) {
+				record.dismissed();
 				if (!record.needed() && records.get(path) == record) {
 					records.remove(path);
 				}
@@ -1152,46 +1212,6 @@ public final class OpenProject {
 			damaged = count;
 			changed();
 		});
-	}
-
-	/**
-	 * Return whether the unsaved text of path is text a reload replaced
-	 * with the stored one, which came back: the journal that held it is
-	 * kept until an undo history holds it, and the app ended, or no
-	 * history could be stored, before. It stays so until the text is
-	 * edited, saved, reloaded again or kept by {@link #keepReplaced}.
-	 */
-	public boolean replaced(ProjectPath path) {
-		FileRecord record = records.get(path);
-		// As the journal gave it back: an edit makes it the user's.
-		return record != null && record.replaced() && record.edited() &&
-				(record.document() == null ||
-						record.document().revision() == record.opened());
-	}
-
-	/**
-	 * Keep the text of path that a reload replaced, see
-	 * {@link #replaced}, as unsaved text like any other.
-	 */
-	public void keepReplaced(ProjectPath path) {
-		FileRecord record = records.get(path);
-		if (record == null || !replaced(path)) {
-			return;
-		}
-		record.keepReplaced();
-		if (record.document() != null) {
-			flush(record);
-		} else {
-			String base = record.base();
-			texts.header(new Journal.Header(path, base, record.kept,
-					record.kept ? base : null), kept -> {
-				record.failure = kept
-						? null
-						: "the journal cannot be written";
-				changed();
-			});
-		}
-		changed();
 	}
 
 	/**
@@ -1401,9 +1421,7 @@ public final class OpenProject {
 					document.removeListener(record.listener);
 					record.drop();
 				}
-				record.discard(false);
-				record.journaled = false;
-				record.unreadable = null;
+				record.deleted();
 				records.remove(record.path);
 				recent.remove(record.path);
 				// What waited for it finds no file.
@@ -1933,21 +1951,18 @@ public final class OpenProject {
 		ProjectPath path = record.path;
 		texts.open(path, size, opened -> {
 			String problem = null;
-			boolean taken = false;
 			if (opened instanceof FileTexts.Unopened unopened) {
 				problem = unopened.reason();
 			} else {
-				taken = take(record, request, (FileTexts.Opened) opened) &&
-						((FileTexts.Opened) opened).journal() < 0;
+				take(record, request, (FileTexts.Opened) opened);
 			}
-			// The journal is gone, or cannot be read and is left as it
-			// is until it is dismissed or the next snapshot replaces
-			// it; that is told also when the stored file cannot be
-			// opened in its place.
-			if (records.get(path) == record && (taken ||
-					opened.unreadable() != null)) {
-				record.journaled = false;
-				record.unreadable = opened.unreadable();
+			// A journal that cannot be read is left as it is until it
+			// is dismissed or the next snapshot replaces it; that is
+			// told also when the stored file cannot be opened in its
+			// place.
+			if (records.get(path) == record &&
+					opened.unreadable() != null) {
+				record.unread(opened.unreadable(), opened.damaged());
 			}
 			List<Callback<String>> joined = opening.remove(path);
 			end(record, request);
@@ -2026,8 +2041,7 @@ public final class OpenProject {
 					} else if (save.outcome() instanceof Saved saved) {
 						record.adoptSaved(request, saved.revision());
 					} else if (save.outcome() instanceof Unreadable damage) {
-						record.journaled = false;
-						record.unreadable = damage.reason();
+						record.unread(damage.reason(), damage.damaged());
 					} else if (save.found() != null) {
 						record.observe(request, save.found().found(),
 								save.found().revision());
@@ -2054,7 +2068,7 @@ public final class OpenProject {
 				record.adoptSaved(request, checked.revision());
 			} else if (checked.text() != null && record.adoptStored(
 					request, request.document(), request.revision(),
-					checked.text(), checked.revision())) {
+					checked.text(), checked.revision(), -1, -1)) {
 				reread.add(path);
 			} else {
 				record.observe(request, checked.found(),
@@ -2080,34 +2094,42 @@ public final class OpenProject {
 			boolean expect, String seen, Callback<String> done) {
 		FileRecord.Request request = record.start(FileRecord.Kind.RELOAD);
 		ProjectPath path = record.path;
-		// A journal of text that would be replaced, or that waits for a
-		// history since an earlier reload, is marked before main is told.
-		boolean mark = record.document() != null
-				? record.document().isModified() || record.replaced()
-				: record.journaled;
-		texts.reload(path, mark, expect, seen, reloaded -> {
+		// Unsaved text is held before it is replaced: its journal is
+		// written now, ahead of the reload on the worker, which puts
+		// it aside only if it holds exactly this write.
+		Document document = record.document();
+		boolean typed = document != null && document == asked &&
+				document.revision() == at && document.isModified();
+		if (typed) {
+			flush(record);
+		}
+		int held = typed ? record.holding() : -1;
+		texts.reload(path, held, expect, seen, reloaded -> {
 			FileTexts.Opening opening = reloaded.opening();
 			boolean took = false;
 			String problem = null;
-			if (opening instanceof FileTexts.Unopened unopened) {
+			if (records.get(path) != record) {
+				// Closed since.
+			} else if (opening instanceof FileTexts.Unopened unopened) {
 				// What stands in place of the text is seen all the same.
 				problem = unopened.reason();
 				record.observe(request, unopened.found(),
 						unopened.revision());
 			} else if (!(opening instanceof FileTexts.Opened opened)) {
 				problem = "it cannot be read";
-			} else if (records.get(path) != record) {
-				// Closed since.
 			} else if (expect && !Objects.equals(seen, opened.revision())) {
 				problem = "the file changed again";
+			} else if (typed && reloaded.aside() < 0) {
+				problem = "its unsaved text cannot be kept first";
 			} else {
 				// Typing that came after the request stays, with its
 				// journal.
 				took = asked == null && record.document() == null &&
-						!record.journaled
+						!record.edited()
 						? take(record, request, opened)
 						: record.adoptStored(request, asked, at,
-								opened.text(), opened.revision());
+								opened.text(), opened.revision(),
+								reloaded.aside(), held);
 			}
 			// What was read and not taken is what storage was seen to
 			// hold.
@@ -2115,19 +2137,16 @@ public final class OpenProject {
 				record.observe(request, FileTexts.Found.CHANGED,
 						opened.revision());
 			}
+			if (!took && reloaded.aside() >= 0 &&
+					records.get(path) == record) {
+				// Not replaced after all: the journal is put back.
+				record.putBack();
+				texts.putBack(path, reloaded.aside());
+			}
 			end(record, request);
-			// The journal goes only now that the stored text is taken,
-			// and only by the task of the worker that wrote the history
-			// which brings its text back by undo.
+			flush(record);
 			if (took) {
-				record.kept = false;
-				flush(record);
 				keepHistory(record);
-			} else if (reloaded.marked() && records.get(path) == record &&
-					record.edited()) {
-				// Not replaced after all: its journal says so again.
-				record.keepReplaced();
-				flush(record);
 			}
 			changed();
 			done.done(problem);
@@ -2264,14 +2283,16 @@ public final class OpenProject {
 	private void flush(FileRecord record, boolean fence) {
 		++record.timer;
 		record.limit = 0;
-		FileRecord.Flush flush = records.get(record.path) == record
-				? record.flush(fence)
-				: null;
+		if (records.get(record.path) != record) {
+			return;
+		}
+		// What a reload replaced is kept while undo or redo lead to it.
+		for (int number : record.unreachable()) {
+			texts.forget(record.path, number);
+		}
+		FileRecord.Flush flush = record.flush(fence);
 		if (flush == null) {
 			return;
-		} else if (flush.history() != null) {
-			record.historyAt = record.document().revision();
-			record.historySelection = record.document().selection();
 		}
 		texts.journal(record.path, flush, written -> {
 			record.acknowledge(flush, written);
@@ -2296,8 +2317,7 @@ public final class OpenProject {
 	private Set<ProjectPath> journaled() {
 		Set<ProjectPath> journaled = new HashSet<>();
 		for (FileRecord record : records.values()) {
-			if (record.document() == null && (record.journaled ||
-					record.unreadable != null)) {
+			if (record.journaled()) {
 				journaled.add(record.path);
 			}
 		}
@@ -2391,14 +2411,8 @@ public final class OpenProject {
 			if (record.document() != null && record.runs != Runs.UNKNOWN) {
 				runs.put(record.path, record.runs);
 			}
-			if (record.unreadable != null) {
-				unreadable.put(record.path, record.unreadable);
-			}
-		}
-		Set<ProjectPath> replaced = new HashSet<>();
-		for (ProjectPath path : records.keySet()) {
-			if (replaced(path)) {
-				replaced.add(path);
+			if (record.unreadable() != null) {
+				unreadable.put(record.path, record.unreadable());
 			}
 		}
 		Map<ProjectPath, String> conflicts = new HashMap<>();
@@ -2407,7 +2421,7 @@ public final class OpenProject {
 		}
 		return new State(unsaved(), conflicts, running, used,
 				diagnostics, unprotected(), unkept, found, runs, unreadable,
-				replaced, damaged, moves);
+				damaged, moves);
 	}
 
 	// Call the listener, unless nothing it hears about changed or a call

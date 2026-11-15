@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.project;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -28,15 +29,21 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 /**
  * Every order of a few steps a user, the timers, the two threads and a
  * failing disk can take with one file, each followed by the death of
- * the process: what opens afterwards is text the user had and did not
- * have kept since, or gave up, and exactly the text they have where
- * the project said it was held or saved. Text a reload replaced after
- * it was held is there again, as it is or by undo.
+ * the process. What opens afterwards is the newest text the user typed
+ * that the project told was held, or one they had since; or, where
+ * they chose to reload, the stored text; and every text a reload
+ * replaced that undo or redo of the document led to when the process
+ * died is led to by undo or redo of the document that opens, however
+ * many writes of the journal lie between. And nothing typed stays out
+ * of the journal: once the timers fired and both threads are idle, the
+ * journal holds the text, unless a write failed.
  */
 public class LifecycleSequencesTest {
 	private enum Step {
 		/** The user replaces the text. */
 		TYPE,
+		/** The user takes back the last change. */
+		UNDO,
 		/** The timers that flush what was typed fire. */
 		TIMER,
 		/** The worker does what it was given. */
@@ -48,8 +55,16 @@ public class LifecycleSequencesTest {
 		FAIL,
 		/** The main thread takes what was posted to it. */
 		MAIN,
-		/** The user reloads the file from storage. */
+		/**
+		 * The user reloads the file from storage; where it changed
+		 * elsewhere, as they saw it then.
+		 */
 		RELOAD,
+		/**
+		 * The user keeps their edits over the file another app changed,
+		 * as they saw it then.
+		 */
+		KEEP,
 		/** The user saves. */
 		SAVE,
 		/** The app goes to the background: flush(done). */
@@ -73,22 +88,51 @@ public class LifecycleSequencesTest {
 		 * A saved file; FAIL fails journal and history. Without RELOAD,
 		 * which the other starts take further in fewer steps.
 		 */
-		SAVED(5, SAVED_SEQUENCES),
+		SAVED(5, 3371),
 		/** The same; what is typed has a character no file can hold. */
-		UNSTORABLE(4, UNSTORABLE_SEQUENCES),
+		UNSTORABLE(4, 1340),
 		/** Unsaved text the journal holds; FAIL fails the history. */
-		HELD(4, HELD_SEQUENCES),
+		HELD(4, 1929),
 		/**
 		 * The same, replaced by a reload whose history could not be
-		 * written: the journal waits for one.
+		 * written: only what was kept beside the journal leads back.
+		 * FAIL fails the history.
 		 */
-		RELOADED(4, RELOADED_SEQUENCES),
+		RELOADED(4, 3672),
+		/**
+		 * The same, and the user typed on and the journal took it: one
+		 * write after the reload is done. FAIL fails journal and
+		 * history, as in the starts below.
+		 */
+		TYPED_ON(4, 2948),
+		/**
+		 * The same, typed on twice: two writes after the reload, and a
+		 * third within three steps.
+		 */
+		TYPED_TWICE(3, 359),
+		/**
+		 * Reloaded as RELOADED, then undone past the text the reload
+		 * replaced: what is typed now leaves it behind.
+		 */
+		UNDONE(4, 2547),
+		/**
+		 * A file and unsaved text too large for a history to keep both,
+		 * reloaded. Without the steps that fail or repeat what the
+		 * other starts cover, a step less deep: each text is megabytes.
+		 */
+		LARGE(3, 65),
 		/**
 		 * Unsaved text the journal holds, with RENAME and DELETE in
 		 * place of reload, save and flush(done); FAIL fails journal and
 		 * history.
 		 */
-		MOVED(4, MOVED_SEQUENCES);
+		MOVED(4, 926),
+		/**
+		 * Unsaved text the journal holds, while another app changed the
+		 * stored file and a refresh saw it; FAIL fails journal and
+		 * history.
+		 */
+		CHANGED(4, 3469);
 
 		private final int length;
 		private final int sequences;
@@ -97,13 +141,14 @@ public class LifecycleSequencesTest {
 			this.length = length;
 			this.sequences = sequences;
 		}
+
+		// Whether the start is past a reload that replaced unsaved text.
+		private boolean reloaded() {
+			return this == RELOADED || this == TYPED_ON ||
+					this == TYPED_TWICE || this == UNDONE || this == LARGE;
+		}
 	}
 
-	private static final int SAVED_SEQUENCES = 3371;
-	private static final int UNSTORABLE_SEQUENCES = 1340;
-	private static final int HELD_SEQUENCES = 1925;
-	private static final int RELOADED_SEQUENCES = 1931;
-	private static final int MOVED_SEQUENCES = 926;
 	private static final ProjectPath B = ProjectPath.parse("b.glsl").value();
 	private static final ProjectPath A = ProjectPath.parse("a.glsl").value();
 
@@ -150,6 +195,28 @@ public class LifecycleSequencesTest {
 		assertEquals(expected, counted);
 	}
 
+	@Test
+	public void reloadIsRefusedWhenTheJournalCannotKeepTheTextFirst() {
+		World world = new World(Start.SAVED);
+		world.take(Step.TYPE, "refused");
+		List<String> problems = new ArrayList<>();
+		setWritable(false, drafts);
+		world.project.reload(A, problems::add);
+		world.steps.settle();
+		setWritable(true, drafts);
+
+		// Nothing is replaced, and the reason is told.
+		assertEquals(List.of("its unsaved text cannot be kept first"),
+				problems);
+		assertEquals("typed 1", world.document.text().toString());
+		assertTrue(world.document.isModified());
+		// Written once it can be, it is kept like any unsaved text.
+		world.project.persist();
+		world.steps.settle();
+		assertEquals("typed 1", journaled());
+		assertTrue(putAside().isEmpty());
+	}
+
 	private void explore(Start start, List<Step> prefix) {
 		World world = new World(start);
 		String name = start + " " + prefix;
@@ -170,9 +237,67 @@ public class LifecycleSequencesTest {
 
 	// Return the text the journal holds, or null.
 	private String journaled() {
+		return journaled(A);
+	}
+
+	private String journaled(ProjectPath path) {
 		Journal.Recovered recovered = new ProjectSessions(sessionsDir)
-				.journal(id).read(A);
+				.journal(id).read(path);
 		return recovered != null ? recovered.text().toString() : null;
+	}
+
+	// Return the texts reloads replaced that are kept beside the journal.
+	private Set<String> putAside() {
+		Set<String> texts = new HashSet<>();
+		for (Journal.Replaced replaced : new ProjectSessions(sessionsDir)
+				.journal(id).replaced(A)) {
+			texts.add(replaced.text().toString());
+		}
+		return texts;
+	}
+
+	// Texts of more than two million characters each: together more
+	// than a history may keep.
+	private static final String LARGE_STORED = large('s');
+	private static final String LARGE_TYPED = large('u');
+
+	private static String large(char c) {
+		return (String.valueOf(c).repeat(99) + "\n").repeat(21_000);
+	}
+
+	// Return which of texts undo or redo of document lead to, or it has
+	// now; the document is left as it was.
+	private static Set<String> reached(Document document,
+			Set<String> texts) {
+		Set<String> reached = new HashSet<>();
+		if (texts.isEmpty()) {
+			return reached;
+		}
+		int undone = 0;
+		for (String text = document.text().toString(); ; ++undone) {
+			if (texts.contains(text)) {
+				reached.add(text);
+			}
+			if (!document.canUndo()) {
+				break;
+			}
+			document.undo();
+			text = document.text().toString();
+		}
+		while (undone-- > 0) {
+			document.redo();
+		}
+		int redone = 0;
+		for (; document.canRedo(); ++redone) {
+			document.redo();
+			if (texts.contains(document.text().toString())) {
+				reached.add(document.text().toString());
+			}
+		}
+		while (redone-- > 0) {
+			document.undo();
+		}
+		return reached;
 	}
 
 	private void setWritable(boolean writable) {
@@ -197,10 +322,19 @@ public class LifecycleSequencesTest {
 		// Every text the file had, in order; from floor on, those it had
 		// since the project last told that all is held or saved.
 		private final List<String> texts = new ArrayList<>();
-		// The texts a reload replaced since then; and the one the last
-		// reload replaced when it was held and nothing was typed since.
+		// The texts a reload replaced since then, and every text a
+		// reload ever replaced.
 		private final Set<String> givenUp = new HashSet<>();
-		private String replaced;
+		private final Set<String> replaced = new HashSet<>();
+		// What reloads asked for since the project was opened would
+		// give, and the texts they were asked over: a reload the worker
+		// made is made, whether or not main heard of it.
+		private final Set<String> wanted = new HashSet<>();
+		private final Set<String> askedOver = new HashSet<>();
+		// What the stored file held at first.
+		private final String stored;
+		// Whether a write failed since the project was opened.
+		private boolean failed;
 		private Steps steps = new Steps();
 		private OpenProject project;
 		private Document document;
@@ -211,8 +345,10 @@ public class LifecycleSequencesTest {
 		// How many texts the file had had when its deletion was asked
 		// for, -1 when it was not.
 		private int deleteAt = -1;
-		// Whether the user ever asked for a reload.
-		private boolean reloaded;
+		// Whether another app wrote the file, and whether the user chose
+		// to keep their edits over what it wrote.
+		private boolean theirs;
+		private boolean kept;
 		private final Start start;
 		private final File[] failing;
 		// Whether everything close asked for could be written so far.
@@ -220,8 +356,7 @@ public class LifecycleSequencesTest {
 
 		private World(Start start) {
 			this.start = start;
-			boolean held = start != Start.SAVED &&
-					start != Start.UNSTORABLE;
+			boolean held = start != Start.SAVED && start != Start.UNSTORABLE;
 			failing = start == Start.HELD || start == Start.RELOADED
 					? new File[]{history}
 					: new File[]{drafts, history};
@@ -231,12 +366,13 @@ public class LifecycleSequencesTest {
 					assertTrue(file.delete());
 				}
 			}
+			stored = start == Start.LARGE ? LARGE_STORED : "stored";
 			store.writable = true;
-			store.put("a.glsl", "stored");
-			texts.add("stored");
+			store.put("a.glsl", stored);
+			texts.add(stored);
 			open();
 			text = document.text().toString();
-			assertEquals("stored", text);
+			assertEquals(stored, text);
 			if (held) {
 				take(Step.TYPE, "held");
 				project.persist();
@@ -244,14 +380,39 @@ public class LifecycleSequencesTest {
 				see(Step.MAIN, "held");
 				assertEquals(1, floor);
 			}
-			if (start == Start.RELOADED) {
-				for (Step step : List.of(Step.RELOAD, Step.WORKER, Step.MAIN,
-						Step.FAIL, Step.MAIN)) {
-					take(step, "reloaded");
-				}
-				assertEquals("stored", text);
-				assertEquals("typed 1", journaled());
-				assertEquals("typed 1", replaced);
+			if (start.reloaded()) {
+				String mine = text;
+				// The history that would lead back cannot be written.
+				setWritable(false, history);
+				take(Step.RELOAD, "reloaded");
+				steps.settle();
+				setWritable(true, history);
+				see(Step.MAIN, "reloaded");
+				assertEquals(stored, text);
+				assertNull(journaled());
+				assertEquals(Set.of(mine), replaced);
+				assertTrue(project.settled(A));
+			}
+			for (int typed = start == Start.TYPED_TWICE ? 2
+					: start == Start.TYPED_ON ? 1 : 0; typed-- > 0; ) {
+				take(Step.TYPE, "typed on");
+				steps.later.run();
+				steps.settle();
+				see(Step.MAIN, "typed on");
+				assertEquals(text, journaled());
+			}
+			if (start == Start.UNDONE) {
+				take(Step.UNDO, "undone");
+				take(Step.UNDO, "undone");
+				assertEquals(stored, text);
+			}
+			if (start == Start.CHANGED) {
+				store.put("a.glsl", "theirs");
+				theirs = true;
+				project.refresh(reread -> {
+				});
+				steps.settle();
+				assertEquals(Set.of(A), project.conflicts().keySet());
 			}
 		}
 
@@ -261,6 +422,7 @@ public class LifecycleSequencesTest {
 					new ProjectSessions(sessionsDir), steps.worker,
 					steps.main, steps.timers, OpenProject.MAX_BUDGET);
 			closed = false;
+			failed = false;
 			load(A);
 			assertNotNull(document);
 		}
@@ -275,6 +437,9 @@ public class LifecycleSequencesTest {
 		// Return where the project has the document, or null when it
 		// closed it.
 		private ProjectPath at() {
+			if (document == null) {
+				return null;
+			}
 			return project.document(A) == document ? A
 					: project.document(B) == document ? B : null;
 		}
@@ -289,17 +454,28 @@ public class LifecycleSequencesTest {
 				if (switch (step) {
 					// The same twice in a row is as good as once.
 					case TYPE -> !closed && step != last && at() != null;
-					case SAVE, BACKGROUND -> !closed && step != last &&
+					// Only where it leads to what a reload replaced.
+					case UNDO -> !closed && start.reloaded() &&
+							at() != null && document.canUndo();
+					case SAVE -> !closed && step != last &&
+							start != Start.MOVED && start != Start.LARGE;
+					case BACKGROUND -> !closed && step != last &&
 							start != Start.MOVED;
 					case RELOAD -> !closed && step != last &&
-							start != Start.SAVED && start != Start.MOVED;
+							start != Start.SAVED && start != Start.MOVED &&
+							start != Start.LARGE;
+					case KEEP -> !closed && step != last &&
+							start == Start.CHANGED;
 					case RENAME, DELETE -> !closed && step != last &&
 							start == Start.MOVED && at() != null;
-					case CLOSE -> !closed;
+					case CLOSE -> !closed && start != Start.LARGE;
 					case TIMER -> !closed && steps.later.size() > 0;
-					case WORKER, FAIL -> steps.worker.size() > 0;
+					case WORKER -> steps.worker.size() > 0;
+					case FAIL -> steps.worker.size() > 0 &&
+							start != Start.LARGE;
 					case MAIN -> steps.main.size() > 0;
-					case REOPEN -> last != null && last != Step.REOPEN;
+					case REOPEN -> last != null && last != Step.REOPEN &&
+							start != Start.LARGE;
 				}) {
 					possible.add(step);
 				}
@@ -309,9 +485,21 @@ public class LifecycleSequencesTest {
 
 		private void take(Step step, String sequence) {
 			switch (step) {
-				case TYPE -> document.replace(0, document.text().length(),
-						Text.of("typed " + ++typed +
-								(start == Start.UNSTORABLE ? " \uD800" : "")));
+				case TYPE -> {
+					int length = document.text().length();
+					if (start != Start.LARGE) {
+						document.replace(0, length, Text.of("typed " +
+								++typed + (start == Start.UNSTORABLE
+										? " \uD800" : "")));
+					} else if (++typed == 1) {
+						document.replace(0, length, Text.of(LARGE_TYPED));
+					} else {
+						// It stays large: typed in front of it.
+						document.replace(0, 0, Text.of("typed " + typed +
+								" "));
+					}
+				}
+				case UNDO -> document.undo();
 				case TIMER -> steps.later.run();
 				case WORKER -> steps.worker.run();
 				case MAIN -> steps.main.run();
@@ -320,11 +508,25 @@ public class LifecycleSequencesTest {
 					steps.worker.run();
 					setWritable(true, failing);
 					fence = false;
+					failed = true;
 				}
 				case RELOAD -> {
-					reloaded = true;
-					project.reload(A, problem -> {
-					});
+					if (document.isModified()) {
+						wanted.add(store.text("a.glsl"));
+						askedOver.add(text);
+					}
+					if (start == Start.CHANGED) {
+						project.resolve(A, OpenProject.Choice.RELOAD,
+								project.seen(A));
+					} else {
+						project.reload(A, problem -> {
+						});
+					}
+				}
+				case KEEP -> {
+					kept |= project.conflicts().containsKey(A);
+					project.resolve(A, OpenProject.Choice.KEEP,
+							project.seen(A));
 				}
 				case SAVE -> project.save(true, outcomes -> {
 				});
@@ -333,14 +535,17 @@ public class LifecycleSequencesTest {
 					int revision = document.revision();
 					Document flushed = document;
 					// Unsaved text it answers for without a reason is in
-					// the journal as it was when it was asked.
+					// the journal as it was when it was asked, or kept
+					// beside it by a reload asked for since.
 					asked.flush(() -> {
 						if (flushed.revision() == revision &&
 								flushed.isModified() &&
 								asked.unprotected() == null) {
-							assertEquals(sequence + ": flush answered" +
+							String held = flushed.text().toString();
+							assertTrue(sequence + ": flush answered" +
 											" without a reason",
-									flushed.text().toString(), journaled());
+									held.equals(journaled()) ||
+											putAside().contains(held));
 						}
 					});
 				}
@@ -388,27 +593,48 @@ public class LifecycleSequencesTest {
 				return;
 			}
 			if (!now.equals(text)) {
-				replaced = null;
-				if (step != Step.TYPE) {
+				if (step != Step.TYPE && step != Step.UNDO) {
+					// Only a reload takes text from the screen so, and
+					// only with the text kept beside the journal.
 					givenUp.add(text);
-					replaced = floor == texts.size() - 1 ? text : null;
+					replaced.add(text);
 				}
 				texts.add(now);
 				text = now;
 			}
+			boolean idle = steps.worker.size() == 0 &&
+					steps.main.size() == 0;
 			if (project.settled(at)) {
 				floor = texts.size() - 1;
 				givenUp.clear();
+				if (!failed) {
+					assertNull(sequence, project.unprotected());
+				}
+				if (idle) {
+					// As the journal is told to be, it is: the text
+					// when it is unsaved, none when it is not.
+					assertEquals(sequence + ": settled, journal",
+							document.isModified() ? now : null,
+							journaled(at));
+				}
+			} else if (!failed && idle && steps.later.size() == 0) {
+				// Nothing is on its way and nothing failed: whatever was
+				// typed is in the journal.
+				assertTrue(sequence + ": \"" + brief(now) + "\" is not" +
+						" held, and nothing is on its way", false);
 			}
 			assertNull(sequence, project.unreadable(at));
 			assertEquals(sequence, 0, project.damagedJournals());
-			if (!document.isModified() &&
+			theirsKept(sequence);
+			if (!document.isModified() && steps.main.size() == 0 &&
 					project.found(at) == FileTexts.Found.SAME &&
 					store.read(at) != null) {
-				// Exactly: not what its bytes would be.
+				// Exactly: not what its bytes would be. Once main heard
+				// of a save that was on its way: undone meanwhile, the
+				// document is at the text saved before until then.
 				assertTrue(sequence + ": saved, but stored \"" +
-								new String(store.read(at).bytes(),
-										StandardCharsets.UTF_8) + "\"",
+								brief(new String(store.read(at).bytes(),
+										StandardCharsets.UTF_8)) + "\"",
 						FileTexts.holds(store.read(at).bytes(),
 								document.text()));
 			}
@@ -420,6 +646,14 @@ public class LifecycleSequencesTest {
 			Set<String> may = new HashSet<>(texts.subList(floor,
 					texts.size()));
 			may.addAll(givenUp);
+			// What a reload replaced and the history still leads to.
+			Set<String> led = document != null
+					? reached(document, replaced)
+					: null;
+			Set<String> wanted = new HashSet<>(this.wanted);
+			Set<String> askedOver = new HashSet<>(this.askedOver);
+			this.wanted.clear();
+			this.askedOver.clear();
 			if (start == Start.MOVED) {
 				if (!moved(sequence, may)) {
 					return;
@@ -428,31 +662,34 @@ public class LifecycleSequencesTest {
 				open();
 			}
 			String found = document.text().toString();
-			if (store.read(A) != null || store.read(B) != null) {
-				assertTrue(sequence + ": reopened \"" + found +
-						"\", but the user had " + may + " of " + texts,
-						may.contains(found));
+			if (!may.contains(found) && wanted.contains(found)) {
+				// The reload was made and main never heard: the file is
+				// as stored, as asked, and undo leads back.
+				assertFalse(sequence + ": reopened as stored, without" +
+						" what the reload was asked over within reach",
+						reached(document, askedOver).isEmpty());
+			} else if (store.read(A) != null || store.read(B) != null) {
+				assertTrue(sequence + ": reopened \"" + brief(found) +
+						"\", but the user had " + brief(may) + " of " +
+						brief(texts), may.contains(found));
 			}
 			ProjectPath at = at();
 			assertNull(sequence, project.unreadable(at));
-			// Text that comes back after a reload says so, where its
-			// journal could be written; no other text does.
-			if (found.equals(replaced) && failing.length == 1) {
-				assertTrue(sequence + ": came back without saying so",
-						project.replaced(at));
-			} else if (!reloaded) {
-				assertTrue(sequence + ": says a reload replaced it",
-						!project.replaced(at));
+			theirsKept(sequence);
+			// Unsaved text over what another app wrote is in conflict
+			// again until the user chose to keep it.
+			if (theirs && !kept && document.isModified() &&
+					"theirs".equals(store.text("a.glsl"))) {
+				assertTrue(sequence + ": unsaved text over theirs without" +
+						" a conflict", project.conflicts().containsKey(A));
 			}
-			if (replaced != null && !found.equals(replaced)) {
-				assertTrue(sequence + ": no undo to what was reloaded",
-						document.canUndo());
-				document.undo();
-				assertEquals(sequence + ": undo of the reload", replaced,
-						document.text().toString());
-				document.redo();
+			// Undo and redo lead to what they led to: every text a reload
+			// replaced that was within reach when the process died.
+			if (led != null) {
+				assertEquals(sequence + ": reopened \"" + brief(found) +
+								"\", what a reload replaced within reach",
+						brief(led), brief(reached(document, led)));
 			}
-			replaced = null;
 			if (!found.equals(text)) {
 				texts.add(found);
 				text = found;
@@ -460,6 +697,28 @@ public class LifecycleSequencesTest {
 			// What a restart gives is what the next one gives.
 			floor = texts.size() - 1;
 			givenUp.clear();
+		}
+
+		private static String brief(String text) {
+			return text.length() > 40 ? text.substring(0, 40) + "..." : text;
+		}
+
+		private static List<String> brief(java.util.Collection<String> texts) {
+			List<String> brief = new ArrayList<>();
+			for (String text : texts) {
+				brief.add(brief(text));
+			}
+			java.util.Collections.sort(brief);
+			return brief;
+		}
+
+		// What another app wrote is written over only after the user saw
+		// it in their document, or chose to keep their edits over it.
+		private void theirsKept(String sequence) {
+			if (theirs && !kept && !texts.contains("theirs")) {
+				assertEquals(sequence + ": wrote over their text", "theirs",
+						store.text("a.glsl"));
+			}
 		}
 
 		// Open again after renames and deletions: the stored file and
