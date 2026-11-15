@@ -566,7 +566,8 @@ public class ShaderManager implements OpenItem {
 		title = toolbarTitle;
 		titleListener.run();
 		shaderListManager.setSelectedShaderId(selectedShaderId);
-		shaderViewManager.setShader(text, quality);
+		// The editor converts a text in ShaderToy's form as it shows it.
+		shaderViewManager.setShader(editorFragment.getText(), quality);
 		updatePendingCrashShaderId();
 		setModified(false);
 	}
