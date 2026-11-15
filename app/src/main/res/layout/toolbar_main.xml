@@ -53,7 +53,7 @@
 		app:icon="@drawable/ic_error"
 		app:iconSize="24dp" />
 
-	<Spinner
+	<de.markusfisch.android.shadereditor.widget.QualityChip
 		android:id="@+id/quality"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"

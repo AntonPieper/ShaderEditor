@@ -52,4 +52,14 @@ public class CodeShownTest {
 		code.setHidden(false);
 		assertEquals(List.of(true, false, true), told);
 	}
+
+	// The passes sheet sets the code aside so that the pictures are not
+	// limited, and gives it back as it was.
+	@Test
+	public void theSheetSetsTheCodeAside() {
+		code.listen(told::add);
+		code.setAside(true);
+		code.setAside(false);
+		assertEquals(List.of(true, false, true), told);
+	}
 }

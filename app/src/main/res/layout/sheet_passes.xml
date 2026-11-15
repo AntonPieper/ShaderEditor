@@ -1,0 +1,76 @@
+<!-- The passes sheet: no header; its controls, quality, then the passes.
+	A standard sheet over the picture, not a modal one: the picture above
+	it is what it shows. No id: a screen made again starts with it closed,
+	and its behaviour differs by orientation, so none is restored. -->
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	style="@style/Widget.Material3.BottomSheet"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:orientation="vertical"
+	app:behavior_hideable="true"
+	app:behavior_skipCollapsed="true"
+	app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+	<com.google.android.material.bottomsheet.BottomSheetDragHandleView
+		android:layout_width="match_parent"
+		android:layout_height="24dp" />
+
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:gravity="center_vertical"
+		android:minHeight="48dp"
+		android:orientation="horizontal"
+		android:paddingStart="4dp"
+		android:paddingEnd="@dimen/se_margin_screen">
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/passes_pause"
+			style="@style/IconButton"
+			android:layout_width="48dp"
+			android:layout_height="48dp"
+			android:contentDescription="@string/passes_pause"
+			app:icon="@drawable/ic_pause"
+			app:iconSize="24dp" />
+
+		<Button
+			android:id="@+id/passes_step"
+			style="@style/IconButton"
+			android:layout_width="48dp"
+			android:layout_height="48dp"
+			android:contentDescription="@string/passes_step"
+			app:icon="@drawable/ic_skip_next"
+			app:iconSize="24dp" />
+
+		<Button
+			android:id="@+id/passes_restart"
+			style="@style/IconButton"
+			android:layout_width="48dp"
+			android:layout_height="48dp"
+			android:contentDescription="@string/passes_restart"
+			app:icon="@drawable/ic_restart_alt"
+			app:iconSize="24dp" />
+	</LinearLayout>
+
+	<!-- Seven chips spread over the width; a narrow screen scrolls them. -->
+	<HorizontalScrollView
+		android:layout_width="match_parent"
+		android:layout_height="48dp"
+		android:fillViewport="true"
+		android:scrollbars="none">
+
+		<LinearLayout
+			android:id="@+id/passes_quality"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:gravity="center_vertical"
+			android:orientation="horizontal"
+			android:paddingHorizontal="@dimen/se_margin_screen" />
+	</HorizontalScrollView>
+
+	<Space
+		android:layout_width="match_parent"
+		android:layout_height="8dp" />
+</LinearLayout>

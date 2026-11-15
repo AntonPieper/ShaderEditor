@@ -11,19 +11,27 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.util.Consumer;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.Fit;
+import de.markusfisch.android.shadereditor.opengl.RunningPasses;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.opengl.Tuning;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.widget.PassesSheet;
+import de.markusfisch.android.shadereditor.widget.QualityChip;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
 
-public class ShaderViewManager {
+public class ShaderViewManager implements PassesSheet.Engine {
+	// A frame rate as the chip shows it.
+	private static final Pattern FPS = Pattern.compile("(\\d+) fps");
+
 	public interface Listener {
 		void onFramesPerSecond(int fps);
 
@@ -43,13 +51,16 @@ public class ShaderViewManager {
 	@NonNull
 	private final ShaderView shaderView;
 	@NonNull
-	private final Spinner qualitySpinner;
+	private final QualityChip qualitySpinner;
 	@NonNull
 	private final Listener listener;
 	// Told whether a picture is being drawn, from the engine's frame
 	// rate; on any thread.
 	@Nullable
 	private volatile DrawingListener drawing;
+	// Told what draws now; on the GL thread.
+	@Nullable
+	private volatile Consumer<RunningPasses> passesListener;
 	@NonNull
 	private float[] qualityValues;
 	private float quality = 1f;
@@ -63,7 +74,7 @@ public class ShaderViewManager {
 
 	public ShaderViewManager(@NonNull Activity activity,
 			@NonNull ShaderView shaderView,
-			@NonNull Spinner qualitySpinner,
+			@NonNull QualityChip qualitySpinner,
 			@NonNull Listener listener) {
 		this.shaderView = shaderView;
 		this.qualitySpinner = qualitySpinner;
@@ -249,6 +260,44 @@ public class ShaderViewManager {
 				chip.getTotalPaddingRight();
 	}
 
+	/**
+	 * Choose quality as if it were chosen in the chip: the listener
+	 * hears it and the shader is built again with it.
+	 */
+	public void chooseQuality(float quality) {
+		for (int i = 0; i < qualityValues.length; ++i) {
+			if (qualityValues[i] == quality) {
+				qualitySpinner.setSelection(i);
+				return;
+			}
+		}
+	}
+
+	/** The quality chosen. */
+	public float getQuality() {
+		return quality;
+	}
+
+	/** Run opener on a tap on the chip instead of its list; null for the list. */
+	public void setChipOpener(@Nullable Runnable opener) {
+		qualitySpinner.setOpener(opener);
+	}
+
+	/** The passes of the build that draws, or none; any thread. */
+	@NonNull
+	public RunningPasses passes() {
+		return shaderView.getEngine().passes();
+	}
+
+	/**
+	 * Tell passes what draws from now on, on any thread, with none when
+	 * nothing draws any more; none for null.
+	 */
+	@Override
+	public void setPassesListener(@Nullable Consumer<RunningPasses> passes) {
+		passesListener = passes;
+	}
+
 	public void setQuality(float quality) {
 		for (int i = 0; i < qualityValues.length; ++i) {
 			if (qualityValues[i] == quality) {
@@ -293,7 +342,31 @@ public class ShaderViewManager {
 			public void onDiagnostics(@NonNull List<ProjectDiagnostic> infoLog) {
 				listener.onInfoLog(infoLog);
 			}
+
+			@Override
+			public void onPasses(@NonNull RunningPasses passes) {
+				Consumer<RunningPasses> told = passesListener;
+				if (told != null) {
+					told.accept(passes);
+				}
+			}
 		});
+	}
+
+	// What the chip says while it opens the passes sheet: "Passes, 58
+	// frames a second, quality 1/1".
+	@NonNull
+	private static String spoken(@NonNull Activity activity,
+			@Nullable CharSequence frameRate, @Nullable CharSequence quality) {
+		if (frameRate == null) {
+			return activity.getString(R.string.passes_chip_quality, quality);
+		}
+		var fps = FPS.matcher(frameRate);
+		CharSequence rate = fps.matches()
+				? activity.getString(R.string.passes_chip_rate,
+						Integer.parseInt(fps.group(1)))
+				: frameRate;
+		return activity.getString(R.string.passes_chip, rate, quality);
 	}
 
 	private void initQualitySpinner(@NonNull Activity activity) {
@@ -317,6 +390,10 @@ public class ShaderViewManager {
 						convertView, parent);
 				if (frameRate != null) {
 					view.setText(activity.getString(R.string.frame_rate_quality,
+							frameRate, getItem(position)));
+				}
+				if (qualitySpinner.opens()) {
+					qualitySpinner.setContentDescription(spoken(activity,
 							frameRate, getItem(position)));
 				}
 				return view;

@@ -4,7 +4,8 @@ import androidx.annotation.Nullable;
 
 /**
  * Whether code is shown over the picture: not hidden with the code
- * button, and not covered because nothing is open. Every change of
+ * button, not covered because nothing is open, and not set aside while
+ * the passes sheet is open. Every change of
  * either is told to one listener, which is told the fact as it is when
  * it starts listening, and then once for each time the fact changes.
  */
@@ -15,6 +16,7 @@ public final class CodeShown {
 
 	private boolean hidden;
 	private boolean covered;
+	private boolean aside;
 	@Nullable
 	private Listener listener;
 	// What the listener was told last, or null before it was told.
@@ -28,11 +30,15 @@ public final class CodeShown {
 	}
 
 	public boolean shown() {
-		return !hidden && !covered;
+		return !hidden && !covered && !aside;
 	}
 
 	public boolean hidden() {
 		return hidden;
+	}
+
+	public boolean aside() {
+		return aside;
 	}
 
 	/** The code button hid the code, or showed it again. */
@@ -44,6 +50,12 @@ public final class CodeShown {
 	/** Nothing is open, so a cover stands where the code is, or not. */
 	public void setCovered(boolean covered) {
 		this.covered = covered;
+		tell();
+	}
+
+	/** The passes sheet set the code aside, or gave it back. */
+	public void setAside(boolean aside) {
+		this.aside = aside;
 		tell();
 	}
 

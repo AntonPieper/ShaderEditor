@@ -518,4 +518,12 @@
 	<string name="file_not_in_folder">Not in this folder</string>
 	<string name="rename_also">Also change %1$s</string>
 	<string name="rename_also_line">line %1$d of %2$s</string>
+	<string name="passes_pause">Pause</string>
+	<string name="passes_play">Run</string>
+	<string name="passes_step">Step one frame</string>
+	<string name="passes_restart">Restart</string>
+	<string name="passes_quality">Quality %1$s</string>
+	<string name="passes_chip">Passes, %1$s, quality %2$s</string>
+	<string name="passes_chip_quality">Passes, quality %1$s</string>
+	<string name="passes_chip_rate">%1$d frames a second</string>
 </resources>
