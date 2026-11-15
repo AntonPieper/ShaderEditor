@@ -64,8 +64,8 @@ final class FolderSource {
 		 */
 		boolean open(@NonNull ProjectPath path, boolean single);
 
-		/** Say that the file named name is a picture, not text. */
-		void picture(@NonNull String name);
+		/** Show the image of row, in the folder of level, in its sheet. */
+		void image(@NonNull Level level, @NonNull Row row);
 	}
 
 	/**
@@ -238,7 +238,7 @@ final class FolderSource {
 					if (closed) {
 						return;
 					} else if (hinted.read(picture) == Tap.SHOW_IMAGE) {
-						opener.picture(row.name());
+						opener.image(level, row);
 					} else {
 						opener.open(path.value(), file);
 					}
