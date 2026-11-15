@@ -36,6 +36,11 @@ public final class ShaderEngine {
 
 		// The frames drawn per second, 0 when no picture runs any more.
 		void onFramesPerSecond(int fps);
+
+		// Called on the GL thread when a build begins to draw, with its
+		// passes, or with none when nothing draws any more.
+		default void onPasses(@NonNull RunningPasses passes) {
+		}
 	}
 
 	public interface ThumbnailCallback {
@@ -121,6 +126,8 @@ public final class ShaderEngine {
 	private List<ProjectDiagnostic> built = List.of();
 	@NonNull
 	private TargetFormats formats = TargetFormats.of(2, "");
+	@NonNull
+	private volatile RunningPasses passes = RunningPasses.NONE;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
 	private volatile long nextFpsUpdate;
@@ -211,6 +218,12 @@ public final class ShaderEngine {
 		if (build != null) {
 			build.applyTuning();
 		}
+	}
+
+	// Any thread. The passes of the build that draws, or none.
+	@NonNull
+	public RunningPasses passes() {
+		return passes;
 	}
 
 	// Any thread. The runtime of the plan set with this owner while it is
@@ -470,6 +483,7 @@ public final class ShaderEngine {
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
 		fTimeMax = next.fTimeMax();
 		runSources(next);
+		showPasses(next.running());
 		built = errors;
 		sources.takeWarned();
 		resetFps();
@@ -582,6 +596,19 @@ public final class ShaderEngine {
 		inputs.pause();
 		fTimeMax = DEFAULT_FTIME_MAX;
 		runSources(null);
+		showPasses(RunningPasses.NONE);
+	}
+
+	// GL thread. What draws now, for a host that shows the passes.
+	private void showPasses(@NonNull RunningPasses running) {
+		if (passes.equals(running)) {
+			return;
+		}
+		passes = running;
+		var listener = this.listener;
+		if (listener != null) {
+			listener.onPasses(running);
+		}
 	}
 
 	// The one place that decides which sources run: the ones the current
