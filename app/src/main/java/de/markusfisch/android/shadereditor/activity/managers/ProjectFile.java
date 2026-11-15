@@ -58,6 +58,7 @@ public final class ProjectFile implements OpenItem {
 	private float quality = 1f;
 	// Whether the user was told that a change cannot be saved here.
 	private boolean toldReadOnly;
+	private boolean drawing;
 
 	/**
 	 * @param single whether the project is a single file rather than a
@@ -101,9 +102,18 @@ public final class ProjectFile implements OpenItem {
 	@Nullable
 	@Override
 	public String getSubtitle() {
-		ProjectPath running = project.running();
+		// "▶ file" only while that file is drawn: chosen is not running.
+		ProjectPath running = drawing ? project.running() : null;
 		return FileLine.of(folder, path.toString(),
 				running != null ? running.toString() : null);
+	}
+
+	/**
+	 * Takes whether a picture of what its project runs is being drawn,
+	 * as the engine reports it.
+	 */
+	public void setDrawing(boolean drawing) {
+		this.drawing = drawing;
 	}
 
 	@Override
