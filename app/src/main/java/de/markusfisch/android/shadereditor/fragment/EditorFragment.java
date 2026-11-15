@@ -63,6 +63,8 @@ public class EditorFragment extends Fragment {
 	@Nullable
 	private ShaderEditor.CodeCompletionListener codeCompletionListener;
 	@Nullable
+	private OnShaderToyShaderListener shaderToyShaderListener;
+	@Nullable
 	private EditorDraft draft;
 	@Nullable
 	private DraftHolder draftHolder;
@@ -128,6 +130,13 @@ public class EditorFragment extends Fragment {
 					int position) {
 				if (codeCompletionListener != null) {
 					codeCompletionListener.onCodeCompletions(words, position);
+				}
+			}
+
+			@Override
+			public void onShaderToyShader(@NonNull String json) {
+				if (shaderToyShaderListener != null) {
+					shaderToyShaderListener.onShaderToyShader(json);
 				}
 			}
 		});
@@ -237,6 +246,16 @@ public class EditorFragment extends Fragment {
 
 	public void setCodeCompletionListener(@Nullable ShaderEditor.CodeCompletionListener listener) {
 		codeCompletionListener = listener;
+	}
+
+	/** Hears when the text has become a shader from ShaderToy as JSON. */
+	public interface OnShaderToyShaderListener {
+		void onShaderToyShader(@NonNull String json);
+	}
+
+	public void setOnShaderToyShaderListener(
+			@Nullable OnShaderToyShaderListener listener) {
+		shaderToyShaderListener = listener;
 	}
 
 	@Override
