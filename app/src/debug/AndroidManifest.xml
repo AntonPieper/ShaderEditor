@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 	<application>
+		<!-- A shader from ShaderToy as JSON, which becomes a folder of
+			the library: files are shaders only where project mode is
+			on. What the file is, is told from its content. -->
+		<activity
+			android:name=".activity.MainActivity"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="android.intent.action.VIEW"/>
+				<category android:name="android.intent.category.DEFAULT"/>
+				<data android:scheme="content"/>
+				<data android:mimeType="application/json"/>
+				<data android:mimeType="text/json"/>
+			</intent-filter>
+			<intent-filter>
+				<action android:name="android.intent.action.SEND"/>
+				<category android:name="android.intent.category.DEFAULT"/>
+				<data android:mimeType="application/json"/>
+				<data android:mimeType="text/json"/>
+			</intent-filter>
+		</activity>
 		<!-- Development harness; remove it when the project UI lands. -->
 		<activity
 			android:name=".activity.ProjectPreviewActivity"

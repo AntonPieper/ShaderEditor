@@ -415,6 +415,57 @@ public final class Library {
 	}
 
 	/**
+	 * Make a folder in the library's root that holds texts, by their
+	 * paths in it, in their order: a shader of several files that was
+	 * made elsewhere, such as one imported from ShaderToy. The folder
+	 * is title made a name, or untitled when title is null, with a
+	 * number when that is taken, so nothing is written over. A folder
+	 * that cannot be written whole is removed again. Return the path
+	 * of entry, one of texts, in it.
+	 */
+	Created addFolder(String title, String untitled,
+			Map<String, String> texts, String entry, Relocation relocation) {
+		String barrier = enter(relocation);
+		if (barrier != null) {
+			return new Created(null, barrier);
+		}
+		ProjectFiles files = files();
+		if (!(files.list(null) instanceof ProjectFiles.Entries entries)) {
+			return new Created(null, "the library cannot be listed");
+		}
+		List<String> names = new ArrayList<>();
+		for (ProjectFiles.Entry listed : entries.entries()) {
+			names.add(listed.name());
+		}
+		String folder = new Naming(names).unused(
+				Naming.stem(title, untitled), "");
+		Map<ProjectPath, ProjectPath> places = new LinkedHashMap<>();
+		Map<ProjectPath, String> placed = new LinkedHashMap<>();
+		for (Map.Entry<String, String> text : texts.entrySet()) {
+			String path = folder + "/" + text.getKey();
+			ProjectParseResult<ProjectPath> place = ProjectPath.parse(path);
+			if (!place.isSuccess() || !place.value().toString().equals(path)) {
+				return new Created(null, path + " is not a path of a file");
+			}
+			places.put(place.value(), place.value());
+			placed.put(place.value(), text.getValue());
+		}
+		Copy copy = copy(places);
+		for (Map.Entry<ProjectPath, String> text : placed.entrySet()) {
+			if (copy.write(text.getKey(), text.getValue().getBytes(
+					StandardCharsets.UTF_8), null)
+					instanceof ProjectFiles.Refused refused) {
+				String left = copy.undo();
+				return new Created(null, text.getKey() +
+						" cannot be written: " + refused.reason() +
+						(left != null ? "; " + left : ""));
+			}
+		}
+		return new Created(ProjectPath.parse(folder + "/" + entry).value(),
+				null);
+	}
+
+	/**
 	 * Return where Save a copy puts files of a read-only folder in the
 	 * library, by their path there, as they lie in that folder: entry
 	 * in its root becomes a file of the library's root named as a new

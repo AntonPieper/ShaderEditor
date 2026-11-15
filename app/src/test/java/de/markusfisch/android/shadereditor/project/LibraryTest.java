@@ -321,6 +321,56 @@ public class LibraryTest {
 		assertTrue(new File(library.folder(), "Plasma.frag").isFile());
 	}
 
+	// A shader of several files made elsewhere, as an import from
+	// ShaderToy is: a folder of its own, or nothing at all.
+	@Test
+	public void aFolderOfTextsGetsAnUnusedNameOrIsNotMade()
+			throws IOException {
+		Library library = library();
+		Map<String, String> texts = new java.util.LinkedHashMap<>();
+		texts.put("README.md", "# Ink Drop\n");
+		texts.put("bufferA.frag", MAIN);
+		texts.put("main.frag", MAIN);
+
+		Library.Created first = library.addFolder("Ink Drop", "ShaderToy",
+				texts, "main.frag", null);
+		assertNull(first.problem());
+		assertEquals(path("Ink Drop/main.frag"), first.path());
+		assertEquals(Map.of("Ink Drop/README.md", "",
+				"Ink Drop/bufferA.frag", "", "Ink Drop/main.frag", ""),
+				names(library.folder()));
+		assertEquals(MAIN, text(new File(library.folder(),
+				"Ink Drop/bufferA.frag")));
+		// A taken name gets a number, whatever its case, and a title
+		// that is no name is made one.
+		write(new File(library.folder(), "ink drop 2"), "a file\n");
+		assertEquals(path("ink drop 3/main.frag"), library.addFolder(
+				"ink drop", "ShaderToy", texts, "main.frag", null).path());
+		assertEquals(path("a_b/main.frag"), library.addFolder(" a/b ",
+				"ShaderToy", texts, "main.frag", null).path());
+		assertEquals(path("ShaderToy/main.frag"), library.addFolder(null,
+				"ShaderToy", texts, "main.frag", null).path());
+		assertEquals(MAIN, text(new File(library.folder(),
+				"Ink Drop/main.frag")));
+
+		// One file that cannot be written leaves no folder behind, and
+		// a path that leaves the folder is not written at all.
+		texts.put("main.frag/below", MAIN);
+		Library.Created refused = library.addFolder("Half", "ShaderToy",
+				texts, "main.frag", null);
+		assertNull(refused.path());
+		assertTrue(refused.problem(), refused.problem().startsWith(
+				"Half/main.frag/below cannot be written: "));
+		assertFalse(new File(library.folder(), "Half").exists());
+		texts.remove("main.frag/below");
+		texts.put("../Out.frag", MAIN);
+		assertEquals("Half/../Out.frag is not a path of a file",
+				library.addFolder("Half", "ShaderToy", texts, "main.frag",
+						null).problem());
+		assertFalse(new File(library.folder(), "Out.frag").exists());
+		assertFalse(new File(library.folder(), "Half").exists());
+	}
+
 	@Test
 	public void aNewShaderIsAFileFromTheBuiltInTemplate()
 			throws IOException {

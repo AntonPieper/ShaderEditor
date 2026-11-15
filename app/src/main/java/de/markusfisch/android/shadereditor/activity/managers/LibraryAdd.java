@@ -19,13 +19,15 @@ import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
+import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
 import de.markusfisch.android.shadereditor.widget.ShaderToySource;
 
 /**
  * Makes a shader in the library from a text the app did not read from
  * a file of it: text another app shared, a copy of a shader that is
  * still in the database, which are converted as the move converts,
- * with their textures, and copies of files of a read-only folder,
+ * with their textures, a shader from ShaderToy as JSON, which becomes
+ * a folder with its passes, and copies of files of a read-only folder,
  * such as an example. Call it on the main thread. What it hears after
  * it was destroyed goes to the one made after it, of the screen that
  * is made again: the shader asked for is shown and told there.
@@ -47,9 +49,13 @@ public final class LibraryAdd {
 	private final DataSource database;
 	private final Listener listener;
 	private boolean destroyed;
+	// What a dialog says of a shader that was made.
+	private record Notice(@NonNull String title, @NonNull String message) {
+	}
+
 	// The one of the screen in front, and what became of a shader
-	// while there was none: the file made, the files a copy kept, or
-	// why there is none.
+	// while there was none: the file made, what to say of it in a
+	// dialog, or why there is none.
 	@Nullable
 	private static LibraryAdd current;
 	// How many shaders asked for are not made yet, and whether one of
@@ -59,7 +65,7 @@ public final class LibraryAdd {
 	@Nullable
 	private static ProjectPath lateAdded;
 	@Nullable
-	private static List<ProjectPath> lateKept;
+	private static Notice lateNotice;
 	@Nullable
 	private static String lateFailed;
 
@@ -88,18 +94,18 @@ public final class LibraryAdd {
 	public void resume() {
 		String failed = lateFailed;
 		ProjectPath added = lateAdded;
-		List<ProjectPath> kept = lateKept;
+		Notice notice = lateNotice;
 		lateFailed = null;
 		lateAdded = null;
-		lateKept = null;
+		lateNotice = null;
 		if (failed != null) {
 			listener.onFailed(failed);
 		}
 		if (added != null) {
 			show(added);
 		}
-		if (kept != null) {
-			tellKept(kept);
+		if (notice != null) {
+			show(notice);
 		}
 	}
 
@@ -152,12 +158,50 @@ public final class LibraryAdd {
 
 	/**
 	 * Make a shader of text another app shared or opened, named after
-	 * name when there is one. ShaderToy's form is converted, as it was
-	 * when the text came into a database shader.
+	 * name when there is one. A shader from ShaderToy as JSON, told by
+	 * what the text is and not by its name, becomes a folder with its
+	 * passes. ShaderToy's form of one tab is converted, as it was when
+	 * the text came into a database shader.
 	 */
 	public void addShared(@Nullable String name, @NonNull String text) {
+		if (ShaderToyJson.recognizes(text)) {
+			importShaderToy(text);
+			return;
+		}
 		String converted = ShaderToySource.convert(text);
 		add(name, converted != null ? converted : text, 1f, null);
+	}
+
+	/**
+	 * Make a folder of the shader that text is in ShaderToy's JSON,
+	 * see {@link Projects#importShaderToy}, and show its running
+	 * shader. What was not carried over is listed in a dialog; a text
+	 * that is no shader makes nothing, and why is told.
+	 */
+	public void importShaderToy(@NonNull String text) {
+		++asking;
+		projects.importShaderToy(text,
+				context.getString(R.string.shadertoy_untitled), made -> {
+					--asking;
+					if (made.path() == null) {
+						tell(context.getString(
+								R.string.shadertoy_not_imported,
+								made.problem()));
+						return;
+					}
+					added(made.path());
+					if (!made.warnings().isEmpty()) {
+						StringBuilder list = new StringBuilder();
+						for (String warning : made.warnings()) {
+							list.append("\n\n\u2022 ").append(warning);
+						}
+						notice(new Notice(context.getString(
+								R.string.shadertoy_imported),
+								context.getString(
+										R.string.shadertoy_not_carried_over,
+										list)));
+					}
+				});
 	}
 
 	/**
@@ -227,26 +271,31 @@ public final class LibraryAdd {
 	// A dialog, not a bottom message: the copy may fail to compile
 	// against a kept file right away, and that message must not hide
 	// why.
-	private void tellKept(@NonNull List<ProjectPath> kept) {
+	private void kept(@NonNull List<ProjectPath> kept) {
 		StringBuilder files = new StringBuilder();
 		for (ProjectPath path : kept) {
 			files.append("\n").append(path);
 		}
+		notice(new Notice(context.getString(R.string.copy_saved),
+				context.getString(R.string.copy_kept, files)));
+	}
+
+	private void show(@NonNull Notice notice) {
 		new MaterialAlertDialogBuilder(screen)
-				.setTitle(R.string.copy_saved)
-				.setMessage(screen.getString(R.string.copy_kept, files))
+				.setTitle(notice.title())
+				.setMessage(notice.message())
 				.setPositiveButton(android.R.string.ok, null)
 				.show();
 	}
 
-	// The files a copy kept are named by the screen in front, or the
-	// next.
-	private void kept(@NonNull List<ProjectPath> kept) {
+	// What is to be said of a shader is said by the screen in front,
+	// or the next.
+	private void notice(@NonNull Notice notice) {
 		LibraryAdd front = destroyed ? current : this;
 		if (front != null) {
-			front.tellKept(kept);
+			front.show(notice);
 		} else {
-			lateKept = kept;
+			lateNotice = notice;
 		}
 	}
 
