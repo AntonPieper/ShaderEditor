@@ -71,6 +71,7 @@ import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Notice;
 import de.markusfisch.android.shadereditor.navigation.Order;
+import de.markusfisch.android.shadereditor.navigation.Readme;
 import de.markusfisch.android.shadereditor.navigation.Recent;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
@@ -549,6 +550,16 @@ public class NavigationDrawer implements ShaderList {
 	 * Reads the folders of the folder opened before with key again, as
 	 * files of it were renamed or deleted.
 	 */
+	/**
+	 * Takes that the file at path of the folder opened before with key
+	 * was saved here: a README orders its folder, which is listed again.
+	 */
+	public void saved(@NonNull String key, @NonNull ProjectPath path) {
+		if (Readme.is(path.getFileName())) {
+			reread(key, path);
+		}
+	}
+
 	public void reread(@NonNull String key) {
 		if (folder != null && folder.key().equals(key)) {
 			folder.forget();

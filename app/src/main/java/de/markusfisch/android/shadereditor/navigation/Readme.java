@@ -17,7 +17,9 @@ import java.util.regex.Pattern;
  * depth: each line starting with "## " begins a section named by the
  * rest of the line, and each list item that begins with a link to an
  * entry directly in the folder puts that entry into the section, in
- * that order, with the text after the link as its row's line.
+ * that order, with the text after the link as its row's line; where
+ * nothing follows the link, the next line that is not empty gives the
+ * line when it is text: no heading, no list item, no link.
  * Everything else is ignored: links to the web, to deeper paths or to
  * files that are not there, images, text, other headings. Nothing in
  * a README is ever an error, and it never changes what a tap does. An
@@ -43,6 +45,10 @@ public final class Readme {
 			"^\\s*(?:[-*+]|\\d+[.)])\\s+\\[([^\\]]*)]\\(\\s*(<[^>]*>|[^)\\s]*)" +
 					"(?:\\s+\"[^\"]*\")?\\s*\\)(.*)$");
 
+	// Any list item, with a link or not.
+	private static final Pattern ANY_ITEM = Pattern.compile(
+			"^\\s*(?:[-*+]|\\d+[.)])(?:\\s.*)?$");
+
 	// Closing hashes of a heading, after a blank.
 	private static final Pattern CLOSING = Pattern.compile("\\s+#+\\s*$");
 
@@ -64,9 +70,27 @@ public final class Readme {
 		Set<String> linked = new HashSet<>();
 		String heading = "";
 		String fence = null;
+		// The entries of the last item, when it gave no line yet.
+		List<Linked> waiting = null;
 		for (String line : text.split("\r?\n")) {
 			// A fenced code block is text, whatever it shows.
 			String trimmed = line.trim();
+			if (waiting != null && !trimmed.isEmpty()) {
+				// "- [Ink](Ink/)" with its line below it.
+				if (!trimmed.startsWith("#") && !trimmed.startsWith("[") &&
+						!trimmed.startsWith("![") &&
+						!trimmed.startsWith("```") &&
+						!trimmed.startsWith("~~~") &&
+						!ANY_ITEM.matcher(line).matches()) {
+					int last = waiting.size() - 1;
+					String said = rest(trimmed);
+					waiting.set(last, new Linked(waiting.get(last).name(),
+							said));
+					waiting = null;
+					continue;
+				}
+				waiting = null;
+			}
 			if (fence != null) {
 				if (trimmed.startsWith(fence)) {
 					fence = null;
@@ -95,7 +119,11 @@ public final class Readme {
 				entries = new ArrayList<>();
 				sections.put(heading, entries);
 			}
-			entries.add(new Linked(name, rest(item.group(3))));
+			String said = rest(item.group(3));
+			entries.add(new Linked(name, said));
+			if (said == null) {
+				waiting = entries;
+			}
 		}
 		List<Section> list = new ArrayList<>();
 		for (Map.Entry<String, List<Linked>> section : sections.entrySet()) {

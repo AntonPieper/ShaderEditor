@@ -329,6 +329,7 @@
 	</plurals>
 	<string name="nav_new">New</string>
 	<string name="nav_running">Running</string>
+	<string name="nav_running_shader">Running · %1$s</string>
 	<string name="nav_all_files">All files</string>
 	<string name="nav_other_files">Other files</string>
 	<string name="nav_readme_orders">Orders this list</string>
@@ -372,6 +373,7 @@
 	<string name="nav_kind_folder">folder</string>
 	<string name="nav_kind_shader">shader</string>
 	<string name="nav_kind_shader_not_run">shader, not run yet</string>
+	<string name="nav_kind_pass">shader pass</string>
 	<string name="nav_kind_image">image</string>
 	<string name="nav_kind_image_size">image, %1$d by %2$d</string>
 	<string name="nav_kind_include">include</string>

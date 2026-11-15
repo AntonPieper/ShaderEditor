@@ -12,7 +12,9 @@ import de.markusfisch.android.shadereditor.project.ShaderLanguage;
  * default shader, an image's whole on a mat. Anything without one gets
  * a stock icon without a tile, so it never looks like a missing
  * picture; a shader that never ran is the one exception, an empty
- * frame where its picture will be, with nothing in it. A file that
+ * frame where its picture will be, with nothing in it; a pass of the
+ * running shader, whose picture is never shown by itself, is no such
+ * shader and shows code, as an include does. A file that
  * cannot be opened is dimmed. Every face says what the row is, for
  * TalkBack. How a row looks is changed in this one place.
  */
@@ -29,6 +31,11 @@ public final class Face {
 		SINGLE_FILE,
 		/** A file that is not an image by its name. */
 		FILE,
+		/**
+		 * A pass of the running shader, or its first frame: a shader
+		 * whose own picture is never shown.
+		 */
+		PASS,
 		/** A file that is an image by its name. */
 		IMAGE,
 		/** The row that shows more rows. */
@@ -88,6 +95,11 @@ public final class Face {
 								? Row.Picture.Icon.EXAMPLES
 								: Row.Picture.Icon.FOLDER,
 								Row.Picture.Spoken.FOLDER, false);
+			case PASS:
+				return known
+						? png(picture, Row.Picture.Spoken.PASS)
+						: icon(Row.Picture.Icon.CODE, Row.Picture.Spoken.PASS,
+								false);
 			case IMAGE:
 				return openable
 						? new Row.Picture(Row.Picture.Icon.IMAGE, null, 0,

@@ -740,8 +740,8 @@ final class FolderSource {
 	private static FolderListing.Words words(@NonNull Context context) {
 		return new FolderListing.Words() {
 			@Override
-			public String running() {
-				return context.getString(R.string.nav_running);
+			public String running(String shader) {
+				return context.getString(R.string.nav_running_shader, shader);
 			}
 
 			@Override
