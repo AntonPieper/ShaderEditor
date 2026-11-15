@@ -150,6 +150,17 @@ public final class ContentDocumentResolver implements DocumentResolver {
 		}
 	}
 
+	@Override
+	public android.graphics.Bitmap thumbnail(String id, int size) {
+		try {
+			return DocumentsContract.getDocumentThumbnail(resolver, uri(id),
+					new android.graphics.Point(size, size), null);
+		} catch (Exception e) {
+			// A provider that offers none says so in many ways.
+			return null;
+		}
+	}
+
 	private Uri uri(String id) {
 		return tree != null
 				? DocumentsContract.buildDocumentUriUsingTree(tree, id)

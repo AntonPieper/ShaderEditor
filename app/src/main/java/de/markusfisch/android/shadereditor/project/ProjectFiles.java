@@ -148,6 +148,15 @@ public interface ProjectFiles {
 	}
 
 	/**
+	 * Return the small picture storage keeps itself of the image at
+	 * path, as a documents provider does, about size pixels on its
+	 * longer side; null where it keeps none.
+	 */
+	default android.graphics.Bitmap thumbnail(ProjectPath path, int size) {
+		return null;
+	}
+
+	/**
 	 * Return at most the first count bytes of the file at path, to tell
 	 * what it is without reading it whole, or null when they are not
 	 * known: there is no such file, or it cannot be read. A store that

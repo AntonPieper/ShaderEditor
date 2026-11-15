@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -143,6 +144,8 @@ public class NavigationDrawer implements ShaderList {
 	private final ExecutorService listings =
 			Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
+	// The images of the folder shown, read small for its rows.
+	private final ImageFaces imageFaces;
 	// The shaders of the database that could not be moved.
 	@NonNull
 	private List<LibraryMove.Failed> notMoved = Collections.emptyList();
@@ -177,6 +180,7 @@ public class NavigationDrawer implements ShaderList {
 			@NonNull Host host) {
 		this.activity = activity;
 		this.host = host;
+		imageFaces = new ImageFaces(activity);
 		sources.put(Level.EXAMPLES, new ExamplesSource(activity, host));
 		folders = new FoldersSource(activity, this::remove);
 		sources.put(Level.FOLDERS, folders);
@@ -544,6 +548,7 @@ public class NavigationDrawer implements ShaderList {
 		if (folder != null) {
 			folder.close();
 		}
+		imageFaces.stop();
 		executor.shutdownNow();
 		listings.shutdownNow();
 		handler.removeCallbacksAndMessages(null);
@@ -553,7 +558,7 @@ public class NavigationDrawer implements ShaderList {
 	private RecyclerView initList(int id) {
 		RecyclerView recyclerView = drawer.findViewById(id);
 		recyclerView.setLayoutManager(new LinearLayoutManager(activity));
-		recyclerView.setAdapter(new NavigationAdapter(
+		NavigationAdapter adapter = new NavigationAdapter(
 				new NavigationAdapter.Listener() {
 					@Override
 					public void onTap(@NonNull Item item) {
@@ -598,7 +603,9 @@ public class NavigationDrawer implements ShaderList {
 							}
 						}
 					}
-				}));
+				});
+		adapter.setImages(images());
+		recyclerView.setAdapter(adapter);
 		return recyclerView;
 	}
 
@@ -638,6 +645,63 @@ public class NavigationDrawer implements ShaderList {
 		} catch (RejectedExecutionException e) {
 			// Destroyed.
 		}
+	}
+
+	// The images rows of the folder shown stand for, read small.
+	@NonNull
+	private NavigationAdapter.Images images() {
+		return new NavigationAdapter.Images() {
+			@Nullable
+			@Override
+			public Bitmap image(@NonNull Row row) {
+				ImageFaces.Small small = small(row);
+				return small != null ? small.bitmap() : null;
+			}
+
+			@Nullable
+			@Override
+			public String size(@NonNull Row row) {
+				ImageFaces.Small small = small(row);
+				return small != null
+						? activity.getString(R.string.nav_image_size,
+								small.format(), small.width(), small.height())
+						: null;
+			}
+
+			@Override
+			public void want(@NonNull Row row, @NonNull Runnable ready) {
+				String id = imageId(row);
+				OpenProject project = folder != null
+						? folder.project()
+						: null;
+				var path = ProjectPath.parse(row.key());
+				if (id != null && project != null && path.isSuccess()) {
+					imageFaces.want(id, project, path.value(), ready);
+				}
+			}
+
+			@Override
+			public void unwant(@NonNull Row row) {
+				String id = imageId(row);
+				if (id != null) {
+					imageFaces.unwant(id);
+				}
+			}
+
+			@Nullable
+			private ImageFaces.Small small(@NonNull Row row) {
+				String id = imageId(row);
+				return id != null ? imageFaces.get(id) : null;
+			}
+		};
+	}
+
+	// An image of the folder shown, as it was when listed.
+	@Nullable
+	private String imageId(@NonNull Row row) {
+		return folder != null
+				? folder.key() + "\n" + row.key() + "\n" + row.changed()
+				: null;
 	}
 
 	// The picture of the file that runs in session key, else of the
@@ -733,6 +797,7 @@ public class NavigationDrawer implements ShaderList {
 		if (this.folder != null) {
 			this.folder.close();
 			this.folder = null;
+			imageFaces.stop();
 		}
 		if (folder) {
 			projects.openTree(uri, data.getFlags(),
@@ -811,6 +876,7 @@ public class NavigationDrawer implements ShaderList {
 		if (folder == null || !folder.key().equals(key)) {
 			if (folder != null) {
 				folder.close();
+				imageFaces.stop();
 			}
 			folder = new FolderSource(activity, holds, listings, handler,
 					key, folders,
@@ -877,6 +943,7 @@ public class NavigationDrawer implements ShaderList {
 		if (folder != null && !folder.key().equals(to.key())) {
 			folder.close();
 			folder = null;
+			imageFaces.stop();
 		} else if (folder != null) {
 			folder.keep(to);
 		}
