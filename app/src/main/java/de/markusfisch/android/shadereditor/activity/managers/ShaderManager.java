@@ -244,7 +244,13 @@ public class ShaderManager implements OpenItem {
 
 	// The editor restores its text itself, keeping the undo history.
 	public void restoreState(@NonNull Bundle savedInstanceState) {
-		restore(savedInstanceState.getLong(SELECTED_SHADER_ID, NO_SHADER),
+		long id = savedInstanceState.getLong(SELECTED_SHADER_ID, NO_SHADER);
+		if (!editorFragment.isTextRestored()) {
+			// The text is lost, so is any change.
+			selectShader(id);
+			return;
+		}
+		restore(id,
 				savedInstanceState.getString(SELECTED_SHADER_TITLE, ""),
 				savedInstanceState.getFloat(QUALITY, 1f),
 				savedInstanceState.getBoolean(MODIFIED));

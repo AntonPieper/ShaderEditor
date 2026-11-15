@@ -1,6 +1,5 @@
 package de.markusfisch.android.shadereditor.fragment;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.view.LayoutInflater;
@@ -16,8 +15,7 @@ import androidx.lifecycle.ViewModelProvider;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.UUID;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.ErrorAdapter;
@@ -35,9 +33,6 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 	public static final String TAG = "EditorFragment";
 
 	private static final String DRAFT_KEY = "editor_draft_key";
-	// One thread for all drafts so that writes and deletes stay in order.
-	private static final ExecutorService draftExecutor =
-			Executors.newSingleThreadExecutor();
 
 	private View editorContainer;
 	private SourceEditor editor;
@@ -68,6 +63,7 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 	private EditorDraft draft;
 	@Nullable
 	private DraftHolder draftHolder;
+	private boolean textRestored;
 	// The diagnostics of every file while the editor shows a file of a
 	// folder, else null: then all are of the text shown.
 	@Nullable
@@ -149,6 +145,7 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 				holder.key != null &&
 				holder.key.equals(state.getString(DRAFT_KEY));
 		String restored = restoreDraft(state);
+		textRestored = restored != null;
 		if (restored != null) {
 			editor.restoreText(restored, inMemory ? holder.retained : null,
 					state);
@@ -177,9 +174,16 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 		DraftHolder holder = getDraftHolder();
 		String text = editor.getText();
 		if (holder.key == null || !text.equals(holder.text)) {
-			holder.key = EditorDraft.newKey();
+			holder.key = UUID.randomUUID().toString();
 			holder.text = text;
-			getDraft().save(holder.key, text);
+			// Write now: the process may be killed as soon as this
+			// returns.
+			StrictMode.ThreadPolicy policy = StrictMode.allowThreadDiskWrites();
+			try {
+				getDraft().write(holder.key, text);
+			} finally {
+				StrictMode.setThreadPolicy(policy);
+			}
 		}
 		holder.retained = editor.getRetainedState();
 		outState.putString(DRAFT_KEY, holder.key);
@@ -191,8 +195,17 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 		super.onDestroy();
 		if (getActivity() != null && getActivity().isFinishing()) {
 			// Nothing will be restored from it.
-			getDraft().delete();
+			StrictMode.ThreadPolicy policy = StrictMode.allowThreadDiskWrites();
+			try {
+				getDraft().delete();
+			} finally {
+				StrictMode.setThreadPolicy(policy);
+			}
 		}
+	}
+
+	public boolean isTextRestored() {
+		return textRestored;
 	}
 
 	@Nullable
@@ -211,7 +224,7 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 		StrictMode.ThreadPolicy policy = StrictMode.allowThreadDiskReads();
 		String text;
 		try {
-			text = getDraft().load(key);
+			text = getDraft().read(key);
 		} finally {
 			StrictMode.setThreadPolicy(policy);
 		}
@@ -233,8 +246,7 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 	@NonNull
 	private EditorDraft getDraft() {
 		if (draft == null) {
-			Context context = requireContext().getApplicationContext();
-			draft = new EditorDraft(context::getNoBackupFilesDir, draftExecutor);
+			draft = new EditorDraft(requireContext().getNoBackupFilesDir());
 		}
 		return draft;
 	}

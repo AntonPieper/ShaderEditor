@@ -198,7 +198,6 @@ public class PreferencesFragment
 			long id = Preferences.WALLPAPER_SHADER.equals(preference.getKey())
 					? ShaderEditorApp.preferences.getWallpaperShader()
 					: ShaderEditorApp.preferences.getDefaultNewShader();
-			// The summary keeps its text until the read returns.
 			databaseExecutor.execute(() -> {
 				String title = getShaderTitle(id);
 				handler.post(() -> {
