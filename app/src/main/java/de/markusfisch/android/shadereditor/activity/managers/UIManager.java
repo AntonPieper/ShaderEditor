@@ -78,6 +78,15 @@ public class UIManager {
 				R.dimen.toolbar_title_min);
 		toolbar.addOnLayoutChangeListener((v, left, top, right, bottom,
 				oldLeft, oldTop, oldRight, oldBottom) -> fitFrameRate());
+		// The one place that limits the picture for the code over it, for
+		// every way the code comes to be shown or not: the start, a
+		// restore, the code button, nothing open and something opened.
+		// Code over a bright picture cannot be read, so the picture is
+		// dimmed at once when the code appears and only fades back.
+		editorFragment.setOnCodeShownListener(shown -> limitPicture(
+				!shown && Settings.Global.getFloat(
+						activity.getContentResolver(),
+						Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f));
 
 		drawerLayout = activity.findViewById(R.id.drawer_layout);
 		drawerToggle = new ActionBarDrawerToggle(
@@ -134,11 +143,6 @@ public class UIManager {
 		drawerLayout.setTouchThru(isVisible);
 		extraKeysManager.setVisible(!isVisible &&
 				ShaderEditorApp.preferences.showExtraKeys());
-		// Code over a bright picture cannot be read, so the picture is
-		// dimmed at once when the code appears and only fades back.
-		limitPicture(isVisible && Settings.Global.getFloat(
-				activity.getContentResolver(),
-				Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f);
 	}
 
 	@NonNull
@@ -239,7 +243,7 @@ public class UIManager {
 	// Code in front of the picture limits its brightness, so that the
 	// code can be read.
 	private void limitPicture(boolean fade) {
-		shaderViewManager.limitPicture(editorFragment.isCodeVisible()
+		shaderViewManager.limitPicture(editorFragment.isCodeShown()
 				? ShaderEditorApp.preferences.getPictureCeiling()
 				: PictureLimit.NONE, fade);
 	}

@@ -890,14 +890,18 @@ public final class LibraryScreen implements ShaderScreen {
 			cover.bringToFront();
 			if (editor != null) {
 				SoftKeyboard.hide(activity, editor);
-				editor.setVisibility(View.GONE);
+			}
+			// Also before the editor's view is there: the picture's
+			// limit follows it.
+			editorFragment.setCovered(true);
+			if (editor != null) {
 				// Tells the editor that nothing is reported, so not
 				// before its view is there; nothing ran until then.
 				shaderViewManager.showNothing();
 			}
-		} else if (covered && editor != null) {
-			editor.setVisibility(View.VISIBLE);
-			if (hideCodeOnShow) {
+		} else {
+			editorFragment.setCovered(false);
+			if (covered && editor != null && hideCodeOnShow) {
 				hideCodeOnShow = false;
 				uiManager.toggleCodeVisibility();
 			}
