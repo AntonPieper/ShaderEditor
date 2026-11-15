@@ -239,12 +239,56 @@ final class ImageFaces {
 		return face;
 	}
 
+	/** An image as its sheet shows it, with what is said of it. */
+	record Large(@NonNull Bitmap bitmap, @NonNull String format, int width,
+			int height, long bytes) {
+	}
+
+	/**
+	 * Read the image at path for its sheet, at most about side pixels
+	 * on its shorter side; null when it is no image that can be read.
+	 * On the worker of its project, through {@link OpenProject#look}.
+	 */
+	@Nullable
+	static Large large(@NonNull ProjectFiles files, @NonNull ProjectPath path,
+			int side) {
+		try {
+			ProjectFiles.Read read = files.read(path, LARGEST);
+			if (!(read instanceof ProjectFiles.Content content)) {
+				return null;
+			}
+			byte[] bytes = content.bytes();
+			String format = FileKind.picture(bytes);
+			BitmapFactory.Options bounds = new BitmapFactory.Options();
+			bounds.inJustDecodeBounds = true;
+			BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+			if (format == null || bounds.outWidth <= 0) {
+				return null;
+			}
+			BitmapFactory.Options options = new BitmapFactory.Options();
+			options.inSampleSize = sample(bounds.outWidth, bounds.outHeight,
+					side);
+			Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0,
+					bytes.length, options);
+			return bitmap != null
+					? new Large(bitmap, format, bounds.outWidth,
+							bounds.outHeight, bytes.length)
+					: null;
+		} catch (OutOfMemoryError | RuntimeException e) {
+			return null;
+		}
+	}
+
 	// The largest power of two that keeps the shorter side at SIZE or
 	// more.
 	static int sample(int width, int height) {
+		return sample(width, height, SIZE);
+	}
+
+	private static int sample(int width, int height, int side) {
 		int shorter = Math.min(width, height);
 		int sample = 1;
-		while (shorter / (sample * 2) >= SIZE) {
+		while (shorter / (sample * 2) >= side) {
 			sample *= 2;
 		}
 		return sample;

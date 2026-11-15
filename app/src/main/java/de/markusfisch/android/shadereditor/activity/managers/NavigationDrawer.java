@@ -18,6 +18,7 @@ import android.provider.DocumentsContract;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.format.Formatter;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.view.Gravity;
@@ -68,6 +69,7 @@ import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
+import de.markusfisch.android.shadereditor.editor.InsertTexture;
 import de.markusfisch.android.shadereditor.navigation.Face;
 import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
@@ -85,6 +87,7 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
+import de.markusfisch.android.shadereditor.widget.ImageSheet;
 import de.markusfisch.android.shadereditor.widget.Message;
 import de.markusfisch.android.shadereditor.widget.NewSheet;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
@@ -107,6 +110,24 @@ public class NavigationDrawer implements ShaderList {
 
 		/** Open the shader of the database with id, which was not moved. */
 		void onOpenShader(long id);
+
+		/**
+		 * Return the path of the text file in the editor when it is a
+		 * file of the folder or single file opened before with key,
+		 * else null.
+		 */
+		@Nullable
+		ProjectPath textOf(@NonNull String key);
+
+		/** Return the text in the editor. */
+		@NonNull
+		String text();
+
+		/**
+		 * Add statement to the text in the editor as one step to undo,
+		 * and put the caret on the sampler name it declares.
+		 */
+		void insertTexture(@NonNull String statement, @NonNull String name);
 	}
 
 	private static final String STATE = "navigation_drawer";
@@ -175,6 +196,8 @@ public class NavigationDrawer implements ShaderList {
 	private FolderSource folder;
 	@Nullable
 	private NewSheet sheet;
+	@Nullable
+	private ImageSheet imageSheet;
 
 	public NavigationDrawer(@NonNull AppCompatActivity activity,
 			@NonNull ProjectHolds holds,
@@ -545,6 +568,9 @@ public class NavigationDrawer implements ShaderList {
 		if (sheet != null) {
 			sheet.dismiss();
 		}
+		if (imageSheet != null) {
+			imageSheet.dismiss();
+		}
 		newFile.destroy();
 		if (folder != null) {
 			folder.close();
@@ -646,6 +672,80 @@ public class NavigationDrawer implements ShaderList {
 		} catch (RejectedExecutionException e) {
 			// Destroyed.
 		}
+	}
+
+	// The image of row in the folder of level, in a sheet: what it
+	// looks like and what can be done with it. Insert as texture is
+	// offered where the editor has a text file of the same folder.
+	private void showImage(@NonNull Level level, @NonNull Row row) {
+		FolderSource source = folder;
+		OpenProject project = source != null ? source.project() : null;
+		var parsed = ProjectPath.parse(row.key());
+		if (source == null || project == null || !parsed.isSuccess()) {
+			return;
+		}
+		ProjectPath path = parsed.value();
+		String key = source.key();
+		String where = source.title(level);
+		Item.Place place = new Item.Place(level, row.key());
+		if (running != null && (used.contains(place) ||
+				place.equals(running))) {
+			String runs = running.key();
+			where += " \u00b7 " + activity.getString(R.string.nav_used_by,
+					runs.substring(runs.lastIndexOf('/') + 1));
+		}
+		ProjectPath edited = host.textOf(key);
+		InsertTexture.Lines lines = edited != null
+				? InsertTexture.of(host.text(), edited.toString(),
+						path.toString())
+				: null;
+		boolean changes = row.actions().contains(Row.Action.RENAME);
+		if (imageSheet != null) {
+			imageSheet.dismiss();
+		}
+		ImageSheet sheet = new ImageSheet(activity, row.name(), where,
+				edited != null ? edited.getFileName() : null,
+				lines != null
+						? lines.statement()
+						: activity.getString(R.string.nav_insert_where),
+				changes, new ImageSheet.Listener() {
+					@Override
+					public void onInsert() {
+						if (lines != null) {
+							host.insertTexture(lines.statement(),
+									lines.name());
+							close();
+						}
+					}
+
+					@Override
+					public void onRename() {
+						folderActions.act(source, level, row,
+								Row.Action.RENAME);
+					}
+
+					@Override
+					public void onDelete() {
+						folderActions.act(source, level, row,
+								Row.Action.DELETE);
+					}
+				});
+		imageSheet = sheet;
+		sheet.show();
+		int side = Math.max(lists.getWidth(), 512);
+		project.look(files -> ImageFaces.large(files, path, side), large -> {
+			if (!sheet.isShowing()) {
+				return;
+			} else if (large == null) {
+				sheet.setUnreadable(activity.getString(
+						R.string.nav_image_unreadable, row.name()));
+				return;
+			}
+			sheet.setImage(large.bitmap(), activity.getString(
+					R.string.nav_image_info, large.width(), large.height(),
+					large.format(), Formatter.formatShortFileSize(activity,
+							large.bytes())));
+		});
 	}
 
 	// The images rows of the folder shown stand for, read small.
@@ -903,11 +1003,10 @@ public class NavigationDrawer implements ShaderList {
 							return opening;
 						}
 
-						// Until there is a sheet for pictures.
 						@Override
-						public void picture(@NonNull String name) {
-							tell(activity.getString(R.string.nav_is_picture,
-									name));
+						public void image(@NonNull Level level,
+								@NonNull Row row) {
+							showImage(level, row);
 						}
 					},
 					folderActions::act,
