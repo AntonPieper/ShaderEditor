@@ -8,8 +8,6 @@ package de.markusfisch.android.shadereditor.navigation;
 public record Level(String name, Level up) {
 	/** The top: the folders, the library first, and the examples. */
 	public static final Level FOLDERS = new Level("folders", null);
-	/** The bundled examples. */
-	public static final Level EXAMPLES = new Level("examples", FOLDERS);
 
 	private static final String FOLDER = "folder:";
 
@@ -23,10 +21,8 @@ public record Level(String name, Level up) {
 	 * stands for none.
 	 */
 	public static Level of(String name) {
-		for (Level level : new Level[]{FOLDERS, EXAMPLES}) {
-			if (level.name.equals(name)) {
-				return level;
-			}
+		if (FOLDERS.name.equals(name)) {
+			return FOLDERS;
 		}
 		if (name == null || !name.startsWith(FOLDER)) {
 			return null;
