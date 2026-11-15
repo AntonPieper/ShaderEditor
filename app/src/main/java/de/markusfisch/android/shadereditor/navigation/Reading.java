@@ -62,6 +62,15 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 		return isReading() ? with(Phase.STOPPED) : this;
 	}
 
+	/**
+	 * Reads the folder again while what was read stays shown, with as
+	 * many rows as were shown, until the new entries come or reading
+	 * fails: the list does not empty and jump to its top.
+	 */
+	public Reading again() {
+		return new Reading(Phase.READING, entries, null, shown);
+	}
+
 	/** Takes the entries of the folder, folders first. */
 	public Reading listed(List<Entry> entries) {
 		return isReading()

@@ -136,6 +136,33 @@ public class ReadingTest {
 		return names;
 	}
 
+	// Read again after a rename, the folder keeps its rows and pages
+	// shown until the new ones come, so the list stays where it was.
+	@Test
+	public void readAgainKeepsWhatIsShown() {
+		List<Reading.Entry> entries = new ArrayList<>();
+		for (int i = 0; i < 250; ++i) {
+			entries.add(new Reading.Entry(String.format("f%03d.frag", i),
+					false, i));
+		}
+		Reading read = Reading.started().listed(entries).more();
+		Reading again = read.again();
+		assertEquals(250, again.rows(ROOT, "Show more", "%1$d of %2$d",
+				Order.BY_NAME).size());
+		assertEquals(Notice.Kind.READING, again.notice().kind());
+		List<Reading.Entry> renamed = new ArrayList<>(entries);
+		renamed.set(0, new Reading.Entry("renamed.frag", false, 0));
+		Reading relisted = again.listed(renamed);
+		assertNull(relisted.notice());
+		assertEquals(250, relisted.rows(ROOT, "Show more", "%1$d of %2$d",
+				Order.BY_NAME).size());
+		assertEquals("renamed.frag", relisted.rows(ROOT, "Show more",
+				"%1$d of %2$d", Order.BY_NAME).get(249).name());
+		// A read that fails says so, as a first read does.
+		assertEquals(Notice.Kind.FAILED, read.again().failed("gone")
+				.notice().kind());
+	}
+
 	@Test
 	public void stopIsOfferedOnlyAfterReadingTakesLong() {
 		assertEquals(List.of(), Reading.started().notice().actions());

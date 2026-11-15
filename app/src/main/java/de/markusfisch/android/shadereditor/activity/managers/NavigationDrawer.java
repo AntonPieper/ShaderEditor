@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcelable;
 import android.provider.DocumentsContract;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -37,6 +38,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.graphics.Insets;
+import androidx.core.os.BundleCompat;
 import androidx.core.view.MenuCompat;
 import androidx.core.view.MenuItemCompat;
 import androidx.core.view.ViewCompat;
@@ -107,6 +109,7 @@ public class NavigationDrawer implements ShaderList {
 
 	private static final String STATE = "navigation_drawer";
 	private static final String LEVEL = "level";
+	private static final String SCROLL = "scroll";
 	private static final long SLIDE_MILLIS = 200;
 
 	private final AppCompatActivity activity;
@@ -166,6 +169,10 @@ public class NavigationDrawer implements ShaderList {
 	private String examplesFailed;
 	// Whether New shader was asked for before the library was known.
 	private boolean newShaderAsked;
+	// Where the list was scrolled to before a rotation, until it is
+	// listed again.
+	@Nullable
+	private Parcelable pendingScroll;
 	// The folder opened before whose levels are shown, or null.
 	private FolderSource folder;
 	@Nullable
@@ -353,6 +360,9 @@ public class NavigationDrawer implements ShaderList {
 		// The database's list, which was a level, is none any more.
 		if (restored != null) {
 			level = restored;
+			// Where the list was scrolled to, once it is listed again.
+			pendingScroll = BundleCompat.getParcelable(state, SCROLL,
+					Parcelable.class);
 			// A screen made again in the same process knows the library
 			// at once; then its level is a place to go to before the
 			// start told it.
@@ -365,6 +375,15 @@ public class NavigationDrawer implements ShaderList {
 				() -> {
 					Bundle bundle = new Bundle();
 					bundle.putString(LEVEL, level.name());
+					RecyclerView.LayoutManager layout = list.getLayoutManager();
+					Parcelable scroll = pendingScroll != null
+							? pendingScroll
+							: layout != null
+							? layout.onSaveInstanceState()
+							: null;
+					if (scroll != null) {
+						bundle.putParcelable(SCROLL, scroll);
+					}
 					return bundle;
 				});
 		// The level is listed at once: a drawer left open over a
@@ -374,7 +393,7 @@ public class NavigationDrawer implements ShaderList {
 		// Open again over a rotation, it shows the file in the editor,
 		// as when opened (NAVIGATION 6.2).
 		drawer.post(() -> {
-			if (drawerLayout.isDrawerOpen(drawer)) {
+			if (drawerLayout.isDrawerOpen(drawer) && pendingScroll == null) {
 				scrollToSelected();
 			}
 		});
@@ -562,7 +581,9 @@ public class NavigationDrawer implements ShaderList {
 
 	public void reread(@NonNull String key) {
 		if (folder != null && folder.key().equals(key)) {
-			folder.forget();
+			// The level shown is read again in place: a rename does not
+			// throw the list back to its top.
+			folder.forgetBut(level);
 		}
 	}
 
@@ -1057,8 +1078,20 @@ public class NavigationDrawer implements ShaderList {
 	}
 
 	private void show(@NonNull RecyclerView list) {
-		adapter(list).setItems(Item.of(listing, level, open, running, used),
-				true, listing.notice());
+		List<Item> items = Item.of(listing, level, open, running, used);
+		adapter(list).setItems(items, true, listing.notice());
+		// Back where it was before a rotation, once there is something
+		// to scroll: not on the empty list of a folder still read.
+		Notice notice = listing.notice();
+		if (pendingScroll != null && !items.isEmpty() && (notice == null ||
+				(notice.kind() != Notice.Kind.READING &&
+						notice.kind() != Notice.Kind.SLOW))) {
+			RecyclerView.LayoutManager layout = list.getLayoutManager();
+			if (layout != null) {
+				layout.onRestoreInstanceState(pendingScroll);
+			}
+			pendingScroll = null;
+		}
 	}
 
 	private void showHeader() {
@@ -1243,7 +1276,7 @@ public class NavigationDrawer implements ShaderList {
 	// The folder that holds what was created is read again.
 	private void reread(@NonNull String key, @NonNull ProjectPath path) {
 		if (folder != null && folder.key().equals(key)) {
-			folder.retry(Item.Place.file(key, path.toString()).level());
+			folder.reread(Item.Place.file(key, path.toString()).level());
 		}
 	}
 
