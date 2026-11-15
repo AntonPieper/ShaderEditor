@@ -104,7 +104,7 @@ public class NavigationTest {
 		Item.Place open = new Item.Place(LIBRARY, "a");
 		List<Item> items = Item.of(listing(new Listing.Section(null,
 						List.of(shader("a", "One", 0)))),
-				Level.EXAMPLES, open, open, Set.of());
+				Level.root("examples"), open, open, Set.of());
 		assertFalse(items.get(0).selected());
 		assertEquals(Tap.OPEN_AND_RUN, items.get(0).tap());
 	}
@@ -123,7 +123,7 @@ public class NavigationTest {
 	public void levelsKnowWhatIsAboveThem() {
 		assertTrue(LIBRARY.isBelow(Level.FOLDERS));
 		assertFalse(Level.FOLDERS.isBelow(LIBRARY));
-		assertFalse(Level.EXAMPLES.isBelow(LIBRARY));
+		assertFalse(Level.root("examples").isBelow(LIBRARY));
 	}
 
 	private static Listing listing(Listing.Section... sections) {
