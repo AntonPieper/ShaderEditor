@@ -617,4 +617,5 @@
 	<string name="conflict_replaced">%s has the unsaved text that Reload from file replaced before ShaderEditor closed</string>
 	<string name="conflict_discard">Discard</string>
 	<string name="conflict_others">Changed outside ShaderEditor, with unsaved text: %s</string>
+	<string name="nav_changed_outside">changed outside</string>
 </resources>

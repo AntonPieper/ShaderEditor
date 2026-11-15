@@ -214,6 +214,8 @@ public class LifecycleSequencesTest {
 		assertNotNull(project.conflict(path("gone")));
 		assertEquals(FileTexts.Found.MISSING, project.found(path("gone")));
 		assertNull(project.seen(path("gone")));
+		// Only unsaved text whose file is gone is missing.
+		assertEquals(Set.of(path("gone")), project.missing());
 		// Deleted without unsaved text: no conflict, the text stays.
 		assertNull(project.conflict(path("lost")));
 		assertEquals(FileTexts.Found.MISSING, project.found(path("lost")));

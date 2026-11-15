@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.navigation;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import de.markusfisch.android.shadereditor.project.FileKind;
 import de.markusfisch.android.shadereditor.project.FileRole;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectManifest;
@@ -63,6 +65,9 @@ public final class FolderListing {
 
 		/** When a file was changed, from milliseconds since the epoch. */
 		String changed(long time);
+
+		/** The heading of unsaved text whose file is gone. */
+		String notInFolder();
 	}
 
 	/** Whether a file of the folder can run, as far as it is known. */
@@ -78,7 +83,9 @@ public final class FolderListing {
 	 * sections, the files the running shader's last build read and
 	 * whether all of them are shown, the file that runs, whether the
 	 * folder can be changed, the paths of the folders read that can be
-	 * changed ("" for the root), and the files with unsaved text.
+	 * changed ("" for the root), the files with unsaved text, those of
+	 * them another app changed or deleted, and those of them whose file
+	 * storage was last found not to hold.
 	 */
 	public record Facts(Level level, Order order, Reading reading,
 			Map<String, byte[]> pictures, String wallpaper,
@@ -86,15 +93,34 @@ public final class FolderListing {
 			List<Readme.Section> readme,
 			List<OpenProject.Used> used, boolean allRunning, String running,
 			Runs runs, boolean writable, Set<String> writableFolders,
-			Set<String> unsaved) {
+			Set<String> unsaved, Set<String> outside, Set<String> gone) {
 	}
 
 	private FolderListing() {
 	}
 
-	/** The sections of the level, as the class says. */
+	/**
+	 * The sections of the level, as the class says; at the root first
+	 * the files with unsaved text whose file is gone, wherever they
+	 * were, so that no unsaved text is out of reach.
+	 */
 	public static List<Listing.Section> sections(Facts facts, Words words) {
 		List<Listing.Section> sections = new ArrayList<>();
+		String level = facts.level().path();
+		if ((level == null || level.isEmpty()) && !facts.gone().isEmpty()) {
+			List<String> keys = new ArrayList<>(facts.gone());
+			Collections.sort(keys);
+			List<Row> rows = new ArrayList<>(keys.size());
+			for (String key : keys) {
+				String name = key.substring(key.lastIndexOf('/') + 1);
+				rows.add(fileRow(facts, words, key,
+						FileKind.hint(name, null) == FileKind.PICTURE
+								? Row.Kind.IMAGE
+								: Row.Kind.TEXT, null));
+			}
+			sections.add(new Listing.Section(words.notInFolder(),
+					marked(rows, facts)));
+		}
 		List<Row> running = running(facts, words);
 		if (!running.isEmpty()) {
 			// Named as its row names it, by its path from the root.
@@ -102,7 +128,7 @@ public final class FolderListing {
 					? facts.running()
 					: running.get(0).name();
 			sections.add(new Listing.Section(words.running(shader),
-					FileMarks.unsaved(running, facts.unsaved())));
+					marked(running, facts)));
 		} else if (facts.defaultShader() != null &&
 				facts.pictures().get(facts.defaultShader()) == null) {
 			// It was not built here yet, as it has no picture: what
@@ -231,8 +257,13 @@ public final class FolderListing {
 					row.name(), detail, row.changed(), row.enters(), marks,
 					row.actions()));
 		}
-		return FileMarks.unsaved(FileActions.of(dressed, facts.running(),
-				runs, facts.writable()), facts.unsaved());
+		return marked(FileActions.of(dressed, facts.running(), runs,
+				facts.writable()), facts);
+	}
+
+	private static List<Row> marked(List<Row> rows, Facts facts) {
+		return FileMarks.outside(FileMarks.unsaved(rows, facts.unsaved()),
+				facts.outside());
 	}
 
 	// The files the last build of what runs read, in build order, each

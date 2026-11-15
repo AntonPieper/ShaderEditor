@@ -60,6 +60,16 @@
 		android:visibility="gone" />
 
 	<ImageView
+		android:id="@+id/navigation_outside"
+		android:layout_width="@dimen/navigation_state_mark"
+		android:layout_height="@dimen/navigation_state_mark"
+		android:layout_marginStart="@dimen/navigation_mark_spacing"
+		android:contentDescription="@string/nav_changed_outside"
+		android:src="@drawable/ic_sync_problem"
+		android:visibility="gone"
+		app:tint="@color/se_warning" />
+
+	<ImageView
 		android:id="@+id/navigation_wallpaper"
 		android:layout_width="@dimen/se_mark"
 		android:layout_height="@dimen/se_mark"

@@ -31,6 +31,8 @@ public record Row(String key, Kind kind, Picture picture, String name,
 	/** Marks at the end of a row, in the order they are shown. */
 	public enum Mark {
 		UNSAVED,
+		/** Changed or deleted by another app while it has unsaved text. */
+		CHANGED_OUTSIDE,
 		WALLPAPER,
 		READ_ONLY,
 		RUNNING

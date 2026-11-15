@@ -1037,6 +1037,21 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Return the files with unsaved text that storage was last found not
+	 * to hold: deleted or renamed elsewhere, or under a folder that was.
+	 */
+	public Set<ProjectPath> missing() {
+		Set<ProjectPath> missing = new HashSet<>();
+		for (FileRecord record : records.values()) {
+			if (record.edited() &&
+					record.found == FileTexts.Found.MISSING) {
+				missing.add(record.path);
+			}
+		}
+		return missing;
+	}
+
+	/**
 	 * Look for changes made elsewhere: keep the unsaved text, forget
 	 * what listings told, and see what storage holds of every file in
 	 * memory or with unsaved text: unsaved text storage does not hold

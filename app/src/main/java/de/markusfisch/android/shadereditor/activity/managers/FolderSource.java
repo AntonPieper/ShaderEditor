@@ -443,7 +443,7 @@ final class FolderSource {
 								? ordered.sections()
 								: List.of(), used, allRunning, running(),
 						this::runs, !file && writable.contains(path),
-						writableRead(), unsaved()), words);
+						writableRead(), unsaved(), outside(), gone()), words);
 		// A folder that cannot be changed, such as the examples, says
 		// so; New there makes a shader in the library.
 		boolean readOnly = !file && !reading.isLost() && isReadOnly();
@@ -558,6 +558,30 @@ final class FolderSource {
 			}
 		}
 		return unsaved;
+	}
+
+	// The files with unsaved text whose file is gone.
+	@NonNull
+	private Set<String> gone() {
+		Set<String> gone = new HashSet<>();
+		if (project != null) {
+			for (ProjectPath path : project.missing()) {
+				gone.add(path.toString());
+			}
+		}
+		return gone;
+	}
+
+	// The files with unsaved text another app changed or deleted.
+	@NonNull
+	private Set<String> outside() {
+		Set<String> outside = new HashSet<>();
+		if (project != null) {
+			for (ProjectPath path : project.conflicts().keySet()) {
+				outside.add(path.toString());
+			}
+		}
+		return outside;
 	}
 
 	private void read(@NonNull String path) {
@@ -858,6 +882,11 @@ final class FolderSource {
 			public String changed(long time) {
 				return ChangeTimes.describe(context, time,
 						System.currentTimeMillis());
+			}
+
+			@Override
+			public String notInFolder() {
+				return context.getString(R.string.file_not_in_folder);
 			}
 		};
 	}

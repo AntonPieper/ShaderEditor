@@ -252,6 +252,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 		private final FileNameView name;
 		private final TextView detail;
 		private final View unsaved;
+		private final View outside;
 		private final View wallpaper;
 		private final View readOnly;
 		private final View running;
@@ -265,6 +266,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			name = view.findViewById(R.id.navigation_name);
 			detail = view.findViewById(R.id.navigation_detail);
 			unsaved = view.findViewById(R.id.navigation_unsaved);
+			outside = view.findViewById(R.id.navigation_outside);
 			wallpaper = view.findViewById(R.id.navigation_wallpaper);
 			readOnly = view.findViewById(R.id.navigation_read_only_mark);
 			running = view.findViewById(R.id.navigation_running);
@@ -325,6 +327,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			detail.setAlpha(alpha);
 			picture.setAlpha(alpha);
 			unsaved.setVisibility(visibleIf(item, Row.Mark.UNSAVED));
+			outside.setVisibility(visibleIf(item, Row.Mark.CHANGED_OUTSIDE));
 			wallpaper.setVisibility(visibleIf(item, Row.Mark.WALLPAPER));
 			readOnly.setVisibility(visibleIf(item, Row.Mark.READ_ONLY));
 			running.setVisibility(visibleIf(item, Row.Mark.RUNNING));
