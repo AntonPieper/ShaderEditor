@@ -12,10 +12,10 @@ import java.util.List;
  * This is a scan of the tokens, not a parse. It tracks braces, brackets
  * and parentheses and reads what is declared outside of them. Both
  * branches of a conditional are read, except code between "#if 0" and its
- * "#elif", "#else" or "#endif". That scan is GLSL's; the declarations
- * are what any language may collect, see {@link Syntax#outline}.
+ * "#elif", "#else" or "#endif". It is what GLSL knows of a text, see
+ * {@link Syntax#knowledge}: the names of its declarations.
  */
-public final class Outline {
+public final class Outline implements Knowledge {
 	public enum Kind {
 		FUNCTION,
 		VARIABLE,
@@ -23,6 +23,11 @@ public final class Outline {
 		MACRO,
 		TYPE
 	}
+
+	private static final Knowledge.Kind[] KINDS = {
+			Knowledge.Kind.FUNCTION, Knowledge.Kind.VARIABLE,
+			Knowledge.Kind.UNIFORM, Knowledge.Kind.MACRO,
+			Knowledge.Kind.TYPE};
 
 	/** A declared name and the offsets of its name token. */
 	public record Declaration(String name, Kind kind, int start, int end) {
@@ -32,6 +37,7 @@ public final class Outline {
 	public static final Outline NONE = new Outline(new ArrayList<>());
 
 	private final List<Declaration> declarations;
+	private final List<Symbol> symbols;
 	// Each name once, sorted, and how many declarations have it.
 	final String[] names;
 	final int[] counts;
@@ -40,10 +46,17 @@ public final class Outline {
 
 	private Outline(List<Declaration> declarations) {
 		this.declarations = Collections.unmodifiableList(declarations);
+		List<Symbol> symbols = new ArrayList<>(declarations.size());
 		String[] names = new String[declarations.size()];
 		for (int i = 0; i < names.length; ++i) {
-			names[i] = declarations.get(i).name();
+			Declaration d = declarations.get(i);
+			names[i] = d.name();
+			// All this scan knows of a declaration is its name.
+			symbols.add(new Symbol(d.name(), KINDS[d.kind().ordinal()],
+					d.name(), null, null, d.start(), d.end(), d.start(),
+					d.end(), Collections.emptyList()));
 		}
+		this.symbols = Collections.unmodifiableList(symbols);
 		Arrays.sort(names);
 		int[] counts = new int[names.length];
 		int size = 0;
@@ -85,6 +98,33 @@ public final class Outline {
 		return declarations;
 	}
 
+	@Override
+	public List<Symbol> symbols() {
+		return symbols;
+	}
+
+	@Override
+	public List<Symbol> at(int offset, CharSequence word) {
+		List<Symbol> found = new ArrayList<>();
+		for (Symbol symbol : symbols) {
+			if (symbol.name().contentEquals(word) && (found.isEmpty() ||
+					symbol.kind() == Knowledge.Kind.FUNCTION)) {
+				found.add(symbol);
+			}
+		}
+		return found;
+	}
+
+	@Override
+	public List<Symbol> links() {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public int[] folds() {
+		return new int[0];
+	}
+
 	/**
 	 * Returns the tokens with every identifier that names a declared type
 	 * styled as {@link Style#TYPE}.
@@ -121,31 +161,18 @@ public final class Outline {
 	}
 
 	/**
-	 * Builds the outline of a text line by line, without the whole text
-	 * or all of its tokens.
-	 */
-	public interface Builder {
-		/**
-		 * Add the next line, which starts at offset lineStart, with the
-		 * tokens the language gave it.
-		 */
-		void addLine(CharSequence line, int lineStart, LineTokens tokens);
-
-		/** Return the outline of the lines added; call it once, last. */
-		Outline build();
-	}
-
-	/**
-	 * Return a builder of the outline of GLSL, from the tokens
+	 * Return a builder of the outline of GLSL, without the whole text
+	 * or all of its tokens, from the tokens
 	 * {@link GlslLexer#lexLine} gives for each line. It keeps the
 	 * declarations in the order they appear until there are
 	 * maxDeclarations of them or the next name would make their names
 	 * longer than maxNameChars together; the declarations after that are
 	 * left out.
 	 */
-	public static Builder builder(int maxDeclarations, int maxNameChars) {
+	public static Knowledge.Builder builder(int maxDeclarations,
+			int maxNameChars) {
 		Scan scan = new Scan(maxDeclarations, maxNameChars);
-		return new Builder() {
+		return new Knowledge.Builder() {
 			@Override
 			public void addLine(CharSequence line, int lineStart,
 					LineTokens tokens) {

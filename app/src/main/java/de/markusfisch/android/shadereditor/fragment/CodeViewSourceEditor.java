@@ -30,8 +30,8 @@ import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
-import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
@@ -109,8 +109,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 			docs = new WordDocs(view, new WordDocs.Host() {
 				@NonNull
 				@Override
-				public Outline declared() {
-					return view.getAnalysis().outline();
+				public Knowledge declared() {
+					return view.getAnalysis().knowledge();
 				}
 
 				@Override
@@ -407,7 +407,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	private void analysed(@NonNull Analysis analysis) {
 		complete();
-		if (convert && isShaderToySource(analysis.outline())) {
+		if (convert && isShaderToySource(analysis.knowledge())) {
 			String source = getText();
 			// Not again after the conversion was undone.
 			String converted = source.equals(converting)
@@ -458,7 +458,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		int n = text.lineOf(caret);
 		int lineStart = text.lineStart(n);
 		Analysis analysis = view.getAnalysis();
-		Outline outline = analysis.outline();
+		Knowledge known = analysis.knowledge();
 		LexedLine line = styles.runs(n).line();
 		int column = caret - lineStart;
 		// Functions with their parenthesis, unless one follows already.
@@ -466,19 +466,19 @@ final class CodeViewSourceEditor implements SourceEditor {
 				(column == line.text().length() ||
 						line.text().charAt(column) != '(');
 		styles.syntax().complete(line, column,
-				lineStart, outline,
+				lineStart, known,
 				analysis.revision() == document.revision(), BUILTIN_UNIFORMS,
 				(words, position) -> listener.onCompletions(parentheses
-						? GlslCompletion.withParentheses(words, outline)
+						? GlslCompletion.withParentheses(words, known)
 						: words, position));
 	}
 
 	// Whether the text defines mainImage and no main, as ShaderToy's do;
 	// ShaderToySource has the last word.
-	private static boolean isShaderToySource(@NonNull Outline outline) {
+	private static boolean isShaderToySource(@NonNull Knowledge knowledge) {
 		boolean mainImage = false;
-		for (Outline.Declaration declaration : outline.declarations()) {
-			if (declaration.kind() != Outline.Kind.FUNCTION) {
+		for (Knowledge.Symbol declaration : knowledge.symbols()) {
+			if (declaration.kind() != Knowledge.Kind.FUNCTION) {
 				continue;
 			}
 			if ("main".equals(declaration.name())) {

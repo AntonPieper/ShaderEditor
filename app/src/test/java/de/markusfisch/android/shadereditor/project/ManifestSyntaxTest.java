@@ -7,9 +7,9 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
-import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 
 public class ManifestSyntaxTest {
@@ -50,7 +50,7 @@ public class ManifestSyntaxTest {
 		}
 		List<String> offered = new ArrayList<>();
 		syntax.complete(LexedLine.of(syntax, line, false, Syntax.TEXT_START,
-						new LineTokens()), line.length(), 0, Outline.NONE,
+						new LineTokens()), line.length(), 0, Knowledge.NONE,
 				true, List.of(), (words, position) ->
 						offered.add(words + " " + position));
 		assertEquals(1, offered.size());

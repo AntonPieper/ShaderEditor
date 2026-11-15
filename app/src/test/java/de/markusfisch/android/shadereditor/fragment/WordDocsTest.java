@@ -8,6 +8,7 @@ import org.junit.Test;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Outline;
 
 /** What Look up and the row's fix add for the app's uniforms. */
@@ -24,16 +25,16 @@ public class WordDocsTest {
 	@Test
 	public void fixesAnUndeclaredUniformOfTheApp() {
 		assertEquals("time", WordDocs.undeclaredUniform(List.of(
-				"'time' : undeclared identifier"), Outline.NONE).getName());
+				"'time' : undeclared identifier"), Knowledge.NONE).getName());
 		assertEquals("touch", WordDocs.undeclaredUniform(List.of(
 				"'x' : syntax error",
-				"use of undeclared identifier 'touch'"), Outline.NONE)
+				"use of undeclared identifier 'touch'"), Knowledge.NONE)
 				.getName());
 		// Not one of the app's, not undeclared, or declared after all.
 		assertNull(WordDocs.undeclaredUniform(List.of(
-				"'timeScale' : undeclared identifier"), Outline.NONE));
+				"'timeScale' : undeclared identifier"), Knowledge.NONE));
 		assertNull(WordDocs.undeclaredUniform(List.of(
-				"'time' : redefinition"), Outline.NONE));
+				"'time' : redefinition"), Knowledge.NONE));
 		String text = "float time;\n";
 		assertNull(WordDocs.undeclaredUniform(List.of(
 						"'time' : undeclared identifier"),

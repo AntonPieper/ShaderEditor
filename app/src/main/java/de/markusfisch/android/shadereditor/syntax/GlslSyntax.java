@@ -18,16 +18,20 @@ public final class GlslSyntax implements Syntax {
 	}
 
 	@Override
-	public Outline.Builder outline(int maxDeclarations, int maxNameChars) {
-		return Outline.builder(maxDeclarations, maxNameChars);
+	public Knowledge.Builder knowledge(int maxSymbols, int maxChars) {
+		return Outline.builder(maxSymbols, maxChars);
 	}
 
 	@Override
 	public void complete(LexedLine line, int column, int lineStart,
-			Outline declared, boolean current, List<String> extraWords,
+			Knowledge known, boolean current, List<String> extraWords,
 			Offer offer) {
+		// Knowledge of another language declares nothing GLSL completes.
 		GlslCompletion.Completions completions = GlslCompletion.atColumn(
-				line, column, lineStart, GlslCompletion.Names.of(declared),
+				line, column, lineStart, GlslCompletion.Names.of(
+						known instanceof Outline outline
+								? outline
+								: Outline.NONE),
 				current, extraWords);
 		offer.offer(completions.words(), completions.position());
 	}

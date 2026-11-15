@@ -1,6 +1,6 @@
 # Editor language tooling
 
-Status: accepted on 2026-11-11. This is the design for the editor's tokenizer, highlighting and completion, and for the lexical layer it shares with project mode. The work is track L of the plan.
+Status: accepted on 2026-11-11; one answer was reversed on 2026-11-15: the editor gets a parser, see section 8, which wins over what the sections before it say about parsing and about the outline. This is the design for the editor's tokenizer, highlighting and completion, and for the lexical layer it shares with project mode. The work is track L of the plan.
 
 The owner asked: "Should the syntax highlighting, lexer and parser (which is currently inline in the lexer somewhat) be rewritten and overhauled from first principles to be architected better, fix the bugs, integrate better and support future filetypes better?"
 
@@ -9,7 +9,7 @@ The owner asked: "Should the syntax highlighting, lexer and parser (which is cur
 Partly, and not where the question points.
 
 - **Tokenizer: yes, replace it.** It is 2,040 lines for what about 400 can do, it knows the wrong GLSL dialect, and it cannot colour the lines project mode is built around (`#include "..."`, `#pragma se input "..."`). The replacement is small because most of the old code is a keyword table and a token type per keyword.
-- **Parser: no.** There is no parser today, only about twelve lines of guessing inside the tokenizer. Nothing the app needs, now or in project mode, requires a GLSL parser. A shallow scan of top-level declarations covers every real need, and only when the first feature asks for it.
+- **Parser: no.** (Reversed on 2026-11-15, section 8: the features this bullet calls unrequested were then asked for.) There is no parser today, only about twelve lines of guessing inside the tokenizer. Nothing the app needs, now or in project mode, requires a GLSL parser. A shallow scan of top-level declarations covers every real need, and only when the first feature asks for it.
 - **The bugs users reported are not in the tokenizer.** Lost colours (upstream issue 192), missing completions and the slow editor (issues 31, 125, 176) come from how colours are applied to the text and from the text widget. A rewrite of the tokenizer alone would fix none of them. They need five small fixes that can go upstream now, before any rewrite.
 - **Integrate better: yes, by sharing one lexical layer with project mode.** Today the editor and the project scanner decide independently what a comment and a directive are, and they disagree on inputs I ran. The shared part is small: comments, directive lines, positions.
 - **Future file types: one interface with two methods.** More than that is speculation; the only second file type that exists is a JSON file with two keys.
@@ -176,13 +176,13 @@ Whether colours are applied after the pause, as today, or as soon as tokens arri
 
 The editor holds one `Syntax`, chosen where a file is opened from the language of the file. The language comes from the file's name through the one table of SPEC 2.1, which today gives GLSL for every text file. That is one lookup, not a registry. A JSON syntax for the manifest would be about fifty lines if someone wants it; I would not write it now. A script language gets a lexer and a word list of its own and reuses `Tokens`, `Style` and all of the editor. Nothing else should be built for file types that do not exist.
 
-**As built.** The editor came to colour line by line (EDITOR.md), so the seam is the line lexer and what hangs off it, not the sketch above. `syntax/Syntax` is an interface of four methods, and the editor knows a language only through it:
+**As built.** The editor came to colour line by line (EDITOR.md), so the seam is the line lexer and what hangs off it, not the sketch above. `syntax/Syntax` is an interface of four methods, and the editor knows a language only through it (the second row as section 8 changed it):
 
 | Method | What the editor does with it |
 | --- | --- |
 | `lexLine(line, breakFollows, state, out)` | `LineStyles` colours the visible lines with it and continues in the background; the state a line passes on is one byte, so a language has 256 states |
-| `outline(max, maxChars)` | `Analysis` reads the whole text with the builder it returns, off the main thread; `null` means the language collects nothing and the text is not tokenized for it |
-| `complete(line, column, lineStart, declared, current, extraWords, offer)` | the strip above the keyboard; the words reach the host through `offer`, so there is no result type per language |
+| `knowledge(maxSymbols, maxChars)` | `Analysis` reads the whole text with the builder it returns, off the main thread, and keeps the `Knowledge` it builds (section 8); `null` means the language knows nothing of a text, which is then not tokenized for it |
+| `complete(line, column, lineStart, known, current, extraWords, offer)` | the strip above the keyboard; the words reach the host through `offer`, so there is no result type per language |
 | `indentation()` | `AutoIndent`: the line comment a new line continues, the characters that add a level at the end of a line, and those that open and close one anywhere |
 
 `LineStyles` holds the file's one syntax; `Analysis`, completion and the indentation of `EditCommands` take it from there. The tokens of a line (`LineTokens`, `LexedLine`), the styles (`Style`) and the declarations (`Outline`) are shared by every language. `GlslSyntax` is GLSL's implementation; it hands each call to the classes that existed before (`GlslLexer`, `Outline.builder`, `GlslCompletion`). The characters of a word, for double-tap selection and the completion prefix, are the same for every language today (letters, digits, `_`) and are not part of the seam. A test keeps the generic classes free of GLSL names. A database shader is always GLSL; a file of a folder gets the syntax of its language.
@@ -293,3 +293,96 @@ Not checked:
 - The scanner fix beyond PR 39's description. L9 and L10 assume `PreprocessorScan` remains the one per-file scan; if the merged fix differs, L10 is re-planned against it.
 - The line estimates for the new code and for options C and D. I wrote no implementation.
 - The release APK size, and the old lexer's behaviour for inputs other than those listed.
+
+## 8. Code knowledge: a parser after all (2026-11-15)
+
+The owner asked for what section 2 called speculative: documentation for built-ins and for one's own functions, help with a call's arguments, go to definition, usages and rename, struct fields after a `.`, an outline. A study with a measured prototype (branch `spike/code-knowledge` on the fork, not merged) answered what the editor can know about code, how fast, and through which seam. Decided on its numbers: **the editor gets a hand-written, error-tolerant GLSL parser, behind one seam, in two halves.** This section wins over the "Parser: no" of the Answer, over option C's verdict in section 3 and over the "Scope" row of section 6.
+
+### 8.1 Why the answer changed
+
+- **The features are requested now.** A tokenizer and a scan of top-level names cannot choose between the forms of `mix` by its arguments, cannot say which declaration a name means inside a function, and so cannot rename.
+- **It is cheap.** Measured on a desktop JVM (a phone is about ten times slower), a full parse of a whole file with the type of every expression: 0.7 ms at 1,000 lines, 3.8 ms at 5,000, 38 ms at 50,000. The analysis it replaces, which lists top-level names, takes 0.4, 2 and 21 to 23 ms: two thirds of either is making the tokens. A keypress costs the main thread 3.5 to 6 µs at any size and stays there, because parsing runs where the analysis runs: off the main thread, after typing pauses.
+- **Section 3 feared macros and `#if` halves.** Measured: all 56 bundled shaders and examples parse without a problem and 99.8 % of their expressions get a type; of a file written in the roughest ShaderToy style, 297 of 300. What stays unknown is a macro that expands to code that is no expression, and what is unknown shows as nothing, never as an error.
+- **It is more tolerant than the scan it replaces.** The outline counted braces and waited: below a missing `}` it found 18 of 34 functions in one test and 75 of 151 in another. The parser's rules (8.3) keep all of them. 2,127 half-typed and 20,000 randomly damaged texts: no failure.
+- **No dependency.** Hand-written, about 2,500 lines for both halves. A generated parser's runtime alone (ANTLR 4.13.2: 326 KB) is three times the size of all of it, and is not made for half-typed code.
+
+What stays as decided: no incremental parsing (a whole file of 5,000 lines is milliseconds, one function is microseconds), no macro expansion (it would move every position), no error marks of the editor's own (its knowledge is more generous than the compiler's and blind behind some macros: it helps, it does not judge).
+
+### 8.2 The seam
+
+`Syntax` keeps four methods. `outline(…)` became `knowledge(maxSymbols, maxChars)`: it returns a builder that `Analysis` feeds the text line by line, as before, and that builds a `syntax/Knowledge`: what the language knows about that version of the text. A knowledge never changes; the editor holds the one of the last analysis and knows for which revision it was made. `complete(…)` takes it where it took the outline.
+
+| `Knowledge` | Answers | Used for |
+| --- | --- | --- |
+| `symbols()` | The declarations of the text in its order, each a `Symbol` | The outline, Go to name, the names completion offers, the struct names that are coloured |
+| `at(offset, word)` | What `word`, which stands at `offset`, refers to: a function with every form it is declared in, else one symbol, or nothing | Look up, go to definition, the call in the strip |
+| `links()` | The files the text names: an include (its text is part of this one) or another file | Files knowing each other (8.5), following a path |
+| `folds()` | The regions that fold, as pairs of lines | Folding and the partner of a bracket, when they are built |
+
+A `Symbol` is a name, a kind (function, variable, uniform, constant, macro, type, parameter, field, include, file), its **detail** (how the language writes it: `vec2 flow(vec2 p)`, `uniform vec2 resolution`, the line of a macro), its **documentation** (the comment that belongs to it, 8.4), the place of its name and of the whole declaration, its **parts** (the parameters of a function or macro, the fields of a struct) and, once it is handed to another file, the file it comes from.
+
+Three points of its shape:
+
+- **`at` takes the word and the offset.** The editor always has the word, from the line's tokens. The offset says from where the word is seen; until names have scopes (half 2) it is not needed, and it lets a knowledge of an older text still answer while the user types.
+- **Usages are not part of it yet.** `occurrences(symbol)` needs scopes to be right (a local hides a global), so it arrives with half 2 and not as a method that is wrong until then.
+- **Nothing of it is GLSL.** JSON and plain text build no knowledge and the editor holds `Knowledge.NONE`; a language that only knows its brackets would answer `folds()` and nothing else.
+
+### 8.3 The parser, in two halves
+
+**Half 1, declarations** (this change set). It reads top-level declarations: functions with every overload and their parameters, global variables, uniforms and constants, structs with their fields, `#define` names with their text and parameters (not expanded), the comment that belongs to each, and exact ranges. Function bodies are not read, only their braces are matched. It replaces the outline's scan; there is one model of a file's structure.
+
+**Half 2, statements and expressions** (later): scopes, the type of every expression, overloads chosen by argument types, usages, rename, members after a `.`.
+
+Both read the text one top-level declaration at a time from the line lexer's tokens, so memory does not grow with the file: what is kept is the declarations, bounded as the outline was (10,000 symbols, a bound on their text).
+
+The rules that make it tolerant, each a thing GLSL cannot mean:
+
+1. **A function head inside a body ends that body.** GLSL has no nested functions, so `float f(vec2 p) {` inside a body means the body lost its `}`. Everything below a missing brace stays known.
+2. **A declaration that lost its `;` ends where a new line starts another**: at a declaration's keyword, or at a type or name that follows a name, a number or a closing bracket, which no declaration continues after.
+3. **A name needs a type before it to be declared.** `x = y` on one line and `z = 1;` on the next declare nothing.
+4. **After `#else` the nesting is what it was at `#if`**, so a function head written once per branch with one body counts its brace once. Code between `#if 0` and its `#else` or `#endif` is not read; every other branch is, so the outline has the names of all of them.
+
+### 8.4 The comment that belongs to a declaration
+
+1. The comment lines directly above it, with no empty line and nothing but comments between: `//` lines or a `/* */` block, their marks removed, joined.
+2. Else a comment behind it on the line it ends on (the usual place for uniforms).
+
+A comment separated by an empty line is about the file or a section. This is what the bundled examples already do: functions have their lines above, uniforms their words behind.
+
+### 8.5 Files know each other
+
+A shader is several files: `#include` pulls text in, an input names another pass. The language knows no paths: a knowledge reports its `links()` as written, and the project layer resolves them and keeps, for the files of the running shader as its last build read them, each file's knowledge and which files it includes. From that:
+
+- **Down:** a file sees what the files it includes declare, directly or through other includes: their names complete, and Look up answers with the declaration, its comment and its file. A declaration crosses between files as its `Symbol`, whose detail is the declaration as text; no types are shared.
+- **Up, as a fallback:** a library that uses a name its includer declares finds it among the declarations of the files that include it.
+- **Not across passes:** an input is another program. It is a file to open, not a source of names.
+- It is rebuilt when a build has read the files, on the project's worker, and belongs to that build as the list of used files does: when the text or what runs changes, the next build replaces it.
+- It ignores order: a name declared below the `#include` line counts as visible inside the include. The editor is then more generous than the compiler, which is harmless while its knowledge marks no errors.
+
+**The index is per file, with the include edges in both directions**, and that is what the owner's question needs: "what if I want to rename a define in an include file?"
+
+### 8.6 How half 2 will rename a name declared in an include
+
+Rename is not built. This is the answer it will give, written down so that half 1's index is the right base.
+
+A name is declared in file D, say `#define STEPS 48` in `lib/march.glsl`. It can mean that declaration in D and in every file that includes D, directly or through other includes. That set comes from the index's edges read backwards, and it must be **every such file of the project folder, not only the files of the running shader**: another pass, or a shader that is not running, may include D too. So when rename is asked for, the project reads every text file of the folder once on its worker into the same index (the structure is the same; half 1 only feeds it less).
+
+**Certain, renamed without asking:** the places in D and in the files that include it where the word is code, in a branch the file compiles as far as its text tells, and where it means that declaration: for a macro every use below its `#define` (or below the `#include` line that brings it in) up to an `#undef`; for a function or a global every use that no local of the same name hides.
+
+**Listed, to tick before anything changes:**
+
+- uses inside the body of another `#define`: the editor reads a macro's body as text and cannot tell where it expands;
+- uses in an `#if` branch that is not compiled as far as the file tells;
+- files that declare the same name themselves: which declaration a use there means depends on order;
+- files that use the word and do not include D but are included after D by a common includer: there the name reaches them through the includer, and through another includer it may not.
+
+Comments and strings are not touched. Before the first change every file's revision is checked against the knowledge the places came from; each file changes through its document in one undo step.
+
+### 8.7 State
+
+| Part | State |
+| --- | --- |
+| The seam: `Knowledge`, `Syntax.knowledge`, `complete` reading it | Built. GLSL answers from the outline's scan until the parser replaces it |
+| Half 1 of the parser | Not yet |
+| Files know each other | Not yet |
+| Half 2, usages, rename | Not built |

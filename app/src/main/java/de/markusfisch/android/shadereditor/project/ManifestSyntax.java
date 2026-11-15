@@ -5,9 +5,9 @@ import java.util.Collections;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.syntax.Indentation;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
-import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 
@@ -38,13 +38,13 @@ final class ManifestSyntax implements Syntax {
 	}
 
 	@Override
-	public Outline.Builder outline(int maxDeclarations, int maxNameChars) {
+	public Knowledge.Builder knowledge(int maxSymbols, int maxChars) {
 		return null;
 	}
 
 	@Override
 	public void complete(LexedLine line, int column, int lineStart,
-			Outline declared, boolean current, List<String> extraWords,
+			Knowledge known, boolean current, List<String> extraWords,
 			Offer offer) {
 		List<String> words = new ArrayList<>();
 		int index = column > 0 ? line.indexAt(column - 1) : -1;

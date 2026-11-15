@@ -65,13 +65,13 @@ public final class JsonSyntax implements Syntax {
 	}
 
 	@Override
-	public Outline.Builder outline(int maxDeclarations, int maxNameChars) {
+	public Knowledge.Builder knowledge(int maxSymbols, int maxChars) {
 		return null;
 	}
 
 	@Override
 	public void complete(LexedLine line, int column, int lineStart,
-			Outline declared, boolean current, List<String> extraWords,
+			Knowledge known, boolean current, List<String> extraWords,
 			Offer offer) {
 		offer.offer(Collections.emptyList(), 0);
 	}
