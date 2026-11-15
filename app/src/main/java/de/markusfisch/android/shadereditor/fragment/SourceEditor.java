@@ -121,6 +121,9 @@ interface SourceEditor {
 	/** Replace the selection by text. */
 	void insert(@NonNull CharSequence text);
 
+	/** Do what the Tab key does, for a Tab key on the screen. */
+	void tab();
+
 	/** Add a uniform statement, in place of one of the same uniform. */
 	void addUniform(@NonNull String statement);
 

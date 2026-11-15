@@ -81,6 +81,20 @@ public class KeyCommandsTest {
 		assertEquals("aXb", document.text().toString());
 	}
 
+	// The Tab key on the screen sends no character; a hardware Tab does.
+	@Test
+	public void tabIndentsSelectedLinesWithOrWithoutItsCharacter() {
+		for (String typed : new String[]{null, "\t"}) {
+			Document document = new Document(Text.of("a\nb\nc"));
+			document.select(0, 5);
+			KeyCommands keys = keys(document, new String[1], true);
+			assertTrue(keys.keyDown(KeyEvent.KEYCODE_TAB, 0, typed, 10));
+			assertEquals("\ta\n\tb\n\tc", document.text().toString());
+			assertTrue(keys.keyDown(KeyEvent.KEYCODE_TAB, SHIFT, typed, 10));
+			assertEquals("a\nb\nc", document.text().toString());
+		}
+	}
+
 	@Test
 	public void cutKeepsTheSelectionIfTheClipboardRefusesIt() {
 		Document document = new Document(Text.of("abc"));

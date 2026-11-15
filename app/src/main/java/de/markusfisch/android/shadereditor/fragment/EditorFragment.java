@@ -536,6 +536,10 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 		editor.insert(text);
 	}
 
+	public void tab() {
+		editor.tab();
+	}
+
 	/** Add statements by the rule files have; see ShaderEditor. */
 	public void setAddsByFileRule(boolean byFileRule) {
 		addsByFileRule = byFileRule;

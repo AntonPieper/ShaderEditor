@@ -1314,6 +1314,14 @@ public class CodeView extends View {
 		}
 	}
 
+	/** Do what the Tab key does, for a Tab key on the screen. */
+	public void tab() {
+		if (keys != null) {
+			action("key", KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_TAB, 0, null);
+			key(KeyEvent.KEYCODE_TAB, 0, null);
+		}
+	}
+
 	/** Do a context menu action of the keyboard; return if it is known. */
 	boolean contextMenuAction(int id) {
 		if (id == android.R.id.shareText) {

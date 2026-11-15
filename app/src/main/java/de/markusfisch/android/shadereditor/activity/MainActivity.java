@@ -87,7 +87,17 @@ public class MainActivity extends AppCompatActivity {
 				shaderViewListener);
 		extraKeysManager = new ExtraKeysManager(this,
 				findViewById(android.R.id.content),
-				editorFragment::insert);
+				new ExtraKeysManager.Editor() {
+					@Override
+					public void insert(@NonNull CharSequence text) {
+						editorFragment.insert(text);
+					}
+
+					@Override
+					public void tab() {
+						editorFragment.tab();
+					}
+				});
 		uiManager = new UIManager(this,
 				editorFragment,
 				extraKeysManager,
