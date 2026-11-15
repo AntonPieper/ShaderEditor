@@ -54,6 +54,7 @@ final class LibraryArchive {
 	static final int FACTS_BYTES = 1 << 20;
 
 	private static final int FORMAT = 1;
+	private static final float MOST_QUALITY = 2f;
 	// The longest name the storage of a phone holds, in bytes.
 	private static final int LONGEST = 255;
 	private static final Naming NAMING = new Naming(List.of());
@@ -105,7 +106,11 @@ final class LibraryArchive {
 					template = fields[1];
 				} else if (fields.length == 3 &&
 						fields[0].equals("quality")) {
-					qualities.put(fields[2], Float.parseFloat(fields[1]));
+					float quality = Float.parseFloat(fields[1]);
+					// Nothing draws at another size than these.
+					if (quality > 0f && quality <= MOST_QUALITY) {
+						qualities.put(fields[2], quality);
+					}
 				}
 			} catch (NumberFormatException e) {
 				// A line nothing wrote; it says nothing.

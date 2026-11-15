@@ -158,6 +158,33 @@ public final class LibrarySettings {
 	}
 
 	/**
+	 * Keep qualities for new files, each by its path, in one write, and
+	 * template as the shader new ones are copied from when none is
+	 * chosen. Return whether that is kept.
+	 */
+	synchronized boolean adopt(Map<ProjectPath, Float> qualities,
+			ProjectPath template) {
+		State state;
+		try {
+			state = read();
+		} catch (IOException e) {
+			return false;
+		}
+		for (Map.Entry<ProjectPath, Float> quality : qualities.entrySet()) {
+			if (quality.getValue() == 1f) {
+				state.qualities.remove(quality.getKey().toString());
+			} else {
+				state.qualities.put(quality.getKey().toString(),
+						quality.getValue());
+			}
+		}
+		if (state.template() == null && root(template) != null) {
+			state.template = template.toString();
+		}
+		return write(state);
+	}
+
+	/**
 	 * Follow a file or folder that was renamed or deleted: what was
 	 * kept for it, or for a file under it, is kept for where it is
 	 * now, or forgotten. Return whether that is kept.

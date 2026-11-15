@@ -196,9 +196,7 @@ public final class Projects {
 				ProjectPath main = ProjectPath.parse(name + "/" +
 						OpenProject.MAIN).value();
 				count += main != null && files.head(main, 1) != null ? 1 : 0;
-			} else if (ShaderLanguage.listed(name) == ShaderLanguage.GLSL &&
-					!name.toLowerCase(java.util.Locale.ROOT)
-							.endsWith(ShaderLanguage.INCLUDE)) {
+			} else if (ShaderLanguage.namesShader(name)) {
 				++count;
 			}
 		}
