@@ -102,6 +102,10 @@ public final class WallpaperSnapshots {
 		if (preparation == null || preparation.plan() == null) {
 			return "the shader has errors; fix them first";
 		}
+		// What runs while a number is tuned is not what the files say.
+		if (preparation.temporary()) {
+			return "a number is being tuned; finish tuning first";
+		}
 		Snapshot before = current();
 		int number = 1;
 		String[] names = root.list();

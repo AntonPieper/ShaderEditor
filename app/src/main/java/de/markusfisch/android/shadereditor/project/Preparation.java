@@ -33,6 +33,9 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
  *                     order of reading: later stages use these bytes
  *                     and never read a file again
  * @param roles        what each file of uses is to the running shader
+ * @param temporary    whether a text no document has went into it, as
+ *                     while a number is tuned: it runs, and is never
+ *                     kept, as the wallpaper is
  */
 public record Preparation(
 		RenderPlan plan,
@@ -40,7 +43,8 @@ public record Preparation(
 		List<SourceAssembly.Dependency> dependencies,
 		List<SourceAssembly.Dependency> uses,
 		Map<ProjectPath, ProjectFiles.Content> files,
-		Map<ProjectPath, FileRole> roles) {
+		Map<ProjectPath, FileRole> roles,
+		boolean temporary) {
 	public Preparation {
 		diagnostics = List.copyOf(diagnostics);
 		dependencies = List.copyOf(dependencies);
@@ -54,7 +58,13 @@ public record Preparation(
 			List<SourceAssembly.Dependency> dependencies,
 			List<SourceAssembly.Dependency> uses,
 			Map<ProjectPath, ProjectFiles.Content> files) {
-		this(plan, diagnostics, dependencies, uses, files, Map.of());
+		this(plan, diagnostics, dependencies, uses, files, Map.of(), false);
+	}
+
+	/** This preparation, made of a text no document has. */
+	public Preparation asTemporary() {
+		return new Preparation(plan, diagnostics, dependencies, uses, files,
+				roles, true);
 	}
 
 	/**
@@ -95,7 +105,7 @@ public record Preparation(
 				? null
 				: plan(graph, diagnostics);
 		return new Preparation(plan, diagnostics, captured.dependencies(),
-				uses, captured.contents(), roles(graph));
+				uses, captured.contents(), roles(graph), false);
 	}
 
 	// What each file is to the running shader, from the pass graph: a
