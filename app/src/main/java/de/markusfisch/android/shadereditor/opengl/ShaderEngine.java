@@ -40,8 +40,12 @@ public final class ShaderEngine {
 		// The frames drawn per second, 0 when no picture runs any more.
 		void onFramesPerSecond(int fps);
 
-		// Called on the GL thread when a build begins to draw, with its
-		// passes, or with none when nothing draws any more.
+		// Called on the GL thread, as every call of this listener: when
+		// a build begins to draw, with its passes, or with none when a
+		// failed build ends what drew. When the host pauses or detaches
+		// the view, which ends the GL thread first, passes() is empty
+		// from then on without a call; the build that draws after it
+		// calls this again.
 		default void onPasses(@NonNull RunningPasses passes) {
 		}
 	}
@@ -51,7 +55,11 @@ public final class ShaderEngine {
 		// Called on the GL thread about four times a second, and after
 		// every frame drawn while paused: a picture of every row of
 		// passes() that draws, in their order, as the screen would show
-		// that pass.
+		// that pass. The list, its pictures and their pixels are filled
+		// again by the next call: copy what is kept beyond this one.
+		// Once watchPasses() replaced this watcher, no call starts; one
+		// under way ends first, so a call must not wait for the thread
+		// that calls watchPasses().
 		void onPictures(@NonNull List<PassPicture> pictures);
 
 		// Called on the GL thread right after onPictures(), at most once
@@ -158,8 +166,7 @@ public final class ShaderEngine {
 	private volatile Fit fit;
 	// Who watches the passes, and who was told last; GL thread only:
 	// what makes their pictures, and when it did.
-	@Nullable
-	private volatile PassWatcher watcher;
+	private final PassWatching watching = new PassWatching();
 	@Nullable
 	private PassWatcher told;
 	@Nullable
@@ -312,7 +319,7 @@ public final class ShaderEngine {
 	// the passes; with null nothing of it costs anything: what made the
 	// pictures goes with the next frame.
 	public void watchPasses(@Nullable PassWatcher watcher) {
-		this.watcher = watcher;
+		watching.set(watcher);
 		requestRender();
 	}
 
@@ -412,7 +419,7 @@ public final class ShaderEngine {
 				!build.hasTargets()) {
 			device.clear(GLES20.GL_COLOR_BUFFER_BIT |
 					GLES20.GL_DEPTH_BUFFER_BIT);
-			if (watcher == null && inspector != null) {
+			if (watching.get() == null && inspector != null) {
 				inspector.release();
 				inspector = null;
 			}
@@ -434,8 +441,13 @@ public final class ShaderEngine {
 			inputs.restart(now);
 			thumbnails.onFramesLost();
 		}
-		var draw = Playback.decide(paused, paused && takeStep(),
-				againAsked.getAndSet(false), build.needsFrame(), swap);
+		// The row of the table in Playback, in one place.
+		var draw = Playback.decide(paused, steps.get() > 0,
+				againAsked.getAndSet(false), inputs.restarted(),
+				build.needsFrame(), swap);
+		if (draw == Playback.Draw.STEP) {
+			takeStep();
+		}
 		renderPipeline.setLimit(limitAt(now));
 		int shownPass = build.shown(shown);
 		var fit = this.fit;
@@ -449,15 +461,11 @@ public final class ShaderEngine {
 			watch(build, now, false);
 			return;
 		}
-		var frame = switch (draw) {
-			case STEP -> inputs.captureStep(fTimeMax);
-			case AGAIN -> inputs.captureAgain(fTimeMax);
-			default -> inputs.capture(now, fTimeMax);
-		};
+		var frame = inputs.capture(draw, now, fTimeMax);
 		// Once for every program the frame draws.
 		sources.update(now);
 		build.draw(renderPipeline, builtins, frame, shownPass,
-				draw != Playback.Draw.AGAIN);
+				draw == Playback.Draw.AGAIN);
 		// A source that failed after it started, such as a camera that
 		// did not open.
 		if (sources.takeWarned()) {
@@ -588,7 +596,7 @@ public final class ShaderEngine {
 				report(shaders.nextFailed(), errors);
 				if (drawn != null && shaders.current() == null) {
 					// A failed build of another picture ended it.
-					clearConfiguration();
+					endPicture();
 				}
 			}
 			endCurrentWithoutTargets();
@@ -655,7 +663,7 @@ public final class ShaderEngine {
 		var build = shaders.current();
 		if (build != null && !build.hasTargets()) {
 			shaders.currentFailed();
-			clearConfiguration();
+			endPicture();
 		}
 	}
 
@@ -665,7 +673,7 @@ public final class ShaderEngine {
 				formats, errors);
 		if (build == null) {
 			if (shaders.failed(revision)) {
-				clearConfiguration();
+				endPicture();
 			}
 			report(revision, errors);
 			return;
@@ -732,6 +740,12 @@ public final class ShaderEngine {
 		inputs.pause();
 		fTimeMax = DEFAULT_FTIME_MAX;
 		runSources(null);
+	}
+
+	// GL thread. Nothing draws any more: as clearConfiguration(), and the
+	// host hears that no passes draw.
+	private void endPicture() {
+		clearConfiguration();
 		showPasses(RunningPasses.NONE);
 	}
 
@@ -741,7 +755,7 @@ public final class ShaderEngine {
 	// pictures go when no one watches.
 	private void watch(@NonNull PlanRuntime build, long now,
 			boolean fresh) {
-		var watcher = this.watcher;
+		var watcher = watching.get();
 		if (watcher == null) {
 			if (inspector != null) {
 				inspector.release();
@@ -760,13 +774,16 @@ public final class ShaderEngine {
 		if (inspector == null) {
 			inspector = new PassInspector(device);
 		}
-		var sources = build.lastFrames();
-		var pictures = inspector.pictures(sources, fit);
-		watcher.onPictures(pictures);
+		build.lastFrames(inspector.sources());
+		var pictures = inspector.pictures(fit);
+		// Not to one that stopped watching meanwhile, nor after.
+		if (!watching.pictures(watcher, pictures)) {
+			return;
+		}
 		if (fresh || first || now - lastFacts >= FACT_INTERVAL_NS) {
 			lastFacts = now;
-			watcher.onFacts(inspector.facts(build.running(), sources,
-					pictures, now, formats.glesVersion() >= 3));
+			watching.facts(watcher, inspector.facts(build.running(), now,
+					formats.glesVersion() >= 3));
 		}
 	}
 
@@ -813,8 +830,11 @@ public final class ShaderEngine {
 		activeBuiltins = new ActiveBuiltins(device, build.passes(), sources);
 	}
 
+	// After the GL thread ended, on the host's thread: passes() is empty
+	// without a call, as the listener is called on the GL thread only.
 	private void discardContextResources() {
 		clearConfiguration();
+		passes = RunningPasses.NONE;
 		shaders.contextLost();
 		renderPipeline.discardContextResources();
 		thumbnails.onFramesLost();

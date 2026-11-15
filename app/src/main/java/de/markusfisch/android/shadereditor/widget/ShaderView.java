@@ -85,6 +85,9 @@ public class ShaderView extends GLSurfaceView {
 	// the view is resumed, which a limit's frames wait for.
 	private int frameRateLimit;
 	private boolean resumed = true;
+	// Not attached only after it was detached: the wallpaper's view is
+	// never in a window.
+	private boolean attached = true;
 	private boolean pacing;
 	// Asks for the next frame on the first display frame after a frame
 	// of the limit is over: the GL thread draws only then.
@@ -149,6 +152,8 @@ public class ShaderView extends GLSurfaceView {
 	protected void onAttachedToWindow() {
 		super.onAttachedToWindow();
 		engine.onAttached();
+		attached = true;
+		applyRenderMode();
 	}
 
 	@Override
@@ -156,6 +161,10 @@ public class ShaderView extends GLSurfaceView {
 		super.onDetachedFromWindow();
 		waiting.set(null);
 		engine.onDetached();
+		// A detached view asks for no frames, nor keeps its callback,
+		// which would keep the view.
+		attached = false;
+		applyRenderMode();
 	}
 
 	// Click handling is implemented in the engine.
@@ -245,12 +254,10 @@ public class ShaderView extends GLSurfaceView {
 	}
 
 	private void applyRenderMode() {
-		boolean paced = !paused && frameRateLimit > 0 &&
-				requestedRenderMode == GLSurfaceView.RENDERMODE_CONTINUOUSLY;
-		super.setRenderMode(paused || paced
-				? GLSurfaceView.RENDERMODE_WHEN_DIRTY
-				: requestedRenderMode);
-		boolean pace = paced && resumed;
+		super.setRenderMode(renderMode(paused, frameRateLimit,
+				requestedRenderMode));
+		boolean pace = paces(paused, frameRateLimit, requestedRenderMode,
+				resumed, attached);
 		if (pace != pacing) {
 			pacing = pace;
 			if (pace) {
@@ -260,6 +267,27 @@ public class ShaderView extends GLSurfaceView {
 				Choreographer.getInstance().removeFrameCallback(this.pace);
 			}
 		}
+	}
+
+	// The render mode for the mode a host asks for: on demand while
+	// paused, or while a limit asks for the frames.
+	static int renderMode(boolean paused, int limit, int requested) {
+		return paused || paced(paused, limit, requested)
+				? GLSurfaceView.RENDERMODE_WHEN_DIRTY
+				: requested;
+	}
+
+	// Whether frames are asked for by a limit: not while paused, nor
+	// when the host asked for frames on demand only, nor while the view
+	// is paused or detached.
+	static boolean paces(boolean paused, int limit, int requested,
+			boolean resumed, boolean attached) {
+		return paced(paused, limit, requested) && resumed && attached;
+	}
+
+	private static boolean paced(boolean paused, int limit, int requested) {
+		return !paused && limit > 0 &&
+				requested == GLSurfaceView.RENDERMODE_CONTINUOUSLY;
 	}
 
 	// The next frame of the limit, on the first display frame after one

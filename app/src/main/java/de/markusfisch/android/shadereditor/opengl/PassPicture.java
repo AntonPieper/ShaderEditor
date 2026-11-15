@@ -12,7 +12,8 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
  * @param width  its width in pixels
  * @param height its height in pixels
  * @param argb   colour ints, the top row first, with alpha as the pass
- *               drew it
+ *               drew it; filled again by the next round of pictures, so
+ *               a host copies what it keeps
  */
 public record PassPicture(
 		@NonNull ProjectPath file,

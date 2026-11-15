@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import androidx.annotation.NonNull;
@@ -103,12 +104,81 @@ public class PassFactsTest {
 		var life = facts(engine, new PassInspector(engine.device), 0).get(1);
 		assertEquals(HostDirective.Format.RGBA16F, life.format());
 		assertEquals(PassInspector.FLOAT_SAMPLE, life.sample());
-		var es2 = new PassInspector(engine.device).facts(
-				engine.runtime.running(), engine.runtime.lastFrames(),
-				new PassInspector(engine.device).pictures(
-						engine.runtime.lastFrames()), 0, false).get(1);
+		var es2 = facts(engine, new PassInspector(engine.device), 0, false)
+				.get(1);
 		assertEquals(PassInspector.PICTURE, es2.sample());
 		assertNull(es2.low());
+	}
+
+	// F4: facts are of the target, never of its fitted view: fitting a
+	// pass that does not change keeps it unchanged and its sample.
+	@Test
+	public void fitDoesNotChangeTheFacts() {
+		var engine = life(HostDirective.Format.RGBA8, 3);
+		var inspector = new PassInspector(engine.device);
+		engine.draw(0);
+		var before = facts(engine, inspector, null, 0, true).get(2);
+		engine.draw(1);
+		var fitted = facts(engine, inspector,
+				new Fit(path("main.frag"), 2, 3), 1_000_000_000L, true).get(2);
+		assertEquals(1_000_000_000L, fitted.unchanged());
+		assertEquals(String.valueOf(before.same()),
+				String.valueOf(fitted.same()));
+	}
+
+	// F5: no dithering may change the bytes of a picture or of a float's
+	// bits while the inspector draws; it is on again after.
+	@Test
+	public void ditherIsOffWhileTheInspectorDraws() {
+		var engine = life(HostDirective.Format.RGBA16F, 3);
+		engine.draw(0);
+		var calls = engine.device.calls;
+		int from = calls.size();
+		facts(engine, new PassInspector(engine.device), 0);
+		var round = calls.subList(from, calls.size());
+		int dither = android.opengl.GLES20.GL_DITHER;
+		// Off before each read-back's draws, on after: pictures, floats.
+		assertEquals(java.util.Collections.frequency(round, "disable " + dither),
+				java.util.Collections.frequency(round, "enable " + dither));
+		assertEquals(2, java.util.Collections.frequency(round,
+				"disable " + dither));
+		assertTrue(engine.device.enabled.contains(dither));
+	}
+
+	// F5a: the textures it reads are sampled as before it read them, so a
+	// thumbnail of an output presented linear stays linear.
+	@Test
+	public void theSamplingOfWhatItReadsIsSetBack() {
+		var engine = new FakeEngine(prepare("main.frag", lines(
+				"#pragma se target present=linear", MAIN)), 3);
+		engine.resize(8, 4);
+		engine.draw(0);
+		var inspector = new PassInspector(engine.device);
+		engine.runtime.lastFrames(inspector.sources());
+		var output = inspector.sources().get(0).texture;
+		var before = output.sampling();
+		assertNotNull(before);
+		assertTrue(before != de.markusfisch.android.shadereditor.project.RenderPlan.Sampling.PASS);
+		inspector.pictures(null);
+		assertEquals(before, output.sampling());
+	}
+
+	// A round allocates no pixels once its buffers fit: the pictures and
+	// their pixels are the round before's.
+	@Test
+	public void aRoundKeepsItsBuffers() {
+		var engine = life(HostDirective.Format.RGBA8, 3);
+		var inspector = new PassInspector(engine.device);
+		engine.draw(0);
+		engine.runtime.lastFrames(inspector.sources());
+		var first = new java.util.ArrayList<>(inspector.pictures(null));
+		engine.draw(1);
+		engine.runtime.lastFrames(inspector.sources());
+		var second = inspector.pictures(null);
+		for (int i = 0; i < first.size(); ++i) {
+			assertSame(first.get(i).argb(), second.get(i).argb());
+			assertSame(first.get(i), second.get(i));
+		}
 	}
 
 	@NonNull
@@ -128,9 +198,23 @@ public class PassFactsTest {
 	@NonNull
 	private static List<PassFacts> facts(@NonNull FakeEngine engine,
 			@NonNull PassInspector inspector, long now) {
-		var sources = engine.runtime.lastFrames();
-		var facts = inspector.facts(engine.runtime.running(), sources,
-				inspector.pictures(sources), now, true);
+		return facts(engine, inspector, now, true);
+	}
+
+	@NonNull
+	private static List<PassFacts> facts(@NonNull FakeEngine engine,
+			@NonNull PassInspector inspector, long now, boolean es3) {
+		return facts(engine, inspector, null, now, es3);
+	}
+
+	// A round as ShaderEngine.watch() makes it.
+	@NonNull
+	static List<PassFacts> facts(@NonNull FakeEngine engine,
+			@NonNull PassInspector inspector, @androidx.annotation.Nullable Fit fit,
+			long now, boolean es3) {
+		engine.runtime.lastFrames(inspector.sources());
+		inspector.pictures(fit);
+		var facts = inspector.facts(engine.runtime.running(), now, es3);
 		assertNotNull(facts);
 		return facts;
 	}
