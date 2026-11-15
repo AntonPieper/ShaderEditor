@@ -376,6 +376,40 @@ The move runs by itself at the first start of a build that has project mode on, 
 
 A debug build can **redo the move**: the library folder and its metadata are renamed aside (`Shaders before redo`, with a number when that is taken), nothing is deleted, and the move runs again into an empty library. It refuses while the library is open or holds unsaved text. The old library keeps its session, so opening `Shaders before redo` finds its undo histories again; its settings and pictures are kept in `files/library before redo` and are not attached to it again. The new library starts with a session, settings and pictures of its own.
 
+#### The archive
+
+**Export library** writes the library as one zip file, and **Import library** reads such a file back into the library, adding to what is there and never changing or removing a file. It is the backup of a build in which shaders are files: the database export of older builds holds none of them. FILES 5.1c says how both stay safe; UX 8 what the user sees.
+
+```text
+ShaderEditor-library-2026-11-15.zip
+  .shadereditor/library.txt
+  Clouds.frag
+  Größe.frag
+  Ink/main.frag
+  Ink/paper.frag
+  README.md
+  ideas/
+  presets/noise.frag
+  textures/noise.png
+```
+
+- **The user's files, as they are.** Every file and folder of the library's folder, under its path, with its bytes: shaders, the folders of shaders of several files, `textures/`, `presets/`, READMEs and whatever else lies there. A folder is an entry of its own only when it is empty. Unzipped anywhere, it is a folder ShaderEditor opens like any other.
+- **Not in it:** names that begin with a dot, at any depth, which the app shows nowhere and makes only for its own temporary files (the result says how many were left out); links; the text of a file that is not saved yet (the file is written as it was saved last, and the result says how many files have such text); the shaders that are still in the database (the result says how many); the folders a redo put aside, the examples, and folders opened from elsewhere, which are not the library.
+- **What the app keeps beside the files goes along in one small text file,** `.shadereditor/library.txt`, the first entry. Its name begins with a dot, so it can never be a file of the library, and whoever unzips the archive by hand can ignore it. It is written like the library's settings: one fact a line, the fields apart by a tab (shown as a space here), a path last.
+
+| Line | Says |
+| --- | --- |
+| `format 1` | The version of this layout. Import reads 1 and refuses a higher number, naming it; lines it does not know are skipped, so a later version can add facts without a new number |
+| `app 2.36.3` | The version of the app that wrote it, for a report of a problem |
+| `exported 2026-11-15T14:03:22Z` | When, in UTC |
+| `template Plasma.frag` | The shader new ones are copied from, when one is chosen |
+| `quality 0.5 Clouds.frag` | The quality of a file where it is not 1. A value that is not above 0 and at most 2, the sizes the app draws at, is skipped |
+
+- **Preview pictures are not in it.** They are made again when a shader runs, they would make the archive several times larger than the shaders, and a picture in an archive somebody edited would show another shader than the file holds. After an import a shader shows the empty frame of one that never ran until it ran once. The folder `.shadereditor/` is kept for what a later version adds; an import skips what it does not know there.
+- **The same library gives the same archive.** The entries are in the order of their paths, compared character by character, behind the text file. Each has the time its file was last changed, as a zip keeps it: to two seconds, in the time zone of the phone. Only the `exported` line and the time of the text file differ between two exports of an unchanged library.
+- **An archive made by hand is read the same way.** Without the text file every file in it is imported with quality 1. Names are taken in either Unicode form and stored as NFC; an entry whose name begins with a dot is skipped, which leaves out what a Mac adds to an archive (`__MACOSX/._name`, `.DS_Store`). A single folder around everything is not taken off: it becomes a folder of the library.
+- **Limits, the same for writing and reading:** 20 000 entries and 1 GiB of file content. Export refuses a library beyond them with the reason (its folder can still be copied with the Files app, where it is `ShaderEditor / Shaders`), and for the same reason a file whose name Import would refuse (FILES 5.1c) fails the export with that name, to be renamed first. So every archive Export writes is one Import reads. A library without files is not exported. There is no limit of its own for one file, and so none for a text file: the editor refuses to open a text above 16 MiB wherever it lies, and an export that Import refused because of one would be a backup that cannot be restored.
+
 ### 12.3 Old shader text from outside
 
 A file is always a project file; never choose a dialect per file at render time. Shader text written for the old conventions is helped by its diagnostics instead: an unprovided sampler whose name matches a library texture, or a trailing `///` sampler comment, offers **Convert**, which applies the converter to that file. Without that action the text is read as written, and a `///` comment is only a comment.
