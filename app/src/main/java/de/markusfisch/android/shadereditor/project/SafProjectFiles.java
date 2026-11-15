@@ -161,12 +161,13 @@ public final class SafProjectFiles implements ProjectFiles {
 	}
 
 	@Override
-	public android.graphics.Bitmap thumbnail(ProjectPath path, int size) {
+	public android.graphics.Bitmap thumbnail(ProjectPath path, int size,
+			android.os.CancellationSignal cancel) {
 		try {
 			Document file = known(segments(path));
 			return file == null || file.folder()
 					? null
-					: resolver.thumbnail(file.id(), size);
+					: resolver.thumbnail(file.id(), size, cancel);
 		} catch (IOException | RuntimeException e) {
 			return null;
 		}

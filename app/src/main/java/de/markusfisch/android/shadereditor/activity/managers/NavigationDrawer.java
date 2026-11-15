@@ -316,6 +316,11 @@ public class NavigationDrawer implements ShaderList {
 						!drawerLayout.isDrawerOpen(drawer)) {
 					scrollToSelected();
 					loadRecent();
+					// Faces let go when it closed are asked for again.
+					RecyclerView.Adapter<?> shown = list.getAdapter();
+					if (shown != null) {
+						shown.notifyDataSetChanged();
+					}
 				}
 			}
 
@@ -329,6 +334,8 @@ public class NavigationDrawer implements ShaderList {
 				back.setEnabled(false);
 				// It opens again where the file in the editor is.
 				go(home());
+				// Nothing more is read for rows nobody sees.
+				imageFaces.stop();
 			}
 		});
 		// A drawer left open before a rotation is opened again without
@@ -560,7 +567,7 @@ public class NavigationDrawer implements ShaderList {
 		if (folder != null) {
 			folder.close();
 		}
-		imageFaces.stop();
+		imageFaces.destroy();
 		executor.shutdownNow();
 		listings.shutdownNow();
 		handler.removeCallbacksAndMessages(null);
@@ -666,24 +673,27 @@ public class NavigationDrawer implements ShaderList {
 		}
 	}
 
-	// The image of row in the folder of level, in its sheet.
+	// The image of row in the folder of level, in its sheet. Its read
+	// stops when the sheet goes.
 	private void showImage(@NonNull Level level, @NonNull Row row) {
 		if (folder != null) {
 			imageSheets.show(folder, level, row, running, used,
-					Math.max(lists.getWidth(), 512), (project, path, side,
-							sheet) -> project.look(files -> ImageFaces.large(
-									files, path, side), large -> {
+					(project, path, sheet) -> sheet.setOnDismiss(
+							imageFaces.large(project.reading(), path,
+									(large, again) -> {
 								if (!sheet.isShowing()) {
 									return;
 								} else if (large == null) {
 									sheet.setUnreadable(activity.getString(
-											R.string.nav_image_unreadable,
+											again
+													? R.string.nav_image_not_read
+													: R.string.nav_image_unreadable,
 											path.getFileName()));
 									return;
 								}
 								sheet.setImage(large.bitmap(),
 										imageSheets.info(large));
-							}));
+							})::cancel));
 		}
 	}
 
@@ -726,7 +736,8 @@ public class NavigationDrawer implements ShaderList {
 						: null;
 				var path = ProjectPath.parse(row.key());
 				if (id != null && project != null && path.isSuccess()) {
-					imageFaces.want(id, project, path.value(), ready);
+					imageFaces.want(id, project.reading(), path.value(),
+							ready);
 				}
 			}
 
@@ -989,10 +1000,11 @@ public class NavigationDrawer implements ShaderList {
 		if (folder != null && !folder.key().equals(to.key())) {
 			folder.close();
 			folder = null;
-			imageFaces.stop();
 		} else if (folder != null) {
 			folder.keep(to);
 		}
+		// What the level left wanted is not read any more.
+		imageFaces.stop();
 		listing = list(to);
 		showHeader();
 		list.animate().cancel();

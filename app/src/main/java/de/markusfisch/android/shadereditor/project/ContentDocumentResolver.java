@@ -151,10 +151,11 @@ public final class ContentDocumentResolver implements DocumentResolver {
 	}
 
 	@Override
-	public android.graphics.Bitmap thumbnail(String id, int size) {
+	public android.graphics.Bitmap thumbnail(String id, int size,
+			android.os.CancellationSignal cancel) {
 		try {
 			return DocumentsContract.getDocumentThumbnail(resolver, uri(id),
-					new android.graphics.Point(size, size), null);
+					new android.graphics.Point(size, size), cancel);
 		} catch (Exception e) {
 			// A provider that offers none says so in many ways.
 			return null;
