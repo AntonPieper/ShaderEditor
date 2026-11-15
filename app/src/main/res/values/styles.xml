@@ -333,4 +333,16 @@
 		<item name="chipIconSize">18dp</item>
 		<item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
 	</style>
+	<!-- Fit, on the pass shown: a filter chip with a check while on. -->
+	<style name="Widget.ShaderEditor.Chip.Fit" parent="Widget.Material3.Chip.Filter">
+		<item name="chipSurfaceColor">@android:color/transparent</item>
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+		<item name="chipMinHeight">32dp</item>
+		<item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+		<item name="chipBackgroundColor">@color/fit_chip_fill</item>
+		<item name="chipStrokeColor">?attr/colorOnSecondaryContainer</item>
+		<item name="chipStrokeWidth">1dp</item>
+		<item name="android:textColor">@color/fit_chip_text</item>
+		<item name="checkedIconTint">?attr/colorSecondaryContainer</item>
+	</style>
 </resources>
