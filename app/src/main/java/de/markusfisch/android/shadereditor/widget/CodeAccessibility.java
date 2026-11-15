@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 
 import java.util.Collections;
 
+import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.AccessibleText;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Motion;
@@ -82,6 +83,11 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		if (error != null) {
 			info.setContentInvalid(true);
 			info.setError(error);
+		}
+		String word = view.lookUpWord();
+		if (word != null) {
+			info.addAction(new AccessibilityAction(R.id.look_up, host
+					.getContext().getString(R.string.a11y_look_up, word)));
 		}
 		if (host.isFocused() &&
 				Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -265,6 +271,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		Document document = view.getDocument();
 		if (document == null) {
 			return super.performAccessibilityAction(host, action, arguments);
+		} else if (action == R.id.look_up) {
+			return view.lookUpSelection();
 		}
 		switch (action) {
 			case AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY:

@@ -77,6 +77,28 @@ public final class GlslDocs {
 		return entries.get(word);
 	}
 
+	/**
+	 * Return the names of the parameters of form, a declaration such
+	 * as "T step(T edge, T x)".
+	 */
+	@NonNull
+	public static List<String> parameterNames(@NonNull String form) {
+		List<String> names = new ArrayList<>();
+		int open = form.indexOf('(');
+		int close = form.lastIndexOf(')');
+		if (open < 0 || close < open) {
+			return names;
+		}
+		for (String parameter : form.substring(open + 1, close).split(",")) {
+			String[] words = parameter.trim().split("\\s+");
+			String name = words[words.length - 1];
+			if (!name.isEmpty()) {
+				names.add(name);
+			}
+		}
+		return names;
+	}
+
 	@NonNull
 	public Collection<Entry> entries() {
 		return Collections.unmodifiableCollection(entries.values());

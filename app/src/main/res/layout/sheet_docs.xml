@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What a word of the code is: what it means, its forms, the notes on
+	them and an example. -->
+<androidx.core.widget.NestedScrollView
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content">
+
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:id="@+id/docs_content"
+		android:orientation="vertical"
+		android:paddingBottom="@dimen/se_margin_sheet">
+
+		<com.google.android.material.bottomsheet.BottomSheetDragHandleView
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content" />
+
+		<TextView
+			android:id="@+id/docs_word"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginHorizontal="@dimen/se_margin_sheet"
+			android:textAppearance="?attr/textAppearanceTitleLarge" />
+
+		<TextView
+			android:id="@+id/docs_kind"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginHorizontal="@dimen/se_margin_sheet"
+			android:layout_marginTop="4dp"
+			android:textAppearance="?attr/textAppearanceBodyMedium"
+			android:textColor="?attr/colorOnSurfaceVariant" />
+
+		<TextView
+			android:id="@+id/docs_text"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginHorizontal="@dimen/se_margin_sheet"
+			android:layout_marginTop="@dimen/se_margin_screen"
+			android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+		<TextView
+			android:id="@+id/docs_code"
+			style="@style/DocsCode"
+			android:layout_marginTop="12dp" />
+
+		<TextView
+			android:id="@+id/docs_detail"
+			style="@style/DocsNote" />
+
+		<TextView
+			android:id="@+id/docs_note"
+			style="@style/DocsNote" />
+
+		<TextView
+			android:id="@+id/docs_example_heading"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginHorizontal="@dimen/se_margin_sheet"
+			android:layout_marginTop="@dimen/se_margin_sheet"
+			android:text="@string/docs_example"
+			android:textAppearance="?attr/textAppearanceTitleSmall"
+			android:textColor="?attr/colorPrimary" />
+
+		<TextView
+			android:id="@+id/docs_example"
+			style="@style/DocsCode"
+			android:layout_marginTop="12dp" />
+	</LinearLayout>
+</androidx.core.widget.NestedScrollView>

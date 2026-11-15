@@ -33,7 +33,7 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 		 */
 		void contentRect(Rect out);
 
-		/** Return the actions to offer now, ids of android.R.id. */
+		/** Return the actions to offer now, ids of android.R.id or look_up. */
 		int[] actions();
 
 		/** Do action id; return whether the toolbar is done. */
@@ -90,6 +90,8 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 						.setAlphabeticShortcut('v');
 			} else if (id == android.R.id.shareText) {
 				item = menu.add(Menu.NONE, id, i, R.string.share_selection);
+			} else if (id == R.id.look_up) {
+				item = menu.add(Menu.NONE, id, i, R.string.look_up);
 			} else {
 				item = menu.add(Menu.NONE, id, i, android.R.string.selectAll)
 						.setAlphabeticShortcut('a');
