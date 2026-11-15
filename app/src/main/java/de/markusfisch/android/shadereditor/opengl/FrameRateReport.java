@@ -8,10 +8,12 @@ package de.markusfisch.android.shadereditor.opengl;
 //   pauses and when a paused draw changes it (a restart back to the
 //   first rate); Step, a frame drawn again and a frame presented tell
 //   nothing else, so the number shown can be trusted;
-// - a new build, new targets and Play measure again from the first frame
-//   after them, so the stopped time, or the time a build took, is in no
-//   sample, and tell nothing before 200 ms of frames are in: neither one
-//   quick frame nor the first slow ones of a new picture are its rate;
+// - a new build (a new quality is one), new targets, Play and a new
+//   frame rate limit measure again from the first frame after them, so
+//   the stopped time, the time a build took and the pace before are in
+//   no sample, and tell nothing before 200 ms of frames are in: neither
+//   one quick frame nor the first slow ones of a new picture are its
+//   rate;
 // - nothing drawing: 0, when a rate was told since the last start; a
 //   start that never drew tells nothing, as there is nothing to clear.
 // After a new start, the first rate is told even when it is the one told
