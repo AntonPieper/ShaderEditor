@@ -252,9 +252,31 @@ public class TuningBar extends LinearLayout {
 	public void close() {
 		tuned = null;
 		session = null;
+		setConstant(false);
+		setBuilding(false);
 		SoftKeyboard.hide(getContext(), valueView);
 		valueView.clearFocus();
 		setVisibility(GONE);
+	}
+
+	/**
+	 * Say that GLSL needs a constant where the number is: the picture
+	 * follows when the finger rests.
+	 */
+	public void setConstant(boolean constant) {
+		findViewById(R.id.tuning_note).setVisibility(
+				constant ? VISIBLE : GONE);
+	}
+
+	/** Show the progress line while a build of the number runs. */
+	public void setBuilding(boolean building) {
+		com.google.android.material.progressindicator.LinearProgressIndicator
+				progress = findViewById(R.id.tuning_building);
+		if (building) {
+			progress.show();
+		} else {
+			progress.hide();
+		}
 	}
 
 	/** Done: the value is written. */

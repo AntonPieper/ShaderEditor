@@ -71,6 +71,13 @@ public final class ProjectFileManager {
 		 */
 		default void onTuningEnded(@NonNull List<ProjectDiagnostic> errors) {
 		}
+
+		/**
+		 * A build of the tuned number's text runs, where it must stay a
+		 * constant, or none does anymore.
+		 */
+		default void onTuningBuilds(boolean building) {
+		}
 	}
 
 	/** The engine a tuning session builds its revisions on. */
@@ -82,6 +89,9 @@ public final class ProjectFileManager {
 		/** Show the value of the tuning that runs with the next frame. */
 		void applyTuning();
 	}
+
+	// How long the finger rests before a constant is built again.
+	private static final long REST_MILLIS = 150;
 
 	/** Runs what a project runs. */
 	public interface Runner {
@@ -133,6 +143,14 @@ public final class ProjectFileManager {
 	// The tuned number while its session ends and writes it.
 	@Nullable
 	private TunedPlace writing;
+	// Where the number must stay a constant: the text it is built as
+	// when the finger rests, a rest after the last change.
+	@Nullable
+	private String restText;
+	private final android.os.Handler rests =
+			new android.os.Handler(android.os.Looper.getMainLooper());
+	private final Runnable rested = this::rebuildTuned;
+	private boolean tunedBuilds;
 	@Nullable
 	private ProjectFile file;
 	// The build of what runs asked for last, of which project and file.
@@ -538,6 +556,10 @@ public final class ProjectFileManager {
 					public void onMustRebuild(
 							@NonNull List<ProjectDiagnostic> why) {
 						tuned.onMustRebuild(why);
+						// A value set while it was found out.
+						if (restText != null) {
+							rebuildTuned();
+						}
 					}
 
 					@Override
@@ -564,10 +586,12 @@ public final class ProjectFileManager {
 			return;
 		}
 		tunedText = text;
+		restText = literalText;
+		session.set(literal);
 		if (session.state() == TuningSession.State.MUST_REBUILD) {
-			session.rebuild(literalText);
-		} else {
-			session.set(literal);
+			// Built when the finger rests, not for every step.
+			rests.removeCallbacks(rested);
+			rests.postDelayed(rested, REST_MILLIS);
 		}
 	}
 
@@ -599,6 +623,29 @@ public final class ProjectFileManager {
 		tunedPlace = null;
 		tunedPath = null;
 		tunedText = null;
+		restText = null;
+		rests.removeCallbacks(rested);
+		building(false);
+	}
+
+	// Builds the text the tuned number has now, where it must stay a
+	// constant.
+	private void rebuildTuned() {
+		TuningSession session = tuner.open();
+		String text = restText;
+		if (session == null || text == null ||
+				session.state() != TuningSession.State.MUST_REBUILD) {
+			return;
+		}
+		building(true);
+		session.rebuild(text);
+	}
+
+	private void building(boolean building) {
+		if (tunedBuilds != building) {
+			tunedBuilds = building;
+			listener.onTuningBuilds(building);
+		}
 	}
 
 	// The project and the engine as a tuning session needs them.
@@ -638,6 +685,10 @@ public final class ProjectFileManager {
 			ProjectFile shown = file;
 			if (shown == null) {
 				return;
+			}
+			if (tuning == null) {
+				// A rebuild of the number's text is handed over.
+				building(false);
 			}
 			engine.continuePlan(preparation, shown.getQuality(),
 					Arrays.asList(key, shown.getProject().running()),

@@ -574,4 +574,5 @@
 	<string name="tuning_increase">Increase by %1$s</string>
 	<string name="tuning_not_a_number">Not a number of this type</string>
 	<string name="tuning_failed">This number cannot be tuned: %1$s</string>
+	<string name="tuning_constant">A constant here: the picture follows when your finger rests</string>
 </resources>

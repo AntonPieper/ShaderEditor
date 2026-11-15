@@ -637,6 +637,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 			@Override
 			public void onMustRebuild(@NonNull List<ProjectDiagnostic> why) {
+				tuningBar.setConstant(true);
 			}
 
 			@Override
@@ -1029,6 +1030,11 @@ public final class LibraryScreen implements ShaderScreen {
 			@Override
 			public void onTuningEnded(@NonNull List<ProjectDiagnostic> errors) {
 				tuningEnded(errors);
+			}
+
+			@Override
+			public void onTuningBuilds(boolean building) {
+				tuningBar.setBuilding(building);
 			}
 
 			@Override
