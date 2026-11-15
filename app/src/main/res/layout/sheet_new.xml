@@ -93,12 +93,12 @@
 				android:textAppearance="?attr/textAppearanceBodyMedium"
 				android:textColor="?attr/colorOnSurfaceVariant" />
 
-			<TextView
+			<de.markusfisch.android.shadereditor.widget.FileNameView
 				android:id="@+id/new_location"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
-				android:ellipsize="start"
-				android:singleLine="true"
+				android:ellipsize="end"
+				android:maxLines="1"
 				android:textAppearance="?attr/textAppearanceBodyLarge" />
 		</LinearLayout>
 

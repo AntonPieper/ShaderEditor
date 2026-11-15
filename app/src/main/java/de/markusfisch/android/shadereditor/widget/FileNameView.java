@@ -8,18 +8,22 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatTextView;
+import androidx.appcompat.widget.TooltipCompat;
 
 import de.markusfisch.android.shadereditor.navigation.NameCut;
 
 /**
- * A file's name on one line, shortened where it does not fit so that
- * its ending stays ({@link NameCut}): "A very long sketch na….frag".
- * Set the name with {@link #setName}; text set otherwise is shown as a
- * text view shows it. TalkBack hears the whole name.
+ * A file's or folder's name on one line, shortened in its middle where
+ * it does not fit, its start and its end kept, the ending whole
+ * ({@link NameCut}): "A very long sket…at sunset.frag". Set the name
+ * with {@link #setName}; text set otherwise is shown as a text view
+ * shows it. TalkBack hears the whole name, and where
+ * {@link #setWholeOnLongPress} asks for it, a long press shows it.
  */
 public class FileNameView extends AppCompatTextView {
 	@Nullable
 	private String name;
+	private boolean wholeOnLongPress;
 
 	public FileNameView(@NonNull Context context) {
 		super(context);
@@ -41,6 +45,14 @@ public class FileNameView extends AppCompatTextView {
 		// After the text, which forgets the name of text set otherwise.
 		this.name = name != null ? name.toString() : null;
 		requestLayout();
+	}
+
+	/**
+	 * Show the whole name in a tooltip on a long press while it is
+	 * cut; for a name with no long press of its own, as a title.
+	 */
+	public void setWholeOnLongPress(boolean whole) {
+		wholeOnLongPress = whole;
 	}
 
 	@Override
@@ -73,6 +85,10 @@ public class FileNameView extends AppCompatTextView {
 			if (!TextUtils.equals(shown, getText())) {
 				super.setText(shown, BufferType.NORMAL);
 				name = whole;
+			}
+			if (wholeOnLongPress) {
+				TooltipCompat.setTooltipText(this,
+						shown.equals(whole) ? null : whole);
 			}
 		}
 		super.onMeasure(widthSpec, heightSpec);

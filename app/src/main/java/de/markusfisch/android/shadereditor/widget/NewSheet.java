@@ -50,7 +50,7 @@ public final class NewSheet {
 	private final MaterialButtonToggleGroup kinds;
 	private final TextInputLayout nameLayout;
 	private final EditText nameView;
-	private final TextView location;
+	private final FileNameView location;
 	private final View create;
 	private final String untitled;
 	// The names in the folder, or null while they are read.
@@ -141,7 +141,7 @@ public final class NewSheet {
 		busy = false;
 		naming = null;
 		ready = false;
-		location.setText(where);
+		location.setName(where);
 		check();
 		show();
 	}

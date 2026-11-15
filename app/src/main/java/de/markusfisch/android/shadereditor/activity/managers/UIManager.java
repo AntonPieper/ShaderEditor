@@ -189,6 +189,13 @@ public class UIManager {
 	 */
 	public void setTitleIsFileName(boolean fileName) {
 		titleIsFileName = fileName;
+		// A long press shows the whole name; a tap still does what a tap
+		// on the toolbar does.
+		titleView.setWholeOnLongPress(fileName);
+		titleView.setOnClickListener(fileName
+				? v -> toolbar.performClick()
+				: null);
+		titleView.setClickable(fileName);
 	}
 
 	/** Show text in the second line for a while instead of what is there. */
