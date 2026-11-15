@@ -134,6 +134,15 @@ interface SourceEditor {
 	default void setAddsByFileRule(boolean byFileRule) {
 	}
 
+	/** Return whether lookUp explains word; none does by default. */
+	default boolean hasDocs(@NonNull String word) {
+		return false;
+	}
+
+	/** Explain word, if it can. */
+	default void lookUp(@NonNull String word) {
+	}
+
 	/** Put the caret at the start of line, from 1, unless it is in it. */
 	void navigateToLine(int line);
 

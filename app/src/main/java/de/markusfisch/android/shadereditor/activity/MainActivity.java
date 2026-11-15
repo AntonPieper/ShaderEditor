@@ -97,6 +97,16 @@ public class MainActivity extends AppCompatActivity {
 					public void tab() {
 						editorFragment.tab();
 					}
+
+					@Override
+					public boolean hasDocs(@NonNull String word) {
+						return editorFragment.hasDocs(word);
+					}
+
+					@Override
+					public void lookUp(@NonNull String word) {
+						editorFragment.lookUp(word);
+					}
 				});
 		uiManager = new UIManager(this,
 				editorFragment,

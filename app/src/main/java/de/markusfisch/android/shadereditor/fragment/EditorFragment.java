@@ -470,6 +470,18 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 		}
 	}
 
+	/** Return whether lookUp explains word. */
+	public boolean hasDocs(@NonNull String word) {
+		return editor != null && editor.hasDocs(word);
+	}
+
+	/** Explain word, if the editor can. */
+	public void lookUp(@NonNull String word) {
+		if (editor != null) {
+			editor.lookUp(word);
+		}
+	}
+
 	public void navigateToLine(int lineNumber) {
 		editor.navigateToLine(lineNumber);
 	}

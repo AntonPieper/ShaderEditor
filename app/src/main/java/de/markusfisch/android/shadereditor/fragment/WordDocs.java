@@ -18,44 +18,86 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.opengl.UniformDef;
+import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.syntax.GlslDocs;
 import de.markusfisch.android.shadereditor.syntax.GlslWords;
+import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.DocsSheet;
 
 /**
  * Explains a word in a sheet: a built-in word of GLSL ES from the docs
- * asset, which is read on the first request, off the main thread.
- * Nothing happens per keystroke; a word is looked up only on request.
+ * asset, which is read on the first request, off the main thread, or
+ * one of the app's uniforms with its text of Add uniform, and Add
+ * uniform while the file does not declare it. Nothing happens per
+ * keystroke; a word is looked up only on request.
  */
 final class WordDocs implements CodeView.LookUp {
+	interface Host {
+		/** The declarations of the file, possibly of an older text. */
+		@NonNull
+		Outline declared();
+
+		/** Add statement as Add uniform does. */
+		void addUniform(@NonNull String statement);
+	}
+
 	private static final String ASSET = "glsl-docs.txt";
+	private static final Map<String, UniformDef> UNIFORMS = new HashMap<>();
 	private static final Executor READER = Executors.newSingleThreadExecutor();
 	// Read once, on the main thread's word, for the process.
 	@Nullable
 	private static GlslDocs docs;
 
+	static {
+		for (UniformDef uniform : UniformTable.BUILTINS) {
+			UNIFORMS.put(uniform.getName(), uniform);
+		}
+	}
+
 	private final View view;
+	private final Host host;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 
-	WordDocs(@NonNull View view) {
+	WordDocs(@NonNull View view, @NonNull Host host) {
 		this.view = view;
+		this.host = host;
+	}
+
+	/** The statement Add uniform adds for uniform. */
+	@NonNull
+	static String statement(@NonNull UniformDef uniform) {
+		return "uniform " + uniform.getType().getKeyword() + " " +
+				uniform.getDeclarator() + ";";
+	}
+
+	/** The app's uniform called name, or null. */
+	@Nullable
+	static UniformDef uniform(@NonNull String name) {
+		return UNIFORMS.get(name);
 	}
 
 	@Override
 	public boolean has(@NonNull String word) {
-		return GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER;
+		return UNIFORMS.containsKey(word) ||
+				GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER;
 	}
 
 	@Override
 	public void lookUp(@NonNull String word) {
-		if (docs != null) {
+		UniformDef uniform = UNIFORMS.get(word);
+		if (uniform != null) {
+			showUniform(uniform);
+		} else if (docs != null) {
 			showBuiltin(word);
 		} else {
 			Context app = view.getContext().getApplicationContext();
@@ -100,7 +142,28 @@ final class WordDocs implements CodeView.LookUp {
 						: R.string.docs_es_300));
 		show(new DocsSheet.Content(word, kind, entry.text(),
 				lines(entry.forms()), spoken(context, entry), entry.detail(),
-				entry.note(), lines(entry.example())));
+				entry.note(), lines(entry.example())), null, null);
+	}
+
+	private void showUniform(@NonNull UniformDef uniform) {
+		Context context = view.getContext();
+		String name = uniform.getName();
+		String statement = statement(uniform);
+		boolean declared = false;
+		for (Outline.Declaration declaration :
+				host.declared().declarations()) {
+			declared |= declaration.name().equals(name);
+		}
+		show(new DocsSheet.Content(name,
+						context.getString(R.string.docs_kind_versions,
+								context.getString(R.string.docs_builtin_uniform),
+								uniform.getType().getKeyword()),
+						context.getString(uniform.getDescription()),
+						statement, null, null,
+						declared ? null : context.getString(
+								R.string.docs_not_declared), null),
+				declared ? null : context.getString(R.string.docs_add_uniform),
+				() -> host.addUniform(statement));
 	}
 
 	/**
@@ -144,11 +207,13 @@ final class WordDocs implements CodeView.LookUp {
 	// Opens the sheet; when it closes, the code view has the focus
 	// again, and the keyboard, which the sheet sends down, comes back
 	// if it was up.
-	private void show(@NonNull DocsSheet.Content content) {
+	private void show(@NonNull DocsSheet.Content content,
+			@Nullable String action, @Nullable Runnable onAction) {
 		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(view);
 		boolean keyboard = insets != null &&
 				insets.isVisible(WindowInsetsCompat.Type.ime());
-		DocsSheet sheet = new DocsSheet(view.getContext(), content);
+		DocsSheet sheet = new DocsSheet(view.getContext(), content, action,
+				onAction);
 		sheet.setOnDismiss(() -> view.post(() -> refocus(keyboard)));
 		sheet.show();
 	}
