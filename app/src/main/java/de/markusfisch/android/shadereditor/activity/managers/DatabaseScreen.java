@@ -211,6 +211,12 @@ public final class DatabaseScreen implements ShaderScreen {
 		editorFragment.setErrors(infoLog);
 	}
 
+	// A shader of the database is one text: what it reports is of it.
+	@Override
+	public boolean isAbout(@NonNull ProjectDiagnostic diagnostic) {
+		return true;
+	}
+
 	private void showTitle() {
 		uiManager.setToolbarTitle(open.getTitle(), open.getSubtitle(),
 				open.isModified());

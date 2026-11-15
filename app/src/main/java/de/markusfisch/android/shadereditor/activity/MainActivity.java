@@ -22,6 +22,7 @@ import com.google.android.material.snackbar.Snackbar;
 
 import org.jetbrains.annotations.Contract;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
@@ -229,8 +230,19 @@ public class MainActivity extends AppCompatActivity {
 			}
 
 			@Override
-			public void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog) {
+			public void onInfoLog(@NonNull List<ProjectDiagnostic> reported) {
 				runOnUiThread(() -> {
+					// A report of a build of what was open before is
+					// not told, nor does it clear what is open now.
+					List<ProjectDiagnostic> infoLog = new ArrayList<>();
+					for (var diagnostic : reported) {
+						if (screen.isAbout(diagnostic)) {
+							infoLog.add(diagnostic);
+						}
+					}
+					if (infoLog.isEmpty() && !reported.isEmpty()) {
+						return;
+					}
 					screen.showErrors(infoLog);
 					showErrors.setVisibility(infoLog.isEmpty()
 							? View.GONE

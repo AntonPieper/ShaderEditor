@@ -47,6 +47,24 @@ public record ProjectDiagnostic(
 	}
 
 	/**
+	 * Whether this is about what is open: the file shown, the file that
+	 * runs, or a file reads, the files what runs is made of. When
+	 * nothing runs, no build reports, and what is told is of the
+	 * manifest. Anything else is of a build of another file, which ran
+	 * before, and is no longer to be told.
+	 */
+	public boolean isAbout(ProjectPath shown, ProjectPath running,
+			Reads reads) {
+		return file == null || running == null || file.equals(shown) ||
+				file.equals(running) || reads.reads(file);
+	}
+
+	/** Whether what runs is made of a file. */
+	public interface Reads {
+		boolean reads(ProjectPath path);
+	}
+
+	/**
 	 * The file and line to show before the message, or "" when neither
 	 * is known.
 	 */
