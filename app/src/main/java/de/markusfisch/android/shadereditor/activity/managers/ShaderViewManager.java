@@ -26,6 +26,10 @@ public class ShaderViewManager {
 
 		void onInfoLog(@NonNull List<ProjectDiagnostic> infoLog);
 
+		// Nothing runs, so nothing reports: what was reported is gone,
+		// and what comes next is not known.
+		void onNothingReported();
+
 		// Before onInfoLog: whether the picture is the last that worked
 		// while infoLog is of a newer build that did not.
 		void onLastPicture(boolean shown);
@@ -105,13 +109,13 @@ public class ShaderViewManager {
 	/**
 	 * Show no picture: nothing runs. What a build reported before is
 	 * not of what is shown now, so the listener hears that no picture
-	 * is the last that worked and that there is nothing to report; a
-	 * report of why nothing runs may follow.
+	 * is the last that worked and that nothing reports; a report of why
+	 * nothing runs may follow.
 	 */
 	public void showNothing() {
 		showPicture(false);
 		listener.onLastPicture(false);
-		listener.onInfoLog(List.of());
+		listener.onNothingReported();
 	}
 
 	public void setVisibility(boolean visible) {

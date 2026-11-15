@@ -31,7 +31,7 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
 import de.markusfisch.android.shadereditor.widget.ShaderEditor;
 
-public class EditorFragment extends Fragment {
+public class EditorFragment extends Fragment implements ErrorListModal.Host {
 	public static final String TAG = "EditorFragment";
 
 	private static final String DRAFT_KEY = "editor_draft_key";
@@ -79,6 +79,8 @@ public class EditorFragment extends Fragment {
 	private boolean showsLastPicture;
 	@Nullable
 	private ErrorAdapter.OnItemClickListener errorListener;
+	// What the list of errors can show of the current build.
+	private final ListedErrors listed = new ListedErrors();
 	// Whether code is shown over the picture, for its brightness limit.
 	private final CodeShown codeShown = new CodeShown();
 
@@ -299,10 +301,16 @@ public class EditorFragment extends Fragment {
 				: editor.getErrors());
 	}
 
+	/**
+	 * What a run reported is gone: a run starts, or nothing runs. What
+	 * the next build reports is not known yet.
+	 */
 	public void clearError() {
 		allErrors = null;
 		errorsFile = null;
 		editor.setErrors(Collections.emptyList());
+		listed.unknown();
+		listedErrorsChanged();
 	}
 
 	public void updateHighlighting() {
@@ -330,11 +338,14 @@ public class EditorFragment extends Fragment {
 				(errorsFile == null || errorsFile.equals(error.file()));
 	}
 
+	/** A build reported errors, perhaps none. */
 	public void setErrors(@NonNull List<ProjectDiagnostic> errors) {
 		allErrors = null;
 		errorsFile = null;
 		editor.setErrors(errors);
 		highlightErrors();
+		listed.reported(!errors.isEmpty());
+		listedErrorsChanged();
 	}
 
 	/**
@@ -343,6 +354,31 @@ public class EditorFragment extends Fragment {
 	 * them all.
 	 */
 	public void setErrors(@NonNull List<ProjectDiagnostic> errors,
+			@NonNull ProjectPath file) {
+		markErrors(errors, file);
+		listed.reported(!errors.isEmpty());
+		listedErrorsChanged();
+	}
+
+	/**
+	 * Show file with the diagnostics of the last build of its folder;
+	 * reportFollows is whether a build of it reports next, which then
+	 * decides when nothing was kept.
+	 */
+	public void keepErrors(@NonNull List<ProjectDiagnostic> errors,
+			@NonNull ProjectPath file, boolean reportFollows) {
+		markErrors(errors, file);
+		listed.kept(!errors.isEmpty(), reportFollows);
+		listedErrorsChanged();
+	}
+
+	// A text of its own: nothing kept, and a build may report next.
+	public void keepNoErrors(boolean reportFollows) {
+		listed.kept(false, reportFollows);
+		listedErrorsChanged();
+	}
+
+	private void markErrors(@NonNull List<ProjectDiagnostic> errors,
 			@NonNull ProjectPath file) {
 		List<ProjectDiagnostic> inFile = new ArrayList<>();
 		for (ProjectDiagnostic error : errors) {
@@ -373,17 +409,53 @@ public class EditorFragment extends Fragment {
 		showsLastPicture = shows;
 	}
 
+	// A child, so that the system makes the list again with this
+	// fragment after a recreate, and the list asks it for its errors.
 	public void showErrors() {
+		new ErrorListModal().show(getChildFragmentManager(),
+				ErrorListModal.TAG);
+	}
+
+	@NonNull
+	@Override
+	public ListedErrors.State getListedState() {
+		return listed.state();
+	}
+
+	@NonNull
+	@Override
+	public List<ProjectDiagnostic> getListedErrors() {
 		if (allErrors != null && errorListener != null) {
-			new ErrorListModal(allErrors, errorListener, showsLastPicture)
-					.show(getParentFragmentManager(), ErrorListModal.TAG);
+			return allErrors;
+		}
+		return editor != null ? editor.getErrors() : List.of();
+	}
+
+	@Override
+	public boolean showsLastPicture() {
+		return showsLastPicture;
+	}
+
+	@Override
+	public void onErrorChosen(@Nullable ProjectPath file, int line) {
+		if (allErrors != null && errorListener != null) {
+			errorListener.onItemClick(file, line);
+		} else {
+			// The editor shows a single file, so the file is ignored.
+			navigateToLine(line);
+		}
+	}
+
+	// The list of errors, if open, shows them as they are now.
+	private void listedErrorsChanged() {
+		if (!isAdded()) {
 			return;
 		}
-		List<ProjectDiagnostic> errors = editor.getErrors();
-		// The editor shows a single file, so the file is ignored.
-		new ErrorListModal(errors, (file, lineNumber) -> navigateToLine(lineNumber),
-				showsLastPicture)
-				.show(getParentFragmentManager(), ErrorListModal.TAG);
+		Fragment list = getChildFragmentManager().findFragmentByTag(
+				ErrorListModal.TAG);
+		if (list instanceof ErrorListModal modal) {
+			modal.update();
+		}
 	}
 
 	public void navigateToLine(int lineNumber) {

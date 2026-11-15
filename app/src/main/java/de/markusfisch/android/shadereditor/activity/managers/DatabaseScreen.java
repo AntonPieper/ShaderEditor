@@ -81,6 +81,10 @@ public final class DatabaseScreen implements ShaderScreen {
 	@Override
 	public void onRestoreInstanceState(@NonNull Bundle state) {
 		shaderManager.restoreState(state);
+		// A shader's errors are not kept; its build reports them again
+		// where the picture runs behind the code.
+		editorFragment.keepNoErrors(
+				ShaderEditorApp.preferences.doesRunInBackground());
 		if (!state.getBoolean(CODE_VISIBLE, true)) {
 			uiManager.toggleCodeVisibility();
 		}
@@ -209,6 +213,11 @@ public final class DatabaseScreen implements ShaderScreen {
 	@Override
 	public void showErrors(@NonNull List<ProjectDiagnostic> infoLog) {
 		editorFragment.setErrors(infoLog);
+	}
+
+	@Override
+	public void forgetErrors() {
+		editorFragment.clearError();
 	}
 
 	// A shader of the database is one text: what it reports is of it.
