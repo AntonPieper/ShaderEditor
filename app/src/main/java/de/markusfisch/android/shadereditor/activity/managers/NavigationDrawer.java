@@ -57,6 +57,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -465,10 +466,21 @@ public class NavigationDrawer implements ShaderList {
 	 * Lets go of the library, which is put aside, until it is set
 	 * again: the drawer shows the folders.
 	 */
+	// The file in the editor is place now. An image's sheet offered its
+	// lines to the file shown when it opened: it goes when another is
+	// shown, as when an import opens the shader it made.
+	private void setOpen(@Nullable Item.Place place) {
+		if (!Objects.equals(open, place)) {
+			imageSheets.dismiss();
+		}
+		open = place;
+	}
+
 	public void closeLibrary() {
 		libraryKey = null;
 		libraryRoot.clear();
-		open = running = null;
+		setOpen(null);
+		running = null;
 		used = Collections.emptySet();
 		go(Level.FOLDERS);
 	}
@@ -491,9 +503,9 @@ public class NavigationDrawer implements ShaderList {
 	@Override
 	public void setSelectedShaderId(long id) {
 		// Only a shader that was not moved is still in the database.
-		open = id > 0 && libraryKey != null
+		setOpen(id > 0 && libraryKey != null
 				? new Item.Place(Level.root(libraryKey), LibraryRoot.key(id))
-				: null;
+				: null);
 		running = open;
 		used = Collections.emptySet();
 		if (listing != null) {
@@ -508,7 +520,7 @@ public class NavigationDrawer implements ShaderList {
 	 */
 	public void setOpenFile(@NonNull String key, @NonNull ProjectPath shown,
 			@Nullable ProjectPath running, @NonNull List<ProjectPath> used) {
-		open = Item.Place.file(key, shown.toString());
+		setOpen(Item.Place.file(key, shown.toString()));
 		this.running = running != null
 				? Item.Place.file(key, running.toString())
 				: null;

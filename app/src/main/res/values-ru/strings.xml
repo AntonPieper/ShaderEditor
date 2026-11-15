@@ -400,6 +400,8 @@
 	<string name="nav_insert_not_shader">%1$s is no shader: open a shader of this folder to insert this image as a texture.</string>
 	<string name="nav_insert_read_only">%1$s cannot be changed here, so this image cannot be inserted into it.</string>
 	<string name="nav_insert_reads_already">%1$s reads this picture already.</string>
+	<string name="nav_insert_another_file">The editor shows another file now: open the picture again to insert it.</string>
+	<string name="nav_insert_not_now">Not inserted: %1$s cannot take this picture now. Open the picture again to see why.</string>
 	<string name="nav_image_read_only">This folder cannot be changed here, so the image cannot be renamed or deleted.</string>
 	<string name="nav_image_open_folder">Open %1$s to rename or delete this image.</string>
 	<string name="nav_image_info">%1$d × %2$d · %3$s · %4$s</string>

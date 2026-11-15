@@ -159,6 +159,33 @@ public class InsertTextureTest {
 				"noise.png"));
 	}
 
+	// Insert adds to the file shown when it is pressed: not when the
+	// editor shows another file than when the sheet opened (an import
+	// opened its shader meanwhile), and not when its text now reads the
+	// picture already; else the lines for its text now.
+	@Test
+	public void insertGoesOnlyToTheFileShownWhenPressed() {
+		InsertTexture.Target opened = new InsertTexture.Target(
+				path("Aurora.frag"), "void main() {}", ShaderLanguage.GLSL,
+				true, false, false);
+		InsertTexture.Target imported = new InsertTexture.Target(
+				path("Clouds/main.frag"), "void main() {}",
+				ShaderLanguage.GLSL, true, false, false);
+		ProjectPath image = path("textures/noise.png");
+		assertEquals(InsertTexture.Offer.OFFERED,
+				InsertTexture.atInsert(opened, opened, image));
+		assertEquals(InsertTexture.Offer.ANOTHER_FILE,
+				InsertTexture.atInsert(opened, imported, image));
+		assertEquals(InsertTexture.Offer.ANOTHER_FILE,
+				InsertTexture.atInsert(opened, null, image));
+		InsertTexture.Target typed = new InsertTexture.Target(
+				path("Aurora.frag"), "#pragma se input \"textures/noise.png\"\n" +
+				"uniform sampler2D noise;\nvoid main() {}",
+				ShaderLanguage.GLSL, true, false, false);
+		assertEquals(InsertTexture.Offer.READS_ALREADY,
+				InsertTexture.atInsert(opened, typed, image));
+	}
+
 	private static InsertTexture.Offer offer(String name,
 			ShaderLanguage language, Boolean runs) {
 		return InsertTexture.offer(new InsertTexture.Target(path(name), "",
