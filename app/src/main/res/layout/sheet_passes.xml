@@ -52,6 +52,18 @@
 			android:contentDescription="@string/passes_restart"
 			app:icon="@drawable/ic_restart_alt"
 			app:iconSize="24dp" />
+
+		<Space
+			android:layout_width="0dp"
+			android:layout_height="0dp"
+			android:layout_weight="1" />
+
+		<!-- The most frames a second, kept with the shader. -->
+		<com.google.android.material.chip.Chip
+			android:id="@+id/passes_limit"
+			style="@style/Widget.ShaderEditor.Chip.Limit"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content" />
 	</LinearLayout>
 
 	<!-- Seven chips spread over the width; a narrow screen scrolls them. -->

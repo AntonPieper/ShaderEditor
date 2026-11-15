@@ -1,13 +1,16 @@
 package de.markusfisch.android.shadereditor.widget;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -20,6 +23,7 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.util.Consumer;
 import androidx.core.view.ViewCompat;
@@ -89,6 +93,9 @@ public final class PassesSheet {
 		void chooseQuality(float quality);
 
 		float getQuality();
+
+		/** The most frames a second drawn, 0 for as fast as the screen. */
+		int getFrameRateLimit();
 	}
 
 	/** The code over the picture. */
@@ -106,14 +113,23 @@ public final class PassesSheet {
 		void setPicture(boolean passShown, boolean paused);
 	}
 
-	/** Where the sheet goes to the code. */
-	public interface Files {
+	/** Where the sheet goes to the code and to what is kept of it. */
+	public interface Host {
 		/**
 		 * Open file of what runs at line, from 1, or where its caret is
 		 * for 0, with a way back to the line the editor is on.
 		 */
 		void open(@NonNull ProjectPath file, int line);
+
+		/**
+		 * Draw at most limit frames a second, as fast as the screen for
+		 * 0, and keep it with what runs.
+		 */
+		void keepFrameRateLimit(int limit);
 	}
+
+	// What the frame-rate limit offers, 0 for none.
+	private static final int[] LIMITS = {0, 60, 30, 15, 5};
 
 	/**
 	 * What the sheet shows.
@@ -128,13 +144,15 @@ public final class PassesSheet {
 	 * @param pictures  the latest small picture of each pass that draws
 	 * @param facts     the latest facts of each pass
 	 * @param fit       the range the pass shown is fitted from, or null
+	 * @param limit     the most frames a second, 0 for none
 	 */
 	record State(boolean open, boolean available, boolean paused,
 			@NonNull RunningPasses passes, @Nullable ProjectPath shown,
 			float quality, @NonNull Map<ProjectPath, Bitmap> pictures,
-			@NonNull Map<ProjectPath, PassFacts> facts, @Nullable Fit fit) {
+			@NonNull Map<ProjectPath, PassFacts> facts, @Nullable Fit fit,
+			int limit) {
 		static final State CLOSED = new State(false, false, false,
-				RunningPasses.NONE, null, 1f, Map.of(), Map.of(), null);
+				RunningPasses.NONE, null, 1f, Map.of(), Map.of(), null, 0);
 
 		boolean runs() {
 			return !passes.rows().isEmpty();
@@ -154,47 +172,52 @@ public final class PassesSheet {
 
 		State withOpen(boolean open) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit);
+					pictures, facts, fit, limit);
 		}
 
 		State withAvailable(boolean available) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit);
+					pictures, facts, fit, limit);
 		}
 
 		State withPaused(boolean paused) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit);
+					pictures, facts, fit, limit);
 		}
 
 		State withPasses(@NonNull RunningPasses passes) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit);
+					pictures, facts, fit, limit);
 		}
 
 		State withShown(@Nullable ProjectPath shown) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit);
+					pictures, facts, fit, limit);
 		}
 
 		State withQuality(float quality) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit);
+					pictures, facts, fit, limit);
 		}
 
 		State withPictures(@NonNull Map<ProjectPath, Bitmap> pictures) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit);
+					pictures, facts, fit, limit);
 		}
 
 		State withFacts(@NonNull Map<ProjectPath, PassFacts> facts) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit);
+					pictures, facts, fit, limit);
 		}
 
 		State withFit(@Nullable Fit fit) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit);
+					pictures, facts, fit, limit);
+		}
+
+		State withLimit(int limit) {
+			return new State(open, available, paused, passes, shown, quality,
+					pictures, facts, fit, limit);
 		}
 	}
 
@@ -202,7 +225,7 @@ public final class PassesSheet {
 	private final Engine view;
 	private final Code editor;
 	private final Line ui;
-	private final Files files;
+	private final Host files;
 	private final PassFactLine.Words words;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final View sheet;
@@ -212,6 +235,7 @@ public final class PassesSheet {
 	private final View step;
 	private final View restart;
 	private final Chip[] qualities;
+	private final Chip limit;
 	private final float[] qualityValues;
 	private final View divider;
 	private final View scroll;
@@ -239,7 +263,7 @@ public final class PassesSheet {
 
 	public PassesSheet(@NonNull AppCompatActivity activity,
 			@NonNull Engine view, @NonNull Code editor,
-			@NonNull Line ui, @NonNull Files files) {
+			@NonNull Line ui, @NonNull Host files) {
 		this.activity = activity;
 		this.view = view;
 		this.editor = editor;
@@ -281,6 +305,11 @@ public final class PassesSheet {
 		restart.setOnClickListener(v -> view.restart());
 		ViewCompat.setTooltipText(step, step.getContentDescription());
 		ViewCompat.setTooltipText(restart, restart.getContentDescription());
+		limit = sheet.findViewById(R.id.passes_limit);
+		limit.setOnClickListener(this::chooseLimit);
+		limit.setOnCloseIconClickListener(this::chooseLimit);
+		limit.setCloseIconContentDescription(activity.getText(
+				R.string.passes_limit_menu));
 
 		var names = activity.getResources().getStringArray(R.array.quality_names);
 		var values = activity.getResources().getStringArray(R.array.quality_values);
@@ -391,7 +420,25 @@ public final class PassesSheet {
 		behavior.setMaxHeight(Math.round(
 				((View) sheet.getParent()).getHeight() * .7f));
 		set(state.withOpen(true).withPasses(view.passes())
-				.withQuality(view.getQuality()));
+				.withQuality(view.getQuality())
+				.withLimit(view.getFrameRateLimit()));
+	}
+
+	// The limits, in a menu at the chip.
+	private void chooseLimit(@NonNull View anchor) {
+		var menu = new PopupMenu(activity, anchor);
+		for (int i = 0; i < LIMITS.length; ++i) {
+			menu.getMenu().add(Menu.NONE, i, i, LIMITS[i] == 0
+					? activity.getString(R.string.passes_limit_none)
+					: String.valueOf(LIMITS[i]));
+		}
+		menu.setOnMenuItemClickListener(item -> {
+			int chosen = LIMITS[item.getItemId()];
+			files.keepFrameRateLimit(chosen);
+			set(state.withLimit(chosen));
+			return true;
+		});
+		menu.show();
 	}
 
 	/**
@@ -524,6 +571,15 @@ public final class PassesSheet {
 		ViewCompat.setTooltipText(pause, pauseName);
 		step.setEnabled(runs && state.paused);
 		restart.setEnabled(runs);
+		limit.setEnabled(runs);
+		// Filled while the shader is throttled, outlined otherwise.
+		limit.setChipBackgroundColor(ColorStateList.valueOf(state.limit > 0
+				? MaterialColors.getColor(limit,
+						com.google.android.material.R.attr.colorSecondaryContainer)
+				: Color.TRANSPARENT));
+		limit.setText(state.limit > 0
+				? activity.getString(R.string.passes_limit, state.limit)
+				: activity.getString(R.string.passes_no_limit));
 		for (int i = 0; i < qualities.length; ++i) {
 			qualities[i].setChecked(qualityValues[i] == state.quality);
 		}
