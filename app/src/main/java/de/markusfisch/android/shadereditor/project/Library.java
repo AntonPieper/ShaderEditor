@@ -381,6 +381,18 @@ public final class Library {
 	}
 
 	/**
+	 * Keep the most frames a second for the file at path, none for 0.
+	 * Return why it is not kept, or null.
+	 */
+	String setFrameRateLimit(ProjectPath path, int limit,
+			Relocation relocation) {
+		String refused = enter(relocation);
+		return refused != null ? refused
+				: settings().setFrameRateLimit(path, limit) ? null
+				: "the settings of the library cannot be written";
+	}
+
+	/**
 	 * Keep png as the picture of the file at path, made from its
 	 * content at revision. Return why it is not kept, or null.
 	 */

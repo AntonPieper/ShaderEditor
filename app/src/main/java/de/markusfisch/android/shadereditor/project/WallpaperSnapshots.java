@@ -21,7 +21,7 @@ public final class WallpaperSnapshots {
 	 * or null when it was taken elsewhere.
 	 */
 	public record Snapshot(File folder, ProjectPath entry, float quality,
-			ProjectPath origin, String source) {
+			ProjectPath origin, String source, int frameRateLimit) {
 		public ProjectFiles files() {
 			return new DirectoryProjectFiles(folder);
 		}
@@ -72,8 +72,20 @@ public final class WallpaperSnapshots {
 						// be set; a snapshot from before has none.
 						lines.length > 5 && !lines[4].isEmpty()
 								? lines[4]
-								: null)
+								: null,
+						// Since the most frames a second are kept; none
+						// before.
+						lines.length > 6 ? limit(lines[5]) : 0)
 				: null;
+	}
+
+	// The most frames a second of a line, 0 for none or no number.
+	private static int limit(String line) {
+		try {
+			return Math.max(0, Integer.parseInt(line));
+		} catch (NumberFormatException e) {
+			return 0;
+		}
 	}
 
 	/**
@@ -99,6 +111,17 @@ public final class WallpaperSnapshots {
 	 */
 	public String install(Preparation preparation, ProjectPath entry,
 			float quality, ProjectPath origin, String source) {
+		return install(preparation, entry, quality, 0, origin, source);
+	}
+
+	/**
+	 * Install as {@link #install(Preparation, ProjectPath, float,
+	 * ProjectPath, String)} does, drawn at most frameRateLimit frames a
+	 * second, as fast as the screen for 0.
+	 */
+	public String install(Preparation preparation, ProjectPath entry,
+			float quality, int frameRateLimit, ProjectPath origin,
+			String source) {
 		if (preparation == null || preparation.plan() == null) {
 			return "the shader has errors; fix them first";
 		}
@@ -138,7 +161,7 @@ public final class WallpaperSnapshots {
 				(folder.getName() + "\n" + quality + "\n" + entry + "\n" +
 						(origin != null ? origin : "") + "\n" +
 						(source != null ? source.replace('\n', ' ') : "") +
-						"\n").getBytes(
+						"\n" + Math.max(0, frameRateLimit) + "\n").getBytes(
 						StandardCharsets.UTF_8))) {
 			delete(folder);
 			return "the snapshot cannot be published";

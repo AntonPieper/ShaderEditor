@@ -90,26 +90,49 @@ public final class LibraryLooks {
 	public void quality(@Nullable String key, @Nullable ProjectPath running,
 			float fallback, @NonNull Quality run) {
 		int asked = ++runs;
-		read(key, running, fallback, quality -> {
+		read(key, running, fallback, (quality, limit) -> {
 			if (asked == runs) {
+				// Kept with the shader like its quality; none outside
+				// the library.
+				view.setFrameRateLimit(limit);
 				run.run(quality);
 			}
 		});
 	}
 
-	// The quality the library keeps for running of the folder key, else
-	// fallback; every request is answered, unless destroyed first.
+	/**
+	 * Keep the most frames a second for running of the folder key, none
+	 * for 0, if in the library, and draw it so from now on.
+	 */
+	public void keepFrameRateLimit(@Nullable String key,
+			@Nullable ProjectPath running, int limit) {
+		view.setFrameRateLimit(limit);
+		if (inLibrary(key) && running != null) {
+			projects.setFrameRateLimit(running, limit, this::tell);
+		}
+	}
+
+	// What the library keeps for running of the folder key.
+	private interface Kept {
+		void kept(float quality, int frameRateLimit);
+	}
+
+	// The quality and the most frames a second the library keeps for
+	// running of the folder key, else fallback and none; every request
+	// is answered, unless destroyed first.
 	private void read(@Nullable String key, @Nullable ProjectPath running,
-			float fallback, @NonNull Quality answer) {
+			float fallback, @NonNull Kept answer) {
 		if (!inLibrary(key) || running == null) {
-			answer.run(fallback);
+			answer.kept(fallback, 0);
 			return;
 		}
 		execute(() -> {
-			float quality = projects.library().settings().quality(running);
+			var settings = projects.library().settings();
+			float quality = settings.quality(running);
+			int limit = settings.frameRateLimit(running);
 			handler.post(() -> {
 				if (!destroyed) {
-					answer.run(quality);
+					answer.kept(quality, limit);
 				}
 			});
 		});
@@ -181,8 +204,9 @@ public final class LibraryLooks {
 					: null;
 			// A request of its own: a run asked for meanwhile must not
 			// replace it, nor it the run.
-			read(key, entry, fallback, quality -> projects.setWallpaper(
-					preparation, entry, quality, ofLibrary ? entry : null,
+			read(key, entry, fallback, (quality, limit) -> projects.setWallpaper(
+					preparation, entry, quality, limit,
+					ofLibrary ? entry : null,
 					ofLibrary ? null : project.name(),
 					problem -> {
 						if (destroyed) {

@@ -253,6 +253,7 @@ public class ShaderWallpaperService extends WallpaperService {
 						saveRuntime();
 						snapshotShown = true;
 						view.setPlan(preparation, snapshot.quality());
+						view.setFrameRateLimit(snapshot.frameRateLimit());
 					}
 				});
 			});
@@ -277,6 +278,8 @@ public class ShaderWallpaperService extends WallpaperService {
 				saveRuntime();
 				snapshotShown = false;
 				runtimeShaderId = ShaderEditorApp.preferences.getWallpaperShader();
+				// Only a file of the library keeps a limit.
+				view.setFrameRateLimit(0);
 				view.setShader(shader.fragmentShader(), shader.quality(),
 						isPreview()
 						? 0

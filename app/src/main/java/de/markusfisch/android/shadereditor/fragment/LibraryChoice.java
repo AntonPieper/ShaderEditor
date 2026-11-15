@@ -149,8 +149,9 @@ final class LibraryChoice {
 			Preparation preparation = library.prepareSaved(path,
 					UniformTable.builtins());
 			float quality = library.settings().quality(path);
+			int limit = library.settings().frameRateLimit(path);
 			MAIN.post(() -> projects.setWallpaper(preparation, path,
-					quality, path, problem -> {
+					quality, limit, path, null, problem -> {
 						if (problem == null) {
 							LibraryLooks.showsInstalled();
 						}
