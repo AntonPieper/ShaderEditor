@@ -299,6 +299,8 @@ public final class OpenProject {
 	private List<Used> used = List.of();
 	// What the files of the last build know of each other.
 	private ProjectKnowledge knowledge = ProjectKnowledge.NONE;
+	// The lines of the last build of what runs that name its files.
+	private List<HostDirectives.Reference> references = List.of();
 	// What ran when the files used were built.
 	private ProjectPath usedFor;
 	private ProjectPath running;
@@ -1549,6 +1551,16 @@ public final class OpenProject {
 			built.add(new Used(move.moved(file.path()), file.image(), role));
 		}
 		this.used = Collections.unmodifiableList(built);
+		List<HostDirectives.Reference> named = new ArrayList<>();
+		for (HostDirectives.Reference reference : references) {
+			ProjectPath path = move.moved(reference.path());
+			ProjectPath file = move.moved(reference.file());
+			if (path != null && file != null) {
+				named.add(new HostDirectives.Reference(path, file,
+						reference.line()));
+			}
+		}
+		references = Collections.unmodifiableList(named);
 		usedFor = usedFor != null ? move.moved(usedFor) : null;
 		// What was built is of the old paths.
 		++generation;
@@ -1681,6 +1693,9 @@ public final class OpenProject {
 			ProjectKnowledge built = temporary
 					? null
 					: ProjectKnowledge.of(texts, known);
+			List<HostDirectives.Reference> named = preparation != null
+					? preparation.references()
+					: List.of();
 			main.execute(() -> {
 				// Not delivered when the text or what runs changed.
 				if (generation != this.generation) {
@@ -1690,6 +1705,7 @@ public final class OpenProject {
 					knowledge = built;
 				}
 				used = Collections.unmodifiableList(read);
+				references = named;
 				usedFor = entry;
 				changed();
 				done.done(new Build(preparation, nothingRuns, generation));
@@ -1759,6 +1775,21 @@ public final class OpenProject {
 	 */
 	public boolean reads(ProjectPath path) {
 		return running != null && running.equals(usedFor) && uses(path);
+	}
+
+	/**
+	 * Return the lines of the files of the last build of what runs that
+	 * name path, in the order it read them; none when it read no line
+	 * that names it.
+	 */
+	public List<HostDirectives.Reference> references(ProjectPath path) {
+		List<HostDirectives.Reference> naming = new ArrayList<>();
+		for (HostDirectives.Reference reference : references) {
+			if (reference.path().equals(path)) {
+				naming.add(reference);
+			}
+		}
+		return naming;
 	}
 
 	/** Return whether the last build of what runs is made of path. */

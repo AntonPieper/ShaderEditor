@@ -13,6 +13,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Moves;
 import de.markusfisch.android.shadereditor.navigation.Row;
+import de.markusfisch.android.shadereditor.project.HostDirectives;
 import de.markusfisch.android.shadereditor.project.Naming;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
@@ -122,15 +123,21 @@ final class FolderActions {
 		names.remove(row.name());
 		Naming naming = new Naming(names);
 		RenameDialog.Shown[] shown = {null};
+		// The lines of the running shader that name it change with it.
+		List<HostDirectives.Reference> named = project.reads(path)
+				? project.references(path)
+				: List.of();
+		CharSequence also = RenameReferences.sentence(activity, named);
 		shown[0] = RenameDialog.show(activity, R.string.nav_rename,
 				row.name(), name ->
 						NewSheet.describe(activity, naming.check(name), name),
-				uses(project, path), name -> {
+				also == null ? uses(project, path) : null, also, name -> {
 					ProjectPath to = sibling(path, name);
 					if (to == null || name.equals(row.name())) {
 						shown[0].dismiss();
 						return;
 					}
+					boolean follow = shown[0].also();
 					// What the project holds there, the open file too,
 					// follows; the editor learns it from the project.
 					ProjectPath running = project.running();
@@ -143,6 +150,9 @@ final class FolderActions {
 							return;
 						}
 						shown[0].dismiss();
+						if (moved instanceof OpenProject.Renamed && follow) {
+							RenameReferences.change(project, named, path, to);
+						}
 						// What ran by the rule, as main.frag, keeps running
 						// under its new name.
 						if (moved instanceof OpenProject.Renamed &&

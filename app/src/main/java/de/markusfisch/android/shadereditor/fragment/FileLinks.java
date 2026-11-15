@@ -34,6 +34,13 @@ public interface FileLinks extends HostCompletion.Listing {
 	void create(@NonNull ProjectPath path, boolean include);
 
 	/**
+	 * Return the path a file at path was renamed to while the project
+	 * is open, or null when it was not.
+	 */
+	@Nullable
+	ProjectPath renamed(@NonNull ProjectPath path);
+
+	/**
 	 * The caret entered a path: list the folders asked for from now on
 	 * again, off the main thread, as files may have been made since.
 	 */

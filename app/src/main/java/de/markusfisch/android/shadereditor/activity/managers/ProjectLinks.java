@@ -29,6 +29,7 @@ import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.fragment.FileLinks;
 import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.navigation.Face;
+import de.markusfisch.android.shadereditor.navigation.Moves;
 import de.markusfisch.android.shadereditor.project.FileKind;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.OpenProject;
@@ -108,6 +109,8 @@ final class ProjectLinks implements FileLinks {
 	private final LruCache<ProjectPath, Bitmap> pictures =
 			new LruCache<>(KEPT);
 	private final Set<ProjectPath> unpictured = new HashSet<>();
+	// The renames of the project heard of, in order.
+	private final List<OpenProject.Renamed> renames = new ArrayList<>();
 	@NonNull
 	private final Context context;
 	@NonNull
@@ -154,13 +157,18 @@ final class ProjectLinks implements FileLinks {
 	 * shows in the file opened; any other file takes it away.
 	 */
 	void show(@NonNull OpenProject project, @NonNull ProjectPath file) {
-		if (project == this.project && file.equals(this.file)) {
-			return;
+		if (project == this.project) {
+			changed();
+			if (file.equals(this.file)) {
+				return;
+			}
+		} else {
+			renames.clear();
+			heard = last(project.events(0));
 		}
 		forget();
 		this.project = project;
 		this.file = file;
-		heard = last(project.events(0));
 		Back way = back;
 		if (way != null && way.project() == project &&
 				way.to().equals(file)) {
@@ -177,6 +185,7 @@ final class ProjectLinks implements FileLinks {
 	/** No file is in the editor. */
 	void hide() {
 		forget();
+		renames.clear();
 		project = null;
 		file = null;
 		back = null;
@@ -192,6 +201,11 @@ final class ProjectLinks implements FileLinks {
 		List<OpenProject.Event> events = open.events(heard);
 		if (!events.isEmpty()) {
 			heard = last(events);
+			for (OpenProject.Event event : events) {
+				if (event.change() instanceof OpenProject.Renamed renamed) {
+					renames.add(renamed);
+				}
+			}
 			forget();
 		}
 	}
@@ -325,6 +339,21 @@ final class ProjectLinks implements FileLinks {
 						? () -> show.show(path)
 						: null,
 				image ? null : () -> open(path, 0));
+	}
+
+	@Nullable
+	@Override
+	public ProjectPath renamed(@NonNull ProjectPath path) {
+		String at = path.toString();
+		boolean moved = false;
+		for (OpenProject.Renamed rename : renames) {
+			String from = rename.from().toString();
+			if (Moves.within(at, from)) {
+				at = Moves.renamed(at, from, rename.to().toString());
+				moved = true;
+			}
+		}
+		return moved ? ProjectPath.parse(at).value() : null;
 	}
 
 	@Override

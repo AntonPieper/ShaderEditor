@@ -1,7 +1,8 @@
-<FrameLayout
+<LinearLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
+	android:orientation="vertical"
 	android:paddingHorizontal="@dimen/se_margin_sheet"
 	android:paddingTop="@dimen/se_dialog_field_top">
 	<com.google.android.material.textfield.TextInputLayout
@@ -18,4 +19,13 @@
 			android:inputType="text"
 			android:maxLines="1" />
 	</com.google.android.material.textfield.TextInputLayout>
-</FrameLayout>
+	<com.google.android.material.checkbox.MaterialCheckBox
+		android:id="@+id/also"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="8dp"
+		android:checked="true"
+		android:minHeight="@dimen/se_row_height"
+		android:textAppearance="?attr/textAppearanceBodyLarge"
+		android:visibility="gone" />
+</LinearLayout>
