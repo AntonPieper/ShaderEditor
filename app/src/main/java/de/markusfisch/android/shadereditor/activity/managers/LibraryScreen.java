@@ -143,12 +143,29 @@ public final class LibraryScreen implements ShaderScreen {
 		uiManager.setTitleIsFileName(true);
 		editorFragment.setAddsByFileRule(true);
 		this.shaderViewManager = shaderViewManager;
-		links = new ProjectLinks(shaderViewManager::drawsHalfFloat);
 		this.extraKeysManager = extraKeysManager;
 		this.navigationManager = navigationManager;
 		this.dataSource = dataSource;
 		this.host = host;
 		holds = new ProjectHolds(new Projects(activity));
+		links = new ProjectLinks(activity, holds.projects(),
+				new ProjectLinks.Host() {
+					@Override
+					public boolean drawsHalfFloat() {
+						return shaderViewManager.drawsHalfFloat();
+					}
+
+					@Override
+					public void showReference(
+							@Nullable ExtraKeysManager.Reference reference) {
+						extraKeysManager.showReference(reference);
+					}
+
+					@Override
+					public void open(@NonNull ProjectPath path) {
+						files.openAt(path, 0);
+					}
+				});
 		libraryAdd = new LibraryAdd(activity, holds.projects(), dataSource,
 				new LibraryAdd.Listener() {
 					@Override

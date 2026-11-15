@@ -2,10 +2,12 @@ package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.app.Activity;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -33,8 +35,28 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		void tab();
 	}
 
+	/**
+	 * The file the caret rests in the path of, as the strip shows it in
+	 * place of the completions: its name, its picture or null for none
+	 * yet, what it is, and what Show and Open do, each null when it is
+	 * not offered.
+	 */
+	public record Reference(@NonNull String name, @Nullable Bitmap picture,
+			@NonNull Kind kind, @Nullable Runnable show,
+			@Nullable Runnable open) {
+		public enum Kind {PASS, IMAGE, CODE}
+	}
+
 	@NonNull
 	private final View extraKeysView;
+	@NonNull
+	private final View referenceView;
+	@NonNull
+	private final ImageView referencePicture;
+	@NonNull
+	private final View referenceShow;
+	@NonNull
+	private final View referenceOpen;
 	@NonNull
 	private final View insertTabView;
 	@NonNull
@@ -60,6 +82,10 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 			lookUp(editor);
 			return true;
 		});
+		referenceView = extraKeysView.findViewById(R.id.reference);
+		referencePicture = extraKeysView.findViewById(R.id.reference_picture);
+		referenceShow = extraKeysView.findViewById(R.id.reference_show);
+		referenceOpen = extraKeysView.findViewById(R.id.reference_open);
 		completions.setLayoutManager(new LinearLayoutManager(
 				activity, RecyclerView.HORIZONTAL, false));
 		completionsAdapter = new CompletionsAdapter(editor::complete, editor);
@@ -125,6 +151,45 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		if (signature != null && editor.hasDocs(signature.name())) {
 			editor.lookUp(signature.name());
 		}
+	}
+
+	/** Show reference in place of the completions, them when null. */
+	public void showReference(@Nullable Reference reference) {
+		completions.setVisibility(getVisibility(reference == null));
+		referenceView.setVisibility(getVisibility(reference != null));
+		if (reference == null) {
+			return;
+		}
+		String name = reference.name();
+		if (reference.picture() != null) {
+			referencePicture.setScaleType(ImageView.ScaleType.CENTER_CROP);
+			referencePicture.setImageBitmap(reference.picture());
+		} else {
+			referencePicture.setScaleType(ImageView.ScaleType.FIT_CENTER);
+			referencePicture.setImageResource(switch (reference.kind()) {
+				case CODE -> R.drawable.ic_code;
+				case IMAGE -> R.drawable.ic_image;
+				case PASS -> R.drawable.picture_empty_frame;
+			});
+		}
+		referencePicture.setContentDescription(extraKeysView.getContext()
+				.getString(switch (reference.kind()) {
+					case CODE -> R.string.a11y_reference_include;
+					case IMAGE -> R.string.a11y_reference_image;
+					case PASS -> R.string.a11y_reference_pass;
+				}, name));
+		bind(referenceShow, reference.show(), R.string.a11y_reference_show,
+				name);
+		bind(referenceOpen, reference.open(), R.string.a11y_reference_open,
+				name);
+	}
+
+	private static void bind(@NonNull View button, @Nullable Runnable action,
+			int spoken, @NonNull String name) {
+		button.setVisibility(getVisibility(action != null));
+		button.setOnClickListener(action != null ? v -> action.run() : null);
+		button.setContentDescription(button.getContext().getString(spoken,
+				name));
 	}
 
 	public void updateVisibility() {

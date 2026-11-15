@@ -43,4 +43,37 @@
 		android:textColor="?attr/colorOnSurface"
 		android:visibility="gone" />
 
+	<LinearLayout
+		android:id="@+id/reference"
+		android:layout_width="0dp"
+		android:layout_height="match_parent"
+		android:layout_weight="1"
+		android:gravity="center_vertical"
+		android:orientation="horizontal"
+		android:visibility="gone">
+
+		<com.google.android.material.imageview.ShapeableImageView
+			android:id="@+id/reference_picture"
+			android:layout_width="@dimen/strip_picture"
+			android:layout_height="@dimen/strip_picture"
+			android:layout_marginStart="8dp"
+			android:layout_marginEnd="12dp"
+			app:shapeAppearance="?attr/shapeAppearanceCornerSmall" />
+
+		<Button
+			android:id="@+id/reference_show"
+			style="@style/BarButton.Action"
+			android:layout_width="wrap_content"
+			android:layout_height="match_parent"
+			android:text="@string/reference_show" />
+
+		<Button
+			android:id="@+id/reference_open"
+			style="@style/BarButton.Action"
+			android:layout_width="wrap_content"
+			android:layout_height="match_parent"
+			android:text="@string/reference_open" />
+
+	</LinearLayout>
+
 </LinearLayout>

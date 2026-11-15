@@ -165,6 +165,38 @@ public final class HostCompletion {
 				: null;
 	}
 
+	/** A file a path names, and which line names it. */
+	public record Named(ProjectPath path, Kind kind) {
+	}
+
+	/**
+	 * Return the file the path at the caret names when its folder is
+	 * listed with it as a file; null when it names none, or while the
+	 * folder is not listed.
+	 *
+	 * @param file the file line is in
+	 */
+	public static Named named(String line, int column, ProjectPath file,
+			Listing listing) {
+		Path path = pathAt(line, column);
+		ProjectParseResult<ProjectPath> named = path != null
+				? ProjectPath.resolve(file, path.text(line))
+				: null;
+		if (named == null || !named.isSuccess()) {
+			return null;
+		}
+		String name = named.value().getFileName();
+		List<Entry> entries = listing.list(folderOf(file,
+				path.text(line)));
+		for (int i = 0; entries != null && i < entries.size(); ++i) {
+			Entry entry = entries.get(i);
+			if (!entry.folder() && entry.name().equals(name)) {
+				return new Named(named.value(), path.kind());
+			}
+		}
+		return null;
+	}
+
 	/**
 	 * Return the folder typed, the part of a path up to its last slash,
 	 * names relative to file, null for the root; or file itself when it
