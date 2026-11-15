@@ -22,6 +22,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.opengl.PictureLimit;
+import de.markusfisch.android.shadereditor.widget.FileNameView;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
 
 public class UIManager {
@@ -30,7 +31,8 @@ public class UIManager {
 	private final ExtraKeysManager extraKeysManager;
 	private final ShaderViewManager shaderViewManager;
 	private final Toolbar toolbar;
-	private final TextView titleView;
+	private final FileNameView titleView;
+	private boolean titleIsFileName;
 	private final TextView subtitleView;
 	private final Drawable unsavedDot;
 	private final View titleColumn;
@@ -167,13 +169,26 @@ public class UIManager {
 		secondLine.setOwn(subtitle);
 		showFrameRate();
 		// The name never moves: the dot is an end drawable, after it.
-		titleView.setText(title);
+		if (titleIsFileName) {
+			titleView.setName(title);
+		} else {
+			titleView.setText(title);
+		}
 		titleView.setCompoundDrawablesRelativeWithIntrinsicBounds(
 				null, null, unsaved ? unsavedDot : null, null);
 		titleView.setContentDescription(unsaved
 				? title + ", " + activity.getString(R.string.unsaved_changes)
 				: null);
 		showSubtitle();
+	}
+
+	/**
+	 * Take whether the title is a file's name, which is then cut so that
+	 * its ending stays, as "A very long sketch na….frag"; a shader of
+	 * the database keeps its title as it is.
+	 */
+	public void setTitleIsFileName(boolean fileName) {
+		titleIsFileName = fileName;
 	}
 
 	/** Show text in the second line for a while instead of what is there. */

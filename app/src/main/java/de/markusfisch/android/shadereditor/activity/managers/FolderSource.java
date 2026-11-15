@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.UriPermission;
 import android.net.Uri;
 import android.os.Handler;
-import android.text.format.Formatter;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -792,7 +791,7 @@ final class FolderSource {
 			@Override
 			public String cannotOpen(long bytes) {
 				return context.getString(R.string.nav_cannot_open_size,
-						Formatter.formatShortFileSize(context, bytes));
+						SizeWords.of(context, bytes));
 			}
 
 			@Override

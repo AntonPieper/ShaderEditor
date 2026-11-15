@@ -1,7 +1,5 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
-import android.text.format.Formatter;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -153,7 +151,7 @@ final class ImageSheets {
 	String info(@NonNull ImageFaces.Large large) {
 		return activity.getString(R.string.nav_image_info, large.width(),
 				large.height(), large.format(),
-				Formatter.formatShortFileSize(activity, large.bytes()));
+				SizeWords.of(activity, large.bytes()));
 	}
 
 	void dismiss() {

@@ -16,13 +16,13 @@
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content" />
 
-		<TextView
+		<de.markusfisch.android.shadereditor.widget.FileNameView
 			android:id="@+id/image_name"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:layout_marginHorizontal="@dimen/se_margin_sheet"
-			android:ellipsize="middle"
-			android:singleLine="true"
+			android:ellipsize="end"
+			android:maxLines="1"
 			android:textAppearance="?attr/textAppearanceTitleLarge" />
 
 		<TextView

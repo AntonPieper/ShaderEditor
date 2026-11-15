@@ -202,7 +202,7 @@ final class FoldersSource implements Source {
 					!session.id().equals(library)) {
 				recent.add(new Recent(session.id(),
 						kind == ProjectSessions.Kind.DOCUMENT,
-						session.name(), session.location(),
+						session.shownName(), session.location(),
 						session.opened(), session.unsaved(),
 						lost.contains(session.id())));
 			}

@@ -369,6 +369,10 @@
 	<string name="nav_default_shader">Default shader</string>
 	<string name="nav_default_shader_line">Tap to run it</string>
 	<string name="nav_cannot_open_size">Cannot be opened here · %1$s</string>
+	<string name="nav_size_bytes">%1$s B</string>
+	<string name="nav_size_kilobytes">%1$s kB</string>
+	<string name="nav_size_megabytes">%1$s MB</string>
+	<string name="nav_size_gigabytes">%1$s GB</string>
 	<string name="nav_cannot_open_tap">%1$s cannot be opened here: the editor opens files up to 16 MB</string>
 	<string name="nav_kind_folder">folder</string>
 	<string name="nav_kind_shader">shader</string>

@@ -49,6 +49,20 @@ public final class ProjectSessions {
 	 */
 	public record Recent(String id, Locator locator, String name,
 			String location, long opened, boolean unsaved) {
+		/**
+		 * The name to list it by: a folder of the app's own storage by
+		 * its name now, as "Shaders before redo" for a library put
+		 * aside, never by the name it had when it was opened.
+		 */
+		public String shownName() {
+			if (locator.kind() == Kind.DIRECTORY) {
+				String folder = new File(locator.value()).getName();
+				if (!folder.isEmpty()) {
+					return folder;
+				}
+			}
+			return name;
+		}
 	}
 
 	/** Where the files of a project are stored. */

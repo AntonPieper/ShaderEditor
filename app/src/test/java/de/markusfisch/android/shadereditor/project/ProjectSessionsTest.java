@@ -63,6 +63,27 @@ public class ProjectSessionsTest {
 				sessions.open(new Locator(Kind.DOCUMENT, "17")));
 	}
 
+	// A folder of the app's storage is listed by its name now: a library
+	// put aside before a redo is "Shaders before redo", not "Shaders".
+	@Test
+	public void aFolderIsListedByItsNameNow() throws IOException {
+		File aside = temp.newFolder("Shaders before redo");
+		Locator from = new Locator(Kind.DIRECTORY, project.getPath());
+		String id = sessions.open(from);
+		assertTrue(sessions.remember(id, "Shaders", "ShaderEditor", 10));
+		assertEquals("project", sessions.recent(id).shownName());
+		assertTrue(sessions.relocate(from,
+				new Locator(Kind.DIRECTORY, aside.getPath())));
+		ProjectSessions.Recent recent = new ProjectSessions(root).recent(id);
+		assertEquals("Shaders before redo", recent.shownName());
+		assertEquals("ShaderEditor", recent.location());
+		// A granted folder keeps the name it was given.
+		String tree = sessions.open(new Locator(Kind.TREE,
+				"content://provider/tree/primary%3ASketches"));
+		assertTrue(sessions.remember(tree, "Sketches", "Phone", 20));
+		assertEquals("Sketches", sessions.recent(tree).shownName());
+	}
+
 	@Test
 	public void knowsNothingOfUnknownIds() throws IOException {
 		assertNull(sessions.find(new Locator(Kind.DATABASE, "1")));

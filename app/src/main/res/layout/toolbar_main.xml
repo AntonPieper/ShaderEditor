@@ -74,7 +74,7 @@
 		android:layout_gravity="start|center_vertical"
 		android:orientation="vertical">
 
-		<TextView
+		<de.markusfisch.android.shadereditor.widget.FileNameView
 			android:id="@+id/toolbar_title"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"

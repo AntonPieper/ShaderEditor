@@ -24,6 +24,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Notice;
 import de.markusfisch.android.shadereditor.navigation.Row;
+import de.markusfisch.android.shadereditor.widget.FileNameView;
 
 public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 	public interface Listener {
@@ -248,7 +249,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
 	private final class RowHolder extends RecyclerView.ViewHolder {
 		private final ImageView picture;
-		private final TextView name;
+		private final FileNameView name;
 		private final TextView detail;
 		private final View unsaved;
 		private final View wallpaper;
@@ -302,7 +303,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 					? 0
 					: itemView.getResources().getDimensionPixelSize(
 							R.dimen.se_row_padding_vertical);
-			name.setText(row.name());
+			name.setName(row.name());
 			// The scale's medium weight for the selected row.
 			TextViewCompat.setTextAppearance(name, item.selected()
 					? com.google.android.material.R.style.TextAppearance_Material3_TitleMedium

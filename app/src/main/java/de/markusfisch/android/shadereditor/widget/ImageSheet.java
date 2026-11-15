@@ -62,7 +62,7 @@ public final class ImageSheet {
 			@NonNull Listener listener) {
 		View view = LayoutInflater.from(context).inflate(R.layout.sheet_image,
 				null);
-		((TextView) view.findViewById(R.id.image_name)).setText(name);
+		((FileNameView) view.findViewById(R.id.image_name)).setName(name);
 		((TextView) view.findViewById(R.id.image_where)).setText(where);
 		picture = view.findViewById(R.id.image_picture);
 		picture.setBackground(new Checks(picture, checks(context)));

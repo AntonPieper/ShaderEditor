@@ -127,6 +127,8 @@ public final class LibraryScreen implements ShaderScreen {
 		this.activity = activity;
 		this.editorFragment = editorFragment;
 		this.uiManager = uiManager;
+		// The title is the name of a file.
+		uiManager.setTitleIsFileName(true);
 		this.shaderViewManager = shaderViewManager;
 		this.extraKeysManager = extraKeysManager;
 		this.navigationManager = navigationManager;
