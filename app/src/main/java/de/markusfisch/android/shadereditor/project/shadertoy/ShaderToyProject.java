@@ -175,7 +175,7 @@ public final class ShaderToyProject {
 		String main = text(new Drawn(image, ENTRY, "Image",
 				Integer.MAX_VALUE));
 		files.put(README, ShaderToyReadme.text(shader, listed(kept),
-				!buffers.isEmpty(), warnings));
+				!buffers.isEmpty(), licence(image, shared), warnings));
 		if (hasCommon) {
 			files.put(COMMON, shared.toString());
 		}
@@ -193,6 +193,26 @@ public final class ShaderToyProject {
 			files.put(file.getKey(), ended(file.getValue()));
 		}
 		files.put(ENTRY, main);
+		return null;
+	}
+
+	// The licence at the top of the first tab that states one: Image,
+	// Common, then the buffers. Null when none does.
+	private String licence(Pass image, StringBuilder shared) {
+		List<String> codes = new ArrayList<>();
+		codes.add(image.code());
+		if (shared != null) {
+			codes.add(shared.toString());
+		}
+		for (Drawn buffer : buffers) {
+			codes.add(buffer.pass().code());
+		}
+		for (String code : codes) {
+			String licence = ShaderToyReadme.licence(code);
+			if (licence != null) {
+				return licence;
+			}
+		}
 		return null;
 	}
 
