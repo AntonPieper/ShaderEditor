@@ -48,6 +48,7 @@
 	<string name="sort_by_last_modification">Сортировать по недавним изменениям</string>
 	<string name="sensor_delay">Задержка сенсоров</string>
 	<string name="no_shader_selected">Шейдер не выбран</string>
+	<string name="file_in_folder">%1$s · %2$s</string>
 	<string name="shader">Шейдер</string>
 	<string name="keyboard">Keyboard</string>
 	<string name="running">Запуск</string>

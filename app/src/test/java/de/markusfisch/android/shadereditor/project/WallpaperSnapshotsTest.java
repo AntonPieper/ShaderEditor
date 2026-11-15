@@ -174,6 +174,29 @@ public class WallpaperSnapshotsTest {
 		assertEquals(path("Clouds.frag"), snapshots.current().entry());
 	}
 
+	// A file of another folder is no file of the library: where it is
+	// from is kept to name it. A snapshot written before keeps working.
+	@Test
+	public void aSnapshotOfAnotherFolderKnowsWhereItIsFrom()
+			throws IOException {
+		Library library = library();
+		library.move(database(), "Untitled", new LibraryMove.Chosen(0, 0),
+				null, null);
+		WallpaperSnapshots snapshots = snapshots();
+		assertNull(snapshots.install(prepare(library, "Plasma.frag"),
+				path("Plasma.frag"), 1f, null, "Proj"));
+		WallpaperSnapshots.Snapshot snapshot = snapshots.current();
+		assertNull(snapshot.origin());
+		assertEquals("Proj", snapshot.source());
+
+		File current = new File(temp.getRoot(), "files/wallpaper/current");
+		write(current, snapshot.folder().getName() + "\n1.0\nPlasma.frag\n" +
+				"\n");
+		WallpaperSnapshots.Snapshot before = snapshots.current();
+		assertEquals(path("Plasma.frag"), before.entry());
+		assertNull(before.source());
+	}
+
 	@Test
 	public void aReferenceNothingWroteIsNoSnapshot() throws IOException {
 		write(new File(temp.getRoot(), "files/wallpaper/current"),

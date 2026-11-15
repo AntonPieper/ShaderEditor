@@ -29,6 +29,7 @@ import de.markusfisch.android.shadereditor.project.Library;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
+import de.markusfisch.android.shadereditor.project.WallpaperSnapshots;
 import de.markusfisch.android.shadereditor.project.Previews;
 
 /**
@@ -58,12 +59,28 @@ final class LibraryChoice {
 		boolean wallpaper = isWallpaper(preference.getKey());
 		long id = ShaderEditorApp.preferences.getWallpaperShader();
 		READING.execute(() -> {
-			ProjectPath chosen = chosen(projects(context), wallpaper, id);
+			Projects projects = projects(context);
+			ProjectPath chosen = chosen(projects, wallpaper, id);
+			// A file of another folder is the wallpaper's, not one of
+			// the library: named with that folder.
+			WallpaperSnapshots.Snapshot installed = wallpaper && chosen == null
+					? projects.wallpaper().current()
+					: null;
 			MAIN.post(() -> {
-				if (fragment.isAdded()) {
-					preference.setSummary(chosen != null
-							? chosen.getFileName()
-							: fragment.getString(R.string.no_shader_selected));
+				if (!fragment.isAdded()) {
+					return;
+				}
+				if (chosen != null) {
+					preference.setSummary(chosen.getFileName());
+				} else if (installed != null) {
+					String file = installed.entry().getFileName();
+					preference.setSummary(installed.source() != null
+							? fragment.getString(R.string.file_in_folder,
+									file, installed.source())
+							: file);
+				} else {
+					preference.setSummary(fragment.getString(
+							R.string.no_shader_selected));
 				}
 			});
 		});

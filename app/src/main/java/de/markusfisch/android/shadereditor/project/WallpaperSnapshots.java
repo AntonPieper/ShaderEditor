@@ -21,7 +21,7 @@ public final class WallpaperSnapshots {
 	 * or null when it was taken elsewhere.
 	 */
 	public record Snapshot(File folder, ProjectPath entry, float quality,
-			ProjectPath origin) {
+			ProjectPath origin, String source) {
 		public ProjectFiles files() {
 			return new DirectoryProjectFiles(folder);
 		}
@@ -67,6 +67,11 @@ public final class WallpaperSnapshots {
 				? new Snapshot(folder, entry.value(), quality,
 						origin != null && origin.isSuccess()
 								? origin.value()
+								: null,
+						// Written since a file of another folder could
+						// be set; a snapshot from before has none.
+						lines.length > 5 && !lines[4].isEmpty()
+								? lines[4]
 								: null)
 				: null;
 	}
@@ -84,6 +89,16 @@ public final class WallpaperSnapshots {
 	 */
 	public String install(Preparation preparation, ProjectPath entry,
 			float quality, ProjectPath origin) {
+		return install(preparation, entry, quality, origin, null);
+	}
+
+	/**
+	 * Install as {@link #install(Preparation, ProjectPath, float,
+	 * ProjectPath)} does, and keep source, the name of the folder it
+	 * was taken from, to say where it is from; null for none.
+	 */
+	public String install(Preparation preparation, ProjectPath entry,
+			float quality, ProjectPath origin, String source) {
 		if (preparation == null || preparation.plan() == null) {
 			return "the shader has errors; fix them first";
 		}
@@ -117,7 +132,9 @@ public final class WallpaperSnapshots {
 		// the new one whole.
 		if (!StateFile.replace(new File(root, CURRENT),
 				(folder.getName() + "\n" + quality + "\n" + entry + "\n" +
-						(origin != null ? origin : "") + "\n").getBytes(
+						(origin != null ? origin : "") + "\n" +
+						(source != null ? source.replace('\n', ' ') : "") +
+						"\n").getBytes(
 						StandardCharsets.UTF_8))) {
 			delete(folder);
 			return "the snapshot cannot be published";
