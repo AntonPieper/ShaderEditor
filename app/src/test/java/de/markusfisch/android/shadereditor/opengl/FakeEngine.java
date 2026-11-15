@@ -52,6 +52,12 @@ final class FakeEngine {
 		}
 	}
 
+	// What every pass of a frame is drawn with, for a test that draws.
+	@androidx.annotation.NonNull
+	ActiveBuiltins builtins() {
+		return builtins;
+	}
+
 	// Makes the targets for a render size, which is also the surface's.
 	ShaderSwap.Allocation resize(int width, int height) {
 		frame.surfaceWidth = width;

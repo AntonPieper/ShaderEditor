@@ -118,6 +118,24 @@ public class ShaderViewManager {
 	}
 
 	/**
+	 * Pause the picture at the frame drawn last, or let it run on from
+	 * there. Paused, nothing is drawn but what is asked for.
+	 */
+	public void setPaused(boolean paused) {
+		shaderView.setPaused(paused);
+	}
+
+	/** While paused, draw the next frame; every pass advances together. */
+	public void step() {
+		shaderView.step();
+	}
+
+	/** Draw the first frames again, from time and frame 0, without a build. */
+	public void restart() {
+		shaderView.restart();
+	}
+
+	/**
 	 * Show the pass of file full size instead of the output, or the
 	 * output again for null. Nothing that runs changes; the library's
 	 * picture stays of the output.

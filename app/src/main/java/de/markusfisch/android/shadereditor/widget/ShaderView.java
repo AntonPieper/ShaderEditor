@@ -72,6 +72,10 @@ public class ShaderView extends GLSurfaceView {
 	private volatile Object runtimeOwner;
 	// Written by the context factory on the GL thread.
 	private int contextVersion = 2;
+	// The render mode the host asked for, and whether the picture is
+	// paused, which draws only on demand.
+	private int requestedRenderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY;
+	private boolean paused;
 
 	public ShaderView(Context context, int renderMode) {
 		super(context);
@@ -168,6 +172,38 @@ public class ShaderView extends GLSurfaceView {
 			@NonNull Object picture, @Nullable Tuning tuning) {
 		engine.continuePlan(preparation, quality, picture, tuning);
 		requestRender();
+	}
+
+	// Pauses the picture at the frame drawn last, or lets it run on:
+	// paused, the view draws only on demand. See ShaderEngine.setPaused().
+	public void setPaused(boolean paused) {
+		this.paused = paused;
+		applyRenderMode();
+		engine.setPaused(paused);
+	}
+
+	// While paused, draws the next frame: see ShaderEngine.step().
+	public void step() {
+		engine.step();
+	}
+
+	// Draws the first frames again from time 0: see
+	// ShaderEngine.restart().
+	public void restart() {
+		engine.restart();
+	}
+
+	// The mode a host asks for is kept for when the view plays again.
+	@Override
+	public void setRenderMode(int renderMode) {
+		requestedRenderMode = renderMode;
+		applyRenderMode();
+	}
+
+	private void applyRenderMode() {
+		super.setRenderMode(paused
+				? GLSurfaceView.RENDERMODE_WHEN_DIRTY
+				: requestedRenderMode);
 	}
 
 	// Shows the pass of file instead of the output, or the output for

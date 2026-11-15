@@ -16,6 +16,8 @@ import androidx.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
@@ -132,6 +134,10 @@ public final class ShaderEngine {
 	// The file of the pass shown instead of the output, or null.
 	@Nullable
 	private volatile ProjectPath shown;
+	private volatile boolean paused;
+	private final AtomicInteger steps = new AtomicInteger();
+	private final AtomicBoolean restartAsked = new AtomicBoolean();
+	private final AtomicBoolean againAsked = new AtomicBoolean();
 	private float fTimeMax = DEFAULT_FTIME_MAX;
 	private long lastRender;
 	private volatile long nextFpsUpdate;
@@ -221,6 +227,8 @@ public final class ShaderEngine {
 		var build = shaders.current();
 		if (build != null) {
 			build.applyTuning();
+			// Paused, the frame drawn last shows the value.
+			againAsked.set(paused);
 		}
 	}
 
@@ -231,10 +239,34 @@ public final class ShaderEngine {
 	// and thumbnails stay of the output.
 	public void showPass(@Nullable ProjectPath file) {
 		shown = file;
-		var requester = renderRequester;
-		if (requester != null) {
-			requester.run();
+		requestRender();
+	}
+
+	// Any thread. Pauses the picture at the frame drawn last, or lets it
+	// run on from there: see Playback. The host draws only on demand
+	// while paused.
+	public void setPaused(boolean paused) {
+		this.paused = paused;
+		if (!paused) {
+			steps.set(0);
 		}
+		requestRender();
+	}
+
+	// Any thread. While paused, draws the next frame, every pass
+	// advancing together, and moves the clock by one frame's time.
+	public void step() {
+		if (paused) {
+			steps.incrementAndGet();
+			requestRender();
+		}
+	}
+
+	// Any thread. Clears the histories and the clock: the first frames
+	// are drawn again and time and frame start at 0, without a build.
+	public void restart() {
+		restartAsked.set(true);
+		requestRender();
 	}
 
 	// Any thread. The passes of the build that draws, or none.
@@ -321,7 +353,7 @@ public final class ShaderEngine {
 	public void drawFrame() {
 		// Before a newer shader replaces the frame it was asked for.
 		answerThumbnails();
-		swapInNewestShader();
+		var swap = swapInNewestShader();
 		answerThumbnails(thumbnails.drop(shaders::canDraw), null);
 		var build = shaders.current();
 		var revision = shaders.currentRevision();
@@ -344,11 +376,33 @@ public final class ShaderEngine {
 		}
 
 		long now = System.nanoTime();
-		var frame = inputs.capture(now, fTimeMax);
+		boolean paused = this.paused;
+		inputs.setPaused(paused, now);
+		if (restartAsked.getAndSet(false)) {
+			build.restart();
+			inputs.restart(now);
+			thumbnails.onFramesLost();
+		}
+		var draw = Playback.decide(paused, paused && takeStep(),
+				againAsked.getAndSet(false), build.needsFrame(), swap);
+		renderPipeline.setLimit(limitAt(now));
+		int shownPass = build.shown(shown);
+		if (draw == Playback.Draw.PRESENT) {
+			build.present(renderPipeline, inputs.getSurfaceWidth(),
+					inputs.getSurfaceHeight(), shownPass);
+			thumbnails.onFrame(revision.number());
+			answerThumbnails();
+			return;
+		}
+		var frame = switch (draw) {
+			case STEP -> inputs.captureStep(fTimeMax);
+			case AGAIN -> inputs.captureAgain(fTimeMax);
+			default -> inputs.capture(now, fTimeMax);
+		};
 		// Once for every program the frame draws.
 		sources.update(now);
-		renderPipeline.setLimit(limitAt(now));
-		build.draw(renderPipeline, builtins, frame, build.shown(shown));
+		build.draw(renderPipeline, builtins, frame, shownPass,
+				draw != Playback.Draw.AGAIN);
 		// A source that failed after it started, such as a camera that
 		// did not open.
 		if (sources.takeWarned()) {
@@ -357,8 +411,12 @@ public final class ShaderEngine {
 		thumbnails.onFrame(revision.number());
 		answerThumbnails();
 
-		if (listener != null) {
+		if (draw == Playback.Draw.FRAME && listener != null) {
 			updateFps(now);
+		}
+		// Steps asked for faster than frames come are drawn one a frame.
+		if (paused && steps.get() > 0) {
+			requestRender();
 		}
 	}
 
@@ -420,7 +478,10 @@ public final class ShaderEngine {
 		}
 	}
 
-	private void swapInNewestShader() {
+	// Whether a build began to draw, and whether it goes on from the one
+	// before.
+	@NonNull
+	private Playback.Swap swapInNewestShader() {
 		for (var revision = shaders.take();
 				revision != null;
 				revision = shaders.take()) {
@@ -429,7 +490,7 @@ public final class ShaderEngine {
 		// A next build that a newer request superseded is gone.
 		var next = shaders.next();
 		if (next == null) {
-			return;
+			return Playback.Swap.NONE;
 		}
 		var errors = new ArrayList<ProjectDiagnostic>();
 		next.upload(errors);
@@ -474,12 +535,12 @@ public final class ShaderEngine {
 				}
 			}
 			endCurrentWithoutTargets();
-			return;
+			return Playback.Swap.NONE;
 		}
 		// Unless a newer request superseded it while it uploaded.
 		if (shaders.swapIfComplete() == null) {
 			endCurrentWithoutTargets();
-			return;
+			return Playback.Swap.NONE;
 		}
 		thumbnails.onFramesLost();
 		var shown = Objects.requireNonNull(shaders.currentRevision());
@@ -505,6 +566,7 @@ public final class ShaderEngine {
 		sources.takeWarned();
 		resetFps();
 		report(shown, sources.withWarnings(built));
+		return continues ? Playback.Swap.CONTINUED : Playback.Swap.NEW;
 	}
 
 	// After a resize, the build drawing starts again with cleared targets
@@ -614,6 +676,23 @@ public final class ShaderEngine {
 		fTimeMax = DEFAULT_FTIME_MAX;
 		runSources(null);
 		showPasses(RunningPasses.NONE);
+	}
+
+	// A step asked for, taken.
+	private boolean takeStep() {
+		for (int n; (n = steps.get()) > 0; ) {
+			if (steps.compareAndSet(n, n - 1)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void requestRender() {
+		var requester = renderRequester;
+		if (requester != null) {
+			requester.run();
+		}
 	}
 
 	// GL thread. What draws now, for a host that shows the passes.
