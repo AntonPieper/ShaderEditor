@@ -18,6 +18,7 @@ import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.OpenProject;
+import de.markusfisch.android.shadereditor.project.PictureStore;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.Previews;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -121,8 +122,10 @@ public final class LibraryLooks {
 			Previews.Picture picture = previews != null
 					? previews.get(path)
 					: null;
-			// The database's grey square is no picture either.
+			// The database's grey square is no picture either, and one
+			// that came with the app is replaced by what it draws here.
 			boolean missing = previews != null && (picture == null ||
+					PictureStore.BUNDLED.equals(picture.revision()) ||
 					OldPlaceholder.real(context, picture.png()) == null);
 			handler.post(() -> {
 				if (missing && !destroyed) {

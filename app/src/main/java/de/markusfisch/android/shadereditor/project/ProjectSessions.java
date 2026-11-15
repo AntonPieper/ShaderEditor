@@ -70,6 +70,7 @@ public final class ProjectSessions {
 	private static final String SHOWN = "shown";
 	private static final String RECENT = "recent";
 	private static final String PREVIEWS = "previews";
+	private static final String FOLLOWING = "following";
 	private static final String LAST = "last";
 	private static final String DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
 	private static final int LENGTH = 8;
@@ -177,12 +178,21 @@ public final class ProjectSessions {
 	 * there is no such session.
 	 */
 	/**
-	 * Return the pictures of the files of session id, app data beside
-	 * its journal, or null for an id that names no session.
+	 * Return what is kept by path about the files of session id, its
+	 * pictures, app data beside its journal, or null for an id that
+	 * names no session.
 	 */
+	PictureStore pictures(String id) {
+		File folder = file(id, null);
+		return folder != null
+				? new PictureStore(folder, StateFile.Gate.OPEN, null, List.of())
+				: null;
+	}
+
+	/** Return the pictures of session id, or null; see {@link #pictures}. */
 	Previews previews(String id) {
-		File folder = file(id, PREVIEWS);
-		return folder != null ? new Previews(folder) : null;
+		PictureStore pictures = pictures(id);
+		return pictures != null ? pictures.previews() : null;
 	}
 
 	Histories histories(String id) {
@@ -372,6 +382,7 @@ public final class ProjectSessions {
 		}
 		// Its pictures go with it: they show it among the recent ones.
 		delete(new File(dir, PREVIEWS));
+		delete(new File(dir, FOLLOWING));
 		// A project open on the session may write its journal yet.
 		Journal.ifAbandoned(new File(dir, DRAFTS), () -> discard(id));
 		return true;
