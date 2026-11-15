@@ -14,6 +14,7 @@
 	app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
 	<com.google.android.material.bottomsheet.BottomSheetDragHandleView
+		android:id="@+id/passes_handle"
 		android:layout_width="match_parent"
 		android:layout_height="24dp" />
 
@@ -66,21 +67,17 @@
 			android:layout_height="wrap_content" />
 	</LinearLayout>
 
-	<!-- Seven chips spread over the width; a narrow screen scrolls them. -->
-	<HorizontalScrollView
+	<!-- Seven chips spread over the width, or on two lines when they do
+		not fit, as with the largest text. -->
+	<com.google.android.material.chip.ChipGroup
+		android:id="@+id/passes_quality"
 		android:layout_width="match_parent"
-		android:layout_height="48dp"
-		android:fillViewport="true"
-		android:scrollbars="none">
-
-		<LinearLayout
-			android:id="@+id/passes_quality"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:gravity="center_vertical"
-			android:orientation="horizontal"
-			android:paddingHorizontal="@dimen/se_margin_screen" />
-	</HorizontalScrollView>
+		android:layout_height="wrap_content"
+		android:minHeight="48dp"
+		android:paddingHorizontal="@dimen/se_margin_screen"
+		app:chipSpacingVertical="0dp"
+		app:selectionRequired="false"
+		app:singleSelection="false" />
 
 	<!-- The passes: not shown for a shader of one pass. -->
 	<View

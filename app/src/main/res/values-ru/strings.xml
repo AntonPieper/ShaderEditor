@@ -594,4 +594,10 @@
 	<string name="passes_limit">At most %1$d fps</string>
 	<string name="passes_limit_none">None</string>
 	<string name="passes_limit_menu">Frame rate limit</string>
+	<string name="passes_a11y_itself">itself</string>
+	<string name="passes_a11y_last">%1$s last frame</string>
+	<string name="passes_a11y_first">%1$s first frame</string>
+	<string name="passes_a11y_reads">reads %1$s</string>
+	<string name="passes_a11y_read_by">read by %1$s</string>
+	<string name="passes_a11y_shown">shown</string>
 </resources>
