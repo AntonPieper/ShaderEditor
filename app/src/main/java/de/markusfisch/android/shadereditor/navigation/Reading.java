@@ -29,11 +29,21 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 		LOST_FILE
 	}
 
-	/** A file or folder as the listing of its folder tells it. */
-	public record Entry(String name, boolean folder, long modified) {
+	/**
+	 * A file or folder as the listing of its folder tells it: its
+	 * name, when it was changed and how many bytes it has, 0 when not
+	 * told.
+	 */
+	public record Entry(String name, boolean folder, long modified,
+			long size) {
 		/** An entry of which the listing told no time. */
 		public Entry(String name, boolean folder) {
-			this(name, folder, 0);
+			this(name, folder, 0, 0);
+		}
+
+		/** An entry of which the listing told no size. */
+		public Entry(String name, boolean folder, long modified) {
+			this(name, folder, modified, 0);
 		}
 	}
 
@@ -116,16 +126,19 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 		for (Entry entry : ordered.subList(0, Math.min(shown,
 				ordered.size()))) {
 			String name = entry.name;
-			// A hint from the name, for the icon: what the file is, is
-			// read from its bytes when it is opened or used.
+			// A hint from the name, for the face: what the file is, is
+			// read from its bytes when it is opened or used. A file
+			// larger than the editor opens cannot be opened here.
 			Row.Kind kind = entry.folder
 					? Row.Kind.FOLDER
+					: entry.size > Face.LARGEST
+					? Row.Kind.OTHER
 					: FileKind.hint(name, null) == FileKind.PICTURE
 					? Row.Kind.IMAGE
 					: Row.Kind.TEXT;
 			rows.add(new Row(path != null ? path + "/" + name : name,
 					kind,
-					Face.of(kind, null),
+					Face.of(kind, name, null),
 					name,
 					null,
 					Math.max(0, entry.modified),
@@ -134,7 +147,7 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 					EnumSet.noneOf(Row.Action.class)));
 		}
 		if (visible.size() > shown) {
-			rows.add(new Row("", Row.Kind.MORE, Face.of(Row.Kind.MORE,
+			rows.add(new Row("", Row.Kind.MORE, Face.of(Row.Kind.MORE, more,
 					null), more,
 					String.format(Locale.getDefault(), shownOf, shown,
 							visible.size()), 0, null,

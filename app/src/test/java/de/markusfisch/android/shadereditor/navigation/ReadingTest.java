@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.navigation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -169,6 +170,22 @@ public class ReadingTest {
 		assertEquals(Row.Kind.TEXT, kinds.get("main.frag"));
 		assertEquals(Row.Kind.TEXT, kinds.get("notes"));
 		assertEquals(Row.Kind.TEXT, kinds.get("lib.glsl"));
+	}
+
+	// A file larger than the editor opens, by the size its listing
+	// told, cannot be opened here: a tap says why.
+	@Test
+	public void aFileTooLargeCannotBeOpened() {
+		List<Row> rows = listed(
+				new Reading.Entry("data.bin", false, 0, Face.LARGEST + 1),
+				new Reading.Entry("huge.png", false, 0, Face.LARGEST + 1),
+				new Reading.Entry("main.frag", false, 0, Face.LARGEST))
+				.rows(ROOT, "Show more", "%1$d of %2$d");
+		assertEquals(Row.Kind.OTHER, rows.get(0).kind());
+		assertEquals(Row.Kind.OTHER, rows.get(1).kind());
+		assertEquals(Row.Kind.TEXT, rows.get(2).kind());
+		assertEquals(Tap.SAY_WHY, Tap.of(rows.get(0).kind(), false));
+		assertTrue(rows.get(0).picture().dim());
 	}
 
 	private static Reading listed(Reading.Entry... entries) {

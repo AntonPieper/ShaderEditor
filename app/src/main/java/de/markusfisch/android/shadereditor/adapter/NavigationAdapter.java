@@ -46,9 +46,13 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 		@Nullable
 		Bitmap image(@NonNull Row row);
 
-		/** The size of the image of row in pixels, or null. */
+		/** The format and size of the image of row, as its line, or null. */
 		@Nullable
 		String size(@NonNull Row row);
+
+		/** What the row is, with the size of its image, or null. */
+		@Nullable
+		String spoken(@NonNull Row row);
 
 		/** Read the image of row small; ready is called when it is. */
 		void want(@NonNull Row row, @NonNull Runnable ready);
@@ -301,6 +305,11 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			String line = size != null ? size : row.detail();
 			detail.setText(line);
 			detail.setVisibility(line == null ? View.GONE : View.VISIBLE);
+			// A file that cannot be opened is dimmed, its picture too.
+			float alpha = row.picture().dim() ? 0.38f : 1f;
+			name.setAlpha(alpha);
+			detail.setAlpha(alpha);
+			picture.setAlpha(alpha);
 			unsaved.setVisibility(visibleIf(item, Row.Mark.UNSAVED));
 			wallpaper.setVisibility(visibleIf(item, Row.Mark.WALLPAPER));
 			readOnly.setVisibility(visibleIf(item, Row.Mark.READ_ONLY));
@@ -314,8 +323,9 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 				@NonNull Row.Picture picture) {
 			byte[] png = picture.png();
 			Bitmap bitmap = png != null && png.length > 0 ? decode(png) : null;
+			Row row = item.row();
+			String spoken = spoken(picture.spoken());
 			if (picture.own() && images != null) {
-				Row row = item.row();
 				bitmap = images.image(row);
 				if (bitmap == null) {
 					images.want(row, () -> {
@@ -323,14 +333,34 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 							bind(item);
 						}
 					});
+				} else {
+					String said = images.spoken(row);
+					spoken = said != null ? said : spoken;
 				}
+			}
+			// What the row is, said with its name and line.
+			this.picture.setImportantForAccessibility(spoken != null
+					? View.IMPORTANT_FOR_ACCESSIBILITY_YES
+					: View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+			this.picture.setContentDescription(spoken);
+			if (picture.frame()) {
+				// The empty place of a shader's picture: nothing in it.
+				this.picture.setBackgroundResource(
+						R.drawable.picture_empty_frame);
+				ImageViewCompat.setImageTintList(this.picture, null);
+				this.picture.setImageDrawable(null);
+				return;
 			}
 			int icon = switch (picture.icon()) {
 				case LIBRARY -> R.drawable.ic_grid_view;
 				case EXAMPLES -> R.drawable.ic_book_2;
 				case FOLDER -> R.drawable.ic_folder;
 				case IMAGE -> R.drawable.ic_image;
-				case SHADER -> R.drawable.ic_draft;
+				case CODE -> R.drawable.ic_code;
+				case SETTINGS -> R.drawable.ic_tune;
+				case DATA -> R.drawable.ic_data_object;
+				case NOTES -> R.drawable.ic_description;
+				case FILE -> R.drawable.ic_draft;
 			};
 			boolean isIcon = bitmap == null && picture.resource() == 0;
 			this.picture.setBackgroundResource(isIcon
@@ -350,6 +380,25 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			} else {
 				this.picture.setImageResource(icon);
 			}
+		}
+
+		@Nullable
+		private String spoken(@NonNull Row.Picture.Spoken spoken) {
+			int id = switch (spoken) {
+				case NONE -> 0;
+				case FOLDER -> R.string.nav_kind_folder;
+				case SHADER -> R.string.nav_kind_shader;
+				case SHADER_NOT_RUN -> R.string.nav_kind_shader_not_run;
+				case IMAGE -> R.string.nav_kind_image;
+				case INCLUDE -> R.string.nav_kind_include;
+				case SETTINGS -> R.string.nav_kind_settings;
+				case JSON -> R.string.nav_kind_json;
+				case MARKDOWN -> R.string.nav_kind_markdown;
+				case OTHER_LANGUAGE -> R.string.nav_kind_other_language;
+				case FILE -> R.string.nav_kind_file;
+				case CANNOT_OPEN -> R.string.nav_kind_cannot_open;
+			};
+			return id != 0 ? itemView.getContext().getString(id) : null;
 		}
 
 		private Bitmap decode(@NonNull byte[] png) {

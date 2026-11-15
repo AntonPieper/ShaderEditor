@@ -50,37 +50,64 @@ public record Row(String key, Kind kind, Picture picture, String name,
 	}
 
 	/**
-	 * What stands at the start of a row: a picture, an icon, or the
-	 * file itself, an image read small while its row is shown, with
-	 * the icon until it is read.
+	 * What stands at the start of a row, as {@link Face} decides it: a
+	 * picture edge to edge; the file itself, an image read small while
+	 * its row is shown and framed on a mat, with its icon until then;
+	 * an empty frame where a shader's picture will be; or an icon
+	 * without a tile. dim says that the file cannot be opened, and
+	 * spoken what the row is, for TalkBack.
 	 */
-	public record Picture(Icon icon, byte[] png, int resource, boolean own) {
-		/** Icons for rows without a picture. */
+	public record Picture(Icon icon, byte[] png, int resource, boolean own,
+			boolean frame, boolean dim, Spoken spoken) {
+		/** Icons for rows without a picture, without a tile. */
 		public enum Icon {
-			SHADER,
 			LIBRARY,
 			EXAMPLES,
 			FOLDER,
-			IMAGE
+			IMAGE,
+			/** GLSL to include, or another shading language. */
+			CODE,
+			/** The project's manifest. */
+			SETTINGS,
+			/** Other JSON. */
+			DATA,
+			/** Markdown. */
+			NOTES,
+			/** Any other file. */
+			FILE
+		}
+
+		/** What a row is, as TalkBack says it. */
+		public enum Spoken {
+			NONE,
+			FOLDER,
+			SHADER,
+			SHADER_NOT_RUN,
+			IMAGE,
+			INCLUDE,
+			SETTINGS,
+			JSON,
+			MARKDOWN,
+			OTHER_LANGUAGE,
+			FILE,
+			CANNOT_OPEN
 		}
 
 		public static Picture of(Icon icon) {
-			return new Picture(icon, null, 0, false);
+			return new Picture(icon, null, 0, false, false, false,
+					Spoken.NONE);
 		}
 
-		/** The image the row stands for, read small. */
-		public static Picture ofItself() {
-			return new Picture(Icon.IMAGE, null, 0, true);
-		}
-
-		/** A PNG image; a shader without one shows the shader icon. */
+		/** A PNG image; a shader without one shows the file icon. */
 		public static Picture png(byte[] png) {
-			return new Picture(Icon.SHADER, png, 0, false);
+			return new Picture(Icon.FILE, png, 0, false, false, false,
+					Spoken.SHADER);
 		}
 
 		/** A picture that comes with the app, by its resource id. */
 		public static Picture resource(int resource) {
-			return new Picture(Icon.SHADER, null, resource, false);
+			return new Picture(Icon.FILE, null, resource, false, false,
+					false, Spoken.SHADER);
 		}
 	}
 }

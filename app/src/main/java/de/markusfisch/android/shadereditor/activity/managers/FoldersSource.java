@@ -101,7 +101,7 @@ final class FoldersSource implements Source {
 		List<Row> top = new ArrayList<>();
 		if (library != null) {
 			top.add(folder(Level.root(library), Face.of(Face.Of.LIBRARY,
-							pictures.get(library)),
+							null, pictures.get(library), true),
 					context.getString(R.string.nav_shaders), shaders < 0
 							? null
 							: shaders == 0
@@ -115,7 +115,7 @@ final class FoldersSource implements Source {
 			// row stands where it will be, so that the list does not
 			// change shape under the user, and leads nowhere yet.
 			top.add(new Row("library", Row.Kind.OTHER,
-					Face.of(Face.Of.LIBRARY, null),
+					Face.of(Face.Of.LIBRARY, null, null, true),
 					context.getString(R.string.nav_shaders),
 					context.getString(R.string.library_moving), 0, null,
 					EnumSet.noneOf(Row.Mark.class),
@@ -123,7 +123,8 @@ final class FoldersSource implements Source {
 		}
 		List<Listing.Section> sections = new ArrayList<>();
 		sections.add(new Listing.Section(null, List.of(
-				folder(Level.EXAMPLES, Face.of(Face.Of.EXAMPLES, examples),
+				folder(Level.EXAMPLES, Face.of(Face.Of.EXAMPLES, null,
+						examples, true),
 						context.getString(R.string.load_sample),
 						context.getString(R.string.nav_examples_count,
 								Samples.ALL.size()),
