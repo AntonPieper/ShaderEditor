@@ -165,14 +165,17 @@ public final class PassesSheet {
 	 * @param fit       the range the pass shown is fitted from, or null
 	 * @param limit     the most frames a second, 0 for none
 	 * @param frame     the number of the frame drawn last
+	 * @param problems  what the newest build reported, which may have
+	 *                  failed while the one before it draws
 	 */
 	record State(boolean open, boolean available, boolean paused,
 			@NonNull RunningPasses passes, @Nullable ProjectPath shown,
 			float quality, @NonNull Map<ProjectPath, Bitmap> pictures,
 			@NonNull Map<ProjectPath, PassFacts> facts, @Nullable Fit fit,
-			int limit, int frame) {
+			int limit, int frame, @NonNull List<ProjectDiagnostic> problems) {
 		static final State CLOSED = new State(false, false, false,
-				RunningPasses.NONE, null, 1f, Map.of(), Map.of(), null, 0, 0);
+				RunningPasses.NONE, null, 1f, Map.of(), Map.of(), null, 0, 0,
+				List.of());
 
 		boolean runs() {
 			return !passes.rows().isEmpty();
@@ -192,57 +195,86 @@ public final class PassesSheet {
 
 		State withOpen(boolean open) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withAvailable(boolean available) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withPaused(boolean paused) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withPasses(@NonNull RunningPasses passes) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withShown(@Nullable ProjectPath shown) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withQuality(float quality) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withPictures(@NonNull Map<ProjectPath, Bitmap> pictures) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withFacts(@NonNull Map<ProjectPath, PassFacts> facts) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withFit(@Nullable Fit fit) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withLimit(int limit) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
 		}
 
 		State withFrame(int frame) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit, frame);
+					pictures, facts, fit, limit, frame, problems);
+		}
+
+		State withProblems(@NonNull List<ProjectDiagnostic> problems) {
+			return new State(open, available, paused, passes, shown, quality,
+					pictures, facts, fit, limit, frame, problems);
+		}
+
+		// The newest build's first error in file, else its first
+		// warning, else what the build that draws says of it.
+		@Nullable
+		ProjectDiagnostic problem(@NonNull RunningPasses.Row row,
+				@Nullable PassFacts facts) {
+			ProjectDiagnostic warning = null;
+			for (var problem : problems) {
+				if (!row.file().equals(problem.file())) {
+					continue;
+				} else if (problem.severity() ==
+						ProjectDiagnostic.Severity.ERROR) {
+					return problem;
+				} else if (warning == null) {
+					warning = problem;
+				}
+			}
+			if (warning != null) {
+				return warning;
+			}
+			return facts != null
+					? PassFactLine.problem(facts)
+					: row.problems().isEmpty() ? null : row.problems().get(0);
 		}
 	}
 
@@ -484,6 +516,15 @@ public final class PassesSheet {
 			// What it showed stays while it slides away.
 			set(state.withOpen(false));
 		}
+	}
+
+	/**
+	 * What the newest build reported, none when it built or nothing
+	 * runs: a pass whose file has an error says so, also while the
+	 * build before it keeps drawing.
+	 */
+	public void setProblems(@NonNull List<ProjectDiagnostic> problems) {
+		set(state.withProblems(List.copyOf(problems)));
 	}
 
 	/** The screen stops: the sheet closes. */
@@ -820,6 +861,7 @@ public final class PassesSheet {
 			renderReads();
 			renderFacts();
 		} else if (state.facts != was.facts || state.paused != was.paused ||
+				state.problems != was.problems ||
 				state.fit != was.fit) {
 			renderFacts();
 		}
@@ -1038,9 +1080,7 @@ public final class PassesSheet {
 			var row = rows.get(r);
 			View view = list.getChildAt(r);
 			var facts = state.facts.get(row.file());
-			var problem = facts != null
-					? PassFactLine.problem(facts)
-					: row.problems().isEmpty() ? null : row.problems().get(0);
+			var problem = state.problem(row, facts);
 			String second;
 			if (problem != null) {
 				second = problem.severity() == ProjectDiagnostic.Severity.ERROR
