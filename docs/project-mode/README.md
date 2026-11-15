@@ -20,6 +20,7 @@ This folder is the design. The implementation plan, its ledger, and the prompts 
 | [FILES.md](FILES.md) | How a project file's truth is kept: one owner per file, the journal for unsaved text, undo that survives, the memory budget, the threading rules that close the review's text-losing sequences, the path of pull requests, and the decisions taken |
 | [NEUTRALITY.md](NEUTRALITY.md) | Where GLSL ES and OpenGL ES are assumed, which of those places leak into the format, the plan or the engine interface, and what is made neutral now |
 | [EXAMPLES.md](EXAMPLES.md) | The bundled examples and include library: purpose, structure, the set, quality bar |
+| [SHADERTOY.md](SHADERTOY.md) | Importing a shader from ShaderToy without the network: the forms a user can get, the mapping of tabs, buffers and inputs to a project, where it lands, and what is not supported |
 | [ACCEPTANCE.md](ACCEPTANCE.md) | Named, observable acceptance cases |
 | [examples/README.md](examples/README.md) | Small executable source fixtures and expected results |
 
