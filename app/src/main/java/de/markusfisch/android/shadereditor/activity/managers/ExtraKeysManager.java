@@ -1,7 +1,6 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.app.Activity;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.view.View;
 import android.view.ViewGroup;
@@ -233,18 +232,10 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		setVisible(ShaderEditorApp.preferences.showExtraKeys());
 	}
 
-	// An on-screen keyboard is open (docked or floating), or a hardware
-	// keyboard is attached while text has the focus.
+	// An on-screen keyboard is open, docked or floating.
 	private boolean isKeyboardOpen() {
 		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(extraKeysView);
-		if (insets != null && insets.isVisible(WindowInsetsCompat.Type.ime())) {
-			return true;
-		}
-		Configuration config = extraKeysView.getResources().getConfiguration();
-		View focus = extraKeysView.getRootView().findFocus();
-		return config.keyboard != Configuration.KEYBOARD_NOKEYS &&
-				config.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO &&
-				focus != null && focus.onCheckIsTextEditor();
+		return insets != null && insets.isVisible(WindowInsetsCompat.Type.ime());
 	}
 
 	private static int getVisibility(boolean isVisible) {
