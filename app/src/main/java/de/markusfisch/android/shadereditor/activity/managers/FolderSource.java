@@ -23,6 +23,7 @@ import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.navigation.FolderListing;
+import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Order;
@@ -83,6 +84,15 @@ final class FolderSource {
 		ProjectPath wallpaper();
 	}
 
+	/**
+	 * What a folder's source adds to its listings that is no file of
+	 * it, as the library's root lists the shaders not moved.
+	 */
+	interface Decoration {
+		@NonNull
+		Listing decorate(@NonNull Level level, @NonNull Listing listing);
+	}
+
 	/** Does what the menu of a row offers. */
 	interface Actor {
 		void act(@NonNull FolderSource source, @NonNull Level level,
@@ -102,11 +112,14 @@ final class FolderSource {
 	private final FolderListing.Words words;
 	@NonNull
 	private Looks looks;
+	@Nullable
+	private Decoration decoration;
 	// The pictures of the files read, by path, and the wallpaper's file.
 	private final Map<String, byte[]> pictures = new HashMap<>();
 	private String wallpaper;
-	// The file the manifest at the root names to run, or null.
-	private String manifestRuns;
+	// What the manifest at the root says, or null without one.
+	@Nullable
+	private OpenProject.Manifest manifest;
 	// How far each folder is read, by its path; the root is "".
 	private final Map<String, Reading> readings = new HashMap<>();
 	// Whether nothing of it can be changed, as the examples', once its
@@ -261,9 +274,14 @@ final class FolderSource {
 				return false;
 			}
 
+			// A row acts in its own folder, which is another for a file
+			// under Running.
 			@Override
 			public void act(Row row, Row.Action action) {
-				actor.act(FolderSource.this, level, row, action);
+				actor.act(FolderSource.this, row.kind() == Row.Kind.MORE
+						? level
+						: Item.Place.file(key, row.key()).level(), row,
+						action);
 			}
 		};
 	}
@@ -303,6 +321,29 @@ final class FolderSource {
 			this.looks = looks;
 			forget();
 		}
+	}
+
+	/**
+	 * Takes the picture kept for the file at path, and for its folder
+	 * when it is that folder's main.frag; its rows change, and nothing
+	 * is read again.
+	 */
+	void setPicture(@NonNull ProjectPath path, @NonNull byte[] png) {
+		String file = path.toString();
+		pictures.put(file, png);
+		if (path.getFileName().equals(OpenProject.MAIN.toString())) {
+			int slash = file.lastIndexOf('/');
+			if (slash > 0) {
+				pictures.put(file.substring(0, slash), png);
+			}
+		}
+		changed.run();
+	}
+
+	/** Takes what its listings add that is no file of it, or null. */
+	void setDecoration(@Nullable Decoration decoration) {
+		this.decoration = decoration;
+		changed.run();
 	}
 
 	/** Forgets every folder read, so that each is read again. */
@@ -356,13 +397,26 @@ final class FolderSource {
 				? project.used()
 				: List.of();
 		readPictures(used);
+		// What the root's manifest says: what it runs, or why not.
+		String manifestLine = manifest == null
+				? null
+				: manifest.entry() != null
+				? words.runs(manifest.entry().toString())
+				: context.getString(R.string.nav_manifest_invalid,
+						manifest.problem());
+		// What runs by the rule of SPEC 1 before it was built here: the
+		// root offers it as its default shader.
+		String defaultShader = path.isEmpty() && runs != null &&
+				project.used().isEmpty() && !project.reads(runs)
+				? runs.toString()
+				: null;
 		List<Listing.Section> sections = FolderListing.sections(
 				new FolderListing.Facts(level, order, reading, pictures,
-						wallpaper, manifestRuns, ordered != null
+						wallpaper, manifestLine, defaultShader, ordered != null
 								? ordered.sections()
 								: List.of(), used, allRunning, running(),
 						this::runs, !file && writable.contains(path),
-						unsaved()), words);
+						writableRead(), unsaved()), words);
 		// A folder that cannot be changed, such as the examples, says
 		// so; New there makes a shader in the library.
 		boolean readOnly = !file && !reading.isLost() && (this.readOnly ||
@@ -375,7 +429,7 @@ final class FolderSource {
 			String said = context.getString(R.string.nav_read_only);
 			where = where != null ? where + " \u00b7 " + said : said;
 		}
-		return new Listing(title(level),
+		Listing listing = new Listing(title(level),
 				where,
 				readOnly,
 				true,
@@ -388,6 +442,9 @@ final class FolderSource {
 						: Listing.Bar.NEW,
 				sections,
 				reading.notice());
+		return decoration != null
+				? decoration.decorate(level, listing)
+				: listing;
 	}
 
 	// The pictures of the files under Running that are outside the
@@ -439,6 +496,21 @@ final class FolderSource {
 		return null;
 	}
 
+	// The folders that can be changed and whose names are read, for
+	// the menus of rows of other folders.
+	@NonNull
+	private Set<String> writableRead() {
+		Set<String> read = new HashSet<>();
+		if (!file) {
+			for (String folder : writable) {
+				if (readings.containsKey(folder)) {
+					read.add(folder);
+				}
+			}
+		}
+		return read;
+	}
+
 	@Nullable
 	private String running() {
 		ProjectPath running = project != null ? project.running() : null;
@@ -472,6 +544,9 @@ final class FolderSource {
 		String closedFor = problem;
 		boolean reachable = listed != null && listed.storage().access() !=
 				OpenProject.Access.UNAVAILABLE;
+		// What was read of its README before, from here: the cache is
+		// written on this thread only.
+		Ordered was = readmes.get(path);
 		ProjectPath folder = path.isEmpty()
 				? null
 				: ProjectPath.parse(path).value();
@@ -499,12 +574,11 @@ final class FolderSource {
 					}
 				}
 				ProjectPath wallpaperFile = looks.wallpaper();
-				ProjectPath runs = folder == null && listed != null
-						? listed.manifestEntry()
+				OpenProject.Manifest said = folder == null && listed != null
+						? listed.manifest()
 						: null;
 				// The README, read again only when it was changed.
 				Ordered ordered = null;
-				Ordered was = readmes.get(path);
 				for (OpenProject.Item item : items.items()) {
 					String name = item.path().getFileName();
 					if (item.folder() || !Readme.is(name)) {
@@ -542,7 +616,7 @@ final class FolderSource {
 						readmes.remove(path);
 					}
 					if (folder == null) {
-						manifestRuns = runs != null ? runs.toString() : null;
+						manifest = said;
 					}
 					wallpaper = wallpaperFile != null
 							? wallpaperFile.toString()
@@ -720,6 +794,16 @@ final class FolderSource {
 			@Override
 			public String runs(String entry) {
 				return context.getString(R.string.nav_runs, entry);
+			}
+
+			@Override
+			public String defaultShader() {
+				return context.getString(R.string.nav_default_shader);
+			}
+
+			@Override
+			public String defaultShaderLine() {
+				return context.getString(R.string.nav_default_shader_line);
 			}
 
 			@Override

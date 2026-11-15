@@ -151,6 +151,12 @@ public final class LibraryScreen implements ShaderScreen {
 				});
 		looks = new LibraryLooks(activity, holds.projects(), shaderViewManager,
 				() -> shaderListManager.loadShadersAsync(),
+				// A picture taken: the drawer takes it as it is.
+				(key, path, png) -> {
+					if (drawer != null) {
+						drawer.setPicture(key, path, png);
+					}
+				},
 				problem -> Message.show(activity, activity.getString(
 						R.string.library_not_kept, problem)));
 		// The quality chosen is told once it changes, also when the
@@ -414,7 +420,8 @@ public final class LibraryScreen implements ShaderScreen {
 		// A shader is a file: of the library, or beside the
 		// file of another folder that is open.
 		if (files.file() == open) {
-			drawer.showNew(files.key(), files.file().getPath());
+			drawer.showNew(files.key(), files.file().getPath(),
+					files.file().isReadOnly());
 		} else {
 			drawer.showNewShader();
 		}
