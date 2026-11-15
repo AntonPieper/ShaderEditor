@@ -147,6 +147,20 @@ public final class OpenProject {
 	}
 
 	/**
+	 * The file shown had no unsaved text and was not in storage
+	 * anymore: it was written again, at revision.
+	 */
+	public record Created(String revision) implements Outcome {
+	}
+
+	/**
+	 * The file shown had no unsaved text and changed elsewhere: its
+	 * document took the stored text, and nothing was written.
+	 */
+	public record Reread() implements Outcome {
+	}
+
+	/**
 	 * The unsaved text of the file cannot be read, for reason. Nothing
 	 * was written, and the journal stays until {@link #dismiss}, which
 	 * gives it up only when it is damaged.
@@ -977,9 +991,16 @@ public final class OpenProject {
 	 * explicit and the user chose to keep their edits. A text no file
 	 * can hold, so that opening the file would give another text, as
 	 * one with half of a surrogate pair, fails with the place of the
-	 * character and stays unsaved; nothing is written for it. When explicit, a
-	 * document without unsaved text whose file was seen to be gone is
-	 * written too, creating the file again unless one is there.
+	 * character and stays unsaved; nothing is written for it. What is
+	 * done with each file is decided at the moment its save can start,
+	 * after whatever else worked on it. A file
+	 * without unsaved text is never written, with one exception: when
+	 * explicit, the file shown is looked at in storage first, and when
+	 * it is gone it is written again, which done is told as
+	 * {@link Created}; when it changed, its document takes the stored
+	 * text ({@link Reread}); when it cannot be read, that fails. Every
+	 * other file without unsaved text is left as storage has it, gone
+	 * or renamed too: no save brings it back.
 	 */
 	public void save(boolean explicit, Callback<Map<ProjectPath, Outcome>> done) {
 		persist();
@@ -994,28 +1015,14 @@ public final class OpenProject {
 		};
 		for (FileRecord record : new ArrayList<>(records.values())) {
 			ProjectPath path = record.path;
-			if (!record.edited() && record.unreadable() != null) {
-				outcomes.put(path, new Unreadable(record.unreadable(),
-						record.damaged()));
-				continue;
-			} else if (!record.edited() && !(explicit &&
-					record.document() != null &&
-					record.found == FileTexts.Found.MISSING)) {
-				continue;
-			} else if (record.conflict() != null) {
-				outcomes.put(path, new Conflict(record.conflict()));
-				continue;
-			} else if (!explicit && record.kept()) {
-				outcomes.put(path, new Conflict("the file changed elsewhere"));
-				continue;
-			}
-			outcomes.put(path, null);
 			++left[0];
-			record.whenIdle(() -> save(record, save -> {
-				if (save.outcome() != null) {
-					outcomes.put(path, save.outcome());
-				} else {
-					outcomes.remove(path);
+			// What a save does with a file is decided when it can
+			// start, from what the file is then: not when it was asked
+			// for behind another operation, which may have found the
+			// file changed, or behind an undo.
+			record.whenIdle(() -> save(record, explicit, false, outcome -> {
+				if (outcome != null) {
+					outcomes.put(path, outcome);
 				}
 				finished.run();
 			}));
@@ -1058,6 +1065,8 @@ public final class OpenProject {
 		Runnable checked = () -> {
 			if (--left[0] == 0) {
 				++generation;
+				// What was found gone leaves memory.
+				trim();
 				updateRunning(() -> done.done(reread));
 			}
 		};
@@ -2027,10 +2036,15 @@ public final class OpenProject {
 		return true;
 	}
 
-	// Save the text the document of record or its journal has now;
-	// done gets the save, or null when there was nothing to save.
-	private void save(FileRecord record, Callback<FileTexts.Save> done) {
-		String expected = record.expected();
+	// Write the text the document of record or its journal has now,
+	// or, to create, the text of a document without unsaved text whose
+	// file is gone; done gets the save.
+	private void write(FileRecord record, boolean create,
+			Callback<FileTexts.Save> done) {
+		// A file made again expects none there; any other the revision
+		// its text is based on. Which of the two was decided by the
+		// caller just now, never from what the file looks like later.
+		String expected = create ? null : record.base();
 		FileRecord.Request request = record.start(FileRecord.Kind.SAVE);
 		ProjectPath path = record.path;
 		Document document = request.document();
@@ -2050,6 +2064,53 @@ public final class OpenProject {
 					flush(record);
 					done.done(save);
 				});
+	}
+
+	// Do with record what a save does with it as it is now: nothing
+	// else works on it, and nothing is decided before. looked tells
+	// that storage was just looked at for the file shown; done gets the
+	// outcome, null when there was nothing to save.
+	private void save(FileRecord record, boolean explicit, boolean looked,
+			Callback<Outcome> done) {
+		ProjectPath path = record.path;
+		if (records.get(path) != record) {
+			done.done(null);
+		} else if (!record.edited() && record.unreadable() != null) {
+			done.done(new Unreadable(record.unreadable(),
+					record.damaged()));
+		} else if (!record.edited()) {
+			// Without unsaved text only the file shown is written, on
+			// the user's word, and only where it was just seen gone.
+			if (!explicit || record.document() == null ||
+					!path.equals(shown)) {
+				done.done(null);
+			} else if (!looked) {
+				Set<ProjectPath> reread = new HashSet<>();
+				check(record, reread, () -> {
+					if (reread.contains(path)) {
+						done.done(new Reread());
+					} else {
+						record.whenIdle(() -> save(record, true, true,
+								done));
+					}
+				});
+			} else if (record.found == FileTexts.Found.MISSING) {
+				write(record, true, save -> done.done(
+						save.outcome() instanceof Saved saved
+								? new Created(saved.revision())
+								: save.outcome()));
+			} else if (record.found != FileTexts.Found.SAME) {
+				done.done(new Failed("it cannot be read"));
+			} else {
+				done.done(null);
+			}
+		} else if (record.conflict() != null) {
+			done.done(new Conflict(record.conflict()));
+		} else if (!explicit && record.kept()) {
+			done.done(new Conflict("the file changed elsewhere"));
+		} else {
+			write(record, false, save -> done.done(save.outcome()));
+		}
 	}
 
 	// See what storage holds of record: give its document the stored
@@ -2166,9 +2227,21 @@ public final class OpenProject {
 	// more than the budget, the one used least recently first. One with
 	// an operation in flight waits for its outcome, one the journal does
 	// not hold as it is yet for the journal, one a caller is about to be
-	// told of for that call.
+	// told of for that call. A document without unsaved text whose file
+	// is gone from storage goes whatever the budget, once it is not
+	// shown: it is no file of the folder anymore, and nothing writes it
+	// back.
 	private void trim() {
 		List<ProjectPath> paths = new ArrayList<>(recent);
+		for (ProjectPath path : paths) {
+			FileRecord record = loaded(path);
+			if (record != null && !path.equals(shown) &&
+					record.found == FileTexts.Found.MISSING &&
+					!record.unsaved() && record.awaited == 0 &&
+					record.pending() == null && record.settled()) {
+				drop(record);
+			}
+		}
 		long used = 0;
 		for (ProjectPath path : paths) {
 			FileRecord record = loaded(path);

@@ -88,9 +88,9 @@ public class LifecycleSequencesTest {
 		 * A saved file; FAIL fails journal and history. Without RELOAD,
 		 * which the other starts take further in fewer steps.
 		 */
-		SAVED(5, 3371),
+		SAVED(5, 3379),
 		/** The same; what is typed has a character no file can hold. */
-		UNSTORABLE(4, 1340),
+		UNSTORABLE(4, 1336),
 		/** Unsaved text the journal holds; FAIL fails the history. */
 		HELD(4, 1929),
 		/**
@@ -98,7 +98,7 @@ public class LifecycleSequencesTest {
 		 * written: only what was kept beside the journal leads back.
 		 * FAIL fails the history.
 		 */
-		RELOADED(4, 3672),
+		RELOADED(4, 3668),
 		/**
 		 * The same, and the user typed on and the journal took it: one
 		 * write after the reload is done. FAIL fails journal and
@@ -127,6 +127,12 @@ public class LifecycleSequencesTest {
 		 * history.
 		 */
 		MOVED(4, 926),
+		/**
+		 * A saved file, shown, that another app deleted while the app
+		 * was in front, so no check saw it; FAIL fails journal and
+		 * history. A save that tells of no failure leaves a file.
+		 */
+		GONE(4, 485),
 		/**
 		 * Unsaved text the journal holds, while another app changed the
 		 * stored file and a refresh saw it; FAIL fails journal and
@@ -356,7 +362,8 @@ public class LifecycleSequencesTest {
 
 		private World(Start start) {
 			this.start = start;
-			boolean held = start != Start.SAVED && start != Start.UNSTORABLE;
+			boolean held = start != Start.SAVED &&
+					start != Start.UNSTORABLE && start != Start.GONE;
 			failing = start == Start.HELD || start == Start.RELOADED
 					? new File[]{history}
 					: new File[]{drafts, history};
@@ -406,6 +413,9 @@ public class LifecycleSequencesTest {
 				take(Step.UNDO, "undone");
 				assertEquals(stored, text);
 			}
+			if (start == Start.GONE) {
+				store.delete(A);
+			}
 			if (start == Start.CHANGED) {
 				store.put("a.glsl", "theirs");
 				theirs = true;
@@ -424,7 +434,8 @@ public class LifecycleSequencesTest {
 			closed = false;
 			failed = false;
 			load(A);
-			assertNotNull(document);
+			// A file deleted elsewhere opens only from unsaved text.
+			assertTrue(start == Start.GONE || document != null);
 		}
 
 		private void load(ProjectPath path) {
@@ -463,7 +474,7 @@ public class LifecycleSequencesTest {
 							start != Start.MOVED;
 					case RELOAD -> !closed && step != last &&
 							start != Start.SAVED && start != Start.MOVED &&
-							start != Start.LARGE;
+							start != Start.LARGE && start != Start.GONE;
 					case KEEP -> !closed && step != last &&
 							start == Start.CHANGED;
 					case RENAME, DELETE -> !closed && step != last &&
@@ -529,6 +540,14 @@ public class LifecycleSequencesTest {
 							project.seen(A));
 				}
 				case SAVE -> project.save(true, outcomes -> {
+					OpenProject.Outcome outcome = outcomes.get(A);
+					if (start == Start.GONE && at() == A &&
+							(outcome == null ||
+									outcome instanceof OpenProject.Saved ||
+									outcome instanceof OpenProject.Created)) {
+						assertNotNull(sequence + ": saved, but no file",
+								store.read(A));
+					}
 				});
 				case BACKGROUND -> {
 					OpenProject asked = project;
@@ -660,6 +679,13 @@ public class LifecycleSequencesTest {
 				}
 			} else {
 				open();
+			}
+			if (document == null) {
+				// Neither file nor journal: nothing typed was held since
+				// the file was deleted elsewhere.
+				assertEquals(sequence + ": held text is gone", 0, floor);
+				closed = true;
+				return;
 			}
 			String found = document.text().toString();
 			if (!may.contains(found) && wanted.contains(found)) {
