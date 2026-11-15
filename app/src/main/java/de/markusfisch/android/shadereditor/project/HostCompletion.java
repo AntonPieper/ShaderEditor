@@ -471,6 +471,9 @@ public final class HostCompletion {
 					names(HostDirective.Filter.values());
 			case "mipmap" -> names(HostDirective.Mipmap.values());
 			case "wrap" -> names(HostDirective.Wrap.values());
+			// The usual scales of a pass, as the passes sheet's Size
+			// line offers them; any other value can still be typed.
+			case "scale" -> List.of("1", "0.5", "0.25", "0.125");
 			case "format" -> halfFloat
 					? names(HostDirective.Format.values())
 					: List.of("rgba8");

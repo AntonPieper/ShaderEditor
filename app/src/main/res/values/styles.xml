@@ -317,4 +317,20 @@
 		<item name="closeIconSize">18dp</item>
 		<item name="closeIconTint">?attr/colorOnSecondaryContainer</item>
 	</style>
+	<!-- A file a pass reads, under the selected row: a label, not a
+	button, so it keeps its 28 dp. -->
+	<style name="Widget.ShaderEditor.Chip.Read" parent="Widget.Material3.Chip.Assist">
+		<item name="chipSurfaceColor">@android:color/transparent</item>
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+		<item name="chipMinHeight">28dp</item>
+		<item name="ensureMinTouchTargetSize">false</item>
+		<item name="android:clickable">false</item>
+		<item name="android:focusable">false</item>
+		<item name="chipBackgroundColor">@android:color/transparent</item>
+		<item name="chipStrokeColor">@color/pass_line</item>
+		<item name="android:textColor">@color/pass_name</item>
+		<item name="chipIconTint">@color/pass_name</item>
+		<item name="chipIconSize">18dp</item>
+		<item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+	</style>
 </resources>

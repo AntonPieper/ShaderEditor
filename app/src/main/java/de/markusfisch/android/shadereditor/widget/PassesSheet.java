@@ -10,6 +10,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Space;
@@ -26,6 +27,8 @@ import androidx.core.view.ViewCompat;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.color.MaterialColors;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,9 +40,11 @@ import java.util.Objects;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.navigation.NameCut;
 import de.markusfisch.android.shadereditor.opengl.Fit;
+import de.markusfisch.android.shadereditor.opengl.PassFacts;
 import de.markusfisch.android.shadereditor.opengl.PassPicture;
 import de.markusfisch.android.shadereditor.opengl.RunningPasses;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
+import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 
 /**
@@ -101,6 +106,15 @@ public final class PassesSheet {
 		void setPicture(boolean passShown, boolean paused);
 	}
 
+	/** Where the sheet goes to the code. */
+	public interface Files {
+		/**
+		 * Open file of what runs at line, from 1, or where its caret is
+		 * for 0, with a way back to the line the editor is on.
+		 */
+		void open(@NonNull ProjectPath file, int line);
+	}
+
 	/**
 	 * What the sheet shows.
 	 *
@@ -112,12 +126,14 @@ public final class PassesSheet {
 	 * @param shown     the pass shown full size, null for the output
 	 * @param quality   the quality chosen
 	 * @param pictures  the latest small picture of each pass that draws
+	 * @param facts     the latest facts of each pass
 	 */
 	record State(boolean open, boolean available, boolean paused,
 			@NonNull RunningPasses passes, @Nullable ProjectPath shown,
-			float quality, @NonNull Map<ProjectPath, Bitmap> pictures) {
+			float quality, @NonNull Map<ProjectPath, Bitmap> pictures,
+			@NonNull Map<ProjectPath, PassFacts> facts) {
 		static final State CLOSED = new State(false, false, false,
-				RunningPasses.NONE, null, 1f, Map.of());
+				RunningPasses.NONE, null, 1f, Map.of(), Map.of());
 
 		boolean runs() {
 			return !passes.rows().isEmpty();
@@ -137,37 +153,42 @@ public final class PassesSheet {
 
 		State withOpen(boolean open) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures);
+					pictures, facts);
 		}
 
 		State withAvailable(boolean available) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures);
+					pictures, facts);
 		}
 
 		State withPaused(boolean paused) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures);
+					pictures, facts);
 		}
 
 		State withPasses(@NonNull RunningPasses passes) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures);
+					pictures, facts);
 		}
 
 		State withShown(@Nullable ProjectPath shown) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures);
+					pictures, facts);
 		}
 
 		State withQuality(float quality) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures);
+					pictures, facts);
 		}
 
 		State withPictures(@NonNull Map<ProjectPath, Bitmap> pictures) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures);
+					pictures, facts);
+		}
+
+		State withFacts(@NonNull Map<ProjectPath, PassFacts> facts) {
+			return new State(open, available, paused, passes, shown, quality,
+					pictures, facts);
 		}
 	}
 
@@ -175,6 +196,8 @@ public final class PassesSheet {
 	private final Engine view;
 	private final Code editor;
 	private final Line ui;
+	private final Files files;
+	private final PassFactLine.Words words;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final View sheet;
 	private final BottomSheetBehavior<View> behavior;
@@ -200,6 +223,9 @@ public final class PassesSheet {
 	// What hears the passes, while the sheet is open or a pass is
 	// shown, and what watches their pictures, while it is open; each
 	// drops what it heard after it was replaced.
+	// Whether even the selected row's lines need more lanes than there
+	// are, so that what it reads is listed under it instead.
+	private boolean listed;
 	@Nullable
 	private Object hearing;
 	@Nullable
@@ -207,11 +233,13 @@ public final class PassesSheet {
 
 	public PassesSheet(@NonNull AppCompatActivity activity,
 			@NonNull Engine view, @NonNull Code editor,
-			@NonNull Line ui) {
+			@NonNull Line ui, @NonNull Files files) {
 		this.activity = activity;
 		this.view = view;
 		this.editor = editor;
 		this.ui = ui;
+		this.files = files;
+		words = words(activity);
 		ViewGroup coordinator = activity.findViewById(R.id.main_coordinator);
 		sheet = LayoutInflater.from(activity).inflate(R.layout.sheet_passes,
 				coordinator, false);
@@ -417,6 +445,19 @@ public final class PassesSheet {
 						}
 					});
 				}
+
+				@Override
+				public void onFacts(@NonNull List<PassFacts> facts) {
+					var kept = new HashMap<ProjectPath, PassFacts>();
+					for (var f : facts) {
+						kept.put(f.file(), copy(f));
+					}
+					handler.post(() -> {
+						if (watching == token) {
+							set(state.withFacts(kept));
+						}
+					});
+				}
 			});
 		}
 	}
@@ -477,6 +518,9 @@ public final class PassesSheet {
 		if (!state.passes.equals(was.passes) ||
 				!Objects.equals(state.shown, was.shown)) {
 			renderRows();
+			renderFacts();
+		} else if (state.facts != was.facts || state.paused != was.paused) {
+			renderFacts();
 		}
 		var rows = state.passes.rows();
 		for (int i = 0; i < rows.size() && i < list.getChildCount(); ++i) {
@@ -533,10 +577,11 @@ public final class PassesSheet {
 				int size = Math.round(PassRail.FIRST_PICTURE * dp);
 				picture.getLayoutParams().width = size;
 				picture.getLayoutParams().height = size;
-				TextView line = view.findViewById(R.id.pass_line);
-				line.setText(R.string.passes_first_frame);
-				line.setVisibility(View.VISIBLE);
 			}
+			var file = row.file();
+			var sizeLine = row.sizeLine();
+			view.findViewById(R.id.pass_size).setOnClickListener(v ->
+					openSizeLine(sizeLine));
 			if (rail.collapsed() && r != selected && !rail.touches(r)) {
 				view.setAlpha(.38f);
 			}
@@ -546,8 +591,8 @@ public final class PassesSheet {
 						Typeface.create("sans-serif-medium", Typeface.NORMAL));
 			}
 			if (row.drawn()) {
-				var file = row.output() ? null : row.file();
-				view.setOnClickListener(v -> show(file));
+				var tapped = row.output() ? null : file;
+				view.setOnClickListener(v -> show(tapped));
 			}
 			badged |= rail.badge(r);
 			list.addView(view);
@@ -556,6 +601,8 @@ public final class PassesSheet {
 			dashed |= line.form() == PassRail.Form.LANE && line.read().last();
 		}
 		list.setRail(rail);
+		listed = rail.listed();
+		renderReads();
 		// Said only for what is on screen: the badge alone is a pass that
 		// reads its own last frame.
 		key.setVisibility(badged || dashed ? View.VISIBLE : View.GONE);
@@ -563,6 +610,240 @@ public final class PassesSheet {
 		key.setCompoundDrawablesRelativeWithIntrinsicBounds(
 				list.key(badged, dashed), null, null, null);
 		key.setPaddingRelative(Math.round(rail.pictureLeft() * dp), 0, 0, 0);
+	}
+
+	// What the selected row reads, as chips under it, where lines cannot
+	// say it: the picture files the pass shown reads and starts from,
+	// which are not rows; and when even its own lines need more than
+	// four lanes, everything it starts from, reads, and is read by.
+	private void renderReads() {
+		var rows = state.passes.rows();
+		int selected = state.selected();
+		for (int r = 0; r < rows.size() && r < list.getChildCount(); ++r) {
+			var row = rows.get(r);
+			ViewGroup lines = list.getChildAt(r).findViewById(R.id.pass_reads);
+			lines.removeAllViews();
+			var starts = new ArrayList<Chip>();
+			var reads = new ArrayList<Chip>();
+			var readBy = new ArrayList<Chip>();
+			boolean all = listed && r == selected;
+			if (all || row.file().equals(state.shown)) {
+				if (row.startsFrom() != null) {
+					starts.add(chip(lines, row.startsFrom().getFileName(),
+							R.drawable.ic_image));
+				}
+				for (var picture : row.pictures()) {
+					reads.add(chip(lines, picture.getFileName(),
+							R.drawable.ic_image));
+				}
+			}
+			if (all) {
+				for (var read : row.reads()) {
+					String name = rows.get(read.row()).file().getFileName();
+					if (read.row() == r) {
+						reads.add(chip(lines, activity.getString(
+								R.string.passes_itself_last), R.drawable.ic_history));
+					} else if (read.kind() == RunningPasses.ReadKind.FIRST_FRAME) {
+						starts.add(chip(lines, name, 0));
+					} else if (read.kind() == RunningPasses.ReadKind.LAST_FRAME) {
+						reads.add(chip(lines, activity.getString(
+								R.string.passes_last_chip, name), R.drawable.ic_history));
+					} else {
+						reads.add(chip(lines, name, 0));
+					}
+				}
+				for (int o = 0; o < rows.size(); ++o) {
+					for (var read : rows.get(o).reads()) {
+						if (o != r && read.row() == r) {
+							readBy.add(chip(lines, rows.get(o).file()
+									.getFileName(), 0));
+							break;
+						}
+					}
+				}
+			}
+			line(lines, R.string.passes_starts_from, starts);
+			line(lines, R.string.passes_reads, reads);
+			line(lines, R.string.passes_read_by, readBy);
+			lines.setVisibility(lines.getChildCount() > 0
+					? View.VISIBLE
+					: View.GONE);
+		}
+	}
+
+	// A line of chips after its label, wrapped when it is long.
+	private void line(@NonNull ViewGroup lines, int label,
+			@NonNull List<Chip> chips) {
+		if (chips.isEmpty()) {
+			return;
+		}
+		var inflater = LayoutInflater.from(activity);
+		ChipGroup group = (ChipGroup) inflater.inflate(R.layout.pass_reads_line,
+				lines, false);
+		TextView text = (TextView) inflater.inflate(R.layout.pass_reads_label,
+				group, false);
+		text.setText(label);
+		group.addView(text);
+		for (var chip : chips) {
+			group.addView(chip);
+		}
+		// Added after the row took its state, which reaches only the
+		// views there were: these take it now.
+		group.setActivated(lines.isActivated());
+		lines.addView(group);
+	}
+
+	@NonNull
+	private Chip chip(@NonNull ViewGroup parent, @NonNull String text,
+			int icon) {
+		Chip chip = (Chip) LayoutInflater.from(activity).inflate(
+				R.layout.chip_pass_read, parent, false);
+		chip.setText(text);
+		if (icon != 0) {
+			chip.setChipIconResource(icon);
+			chip.setChipIconVisible(true);
+		}
+		return chip;
+	}
+
+	// What is worth saying of each pass, from its facts: a second line
+	// only when it says something; the pass shown grows by its facts
+	// and its actions.
+	private void renderFacts() {
+		var rows = state.passes.rows();
+		if (list.getChildCount() != rows.size()) {
+			return;
+		}
+		int width = 0;
+		int height = 0;
+		for (var row : rows) {
+			var facts = state.facts.get(row.file());
+			if (row.output() && facts != null) {
+				width = facts.width();
+				height = facts.height();
+			}
+		}
+		for (int r = 0; r < rows.size(); ++r) {
+			var row = rows.get(r);
+			View view = list.getChildAt(r);
+			var facts = state.facts.get(row.file());
+			var problem = facts != null
+					? PassFactLine.problem(facts)
+					: row.problems().isEmpty() ? null : row.problems().get(0);
+			String second;
+			if (problem != null) {
+				second = problem.severity() == ProjectDiagnostic.Severity.ERROR
+						? words.error(problem.line())
+						: words.warning(problem.line());
+			} else if (row.kind() == RunningPasses.Kind.FIRST_FRAME) {
+				second = activity.getString(R.string.passes_first_frame);
+			} else {
+				second = facts != null
+						? PassFactLine.second(facts, width, height, words)
+						: null;
+			}
+			TextView line = view.findViewById(R.id.pass_line);
+			line.setText(second);
+			line.setVisibility(second != null ? View.VISIBLE : View.GONE);
+			boolean error = problem != null &&
+					problem.severity() == ProjectDiagnostic.Severity.ERROR;
+			line.setCompoundDrawablesRelativeWithIntrinsicBounds(problem == null
+					? 0
+					: error ? R.drawable.ic_error_small : R.drawable.ic_warning_small,
+					0, 0, 0);
+			if (error) {
+				line.setTextColor(MaterialColors.getColor(line,
+						androidx.appcompat.R.attr.colorError));
+			}
+			boolean grown = row.file().equals(state.shown);
+			String shown = grown && facts != null
+					? PassFactLine.shown(facts, state.paused, words)
+					: null;
+			TextView factsLine = view.findViewById(R.id.pass_facts);
+			factsLine.setText(shown);
+			factsLine.setVisibility(shown != null ? View.VISIBLE : View.GONE);
+			view.findViewById(R.id.pass_actions).setVisibility(grown
+					? View.VISIBLE
+					: View.GONE);
+			Button open = view.findViewById(R.id.pass_open);
+			int at = problem != null ? problem.line() : 0;
+			open.setText(error && at > 0
+					? activity.getString(R.string.passes_open_line, at)
+					: activity.getString(R.string.passes_open));
+			var file = row.file();
+			open.setOnClickListener(v -> {
+				close();
+				files.open(file, error ? at : 0);
+			});
+			view.findViewById(R.id.pass_size).setVisibility(error
+					? View.GONE
+					: View.VISIBLE);
+		}
+	}
+
+	// Go to the line that sets the size of a pass, or where one would
+	// go when it has none. The completion of the directive lines offers
+	// the scales 1, 0.5, 0.25 and 0.125 in that line's value.
+	private void openSizeLine(@NonNull RunningPasses.SizeLine line) {
+		close();
+		files.open(line.file(), line.line());
+	}
+
+	// The facts as they are now: the engine may fill its own again.
+	@NonNull
+	private static PassFacts copy(@NonNull PassFacts f) {
+		return new PassFacts(f.file(), f.drawn(), f.problems(), f.width(),
+				f.height(), f.format(), f.sample(), clone(f.same()),
+				clone(f.low()), clone(f.high()), f.nonFinite(), f.unchanged());
+	}
+
+	@Nullable
+	private static float[] clone(@Nullable float[] values) {
+		return values != null ? values.clone() : null;
+	}
+
+	@NonNull
+	private static PassFactLine.Words words(@NonNull Context context) {
+		return new PassFactLine.Words() {
+			@Override
+			public String error(int line) {
+				return line > 0
+						? context.getString(R.string.passes_error_line, line)
+						: context.getString(R.string.passes_error);
+			}
+
+			@Override
+			public String warning(int line) {
+				return line > 0
+						? context.getString(R.string.passes_warning_line, line)
+						: context.getString(R.string.passes_warning);
+			}
+
+			@Override
+			public String everyPixel(String values) {
+				return context.getString(R.string.passes_every_pixel, values);
+			}
+
+			@Override
+			public String values(String low, String high) {
+				return context.getString(R.string.passes_values, low, high);
+			}
+
+			@Override
+			public String nonFinite() {
+				return context.getString(R.string.passes_non_finite);
+			}
+
+			@Override
+			public String size(int width, int height) {
+				return context.getString(R.string.passes_size, width, height);
+			}
+
+			@Override
+			public String unchanged(long seconds) {
+				return context.getString(R.string.passes_unchanged, seconds);
+			}
+		};
 	}
 
 	// The name of the pass shown, cut in the middle at 120 dp; a pause

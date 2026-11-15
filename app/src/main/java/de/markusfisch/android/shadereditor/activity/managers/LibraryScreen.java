@@ -297,7 +297,9 @@ public final class LibraryScreen implements ShaderScreen {
 		});
 		editorFragment.setOnShaderToyShaderListener(this::askToImport);
 		passes = new PassesSheet(activity, shaderViewManager, editorFragment,
-				uiManager);
+				uiManager,
+				// The one way a file opens from a line, with a way back.
+				(path, line) -> links.open(path, line));
 		// Show in the strip shows the pass the line names, as the sheet does.
 		links.setPassShow(passes::show);
 	
