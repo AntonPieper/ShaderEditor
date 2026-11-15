@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.opengl;
 
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -340,6 +341,11 @@ class FakeGlDevice extends GlDevice {
 	}
 
 	@Override
+	void uniform1ui(int location, int value) {
+		write(location, Integer.toUnsignedLong(value));
+	}
+
+	@Override
 	void uniform2fv(int location, int count, @NonNull float[] values) {
 		write(location, values[0], values[1]);
 	}
@@ -433,6 +439,7 @@ class FakeGlDevice extends GlDevice {
 	private static int type(@NonNull String type) {
 		return switch (type) {
 			case "int" -> GLES20.GL_INT;
+			case "uint" -> GLES30.GL_UNSIGNED_INT;
 			case "vec2" -> GLES20.GL_FLOAT_VEC2;
 			case "vec3" -> GLES20.GL_FLOAT_VEC3;
 			case "vec4" -> GLES20.GL_FLOAT_VEC4;

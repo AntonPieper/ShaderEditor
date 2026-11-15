@@ -30,11 +30,20 @@ final class FakeEngine {
 	FakeEngine(@NonNull FakeGlDevice device,
 			@NonNull Preparation preparation,
 			@NonNull TargetFormats formats) {
+		this(device, preparation, formats, null);
+	}
+
+	// With a tuned number of the text replaced by tuning's uniform.
+	FakeEngine(@NonNull FakeGlDevice device,
+			@NonNull Preparation preparation,
+			@NonNull TargetFormats formats,
+			@androidx.annotation.Nullable Tuning tuning) {
 		this.device = device;
 		pipeline = new ShaderRenderPipeline(device);
 		pipeline.createContextResources();
 		runtime = PlanRuntime.link(device,
-				new PlanShader(preparation, 1f, "fix"), formats, diagnostics);
+				new PlanShader(preparation, 1f, "fix", tuning), formats,
+				diagnostics);
 		if (runtime != null) {
 			runtime.loadTextures(null);
 			runtime.upload(diagnostics);

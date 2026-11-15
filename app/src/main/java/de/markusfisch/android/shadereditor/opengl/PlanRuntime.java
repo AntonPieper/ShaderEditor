@@ -30,6 +30,8 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 // a new context.
 final class PlanRuntime implements ShaderSwap.Build {
 	private final float quality;
+	@Nullable
+	private final Tuning tuning;
 	@NonNull
 	private final GlDevice device;
 	@NonNull
@@ -85,6 +87,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 		this.device = device;
 		this.preparation = shader.preparation();
 		this.quality = shader.quality();
+		this.tuning = shader.tuning();
 		this.plan = plan;
 		this.passes = passes;
 		this.formats = formats;
@@ -176,7 +179,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 		boolean linked = true;
 		for (int i = 0; i < plan.passes().size(); ++i) {
 			var pass = PlanPass.link(device, plan, i, formats.glesVersion(),
-					shader.textureFix(), reasons);
+					shader.textureFix(), shader.tuning(), reasons);
 			linked &= pass != null;
 			passes.add(pass);
 		}
@@ -189,7 +192,26 @@ final class PlanRuntime implements ShaderSwap.Build {
 			errors.addAll(reasons);
 			return null;
 		}
-		return new PlanRuntime(device, shader, plan, passes, formats);
+		var runtime = new PlanRuntime(device, shader, plan, passes, formats);
+		// Its first frame shows the number as the text has it.
+		runtime.applyTuning();
+		return runtime;
+	}
+
+	// GL thread. Writes the value of its tuned number into the programs
+	// that use it; nothing without one.
+	void applyTuning() {
+		if (tuning == null) {
+			return;
+		}
+		for (var pass : passes) {
+			pass.applyTuning(tuning);
+		}
+	}
+
+	@Nullable
+	Tuning tuning() {
+		return tuning;
 	}
 
 	// The passes whose builtins it reads, by their index in the plan.

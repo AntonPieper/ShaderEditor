@@ -575,6 +575,13 @@ class GlDevice {
 		}
 	}
 
+	// GLES3: an unsigned int, its bits in value.
+	void uniform1ui(int location, int value) {
+		if (location > -1) {
+			GLES30.glUniform1ui(location, value);
+		}
+	}
+
 	void uniform1f(int location, float value) {
 		if (location > -1) {
 			GLES20.glUniform1f(location, value);

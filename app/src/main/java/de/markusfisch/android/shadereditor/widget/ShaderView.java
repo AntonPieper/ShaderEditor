@@ -23,6 +23,7 @@ import javax.microedition.khronos.opengles.GL10;
 
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
+import de.markusfisch.android.shadereditor.opengl.Tuning;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.project.DatabaseProjectFiles;
 import de.markusfisch.android.shadereditor.project.Preparation;
@@ -156,6 +157,22 @@ public class ShaderView extends GLSurfaceView {
 			@NonNull Object picture) {
 		runtimeOwner = preparation;
 		engine.setPlan(preparation, quality, picture);
+		requestRender();
+	}
+
+	// Like setPlan(preparation, quality, picture), with a tuned number of
+	// the text replaced by tuning's uniform.
+	public void setPlan(@NonNull Preparation preparation, float quality,
+			@NonNull Object picture, @NonNull Tuning tuning) {
+		runtimeOwner = preparation;
+		engine.setPlan(preparation, quality, picture, tuning);
+		requestRender();
+	}
+
+	// After the value of the tuning set with the plan changed: the GL
+	// thread writes it before the next frame, which is drawn.
+	public void applyTuning() {
+		queueEvent(engine::applyTuning);
 		requestRender();
 	}
 
