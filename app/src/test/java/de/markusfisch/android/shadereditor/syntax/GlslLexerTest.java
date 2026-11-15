@@ -132,6 +132,44 @@ public class GlslLexerTest {
 	}
 
 	@Test
+	public void whatALinePassesOn() {
+		// Rows: the line, whether a line break follows, and whether a
+		// comment and a directive go on in the next line.
+		Object[][] rows = {
+				{"float x;", true, false, false},
+				{"float x; /* open", true, true, false},
+				{"float x; /* closed */", true, false, false},
+				{"// a line", true, false, false},
+				{"// a line \\", true, true, false},
+				{"#define A 1", true, false, false},
+				{"#define A 1 \\", true, false, true},
+				{"#define A /* open", true, true, false},
+				{"#define A 1 \\", false, false, false},
+				{"/* open", false, false, false},
+				{"", true, false, false},
+		};
+		LineTokens tokens = new LineTokens();
+		for (Object[] row : rows) {
+			GlslLexer.lexLine((String) row[0], (Boolean) row[1],
+					GlslLexer.TEXT_START, tokens);
+			assertEquals((String) row[0], row[2], tokens.commentGoesOn());
+			assertEquals((String) row[0], row[3], tokens.directiveGoesOn());
+		}
+		// A comment stays open over an empty line, and a directive
+		// ends with the line that does not go on.
+		int state = GlslLexer.lexLine("/* open", true, GlslLexer.TEXT_START,
+				tokens);
+		state = GlslLexer.lexLine("", true, state, tokens);
+		assertTrue(tokens.commentGoesOn());
+		GlslLexer.lexLine("closed */ float x;", true, state, tokens);
+		assertFalse(tokens.commentGoesOn());
+		state = GlslLexer.lexLine("#define A \\", true, GlslLexer.TEXT_START,
+				tokens);
+		GlslLexer.lexLine("\t1", true, state, tokens);
+		assertFalse(tokens.directiveGoesOn());
+	}
+
+	@Test
 	public void tokensInsideDirectives() {
 		String text = "#define A /* c */ b \\\n c // d\ne /* f\n */ g";
 		Tokens tokens = assertWellFormed("", text);

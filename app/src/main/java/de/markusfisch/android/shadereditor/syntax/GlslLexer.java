@@ -119,14 +119,16 @@ public final class GlslLexer {
 				<< KIND_SHIFT;
 		if (lexer.open == BLOCK_COMMENT) {
 			// The comment keeps the directive it started in.
-			return next | BLOCK_COMMENT | ((lexer.kinds[lexer.size - 1] &
+			next |= BLOCK_COMMENT | ((lexer.kinds[lexer.size - 1] &
 					Tokens.IN_DIRECTIVE) != 0 ? DIRECTIVE : 0);
 		} else if (lexer.open == LINE_COMMENT) {
-			return next | LINE_COMMENT | (lexer.directive ? DIRECTIVE : 0);
+			next |= LINE_COMMENT | (lexer.directive ? DIRECTIVE : 0);
 		} else if (continued && lexer.directive) {
-			return next | DIRECTIVE |
-					(lexer.nameExpected ? DIRECTIVE_NAME : 0);
+			next |= DIRECTIVE | (lexer.nameExpected ? DIRECTIVE_NAME : 0);
 		}
+		// Behind a comment that goes on, nothing of a directive follows.
+		out.goOn(lexer.open != 0, lexer.open == 0 &&
+				(next & DIRECTIVE) != 0);
 		return next;
 	}
 

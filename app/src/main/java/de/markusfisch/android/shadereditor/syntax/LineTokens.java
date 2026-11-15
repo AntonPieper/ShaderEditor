@@ -14,6 +14,8 @@ public final class LineTokens {
 	int[] ends = new int[16];
 	int[] kinds = new int[16];
 	private int size;
+	private boolean commentGoesOn;
+	private boolean directiveGoesOn;
 
 	public int size() {
 		return size;
@@ -36,6 +38,22 @@ public final class LineTokens {
 		return (kinds[index] & Tokens.IN_DIRECTIVE) != 0;
 	}
 
+	/**
+	 * True if the line ends inside a comment that goes on in the next
+	 * line, as the language that made the tokens saw it.
+	 */
+	public boolean commentGoesOn() {
+		return commentGoesOn;
+	}
+
+	/**
+	 * True if the line ends inside a preprocessor directive that goes on
+	 * in the next line.
+	 */
+	public boolean directiveGoesOn() {
+		return directiveGoesOn;
+	}
+
 	/** Index of the token that contains offset, or -1 if there is none. */
 	public int indexAt(int offset) {
 		int low = 0;
@@ -53,6 +71,21 @@ public final class LineTokens {
 
 	void clear() {
 		size = 0;
+		commentGoesOn = false;
+		directiveGoesOn = false;
+	}
+
+	/** Set what the line passes on to the next one. */
+	void goOn(boolean comment, boolean directive) {
+		commentGoesOn = comment;
+		directiveGoesOn = directive;
+	}
+
+	void add(int start, int end, Style style, boolean inDirective) {
+		add(start, end, style);
+		if (inDirective) {
+			kinds[size - 1] |= Tokens.IN_DIRECTIVE;
+		}
 	}
 
 	void add(int start, int end, Style style) {
@@ -73,5 +106,7 @@ public final class LineTokens {
 		this.ends = ends;
 		this.kinds = kinds;
 		this.size = size;
+		commentGoesOn = false;
+		directiveGoesOn = false;
 	}
 }
