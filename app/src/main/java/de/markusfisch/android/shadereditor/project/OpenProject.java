@@ -2080,12 +2080,21 @@ public final class OpenProject {
 			boolean expect, String seen, Callback<String> done) {
 		FileRecord.Request request = record.start(FileRecord.Kind.RELOAD);
 		ProjectPath path = record.path;
+		// Unsaved text is held before it is replaced: its journal is
+		// written now, ahead of the reload on the worker, and the
+		// reload takes the stored text only if the journal holds it.
+		Document document = record.document();
+		boolean typed = document != null && document.isModified();
+		if (typed) {
+			flush(record);
+		}
+		int held = typed ? record.holding() : -1;
 		// A journal of text that would be replaced, or that waits for a
 		// history since an earlier reload, is marked before main is told.
-		boolean mark = record.document() != null
-				? record.document().isModified() || record.replaced()
+		boolean mark = document != null
+				? typed || record.replaced()
 				: record.journaled;
-		texts.reload(path, mark, expect, seen, reloaded -> {
+		texts.reload(path, mark, held, expect, seen, reloaded -> {
 			FileTexts.Opening opening = reloaded.opening();
 			boolean took = false;
 			String problem = null;
@@ -2100,6 +2109,8 @@ public final class OpenProject {
 				// Closed since.
 			} else if (expect && !Objects.equals(seen, opened.revision())) {
 				problem = "the file changed again";
+			} else if (typed && !reloaded.marked()) {
+				problem = "its unsaved text cannot be held first";
 			} else {
 				// Typing that came after the request stays, with its
 				// journal.

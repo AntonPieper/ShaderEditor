@@ -314,7 +314,7 @@ public class FileTextsTest {
 				List.of(), null);
 
 		// Whoever asks to remove it, and whatever they remember.
-		texts.reload(MAIN, true, false, null, reloaded -> done.add(
+		texts.reload(MAIN, true, -1, false, null, reloaded -> done.add(
 				reloaded.marked()));
 		texts.journal(MAIN, remove, done::add);
 		worker.run();

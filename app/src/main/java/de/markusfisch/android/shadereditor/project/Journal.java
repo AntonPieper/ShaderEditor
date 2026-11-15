@@ -294,9 +294,10 @@ final class Journal {
 	 * {@link Header#replaced}. Return whether there is one that says so
 	 * now.
 	 */
-	boolean markReplaced(ProjectPath path) {
+	boolean markReplaced(ProjectPath path, int revision) {
 		Recovered recovered = read(path);
-		if (recovered == null || recovered.text() == null) {
+		if (recovered == null || recovered.text() == null ||
+				revision >= 0 && recovered.revision() != revision) {
 			return false;
 		}
 		Header header = recovered.header();

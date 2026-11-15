@@ -159,9 +159,11 @@ public final class FileTexts {
 	 * seen. Before main is told, so before it takes the stored text,
 	 * the journal is marked as holding text a reload replaced: from
 	 * then on it goes only into a history, whatever happens to main.
+	 * With held at 0 or more, it is marked only if it holds the text of
+	 * that write, the unsaved text as the reload found it.
 	 */
-	public void reload(ProjectPath path, boolean mark, boolean expect,
-			String seen, Callback<Reloaded> done) {
+	public void reload(ProjectPath path, boolean mark, int held,
+			boolean expect, String seen, Callback<Reloaded> done) {
 		worker.execute(() -> {
 			Opening opening;
 			try {
@@ -172,7 +174,7 @@ public final class FileTexts {
 			Reloaded reloaded = new Reloaded(opening, mark &&
 					opening instanceof Opened opened && (!expect ||
 					Objects.equals(seen, opened.revision())) &&
-					journal.markReplaced(path));
+					journal.markReplaced(path, held));
 			main.execute(() -> done.done(reloaded));
 		});
 	}
@@ -547,6 +549,16 @@ public final class FileTexts {
 				return false;
 			}
 			return journal.remove(path);
+		}
+		// Typed after a reload whose replaced text the journal still
+		// holds: the history that leads back to it comes first, and
+		// without it the journal stays as it is.
+		if (flush.history() != null) {
+			String hash = Histories.hash(flush.text());
+			if (hash == null ||
+					!histories.write(path, hash, flush.history())) {
+				return false;
+			}
 		}
 		if (flush.from() >= 0) {
 			List<Journal.Change> changes = new ArrayList<>();

@@ -30,8 +30,9 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
  * failing disk can take with one file, each followed by the death of
  * the process: what opens afterwards is text the user had and did not
  * have kept since, or gave up, and exactly the text they have where
- * the project said it was held or saved. Text a reload replaced after
- * it was held is there again, as it is or by undo.
+ * the project said it was held or saved. Text a reload replaced, held
+ * or typed when the reload was asked for, is there again, as it is or
+ * by undo, also when the user typed on after the reload.
  */
 public class LifecycleSequencesTest {
 	private enum Step {
@@ -197,10 +198,12 @@ public class LifecycleSequencesTest {
 		// Every text the file had, in order; from floor on, those it had
 		// since the project last told that all is held or saved.
 		private final List<String> texts = new ArrayList<>();
-		// The texts a reload replaced since then; and the one the last
-		// reload replaced when it was held and nothing was typed since.
+		// The texts a reload replaced since then; the one the last reload
+		// replaced when it was held, or was the text when the reload was
+		// asked for; and that text.
 		private final Set<String> givenUp = new HashSet<>();
 		private String replaced;
+		private String asked;
 		private Steps steps = new Steps();
 		private OpenProject project;
 		private Document document;
@@ -323,6 +326,7 @@ public class LifecycleSequencesTest {
 				}
 				case RELOAD -> {
 					reloaded = true;
+					asked = text;
 					project.reload(A, problem -> {
 					});
 				}
@@ -388,10 +392,10 @@ public class LifecycleSequencesTest {
 				return;
 			}
 			if (!now.equals(text)) {
-				replaced = null;
 				if (step != Step.TYPE) {
 					givenUp.add(text);
-					replaced = floor == texts.size() - 1 ? text : null;
+					replaced = floor == texts.size() - 1 ||
+							text.equals(asked) ? text : null;
 				}
 				texts.add(now);
 				text = now;
@@ -445,14 +449,20 @@ public class LifecycleSequencesTest {
 						!project.replaced(at));
 			}
 			if (replaced != null && !found.equals(replaced)) {
-				assertTrue(sequence + ": no undo to what was reloaded",
-						document.canUndo());
-				document.undo();
+				int undone = 0;
+				while (!document.text().toString().equals(replaced) &&
+						document.canUndo()) {
+					document.undo();
+					++undone;
+				}
 				assertEquals(sequence + ": undo of the reload", replaced,
 						document.text().toString());
-				document.redo();
+				while (undone-- > 0) {
+					document.redo();
+				}
 			}
 			replaced = null;
+			asked = null;
 			if (!found.equals(text)) {
 				texts.add(found);
 				text = found;

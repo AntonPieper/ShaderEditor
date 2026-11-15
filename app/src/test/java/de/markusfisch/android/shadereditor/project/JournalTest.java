@@ -339,7 +339,7 @@ public class JournalTest {
 		byte[] bytes = Files.readAllBytes(file.toPath());
 		assertEquals(HEADER, new Journal(dir).headers().get(A));
 
-		assertTrue(journal.markReplaced(A));
+		assertTrue(journal.markReplaced(A, -1));
 
 		Header marked = new Journal(dir).header(A);
 		assertTrue(marked.replaced());
@@ -350,7 +350,10 @@ public class JournalTest {
 		assertEquals("mine", recovered.text().toString());
 		assertEquals(bytes.length, file.length());
 		assertFalse(new Journal(dir).markReplaced(
-				ProjectPath.parse("none.glsl").value()));
+				ProjectPath.parse("none.glsl").value(), -1));
+		// Only the text of the write named, when one is named.
+		assertFalse(new Journal(dir).markReplaced(A, 2));
+		assertTrue(new Journal(dir).markReplaced(A, 3));
 	}
 
 	@Test

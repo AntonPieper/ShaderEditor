@@ -334,6 +334,17 @@ final class FileRecord {
 	}
 
 	/**
+	 * Return the revision of the journal write sent last when it holds
+	 * the unsaved text of the document as it is now, else -1.
+	 */
+	int holding() {
+		return document != null && document.isModified() &&
+				flushed == document.revision() && journal >= 0
+				? journal
+				: -1;
+	}
+
+	/**
 	 * Return the revision the document had when it was opened, before
 	 * anyone was told of it.
 	 */
@@ -498,19 +509,27 @@ final class FileRecord {
 					List.of(), replaced ? document.history() : null);
 		} else if (journal >= 0 && revision == flushed && !unsure) {
 			return null;
+		} else if (replaced && replacedState >= 0 && !undoable()) {
+			// The journal holds what a reload replaced, and no history
+			// that leads back to it can be kept: it is not written over;
+			// the text typed since is not held.
+			failure = "the journal holds text a reload replaced";
+			return null;
 		}
 		changes = new ArrayList<>();
 		flushed = revision;
 		journaled = true;
 		// The journal holds the text typed now: whole, so that its
-		// header does not go on saying a reload replaced it.
+		// header does not go on saying a reload replaced it. While it
+		// holds what a reload replaced, the history that leads back to
+		// that is kept first, and the protection ends only once that
+		// write is acknowledged.
+		boolean keeping = replaced && replacedState >= 0;
 		int from = unsure || replaced ? -1 : journal;
-		replaced = false;
-		replacedState = -1;
 		journal = ++writes;
 		return new Flush(new Journal.Header(path, base, kept,
 				kept ? base : null), document.text(), from, writes, changed,
-				null);
+				keeping ? document.history() : null);
 	}
 
 	/**
@@ -520,10 +539,13 @@ final class FileRecord {
 	 * An earlier write that failed counts as a failure until then.
 	 */
 	void acknowledge(Flush flush, boolean done) {
+		// A write of unsaved text with the history of what a reload
+		// replaced ends that text's protection, once it is done.
+		boolean typed = !flush.removes();
 		if (flush.to() != writes) {
 			// Until the last one sent is answered, one that failed is
 			// not forgotten: nobody is told the text is held meanwhile.
-			if (!done && flush.history() == null) {
+			if (!done && (typed || flush.history() == null)) {
 				failure = "the journal cannot be written";
 			}
 			return;
@@ -531,10 +553,14 @@ final class FileRecord {
 			acked = writes;
 			failure = null;
 			// A new snapshot took the place of one that was damaged.
-			if (!flush.removes()) {
+			if (typed) {
 				unreadable = null;
-			} else if (document != null && !document.isModified()) {
+			}
+			if (typed && flush.history() != null ||
+					flush.removes() && document != null &&
+							!document.isModified()) {
 				replaced = false;
+				replacedState = -1;
 			}
 			return;
 		}
@@ -543,7 +569,7 @@ final class FileRecord {
 			journaled = true;
 		}
 		// Unsaved text is at stake only where the document has some.
-		if (flush.history() == null) {
+		if (typed || flush.history() == null) {
 			failure = "the journal cannot be written";
 		}
 	}
