@@ -16,6 +16,7 @@ import java.util.List;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
+import de.markusfisch.android.shadereditor.opengl.Tuning;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.widget.ShaderView;
@@ -100,6 +101,21 @@ public class ShaderViewManager {
 		setQuality(quality);
 		shaderView.setPlan(preparation, quality, picture);
 		showPicture(true);
+	}
+
+	/**
+	 * Run a prepared project, a revision of picture, whose text has a
+	 * tuned number replaced by tuning's uniform; tuning hears whether it
+	 * draws. The quality stays as it is.
+	 */
+	public void setPlan(@NonNull Preparation preparation, float quality,
+			@NonNull Object picture, @NonNull Tuning tuning) {
+		shaderView.setPlan(preparation, quality, picture, tuning);
+	}
+
+	/** Show the value tuning has now with the next frame. */
+	public void applyTuning() {
+		shaderView.applyTuning();
 	}
 
 	/**

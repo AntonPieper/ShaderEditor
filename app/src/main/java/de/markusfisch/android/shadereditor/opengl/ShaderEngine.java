@@ -181,6 +181,30 @@ public final class ShaderEngine {
 				owner, runtimeNanos, reporting, picture));
 	}
 
+	// Any thread. Like setPlan(preparation, quality, picture), where the
+	// text has a tuned number replaced by tuning's uniform: the build
+	// declares it, and once it draws, applyTuning() writes new values
+	// into it. tuning hears whether the build draws or was refused; a
+	// refusal goes to tuning only, not to the listener, and the build
+	// before keeps drawing.
+	public void setPlan(@NonNull Preparation preparation, float quality,
+			@NonNull Object picture, @NonNull Tuning tuning) {
+		shaders.offer(request(), new Offer(
+				new PlanShader(preparation, quality, AS_PREPARED.textureFix(),
+						tuning),
+				preparation, 0, AS_PREPARED, picture));
+	}
+
+	// GL thread, when the host asks after a tuned value changed: writes
+	// it into the build that draws, so the next frame shows it. Nothing
+	// draws per frame for it.
+	public void applyTuning() {
+		var build = shaders.current();
+		if (build != null) {
+			build.applyTuning();
+		}
+	}
+
 	// Any thread. The runtime of the plan set with this owner while it is
 	// shown, or -1.
 	public long getRuntimeNanos(@NonNull Object owner) {
@@ -412,6 +436,12 @@ public final class ShaderEngine {
 		}
 		thumbnails.onFramesLost();
 		var shown = Objects.requireNonNull(shaders.currentRevision());
+		var tuning = shown.shader().shader().tuning();
+		if (tuning != null) {
+			// The value set while it was built.
+			next.applyTuning();
+			tuning.live();
+		}
 		inputs.showRuntime(
 				shown.shader().origin(),
 				shown.shader().runtimeNanos());
@@ -476,10 +506,19 @@ public final class ShaderEngine {
 		build.loadTextures(renderRequester);
 	}
 
-	// Only the outcome of the newest revision reported so far.
+	// Only the outcome of the newest revision reported so far. A build
+	// with a tuned number tells its tuning instead, which decides.
 	private void report(
 			@Nullable ShaderSwap.Revision<Offer> revision,
 			@NonNull List<ProjectDiagnostic> errors) {
+		var tuning = revision != null
+				? revision.shader().shader().tuning()
+				: null;
+		if (tuning != null && !Objects.equals(revision,
+				shaders.currentRevision())) {
+			tuning.refused(errors);
+			return;
+		}
 		if (revision != null && shaders.report(revision)) {
 			submitErrors(revision.shader().reporting().locate(errors),
 					shaders.showsEarlier(revision));

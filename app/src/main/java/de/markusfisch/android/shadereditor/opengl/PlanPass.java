@@ -74,10 +74,11 @@ final class PlanPass {
 			int index,
 			int glesVersion,
 			@NonNull String textureFix,
+			@Nullable Tuning tuning,
 			@NonNull List<ProjectDiagnostic> errors) {
 		var pass = plan.passes().get(index);
 		var source = PlanSource.of(plan.programs().get(pass.program()),
-				glesVersion, errors);
+				glesVersion, tuning, errors);
 		if (source == null) {
 			return null;
 		}
@@ -103,10 +104,31 @@ final class PlanPass {
 		for (var input : pass.inputs()) {
 			inputs.add(input.uniform());
 		}
+		// What the host sets is provided.
+		if (tuning != null) {
+			inputs.add(tuning.name);
+		}
 		warnings.addAll(UniformWarnings.check(uniforms.values(), inputs,
 				textureFix, source.fragment(), source.sourceMap()));
 		return new PlanPass(device, pass, program, bindings, uniforms,
 				warnings, source);
+	}
+
+	// GL thread. Writes tuning's value into the program, if it uses it.
+	void applyTuning(@NonNull Tuning tuning) {
+		var uniform = uniforms.get(tuning.name);
+		if (uniform == null) {
+			return;
+		}
+		device.useProgram(program);
+		double value = tuning.value();
+		switch (tuning.type) {
+			case FLOAT -> device.uniform1f(uniform.location(), (float) value);
+			case INT -> device.uniform1i(uniform.location(), (int) value);
+			// The bits of the unsigned value, as glUniform1ui takes them.
+			case UINT -> device.uniform1ui(uniform.location(),
+					(int) (long) value);
+		}
 	}
 
 	// A warning at the declaration of the uniform name.

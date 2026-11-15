@@ -16,8 +16,9 @@ import de.markusfisch.android.shadereditor.project.SourceMap;
 import de.markusfisch.android.shadereditor.project.SourceText;
 
 // What a program of a plan compiles to: its text with the lines the
-// engine generates after #version, a vertex shader of the same version,
-// and the origin of every line of the fragment shader.
+// engine generates after #version, and the declaration of a tuned
+// number's uniform where the text uses it, a vertex shader of the same
+// version, and the origin of every line of the fragment shader.
 record PlanSource(
 		@NonNull String fragment,
 		@NonNull String vertex,
@@ -36,6 +37,16 @@ record PlanSource(
 	static PlanSource of(
 			@NonNull RenderPlan.Program program,
 			int glesVersion,
+			@NonNull List<ProjectDiagnostic> errors) {
+		return of(program, glesVersion, null, errors);
+	}
+
+	// With the declaration of tuning's uniform when the code uses it.
+	@Nullable
+	static PlanSource of(
+			@NonNull RenderPlan.Program program,
+			int glesVersion,
+			@Nullable Tuning tuning,
 			@NonNull List<ProjectDiagnostic> errors) {
 		String text = program.text();
 		// What the compiler reads: comments mean nothing.
@@ -72,6 +83,14 @@ record PlanSource(
 					scan.code().get(i));
 			lines.add(tail < 0 ? line : line.substring(0, tail));
 		}
+		var sourceMap = program.sourceMap();
+		if (tuning != null && uses(scan, tuning.name)) {
+			// After every #extension, which no declaration may precede.
+			int after = declarationLine(scan, program.head());
+			var declaration = tuning.declaration();
+			lines.addAll(after, declaration);
+			sourceMap = sourceMap.insertGenerated(after, declaration.size());
+		}
 		lines.addAll(program.head(), generated);
 		return new PlanSource(
 				removeNonAscii(String.join("\n", lines) + "\n"),
@@ -79,9 +98,47 @@ record PlanSource(
 						? "#version " + version + " es\n" +
 						FullScreenQuad.VERTEX_SHADER_3
 						: FullScreenQuad.VERTEX_SHADER,
-				program.sourceMap().insertGenerated(program.head(),
-						generated.size()),
+				sourceMap.insertGenerated(program.head(), generated.size()),
 				fTimeMax);
+	}
+
+	// Whether the code, not a comment, names the uniform.
+	private static boolean uses(@NonNull PreprocessorScan scan,
+			@NonNull String name) {
+		var token = Pattern.compile("\\b" + Pattern.quote(name) + "\\b");
+		for (String line : scan.code()) {
+			if (token.matcher(line).find()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// The 1-based line after which a declaration goes: after head and
+	// after the last #extension, or after the #endif that closes the
+	// outermost conditional around it, so that it is never left out.
+	static int declarationLine(@NonNull PreprocessorScan scan, int head) {
+		int after = head;
+		var directives = scan.directives();
+		for (int i = 0; i < directives.size(); ++i) {
+			var directive = directives.get(i);
+			if (directive.kind() != PreprocessorScan.Kind.EXTENSION) {
+				continue;
+			}
+			int line = directive.line();
+			if (directive.depth() > 0) {
+				for (int j = i + 1; j < directives.size(); ++j) {
+					var closing = directives.get(j);
+					if (closing.kind() == PreprocessorScan.Kind.ENDIF &&
+							closing.depth() == 0) {
+						line = closing.line();
+						break;
+					}
+				}
+			}
+			after = Math.max(after, line);
+		}
+		return after;
 	}
 
 	private static int languageVersion(@NonNull PreprocessorScan scan) {
