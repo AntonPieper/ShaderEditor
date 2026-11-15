@@ -92,6 +92,16 @@ final class FoldersSource implements Source {
 									R.plurals.nav_shaders_count, shaders,
 									shaders),
 					EnumSet.noneOf(Row.Mark.class)));
+		} else {
+			// While the shaders move, the library is not open yet: its
+			// row stands where it will be, so that the list does not
+			// change shape under the user, and leads nowhere yet.
+			top.add(new Row("library", Row.Kind.OTHER,
+					Row.Picture.of(Row.Picture.Icon.LIBRARY),
+					context.getString(R.string.nav_shaders),
+					context.getString(R.string.library_moving), 0, null,
+					EnumSet.noneOf(Row.Mark.class),
+					EnumSet.noneOf(Row.Action.class)));
 		}
 		List<Listing.Section> sections = new ArrayList<>();
 		sections.add(new Listing.Section(null, List.of(
