@@ -113,6 +113,9 @@ public class ShaderEditor extends LineNumberEditText {
 	@NonNull
 	private List<ProjectDiagnostic> shaderErrors = Collections.emptyList();
 	private boolean highlightErrorsAfterLayout;
+	// Whether a statement is added by the rule files have (AddUniform);
+	// a shader of the database keeps the place it always had.
+	private boolean addsByFileRule;
 	private boolean isUserInteraction = true;
 	private int colorError;
 	private int colorWarning;
@@ -365,6 +368,14 @@ public class ShaderEditor extends LineNumberEditText {
 		setSelection(lineStart, lineStart);
 	}
 
+	/**
+	 * Add statements by the rule files have: never above #version, in a
+	 * conditional or a comment, after a uniform's semicolon.
+	 */
+	public void setAddsByFileRule(boolean byFileRule) {
+		addsByFileRule = byFileRule;
+	}
+
 	public void addUniform(String statement) {
 		if (statement == null) {
 			return;
@@ -372,6 +383,15 @@ public class ShaderEditor extends LineNumberEditText {
 
 		Editable e = getText();
 		if (e == null) {
+			return;
+		}
+		if (addsByFileRule) {
+			AddUniform.Change change = AddUniform.change(e.toString(),
+					statement);
+			if (change.removeEnd() > change.removeStart()) {
+				e.delete(change.removeStart(), change.removeEnd());
+			}
+			e.insert(change.insertAt(), change.inserted());
 			return;
 		}
 		removeUniform(e, statement);

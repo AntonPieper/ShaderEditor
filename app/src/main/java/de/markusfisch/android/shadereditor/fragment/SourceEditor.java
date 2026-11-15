@@ -124,6 +124,13 @@ interface SourceEditor {
 	/** Add a uniform statement, in place of one of the same uniform. */
 	void addUniform(@NonNull String statement);
 
+	/**
+	 * Add statements by the rule files have (AddUniform), as project
+	 * mode does; an editor that always does need not be told.
+	 */
+	default void setAddsByFileRule(boolean byFileRule) {
+	}
+
 	/** Put the caret at the start of line, from 1, unless it is in it. */
 	void navigateToLine(int line);
 

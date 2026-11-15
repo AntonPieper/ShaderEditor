@@ -21,28 +21,51 @@ public final class AddUniform {
 	private AddUniform() {
 	}
 
+	/**
+	 * What adding statement to text does: the line that declares the
+	 * same uniform, from removeStart to removeEnd (empty when there is
+	 * none), goes, then inserted is put at insertAt of the text left.
+	 */
+	public record Change(int removeStart, int removeEnd, int insertAt,
+			String inserted) {
+	}
+
 	/** Add statement to document as one undo step. */
 	public static void apply(Document document, String statement) {
+		Change change = change(document.text().toString(), statement);
 		document.beginBatch();
 		try {
-			String text = document.text().toString();
-			Matcher m = sameUniform(statement).matcher(text);
-			if (m.find()) {
-				document.replace(m.start(), m.end(), Text.EMPTY);
-				text = document.text().toString();
+			if (change.removeEnd() > change.removeStart()) {
+				document.replace(change.removeStart(), change.removeEnd(),
+						Text.EMPTY);
 			}
-			Place place = place(text);
-			String inserted = place.afterLine()
-					? "\n" + statement
-					: statement + "\n";
-			if (place.afterEndif()) {
-				inserted = "\n" + inserted;
-			}
-			document.replace(place.offset(), place.offset(),
-					Text.of(inserted));
+			document.replace(change.insertAt(), change.insertAt(),
+					Text.of(change.inserted()));
 		} finally {
 			document.endBatch();
 		}
+	}
+
+	/** What adding statement to text does; see the class. */
+	public static Change change(String text, String statement) {
+		// A uniform in a comment is not the one declared.
+		Matcher m = sameUniform(statement).matcher(
+				CodeText.blank(text, false));
+		int removeStart = 0;
+		int removeEnd = 0;
+		if (m.find()) {
+			removeStart = m.start();
+			removeEnd = m.end();
+			text = text.substring(0, removeStart) + text.substring(removeEnd);
+		}
+		Place place = place(text);
+		String inserted = place.afterLine()
+				? "\n" + statement
+				: statement + "\n";
+		if (place.afterEndif()) {
+			inserted = "\n" + inserted;
+		}
+		return new Change(removeStart, removeEnd, place.offset(), inserted);
 	}
 
 	/**
@@ -54,41 +77,54 @@ public final class AddUniform {
 	public record Place(int offset, boolean afterLine, boolean afterEndif) {
 	}
 
-	/** Where a statement goes in text; see the class. */
+	/**
+	 * Where a statement goes in text; see the class. Comments count as
+	 * nothing, so a uniform in a comment is no place and a licence
+	 * comment above #version keeps the head below it; "# if" is a
+	 * conditional as "#if" is; a uniform ends at its semicolon, also
+	 * one written over several lines.
+	 */
 	public static Place place(String text) {
+		String code = CodeText.blank(text, false);
 		int depth = 0;
 		int lastUniform = -1;
 		int head = -1;
 		boolean headEndif = false;
-		boolean code = false;
+		boolean inCode = false;
 		int start = 0;
-		while (start <= text.length()) {
-			int end = text.indexOf('\n', start);
+		while (start <= code.length()) {
+			int end = code.indexOf('\n', start);
 			if (end < 0) {
-				end = text.length();
+				end = code.length();
 			}
-			String line = text.substring(start, end).trim();
-			if (line.startsWith("#if")) {
+			String line = code.substring(start, end).trim();
+			String directive = directive(line);
+			if (directive != null && directive.startsWith("if")) {
 				++depth;
-			} else if (line.startsWith("#endif")) {
+			} else if ("endif".equals(directive)) {
 				depth = Math.max(0, depth - 1);
-				if (depth == 0 && !code) {
+				if (depth == 0 && !inCode) {
 					head = end;
 					headEndif = true;
 				}
 			} else if (depth == 0 && UNIFORM.matcher(line).matches()) {
+				// Its line is the one with its semicolon.
+				int semicolon = code.indexOf(';', start);
+				if (semicolon > -1) {
+					int lineEnd = code.indexOf('\n', semicolon);
+					end = lineEnd < 0 ? code.length() : lineEnd;
+				}
 				lastUniform = end;
-				code = true;
-			} else if (!code && (line.startsWith("#version") ||
-					line.startsWith("#extension") ||
+				inCode = true;
+			} else if (!inCode && ("version".equals(directive) ||
+					"extension".equals(directive) ||
 					(depth == 0 && PRECISION.matcher(line).matches()))) {
 				head = end;
 				headEndif = false;
-			} else if (depth == 0 && !line.isEmpty() &&
-					!line.startsWith("//") && !line.startsWith("#")) {
-				code = true;
+			} else if (depth == 0 && !line.isEmpty() && directive == null) {
+				inCode = true;
 			}
-			if (end == text.length()) {
+			if (end == code.length()) {
 				break;
 			}
 			start = end + 1;
@@ -103,10 +139,26 @@ public final class AddUniform {
 		return new Place(0, false, false);
 	}
 
+	// The word of a preprocessor line, "if" for "# if FLAG", or null
+	// for a line that is no directive.
+	private static String directive(String line) {
+		if (!line.startsWith("#")) {
+			return null;
+		}
+		String rest = line.substring(1).trim();
+		int end = 0;
+		while (end < rest.length() &&
+				Character.isLetter(rest.charAt(end))) {
+			++end;
+		}
+		return rest.substring(0, end);
+	}
+
 	/**
 	 * The lines that start with statement up to its semicolon: its
 	 * words as they are, whatever characters a file name has, any run
-	 * of blanks between them.
+	 * of blanks between them, and the name a whole word, so that
+	 * "uniform float time;" never takes "uniform float timeScale;".
 	 */
 	public static Pattern sameUniform(String statement) {
 		int p = statement.indexOf(';');
@@ -119,7 +171,8 @@ public final class AddUniform {
 			}
 			regex.append(Pattern.quote(words[i]));
 		}
-		return Pattern.compile(regex.append(".*(?:\\n|$))").toString(),
+		return Pattern.compile(regex.append(
+						"(?![A-Za-z0-9_]).*(?:\\n|$))").toString(),
 				Pattern.MULTILINE);
 	}
 }
