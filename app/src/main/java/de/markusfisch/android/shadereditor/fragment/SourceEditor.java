@@ -32,6 +32,14 @@ interface SourceEditor {
 		 * characters of the word before the caret each repeats.
 		 */
 		void onCompletions(@NonNull List<String> words, int position);
+
+		/**
+		 * Called once when the text has become a shader from ShaderToy
+		 * as JSON, in a file whose text is converted from ShaderToy's
+		 * form: no file can hold its passes, so it is not converted
+		 * in place.
+		 */
+		void onShaderToyShader(@NonNull String json);
 	}
 
 	/** Return the view that shows the text and takes the keyboard. */

@@ -32,6 +32,7 @@ import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.widget.CodeView;
+import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
 import de.markusfisch.android.shadereditor.widget.ShaderToySource;
 
 /**
@@ -86,6 +87,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// Whether ShaderToy's form is converted, which a file is only in
 	// the library's root.
 	private boolean convert = true;
+	// Whether the listener was told that the text is ShaderToy's JSON.
+	private boolean toldJson;
 	@NonNull
 	private List<ProjectDiagnostic> errors = Collections.emptyList();
 
@@ -327,6 +330,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 		marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
 		document.addListener(documentListener);
+		// JSON that is there when a file is opened is not put in.
+		toldJson = beginsAsJson();
 	}
 
 	private void release() {
@@ -366,6 +371,27 @@ final class CodeViewSourceEditor implements SourceEditor {
 				view.bringCaretIntoView();
 			}
 		}
+		tellShaderToyJson();
+	}
+
+	// A shader from ShaderToy as JSON begins as JSON does, which no
+	// shader does: only then is the whole text looked at. Told once,
+	// when the text becomes it.
+	private void tellShaderToyJson() {
+		String json = convert && listener != null && beginsAsJson()
+				? getText()
+				: null;
+		boolean isJson = json != null && ShaderToyJson.recognizes(json);
+		if (isJson && !toldJson) {
+			listener.onShaderToyShader(json);
+		}
+		toldJson = isJson;
+	}
+
+	private boolean beginsAsJson() {
+		Text text = document.text();
+		String start = text.substring(0, Math.min(text.length(), 64)).trim();
+		return start.startsWith("{") || start.startsWith("[");
 	}
 
 	// Offers the completions for the caret, from its line and the last

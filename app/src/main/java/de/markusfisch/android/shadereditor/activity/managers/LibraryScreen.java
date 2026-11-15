@@ -223,6 +223,7 @@ public final class LibraryScreen implements ShaderScreen {
 				editorFragment.navigateToLine(line);
 			}
 		});
+		editorFragment.setOnShaderToyShaderListener(this::askToImport);
 	
 		drawer = createDrawer();
 		shaderListManager = drawer;
@@ -609,6 +610,20 @@ public final class LibraryScreen implements ShaderScreen {
 					}
 				});
 		libraryStart.start(dataSource, show);
+	}
+
+	// A shader from ShaderToy as JSON was put into a shader of the
+	// library. It has passes, which one file cannot hold, so it is not
+	// converted in place as one tab's code is: asked, it becomes a
+	// folder. The text put in is the user's and stays.
+	private void askToImport(@NonNull String json) {
+		new MaterialAlertDialogBuilder(activity)
+				.setTitle(R.string.shadertoy_import_title)
+				.setMessage(R.string.shadertoy_import_message)
+				.setPositiveButton(R.string.shadertoy_import,
+						(d, w) -> libraryAdd.importShaderToy(json))
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
 	}
 
 	// Asks first: the library is put aside and made anew.

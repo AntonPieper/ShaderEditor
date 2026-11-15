@@ -424,6 +424,9 @@
 	<string name="shadertoy_not_imported">Not imported from ShaderToy: %s</string>
 	<string name="shadertoy_imported">Imported from ShaderToy</string>
 	<string name="shadertoy_not_carried_over">The shader is a folder in your library now. Not carried over:%s\n\nThis list is also in the folder\'s README.md.</string>
+	<string name="shadertoy_import_title">Import from ShaderToy?</string>
+	<string name="shadertoy_import_message">This text is a shader from ShaderToy with its passes. Import it as a folder of its own? The text stays in this file; Undo takes it out again.</string>
+	<string name="shadertoy_import">Import</string>
 	<string name="file_needs_new_editor">Files of a folder open in the new editor</string>
 	<string name="turn_on">Turn on</string>
 	<string name="file_runs_behind_code">Files of a folder run only behind the code. Choose another run mode in Settings.</string>
