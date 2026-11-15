@@ -90,6 +90,16 @@ public class FrameRateReportTest {
 		assertEquals(60, firstTold(report, 1000 * MILLI, 16_667_000L));
 	}
 
+	// A launch or a rotation before the build draws: no label to clear.
+	@Test
+	public void nothingDrawnSinceAStartTellsNothing() {
+		var report = playedAt60();
+		report.start();
+		assertEquals(NOTHING, report.none());
+		assertEquals(60, firstTold(report, 1000 * MILLI, 16_667_000L));
+		assertEquals(0, report.none());
+	}
+
 	@Test
 	public void nothingDrawingIsZeroOnce() {
 		var report = playedAt60();

@@ -12,7 +12,8 @@ package de.markusfisch.android.shadereditor.opengl;
 //   after them, so the stopped time, or the time a build took, is in no
 //   sample, and tell nothing before 200 ms of frames are in: neither one
 //   quick frame nor the first slow ones of a new picture are its rate;
-// - nothing drawing: 0.
+// - nothing drawing: 0, when a rate was told since the last start; a
+//   start that never drew tells nothing, as there is nothing to clear.
 // After a new start, the first rate is told even when it is the one told
 // before: a host clears what it shows when the shader changes (the
 // toolbar's title does), and waits for the rate of the new one.
@@ -77,7 +78,7 @@ final class FrameRateReport {
 
 	// Nothing draws.
 	int none() {
-		return tell(0);
+		return told == NOTHING ? NOTHING : tell(0);
 	}
 
 	private int tell(int fps) {
