@@ -600,4 +600,5 @@
 	<string name="passes_a11y_reads">reads %1$s</string>
 	<string name="passes_a11y_read_by">read by %1$s</string>
 	<string name="passes_a11y_shown">shown</string>
+	<string name="passes_frame">frame %1$,d</string>
 </resources>

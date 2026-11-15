@@ -54,6 +54,17 @@
 			app:icon="@drawable/ic_restart_alt"
 			app:iconSize="24dp" />
 
+		<!-- The frame drawn last, only while paused. -->
+		<TextView
+			android:id="@+id/passes_frame"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="12dp"
+			android:fontFeatureSettings="tnum"
+			android:textAppearance="?attr/textAppearanceBodyMedium"
+			android:textColor="?attr/colorOnSurfaceVariant"
+			android:visibility="gone" />
+
 		<Space
 			android:layout_width="0dp"
 			android:layout_height="0dp"
