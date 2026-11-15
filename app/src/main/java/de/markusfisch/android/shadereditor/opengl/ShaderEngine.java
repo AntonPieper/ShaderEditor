@@ -154,6 +154,8 @@ public final class ShaderEngine {
 	@Nullable
 	private volatile ProjectPath shown;
 	private volatile boolean paused;
+	@Nullable
+	private volatile Fit fit;
 	// Who watches the passes, and who was told last; GL thread only:
 	// what makes their pictures, and when it did.
 	@Nullable
@@ -298,6 +300,14 @@ public final class ShaderEngine {
 		requestRender();
 	}
 
+	// Any thread. Shows the pass of fit mapped as it says, when it is the
+	// one on the screen, and maps its small picture the same way; null
+	// for none. Thumbnails are never fitted.
+	public void setFit(@Nullable Fit fit) {
+		this.fit = fit;
+		requestRender();
+	}
+
 	// Any thread. While watcher is not null, it hears small pictures of
 	// the passes; with null nothing of it costs anything: what made the
 	// pictures goes with the next frame.
@@ -428,6 +438,9 @@ public final class ShaderEngine {
 				againAsked.getAndSet(false), build.needsFrame(), swap);
 		renderPipeline.setLimit(limitAt(now));
 		int shownPass = build.shown(shown);
+		var fit = this.fit;
+		renderPipeline.setFit(fit != null &&
+				fit.file().equals(build.fileOf(shownPass)) ? fit : null);
 		if (draw == Playback.Draw.PRESENT) {
 			build.present(renderPipeline, inputs.getSurfaceWidth(),
 					inputs.getSurfaceHeight(), shownPass);
@@ -748,7 +761,7 @@ public final class ShaderEngine {
 			inspector = new PassInspector(device);
 		}
 		var sources = build.lastFrames();
-		var pictures = inspector.pictures(sources);
+		var pictures = inspector.pictures(sources, fit);
 		watcher.onPictures(pictures);
 		if (fresh || first || now - lastFacts >= FACT_INTERVAL_NS) {
 			lastFacts = now;

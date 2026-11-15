@@ -22,6 +22,7 @@ import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
 
 import de.markusfisch.android.shadereditor.database.Database;
+import de.markusfisch.android.shadereditor.opengl.Fit;
 import de.markusfisch.android.shadereditor.opengl.ShaderEngine;
 import de.markusfisch.android.shadereditor.opengl.Tuning;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
@@ -204,6 +205,12 @@ public class ShaderView extends GLSurfaceView {
 		super.setRenderMode(paused
 				? GLSurfaceView.RENDERMODE_WHEN_DIRTY
 				: requestedRenderMode);
+	}
+
+	// Maps the pass of fit as it says while it is on the screen, and its
+	// small picture; null for none. See ShaderEngine.setFit().
+	public void setFit(@Nullable Fit fit) {
+		engine.setFit(fit);
 	}
 
 	// Lets watcher hear small pictures of the passes, or no one for

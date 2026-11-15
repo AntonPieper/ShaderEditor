@@ -38,9 +38,22 @@ final class PassInspector {
 			uniform vec2 origin;
 			uniform vec2 resolution;
 			uniform sampler2D frame;
+			// A fit: value times scale plus offset, alpha 1; scale 0 for
+			// none. limit as in ShaderRenderPipeline.
+			uniform float scale;
+			uniform float offset;
+			uniform float limit;
 			void main(void) {
-				gl_FragColor = texture2D(frame,
+				vec4 c = texture2D(frame,
 						(gl_FragCoord.xy - origin) / resolution);
+				if (scale != 0.0) {
+					c = vec4(clamp(c.rgb * scale + offset, 0.0, 1.0), 1.0);
+				}
+				if (limit > 0.0) {
+					c = clamp(c, 0.0, 1.0);
+					c.rgb /= 1.0 + limit * max(c.r, max(c.g, c.b));
+				}
+				gl_FragColor = c;
 			}
 			""";
 
@@ -106,6 +119,8 @@ final class PassInspector {
 	private GlProgram program;
 	private int originLocation;
 	private int resolutionLocation;
+	private int scaleLocation;
+	private int offsetLocation;
 	private int frameUnit;
 	@Nullable
 	private GlTexture2D atlas;
@@ -138,6 +153,13 @@ final class PassInspector {
 	// made in this context.
 	@NonNull
 	List<PassPicture> pictures(@NonNull List<Source> sources) {
+		return pictures(sources, null);
+	}
+
+	// Like pictures(sources), the pass of fit mapped as it says.
+	@NonNull
+	List<PassPicture> pictures(@NonNull List<Source> sources,
+			@Nullable Fit fit) {
 		var pictures = new ArrayList<PassPicture>();
 		if (sources.isEmpty() || !prepare(sources.size())) {
 			return pictures;
@@ -163,6 +185,9 @@ final class PassInspector {
 			vector[0] = width;
 			vector[1] = height;
 			device.uniform2fv(resolutionLocation, 1, vector);
+			boolean fitted = fit != null && fit.file().equals(source.file());
+			device.uniform1f(scaleLocation, fitted ? fit.scale() : 0f);
+			device.uniform1f(offsetLocation, fitted ? fit.offset() : 0f);
 			// Its own pixels, as a pass reads another.
 			device.applySampling(source.texture(), Sampling.PASS);
 			device.bindTexture(frameUnit, source.texture());
@@ -432,6 +457,8 @@ final class PassInspector {
 			program = made;
 			originLocation = device.getUniformLocation(made, "origin");
 			resolutionLocation = device.getUniformLocation(made, "resolution");
+			scaleLocation = device.getUniformLocation(made, "scale");
+			offsetLocation = device.getUniformLocation(made, "offset");
 			frameUnit = made.getTextureUnit("frame");
 		}
 		int width = Math.min(count, COLUMNS) * PICTURE;

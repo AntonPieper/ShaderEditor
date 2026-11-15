@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
@@ -76,6 +77,18 @@ final class ShaderRenderPipeline {
 	@Nullable
 	private GlTexture2D presented;
 	private float limit;
+	// A fit for what present() draws, or null; the program that maps it,
+	// made when it is first asked for.
+	@Nullable
+	private Fit fit;
+	@Nullable
+	private GlProgram fitProgram;
+	private int fitOrigin;
+	private int fitResolution;
+	private int fitScale;
+	private int fitOffset;
+	private int fitLimit;
+	private int fitFrame;
 
 	ShaderRenderPipeline(@NonNull GlDevice device) {
 		this.device = device;
@@ -116,6 +129,7 @@ final class ShaderRenderPipeline {
 
 	void discardContextResources() {
 		surfaceProgram = null;
+		fitProgram = null;
 		presented = null;
 		thumbnailFramebuffer = null;
 		thumbnailTexture = null;
@@ -131,15 +145,25 @@ final class ShaderRenderPipeline {
 	}
 
 	// Stretches the texture over the surface, sampled as it is set up,
-	// limited by setLimit(). picture is what a thumbnail is of: the
-	// running pass, also while another one is shown.
+	// limited by setLimit(), and mapped by setFit(). picture is what a
+	// thumbnail is of: the running pass, never fitted, also while
+	// another one is shown.
 	void present(
 			@Nullable GlTexture2D texture,
 			@Nullable GlTexture2D picture,
 			int surfaceWidth,
 			int surfaceHeight) {
 		presented = picture;
+		if (fit != null && texture != null && prepareFit()) {
+			drawFitted(texture, surfaceWidth, surfaceHeight);
+			return;
+		}
 		drawSurface(texture, surfaceWidth, surfaceHeight, null, limit);
+	}
+
+	// The fit for what present() draws from now on, or none.
+	void setFit(@Nullable Fit fit) {
+		this.fit = fit;
 	}
 
 	// What a thumbnail is of.
@@ -209,6 +233,46 @@ final class ShaderRenderPipeline {
 				bitmap.recycle();
 			}
 		}
+	}
+
+	// Whether the program of a fit is there.
+	private boolean prepareFit() {
+		if (fitProgram != null) {
+			return true;
+		}
+		var made = device.createProgram(FullScreenQuad.VERTEX_SHADER,
+				PassInspector.FRAGMENT_SHADER, null).getProgram();
+		if (made == null) {
+			return false;
+		}
+		fitProgram = made;
+		fitOrigin = device.getUniformLocation(made, "origin");
+		fitResolution = device.getUniformLocation(made, "resolution");
+		fitScale = device.getUniformLocation(made, "scale");
+		fitOffset = device.getUniformLocation(made, "offset");
+		fitLimit = device.getUniformLocation(made, "limit");
+		fitFrame = made.getTextureUnit("frame");
+		return true;
+	}
+
+	private void drawFitted(@NonNull GlTexture2D texture, int width,
+			int height) {
+		var fit = Objects.requireNonNull(this.fit);
+		device.bindFramebuffer(null);
+		device.setViewport(0, 0, width, height);
+		device.useProgram(fitProgram);
+		drawResolution[0] = 0;
+		drawResolution[1] = 0;
+		device.uniform2fv(fitOrigin, 1, drawResolution);
+		drawResolution[0] = width;
+		drawResolution[1] = height;
+		device.uniform2fv(fitResolution, 1, drawResolution);
+		device.uniform1f(fitScale, fit.scale());
+		device.uniform1f(fitOffset, fit.offset());
+		device.uniform1f(fitLimit, limit);
+		device.bindTexture(fitFrame, texture);
+		device.clear(GLES20.GL_COLOR_BUFFER_BIT);
+		device.draw(quad);
 	}
 
 	private void drawSurface(
