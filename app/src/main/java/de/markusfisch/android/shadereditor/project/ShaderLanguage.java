@@ -139,6 +139,16 @@ public enum ShaderLanguage {
 	}
 
 	/**
+	 * Return whether a file named name is, by its name alone, a shader
+	 * that runs of its own: named as GLSL, and not as code that is
+	 * meant to be included. For a count or a guess, never for what runs.
+	 */
+	public static boolean namesShader(String name) {
+		return listed(name) == GLSL && !name.toLowerCase(Locale.ROOT)
+				.endsWith(INCLUDE);
+	}
+
+	/**
 	 * Return the language the table lists for name, or null when it
 	 * lists none: such a name is usually a shader's, which a hint for
 	 * an icon or an offer to open a file may go by.
