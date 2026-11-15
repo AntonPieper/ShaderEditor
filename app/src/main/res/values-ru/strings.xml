@@ -617,4 +617,6 @@
 	<string name="tuning_colour">Colour</string>
 	<string name="tuning_as_numbers">As numbers</string>
 	<string name="tuning_part">%1$s %2$s</string>
+	<string name="a11y_tuning_value">%1$s, started at %2$s</string>
+	<string name="a11y_tuning_open">Tuning %1$s</string>
 </resources>

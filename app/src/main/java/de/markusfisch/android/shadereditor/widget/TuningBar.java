@@ -205,6 +205,23 @@ public class TuningBar extends LinearLayout {
 		});
 		ruler.setListener(new TuningRuler.Listener() {
 			@Override
+			public void onStep(long count) {
+				move(count);
+			}
+
+			@NonNull
+			@Override
+			public CharSequence describe() {
+				Tuned now = tuned;
+				return now == null
+						? ""
+						: getContext().getString(R.string.a11y_tuning_value,
+						now.text().replace("(", "").replace(")", ""),
+						LiteralText.write(now.place().literal, now.start(),
+								now.step()));
+			}
+
+			@Override
 			public void onDragStart() {
 				if (tuned != null) {
 					dragFrom = tuned.value();
@@ -244,12 +261,78 @@ public class TuningBar extends LinearLayout {
 			content.setLayoutParams(params);
 		}
 		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+		// Done goes on a line of its own, at the end, when the session's
+		// row is too narrow for all three, so that nothing is cut.
+		LinearLayout session = findViewById(R.id.tuning_session);
+		View done = findViewById(R.id.tuning_done);
+		int needed = 0;
+		for (int i = 0; i < session.getChildCount(); ++i) {
+			View child = session.getChildAt(i);
+			if (child.getVisibility() != GONE &&
+					child.getId() != R.id.tuning_session_space) {
+				LayoutParams lp = (LayoutParams) child.getLayoutParams();
+				child.measure(MeasureSpec.makeMeasureSpec(0,
+								MeasureSpec.UNSPECIFIED),
+						MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+				needed += child.getMeasuredWidth() + lp.leftMargin +
+						lp.rightMargin;
+			}
+		}
+		boolean wrap = needed > session.getMeasuredWidth();
+		int orientation = wrap ? VERTICAL : HORIZONTAL;
+		if (session.getOrientation() != orientation) {
+			session.setOrientation(orientation);
+			session.setGravity(wrap
+					? android.view.Gravity.START
+					: android.view.Gravity.CENTER_VERTICAL);
+			LayoutParams lp = (LayoutParams) done.getLayoutParams();
+			lp.gravity = wrap ? android.view.Gravity.END : 0;
+			done.setLayoutParams(lp);
+			super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+		}
 	}
 
 	@Override
 	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
 		post(this::showLine);
+	}
+
+	@Override
+	public boolean dispatchKeyEvent(KeyEvent event) {
+		// Enter is Done and Escape is Revert, unless a value is typed.
+		if (tuned != null && !valueView.hasFocus() &&
+				event.getAction() == KeyEvent.ACTION_DOWN) {
+			switch (event.getKeyCode()) {
+				case KeyEvent.KEYCODE_ENTER:
+				case KeyEvent.KEYCODE_NUMPAD_ENTER:
+					done();
+					return true;
+				case KeyEvent.KEYCODE_ESCAPE:
+					revert();
+					return true;
+				case KeyEvent.KEYCODE_DPAD_LEFT:
+				case KeyEvent.KEYCODE_DPAD_RIGHT:
+					if (!ruler.hasFocus()) {
+						move((event.getKeyCode() ==
+								KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1) *
+								(event.isShiftPressed() ? 10L : 1L));
+						return true;
+					}
+					break;
+				default:
+					break;
+			}
+		}
+		return super.dispatchKeyEvent(event);
+	}
+
+	// Whether animations run: "Remove animations" makes them instant.
+	private boolean animates() {
+		return android.provider.Settings.Global.getFloat(
+				getContext().getContentResolver(),
+				android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+				1f) > 0f;
 	}
 
 	/** Whether the bar is open. */
@@ -275,9 +358,25 @@ public class TuningBar extends LinearLayout {
 		tuned = new Tuned(place, place.value, place.value,
 				step != null ? step : first, first, place.literal);
 		colourMode = false;
-		setVisibility(VISIBLE);
 		showParts();
 		show();
+		// Fades in and rises 16 dp, emphasized decelerate, 200 ms.
+		setVisibility(VISIBLE);
+		animate().cancel();
+		if (animates()) {
+			setAlpha(0f);
+			setTranslationY(16 * getResources().getDisplayMetrics().density);
+			animate().alpha(1f).translationY(0f).setDuration(200)
+					.setInterpolator(new android.view.animation.PathInterpolator(
+							0.05f, 0.7f, 0.1f, 1f))
+					.withEndAction(null).start();
+		} else {
+			setAlpha(1f);
+			setTranslationY(0f);
+		}
+		ruler.requestFocus();
+		announceForAccessibility(getContext().getString(
+				R.string.a11y_tuning_open, place.literalWithSign()));
 	}
 
 	/**
@@ -312,6 +411,12 @@ public class TuningBar extends LinearLayout {
 
 	private void setColourMode(boolean colour) {
 		colourMode = colour && colourable();
+		// Numbers and colour fade through, 200 ms.
+		View fading = colourMode ? coloursView : findViewById(R.id.tuning_numbers);
+		if (animates()) {
+			fading.setAlpha(0f);
+			fading.animate().alpha(1f).setDuration(200).start();
+		}
 		findViewById(R.id.tuning_numbers).setVisibility(
 				colourMode ? GONE : VISIBLE);
 		coloursView.setVisibility(colourMode ? VISIBLE : GONE);
@@ -478,7 +583,24 @@ public class TuningBar extends LinearLayout {
 		setBuilding(false);
 		SoftKeyboard.hide(getContext(), valueView);
 		valueView.clearFocus();
-		setVisibility(GONE);
+		// Fades and sinks 16 dp, emphasized accelerate, 150 ms.
+		animate().cancel();
+		if (animates() && getVisibility() == VISIBLE) {
+			animate().alpha(0f)
+					.translationY(16 * getResources().getDisplayMetrics().density)
+					.setDuration(150)
+					.setInterpolator(new android.view.animation.PathInterpolator(
+							0.3f, 0f, 0.8f, 0.15f))
+					.withEndAction(() -> {
+						if (tuned == null) {
+							setVisibility(GONE);
+						}
+						setAlpha(1f);
+						setTranslationY(0f);
+					}).start();
+		} else {
+			setVisibility(GONE);
+		}
 	}
 
 	/**
@@ -556,6 +678,8 @@ public class TuningBar extends LinearLayout {
 		if (moveRuler) {
 			ruler.show(value, tuned.start(), tuned.step());
 		}
+		ruler.sendAccessibilityEvent(android.view.accessibility
+				.AccessibilityEvent.TYPE_VIEW_SELECTED);
 		showValue();
 		showLine();
 		if (tuned.place().vector() != null) {
