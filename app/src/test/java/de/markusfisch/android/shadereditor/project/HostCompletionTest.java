@@ -201,6 +201,20 @@ public class HostCompletionTest {
 		return HostCompletion.owns(line, column, true);
 	}
 
+	@Test
+	public void namesTheListedFileThePathIsAbout() {
+		String line = "#include \"../lib/noise.glsl\"";
+		HostCompletion.Named named = HostCompletion.named(line, 15, INK,
+				HostCompletionTest::list);
+		assertEquals(path("lib/noise.glsl"), named.path());
+		assertEquals(HostCompletion.Kind.INCLUDE, named.kind());
+		assertNull(HostCompletion.named("#include \"../lib/nois.glsl\"",
+				15, INK, HostCompletionTest::list));
+		assertNull(HostCompletion.named("#include \"../lib\"", 13, INK,
+				HostCompletionTest::list));
+		assertNull(HostCompletion.named(line, 15, INK, folder -> null));
+	}
+
 	private static List<String> words(String marked) {
 		return offer(marked).words();
 	}

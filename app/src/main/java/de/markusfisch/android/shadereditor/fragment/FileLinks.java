@@ -21,6 +21,12 @@ public interface FileLinks extends HostCompletion.Listing {
 	boolean drawsHalfFloat();
 
 	/**
+	 * The caret rests in a path that names a file, or in none when
+	 * named is null: the strip shows that file in place of completions.
+	 */
+	void point(@Nullable HostCompletion.Named named);
+
+	/**
 	 * The caret entered a path: list the folders asked for from now on
 	 * again, off the main thread, as files may have been made since.
 	 */

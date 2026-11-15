@@ -11,6 +11,8 @@
 	<dimen name="extra_key_tab_height">40dp</dimen>
 	<!-- The widest word in the strip; a longer one, a file name, is cut in the middle. -->
 	<dimen name="strip_word_max_width">240dp</dimen>
+	<!-- The picture of the file the caret rests in, in the strip. -->
+	<dimen name="strip_picture">32dp</dimen>
 	<dimen name="extra_key_divider_padding">12dp</dimen>
 	<dimen name="error_list_divider_padding">16dp</dimen>
 	<!-- Sizes and the one radius of the project-mode UI -->

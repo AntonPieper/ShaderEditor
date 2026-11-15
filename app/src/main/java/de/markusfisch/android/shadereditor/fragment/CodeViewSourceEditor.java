@@ -122,6 +122,12 @@ final class CodeViewSourceEditor implements SourceEditor {
 	private int hostCaret;
 	// Whether the caret was in a path of a line naming files.
 	private boolean inPath;
+	// The revision and caret complete saw last, and whether the last
+	// update between them was an edit: while the caret only moves, a
+	// path it rests in is shown, while typing it is completed.
+	private int seenRevision = -1;
+	private int seenCaret = -1;
+	private boolean typing;
 
 	CodeViewSourceEditor(@NonNull CodeView view) {
 		this.view = view;
@@ -319,6 +325,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 	@Override
 	public void setFileLinks(@Nullable FileLinks links) {
 		if (this.links != null) {
+			this.links.point(null);
 			this.links.setListener(null);
 		}
 		this.links = links;
@@ -474,6 +481,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 		}
 		this.document = document;
 		revision = document.revision();
+		seenRevision = -1;
+		typing = false;
 		errors = Collections.emptyList();
 		styles = new LineStyles(document, syntax, STYLE_BUDGET);
 		// GLSL's words, in GLSL only.
@@ -554,10 +563,18 @@ final class CodeViewSourceEditor implements SourceEditor {
 			return;
 		} else if (!selection.isEmpty()) {
 			signature(-1, 0);
+			point(null);
 			return;
 		}
 		Text text = document.text();
 		int caret = selection.head();
+		if (document.revision() != seenRevision) {
+			typing = seenRevision >= 0;
+		} else if (caret != seenCaret) {
+			typing = false;
+		}
+		seenRevision = document.revision();
+		seenCaret = caret;
 		int n = text.lineOf(caret);
 		int lineStart = text.lineStart(n);
 		Analysis analysis = view.getAnalysis();
@@ -658,16 +675,40 @@ final class CodeViewSourceEditor implements SourceEditor {
 		if (links == null || styles.syntax() != DATABASE ||
 				!HostCompletion.owns(text, column,
 						index >= 0 && line.inDirective(index))) {
+			point(null);
 			return false;
 		}
 		signature(-1, 0);
+		HostCompletion.Named named = typing
+				? null
+				: HostCompletion.named(text, column, links.file(), links);
+		point(named);
+		if (named != null) {
+			return true;
+		}
 		HostCompletion.Offer offer = HostCompletion.offer(text, column,
 				links.file(), links, links.drawsHalfFloat());
+		if (offer.choices().isEmpty()) {
+			// A name typed whole is shown as if the caret rested in it.
+			HostCompletion.Named whole = HostCompletion.named(text, column,
+					links.file(), links);
+			if (whole != null) {
+				point(whole);
+				return true;
+			}
+		}
 		hostOffer = offer;
 		hostRevision = document.revision();
 		hostCaret = caret;
 		listener.onCompletions(offer.words(), offer.typed());
 		return true;
+	}
+
+	// Tells links which file the caret rests in the path of, if any.
+	private void point(@Nullable HostCompletion.Named named) {
+		if (links != null) {
+			links.point(named);
+		}
 	}
 
 	// Lets links list again when the caret enters a path, once.

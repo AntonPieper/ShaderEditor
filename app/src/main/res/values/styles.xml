@@ -144,6 +144,17 @@
 		<item name="android:layout_gravity">center</item>
 	</style>
 
+	<!-- An action in the strip, such as Open: a text button in the accent. -->
+	<style name="BarButton.Action">
+		<item name="android:paddingLeft">16dp</item>
+		<item name="android:paddingRight">16dp</item>
+		<!-- The label alone fills the row at the largest text size. -->
+		<item name="android:paddingTop">0dp</item>
+		<item name="android:paddingBottom">0dp</item>
+		<item name="android:textColor">?attr/colorPrimary</item>
+		<item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+	</style>
+
 	<style name="BarButton.Tab">
 		<item name="backgroundTint">?attr/colorSurfaceContainerHighest</item>
 		<item name="android:paddingLeft">0dp</item>

@@ -1,7 +1,11 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.LruCache;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -11,14 +15,21 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.fragment.FileLinks;
+import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
+import de.markusfisch.android.shadereditor.navigation.Face;
+import de.markusfisch.android.shadereditor.project.FileKind;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.OpenProject;
+import de.markusfisch.android.shadereditor.project.Previews;
+import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.project.Projects;
 
 /**
  * The files around the file of a folder in the editor. A folder is
@@ -26,13 +37,33 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
  * completed, and kept; it is listed again, while the old listing
  * serves, each time the caret enters a path, so that files made since
  * are seen. A rename or deletion of the project, or another file
- * shown, drops the listings. Call it on the main thread.
+ * shown, drops the listings. The file the caret rests on goes to the strip with its
+ * picture, read off the main thread. Call it on the main thread.
  */
 final class ProjectLinks implements FileLinks {
-	/** Whether the picture's context draws into rgba16f targets. */
-	interface HalfFloat {
-		boolean drawn();
+	/** What the links show and do on the screen. */
+	interface Host {
+		/** Whether the picture's context draws into rgba16f targets. */
+		boolean drawsHalfFloat();
+
+		/** Show reference in the strip, the completions when null. */
+		void showReference(@Nullable ExtraKeysManager.Reference reference);
+
+		/** Open path of the project in the editor. */
+		void open(@NonNull ProjectPath path);
 	}
+
+	/**
+	 * Shows a pass of the running shader full size in place of its
+	 * picture: the engine's, once it can. Without one, Show is not
+	 * offered.
+	 */
+	interface PassShow {
+		void show(@NonNull ProjectPath pass);
+	}
+
+	// The pictures kept, by path: a few lines' worth.
+	private static final int KEPT = 16;
 
 	private final ExecutorService listings =
 			Executors.newSingleThreadExecutor();
@@ -43,21 +74,44 @@ final class ProjectLinks implements FileLinks {
 	private final Set<String> listing = new HashSet<>();
 	// The folders listed since the caret last entered a path.
 	private final Set<String> fresh = new HashSet<>();
+	private final LruCache<ProjectPath, Bitmap> pictures =
+			new LruCache<>(KEPT);
+	private final Set<ProjectPath> unpictured = new HashSet<>();
 	@NonNull
-	private final HalfFloat halfFloat;
+	private final Context context;
+	@NonNull
+	private final Projects projects;
+	@NonNull
+	private final Host host;
+	// The size of a picture read, in pixels.
+	private final int size;
+	@Nullable
+	private PassShow passShow;
 	@Nullable
 	private OpenProject project;
 	@Nullable
 	private ProjectPath file;
 	@Nullable
 	private Runnable changed;
+	@Nullable
+	private HostCompletion.Named pointed;
 	// The number of the last rename or deletion heard of.
 	private int heard;
 	// Counts the forgettings; a listing made before one is void.
 	private int generation;
 
-	ProjectLinks(@NonNull HalfFloat halfFloat) {
-		this.halfFloat = halfFloat;
+	ProjectLinks(@NonNull Context context, @NonNull Projects projects,
+			@NonNull Host host) {
+		this.context = context.getApplicationContext();
+		this.projects = projects;
+		this.host = host;
+		size = Math.round(64 * context.getResources()
+				.getDisplayMetrics().density);
+	}
+
+	/** Show passes with show; none, and Show is not offered, when null. */
+	void setPassShow(@Nullable PassShow show) {
+		passShow = show;
 	}
 
 	/** file of project is in the editor now. */
@@ -86,6 +140,9 @@ final class ProjectLinks implements FileLinks {
 		listed.clear();
 		listing.clear();
 		fresh.clear();
+		pictures.evictAll();
+		unpictured.clear();
+		point(null);
 	}
 
 	void destroy() {
@@ -105,7 +162,7 @@ final class ProjectLinks implements FileLinks {
 
 	@Override
 	public boolean drawsHalfFloat() {
-		return halfFloat.drawn();
+		return host.drawsHalfFloat();
 	}
 
 	@Override
@@ -149,6 +206,105 @@ final class ProjectLinks implements FileLinks {
 			});
 		});
 		return entries;
+	}
+
+	@Override
+	public void point(@Nullable HostCompletion.Named named) {
+		if (Objects.equals(named, pointed)) {
+			return;
+		}
+		pointed = named;
+		OpenProject open = project;
+		if (named == null || open == null) {
+			host.showReference(null);
+			return;
+		}
+		ProjectPath path = named.path();
+		boolean image = named.kind() != HostCompletion.Kind.INCLUDE &&
+				FileKind.hint(path.getFileName(), null) == FileKind.PICTURE;
+		host.showReference(reference(named, image));
+		if (named.kind() == HostCompletion.Kind.INCLUDE ||
+				pictures.get(path) != null || unpictured.contains(path)) {
+			return;
+		}
+		int asked = generation;
+		listings.execute(() -> {
+			Bitmap picture = image
+					? image(open.reading(), path)
+					: preview(open.id(), path);
+			handler.post(() -> {
+				if (asked != generation) {
+					return;
+				}
+				if (picture != null) {
+					pictures.put(path, picture);
+				} else {
+					unpictured.add(path);
+				}
+				if (named.equals(pointed)) {
+					host.showReference(reference(named, image));
+				}
+			});
+		});
+	}
+
+	@NonNull
+	private ExtraKeysManager.Reference reference(
+			@NonNull HostCompletion.Named named, boolean image) {
+		ProjectPath path = named.path();
+		PassShow show = passShow;
+		boolean code = named.kind() == HostCompletion.Kind.INCLUDE;
+		return new ExtraKeysManager.Reference(path.getFileName(),
+				pictures.get(path),
+				code
+						? ExtraKeysManager.Reference.Kind.CODE
+						: image
+						? ExtraKeysManager.Reference.Kind.IMAGE
+						: ExtraKeysManager.Reference.Kind.PASS,
+				show != null && !code && !image
+						? () -> show.show(path)
+						: null,
+				image ? null : () -> host.open(path));
+	}
+
+	// The picture of the pass as it ran last, or null. Off the main
+	// thread.
+	@Nullable
+	private Bitmap preview(@NonNull String id, @NonNull ProjectPath path) {
+		Previews previews = projects.previews(id);
+		Previews.Picture picture = previews != null
+				? previews.get(path)
+				: null;
+		byte[] png = picture != null
+				? OldPlaceholder.real(context, picture.png())
+				: null;
+		return png != null
+				? BitmapFactory.decodeByteArray(png, 0, png.length)
+				: null;
+	}
+
+	// The image at path, read about size pixels small, or null. Off
+	// the main thread.
+	@Nullable
+	private Bitmap image(@NonNull ProjectFiles files,
+			@NonNull ProjectPath path) {
+		ProjectFiles.Read read = files.read(path, Face.LARGEST);
+		if (!(read instanceof ProjectFiles.Content content)) {
+			return null;
+		}
+		byte[] bytes = content.bytes();
+		BitmapFactory.Options options = new BitmapFactory.Options();
+		options.inJustDecodeBounds = true;
+		BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
+		int sample = 1;
+		while (Math.min(options.outWidth, options.outHeight) / sample / 2 >=
+				size) {
+			sample *= 2;
+		}
+		options.inJustDecodeBounds = false;
+		options.inSampleSize = sample;
+		return BitmapFactory.decodeByteArray(bytes, 0, bytes.length,
+				options);
 	}
 
 	private static int last(@NonNull List<OpenProject.Event> events) {
