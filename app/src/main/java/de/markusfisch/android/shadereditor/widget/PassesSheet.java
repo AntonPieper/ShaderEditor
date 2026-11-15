@@ -1,22 +1,31 @@
 package de.markusfisch.android.shadereditor.widget;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.TextUtils;
+import android.transition.AutoTransition;
+import android.transition.Fade;
+import android.transition.TransitionManager;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Interpolator;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.Space;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
@@ -25,14 +34,24 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.util.Consumer;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.animation.PathInterpolatorCompat;
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.color.MaterialColors;
+import com.google.android.material.imageview.ShapeableImageView;
+import com.google.android.material.shape.CornerFamily;
+import com.google.android.material.shape.MaterialShapeDrawable;
+import com.google.android.material.shape.ShapeAppearanceModel;
+import com.google.android.material.sidesheet.SideSheetBehavior;
+import com.google.android.material.sidesheet.SideSheetCallback;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -229,7 +248,11 @@ public final class PassesSheet {
 	private final PassFactLine.Words words;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final View sheet;
+	// A bottom sheet, or in landscape a side sheet under the toolbar.
+	@Nullable
 	private final BottomSheetBehavior<View> behavior;
+	@Nullable
+	private final SideSheetBehavior<View> side;
 	private final OnBackPressedCallback back;
 	private final MaterialButton pause;
 	private final View step;
@@ -256,6 +279,16 @@ public final class PassesSheet {
 	// Whether even the selected row's lines need more lanes than there
 	// are, so that what it reads is listed under it instead.
 	private boolean listed;
+	// Material's standard easing; made with the sheet, as the class is
+	// loaded without Android too.
+	private final Interpolator standard =
+			PathInterpolatorCompat.create(.2f, 0f, 0f, 1f);
+	// Fit opening or closing its range, while it does.
+	@Nullable
+	private ValueAnimator fitting;
+	// Whether the rail shows only the selected row's lines, so that
+	// another selection lays the rows out again.
+	private boolean collapsed;
 	@Nullable
 	private Object hearing;
 	@Nullable
@@ -274,21 +307,56 @@ public final class PassesSheet {
 		sheet = LayoutInflater.from(activity).inflate(R.layout.sheet_passes,
 				coordinator, false);
 		coordinator.addView(sheet);
-		behavior = BottomSheetBehavior.from(sheet);
-		behavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-		behavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
-			@Override
-			public void onStateChanged(@NonNull View bottomSheet, int newState) {
-				// Dragged away.
-				if (newState == BottomSheetBehavior.STATE_HIDDEN && state.open) {
-					close();
+		if (activity.getResources().getConfiguration().orientation ==
+				Configuration.ORIENTATION_LANDSCAPE) {
+			behavior = null;
+			side = new SideSheetBehavior<>();
+			var params = (CoordinatorLayout.LayoutParams) sheet.getLayoutParams();
+			params.width = Math.round(412 *
+					activity.getResources().getDisplayMetrics().density);
+			params.height = ViewGroup.LayoutParams.MATCH_PARENT;
+			params.gravity = Gravity.END;
+			params.setBehavior(side);
+			var shape = new MaterialShapeDrawable(ShapeAppearanceModel.builder()
+					.setTopLeftCorner(CornerFamily.ROUNDED, activity.getResources()
+							.getDimension(R.dimen.se_corner_container))
+					.build());
+			shape.setFillColor(ColorStateList.valueOf(MaterialColors.getColor(
+					sheet, com.google.android.material.R.attr
+							.colorSurfaceContainerLow)));
+			sheet.setBackground(shape);
+			sheet.findViewById(R.id.passes_handle).setVisibility(View.GONE);
+			side.setState(SideSheetBehavior.STATE_HIDDEN);
+			side.addCallback(new SideSheetCallback() {
+				@Override
+				public void onStateChanged(@NonNull View sheet, int newState) {
+					if (newState == SideSheetBehavior.STATE_HIDDEN && state.open) {
+						close();
+					}
 				}
-			}
 
-			@Override
-			public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-			}
-		});
+				@Override
+				public void onSlide(@NonNull View sheet, float slideOffset) {
+				}
+			});
+		} else {
+			side = null;
+			behavior = BottomSheetBehavior.from(sheet);
+			behavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+			behavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+				@Override
+				public void onStateChanged(@NonNull View bottomSheet, int newState) {
+					// Dragged away.
+					if (newState == BottomSheetBehavior.STATE_HIDDEN && state.open) {
+						close();
+					}
+				}
+
+				@Override
+				public void onSlide(@NonNull View bottomSheet, float slideOffset) {
+				}
+			});
+		}
 		back = new OnBackPressedCallback(false) {
 			@Override
 			public void handleOnBackPressed() {
@@ -300,9 +368,16 @@ public final class PassesSheet {
 		pause = sheet.findViewById(R.id.passes_pause);
 		pause.setOnClickListener(v -> setPaused(!state.paused));
 		step = sheet.findViewById(R.id.passes_step);
-		step.setOnClickListener(v -> view.step());
+		step.setOnClickListener(v -> {
+			view.step();
+			// A light tick, as the system's touch feedback allows.
+			v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+		});
 		restart = sheet.findViewById(R.id.passes_restart);
-		restart.setOnClickListener(v -> view.restart());
+		restart.setOnClickListener(v -> {
+			view.restart();
+			lightFirstFrames();
+		});
 		ViewCompat.setTooltipText(step, step.getContentDescription());
 		ViewCompat.setTooltipText(restart, restart.getContentDescription());
 		limit = sheet.findViewById(R.id.passes_limit);
@@ -315,15 +390,11 @@ public final class PassesSheet {
 		var values = activity.getResources().getStringArray(R.array.quality_values);
 		qualities = new Chip[names.length];
 		qualityValues = new float[values.length];
-		LinearLayout row = sheet.findViewById(R.id.passes_quality);
+		ChipGroup row = sheet.findViewById(R.id.passes_quality);
 		var inflater = LayoutInflater.from(activity);
 		for (int i = 0; i < names.length; ++i) {
 			float quality = Float.parseFloat(values[i]);
 			qualityValues[i] = quality;
-			if (i > 0) {
-				row.addView(new Space(activity), new LinearLayout.LayoutParams(
-						0, 1, 1f));
-			}
 			Chip chip = (Chip) inflater.inflate(R.layout.chip_quality, row,
 					false);
 			chip.setText(names[i]);
@@ -340,6 +411,10 @@ public final class PassesSheet {
 			row.addView(chip);
 			qualities[i] = chip;
 		}
+		// Spread over the width while they fit on one line; otherwise,
+		// as with the largest text, four to a line, sharing its width.
+		row.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) ->
+				spreadQualities(row));
 		divider = sheet.findViewById(R.id.passes_divider);
 		scroll = sheet.findViewById(R.id.passes_scroll);
 		list = sheet.findViewById(R.id.passes_list);
@@ -417,8 +492,14 @@ public final class PassesSheet {
 	}
 
 	private void open() {
-		behavior.setMaxHeight(Math.round(
-				((View) sheet.getParent()).getHeight() * .7f));
+		if (behavior != null) {
+			behavior.setMaxHeight(Math.round(
+					((View) sheet.getParent()).getHeight() * .7f));
+		} else {
+			var params = (ViewGroup.MarginLayoutParams) sheet.getLayoutParams();
+			params.topMargin = activity.findViewById(R.id.toolbar).getBottom();
+			sheet.setLayoutParams(params);
+		}
 		set(state.withOpen(true).withPasses(view.passes())
 				.withQuality(view.getQuality())
 				.withLimit(view.getFrameRateLimit()));
@@ -463,8 +544,94 @@ public final class PassesSheet {
 				fit = new Fit(facts.file(), low, high);
 			}
 		}
-		view.setFit(fit);
+		animateFit(state.fit, fit);
 		set(state.withFit(fit));
+	}
+
+	// Fit opens its range over 200 ms, from 0..1 to the pass's, and
+	// closes it the same way, so that it reads as a stretch of the same
+	// picture. Only where no frame of the shader is drawn for it: while
+	// paused only the frame drawn last is presented again, and while it
+	// runs unthrottled it draws every frame anyway; throttled, each step
+	// would draw a frame the limit holds back, so it changes at once.
+	// A range across 0 also changes at once: it maps 0 to grey, and no
+	// range of that kind leaves the picture as it is to start from.
+	private void animateFit(@Nullable Fit from, @Nullable Fit to) {
+		if (fitting != null) {
+			fitting.cancel();
+			fitting = null;
+		}
+		Fit range = to != null ? to : from;
+		if (range == null || to != null && from != null ||
+				range.low() < 0 || !animates(activity) ||
+				(!state.paused && view.getFrameRateLimit() > 0)) {
+			view.setFit(to);
+			return;
+		}
+		boolean opens = to != null;
+		var animator = ValueAnimator.ofFloat(0f, 1f);
+		animator.setDuration(200);
+		animator.setInterpolator(standard);
+		animator.addUpdateListener(a -> {
+			float f = (float) a.getAnimatedValue();
+			float t = opens ? f : 1f - f;
+			view.setFit(new Fit(range.file(), range.low() * t,
+					1f + (range.high() - 1f) * t));
+		});
+		animator.addListener(new AnimatorListenerAdapter() {
+			private boolean cancelled;
+
+			@Override
+			public void onAnimationCancel(Animator animation) {
+				cancelled = true;
+			}
+
+			@Override
+			public void onAnimationEnd(Animator animation) {
+				if (!cancelled) {
+					view.setFit(to);
+				}
+			}
+		});
+		fitting = animator;
+		animator.start();
+	}
+
+	// Restart draws the first frames again: their rows light for 300 ms
+	// and fade over 150 ms, or go out at once without animations.
+	private void lightFirstFrames() {
+		var rows = state.passes.rows();
+		int color = MaterialColors.getColor(list,
+				androidx.appcompat.R.attr.colorPrimary);
+		float width = 2 * activity.getResources().getDisplayMetrics().density;
+		for (int r = 0; r < rows.size() && r < list.getChildCount(); ++r) {
+			if (rows.get(r).kind() != RunningPasses.Kind.FIRST_FRAME) {
+				continue;
+			}
+			ShapeableImageView picture = list.getChildAt(r).findViewById(
+					R.id.pass_picture);
+			picture.setStrokeWidth(width);
+			picture.setStrokeColor(ColorStateList.valueOf(color));
+			Runnable off = () -> picture.setStrokeWidth(0);
+			if (!animates(activity)) {
+				picture.postDelayed(off, 300);
+				continue;
+			}
+			var fade = ValueAnimator.ofInt(255, 0);
+			fade.setStartDelay(300);
+			fade.setDuration(150);
+			fade.setInterpolator(standard);
+			fade.addUpdateListener(a -> picture.setStrokeColor(
+					ColorStateList.valueOf(ColorUtils.setAlphaComponent(
+							color, (int) a.getAnimatedValue()))));
+			fade.addListener(new AnimatorListenerAdapter() {
+				@Override
+				public void onAnimationEnd(Animator animation) {
+					off.run();
+				}
+			});
+			fade.start();
+		}
 	}
 
 	// What draws now: a pass shown that no longer draws is not shown.
@@ -552,18 +719,35 @@ public final class PassesSheet {
 
 	// The one place that shows the state.
 	private void render(@NonNull State was) {
+		boolean animates = animates(activity);
 		if (state.open != was.open) {
 			back.setEnabled(state.open);
-			editor.setAside(state.open, animates(activity));
-			behavior.setState(state.open
-					? BottomSheetBehavior.STATE_EXPANDED
-					: BottomSheetBehavior.STATE_HIDDEN);
+			editor.setAside(state.open, animates);
+			if (behavior != null) {
+				behavior.setState(state.open
+						? BottomSheetBehavior.STATE_EXPANDED
+						: BottomSheetBehavior.STATE_HIDDEN);
+			} else if (side != null) {
+				side.setState(state.open
+						? SideSheetBehavior.STATE_EXPANDED
+						: SideSheetBehavior.STATE_HIDDEN);
+			}
 		}
 		boolean runs = state.runs();
 		pause.setEnabled(runs);
-		pause.setIconResource(state.paused
-				? R.drawable.ic_play_arrow
-				: R.drawable.ic_pause);
+		int icon = state.paused ? R.drawable.ic_play_arrow : R.drawable.ic_pause;
+		if (state.paused != was.paused && animates) {
+			// Pause and Run cross over 100 ms.
+			pause.animate().cancel();
+			pause.animate().alpha(0f).setDuration(50).withEndAction(() -> {
+				pause.setIconResource(icon);
+				pause.animate().alpha(1f).setDuration(50);
+			});
+		} else if (state.paused != was.paused || was == state) {
+			pause.animate().cancel();
+			pause.setAlpha(1f);
+			pause.setIconResource(icon);
+		}
 		CharSequence pauseName = activity.getText(state.paused
 				? R.string.passes_play
 				: R.string.passes_pause);
@@ -583,6 +767,12 @@ public final class PassesSheet {
 		for (int i = 0; i < qualities.length; ++i) {
 			qualities[i].setChecked(qualityValues[i] == state.quality);
 		}
+		if (animates && (state.shown == null) != (was.shown == null)) {
+			// The chip fades through to the other one.
+			TransitionManager.beginDelayedTransition(
+					(ViewGroup) shownChip.getParent(),
+					new Fade().setDuration(150));
+		}
 		qualityChip.setVisibility(state.available && state.shown == null
 				? View.VISIBLE
 				: View.GONE);
@@ -595,9 +785,19 @@ public final class PassesSheet {
 		if (state.shown != was.shown || state.paused != was.paused) {
 			ui.setPicture(state.shown != null, state.paused);
 		}
-		if (!state.passes.equals(was.passes) ||
-				!Objects.equals(state.shown, was.shown)) {
+		boolean selected = !Objects.equals(state.shown, was.shown);
+		if (!state.passes.equals(was.passes) || (selected && collapsed)) {
 			renderRows();
+			renderFacts();
+		} else if (selected) {
+			// The selection moves and the shown row grows in place.
+			if (animates && state.open) {
+				TransitionManager.beginDelayedTransition(list,
+						new AutoTransition().setDuration(200)
+								.setInterpolator(new FastOutSlowInInterpolator()));
+			}
+			renderSelection();
+			renderReads();
 			renderFacts();
 		} else if (state.facts != was.facts || state.paused != was.paused ||
 				state.fit != was.fit) {
@@ -666,11 +866,6 @@ public final class PassesSheet {
 			if (rail.collapsed() && r != selected && !rail.touches(r)) {
 				view.setAlpha(.38f);
 			}
-			if (r == selected) {
-				view.setActivated(true);
-				((TextView) view.findViewById(R.id.pass_name)).setTypeface(
-						Typeface.create("sans-serif-medium", Typeface.NORMAL));
-			}
 			if (row.drawn()) {
 				var tapped = row.output() ? null : file;
 				view.setOnClickListener(v -> show(tapped));
@@ -682,7 +877,9 @@ public final class PassesSheet {
 			dashed |= line.form() == PassRail.Form.LANE && line.read().last();
 		}
 		list.setRail(rail);
+		collapsed = rail.collapsed();
 		listed = rail.listed();
+		renderSelection();
 		renderReads();
 		// Said only for what is on screen: the badge alone is a pass that
 		// reads its own last frame.
@@ -787,6 +984,19 @@ public final class PassesSheet {
 		return chip;
 	}
 
+	// The selected row is filled, its name in medium weight.
+	private void renderSelection() {
+		int selected = state.selected();
+		for (int r = 0; r < list.getChildCount(); ++r) {
+			View view = list.getChildAt(r);
+			view.setActivated(r == selected);
+			((TextView) view.findViewById(R.id.pass_name)).setTypeface(
+					r == selected
+							? Typeface.create("sans-serif-medium", Typeface.NORMAL)
+							: Typeface.DEFAULT);
+		}
+	}
+
 	// What is worth saying of each pass, from its facts: a second line
 	// only when it says something; the pass shown grows by its facts
 	// and its actions.
@@ -867,6 +1077,7 @@ public final class PassesSheet {
 					: View.GONE);
 			fit.setChecked(fitted);
 			fit.setOnClickListener(v -> fit(fitted ? null : facts));
+			view.setContentDescription(spoken(r, second, shown));
 		}
 	}
 
@@ -876,6 +1087,57 @@ public final class PassesSheet {
 	private void openSizeLine(@NonNull RunningPasses.SizeLine line) {
 		close();
 		files.open(line.file(), line.line());
+	}
+
+	// A row as it is read out: its file, what it says, what it reads,
+	// what reads it, and whether it is shown; facts are read when the
+	// row is, never as they change.
+	@NonNull
+	private String spoken(int r, @Nullable String second,
+			@Nullable String shown) {
+		var rows = state.passes.rows();
+		var row = rows.get(r);
+		var text = new StringBuilder(row.file().getFileName());
+		for (String part : new String[]{second, shown}) {
+			if (part != null) {
+				text.append(", ").append(part);
+			}
+		}
+		var reads = new ArrayList<String>();
+		for (var read : row.reads()) {
+			String name = rows.get(read.row()).file().getFileName();
+			reads.add(read.row() == r
+					? activity.getString(R.string.passes_a11y_itself)
+					: switch (read.kind()) {
+						case THIS_FRAME -> name;
+						case LAST_FRAME -> activity.getString(
+								R.string.passes_a11y_last, name);
+						case FIRST_FRAME -> activity.getString(
+								R.string.passes_a11y_first, name);
+					});
+		}
+		if (!reads.isEmpty()) {
+			text.append(", ").append(activity.getString(
+					R.string.passes_a11y_reads, TextUtils.join(", ", reads)));
+		}
+		var readers = new ArrayList<String>();
+		for (int o = 0; o < rows.size(); ++o) {
+			for (var read : rows.get(o).reads()) {
+				String name = rows.get(o).file().getFileName();
+				if (o != r && read.row() == r && !readers.contains(name)) {
+					readers.add(name);
+				}
+			}
+		}
+		if (!readers.isEmpty()) {
+			text.append(", ").append(activity.getString(
+					R.string.passes_a11y_read_by, TextUtils.join(", ", readers)));
+		}
+		if (row.file().equals(state.shown)) {
+			text.append(", ").append(activity.getString(
+					R.string.passes_a11y_shown));
+		}
+		return text.toString();
 	}
 
 	// The facts as they are now: the engine may fill its own again.
@@ -1004,6 +1266,57 @@ public final class PassesSheet {
 		}
 		return Bitmap.createBitmap(argb, picture.width(), picture.height(),
 				Bitmap.Config.ARGB_8888);
+	}
+
+	private void spreadQualities(@NonNull ChipGroup row) {
+		float dp = activity.getResources().getDisplayMetrics().density;
+		int space = row.getWidth() - row.getPaddingLeft() -
+				row.getPaddingRight();
+		if (space <= 0) {
+			return;
+		}
+		// Each chip's own width: 48 dp, or its label with 4 dp a side.
+		int natural = 0;
+		for (var chip : qualities) {
+			natural += Math.max(Math.round(48 * dp), Math.round(
+					chip.getPaint().measureText(chip.getText().toString()) +
+							8 * dp));
+		}
+		int least = Math.round(4 * dp);
+		int gaps = qualities.length - 1;
+		int gap;
+		int width;
+		if (natural + gaps * least <= space) {
+			gap = (space - natural) / gaps;
+			width = ViewGroup.LayoutParams.WRAP_CONTENT;
+		} else {
+			int perLine = (qualities.length + 1) / 2;
+			gap = Math.round(8 * dp);
+			width = (space - (perLine - 1) * gap) / perLine;
+		}
+		boolean changed = Math.abs(gap - row.getChipSpacingHorizontal()) > 1;
+		for (var chip : qualities) {
+			changed |= chip.getLayoutParams().width != width;
+		}
+		if (!changed) {
+			return;
+		}
+		row.post(() -> {
+			row.setChipSpacingHorizontal(gap);
+			for (var chip : qualities) {
+				// The label in the middle of the width it has.
+				float label = chip.getPaint().measureText(
+						chip.getText().toString());
+				float own = width > 0
+						? width
+						: Math.max(48 * dp, label + 8 * dp);
+				float pad = Math.max(0, (own - label) / 2);
+				chip.setChipStartPadding(pad);
+				chip.setChipEndPadding(pad);
+				chip.getLayoutParams().width = width;
+				chip.requestLayout();
+			}
+		});
 	}
 
 	// Whether the system plays animations.
