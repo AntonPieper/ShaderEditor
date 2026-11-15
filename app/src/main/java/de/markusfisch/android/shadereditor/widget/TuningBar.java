@@ -223,6 +223,8 @@ public class TuningBar extends LinearLayout {
 
 			@Override
 			public void onDragStart() {
+				// A drag ends typing: the field shows the ruler's value.
+				dropTyping();
 				if (tuned != null) {
 					dragFrom = tuned.value();
 				}
@@ -249,9 +251,14 @@ public class TuningBar extends LinearLayout {
 
 	@Override
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-		// The content at most 600 dp wide, centred, on wide screens.
+		// The content at most 600 dp wide, centred, on wide screens; in
+		// landscape the one row takes the width, the ruler what is left.
 		View content = findViewById(R.id.tuning_content);
-		int max = Math.round(600 * getResources().getDisplayMetrics().density);
+		boolean landscape = getResources().getConfiguration().orientation ==
+				android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+		int max = landscape
+				? Integer.MAX_VALUE
+				: Math.round(600 * getResources().getDisplayMetrics().density);
 		LayoutParams params = (LayoutParams) content.getLayoutParams();
 		int width = MeasureSpec.getSize(widthMeasureSpec) - getPaddingLeft() -
 				getPaddingRight();
@@ -265,6 +272,10 @@ public class TuningBar extends LinearLayout {
 		// row is too narrow for all three, so that nothing is cut.
 		LinearLayout session = findViewById(R.id.tuning_session);
 		View done = findViewById(R.id.tuning_done);
+		if (done.getParent() != session) {
+			// The landscape row: Done is in it, not under it.
+			return;
+		}
 		int needed = 0;
 		for (int i = 0; i < session.getChildCount(); ++i) {
 			View child = session.getChildAt(i);
@@ -417,11 +428,27 @@ public class TuningBar extends LinearLayout {
 			fading.setAlpha(0f);
 			fading.animate().alpha(1f).setDuration(200).start();
 		}
-		findViewById(R.id.tuning_numbers).setVisibility(
-				colourMode ? GONE : VISIBLE);
+		showNumbers(!colourMode);
 		coloursView.setVisibility(colourMode ? VISIBLE : GONE);
 		partsView.setVisibility(colourMode ? GONE : VISIBLE);
 		showParts();
+	}
+
+	// Shows or hides what tunes a number: −, the value, + and the ruler.
+	// In landscape Revert, the step and Done share their row and stay.
+	private void showNumbers(boolean shown) {
+		View numbers = findViewById(R.id.tuning_numbers);
+		if (findViewById(R.id.tuning_done).getParent() != numbers) {
+			numbers.setVisibility(shown ? VISIBLE : GONE);
+			return;
+		}
+		int visibility = shown ? VISIBLE : GONE;
+		for (int id : new int[]{R.id.tuning_decrease, R.id.tuning_value,
+				R.id.tuning_increase, R.id.tuning_ruler}) {
+			findViewById(id).setVisibility(visibility);
+		}
+		// The step's chip and Done keep the row's end.
+		findViewById(R.id.tuning_step).setVisibility(visibility);
 	}
 
 	// The parts of the vector: a segment each, the one tuned checked;
@@ -433,7 +460,7 @@ public class TuningBar extends LinearLayout {
 		if (vector == null) {
 			row.setVisibility(GONE);
 			coloursView.setVisibility(GONE);
-			findViewById(R.id.tuning_numbers).setVisibility(VISIBLE);
+			showNumbers(true);
 			colourMode = false;
 			return;
 		}
@@ -650,7 +677,10 @@ public class TuningBar extends LinearLayout {
 		if (now == null || ending == null) {
 			return;
 		}
-		if (valueView.hasFocus()) {
+		// What was typed counts only when it is not what the field shows
+		// of the value anyway.
+		if (valueView.hasFocus() && !valueView.getText().toString().equals(
+				shownValue(now))) {
 			takeTyped();
 			now = tuned;
 		}
@@ -658,7 +688,19 @@ public class TuningBar extends LinearLayout {
 		ending.end(keep && now.changed());
 	}
 
+	// Lets the value field go without taking what was typed, so that it
+	// shows the value again.
+	private void dropTyping() {
+		if (valueView.hasFocus()) {
+			SoftKeyboard.hide(getContext(), valueView);
+			valueView.clearFocus();
+			valueView.setError(null);
+			showValue();
+		}
+	}
+
 	private void move(long steps) {
+		dropTyping();
 		Tuned now = tuned;
 		if (now != null) {
 			change(TuningStep.move(now.value(), now.step(), steps,
@@ -794,8 +836,15 @@ public class TuningBar extends LinearLayout {
 	private void showValue() {
 		Tuned now = tuned;
 		if (now != null && !valueView.hasFocus()) {
-			valueView.setText(now.text().replace("(", "").replace(")", ""));
+			valueView.setText(shownValue(now));
 		}
+	}
+
+	// The value as the field shows it: with its sign, without the
+	// parentheses a negative one has after a binary operator.
+	@NonNull
+	private static String shownValue(@NonNull Tuned tuned) {
+		return tuned.text().replace("(", "").replace(")", "");
 	}
 
 	// The tuned line with the new digits, cut on both sides around them

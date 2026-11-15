@@ -661,6 +661,7 @@ public final class LibraryScreen implements ShaderScreen {
 			}
 		});
 		backTunes.setEnabled(true);
+		extraKeysManager.setCovered(true);
 		// The code and the keyboard step aside; the picture shows as it
 		// is, without the limit code puts on it. The code fades out with
 		// the limit, 150 ms, unless animations are removed.
@@ -700,6 +701,7 @@ public final class LibraryScreen implements ShaderScreen {
 	// The bar closed: what showed before comes back.
 	private void tuningEnded(@NonNull List<ProjectDiagnostic> errors) {
 		backTunes.setEnabled(false);
+		extraKeysManager.setCovered(false);
 		tuningBar.close();
 		if (codeBeforeTuning && !editorFragment.isCodeVisible()) {
 			uiManager.toggleCodeVisibility();
