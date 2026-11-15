@@ -1,0 +1,149 @@
+{
+	"Shader": {
+		"ver": "0.1",
+		"info": {
+			"id": "fixture3",
+			"date": "1763164800",
+			"viewed": 0,
+			"name": "Ripples",
+			"username": "the tests",
+			"description": "A fixture of ShaderEditor's tests, written for them.",
+			"likes": 0,
+			"published": 3,
+			"flags": 0,
+			"usePreview": 0,
+			"tags": [
+				"test"
+			],
+			"hasliked": 0
+		},
+		"renderpass": [
+			{
+				"inputs": [
+					{
+						"id": 257,
+						"src": "/media/previz/buffer00.png",
+						"ctype": "buffer",
+						"channel": 0,
+						"sampler": {
+							"filter": "nearest",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 257,
+						"src": "/media/previz/buffer00.png",
+						"ctype": "buffer",
+						"channel": 1,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": 37,
+						"channel": 0
+					}
+				],
+				"code": "// Light on the water. iChannel0 and iChannel1 both read Buffer A: the\n// left half pixel by pixel, the right half smoothed.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tvec2 uv = fragCoord / iResolution.xy;\n\tvec2 texel = 1.0 / iChannelResolution[0].xy;\n\tfloat here, right, up;\n\tif (uv.x < 0.5) {\n\t\there = texture(iChannel0, uv).x;\n\t\tright = texture(iChannel0, uv + vec2(texel.x, 0.0)).x;\n\t\tup = texture(iChannel0, uv + vec2(0.0, texel.y)).x;\n\t} else {\n\t\there = texture(iChannel1, uv).x;\n\t\tright = texture(iChannel1, uv + vec2(texel.x, 0.0)).x;\n\t\tup = texture(iChannel1, uv + vec2(0.0, texel.y)).x;\n\t}\n\tvec3 normal = normalize(vec3(here - right, here - up, 0.05));\n\tfloat light = dot(normal, normalize(vec3(0.4, 0.5, 0.8)));\n\tfragColor = vec4(vec3(0.1, 0.3, 0.5) + 0.6 * light, 1.0);\n}\n",
+				"name": "Image",
+				"description": "",
+				"type": "image"
+			},
+			{
+				"inputs": [
+					{
+						"id": 257,
+						"src": "/media/previz/buffer00.png",
+						"ctype": "buffer",
+						"channel": 0,
+						"sampler": {
+							"filter": "nearest",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 258,
+						"src": "/media/previz/buffer01.png",
+						"ctype": "buffer",
+						"channel": 1,
+						"sampler": {
+							"filter": "nearest",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": 257,
+						"channel": 0
+					}
+				],
+				"code": "// The height of a water surface. It reads itself (iChannel0) and the\n// speed in Buffer B (iChannel1), which is drawn after this buffer, so\n// both are of the frame before.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tivec2 p = ivec2(fragCoord);\n\tfloat height = texelFetch(iChannel0, p, 0).x;\n\theight += texelFetch(iChannel1, p, 0).x;\n\t// A drop every half second, or wherever the finger is.\n\tvec2 c = iMouse.z > 0.0\n\t\t? iMouse.xy\n\t\t: iResolution.xy * (0.5 + 0.3 * vec2(cos(iTime), sin(0.7 * iTime)));\n\tif (iFrame % 30 == 0 || iMouse.z > 0.0) {\n\t\tvec2 d = fragCoord - c;\n\t\theight += 0.5 * exp(-dot(d, d) / 40.0);\n\t}\n\tfragColor = vec4(height, 0.0, 0.0, 1.0);\n}\n",
+				"name": "Buffer A",
+				"description": "",
+				"type": "buffer"
+			},
+			{
+				"inputs": [
+					{
+						"id": 257,
+						"src": "/media/previz/buffer00.png",
+						"ctype": "buffer",
+						"channel": 0,
+						"sampler": {
+							"filter": "nearest",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 258,
+						"src": "/media/previz/buffer01.png",
+						"ctype": "buffer",
+						"channel": 1,
+						"sampler": {
+							"filter": "nearest",
+							"wrap": "repeat",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": 258,
+						"channel": 0
+					}
+				],
+				"code": "// The speed of the surface. It reads the height in Buffer A\n// (iChannel0), which was drawn before this buffer in the same frame,\n// and itself (iChannel1) of the frame before. The speed is negative\n// where the surface falls: the buffer keeps floats.\nfloat heightAt(ivec2 p) {\n\treturn texelFetch(iChannel0,\n\t\tclamp(p, ivec2(0), ivec2(iResolution.xy) - 1), 0).x;\n}\n\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tivec2 p = ivec2(fragCoord);\n\tfloat around = heightAt(p + ivec2(1, 0)) + heightAt(p - ivec2(1, 0)) +\n\t\theightAt(p + ivec2(0, 1)) + heightAt(p - ivec2(0, 1));\n\tfloat speed = texelFetch(iChannel1, p, 0).x;\n\tspeed = 0.995 * (speed + 0.2 * (around - 4.0 * heightAt(p)));\n\tfragColor = vec4(speed, 0.0, 0.0, 1.0);\n}\n",
+				"name": "Buffer B",
+				"description": "",
+				"type": "buffer"
+			}
+		]
+	}
+}

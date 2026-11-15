@@ -1,0 +1,324 @@
+{
+	"Shader": {
+		"ver": "0.1",
+		"info": {
+			"id": "fixture4",
+			"date": "1763164800",
+			"viewed": 0,
+			"name": "Media: all of it?",
+			"username": "the tests",
+			"description": "A fixture of ShaderEditor's tests, written for them.",
+			"likes": 0,
+			"published": 3,
+			"flags": 0,
+			"usePreview": 0,
+			"tags": [
+				"test"
+			],
+			"hasliked": 0
+		},
+		"renderpass": [
+			{
+				"inputs": [
+					{
+						"id": 7,
+						"src": "/media/a/stone.jpg",
+						"ctype": "texture",
+						"channel": 0,
+						"sampler": {
+							"filter": "mipmap",
+							"wrap": "repeat",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 22,
+						"src": "/media/a/sky.jpg",
+						"ctype": "cubemap",
+						"channel": 1,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 39,
+						"src": "/media/a/noise.bin",
+						"ctype": "volume",
+						"channel": 2,
+						"sampler": {
+							"filter": "mipmap",
+							"wrap": "repeat",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 257,
+						"src": "/media/previz/buffer00.png",
+						"ctype": "buffer",
+						"channel": 3,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": 37,
+						"channel": 0
+					}
+				],
+				"code": "// Reads a texture, a cubemap and a volume of ShaderToy, and Buffer A.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tvec2 uv = fragCoord / iResolution.xy;\n\tvec3 color = texture(iChannel0, uv).rgb;\n\tcolor += texture(iChannel1, vec3(uv, 1.0)).rgb;\n\tcolor += texture(iChannel2, vec3(uv, fract(0.1 * iTime))).rgb;\n\tcolor += texture(iChannel3, uv).rgb;\n#if HW_PERFORMANCE == 0\n\tcolor *= 0.9;\n#endif\n\tfragColor = vec4(color * iTimeDelta * iFrameRate, 1.0);\n}\n",
+				"name": "Image",
+				"description": "",
+				"type": "image"
+			},
+			{
+				"inputs": [
+					{
+						"id": 33,
+						"src": "/presets/tex00.jpg",
+						"ctype": "keyboard",
+						"channel": 0,
+						"sampler": {
+							"filter": "nearest",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 31,
+						"src": "/presets/webcam.png",
+						"ctype": "webcam",
+						"channel": 1,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 32,
+						"src": "/presets/mic.png",
+						"ctype": "mic",
+						"channel": 2,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 258,
+						"src": "/media/previz/buffer01.png",
+						"ctype": "buffer",
+						"channel": 3,
+						"sampler": {
+							"filter": "mipmap",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": 257,
+						"channel": 0
+					}
+				],
+				"code": "// Reads the keyboard, the webcam, the microphone and Buffer B.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tvec2 uv = fragCoord / iResolution.xy;\n\tfloat space = texelFetch(iChannel0, ivec2(32, 0), 0).x;\n\tvec3 color = texture(iChannel1, uv).rgb + texture(iChannel2, uv).r;\n\tcolor += textureLod(iChannel3, uv, 2.0).rgb;\n\tfragColor = vec4(color + space, iDate.w / 86400.0);\n}\n",
+				"name": "Buffer A",
+				"description": "",
+				"type": "buffer"
+			},
+			{
+				"inputs": [
+					{
+						"id": 18,
+						"src": "/media/a/tune.mp3",
+						"ctype": "music",
+						"channel": 0,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 0,
+						"src": "https://soundcloud.com/example/tune",
+						"ctype": "musicstream",
+						"channel": 1,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 12,
+						"src": "/media/a/clip.webm",
+						"ctype": "video",
+						"channel": 2,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 259,
+						"src": "/media/previz/buffer02.png",
+						"ctype": "buffer",
+						"channel": 3,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": 258,
+						"channel": 0
+					}
+				],
+				"code": "// Reads music, a music stream, a video and Buffer C.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tvec2 uv = fragCoord / iResolution.xy;\n\tfloat bass = texture(iChannel0, vec2(0.05, 0.25)).x +\n\t\ttexture(iChannel1, vec2(0.05, 0.25)).x;\n\tvec3 color = texture(iChannel2, uv).rgb + texture(iChannel3, uv).rgb;\n\tfragColor = vec4(color * bass, iChannelTime[2] / iSampleRate);\n}\n",
+				"name": "Buffer B",
+				"description": "",
+				"type": "buffer"
+			},
+			{
+				"inputs": [
+					{
+						"id": 41,
+						"src": "/media/previz/cubemap00.png",
+						"ctype": "cubemap",
+						"channel": 0,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 8,
+						"src": "/media/a/wood.jpg",
+						"ctype": "texture",
+						"channel": 1,
+						"sampler": {
+							"filter": "nearest",
+							"wrap": "clamp",
+							"vflip": "false",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 99,
+						"src": "/media/a/what.bin",
+						"ctype": "hologram",
+						"channel": 2,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					},
+					{
+						"id": 260,
+						"src": "/media/previz/buffer03.png",
+						"ctype": "buffer",
+						"channel": 3,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": 259,
+						"channel": 0
+					}
+				],
+				"code": "// Reads Cube A, a texture upside down, something unknown and a buffer\n// that the shader does not have.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tvec2 uv = fragCoord / iResolution.xy;\n\tvec3 color = texture(iChannel0, vec3(uv, 1.0)).rgb;\n\tcolor += texture(iChannel1, uv).rgb + texture(iChannel2, uv).rgb;\n\tcolor += texture(iChannel3, uv).rgb;\n\tfragColor = vec4(color, 1.0);\n}\n",
+				"name": "Buffer C",
+				"description": "",
+				"type": "buffer"
+			},
+			{
+				"inputs": [],
+				"outputs": [
+					{
+						"id": 41,
+						"channel": 0
+					}
+				],
+				"code": "void mainCubemap(out vec4 fragColor, in vec2 fragCoord, in vec3 rayOri, in vec3 rayDir) {\n\tfragColor = vec4(0.5 + 0.5 * rayDir, 1.0);\n}\n",
+				"name": "Cube A",
+				"description": "",
+				"type": "cubemap"
+			},
+			{
+				"inputs": [],
+				"outputs": [],
+				"code": "vec2 mainSound(int samp, float time) {\n\treturn vec2(sin(6.2831 * 440.0 * time) * exp(-3.0 * time));\n}\n",
+				"name": "Sound",
+				"description": "",
+				"type": "sound"
+			}
+		]
+	}
+}

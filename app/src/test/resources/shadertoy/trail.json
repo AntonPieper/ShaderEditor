@@ -1,0 +1,89 @@
+[
+	{
+		"ver": "0.1",
+		"info": {
+			"id": "fixture2",
+			"date": "1763164800",
+			"viewed": 0,
+			"name": "Trail",
+			"username": "the tests",
+			"description": "A fixture of ShaderEditor's tests, written for them.",
+			"likes": 0,
+			"published": 3,
+			"flags": 0,
+			"usePreview": 0,
+			"tags": [
+				"test"
+			],
+			"hasliked": 0
+		},
+		"renderpass": [
+			{
+				"inputs": [
+					{
+						"id": "4dXGR8",
+						"filepath": "/media/previz/buffer00.png",
+						"previewfilepath": "/media/previz/buffer00.png",
+						"type": "buffer",
+						"channel": 0,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": "4dfGRr",
+						"channel": 0
+					}
+				],
+				"code": "// Shows Buffer A, with what is brighter than 1 brought back into range.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tvec3 color = texture(iChannel0, fragCoord / iResolution.xy).rgb;\n\tfragColor = vec4(1.0 - exp(-color), 1.0);\n}\n",
+				"name": "Image",
+				"description": "",
+				"type": "image"
+			},
+			{
+				"inputs": [],
+				"outputs": [],
+				"code": "#define TAU 6.2831853\n\n// 1 inside a soft disc of radius r around c.\nfloat disc(vec2 p, vec2 c, float r) {\n\treturn smoothstep(r, 0.5 * r, distance(p, c));\n}\n\nvec3 hue(float t) {\n\treturn 0.5 + 0.5 * cos(TAU * (t + vec3(0.0, 0.33, 0.67)));\n}\n",
+				"name": "Common",
+				"description": "",
+				"type": "common"
+			},
+			{
+				"inputs": [
+					{
+						"id": "4dXGR8",
+						"filepath": "/media/previz/buffer00.png",
+						"previewfilepath": "/media/previz/buffer00.png",
+						"type": "buffer",
+						"channel": 0,
+						"sampler": {
+							"filter": "linear",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": "4dXGR8",
+						"channel": 0
+					}
+				],
+				"code": "// A dot that leaves a fading trail: this buffer reads its own picture\n// of the frame before (iChannel0) and draws it again, a little darker.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tvec2 uv = fragCoord / iResolution.xy;\n\tvec2 p = fragCoord / iResolution.y;\n\tvec4 before = texture(iChannel0, uv);\n\t// Alpha 0: nothing was drawn here yet. Start with faint stripes.\n\tvec3 color = before.a == 0.0\n\t\t? vec3(0.06) * step(0.5, fract(8.0 * uv.x))\n\t\t: 0.97 * before.rgb;\n\tvec2 c = vec2(0.5 * iResolution.x / iResolution.y, 0.5) +\n\t\t0.3 * vec2(cos(iTime), sin(1.3 * iTime));\n\tif (iMouse.z > 0.0) {\n\t\tc = iMouse.xy / iResolution.y;\n\t}\n\t// Brighter than 1 where the dot stays: the buffer keeps floats.\n\tcolor += 0.5 * disc(p, c, 0.05) * hue(0.1 * iTime);\n\tfragColor = vec4(color, 1.0);\n}\n",
+				"name": "Buffer A",
+				"description": "",
+				"type": "buffer"
+			}
+		]
+	}
+]
