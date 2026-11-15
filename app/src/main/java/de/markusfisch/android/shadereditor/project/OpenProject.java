@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -261,6 +262,16 @@ public final class OpenProject {
 	private final FileTexts texts;
 	private final Executor worker;
 	private final Executor main;
+	// Where what only looks at a file runs, as a tap asking whether it
+	// is a picture: never on the queue every project saves on, so that a
+	// slow provider holds up no save, here or elsewhere.
+	private static final Executor LOOKS = Executors.newCachedThreadPool(
+			job -> {
+				Thread thread = new Thread(job, "looks");
+				thread.setDaemon(true);
+				return thread;
+			});
+	private Executor looks = LOOKS;
 	// The same, also once closed: for what was asked on behalf of
 	// someone the project does not outlive, such as a copy.
 	private final Executor anyWorker;
@@ -674,13 +685,19 @@ public final class OpenProject {
 	 * Tell done whether the file at path is a picture, by the signature
 	 * its first bytes start with; its name plays no part. A file with a
 	 * document or unsaved text here is text, whatever storage holds.
+	 * The bytes are read off the queue saves wait on.
 	 */
+	/** Look at files on looks instead, as a test steps through it. */
+	void looksOn(Executor looks) {
+		this.looks = looks;
+	}
+
 	public void picture(ProjectPath path, Callback<Boolean> done) {
 		if (loaded(path) != null || unsaved().contains(path)) {
 			main.execute(() -> done.done(false));
 			return;
 		}
-		worker.execute(() -> {
+		looks.execute(() -> {
 			byte[] head = store.head(path, FileKind.HEAD);
 			boolean picture = head != null && FileKind.picture(head) != null;
 			main.execute(() -> done.done(picture));
