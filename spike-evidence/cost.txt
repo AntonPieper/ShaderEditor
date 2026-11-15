@@ -1,0 +1,92 @@
+# Options A, B, C: cost
+Mac OS X aarch64, 10 cores, Java 17.0.21.0.3 (OpenJDK 64-Bit Server VM), max heap 2048 MB, load average 2.9
+
+## generated, 1003 lines, 25369 chars
+A1 line states only (today): 0.27 ms (p90 0.28 ms, max 0.31 ms)
+A1 line states + shapes: 0.29 ms (p90 0.33 ms, max 0.38 ms); per line 0.29 us against 0.27 us; kept: 1 KB (2 bytes a line)
+A1 folding ranges from the shapes: 2.08 us (p90 2.25 us, max 2.58 us), 148 ranges, allocates 5 KB
+A1 walk over all shapes (worst matching brace): 0.38 us (p90 0.38 us, max 1.25 us)
+tokens with names as numbers: 0.49 ms (p90 0.51 ms, max 0.57 ms), allocates 0.53 MB, keeps 253 KB (9448 tokens, 261 names, text copy included)
+A2 shallow scan of the tokens: 0.02 ms (p90 0.02 ms, max 0.03 ms), allocates 0.02 MB, keeps 13 KB without the tokens (52 declarations, 293 locals)
+A  whole file (tokens + scan): 0.51 ms
+B parse: 0.15 ms (p90 0.16 ms, max 0.17 ms), allocates 0.40 MB (6078 nodes, 0 problems)
+B names and types: 0.06 ms (p90 0.07 ms, max 0.17 ms), allocates 0.09 MB (typed 4434/4434, unresolved names 0/2371)
+B whole file (tokens + parse + types): 0.72 ms (p90 0.77 ms, max 0.86 ms), allocates 1.03 MB, keeps 697 KB (tree 444 KB + tokens 253 KB)
+B lean (globals and ranges only, bodies parsed again on demand): keeps 27 KB
+C one function (median, 24 lines): parse 4.66 us, names and types 1.39 us
+C one function (largest, 49 lines): parse 8.01 us, names and types 2.22 us
+
+## generated, 5000 lines, 127239 chars
+A1 line states only (today): 1.44 ms (p90 1.54 ms, max 1.56 ms)
+A1 line states + shapes: 1.59 ms (p90 1.63 ms, max 1.74 ms); per line 0.32 us against 0.29 us; kept: 9 KB (2 bytes a line)
+A1 folding ranges from the shapes: 10.4 us (p90 10.7 us, max 12.1 us), 878 ranges, allocates 23 KB
+A1 walk over all shapes (worst matching brace): 1.58 us (p90 1.67 us, max 1.88 us)
+tokens with names as numbers: 2.55 ms (p90 2.65 ms, max 2.93 ms), allocates 2.18 MB, keeps 995 KB (46489 tokens, 380 names, text copy included)
+A2 shallow scan of the tokens: 0.16 ms (p90 0.18 ms, max 0.23 ms), allocates 0.10 MB, keeps 52 KB without the tokens (174 declarations, 1367 locals)
+A  whole file (tokens + scan): 2.70 ms
+B parse: 0.80 ms (p90 0.88 ms, max 1.72 ms), allocates 1.98 MB (29954 nodes, 0 problems)
+B names and types: 0.30 ms (p90 0.33 ms, max 0.38 ms), allocates 0.24 MB (typed 22175/22175, unresolved names 0/11864)
+B whole file (tokens + parse + types): 3.80 ms (p90 5.03 ms, max 5.89 ms), allocates 4.40 MB, keeps 3159 KB (tree 2164 KB + tokens 995 KB)
+B lean (globals and ranges only, bodies parsed again on demand): keeps 101 KB
+C one function (median, 32 lines): parse 4.48 us, names and types 1.46 us
+C one function (largest, 70 lines): parse 9.65 us, names and types 2.91 us
+
+## generated, 50037 lines, 1280803 chars
+A1 line states only (today): 15.0 ms (p90 15.5 ms, max 16.0 ms)
+A1 line states + shapes: 16.2 ms (p90 16.4 ms, max 17.3 ms); per line 0.32 us against 0.30 us; kept: 97 KB (2 bytes a line)
+A1 folding ranges from the shapes: 194 us (p90 219 us, max 230 us), 8693 ranges, allocates 324 KB
+A1 walk over all shapes (worst matching brace): 16.6 us (p90 17.4 us, max 18.0 us)
+tokens with names as numbers: 26.7 ms (p90 27.5 ms, max 27.8 ms), allocates 18.56 MB, keeps 12619 KB (465692 tokens, 1786 names, text copy included)
+A2 shallow scan of the tokens: 2.07 ms (p90 2.32 ms, max 2.70 ms), allocates 1.33 MB, keeps 1222 KB without the tokens (1634 declarations, 13867 locals)
+A  whole file (tokens + scan): 28.8 ms
+B parse: 8.20 ms (p90 8.37 ms, max 11.9 ms), allocates 19.85 MB (299703 nodes, 0 problems)
+B names and types: 4.47 ms (p90 4.84 ms, max 4.97 ms), allocates 1.95 MB (typed 221789/221789, unresolved names 0/119390)
+B whole file (tokens + parse + types): 38.2 ms (p90 44.0 ms, max 47.4 ms), allocates 40.36 MB, keeps 34203 KB (tree 21584 KB + tokens 12619 KB)
+B lean (globals and ranges only, bodies parsed again on demand): keeps 981 KB
+C one function (median, 26 lines): parse 4.82 us, names and types 1.33 us
+C one function (largest, 88 lines): parse 10.6 us, names and types 3.40 us
+
+## repeated, 1036 lines, 40343 chars
+A1 line states only (today): 0.28 ms (p90 0.30 ms, max 0.36 ms)
+A1 line states + shapes: 0.31 ms (p90 0.34 ms, max 0.39 ms); per line 0.30 us against 0.27 us; kept: 2 KB (2 bytes a line)
+A1 folding ranges from the shapes: 2.00 us (p90 2.17 us, max 3.67 us), 126 ranges, allocates 3 KB
+A1 walk over all shapes (worst matching brace): 0.38 us (p90 0.38 us, max 0.50 us)
+tokens with names as numbers: 0.50 ms (p90 0.56 ms, max 0.59 ms), allocates 0.37 MB, keeps 167 KB (7552 tokens, 398 names, text copy included)
+A2 shallow scan of the tokens: 0.02 ms (p90 0.03 ms, max 0.03 ms), allocates 0.03 MB, keeps 18 KB without the tokens (119 declarations, 241 locals)
+A  whole file (tokens + scan): 0.52 ms
+B parse: 0.12 ms (p90 0.13 ms, max 0.14 ms), allocates 0.31 MB (4692 nodes, 0 problems)
+B names and types: 0.04 ms (p90 0.04 ms, max 0.05 ms), allocates 0.04 MB (typed 3304/3323, unresolved names 16/1355)
+B whole file (tokens + parse + types): 0.73 ms (p90 0.79 ms, max 0.86 ms), allocates 0.72 MB, keeps 529 KB (tree 361 KB + tokens 167 KB)
+B lean (globals and ranges only, bodies parsed again on demand): keeps 33 KB
+C one function (median, 9 lines): parse 2.10 us, names and types 0.75 us
+C one function (largest, 63 lines): parse 12.7 us, names and types 3.35 us
+
+## repeated, 5044 lines, 194680 chars
+A1 line states only (today): 1.40 ms (p90 1.51 ms, max 1.53 ms)
+A1 line states + shapes: 1.53 ms (p90 1.63 ms, max 1.71 ms); per line 0.30 us against 0.28 us; kept: 9 KB (2 bytes a line)
+A1 folding ranges from the shapes: 9.58 us (p90 10.5 us, max 11.0 us), 611 ranges, allocates 20 KB
+A1 walk over all shapes (worst matching brace): 1.71 us (p90 1.83 us, max 2.38 us)
+tokens with names as numbers: 2.59 ms (p90 2.77 ms, max 3.14 ms), allocates 2.37 MB, keeps 1088 KB (37503 tokens, 442 names, text copy included)
+A2 shallow scan of the tokens: 0.17 ms (p90 0.18 ms, max 0.20 ms), allocates 0.13 MB, keeps 82 KB without the tokens (576 declarations, 1200 locals)
+A  whole file (tokens + scan): 2.76 ms
+B parse: 0.63 ms (p90 0.71 ms, max 1.33 ms), allocates 1.55 MB (23057 nodes, 0 problems)
+B names and types: 0.19 ms (p90 0.21 ms, max 0.30 ms), allocates 0.19 MB (typed 16348/16367, unresolved names 16/6715)
+B whole file (tokens + parse + types): 3.66 ms (p90 3.85 ms, max 4.64 ms), allocates 4.10 MB, keeps 2810 KB (tree 1721 KB + tokens 1088 KB)
+B lean (globals and ranges only, bodies parsed again on demand): keeps 154 KB
+C one function (median, 21 lines): parse 1.87 us, names and types 0.52 us
+C one function (largest, 63 lines): parse 12.9 us, names and types 3.29 us
+
+## repeated, 50030 lines, 1929659 chars
+A1 line states only (today): 14.3 ms (p90 14.7 ms, max 15.8 ms)
+A1 line states + shapes: 15.8 ms (p90 16.1 ms, max 16.7 ms); per line 0.32 us against 0.29 us; kept: 97 KB (2 bytes a line)
+A1 folding ranges from the shapes: 95.3 us (p90 99.3 us, max 102 us), 6078 ranges, allocates 175 KB
+A1 walk over all shapes (worst matching brace): 16.9 us (p90 17.1 us, max 17.2 us)
+tokens with names as numbers: 26.8 ms (p90 27.3 ms, max 27.7 ms), allocates 20.07 MB, keeps 12757 KB (372623 tokens, 442 names, text copy included)
+A2 shallow scan of the tokens: 2.16 ms (p90 2.39 ms, max 2.45 ms), allocates 1.19 MB, keeps 748 KB without the tokens (5718 declarations, 11933 locals)
+A  whole file (tokens + scan): 28.9 ms
+B parse: 6.19 ms (p90 6.60 ms, max 9.05 ms), allocates 15.20 MB (227086 nodes, 0 problems)
+B names and types: 2.44 ms (p90 3.08 ms, max 3.16 ms), allocates 1.80 MB (typed 161376/161395, unresolved names 16/65993)
+B whole file (tokens + parse + types): 36.2 ms (p90 38.7 ms, max 39.0 ms), allocates 37.07 MB, keeps 29670 KB (tree 16912 KB + tokens 12757 KB)
+B lean (globals and ranges only, bodies parsed again on demand): keeps 1464 KB
+C one function (median, 21 lines): parse 2.07 us, names and types 0.54 us
+C one function (largest, 63 lines): parse 12.7 us, names and types 3.55 us

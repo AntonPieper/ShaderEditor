@@ -1,0 +1,32 @@
+# Baseline: the production classes as they are
+Mac OS X aarch64, 10 cores, Java 17.0.21.0.3 (OpenJDK 64-Bit Server VM), max heap 2048 MB, load average 2.3
+
+## repeated, 1036 lines, 40343 chars
+whole-file analysis (lex + outline): 0.40 ms (p90 0.44 ms, max 0.57 ms), allocates 0.07 MB, keeps 11 KB, 119 declarations
+line states of the whole file (colour in the background): 0.25 ms (p90 0.27 ms, max 0.40 ms)
+one keypress on the main thread (type + delete, halved): median 3.50 us, p90 3.91 us, worst batch 5.34 us, allocates 4768 bytes
+
+## repeated, 5044 lines, 194680 chars
+whole-file analysis (lex + outline): 2.14 ms (p90 2.28 ms, max 2.99 ms), allocates 0.33 MB, keeps 51 KB, 576 declarations
+line states of the whole file (colour in the background): 1.46 ms (p90 1.59 ms, max 1.82 ms)
+one keypress on the main thread (type + delete, halved): median 4.23 us, p90 4.77 us, worst batch 8.77 us, allocates 5749 bytes
+
+## repeated, 50030 lines, 1929659 chars
+whole-file analysis (lex + outline): 23.2 ms (p90 24.0 ms, max 24.6 ms), allocates 3.27 MB, keeps 492 KB, 5718 declarations
+line states of the whole file (colour in the background): 14.4 ms (p90 14.8 ms, max 15.3 ms)
+one keypress on the main thread (type + delete, halved): median 3.97 us, p90 4.39 us, worst batch 5.17 us, allocates 4687 bytes
+
+## generated, 1003 lines, 25369 chars
+whole-file analysis (lex + outline): 0.36 ms (p90 0.39 ms, max 0.44 ms), allocates 0.06 MB, keeps 5 KB, 52 declarations
+line states of the whole file (colour in the background): 0.25 ms (p90 0.26 ms, max 0.28 ms)
+one keypress on the main thread (type + delete, halved): median 4.40 us, p90 4.88 us, worst batch 6.33 us, allocates 6185 bytes
+
+## generated, 5000 lines, 127239 chars
+whole-file analysis (lex + outline): 1.93 ms (p90 2.02 ms, max 2.11 ms), allocates 0.29 MB, keeps 16 KB, 174 declarations
+line states of the whole file (colour in the background): 1.42 ms (p90 1.52 ms, max 2.24 ms)
+one keypress on the main thread (type + delete, halved): median 6.12 us, p90 6.53 us, worst batch 8.40 us, allocates 9519 bytes
+
+## generated, 50037 lines, 1280803 chars
+whole-file analysis (lex + outline): 20.7 ms (p90 21.1 ms, max 21.9 ms), allocates 2.86 MB, keeps 152 KB, 1634 declarations
+line states of the whole file (colour in the background): 14.0 ms (p90 14.4 ms, max 14.7 ms)
+one keypress on the main thread (type + delete, halved): median 3.47 us, p90 3.90 us, worst batch 5.92 us, allocates 3736 bytes

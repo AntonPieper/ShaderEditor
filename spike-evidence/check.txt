@@ -1,0 +1,6 @@
+hostile.frag: 1 problems, typed 297/300, unresolved 1/146; B knows 27 globals, A 28 declarations and 11 locals
+    line 41: expected ; at 'FOR(i, 3) {\n		p = abs(p)'
+    untyped at line 40: SWAP(d, d2)
+    untyped at line 42: i
+56 files, 0 problems, typed 8595/8614, unresolved names 16/3533
+generated 1000: 0 problems, typed 4434/4434, unresolved 0/2371

@@ -1,0 +1,35 @@
+# The seam on examples/Ink/ink.frag
+names no declaration explains, over 34 example files: 16 when each file is read alone, 0 when a file is read after its includes
+at "valueNoise(p +": FUNCTION valueNoise | float valueNoise(vec2 p) | doc: Smooth noise in 0..1: random values at whole numbers, blended in between. | in examples/lib/noise.glsl | at 555
+at "flow(2.0": FUNCTION flow | vec2 flow(vec2 p) | doc: A flow that swirls but never piles ink up: the curl of slow noise. One octave of value noise is enough here and four times cheaper than fbm, which matters at every pixel of every frame. | at 1226
+at "resolution.x, r": VARIABLE resolution | vec2 resolution | doc: size of this pass's picture in pixels | at 539
+at "texture2D(ink": FUNCTION texture2D | vec4 texture2D(sampler2D sampler, vec2 P) ; vec4 texture2D(sampler2D sampler, vec2 P, float bias) ; vec4 texture2D(samplerExternalOES sampler, vec2 P) | doc: Reads a 2D texture at P (GLSL ES 1.00).
+at "lib/noise.glsl": FILE ../lib/noise.glsl | ../lib/noise.glsl | doc: null | in ../lib/noise.glsl
+at "gravity.xy": VARIABLE gravity | vec3 gravity | doc: m/s^2 along the phone's axes; 0 without the sensor | at 825
+at "down.y": VARIABLE down | vec2 down | doc: Read and shape. Downhill is against gravity, along the phone's axes; in landscape the screen's axes are the phone's turned. | at 1680
+at "frameRate / 15": VARIABLE frameRate | float frameRate | doc: frames per second, counted over half a second | at 752
+call at "max(1.0, |floor": argument 1, 6 signatures, fits: genType max(genType x, genType y)
+call at "floor(|frameRate": argument 0, fits: genType floor(genType x), Nearest whole number not above x.
+members after "vec2 w = gravity.": vec3 -> [x, y, z, r, g, b, s, t, p, xy, xyz, rgb]
+members after "float q = texture2D(ink, p).": vec4 -> [x, y, z, w, r, g, b, a, s, t, p, q, xy, xyz, rgb]
+members after "w = flow(p * 2.0).": vec2 -> [x, y, r, g, s, t, xy]
+members after "w = (down + v * 0.5).x": vec2 -> [x, y, r, g, s, t, xy]
+members after "w = pointers[2].": vec3 -> [x, y, z, r, g, b, s, t, p, xy, xyz, rgb]
+occurrences of down: 5
+usages of valueNoise across the files: examples/lib/noise.glsl x2  examples/Ink/ink.frag x4  
+folds: 14; outline: 11 symbols, the first: VARIABLE ink | sampler2D ink | doc: null | at 461
+
+# The seam on a manifest
+folds 1, outline 2 keys; at entry: KEY entry | entry | doc: The file this project runs. | at 26; at its value: FILE main.frag | main.frag | doc: null | in main.frag; a call: null
+plain text: 0 symbols, at: null, folds: 0
+
+# What a question costs once the knowledge is there
+5000 lines: at(offset) 0.30 us (p90 0.35 us, max 0.60 us); callAt 0.29 us (p90 0.36 us, max 0.46 us); members after "." on a line just typed: a name 1.16 us (p90 1.25 us, max 1.26 us), a call with arguments 1.65 us (p90 1.99 us, max 5.21 us); occurrences of a local 134 us (p90 152 us, max 236 us); outline with comments, first time +0.08 ms; folds, first time +0.22 ms; 872 folds, 168 symbols
+50000 lines: at(offset) 0.95 us (p90 1.15 us, max 1.55 us); callAt 0.51 us (p90 0.55 us, max 0.84 us); members after "." on a line just typed: a name 1.77 us (p90 1.92 us, max 4.78 us), a call with arguments 2.35 us (p90 2.56 us, max 3.23 us); occurrences of a local 3537 us (p90 4400 us, max 4601 us); outline with comments, first time +1.81 ms; folds, first time +2.13 ms; 8633 folds, 1574 symbols
+
+# A project of 50 files
+50 files, 13457 lines: read all 16.6 ms (p90 16.9 ms, max 18.2 ms), 0 parse problems, 0 names unexplained; keeps 9379 KB with every tree, 216 KB with the declarations only
+definition across files: FUNCTION lib0_field0 | float lib0_field0(vec3 p, float t) | doc: lib0_field0: distance to a shape number 1. p is the position, t the time in seconds. | in lib/l0.glsl | at 587, 0.09 us (p90 0.10 us, max 0.22 us); usages across all 50 files: 5 places in 5 files, 37.2 us (p90 39.1 us, max 41.6 us)
+
+# The table of built-ins
+92 functions, 197 signatures, 12510 characters; parsing every row: 61.4 us (p90 72.2 us, max 82.0 us), 0.67 us a function, done the first time a function is asked for; parsed they keep 123 KB; a lookup 0.00 us (p90 0.00 us, max 0.01 us)

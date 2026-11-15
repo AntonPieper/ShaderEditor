@@ -1,0 +1,70 @@
+# Coverage on real code
+bundled shaders and examples (56 files): 433 member accesses; receiver type known to A (declared names only) 431 (99.5%), to B 433 (100.0%), A and B disagree 0
+    1064 calls of functions; B resolves the overload of 1064 (100.0%); the callee has one signature in 448 (42.1%), the argument count alone picks it in 463 (43.5%)
+generated, 5,000 lines: 2088 member accesses; receiver type known to A (declared names only) 1997 (95.6%), to B 2088 (100.0%), A and B disagree 0
+    2526 calls of functions; B resolves the overload of 2526 (100.0%); the callee has one signature in 1788 (70.8%), the argument count alone picks it in 1788 (70.8%)
+
+# Broken code: one break in the middle of a text; functions still known, of those the whole text declares
+generated 1,000 lines: 34 functions, 4434 typed expressions
+    MISSING_BRACE        today's outline   18  A   34  B   34  (B: 1 problems, typed 4434 of 4434)
+    HALF_CALL            today's outline   34  A   34  B   34  (B: 2 problems, typed 4421 of 4431)
+    HALF_MEMBER          today's outline   34  A   34  B   34  (B: 2 problems, typed 4421 of 4431)
+    OPEN_COMMENT         today's outline   33  A   33  B   33  (B: 20 problems, typed 4081 of 4081)
+    HALF_DECLARATION     today's outline   34  A   34  B   34  (B: 2 problems, typed 4420 of 4430)
+    EXTRA_BRACE          today's outline   34  A   34  B   34  (B: 42 problems, typed 4249 of 4262)
+    OPEN_PAREN_GARBAGE   today's outline   34  A   34  B   34  (B: 5 problems, typed 4421 of 4434)
+generated 5,000 lines: 151 functions, 22653 typed expressions
+    MISSING_BRACE        today's outline   75  A  151  B  151  (B: 1 problems, typed 22653 of 22653)
+    HALF_CALL            today's outline  151  A  151  B  151  (B: 2 problems, typed 22650 of 22651)
+    HALF_MEMBER          today's outline  151  A  151  B  151  (B: 2 problems, typed 22650 of 22651)
+    OPEN_COMMENT         today's outline  151  A  151  B  151  (B: 33 problems, typed 22501 of 22501)
+    HALF_DECLARATION     today's outline  151  A  151  B  151  (B: 2 problems, typed 22649 of 22650)
+    EXTRA_BRACE          today's outline  151  A  151  B  151  (B: 42 problems, typed 22489 of 22489)
+    OPEN_PAREN_GARBAGE   today's outline  151  A  151  B  151  (B: 5 problems, typed 22650 of 22654)
+bundled files (56 with functions), each broken once near its middle, sums:
+    MISSING_BRACE        of 101 functions: today's outline 95  A 101  B 101
+    HALF_CALL            of 101 functions: today's outline 101  A 101  B 101
+    HALF_MEMBER          of 101 functions: today's outline 101  A 101  B 101
+    OPEN_COMMENT         of 101 functions: today's outline 95  A 95  B 95
+    HALF_DECLARATION     of 101 functions: today's outline 101  A 101  B 101
+    EXTRA_BRACE          of 101 functions: today's outline 101  A 101  B 101
+    OPEN_PAREN_GARBAGE   of 101 functions: today's outline 101  A 101  B 101
+
+# Typing: one statement of each bundled file typed character by character, analysed after each
+2127 half-typed texts: 0 failures; functions lost in total: today's outline 0, A 0, B 0; B types on average 87% of the expressions the whole text has, at worst 0% (examples/Game of Life/seed.frag: "f" of "float is = step(0.8, hash21(gl_FragCoord.xy));")
+
+# Random damage
+20000 damaged texts: 0 failures; slowest after warm-up 2.31 ms (370 chars)
+
+# Smallest examples: the type before the "." at the mark, as A and as B see it
+    a declared local                 A: vec3     B: vec3     (2 parse problems)
+    a parameter                      A: vec4     B: vec4     (2 parse problems)
+    a swizzle of a swizzle           A: vec2     B: vec2     (2 parse problems)
+    a swizzle that cannot be         A: ?        B: ?        (2 parse problems)
+    a struct field                   A: vec3     B: vec3     (2 parse problems)
+    a struct in a struct, an array   A: vec2     B: vec2     (2 parse problems)
+    a field of a nested struct       A: vec3     B: vec3     (2 parse problems)
+    an inner name hides an outer     A: vec3     B: vec3     (2 parse problems)
+    after the inner block            A: float    B: float    (2 parse problems)
+    a call of a built-in, generic    A: ?        B: vec3     (2 parse problems)
+    an overloaded built-in           A: ?        B: vec3     (2 parse problems)
+    own overloads                    A: ?        B: vec3     (2 parse problems)
+    a constructor                    A: vec4     B: vec4     (2 parse problems)
+    a struct constructor             A: Ray      B: Ray      (2 parse problems)
+    an operator                      A: ?        B: vec2     (2 parse problems)
+    a matrix times a vector          A: ?        B: vec3     (2 parse problems)
+    a texture read                   A: ?        B: vec4     (2 parse problems)
+    ES 1.00's texture read           A: vec4     B: vec4     (2 parse problems)
+    an index into a matrix           A: vec4     B: vec4     (2 parse problems)
+    an array's length                A: float[]  B: float[]  (2 parse problems)
+    a ternary                        A: ?        B: vec3     (2 parse problems)
+    a macro that is a value          A: ?        B: vec3     (2 parse problems)
+    a macro with arguments           A: ?        B: vec3     (2 parse problems)
+    a macro that is a type           A: ?        B: vec3     (2 parse problems)
+    a macro that declares            A: ?        B: ?        (1 parse problems)
+    a macro that is a loop head      A: vec3     B: vec3     (3 parse problems)
+    a name from an include           A: ?        B: ?        (2 parse problems)
+    a name declared in both branches A: vec3     B: vec3     (2 parse problems)
+    a head in both branches          A: vec3     B: vec3     (2 parse problems)
+    half-typed above                 A: vec3     B: vec3     (3 parse problems)
+    a missing brace above            A: vec3     B: vec3     (3 parse problems)
