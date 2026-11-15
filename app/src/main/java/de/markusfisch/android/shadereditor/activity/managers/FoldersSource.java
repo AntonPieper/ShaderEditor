@@ -49,6 +49,9 @@ final class FoldersSource implements Source {
 	@Nullable
 	private String examples;
 	private int exampleShaders = -1;
+	// Why the examples cannot be opened, or null.
+	@Nullable
+	private String examplesFailed;
 
 	FoldersSource(@NonNull Context context, @NonNull Remover remover) {
 		this.context = context;
@@ -81,6 +84,11 @@ final class FoldersSource implements Source {
 	void setExamples(@Nullable String key, int shaders) {
 		examples = key;
 		exampleShaders = shaders;
+	}
+
+	/** Takes why the examples cannot be opened, or null. */
+	void setExamplesFailed(@Nullable String problem) {
+		examplesFailed = problem;
 	}
 
 	/** Takes the recent projects, the one opened last first. */
@@ -142,8 +150,15 @@ final class FoldersSource implements Source {
 				? folder(Level.root(examples), examplesFace,
 						context.getString(R.string.load_sample), examplesCount,
 						EnumSet.of(Row.Mark.READ_ONLY))
+				// Until their session is known its row says so, or why
+				// it cannot be had; a tap says the same.
 				: new Row("examples", Row.Kind.OTHER, examplesFace,
-						context.getString(R.string.load_sample), null, 0, null,
+						context.getString(R.string.load_sample),
+						examplesFailed != null
+								? examplesFailed
+								: context.getString(
+										R.string.nav_examples_opening), 0,
+						null,
 						EnumSet.of(Row.Mark.READ_ONLY),
 						EnumSet.noneOf(Row.Action.class)));
 		List<Listing.Section> sections = new ArrayList<>();

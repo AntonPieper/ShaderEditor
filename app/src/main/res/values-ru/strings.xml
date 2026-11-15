@@ -348,6 +348,8 @@
 	<string name="nav_up">Up</string>
 	<string name="nav_read_only">Read-only</string>
 	<string name="nav_examples_count">%d examples</string>
+	<string name="nav_examples_opening">Opening the examples…</string>
+	<string name="nav_examples_failed">The examples cannot be opened: their session cannot be kept</string>
 	<string name="nav_order_changed">Last changed first</string>
 	<string name="nav_order_name">By name</string>
 	<string name="unsaved_changes">unsaved changes</string>

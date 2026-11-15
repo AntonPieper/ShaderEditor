@@ -167,8 +167,11 @@ public class NavigationDrawer implements ShaderList {
 	// other, or null until it is known.
 	@Nullable
 	private String examplesKey;
-	// Whether the examples were asked for before they were known.
+	// Whether the examples were asked for before they were known, and
+	// why they cannot be opened, or null.
 	private boolean examplesAsked;
+	@Nullable
+	private String examplesFailed;
 	// Whether New shader was asked for before the library was known.
 	private boolean newShaderAsked;
 	// The folder opened before whose levels are shown, or null.
@@ -189,8 +192,14 @@ public class NavigationDrawer implements ShaderList {
 		projects = holds.projects();
 		projects.examples(activity.getString(R.string.load_sample), key -> {
 			examplesKey = key;
+			examplesFailed = key == null
+					? activity.getString(R.string.nav_examples_failed)
+					: null;
+			folders.setExamplesFailed(examplesFailed);
 			loadRecent();
-			if (key != null && examplesAsked) {
+			if (examplesAsked) {
+				// The menu asked for them before: they open now, or it is
+				// said why they cannot.
 				showExamples();
 			}
 		});
@@ -380,9 +389,15 @@ public class NavigationDrawer implements ShaderList {
 
 	/** Opens the drawer on the examples' folder. */
 	public void showExamples() {
-		examplesAsked = examplesKey == null;
+		examplesAsked = examplesKey == null && examplesFailed == null;
 		if (examplesKey != null) {
 			go(Level.root(examplesKey));
+		} else {
+			// The top level, whose Examples row says what it waits for.
+			go(Level.FOLDERS);
+			if (examplesFailed != null) {
+				tell(examplesFailed);
+			}
 		}
 		drawerLayout.openDrawer(drawer);
 	}
@@ -1171,12 +1186,17 @@ public class NavigationDrawer implements ShaderList {
 				}
 			}
 			case SAY_WHY -> {
-				// A file too large, or the library while it moves:
-				// nothing a tap does is nothing.
+				// A file too large, or a place still being opened or
+				// that cannot be: nothing a tap does is nothing. Such a
+				// row's line says what it waits for or why.
 				Row row = item.row();
-				tell(row.picture().spoken() == Row.Picture.Spoken.CANNOT_OPEN
+				String why = row.picture().spoken() ==
+						Row.Picture.Spoken.CANNOT_OPEN
 						? activity.getString(R.string.nav_cannot_open_tap,
 								row.name())
+						: row.detail();
+				tell(why != null
+						? why
 						: activity.getString(R.string.library_moving));
 			}
 			case MORE -> {
