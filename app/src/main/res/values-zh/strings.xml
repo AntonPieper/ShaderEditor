@@ -562,4 +562,15 @@
 	<string name="passes_a11y_read_by">read by %1$s</string>
 	<string name="passes_a11y_shown">shown</string>
 	<string name="passes_frame">frame %1$,d</string>
+	<string name="conflict_changed">%s was changed outside ShaderEditor and has unsaved text here</string>
+	<string name="conflict_deleted">%s was deleted outside ShaderEditor and has unsaved text here</string>
+	<string name="conflict_gone">%s was deleted outside ShaderEditor</string>
+	<string name="conflict_unreadable">ShaderEditor cannot read %s anymore</string>
+	<string name="conflict_unreadable_unsaved">ShaderEditor cannot read %s anymore; its unsaved text is kept here</string>
+	<string name="conflict_reload">Reload from file</string>
+	<string name="conflict_keep">Keep my edits</string>
+	<string name="conflict_journal">ShaderEditor could not read the unsaved text of %s; the text shown is the file\'s</string>
+	<string name="conflict_replaced">%s has the unsaved text that Reload from file replaced before ShaderEditor closed</string>
+	<string name="conflict_discard">Discard</string>
+	<string name="conflict_others">Changed outside ShaderEditor, with unsaved text: %s</string>
 </resources>

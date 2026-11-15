@@ -20,6 +20,14 @@
 
 			<include layout="@layout/toolbar_main" />
 
+			<!-- What changed outside the app, for the file in the editor;
+				made only where shaders are files. -->
+			<ViewStub
+				android:id="@+id/conflict_bar_stub"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout="@layout/conflict_bar" />
+
 			<!-- DrawerLayout with main content -->
 			<de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout
 				android:id="@+id/drawer_layout"

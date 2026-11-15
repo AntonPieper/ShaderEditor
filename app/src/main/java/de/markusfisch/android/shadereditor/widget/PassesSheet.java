@@ -403,6 +403,14 @@ public final class PassesSheet {
 			}
 		};
 		activity.getOnBackPressedDispatcher().addCallback(activity, back);
+		// The bar above the code comes and goes with the file shown.
+		activity.findViewById(R.id.content_frame).addOnLayoutChangeListener(
+				(v, left, top, right, bottom, oldLeft, oldTop, oldRight,
+						oldBottom) -> {
+					if (state.open && top != oldTop) {
+						place();
+					}
+				});
 
 		pause = sheet.findViewById(R.id.passes_pause);
 		pause.setOnClickListener(v -> setPaused(!state.paused));
@@ -541,17 +549,28 @@ public final class PassesSheet {
 	}
 
 	private void open() {
-		if (behavior != null) {
-			behavior.setMaxHeight(Math.round(
-					((View) sheet.getParent()).getHeight() * .7f));
-		} else {
-			var params = (ViewGroup.MarginLayoutParams) sheet.getLayoutParams();
-			params.topMargin = activity.findViewById(R.id.toolbar).getBottom();
-			sheet.setLayoutParams(params);
-		}
+		place();
 		set(state.withOpen(true).withPasses(view.passes())
 				.withQuality(view.getQuality())
 				.withLimit(view.getFrameRateLimit()));
+	}
+
+	// The sheet lies over the code only, never over the toolbar or the
+	// bar above the code that says a file changed outside: in landscape
+	// from the code's top down, else at most 70 % of the screen and not
+	// above the code's top.
+	private void place() {
+		int top = activity.findViewById(R.id.content_frame).getTop();
+		if (behavior != null) {
+			int height = ((View) sheet.getParent()).getHeight();
+			behavior.setMaxHeight(Math.min(Math.round(height * .7f),
+					height - top));
+			sheet.requestLayout();
+		} else {
+			var params = (ViewGroup.MarginLayoutParams) sheet.getLayoutParams();
+			params.topMargin = top;
+			sheet.setLayoutParams(params);
+		}
 	}
 
 	// The limits, in a menu at the chip.

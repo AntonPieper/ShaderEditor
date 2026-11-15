@@ -20,6 +20,8 @@ final class MemoryProjectFiles implements ProjectFiles {
 	String failure;
 	// Whether writes are taken; a store is read-only by default.
 	boolean writable;
+	// Why every read of a file as the editor reads it fails, or null.
+	String unreadable;
 	// Outside edits so far, so each gets its own revision.
 	private int puts;
 
@@ -38,6 +40,13 @@ final class MemoryProjectFiles implements ProjectFiles {
 		++reads;
 		readPaths.add(path);
 		return files.get(path);
+	}
+
+	@Override
+	public Read read(ProjectPath path, long limit) {
+		return unreadable != null
+				? new Failed(unreadable)
+				: ProjectFiles.super.read(path, limit);
 	}
 
 	// The first bytes are not a read of the file.

@@ -324,7 +324,7 @@ New sheet: `New` · `Shader` · `Empty file` · `Name` · `Location` · `Change`
 
 Image sheet: `Insert as texture` · `Rename` · `Already used by %s`.
 
-Conflict: `%s was changed outside ShaderEditor and has unsaved text here.` · `Reload from file` · `Keep my edits` · `Save a copy`.
+Conflict (section 12): `%s was changed outside ShaderEditor and has unsaved text here` · `%s was deleted outside ShaderEditor and has unsaved text here` · `%s was deleted outside ShaderEditor` · `ShaderEditor cannot read %s anymore` · `ShaderEditor cannot read %s anymore; its unsaved text is kept here` · `Reload from file` · `Keep my edits` · `Save a copy` · `Save` · `Changed outside ShaderEditor, with unsaved text: %s`.
 
 Errors: `Showing the last picture that worked` · `Details`.
 
@@ -362,7 +362,7 @@ All of them need the Russian, Ukrainian and both Chinese files (AGENTS 15); unti
 | The provider gives no path | Second line: the provider's name and the folder's name only | — |
 | A single file opened from another app | A level with that one file and **Open folder** | `r-20` |
 | Read-only folder | Lock in the header; one sentence and Save a copy; New is replaced by Save a copy; the row menu has no Rename or Delete | `r-15` |
-| A conflict | A bar in the file itself with the three actions of UX 5; the row carries the mark | `r-16` |
+| A conflict | A bar in the file itself with the three actions of UX 5 (section 12); the row carries the mark | `r-16` |
 
 The filter searches names only, in the list that is shown. It does not walk into folders; that would be the scan principle 7 excludes. A search through subfolders can be added later as an explicit, cancellable action.
 
@@ -641,6 +641,38 @@ Which folder is the library is known in one place, `Projects.isLibrary(key)`: wh
 The activity keeps what no world owns: the views, the editor, the toolbar and its menu, the picture behind the code and what a run reports of it, the live wallpaper picker. `ScreenSeamTest` keeps it so: the activity names no class of either world besides the two screens where it makes one, and reads `project_mode` once.
 
 The activity also hands the screen what the user asks for, without looking at what is open: a new shader, a copy, Delete (after the question), Set as wallpaper, the examples, Run, the code button, Add uniform, a quality, and what the editor and the engine report (typing paused, a frame drawn, what a run reported). What needs no world, the activity does on what the screen says is open (`open()`): Save, Share, Run this file, the unsaved mark, and which entries the menu offers.
+
+## 12. The conflict bar
+
+What happens to the file in the editor when another app changes it: a synced folder, a folder on the SD card, Termux, or a file manager. Decided on 2026-11-15 from UX 5, FILES 1.3 and D4/D6 of FILES, STYLE 6.12, and what the app did before the bar (no way to save a file in place once it changed elsewhere; the conflict was told as a message at every Save and every return to the app, and nothing offered Keep or Reload).
+
+**When it is seen.** Storage is looked at when the app returns to the front (every file in memory or with unsaved text, FILES 1.4 "check") and when a save finds the file not as it left it. Nothing watches the provider while the app is in front, so a change made then is seen at the next Save or the next return. Auto-save runs when the app leaves the front, so in the common case (edit here, switch to Termux, edit there, come back) the text here was saved before the other app wrote, and the file just reloads.
+
+**Where it is.** A solid bar under the toolbar, above the code, on `colorSurfaceContainerLow` with a hairline under it: `ic_sync_problem` in `se_warning`, one `BodyMedium` sentence in `colorOnSurface` that TalkBack reads when it appears, and text buttons at the end, stacked one under another, each at the end, when they do not fit side by side (the largest text size). It belongs to the file in the editor: it goes when another file is shown and comes back with the file. It is drawn from what the open project knows of the file, in one place, on every change the project announces; nothing about it is kept anywhere else, so a rotation or a process death shows it again exactly when the file is still in that state. The drawer covers it like the rest of the screen. The passes sheet lies over the code only, never over the bar: in portrait it is at most 70 % of the screen and never reaches above the code's top; in landscape the side sheet starts at the code's top instead of the toolbar's bottom; both follow the bar when it comes or goes while the sheet is open. A pass shown full size changes the toolbar's chip and second line, not the bar. No dialog: a dialog would stop the user from reading their own text or the other app's before deciding.
+
+| State of the file in the editor | The bar says | Buttons |
+| --- | --- | --- |
+| Changed outside, no unsaved text here | nothing: the stored text is taken as one step Undo can take back (UX 5, "Reload clean files automatically") | – |
+| Changed outside, unsaved text here | `%s was changed outside ShaderEditor and has unsaved text here` | Reload from file · Keep my edits · Save a copy |
+| Deleted outside (or renamed: the app sees the old name gone), unsaved text here | `%s was deleted outside ShaderEditor and has unsaved text here` | Keep my edits · Save a copy |
+| Deleted outside, no unsaved text here | `%s was deleted outside ShaderEditor` (FILES D6: the text stays shown, it is not built) | Save |
+| Cannot be read anymore (no permission, provider gone, now not text or over 16 MiB), no unsaved text | `ShaderEditor cannot read %s anymore` | – |
+| Cannot be read anymore, unsaved text here | `ShaderEditor cannot read %s anymore; its unsaved text is kept here` | Save a copy |
+| Its unsaved text could not be read when the file was opened (a damaged journal; the file shows its stored text, and Save is refused for it) | `ShaderEditor could not read the unsaved text of %s; the text shown is the file's` | Discard: gives up the damaged journal; typing also replaces it |
+| Its unsaved text is what Reload from file replaced, come back after the app ended before a history could hold it (FILES R12b), and the file is there (if it is gone, the row of a deleted file shows) | `%s has the unsaved text that Reload from file replaced before ShaderEditor closed` | Reload from file (again) · Keep my edits · Save a copy |
+
+Of two that hold at once, the first row in this order is shown: the damaged journal, the replaced text, then the rest. No other state of a file's storage is left without a row.
+
+What each button does, and what it does to the journal and to Undo:
+
+- **Reload from file** takes the stored text, as the bar showed it (if the file changed again since, nothing happens and the bar stays, now for the newer text). The text it replaces is written to the journal first, also what was typed a moment ago, and the reload takes the stored text only if the journal holds exactly that; otherwise nothing changes and a message says why. The replacement is one step: Undo brings the unsaved text back, as unsaved text on the new file. The journal keeps the replaced text until a history that leads back to it is written (FILES R12a), and text typed after the reload is journaled only together with such a history, so a process death at any moment loses neither. Saved afterwards like any file.
+- **Keep my edits** consents to overwrite the file as the bar showed it, at the next explicit Save (FILES D4); the journal's header says so, so it survives a restart. Auto-save skips the file until then, and the unsaved dot stays. If the file changes again before that Save, the bar comes back. For a deleted file it means the next Save creates it again. Undo is untouched; no earlier state of the text counts as saved any more.
+- **Save a copy** saves a copy into the library: the shader that runs, what it reads, and the file in the editor, each with its unsaved text, and shows the copy (UX 5). A file whose unsaved text went into the copy then takes the stored text where there is one, so after it the folder holds the other app's text and the library holds the user's; a deleted file keeps its unsaved text and its bar. Both are kept; nothing is merged.
+- **Save** (deleted, no unsaved text) writes the text shown, creating the file again (FILES D6). The same as Save in the menu.
+
+Save in the menu while the bar shows: refused for that file, with the message `%1$s was not saved: %2$s` that answers the tap, as before; the bar says what can be done. The menu also offers Save a copy while unsaved text cannot be saved where it is. An explicit Save also looks at every file without unsaved text first (FILES 1.4), so a file another app deleted or changed while the app was in front is found then: deleted, it is written again; changed, it takes the stored text and the bar or the message says so. Save never says "Shader saved" for a file that is not there.
+
+**Files not in the editor.** Their conflicts are kept and resolved when the file is shown. On return to the app, one message names them all at once, `Changed outside ShaderEditor, with unsaved text: a.glsl, lib/noise.glsl`, instead of one message per file of which only the last could be read. A Save that is refused for them says so in its message, as before. The drawer's "changed outside" mark (6.1) and a row for unsaved text whose file is gone are not built yet; until then the message is the only place they are named.
 
 ## Decisions of 2026-11-12
 

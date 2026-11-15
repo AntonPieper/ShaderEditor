@@ -49,8 +49,16 @@ public class LifecycleSequencesTest {
 		FAIL,
 		/** The main thread takes what was posted to it. */
 		MAIN,
-		/** The user reloads the file from storage. */
+		/**
+		 * The user reloads the file from storage; where it changed
+		 * elsewhere, as they saw it then.
+		 */
 		RELOAD,
+		/**
+		 * The user keeps their edits over the file another app changed,
+		 * as they saw it then.
+		 */
+		KEEP,
 		/** The user saves. */
 		SAVE,
 		/** The app goes to the background: flush(done). */
@@ -95,7 +103,13 @@ public class LifecycleSequencesTest {
 		 * so no check saw it; FAIL fails journal and history. A save
 		 * that tells of no failure leaves a file.
 		 */
-		GONE(4, GONE_SEQUENCES);
+		GONE(4, GONE_SEQUENCES),
+		/**
+		 * Unsaved text the journal holds, while another app changed the
+		 * stored file and a refresh saw it; FAIL fails journal and
+		 * history.
+		 */
+		CHANGED(4, CHANGED_SEQUENCES);
 
 		private final int length;
 		private final int sequences;
@@ -112,6 +126,7 @@ public class LifecycleSequencesTest {
 	private static final int RELOADED_SEQUENCES = 1929;
 	private static final int MOVED_SEQUENCES = 926;
 	private static final int GONE_SEQUENCES = 485;
+	private static final int CHANGED_SEQUENCES = 3467;
 	private static final ProjectPath B = ProjectPath.parse("b.glsl").value();
 	private static final ProjectPath A = ProjectPath.parse("a.glsl").value();
 
@@ -156,6 +171,70 @@ public class LifecycleSequencesTest {
 		}
 
 		assertEquals(expected, counted);
+	}
+
+	@Test
+	public void tellsWhatAnotherAppDidToEachFile() {
+		MemoryProjectFiles store = new MemoryProjectFiles();
+		store.writable = true;
+		for (String name : List.of("clean", "mine", "gone", "lost")) {
+			store.put(name + ".glsl", "stored");
+		}
+		Steps steps = new Steps();
+		OpenProject project = OpenProject.open(id, store, null, null,
+				new ProjectSessions(sessionsDir), steps.worker, steps.main,
+				steps.timers, OpenProject.MAX_BUDGET);
+		for (String name : List.of("clean", "mine", "gone", "lost")) {
+			project.load(path(name), ProjectFiles.UNKNOWN, problem -> {
+			});
+		}
+		steps.settle();
+		for (String name : List.of("mine", "gone")) {
+			project.document(path(name)).replace(0, 6, Text.of("typed"));
+		}
+		store.put("clean.glsl", "theirs");
+		store.put("mine.glsl", "theirs");
+		store.delete(path("gone"));
+		store.delete(path("lost"));
+		project.refresh(reread -> {
+		});
+		steps.settle();
+
+		// Without unsaved text the stored text is taken, as one undo step.
+		Document clean = project.document(path("clean"));
+		assertEquals("theirs", clean.text().toString());
+		assertNull(project.conflict(path("clean")));
+		clean.undo();
+		assertEquals("stored", clean.text().toString());
+		// Changed, with unsaved text: a conflict over what was seen.
+		assertNotNull(project.conflict(path("mine")));
+		assertEquals(FileTexts.Found.CHANGED, project.found(path("mine")));
+		assertNotNull(project.seen(path("mine")));
+		// Deleted, with unsaved text: a conflict over no file.
+		assertNotNull(project.conflict(path("gone")));
+		assertEquals(FileTexts.Found.MISSING, project.found(path("gone")));
+		assertNull(project.seen(path("gone")));
+		// Deleted without unsaved text: no conflict, the text stays.
+		assertNull(project.conflict(path("lost")));
+		assertEquals(FileTexts.Found.MISSING, project.found(path("lost")));
+		assertEquals("stored",
+				project.document(path("lost")).text().toString());
+
+		// Nothing can be read: no conflict, and the text stays unsaved.
+		store.unreadable = "it cannot be read";
+		project.refresh(reread -> {
+		});
+		steps.settle();
+		assertNull(project.conflict(path("mine")));
+		assertEquals(FileTexts.Found.UNAVAILABLE,
+				project.found(path("mine")));
+		assertTrue(project.unsaved().contains(path("mine")));
+		assertEquals(FileTexts.Found.UNAVAILABLE,
+				project.found(path("clean")));
+	}
+
+	private static ProjectPath path(String name) {
+		return ProjectPath.parse(name + ".glsl").value();
 	}
 
 	private void explore(Start start, List<Step> prefix) {
@@ -223,6 +302,10 @@ public class LifecycleSequencesTest {
 		private int deleteAt = -1;
 		// Whether the user ever asked for a reload.
 		private boolean reloaded;
+		// Whether another app wrote the file, and whether the user chose
+		// to keep their edits over what it wrote.
+		private boolean theirs;
+		private boolean kept;
 		private final Start start;
 		private final File[] failing;
 		// Whether everything close asked for could be written so far.
@@ -265,6 +348,14 @@ public class LifecycleSequencesTest {
 			}
 			if (start == Start.GONE) {
 				store.delete(A);
+			}
+			if (start == Start.CHANGED) {
+				store.put("a.glsl", "theirs");
+				theirs = true;
+				project.refresh(reread -> {
+				});
+				steps.settle();
+				assertEquals(Set.of(A), project.conflicts().keySet());
 			}
 		}
 
@@ -311,6 +402,8 @@ public class LifecycleSequencesTest {
 					case RELOAD -> !closed && step != last &&
 							start != Start.SAVED && start != Start.MOVED &&
 							start != Start.GONE;
+					case KEEP -> !closed && step != last &&
+							start == Start.CHANGED;
 					case RENAME, DELETE -> !closed && step != last &&
 							start == Start.MOVED && at() != null;
 					case CLOSE -> !closed;
@@ -342,8 +435,18 @@ public class LifecycleSequencesTest {
 				case RELOAD -> {
 					reloaded = true;
 					asked = text;
-					project.reload(A, problem -> {
-					});
+					if (start == Start.CHANGED) {
+						project.resolve(A, OpenProject.Choice.RELOAD,
+								project.seen(A));
+					} else {
+						project.reload(A, problem -> {
+						});
+					}
+				}
+				case KEEP -> {
+					kept |= project.conflict(A) != null;
+					project.resolve(A, OpenProject.Choice.KEEP,
+							project.seen(A));
 				}
 				case SAVE -> project.save(true, outcomes -> {
 					OpenProject.Outcome outcome = outcomes.get(A);
@@ -428,6 +531,7 @@ public class LifecycleSequencesTest {
 			}
 			assertNull(sequence, project.unreadable(at));
 			assertEquals(sequence, 0, project.damagedJournals());
+			theirsKept(sequence);
 			if (!document.isModified() &&
 					project.found(at) == FileTexts.Found.SAME &&
 					store.read(at) != null) {
@@ -468,6 +572,14 @@ public class LifecycleSequencesTest {
 			}
 			ProjectPath at = at();
 			assertNull(sequence, project.unreadable(at));
+			theirsKept(sequence);
+			// Unsaved text over what another app wrote is in conflict
+			// again until the user chose to keep it.
+			if (theirs && !kept && document.isModified() &&
+					"theirs".equals(store.text("a.glsl"))) {
+				assertTrue(sequence + ": unsaved text over theirs without" +
+						" a conflict", project.conflict(A) != null);
+			}
 			// Text that comes back after a reload says so, where its
 			// journal could be written; no other text does.
 			if (found.equals(replaced) && failing.length == 1) {
@@ -499,6 +611,15 @@ public class LifecycleSequencesTest {
 			// What a restart gives is what the next one gives.
 			floor = texts.size() - 1;
 			givenUp.clear();
+		}
+
+		// What another app wrote is written over only after the user saw
+		// it in their document, or chose to keep their edits over it.
+		private void theirsKept(String sequence) {
+			if (theirs && !kept && !texts.contains("theirs")) {
+				assertEquals(sequence + ": wrote over their text", "theirs",
+						store.text("a.glsl"));
+			}
 		}
 
 		// Open again after renames and deletions: the stored file and
