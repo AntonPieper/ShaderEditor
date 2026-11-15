@@ -1401,7 +1401,7 @@ public class OpenProjectTest {
 		assertTrue(builds.isEmpty());
 		assertTrue(project.used().isEmpty());
 		OpenProject.Build build = build(project);
-		assertEquals(List.of(new OpenProject.Used(path("b.glsl"), false)),
+		assertEquals(List.of(runs("b.glsl")),
 				project.used());
 		project.setDiagnostics(build, List.of(ProjectDiagnostic.error("e")));
 		assertEquals(1, project.errors());
@@ -2957,13 +2957,65 @@ public class OpenProjectTest {
 
 		prepare(project);
 
-		assertEquals(List.of(new OpenProject.Used(path("main.frag"), false),
-						new OpenProject.Used(path("lib/common.glsl"), false),
-						new OpenProject.Used(path("noise.png"), true)),
+		assertEquals(List.of(new OpenProject.Used(path("main.frag"), false,
+								new FileRole(FileRole.Kind.RUNS, List.of())),
+						new OpenProject.Used(path("lib/common.glsl"), false,
+								new FileRole(FileRole.Kind.INCLUDE,
+										List.of(path("main.frag")))),
+						new OpenProject.Used(path("noise.png"), true,
+								new FileRole(FileRole.Kind.TEXTURE,
+										List.of(path("main.frag"))))),
 				project.used());
 		assertTrue(project.uses(path("lib/common.glsl")));
 		assertFalse(project.uses(path("other.glsl")));
 		assertFalse(project.uses(ProjectManifest.FILE));
+	}
+
+	// Each file of a shader of passes says what it is to it, as the
+	// Running section shows it: Ink's three passes, its includes and
+	// its texture.
+	@Test
+	public void knowsWhatEachFileIsToTheRunningShader() throws IOException {
+		String lib = "float hash(vec2 p) { return p.x; }\n";
+		write("lib/noise.glsl", lib);
+		write("lib/color.glsl", "vec3 tint(float v) { return vec3(v); }\n");
+		new File(root, "textures").mkdirs();
+		Files.write(new File(root, "textures/noise.png").toPath(),
+				Pictures.png(1));
+		write("Ink/main.frag", "#pragma se input \"ink.frag\"\n" +
+				"uniform sampler2D ink;\n" +
+				"#pragma se input \"../textures/noise.png\"\n" +
+				"uniform sampler2D paper;\n" + SHADER);
+		write("Ink/ink.frag", "#pragma se target initial=\"seed.frag\"\n" +
+				"#pragma se input \"ink.frag\" frame=previous\n" +
+				"uniform sampler2D ink;\n" +
+				"#include \"../lib/noise.glsl\"\n" +
+				"#include \"../lib/color.glsl\"\n" + SHADER);
+		write("Ink/seed.frag", "#include \"../lib/noise.glsl\"\n" + SHADER);
+		OpenProject project = open();
+		project.runThisFile(path("Ink/main.frag"));
+
+		prepare(project);
+
+		java.util.Map<ProjectPath, FileRole> roles =
+				new java.util.LinkedHashMap<>();
+		for (OpenProject.Used used : project.used()) {
+			roles.put(used.path(), used.role());
+		}
+		assertEquals(new FileRole(FileRole.Kind.RUNS, List.of()),
+				roles.get(path("Ink/main.frag")));
+		assertEquals(FileRole.Kind.PASS, roles.get(path("Ink/ink.frag"))
+				.kind());
+		assertEquals(new FileRole(FileRole.Kind.FIRST_FRAME,
+				List.of(path("Ink/ink.frag"))), roles.get(path("Ink/seed.frag")));
+		assertEquals(new FileRole(FileRole.Kind.INCLUDE,
+						List.of(path("Ink/ink.frag"), path("Ink/seed.frag"))),
+				roles.get(path("lib/noise.glsl")));
+		assertEquals(new FileRole(FileRole.Kind.INCLUDE,
+				List.of(path("Ink/ink.frag"))), roles.get(path("lib/color.glsl")));
+		assertEquals(new FileRole(FileRole.Kind.TEXTURE,
+						List.of(path("Ink/main.frag"))),
+				roles.get(path("textures/noise.png")));
 	}
 
 	// A report of the build of what ran before may come after what
@@ -3003,7 +3055,7 @@ public class OpenProjectTest {
 		Preparation preparation = prepare(project);
 
 		assertTrue(preparation.files().containsKey(path("a.glsl")));
-		assertEquals(List.of(new OpenProject.Used(path("b.glsl"), false)),
+		assertEquals(List.of(runs("b.glsl")),
 				project.used());
 		assertFalse(project.uses(path("a.glsl")));
 	}
@@ -3015,7 +3067,7 @@ public class OpenProjectTest {
 
 		prepare(project);
 
-		assertEquals(List.of(new OpenProject.Used(path("main.frag"), false)),
+		assertEquals(List.of(runs("main.frag")),
 				project.used());
 	}
 
@@ -3495,6 +3547,12 @@ public class OpenProjectTest {
 	private static String built(Preparation preparation, String path) {
 		return new String(preparation.files().get(path(path)).bytes(),
 				StandardCharsets.UTF_8);
+	}
+
+	// The file that runs, as the last build used it.
+	private static OpenProject.Used runs(String file) {
+		return new OpenProject.Used(path(file), false,
+				new FileRole(FileRole.Kind.RUNS, List.of()));
 	}
 
 	private void write(String name, String text) throws IOException {

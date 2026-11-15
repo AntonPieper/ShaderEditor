@@ -305,6 +305,13 @@
 	</plurals>
 	<string name="nav_new">New</string>
 	<string name="nav_running">Running</string>
+	<string name="nav_all_files">All files</string>
+	<string name="nav_running_show_all">Show all %1$d</string>
+	<string name="nav_role_runs">Runs</string>
+	<string name="nav_role_pass">Pass</string>
+	<string name="nav_role_first_frame">First frame of %1$s</string>
+	<string name="nav_role_include">Included by %1$s</string>
+	<string name="nav_role_texture">Texture of %1$s</string>
 	<string name="nav_folders">Folders</string>
 	<string name="nav_up">Up</string>
 	<string name="nav_read_only">Read-only</string>

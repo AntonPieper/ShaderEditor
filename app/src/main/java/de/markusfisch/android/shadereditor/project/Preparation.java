@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
@@ -30,18 +32,29 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Source;
  * @param files        the content of every file read, by path in the
  *                     order of reading: later stages use these bytes
  *                     and never read a file again
+ * @param roles        what each file of uses is to the running shader
  */
 public record Preparation(
 		RenderPlan plan,
 		List<ProjectDiagnostic> diagnostics,
 		List<SourceAssembly.Dependency> dependencies,
 		List<SourceAssembly.Dependency> uses,
-		Map<ProjectPath, ProjectFiles.Content> files) {
+		Map<ProjectPath, ProjectFiles.Content> files,
+		Map<ProjectPath, FileRole> roles) {
 	public Preparation {
 		diagnostics = List.copyOf(diagnostics);
 		dependencies = List.copyOf(dependencies);
 		uses = List.copyOf(uses);
 		files = Collections.unmodifiableMap(new LinkedHashMap<>(files));
+		roles = Collections.unmodifiableMap(new LinkedHashMap<>(roles));
+	}
+
+	/** A preparation of no files at all, as for a shader of the database. */
+	public Preparation(RenderPlan plan, List<ProjectDiagnostic> diagnostics,
+			List<SourceAssembly.Dependency> dependencies,
+			List<SourceAssembly.Dependency> uses,
+			Map<ProjectPath, ProjectFiles.Content> files) {
+		this(plan, diagnostics, dependencies, uses, files, Map.of());
 	}
 
 	/**
@@ -82,7 +95,74 @@ public record Preparation(
 				? null
 				: plan(graph, diagnostics);
 		return new Preparation(plan, diagnostics, captured.dependencies(),
-				uses, captured.contents());
+				uses, captured.contents(), roles(graph));
+	}
+
+	// What each file is to the running shader, from the pass graph: a
+	// file that is two things is the first of FileRole.Kind's order.
+	private static Map<ProjectPath, FileRole> roles(PassGraph graph) {
+		Map<ProjectPath, FileRole.Kind> kinds = new LinkedHashMap<>();
+		Map<ProjectPath, Set<ProjectPath>> of = new LinkedHashMap<>();
+		for (PassGraph.Node node : graph.nodes) {
+			role(kinds, of, node.file, node == graph.entry
+					? FileRole.Kind.RUNS
+					: FileRole.Kind.PASS, null);
+			if (node.source == null) {
+				continue;
+			}
+			for (SourceLocation at : node.source.sourceMap().lines()) {
+				for (SourceLocation site = at; site != null &&
+						site.includedFrom() != null;
+						site = site.includedFrom()) {
+					role(kinds, of, site.file(), FileRole.Kind.INCLUDE,
+							site.includedFrom().file());
+				}
+			}
+			for (PassGraph.Edge edge : node.inputs) {
+				ProjectPath source = edge.input().source();
+				if (source != null && edge.producer() == null) {
+					role(kinds, of, source, FileRole.Kind.TEXTURE,
+							node.file);
+				}
+			}
+			if (node.initialPass != null) {
+				role(kinds, of, node.initialPass.file,
+						FileRole.Kind.FIRST_FRAME, node.file);
+			} else if (node.initialImage != null) {
+				role(kinds, of, node.initialImage, FileRole.Kind.FIRST_FRAME,
+						node.file);
+			}
+		}
+		Map<ProjectPath, FileRole> roles = new LinkedHashMap<>();
+		for (Map.Entry<ProjectPath, FileRole.Kind> kind : kinds.entrySet()) {
+			Set<ProjectPath> to = of.get(kind.getKey());
+			roles.put(kind.getKey(), new FileRole(kind.getValue(),
+					to != null ? new ArrayList<>(to) : List.of()));
+		}
+		return roles;
+	}
+
+	private static void role(Map<ProjectPath, FileRole.Kind> kinds,
+			Map<ProjectPath, Set<ProjectPath>> of, ProjectPath file,
+			FileRole.Kind kind, ProjectPath to) {
+		if (file == null) {
+			return;
+		}
+		FileRole.Kind was = kinds.get(file);
+		if (was == null || kind.ordinal() < was.ordinal()) {
+			kinds.put(file, kind);
+			of.remove(file);
+		} else if (kind != was) {
+			return;
+		}
+		if (to != null && !to.equals(file)) {
+			Set<ProjectPath> files = of.get(file);
+			if (files == null) {
+				files = new LinkedHashSet<>();
+				of.put(file, files);
+			}
+			files.add(to);
+		}
 	}
 
 	/**
