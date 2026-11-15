@@ -300,7 +300,7 @@ With a hardware keyboard: Ctrl+O opens the drawer with the filter focused, arrow
 
 ### 6.4 The sections
 
-**Running** appears in the open folder when the running shader's last build read more than one text file, or when a file other than the one in the editor has unsaved text, an error or a conflict. It holds the running shader, then the files it read (includes, passes, images) with their path from the root, then any file with unsaved text, an error or a conflict that is not among them. More than six: the first six and "Show all 14". With one file per shader the section is absent and the ▶ sits on the shader's row in the list.
+**Running** appears on top of every level of the folder whose shader runs, when its last build read more than one file. It holds the files the build read in build order, the running shader first, each with its path from the root and its role as its line: "Runs", "Pass", "First frame of ink.frag", "Included by ink.frag, seed.frag", "Texture of main.frag" (images too; the roles come from the pass graph, `FileRole`). Under it, **All files** of the level. More than seven: the first six and "Show all 14". With one file per shader the section is absent and the ▶ sits on the shader's row in the list. Not built yet: files with unsaved text, an error or a conflict that the build did not read.
 
 **Last opened** takes its place in a folder that is not the open one: the shader that ran there last and the files that still have unsaved text.
 
