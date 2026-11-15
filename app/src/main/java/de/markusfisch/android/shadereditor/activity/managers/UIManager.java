@@ -26,9 +26,10 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.opengl.PictureLimit;
 import de.markusfisch.android.shadereditor.widget.FileNameView;
+import de.markusfisch.android.shadereditor.widget.PassesSheet;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
 
-public class UIManager {
+public class UIManager implements PassesSheet.Line {
 	private final AppCompatActivity activity;
 	private final EditorFragment editorFragment;
 	private final ExtraKeysManager extraKeysManager;
@@ -245,6 +246,27 @@ public class UIManager {
 			showFrameRate();
 			showSubtitle();
 		});
+	}
+
+	/**
+	 * Take whether the chip names a pass shown, so that the frame rate
+	 * leads the second line, and whether the picture is paused, said
+	 * where the frame rate stands.
+	 */
+	@Override
+	public void setPicture(boolean passShown, boolean paused) {
+		secondLine.setRateFirst(passShown);
+		// Beside a pass's chip the title gives way last, at its end.
+		titleView.setCutsAtEnd(passShown);
+		// The frame rate leads then, and must not be what is cut.
+		subtitleView.setEllipsize(passShown
+				? TextUtils.TruncateAt.END
+				: TextUtils.TruncateAt.MIDDLE);
+		secondLine.setPaused(paused
+				? activity.getString(R.string.passes_paused)
+				: null);
+		showFrameRate();
+		showSubtitle();
 	}
 
 	// The frame rate stands in the quality chip only while the title

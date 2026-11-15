@@ -2,9 +2,11 @@ package de.markusfisch.android.shadereditor.widget;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +19,7 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.util.Consumer;
 import androidx.core.view.ViewCompat;
 
@@ -29,8 +32,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.navigation.NameCut;
 import de.markusfisch.android.shadereditor.opengl.Fit;
 import de.markusfisch.android.shadereditor.opengl.PassPicture;
 import de.markusfisch.android.shadereditor.opengl.RunningPasses;
@@ -87,48 +92,89 @@ public final class PassesSheet {
 		void setAside(boolean aside, boolean animate);
 	}
 
+	/** The toolbar's second line. */
+	public interface Line {
+		/**
+		 * Take whether a pass is shown, so that the frame rate leads the
+		 * line, and whether the picture is paused.
+		 */
+		void setPicture(boolean passShown, boolean paused);
+	}
+
 	/**
 	 * What the sheet shows.
 	 *
-	 * @param open    whether it is open
-	 * @param paused  whether the picture is paused
-	 * @param passes  what draws now
-	 * @param quality  the quality chosen
-	 * @param pictures the latest small picture of each pass that draws
+	 * @param open      whether it is open
+	 * @param available whether something that can run is open, so that
+	 *                  the chip is in the toolbar
+	 * @param paused    whether the picture is paused
+	 * @param passes    what draws now
+	 * @param shown     the pass shown full size, null for the output
+	 * @param quality   the quality chosen
+	 * @param pictures  the latest small picture of each pass that draws
 	 */
-	record State(boolean open, boolean paused, @NonNull RunningPasses passes,
+	record State(boolean open, boolean available, boolean paused,
+			@NonNull RunningPasses passes, @Nullable ProjectPath shown,
 			float quality, @NonNull Map<ProjectPath, Bitmap> pictures) {
-		static final State CLOSED = new State(false, false,
-				RunningPasses.NONE, 1f, Map.of());
+		static final State CLOSED = new State(false, false, false,
+				RunningPasses.NONE, null, 1f, Map.of());
 
 		boolean runs() {
 			return !passes.rows().isEmpty();
 		}
 
+		// The row selected: the pass shown, else the output.
+		int selected() {
+			var rows = passes.rows();
+			for (int r = 0; r < rows.size(); ++r) {
+				var row = rows.get(r);
+				if (shown != null ? row.file().equals(shown) : row.output()) {
+					return r;
+				}
+			}
+			return rows.size() - 1;
+		}
+
 		State withOpen(boolean open) {
-			return new State(open, paused, passes, quality, pictures);
+			return new State(open, available, paused, passes, shown, quality,
+					pictures);
+		}
+
+		State withAvailable(boolean available) {
+			return new State(open, available, paused, passes, shown, quality,
+					pictures);
 		}
 
 		State withPaused(boolean paused) {
-			return new State(open, paused, passes, quality, pictures);
+			return new State(open, available, paused, passes, shown, quality,
+					pictures);
 		}
 
 		State withPasses(@NonNull RunningPasses passes) {
-			return new State(open, paused, passes, quality, pictures);
+			return new State(open, available, paused, passes, shown, quality,
+					pictures);
+		}
+
+		State withShown(@Nullable ProjectPath shown) {
+			return new State(open, available, paused, passes, shown, quality,
+					pictures);
 		}
 
 		State withQuality(float quality) {
-			return new State(open, paused, passes, quality, pictures);
+			return new State(open, available, paused, passes, shown, quality,
+					pictures);
 		}
 
 		State withPictures(@NonNull Map<ProjectPath, Bitmap> pictures) {
-			return new State(open, paused, passes, quality, pictures);
+			return new State(open, available, paused, passes, shown, quality,
+					pictures);
 		}
 	}
 
 	private final AppCompatActivity activity;
 	private final Engine view;
 	private final Code editor;
+	private final Line ui;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final View sheet;
 	private final BottomSheetBehavior<View> behavior;
@@ -144,15 +190,28 @@ public final class PassesSheet {
 	private final TextView key;
 	@NonNull
 	private State state = State.CLOSED;
-	// What hears the engine while the sheet is open, so that what it
-	// heard before it was closed is dropped.
-	private Object listening;
+	private final View qualityChip;
+	private final Chip shownChip;
+	private final FileNameView title;
+	private final TextView subtitle;
+	// The room for the name of the pass shown in its chip, which gives
+	// way in a crowded toolbar before the title does.
+	private float nameRoom;
+	// What hears the passes, while the sheet is open or a pass is
+	// shown, and what watches their pictures, while it is open; each
+	// drops what it heard after it was replaced.
+	@Nullable
+	private Object hearing;
+	@Nullable
+	private Object watching;
 
 	public PassesSheet(@NonNull AppCompatActivity activity,
-			@NonNull Engine view, @NonNull Code editor) {
+			@NonNull Engine view, @NonNull Code editor,
+			@NonNull Line ui) {
 		this.activity = activity;
 		this.view = view;
 		this.editor = editor;
+		this.ui = ui;
 		ViewGroup coordinator = activity.findViewById(R.id.main_coordinator);
 		sheet = LayoutInflater.from(activity).inflate(R.layout.sheet_passes,
 				coordinator, false);
@@ -222,9 +281,46 @@ public final class PassesSheet {
 		scroll = sheet.findViewById(R.id.passes_scroll);
 		list = sheet.findViewById(R.id.passes_list);
 		key = sheet.findViewById(R.id.passes_key);
+		// In the frame-rate chip's place while a pass is shown.
+		Toolbar toolbar = activity.findViewById(R.id.toolbar);
+		qualityChip = toolbar.findViewById(R.id.quality);
+		shownChip = (Chip) inflater.inflate(R.layout.chip_shown_pass, toolbar,
+				false);
+		var chipParams = new Toolbar.LayoutParams(
+				ViewGroup.LayoutParams.WRAP_CONTENT,
+				ViewGroup.LayoutParams.WRAP_CONTENT,
+				Gravity.END | Gravity.CENTER_VERTICAL);
+		chipParams.setMarginEnd(((ViewGroup.MarginLayoutParams)
+				qualityChip.getLayoutParams()).getMarginEnd());
+		toolbar.addView(shownChip, toolbar.indexOfChild(qualityChip) + 1,
+				chipParams);
+		title = toolbar.findViewById(R.id.toolbar_title);
+		subtitle = toolbar.findViewById(R.id.toolbar_subtitle);
+		nameRoom = 120 * activity.getResources().getDisplayMetrics().density;
+		toolbar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) ->
+				fitShownChip());
+		shownChip.setOnClickListener(v -> toggle());
+		shownChip.setOnCloseIconClickListener(v -> show(null));
+		shownChip.setCloseIconContentDescription(activity.getText(
+				R.string.passes_show_output));
 		view.setChipOpener(this::toggle);
 		render(state);
 		renderRows();
+	}
+
+	/**
+	 * Take whether something that can run is open: the chip is in the
+	 * toolbar only then, and without it the sheet closes and the output
+	 * is shown again.
+	 */
+	public void setAvailable(boolean available) {
+		if (!available) {
+			close();
+			if (state.shown != null) {
+				show(null);
+			}
+		}
+		set(state.withAvailable(available));
 	}
 
 	/** Open the sheet, or close it when it is open. */
@@ -236,16 +332,12 @@ public final class PassesSheet {
 		}
 	}
 
-	/** Close the sheet; nothing of it is heard any more. */
+	/** Close the sheet; nothing of it is watched any more. */
 	public void close() {
-		if (!state.open) {
-			return;
+		if (state.open) {
+			// What it showed stays while it slides away.
+			set(state.withOpen(false));
 		}
-		listening = null;
-		view.setPassesListener(null);
-		view.watchPasses(null);
-		// What it showed stays while it slides away.
-		set(state.withOpen(false));
 	}
 
 	/** The screen stops: the sheet closes. */
@@ -255,40 +347,78 @@ public final class PassesSheet {
 
 	public void destroy() {
 		close();
+		set(state.withShown(null));
+		view.setPassesListener(null);
 		handler.removeCallbacksAndMessages(null);
 		view.setChipOpener(null);
 	}
 
 	private void open() {
-		Object token = new Object();
-		listening = token;
-		// The listener may be called on any thread, also once more
-		// after it was replaced.
-		view.setPassesListener(passes -> handler.post(() -> {
-			if (listening == token) {
-				set(state.withPasses(passes).withQuality(view.getQuality()));
-			}
-		}));
-		view.watchPasses(new ShaderEngine.PassWatcher() {
-			@Override
-			public void onPictures(@NonNull List<PassPicture> pictures) {
-				// Copied before this returns, off the main thread: the
-				// next round fills the pictures again.
-				var bitmaps = new HashMap<ProjectPath, Bitmap>();
-				for (var picture : pictures) {
-					bitmaps.put(picture.file(), opaque(picture));
-				}
-				handler.post(() -> {
-					if (listening == token) {
-						set(state.withPictures(bitmaps));
-					}
-				});
-			}
-		});
 		behavior.setMaxHeight(Math.round(
 				((View) sheet.getParent()).getHeight() * .7f));
 		set(state.withOpen(true).withPasses(view.passes())
 				.withQuality(view.getQuality()));
+	}
+
+	/**
+	 * Show the pass of file full size, the output for null, as a tap on
+	 * its row does, also from outside the sheet.
+	 */
+	public void show(@Nullable ProjectPath file) {
+		view.showPass(file);
+		set(state.withShown(file));
+	}
+
+	// What draws now: a pass shown that no longer draws is not shown.
+	private void heard(@NonNull RunningPasses passes) {
+		ProjectPath shown = state.shown;
+		if (shown != null) {
+			int row = passes.indexOf(shown);
+			if (row < 0 || !passes.rows().get(row).drawn()) {
+				view.showPass(null);
+				shown = null;
+			}
+		}
+		set(state.withPasses(passes).withShown(shown)
+				.withQuality(view.getQuality()));
+	}
+
+	// The engine is heard as the state needs: its passes while the
+	// sheet is open or a pass is shown, the pictures while it is open.
+	// Calls come on the GL thread; one that comes after it was replaced
+	// is dropped.
+	private void hear() {
+		boolean passes = state.open || state.shown != null;
+		if (passes != (hearing != null)) {
+			Object token = passes ? new Object() : null;
+			hearing = token;
+			view.setPassesListener(token == null ? null : running ->
+					handler.post(() -> {
+						if (hearing == token) {
+							heard(running);
+						}
+					}));
+		}
+		if (state.open != (watching != null)) {
+			Object token = state.open ? new Object() : null;
+			watching = token;
+			view.watchPasses(token == null ? null : new ShaderEngine.PassWatcher() {
+				@Override
+				public void onPictures(@NonNull List<PassPicture> pictures) {
+					// Copied before this returns, off the main thread:
+					// the next round fills the pictures again.
+					var bitmaps = new HashMap<ProjectPath, Bitmap>();
+					for (var picture : pictures) {
+						bitmaps.put(picture.file(), opaque(picture));
+					}
+					handler.post(() -> {
+						if (watching == token) {
+							set(state.withPictures(bitmaps));
+						}
+					});
+				}
+			});
+		}
 	}
 
 	private void setPaused(boolean paused) {
@@ -305,6 +435,7 @@ public final class PassesSheet {
 		State was = state;
 		state = next;
 		render(was);
+		hear();
 	}
 
 	// The one place that shows the state.
@@ -331,7 +462,20 @@ public final class PassesSheet {
 		for (int i = 0; i < qualities.length; ++i) {
 			qualities[i].setChecked(qualityValues[i] == state.quality);
 		}
-		if (!state.passes.equals(was.passes)) {
+		qualityChip.setVisibility(state.available && state.shown == null
+				? View.VISIBLE
+				: View.GONE);
+		shownChip.setVisibility(state.available && state.shown != null
+				? View.VISIBLE
+				: View.GONE);
+		if (state.shown != null) {
+			renderShownChip();
+		}
+		if (state.shown != was.shown || state.paused != was.paused) {
+			ui.setPicture(state.shown != null, state.paused);
+		}
+		if (!state.passes.equals(was.passes) ||
+				!Objects.equals(state.shown, was.shown)) {
 			renderRows();
 		}
 		var rows = state.passes.rows();
@@ -360,19 +504,16 @@ public final class PassesSheet {
 		}
 		var first = new boolean[rows.size()];
 		var reads = new ArrayList<PassRail.Read>();
-		int output = rows.size() - 1;
 		for (int r = 0; r < rows.size(); ++r) {
 			var row = rows.get(r);
 			first[r] = row.kind() == RunningPasses.Kind.FIRST_FRAME;
-			if (row.output()) {
-				output = r;
-			}
 			for (var read : row.reads()) {
 				reads.add(new PassRail.Read(read.row(), r,
 						read.kind() == RunningPasses.ReadKind.LAST_FRAME));
 			}
 		}
-		var rail = PassRail.layout(first, reads, output);
+		int selected = state.selected();
+		var rail = PassRail.layout(first, reads, selected);
 		float dp = activity.getResources().getDisplayMetrics().density;
 		var inflater = LayoutInflater.from(activity);
 		boolean badged = false;
@@ -396,8 +537,17 @@ public final class PassesSheet {
 				line.setText(R.string.passes_first_frame);
 				line.setVisibility(View.VISIBLE);
 			}
-			if (rail.collapsed() && r != output && !rail.touches(r)) {
+			if (rail.collapsed() && r != selected && !rail.touches(r)) {
 				view.setAlpha(.38f);
+			}
+			if (r == selected) {
+				view.setActivated(true);
+				((TextView) view.findViewById(R.id.pass_name)).setTypeface(
+						Typeface.create("sans-serif-medium", Typeface.NORMAL));
+			}
+			if (row.drawn()) {
+				var file = row.output() ? null : row.file();
+				view.setOnClickListener(v -> show(file));
 			}
 			badged |= rail.badge(r);
 			list.addView(view);
@@ -413,6 +563,61 @@ public final class PassesSheet {
 		key.setCompoundDrawablesRelativeWithIntrinsicBounds(
 				list.key(badged, dashed), null, null, null);
 		key.setPaddingRelative(Math.round(rail.pictureLeft() * dp), 0, 0, 0);
+	}
+
+	// The name of the pass shown, cut in the middle at 120 dp; a pause
+	// mark before it while paused.
+	private void renderShownChip() {
+		String name = state.shown.getFileName();
+		var paint = shownChip.getPaint();
+		float most = nameRoom;
+		shownChip.setText(NameCut.cut(name, t -> paint.measureText(t) <= most));
+		shownChip.setContentDescription(activity.getString(
+				R.string.passes_showing, name));
+		shownChip.setChipIconResource(R.drawable.ic_pause);
+		shownChip.setChipIconVisible(state.paused);
+	}
+
+	// Where the toolbar is crowded, things give way in this order: the
+	// second line at its end, but never into the frame rate before it;
+	// then the pass's name in the chip, in its middle, down to three
+	// characters and its ending; only then the title, at its end.
+	private void fitShownChip() {
+		if (state.shown == null || shownChip.getVisibility() != View.VISIBLE ||
+				shownChip.getWidth() == 0) {
+			return;
+		}
+		float dp = activity.getResources().getDisplayMetrics().density;
+		var paint = shownChip.getPaint();
+		String name = state.shown.getFileName();
+		// Everything of the chip but the name: padding, marks, ✕.
+		float chrome = shownChip.getWidth() - paint.measureText(
+				NameCut.cut(name, t -> paint.measureText(t) <= nameRoom));
+		String whole = title.getName();
+		float titleNeeds = whole == null ? 0 : title.getPaint()
+				.measureText(whole) + title.getCompoundPaddingLeft() +
+				title.getCompoundPaddingRight() + 1;
+		CharSequence line = subtitle.getText();
+		int dot = line == null ? -1 : line.toString().indexOf(" \u00b7 ");
+		float rateNeeds = dot < 0 ? 0 : subtitle.getPaint().measureText(
+				line.toString().substring(0, dot + 2)) + 1;
+		View column = (View) title.getParent();
+		float room = shownChip.getRight() - column.getLeft() -
+				Math.max(titleNeeds, rateNeeds) - chrome - 4 * dp;
+		int ending = name.lastIndexOf('.');
+		String least = ending > 3
+				? name.substring(0, 3) + NameCut.ELLIPSIS + name.substring(ending)
+				: name;
+		room = Math.max(paint.measureText(least),
+				Math.min(120 * dp, room));
+		if (Math.abs(room - nameRoom) > 1) {
+			nameRoom = room;
+			shownChip.post(() -> {
+				if (state.shown != null) {
+					renderShownChip();
+				}
+			});
+		}
 	}
 
 	// The picture as the screen shows it, which shows no alpha; a copy,

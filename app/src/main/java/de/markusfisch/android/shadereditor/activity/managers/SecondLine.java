@@ -16,6 +16,9 @@ final class SecondLine {
 	@Nullable
 	private CharSequence notice;
 	private long noticeUntil;
+	private boolean rateFirst;
+	@Nullable
+	private CharSequence paused;
 
 	void setOwn(@Nullable CharSequence own) {
 		this.own = own;
@@ -23,6 +26,16 @@ final class SecondLine {
 
 	void setFrameRate(@Nullable CharSequence frameRate) {
 		this.frameRate = frameRate;
+	}
+
+	/** The chip names a pass shown, so the frame rate leads the line. */
+	void setRateFirst(boolean rateFirst) {
+		this.rateFirst = rateFirst;
+	}
+
+	/** Say paused where the frame rate stands; null while it runs. */
+	void setPaused(@Nullable CharSequence paused) {
+		this.paused = paused;
 	}
 
 	void showNotice(@Nullable CharSequence notice, long until) {
@@ -35,11 +48,21 @@ final class SecondLine {
 		if (now < noticeUntil) {
 			return notice;
 		}
-		return own != null ? own : frameRate;
+		CharSequence rate = rate();
+		if (rateFirst && rate != null && own != null) {
+			return rate + " \u00b7 " + own;
+		}
+		return own != null ? own : rate;
 	}
 
 	@Nullable
 	CharSequence besideQuality() {
-		return own != null ? frameRate : null;
+		return own != null && !rateFirst ? rate() : null;
+	}
+
+	// No rate without a picture that runs.
+	@Nullable
+	private CharSequence rate() {
+		return frameRate != null && paused != null ? paused : frameRate;
 	}
 }

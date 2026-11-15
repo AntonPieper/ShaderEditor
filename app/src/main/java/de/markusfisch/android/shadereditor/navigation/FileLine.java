@@ -2,8 +2,10 @@ package de.markusfisch.android.shadereditor.navigation;
 
 /**
  * What the toolbar's second line says of a file of a folder in the
- * editor: the folder it is in, and before that the file that runs when
- * that is another one.
+ * editor, every word earning its place: the file that runs when that
+ * is another one, which says where the file edited sits in the running
+ * shader; otherwise the folder it is in, which tells two files of one
+ * name apart.
  */
 public final class FileLine {
 	private FileLine() {
@@ -24,6 +26,6 @@ public final class FileLine {
 						.replace("/", " / ");
 		return running == null || running.equals(shown)
 				? in
-				: "▶ " + running + " · " + in;
+				: "▶ " + running;
 	}
 }
