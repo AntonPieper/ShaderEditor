@@ -5,7 +5,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -51,9 +50,16 @@ final class Histories {
 	private static final String SUFFIX = ".history";
 
 	private final File dir;
+	private final Disk disk;
 
 	Histories(File dir) {
+		this(dir, Disk.REAL);
+	}
+
+	/** Histories in dir whose files are read and written through disk. */
+	Histories(File dir, Disk disk) {
 		this.dir = dir;
+		this.disk = disk;
 	}
 
 	/**
@@ -101,14 +107,14 @@ final class Histories {
 		byte[] body = bytes.toByteArray();
 		CRC32 crc = new CRC32();
 		crc.update(body, 0, body.length);
-		boolean written = Journal.replace(dir, name(path), out -> {
+		boolean written = Journal.replace(disk, dir, name(path), out -> {
 			DataOutputStream data = new DataOutputStream(out);
 			data.writeInt(MAGIC);
 			data.writeInt(body.length);
 			data.write(body);
 			data.writeInt((int) crc.getValue());
 			data.flush();
-		});
+		}, null);
 		// The bound holds while a project stays open, not only when
 		// one opens; the one just written is the newest and stays.
 		trim();
@@ -133,16 +139,14 @@ final class Histories {
 			}
 		}
 		if (kept == null) {
-			//noinspection ResultOfMethodCallIgnored
-			file.delete();
+			disk.delete(file);
 		}
 		return kept;
 	}
 
 	/** Forget the history of path. */
 	void remove(ProjectPath path) {
-		//noinspection ResultOfMethodCallIgnored
-		file(path).delete();
+		disk.delete(file(path));
 	}
 
 	/**
@@ -151,11 +155,7 @@ final class Histories {
 	 * One that cannot be followed is deleted too; that loses undo.
 	 */
 	void follow(Journal.Move move) {
-		File[] files = dir.listFiles((d, name) -> name.endsWith(SUFFIX));
-		if (files == null) {
-			return;
-		}
-		for (File file : files) {
+		for (File file : list()) {
 			byte[] body = file.length() <= Document.MAX_BYTES
 					? body(file)
 					: null;
@@ -186,15 +186,28 @@ final class Histories {
 					// Undo of that file is lost.
 				}
 			}
-			//noinspection ResultOfMethodCallIgnored
-			file.delete();
+			disk.delete(file);
 		}
 	}
 
+	// Return the history files of the folder; none when it cannot be
+	// listed.
+	private File[] list() {
+		File[] files = disk.list(dir);
+		List<File> listed = new ArrayList<>();
+		for (File file : files != null ? files : new File[0]) {
+			if (file.getName().endsWith(SUFFIX)) {
+				listed.add(file);
+			}
+		}
+		return listed.toArray(new File[0]);
+	}
+
 	// Return the body of a history file, or null when it is not one.
-	private static byte[] body(File file) {
+	private byte[] body(File file) {
 		try (DataInputStream in = new DataInputStream(
-				new FileInputStream(file))) {
+				new ByteArrayInputStream(disk.read(file,
+						Document.MAX_BYTES)))) {
 			int length = in.readInt() == MAGIC ? in.readInt() : -1;
 			if (length < 0 || length > file.length() - 12) {
 				return null;
@@ -212,14 +225,14 @@ final class Histories {
 	private boolean write(String name, byte[] body) {
 		CRC32 crc = new CRC32();
 		crc.update(body, 0, body.length);
-		return Journal.replace(dir, name, out -> {
+		return Journal.replace(disk, dir, name, out -> {
 			DataOutputStream data = new DataOutputStream(out);
 			data.writeInt(MAGIC);
 			data.writeInt(body.length);
 			data.write(body);
 			data.writeInt((int) crc.getValue());
 			data.flush();
-		});
+		}, null);
 	}
 
 	/**
@@ -228,18 +241,14 @@ final class Histories {
 	 * elsewhere are never read again and would stay forever.
 	 */
 	void trim() {
-		File[] files = dir.listFiles((d, name) -> name.endsWith(SUFFIX));
-		if (files == null) {
-			return;
-		}
+		File[] files = list();
 		Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(),
 				a.lastModified()));
 		long total = 0;
 		for (File file : files) {
 			total += file.length();
 			if (total > MAX_BYTES) {
-				//noinspection ResultOfMethodCallIgnored
-				file.delete();
+				disk.delete(file);
 			}
 		}
 	}
@@ -248,11 +257,12 @@ final class Histories {
 		return new File(dir, name(path));
 	}
 
-	private static History parse(ProjectPath path, String hash, File file)
+	private History parse(ProjectPath path, String hash, File file)
 			throws IOException {
 		byte[] body;
 		try (DataInputStream in = new DataInputStream(
-				new FileInputStream(file))) {
+				new ByteArrayInputStream(disk.read(file,
+						Document.MAX_BYTES)))) {
 			int length = in.readInt() == MAGIC ? in.readInt() : -1;
 			if (length < 0 || length > file.length() - 12) {
 				return null;

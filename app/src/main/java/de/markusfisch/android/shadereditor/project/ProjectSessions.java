@@ -93,6 +93,9 @@ public final class ProjectSessions {
 
 	private final SecureRandom random = new SecureRandom();
 	private final File root;
+	// What the journals and histories of the sessions read and write
+	// their files through; a test fails its operations.
+	Disk disk = Disk.REAL;
 
 	public ProjectSessions(File root) {
 		this.root = root;
@@ -184,7 +187,9 @@ public final class ProjectSessions {
 	 * when there is no such session.
 	 */
 	Journal journal(String id) {
-		return locator(id) != null ? new Journal(file(id, DRAFTS)) : null;
+		return locator(id) != null
+				? new Journal(file(id, DRAFTS), disk)
+				: null;
 	}
 
 	/**
@@ -211,7 +216,7 @@ public final class ProjectSessions {
 
 	Histories histories(String id) {
 		return locator(id) != null
-				? new Histories(file(id, HISTORY))
+				? new Histories(file(id, HISTORY), disk)
 				: null;
 	}
 
@@ -283,7 +288,8 @@ public final class ProjectSessions {
 			if (recent.readInt() != MAGIC) {
 				return null;
 			}
-			Journal.Scan journals = new Journal(file(id, DRAFTS)).scan();
+			Journal.Scan journals = new Journal(file(id, DRAFTS), disk)
+					.scan();
 			Recent session = new Recent(id, locator, recent.readUTF(),
 					recent.readUTF(), recent.readLong(),
 					!journals.headers().isEmpty() || journals.damaged() > 0);

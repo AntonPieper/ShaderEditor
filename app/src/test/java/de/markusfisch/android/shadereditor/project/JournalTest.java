@@ -23,6 +23,7 @@ import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.Journal.Appended;
 import de.markusfisch.android.shadereditor.project.Journal.Change;
 import de.markusfisch.android.shadereditor.project.Journal.Header;
+import de.markusfisch.android.shadereditor.project.Journal.Move;
 import de.markusfisch.android.shadereditor.project.Journal.Recovered;
 
 public class JournalTest {
@@ -351,6 +352,233 @@ public class JournalTest {
 		assertEquals(bytes.length, file.length());
 		assertFalse(new Journal(dir).markReplaced(
 				ProjectPath.parse("none.glsl").value()));
+	}
+
+	@Test
+	public void journalPutAsideIsKeptBesideAndTheFileHasNone() {
+		assertTrue(journal.snapshot(HEADER, 3, Text.of("mine")));
+		// Only the journal that holds exactly the write named.
+		assertEquals(-1, journal.putAside(A, 2));
+		assertEquals("mine", journal.read(A).text().toString());
+
+		assertEquals(1, journal.putAside(A, 3));
+
+		assertNull(new Journal(dir).read(A));
+		assertTrue(new Journal(dir).headers().isEmpty());
+		List<Journal.Replaced> replaced = new Journal(dir).replaced(A);
+		assertEquals(1, replaced.size());
+		assertEquals("mine", replaced.get(0).text().toString());
+		// The journal written next is one like any other, and a later
+		// reload keeps its text behind the first.
+		assertTrue(journal.snapshot(HEADER, 4, Text.of("typed")));
+		assertEquals(Appended.DONE, journal.append(A, 4, 5,
+				List.of(new Change(5, 0, "!"))));
+		assertEquals(2, journal.putAside(A, 5));
+		replaced = journal.replaced(A);
+		assertEquals(List.of("mine", "typed!"), List.of(
+				replaced.get(0).text().toString(),
+				replaced.get(1).text().toString()));
+		assertEquals(-1, journal.putAside(
+				ProjectPath.parse("none.glsl").value(), -1));
+
+		journal.forget(A, 1);
+		assertEquals(1, journal.replaced(A).size());
+		assertEquals(2, journal.replaced(A).get(0).number());
+	}
+
+	@Test
+	public void journalPutBackIsTheJournalUnlessOneWasWrittenSince() {
+		assertTrue(journal.snapshot(HEADER, 3, Text.of("mine")));
+		int aside = journal.putAside(A, 3);
+
+		journal.putBack(A, aside);
+
+		assertEquals("mine", journal.read(A).text().toString());
+		assertEquals(3, journal.read(A).revision());
+		assertTrue(journal.replaced(A).isEmpty());
+
+		// One written since is the newer.
+		aside = journal.putAside(A, 3);
+		assertTrue(journal.snapshot(HEADER, 4, Text.of("newer")));
+		journal.putBack(A, aside);
+		assertEquals("newer", journal.read(A).text().toString());
+		assertTrue(journal.replaced(A).isEmpty());
+	}
+
+	@Test
+	public void readsTheMarkOfAJournalOfBeforeThatHeldReplacedText()
+			throws IOException {
+		assertTrue(journal.snapshot(new Header(A, "sha256:1", false, null,
+				true), 3, Text.of("mine")));
+
+		assertTrue(new Journal(dir).headers().get(A).replaced());
+		// Put aside as it is, it reads like any text a reload replaced.
+		assertEquals(1, journal.putAside(A, -1));
+		assertEquals("mine", journal.replaced(A).get(0).text().toString());
+	}
+
+	@Test
+	public void replacedTextFollowsARenameAndGoesWithADeletion() {
+		ProjectPath b = ProjectPath.parse("b.glsl").value();
+		assertTrue(journal.snapshot(HEADER, 1, Text.of("mine")));
+		assertEquals(1, journal.putAside(A, 1));
+
+		assertTrue(journal.follow(new Move(A, b)));
+
+		assertTrue(journal.replaced(A).isEmpty());
+		assertEquals("mine", journal.replaced(b).get(0).text().toString());
+		assertTrue(journal.follow(new Move(b, null)));
+		assertTrue(journal.replaced(b).isEmpty());
+		assertEquals(0, dir.list().length);
+	}
+
+	@Test
+	public void whateverFailsInARenameTheTextKeptIsUnderOneOfTheNames() {
+		ProjectPath b = ProjectPath.parse("b.glsl").value();
+		FaultyDisk disk = new FaultyDisk();
+		for (int at = 0, operations = 1; at <= operations; ++at) {
+			for (File file : dir.listFiles()) {
+				assertTrue(file.delete());
+			}
+			Journal faulty = new Journal(dir, disk).own();
+			assertTrue(faulty.snapshot(HEADER, 1, Text.of("kept")));
+			assertEquals(1, faulty.putAside(A, 1));
+			assertTrue(faulty.snapshot(HEADER, 2, Text.of("typed")));
+
+			disk.arm(at > 0 ? FaultyDisk.Fault.FAIL
+					: FaultyDisk.Fault.NONE, at);
+			boolean followed = faulty.follow(new Move(A, b));
+			operations = Math.max(operations, disk.disarm());
+
+			// Each text is there, under the old name or the new, or
+			// under both when the old one could not be removed yet;
+			// under the new alone when it was told so.
+			Journal reader = new Journal(dir);
+			List<Journal.Replaced> kept = new ArrayList<>(
+					reader.replaced(A));
+			kept.addAll(reader.replaced(b));
+			assertFalse("operation " + at, kept.isEmpty());
+			for (Journal.Replaced replaced : kept) {
+				assertEquals("kept", replaced.text().toString());
+				assertEquals(1, replaced.number());
+			}
+			Recovered journal = reader.read(b) != null
+					? reader.read(b)
+					: reader.read(A);
+			assertEquals("operation " + at, "typed",
+					journal.text().toString());
+			if (followed) {
+				assertNull(reader.read(A));
+				assertTrue(reader.replaced(A).isEmpty());
+			}
+			// Asked again, they follow.
+			assertTrue(faulty.follow(new Move(A, b)));
+			assertEquals("typed", reader.read(b).text().toString());
+			assertEquals("kept", reader.replaced(b).get(0).text()
+					.toString());
+			faulty.release();
+		}
+	}
+
+	@Test
+	public void aTextKeptThatCannotBeReadNowStaysAndIsReadLater() {
+		FaultyDisk disk = new FaultyDisk();
+		Journal faulty = new Journal(dir, disk).own();
+		assertTrue(faulty.snapshot(HEADER, 1, Text.of("kept")));
+		assertEquals(1, faulty.putAside(A, 1));
+		assertTrue(faulty.snapshot(HEADER, 2, Text.of("typed")));
+
+		disk.denied = true;
+		assertTrue(faulty.replaced(A).isEmpty());
+		// Not damaged: only bytes that were read can be wrong.
+		Recovered unread = faulty.read(A);
+		assertNull(unread.text());
+		assertFalse(unread.damaged());
+		assertTrue(faulty.dismiss(A) == false);
+		assertEquals(-1, faulty.putAside(A, 2));
+		disk.denied = false;
+
+		assertEquals("kept", faulty.replaced(A).get(0).text().toString());
+		assertEquals("typed", faulty.read(A).text().toString());
+	}
+
+	@Test
+	public void theNumberOfATextKeptIsItsOwnThroughARenameAndForGood() {
+		ProjectPath b = ProjectPath.parse("b.glsl").value();
+		for (int i = 1; i <= 2; ++i) {
+			assertTrue(journal.snapshot(HEADER, i, Text.of("kept " + i)));
+			assertEquals(i, journal.putAside(A, i));
+		}
+		journal.forget(A, 1);
+
+		assertTrue(journal.follow(new Move(A, b)));
+
+		// Not counted again from one: who knows it by 2 means this text.
+		assertEquals(2, journal.replaced(b).get(0).number());
+		assertTrue(journal.snapshot(new Header(b, "sha256:1", false, null),
+				3, Text.of("kept 3")));
+		assertEquals(3, journal.putAside(b, 3));
+		journal.forget(b, 2);
+		assertEquals(List.of("kept 3"), List.of(journal.replaced(b).get(0)
+				.text().toString()));
+		// Nor is a number another file's in the folder.
+		assertTrue(journal.snapshot(HEADER, 1, Text.of("other")));
+		assertEquals(4, journal.putAside(A, 1));
+	}
+
+	@Test
+	public void aJournalThatCannotBePutBackStaysKept() {
+		FaultyDisk disk = new FaultyDisk();
+		Journal faulty = new Journal(dir, disk).own();
+		assertTrue(faulty.snapshot(HEADER, 1, Text.of("mine")));
+		int aside = faulty.putAside(A, 1);
+
+		disk.arm(FaultyDisk.Fault.FAIL, 1);
+		faulty.putBack(A, aside);
+		disk.disarm();
+
+		assertNull(faulty.read(A));
+		assertEquals("mine", faulty.replaced(A).get(0).text().toString());
+		// With a newer journal there, it goes only when that is whole.
+		assertTrue(faulty.snapshot(HEADER, 2, Text.of("newer")));
+		faulty.putBack(A, aside);
+		assertTrue(faulty.replaced(A).isEmpty());
+		assertEquals("newer", faulty.read(A).text().toString());
+	}
+
+	@Test
+	public void aTextKeptBecomesTheJournalOfAFileThatHasNone() {
+		for (int i = 1; i <= 2; ++i) {
+			assertTrue(journal.snapshot(HEADER, i, Text.of("kept " + i)));
+			assertEquals(i, journal.putAside(A, i));
+		}
+
+		assertTrue(journal.promote(A));
+
+		// The newest; the older stays where undo finds it.
+		assertEquals("kept 2", journal.read(A).text().toString());
+		assertEquals("kept 1", journal.replaced(A).get(0).text()
+				.toString());
+		assertEquals(1, journal.replaced(A).size());
+		// Never over a journal that is there.
+		assertTrue(journal.promote(A));
+		assertEquals("kept 2", journal.read(A).text().toString());
+		assertEquals(1, journal.replaced(A).size());
+	}
+
+	@Test
+	public void aJournalNoMemoryCouldReadIsNotDamagedAndIsNotDismissed() {
+		assertTrue(journal.snapshot(HEADER, 1, Text.of("mine")));
+		Recovered whole = journal.read(A);
+		assertFalse(whole.damaged());
+		// What a read that ran out of memory tells: no text, not damaged.
+		Recovered unread = new Recovered(null, null, -1, "too large here",
+				false, false);
+		assertNull(unread.text());
+
+		// A journal that reads is never dismissed.
+		assertTrue(journal.dismiss(A));
+		assertEquals("mine", journal.read(A).text().toString());
 	}
 
 	@Test
