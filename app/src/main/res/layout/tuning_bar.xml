@@ -14,6 +14,19 @@
 	android:orientation="vertical"
 	android:visibility="gone">
 
+	<!-- While a constant's build runs. -->
+	<com.google.android.material.progressindicator.LinearProgressIndicator
+		android:id="@+id/tuning_building"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:indeterminate="true"
+		android:visibility="invisible"
+		app:hideAnimationBehavior="none"
+		app:minHideDelay="300"
+		app:showAnimationBehavior="none"
+		app:showDelay="150"
+		app:trackThickness="4dp" />
+
 	<LinearLayout
 		android:id="@+id/tuning_content"
 		android:layout_width="match_parent"
@@ -33,6 +46,21 @@
 			android:maxLines="1"
 			android:textColor="?attr/colorOnSurface"
 			android:textSize="14sp" />
+
+		<!-- Where GLSL needs a constant. -->
+		<TextView
+			android:id="@+id/tuning_note"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="8dp"
+			android:drawablePadding="8dp"
+			android:gravity="center_vertical"
+			android:text="@string/tuning_constant"
+			android:textAppearance="?attr/textAppearanceBodyMedium"
+			android:textColor="?attr/colorOnSurfaceVariant"
+			android:visibility="gone"
+			app:drawableStartCompat="@drawable/ic_info_18"
+			app:drawableTint="?attr/colorOnSurfaceVariant" />
 
 		<LinearLayout
 			android:layout_width="match_parent"
