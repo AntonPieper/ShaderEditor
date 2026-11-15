@@ -60,6 +60,17 @@ public class FrameRateReportTest {
 		assertEquals(30, report.frame(frame + 33_333_000L));
 	}
 
+	// The host cleared its label for the new shader: the same rate is
+	// told again.
+	@Test
+	public void aNewShaderAtTheSameRateIsToldAgain() {
+		var report = playedAt60();
+		report.start();
+		long frame = 1000 * MILLI;
+		report.frame(frame);
+		assertEquals(60, report.frame(frame + 16_667_000L));
+	}
+
 	@Test
 	public void nothingDrawingIsZeroOnce() {
 		var report = playedAt60();

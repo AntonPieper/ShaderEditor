@@ -12,6 +12,9 @@ package de.markusfisch.android.shadereditor.opengl;
 //   after them, so the stopped time, or the time a build took, is in no
 //   sample;
 // - nothing drawing: 0.
+// After a new start, the next rate is told even when it is the one told
+// before: a host clears what it shows when the shader changes (the
+// toolbar's title does), and waits for the rate of the new one.
 // Each call returns the rate to tell, or NOTHING.
 final class FrameRateReport {
 	static final int NOTHING = -1;
@@ -38,6 +41,7 @@ final class FrameRateReport {
 		samples = 0;
 		next = 0;
 		marked = false;
+		told = NOTHING;
 	}
 
 	// A frame drawn while playing.
