@@ -93,6 +93,8 @@ class FakeGlDevice extends GlDevice {
 
 	@Override
 	void disable(int cap) {
+		enabled.remove(cap);
+		calls.add("disable " + cap);
 	}
 
 	@Override
@@ -129,7 +131,9 @@ class FakeGlDevice extends GlDevice {
 							row >= v[1] && row < v[1] + v[3]) {
 						int red = cell.texture & 0xff;
 						int blue = (row - v[1]) & 0xff;
-						value = 0xff000000 | (blue << 16) | 0x8000 | red;
+						// A fitted draw reads differently.
+						int green = cell.fitted ? 0x4000 : 0x8000;
+						value = 0xff000000 | (blue << 16) | green | red;
 						break;
 					}
 				}
@@ -174,9 +178,27 @@ class FakeGlDevice extends GlDevice {
 	}
 
 	@Override
-	void applySampling(int unit, @NonNull GlTexture texture,
+	void setSamplingParameters(int unit, @NonNull GlTexture texture,
 			@NonNull Sampling sampling) {
 		bindTexture(unit, texture);
+		calls.add("sample " + texture.getId() + " " +
+				(sampling == Sampling.PASS ? "pass" : sampling.toString()));
+	}
+
+	// Capabilities enabled, as the device has them: dithering is on in a
+	// new context.
+	final java.util.Set<Integer> enabled = new java.util.HashSet<>(
+			java.util.List.of(android.opengl.GLES20.GL_DITHER));
+
+	@Override
+	void enable(int cap) {
+		enabled.add(cap);
+		calls.add("enable " + cap);
+	}
+
+	@Override
+	boolean isEnabled(int cap) {
+		return enabled.contains(cap);
 	}
 
 	@Override
@@ -255,12 +277,16 @@ class FakeGlDevice extends GlDevice {
 		int unit = drawn != null ? drawn.getTextureUnit("frame") : -1;
 		Integer texture = unit > -1 ? units.get(unit) : null;
 		if (viewport != null && texture != null) {
-			cells.add(new Cell(target(), viewport.clone(), texture));
+			float[] scale = uniforms.get("scale");
+			cells.add(new Cell(target(), viewport.clone(), texture,
+					scale != null && scale[0] != 0));
 		}
 	}
 
-	// Where a draw went, and the texture it read as "frame".
-	private record Cell(int target, int[] viewport, int texture) {
+	// Where a draw went, the texture it read as "frame", and whether it
+	// was fitted.
+	private record Cell(int target, int[] viewport, int texture,
+			boolean fitted) {
 	}
 
 	@Override

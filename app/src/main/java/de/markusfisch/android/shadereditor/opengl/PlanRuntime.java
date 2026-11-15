@@ -83,10 +83,9 @@ final class PlanRuntime implements ShaderSwap.Build {
 	private RunningPasses running;
 	@Nullable
 	private List<Integer> rowOrder;
-	// Whether a frame was drawn, and whether the last one moved on, so
-	// that its passes' frames are their completed ones.
+	// Whether the targets hold a frame drawn, its passes' frames their
+	// completed ones; also when adopted with one.
 	private boolean drawn;
-	private boolean advanced;
 	// The pass shown() found for shownFile last.
 	@Nullable
 	private ProjectPath shownFile;
@@ -480,6 +479,8 @@ final class PlanRuntime implements ShaderSwap.Build {
 			var target = from.targets[i];
 			targets[i] = target != null ? target.share() : null;
 		}
+		// They hold the frame from drew last, if it drew one.
+		drawn = from.drawn && !from.reset;
 		return true;
 	}
 
@@ -541,22 +542,26 @@ final class PlanRuntime implements ShaderSwap.Build {
 			@NonNull ActiveBuiltins builtins,
 			@NonNull FrameInputs frame,
 			int shown) {
-		draw(pipeline, builtins, frame, shown, true);
+		draw(pipeline, builtins, frame, shown, false);
 	}
 
-	// Like draw(pipeline, builtins, frame, shown). Unless advance, what
-	// the passes drew does not become their previous frame: the frame
-	// is drawn again from the same last frame, as often as asked, and
-	// the next frame that advances replaces it.
+	// Like draw(pipeline, builtins, frame, shown). With again, the frame
+	// drawn last is drawn again in its place (Playback.Draw.AGAIN): the
+	// passes read the histories that frame read, those from before it,
+	// and what they draw replaces it, so the next frame goes on from
+	// what is shown.
 	void draw(
 			@NonNull ShaderRenderPipeline pipeline,
 			@NonNull ActiveBuiltins builtins,
 			@NonNull FrameInputs frame,
 			int shown,
-			boolean advance) {
+			boolean again) {
 		var output = targets[plan.output()];
 		if (output == null) {
 			return;
+		}
+		if (again && drawn && !reset) {
+			swapFrame();
 		}
 		if (reset) {
 			reset = false;
@@ -576,12 +581,13 @@ final class PlanRuntime implements ShaderSwap.Build {
 		pipeline.present(texture, picture, frame.surfaceWidth,
 				frame.surfaceHeight);
 		drawn = true;
-		advanced = advance;
-		if (!advance) {
-			return;
-		}
-		// Only what is drawn every frame moves on: a first frame keeps
-		// the texture it was drawn into, to be shown.
+		swapFrame();
+	}
+
+	// What each pass drew becomes its previous frame, or, again, the
+	// frame before it. Only what is drawn every frame moves: a first
+	// frame keeps the texture it was drawn into, to be shown.
+	private void swapFrame() {
 		for (int pass : schedule.frame) {
 			if (targets[pass] != null) {
 				targets[pass].swap();
@@ -613,10 +619,10 @@ final class PlanRuntime implements ShaderSwap.Build {
 	}
 
 	// GL thread. What every row of running() that draws drew in the
-	// frame drawn last, in their order, for pictures of them.
-	@NonNull
-	List<PassInspector.Source> lastFrames() {
-		var sources = new ArrayList<PassInspector.Source>();
+	// frame drawn last, in their order, into sources, for pictures of
+	// them.
+	void lastFrames(@NonNull PassInspector.Sources sources) {
+		sources.clear();
 		if (rowOrder == null) {
 			rowOrder = RunningPasses.order(plan, schedule);
 		}
@@ -624,14 +630,10 @@ final class PlanRuntime implements ShaderSwap.Build {
 			var texture = last(pass);
 			if (texture != null) {
 				var size = targets[pass].size();
-				sources.add(new PassInspector.Source(
-						plan.programs().get(plan.passes().get(pass).program())
-								.file(),
-						texture, size.width(), size.height(),
-						targets[pass].format()));
+				sources.add(fileOf(pass), texture, size.width(),
+						size.height(), targets[pass].format());
 			}
 		}
-		return sources;
 	}
 
 	// Whether present() has nothing to show: no frame was drawn since
@@ -655,8 +657,9 @@ final class PlanRuntime implements ShaderSwap.Build {
 		if (target == null || !drawn) {
 			return null;
 		}
-		boolean moved = advanced && passes.get(pass).pass.perFrame();
-		return moved ? target.completed() : target.drawn();
+		return passes.get(pass).pass.perFrame()
+				? target.completed()
+				: target.drawn();
 	}
 
 	// The file of a pass.

@@ -92,6 +92,14 @@ class GlDevice {
 		GLES20.glDisable(cap);
 	}
 
+	void enable(int cap) {
+		GLES20.glEnable(cap);
+	}
+
+	boolean isEnabled(int cap) {
+		return GLES20.glIsEnabled(cap);
+	}
+
 	void setClearColor(float red, float green, float blue, float alpha) {
 		GLES20.glClearColor(red, green, blue, alpha);
 	}
@@ -143,12 +151,22 @@ class GlDevice {
 		applySampling(0, texture, sampling);
 	}
 
-	// Leaves the texture bound to unit.
+	// Leaves the texture bound to unit. A 2D texture keeps what it is
+	// sampled with, so it can be set back (GlTexture2D.sampling()).
 	void applySampling(int unit, @NonNull GlTexture texture,
 			@NonNull Sampling sampling) {
 		if (!texture.isValid()) {
 			return;
 		}
+		if (texture instanceof GlTexture2D texture2D) {
+			texture2D.setSampling(sampling);
+		}
+		setSamplingParameters(unit, texture, sampling);
+	}
+
+	// Binds texture to unit and sets its parameters for sampling.
+	void setSamplingParameters(int unit, @NonNull GlTexture texture,
+			@NonNull Sampling sampling) {
 		bindTexture(unit, texture);
 		int target = texture.getTarget();
 		int minFilter = GlSampling.minFilter(sampling);

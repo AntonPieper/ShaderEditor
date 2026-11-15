@@ -24,6 +24,17 @@ final class RuntimeClock {
 		hasLastFrame = false;
 	}
 
+	// The time counted, without counting the time since the last frame.
+	synchronized long elapsed() {
+		return elapsedNanos;
+	}
+
+	// Counts nanos more, as one frame of a paused picture's Step.
+	synchronized long add(long nanos) {
+		elapsedNanos += Math.max(0, nanos);
+		return elapsedNanos;
+	}
+
 	// The time of this owner, or -1 while the clock counts another's.
 	synchronized long getElapsedNanos(@NonNull Object owner) {
 		return owner == this.owner ? elapsedNanos : -1;

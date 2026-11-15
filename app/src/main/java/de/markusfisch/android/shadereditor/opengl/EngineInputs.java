@@ -71,11 +71,14 @@ final class EngineInputs {
 	private long rateSince;
 	private int rateFrames;
 	private boolean counting;
-	// The clock of the frame drawn last, where a paused clock stands.
+	// The clock of the frame drawn last, where a paused clock stands,
+	// and whether the clock started again since: see Playback.
 	private float lastTime;
 	private int lastFrame;
 	private float lastDelta = FIRST_TIME_DELTA;
+	private float lastRuntime;
 	private boolean paused;
+	private boolean restarted;
 
 	// At least one pixel, as a target has.
 	static int renderSize(int surfaceSize, float quality) {
@@ -161,20 +164,20 @@ final class EngineInputs {
 		restart(quality, now);
 	}
 
-	// GL thread. Restarts the clock for a new shader of this quality.
-	// Paused, it stands just before frame 0, which the next step draws.
+	// GL thread. Restarts the clock for a new shader of this quality: the
+	// next frame is frame 0, drawn as Playback.Draw.FIRST while paused.
 	void restart(float quality, long now) {
 		runtimeClock.pause();
 		startTime = now;
 		startRandom = (float) Math.random();
 		frame = 0;
-		lastTime = -lastDelta;
-		lastFrame = -1;
+		restarted = true;
 		hasLastCapture = false;
 		frameRate = FIRST_FRAME_RATE;
 		rateSince = now;
 		rateFrames = 0;
-		counting = true;
+		// Paused, no frame comes until Play, which starts counting.
+		counting = !paused;
 		// Together, so a pointer is never scaled with one of the new
 		// quality and the old size.
 		synchronized (lock) {
@@ -243,52 +246,75 @@ final class EngineInputs {
 		startTime = now - (long) (lastTime * NS_PER_SECOND) - delta;
 		lastCapture = now - delta;
 		hasLastCapture = true;
+		// The rate is counted from the first frame on, not over the time
+		// it stood.
+		counting = false;
 	}
 
-	// GL thread, while paused: the next frame, one frame's time after
-	// the frame drawn last, the time that frame took.
-	@NonNull
-	FrameInputs captureStep(float fTimeMax) {
-		var in = frameInputs;
-		in.time = lastTime + lastDelta;
-		in.frame = frame++;
-		in.timeDelta = lastDelta;
-		in.frameRate = frameRate;
-		lastTime = in.time;
-		lastFrame = in.frame;
-		return fill(in, fTimeMax);
+	// GL thread. Whether the clock started again since the frame drawn
+	// last.
+	boolean restarted() {
+		return restarted;
 	}
 
-	// GL thread, while paused: the frame drawn last again, as when what
-	// draws it changed.
-	@NonNull
-	FrameInputs captureAgain(float fTimeMax) {
-		var in = frameInputs;
-		in.time = lastTime;
-		in.frame = Math.max(0, lastFrame);
-		in.timeDelta = lastDelta;
-		in.frameRate = frameRate;
-		return fill(in, fTimeMax);
-	}
-
-	// GL thread, once at the start of a frame.
+	// GL thread, once at the start of a frame: the frame as it runs.
 	@NonNull
 	FrameInputs capture(long now, float fTimeMax) {
+		return capture(Playback.Draw.FRAME, now, fTimeMax);
+	}
+
+	// GL thread, once at the start of a frame: the clock of draw, as the
+	// table in Playback says; the frame becomes the frame drawn last.
+	@NonNull
+	FrameInputs capture(@NonNull Playback.Draw draw, long now,
+			float fTimeMax) {
 		var in = frameInputs;
-		in.time = (now - startTime) / NS_PER_SECOND;
-		in.runtime = (float) (runtimeClock.advance(now) / 1000000000.0);
-		in.frame = frame++;
-		in.timeDelta = hasLastCapture
-				? Math.min((now - lastCapture) / NS_PER_SECOND,
-				LONGEST_TIME_DELTA)
-				: FIRST_TIME_DELTA;
-		lastCapture = now;
-		hasLastCapture = true;
-		in.frameRate = countFrame(now);
+		switch (draw) {
+			case FIRST -> {
+				in.time = 0;
+				in.frame = frame++;
+				in.timeDelta = FIRST_TIME_DELTA;
+				in.frameRate = frameRate;
+				in.runtime = seconds(runtimeClock.elapsed());
+			}
+			case STEP -> {
+				in.time = lastTime + lastDelta;
+				in.frame = frame++;
+				in.timeDelta = lastDelta;
+				in.frameRate = frameRate;
+				in.runtime = seconds(runtimeClock.add(
+						(long) (lastDelta * NS_PER_SECOND)));
+			}
+			case AGAIN -> {
+				in.time = lastTime;
+				in.frame = lastFrame;
+				in.timeDelta = lastDelta;
+				in.frameRate = frameRate;
+				in.runtime = lastRuntime;
+			}
+			default -> {
+				in.time = (now - startTime) / NS_PER_SECOND;
+				in.runtime = seconds(runtimeClock.advance(now));
+				in.frame = frame++;
+				in.timeDelta = hasLastCapture
+						? Math.min((now - lastCapture) / NS_PER_SECOND,
+						LONGEST_TIME_DELTA)
+						: FIRST_TIME_DELTA;
+				lastCapture = now;
+				hasLastCapture = true;
+				in.frameRate = countFrame(now);
+			}
+		}
+		restarted = false;
 		lastTime = in.time;
 		lastFrame = in.frame;
 		lastDelta = in.timeDelta;
+		lastRuntime = in.runtime;
 		return fill(in, fTimeMax);
+	}
+
+	private static float seconds(long nanos) {
+		return (float) (nanos / 1000000000.0);
 	}
 
 	// What every kind of frame takes as it is now.

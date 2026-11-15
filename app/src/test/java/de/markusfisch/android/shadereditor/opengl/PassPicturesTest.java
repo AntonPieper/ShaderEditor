@@ -32,8 +32,7 @@ public class PassPicturesTest {
 		var engine = life();
 		engine.draw(0);
 		engine.draw(1);
-		var inspector = new PassInspector(engine.device);
-		var pictures = inspector.pictures(engine.runtime.lastFrames());
+		var pictures = pictures(new PassInspector(engine.device), engine);
 		var files = new ArrayList<String>();
 		for (var picture : pictures) {
 			files.add(picture.file().toString());
@@ -51,8 +50,8 @@ public class PassPicturesTest {
 	public void inItsOwnProportionsTheRightWayUp() {
 		var engine = life();
 		engine.draw(0);
-		var picture = new PassInspector(engine.device)
-				.pictures(engine.runtime.lastFrames()).get(2);
+		var picture = pictures(new PassInspector(engine.device), engine)
+				.get(2);
 		assertEquals(96, picture.width());
 		assertEquals(48, picture.height());
 		assertEquals(96 * 48, picture.argb().length);
@@ -78,10 +77,17 @@ public class PassPicturesTest {
 		var live = new HashSet<>(engine.device.live);
 		var inspector = new PassInspector(engine.device);
 		assertEquals(live, engine.device.live);
-		inspector.pictures(engine.runtime.lastFrames());
+		pictures(inspector, engine);
 		assertTrue(engine.device.live.size() > live.size());
 		inspector.release();
 		assertEquals(live, engine.device.live);
+	}
+
+	@NonNull
+	static java.util.List<PassPicture> pictures(
+			@NonNull PassInspector inspector, @NonNull FakeEngine engine) {
+		engine.runtime.lastFrames(inspector.sources());
+		return inspector.pictures(null);
 	}
 
 	@NonNull

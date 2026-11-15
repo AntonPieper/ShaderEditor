@@ -11,16 +11,31 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.project.HostDirective;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
-// GL thread. Small pictures of passes, made only while a host watches
-// them: every pass is drawn into its own cell of one atlas, each with
-// its own pixels, cut to 0..1 as the screen would show it, and the
-// atlas is read at once, so a round waits for the GPU once. Its GL
-// objects are made when it is first asked and go with release().
+// GL thread. Small pictures of passes and their facts, made only while
+// a host watches them: every pass is drawn into its own cell of one
+// atlas, each with its own pixels, cut to 0..1 as the screen would show
+// it, and the atlas is read at once, so a round waits for the GPU once.
+// Its GL objects are made when it is first asked and go with release().
+// A round allocates nothing once its buffers fit: sources, cells,
+// pixels and the pictures handed out are kept for the next round.
+//
+// What a round changes of the context's state, and what it leaves:
+// - restored: the texture parameters of every source, to the sampling
+//   it had (GlTexture2D.sampling()); GL_DITHER, which is off while it
+//   draws, as dithering may change the bytes of a float's bits; the
+//   framebuffer, the default one, which was bound when it ran, after
+//   the frame was presented;
+// - not restored: the program, the viewport and the texture bound to its
+//   sampler's unit, which every draw of the engine sets before it draws
+//   (PlanPass.bind, ShaderRenderPipeline.drawSurface);
+// - never changed: blending (off in the engine's context), the colour
+//   mask, scissor and pixel store; its targets are RGBA8, never sRGB.
 final class PassInspector {
 	// The longer side of a picture.
 	static final int PICTURE = 96;
@@ -57,12 +72,6 @@ final class PassInspector {
 			}
 			""";
 
-	// What to take a picture of: the texture a pass drew, at its size
-	// and in its format.
-	record Source(@NonNull ProjectPath file, @NonNull GlTexture2D texture,
-			int width, int height, @NonNull HostDirective.Format format) {
-	}
-
 	// The side of the sample of a float target.
 	static final int FLOAT_SAMPLE = 32;
 	// Each of FLOAT_SAMPLE × FLOAT_SAMPLE texels of frame, spread evenly
@@ -95,26 +104,94 @@ final class PassInspector {
 			}
 			""";
 
-	// The sample a fact was last made of, and since when it is so.
-	private record Seen(@NonNull int[] values, long since) {
+	// What to take a picture of: the texture a pass drew, at its size
+	// and in its format. Kept for the next round and filled again.
+	static final class Source {
+		@NonNull
+		ProjectPath file;
+		@NonNull
+		GlTexture2D texture;
+		int width;
+		int height;
+		@NonNull
+		HostDirective.Format format;
+
+		Source(@NonNull ProjectPath file, @NonNull GlTexture2D texture,
+				int width, int height, @NonNull HostDirective.Format format) {
+			this.file = file;
+			this.texture = texture;
+			this.width = width;
+			this.height = height;
+			this.format = format;
+		}
 	}
 
-	private final Map<ProjectPath, Seen> seen = new HashMap<>();
-	@Nullable
-	private GlProgram encoder;
-	private int encoderOrigin;
-	private int encoderFrame;
-	@Nullable
-	private GlTexture2D encoded;
-	@Nullable
-	private GlFramebuffer encodedFramebuffer;
-	private int encodedHeight;
-	private boolean encoderFailed;
+	// The sources of a round, in the rows' order; filled by
+	// PlanRuntime.lastFrames() into the slots of the round before.
+	static final class Sources {
+		private final List<Source> slots = new ArrayList<>();
+		private int size;
+
+		void clear() {
+			size = 0;
+		}
+
+		void add(@NonNull ProjectPath file, @NonNull GlTexture2D texture,
+				int width, int height, @NonNull HostDirective.Format format) {
+			if (size < slots.size()) {
+				var slot = slots.get(size);
+				slot.file = file;
+				slot.texture = texture;
+				slot.width = width;
+				slot.height = height;
+				slot.format = format;
+			} else {
+				slots.add(new Source(file, texture, width, height, format));
+			}
+			++size;
+		}
+
+		int size() {
+			return size;
+		}
+
+		@NonNull
+		Source get(int i) {
+			return slots.get(i);
+		}
+	}
+
+	// A sample a fact was last made of, kept as a copy, and since when it
+	// is so.
+	private static final class Seen {
+		@NonNull
+		int[] values = new int[0];
+		long since;
+	}
 
 	@NonNull
 	private final GlDevice device;
 	private final FullScreenQuad quad = new FullScreenQuad();
 	private final float[] vector = new float[2];
+	private final Sources sources = new Sources();
+	// Per slot of sources: its picture's pixels and the picture handed
+	// out with them, kept while its size stays.
+	private final List<int[]> pixels = new ArrayList<>();
+	private final List<PassPicture> made = new ArrayList<>();
+	private final List<PassPicture> pictures = new ArrayList<>();
+	// The pixels of the fitted pass as its target holds them, which its
+	// facts are of, and its slot, or -1.
+	@NonNull
+	private int[] unfitted = new int[0];
+	private int fittedSlot = -1;
+	// Cells by slot, as x, y, width, height; the unfitted cell last.
+	@NonNull
+	private int[] cells = new int[0];
+	@NonNull
+	private int[] rgba = new int[0];
+	// What each source's texture was sampled with before a round.
+	private final List<Sampling> samplings = new ArrayList<>();
+	private final Map<ProjectPath, Seen> seen = new HashMap<>();
 	@Nullable
 	private GlProgram program;
 	private int originLocation;
@@ -130,6 +207,20 @@ final class PassInspector {
 	private int atlasHeight;
 	// Whether a program could not be made: nothing is tried again.
 	private boolean failed;
+	// The float sample: its program, target and buffers.
+	@Nullable
+	private GlProgram encoder;
+	private int encoderOrigin;
+	private int encoderFrame;
+	@Nullable
+	private GlTexture2D encoded;
+	@Nullable
+	private GlFramebuffer encodedFramebuffer;
+	private int encodedHeight;
+	private boolean encoderFailed;
+	@NonNull
+	private int[] read = new int[0];
+	private final List<int[]> bits = new ArrayList<>();
 
 	PassInspector(@NonNull GlDevice device) {
 		this.device = device;
@@ -149,130 +240,123 @@ final class PassInspector {
 				: Math.max(1, Math.round(PICTURE * height / (float) width));
 	}
 
-	// Pictures of sources, in their order; empty when they cannot be
-	// made in this context.
+	// The sources of the next round, for PlanRuntime.lastFrames().
 	@NonNull
-	List<PassPicture> pictures(@NonNull List<Source> sources) {
-		return pictures(sources, null);
+	Sources sources() {
+		return sources;
 	}
 
-	// Like pictures(sources), the pass of fit mapped as it says.
+	// Pictures of sources(), in their order, the pass of fit mapped as it
+	// says; empty when they cannot be made in this context. The list, its
+	// pictures and their pixels are this round's: the next round fills
+	// them again.
 	@NonNull
-	List<PassPicture> pictures(@NonNull List<Source> sources,
-			@Nullable Fit fit) {
-		var pictures = new ArrayList<PassPicture>();
-		if (sources.isEmpty() || !prepare(sources.size())) {
+	List<PassPicture> pictures(@Nullable Fit fit) {
+		pictures.clear();
+		fittedSlot = -1;
+		int count = sources.size();
+		for (int i = 0; i < count && fit != null; ++i) {
+			if (fit.file().equals(sources.get(i).file)) {
+				fittedSlot = i;
+			}
+		}
+		// The fitted pass once more, as its target holds it.
+		int cellCount = count + (fittedSlot > -1 ? 1 : 0);
+		if (count == 0 || !prepare(cellCount)) {
 			return pictures;
 		}
-		var program = this.program;
+		if (cells.length < cellCount * 4) {
+			cells = new int[cellCount * 4];
+		}
+		boolean dither = device.isEnabled(GLES20.GL_DITHER);
+		if (dither) {
+			device.disable(GLES20.GL_DITHER);
+		}
 		device.bindFramebuffer(framebuffer);
 		device.useProgram(program);
-		var cells = new int[sources.size() * 4];
-		for (int i = 0; i < sources.size(); ++i) {
-			var source = sources.get(i);
-			int x = (i % COLUMNS) * PICTURE;
-			int y = (i / COLUMNS) * PICTURE;
-			int width = pictureWidth(source.width(), source.height());
-			int height = pictureHeight(source.width(), source.height());
-			cells[i * 4] = x;
-			cells[i * 4 + 1] = y;
-			cells[i * 4 + 2] = width;
-			cells[i * 4 + 3] = height;
-			device.setViewport(x, y, width, height);
-			vector[0] = x;
-			vector[1] = y;
-			device.uniform2fv(originLocation, 1, vector);
-			vector[0] = width;
-			vector[1] = height;
-			device.uniform2fv(resolutionLocation, 1, vector);
-			boolean fitted = fit != null && fit.file().equals(source.file());
-			device.uniform1f(scaleLocation, fitted ? fit.scale() : 0f);
-			device.uniform1f(offsetLocation, fitted ? fit.offset() : 0f);
+		samplings.clear();
+		for (int i = 0; i < count; ++i) {
+			var texture = sources.get(i).texture;
+			samplings.add(texture.sampling());
 			// Its own pixels, as a pass reads another.
-			device.applySampling(source.texture(), Sampling.PASS);
-			device.bindTexture(frameUnit, source.texture());
-			device.draw(quad);
+			device.applySampling(texture, Sampling.PASS);
 		}
-		int[] rgba = new int[atlasWidth * atlasHeight];
+		for (int i = 0; i < cellCount; ++i) {
+			int slot = i < count ? i : fittedSlot;
+			drawCell(i, sources.get(slot),
+					i == fittedSlot ? Objects.requireNonNull(fit) : null);
+		}
+		int size = atlasWidth * atlasHeight;
+		if (rgba.length < size) {
+			rgba = new int[size];
+		}
 		device.readPixels(0, 0, atlasWidth, atlasHeight, IntBuffer.wrap(rgba));
 		device.bindFramebuffer(null);
-		for (int i = 0; i < sources.size(); ++i) {
-			int x = cells[i * 4];
-			int y = cells[i * 4 + 1];
-			int width = cells[i * 4 + 2];
-			int height = cells[i * 4 + 3];
-			int[] argb = new int[width * height];
-			for (int row = 0; row < height; ++row) {
-				int from = (y + row) * atlasWidth + x;
-				int to = (height - 1 - row) * width;
-				for (int column = 0; column < width; ++column) {
-					argb[to + column] = argb(rgba[from + column]);
-				}
+		for (int i = 0; i < count; ++i) {
+			var before = samplings.get(i);
+			if (before != null && before != Sampling.PASS) {
+				device.applySampling(sources.get(i).texture, before);
 			}
-			pictures.add(new PassPicture(sources.get(i).file(), width, height,
-					argb));
+		}
+		if (dither) {
+			device.enable(GLES20.GL_DITHER);
+		}
+		for (int i = 0; i < count; ++i) {
+			pictures.add(picture(i));
+		}
+		if (fittedSlot > -1) {
+			int length = cells[count * 4 + 2] * cells[count * 4 + 3];
+			if (unfitted.length != length) {
+				unfitted = new int[length];
+			}
+			copyCell(count, unfitted);
 		}
 		return pictures;
 	}
 
-	// Facts of every row of running, from sources and their pictures,
-	// at now. A float target is sampled in its own values where the
-	// context is OpenGL ES 3; anything else from its 8-bit picture.
+	// Facts of every row of running from the round pictures() drew, at
+	// now: of the targets, never of a fitted view. A float target is
+	// sampled in its own values where the context is OpenGL ES 3;
+	// anything else from its 8-bit picture.
 	@NonNull
-	List<PassFacts> facts(@NonNull RunningPasses running,
-			@NonNull List<Source> sources,
-			@NonNull List<PassPicture> pictures,
-			long now,
+	List<PassFacts> facts(@NonNull RunningPasses running, long now,
 			boolean es3) {
-		var floats = new ArrayList<Source>();
-		for (var source : sources) {
-			if (es3 && source.format() == HostDirective.Format.RGBA16F) {
-				floats.add(source);
-			}
+		boolean[] isFloat = new boolean[sources.size()];
+		for (int i = 0; i < sources.size(); ++i) {
+			isFloat[i] = es3 && i < pictures.size() &&
+					sources.get(i).format == HostDirective.Format.RGBA16F;
 		}
-		var bits = encode(floats);
+		boolean encodedFloats = encode(isFloat);
 		var facts = new ArrayList<PassFacts>();
-		var kept = new HashMap<ProjectPath, Seen>();
 		for (var row : running.rows()) {
 			var file = row.file();
-			Source source = null;
-			for (var s : sources) {
-				if (s.file().equals(file)) {
-					source = s;
+			int slot = -1;
+			for (int i = 0; i < sources.size() && i < pictures.size(); ++i) {
+				if (sources.get(i).file.equals(file)) {
+					slot = i;
 				}
 			}
-			int[] values = bits.get(file);
-			PassPicture picture = null;
-			for (var p : pictures) {
-				if (p.file().equals(file)) {
-					picture = p;
-				}
-			}
-			if (source == null || (values == null && picture == null)) {
+			if (slot < 0) {
 				facts.add(new PassFacts(file, row.drawn(), row.problems(),
 						0, 0, null, 0, null, null, null, false, 0));
 				continue;
 			}
-			if (values == null) {
-				values = picture.argb();
-			}
-			var before = seen.get(file);
-			var still = before != null && Arrays.equals(before.values, values)
-					? before
-					: new Seen(values, now);
-			kept.put(file, still);
-			long unchanged = now - still.since;
-			if (bits.containsKey(file)) {
+			var source = sources.get(slot);
+			boolean sampled = encodedFloats && isFloat[slot];
+			int[] values = sampled
+					? bits.get(slot)
+					: slot == fittedSlot ? unfitted : pixels.get(slot);
+			long unchanged = unchanged(file, values, now);
+			if (sampled) {
 				facts.add(floatFacts(row, source, values, unchanged));
 			} else {
 				facts.add(new PassFacts(file, row.drawn(), row.problems(),
-						source.width(), source.height(), source.format(),
-						PICTURE, same(picture.argb()), null, null, false,
+						source.width, source.height, source.format,
+						PICTURE, same(values), null, null, false,
 						unchanged));
 			}
 		}
-		seen.clear();
-		seen.putAll(kept);
+		seen.keySet().retainAll(filesOf(running));
 		return facts;
 	}
 
@@ -352,42 +436,161 @@ final class PassInspector {
 						Float.intBitsToFloat(bits[3])}
 				: null;
 		return new PassFacts(row.file(), row.drawn(), row.problems(),
-				source.width(), source.height(), source.format(),
+				source.width, source.height, source.format,
 				FLOAT_SAMPLE, value, finite ? low : null,
 				finite ? high : null, nonFinite, unchanged);
 	}
 
-	// The bits of a FLOAT_SAMPLE square sample of every source, by its
-	// file: four ints a texel, red, green, blue, alpha, the bottom row
-	// first; nothing where the encoder cannot be made.
+	// Bytes R, G, B, A in memory, as glReadPixels writes them, read as a
+	// little-endian int, to a colour int.
+	static int argb(int rgba) {
+		return (rgba & 0xff00ff00) |
+				((rgba << 16) & 0x00ff0000) |
+				((rgba >> 16) & 0x000000ff);
+	}
+
+	// Draws source into cell i of the atlas, mapped by fit, if any.
+	private void drawCell(int i, @NonNull Source source, @Nullable Fit fit) {
+		int x = (i % COLUMNS) * PICTURE;
+		int y = (i / COLUMNS) * PICTURE;
+		int width = pictureWidth(source.width, source.height);
+		int height = pictureHeight(source.width, source.height);
+		cells[i * 4] = x;
+		cells[i * 4 + 1] = y;
+		cells[i * 4 + 2] = width;
+		cells[i * 4 + 3] = height;
+		device.setViewport(x, y, width, height);
+		vector[0] = x;
+		vector[1] = y;
+		device.uniform2fv(originLocation, 1, vector);
+		vector[0] = width;
+		vector[1] = height;
+		device.uniform2fv(resolutionLocation, 1, vector);
+		device.uniform1f(scaleLocation, fit != null ? fit.scale() : 0f);
+		device.uniform1f(offsetLocation, fit != null ? fit.offset() : 0f);
+		device.bindTexture(frameUnit, source.texture);
+		device.draw(quad);
+	}
+
+	// The picture of slot i, its pixels and the picture itself kept from
+	// the round before while its file and size stay.
 	@NonNull
-	private Map<ProjectPath, int[]> encode(@NonNull List<Source> floats) {
-		var bits = new HashMap<ProjectPath, int[]>();
-		if (floats.isEmpty() || !prepareEncoder(floats.size())) {
-			return bits;
+	private PassPicture picture(int i) {
+		int width = cells[i * 4 + 2];
+		int height = cells[i * 4 + 3];
+		while (pixels.size() <= i) {
+			pixels.add(new int[0]);
+			made.add(null);
+		}
+		int[] argb = pixels.get(i);
+		if (argb.length != width * height) {
+			argb = new int[width * height];
+			pixels.set(i, argb);
+		}
+		copyCell(i, argb);
+		var file = sources.get(i).file;
+		var picture = made.get(i);
+		if (picture == null || picture.argb() != argb ||
+				!picture.file().equals(file) || picture.width() != width) {
+			picture = new PassPicture(file, width, height, argb);
+			made.set(i, picture);
+		}
+		return picture;
+	}
+
+	// The pixels of cell i, the top row first, into argb.
+	private void copyCell(int i, @NonNull int[] argb) {
+		int x = cells[i * 4];
+		int y = cells[i * 4 + 1];
+		int width = cells[i * 4 + 2];
+		int height = cells[i * 4 + 3];
+		for (int row = 0; row < height; ++row) {
+			int from = (y + row) * atlasWidth + x;
+			int to = (height - 1 - row) * width;
+			for (int column = 0; column < width; ++column) {
+				argb[to + column] = argb(rgba[from + column]);
+			}
+		}
+	}
+
+	// How long file's sample has stayed values, kept as a copy.
+	private long unchanged(@NonNull ProjectPath file, @NonNull int[] values,
+			long now) {
+		var kept = seen.get(file);
+		if (kept == null) {
+			kept = new Seen();
+			seen.put(file, kept);
+		}
+		if (!Arrays.equals(kept.values, values)) {
+			if (kept.values.length != values.length) {
+				kept.values = new int[values.length];
+			}
+			System.arraycopy(values, 0, kept.values, 0, values.length);
+			kept.since = now;
+		}
+		return now - kept.since;
+	}
+
+	@NonNull
+	private static List<ProjectPath> filesOf(@NonNull RunningPasses running) {
+		var files = new ArrayList<ProjectPath>();
+		for (var row : running.rows()) {
+			files.add(row.file());
+		}
+		return files;
+	}
+
+	// Samples the slots that are float, as their bits into bits(slot):
+	// four ints a texel, red, green, blue, alpha, the bottom row first.
+	// False when the encoder cannot be made.
+	private boolean encode(@NonNull boolean[] isFloat) {
+		int count = 0;
+		for (boolean f : isFloat) {
+			count += f ? 1 : 0;
+		}
+		if (count == 0 || !prepareEncoder(count)) {
+			return false;
 		}
 		int width = FLOAT_SAMPLE * 4;
+		boolean dither = device.isEnabled(GLES20.GL_DITHER);
+		if (dither) {
+			device.disable(GLES20.GL_DITHER);
+		}
 		device.bindFramebuffer(encodedFramebuffer);
 		device.useProgram(encoder);
-		for (int i = 0; i < floats.size(); ++i) {
-			int y = i * FLOAT_SAMPLE;
+		for (int i = 0, n = 0; i < isFloat.length; ++i) {
+			if (!isFloat[i]) {
+				continue;
+			}
+			int y = n++ * FLOAT_SAMPLE;
 			device.setViewport(0, y, width, FLOAT_SAMPLE);
 			vector[0] = 0;
 			vector[1] = y;
 			device.uniform2fv(encoderOrigin, 1, vector);
-			device.bindTexture(encoderFrame, floats.get(i).texture());
+			// texelFetch reads the texel as it is, whatever the sampling.
+			device.bindTexture(encoderFrame, sources.get(i).texture);
 			device.draw(quad);
 		}
-		int[] read = new int[width * floats.size() * FLOAT_SAMPLE];
-		device.readPixels(0, 0, width, floats.size() * FLOAT_SAMPLE,
+		int size = width * count * FLOAT_SAMPLE;
+		if (read.length < size) {
+			read = new int[size];
+		}
+		device.readPixels(0, 0, width, count * FLOAT_SAMPLE,
 				IntBuffer.wrap(read));
 		device.bindFramebuffer(null);
-		int size = width * FLOAT_SAMPLE;
-		for (int i = 0; i < floats.size(); ++i) {
-			bits.put(floats.get(i).file(),
-					Arrays.copyOfRange(read, i * size, (i + 1) * size));
+		if (dither) {
+			device.enable(GLES20.GL_DITHER);
 		}
-		return bits;
+		int sample = width * FLOAT_SAMPLE;
+		while (bits.size() < isFloat.length) {
+			bits.add(new int[sample]);
+		}
+		for (int i = 0, n = 0; i < isFloat.length; ++i) {
+			if (isFloat[i]) {
+				System.arraycopy(read, n++ * sample, bits.get(i), 0, sample);
+			}
+		}
+		return true;
 	}
 
 	// Whether the encoder and its target for count samples are there.
@@ -431,14 +634,6 @@ final class PassInspector {
 		encodedFramebuffer = made;
 		encodedHeight = height;
 		return true;
-	}
-
-	// Bytes R, G, B, A in memory, as glReadPixels writes them, read as a
-	// little-endian int, to a colour int.
-	static int argb(int rgba) {
-		return (rgba & 0xff00ff00) |
-				((rgba << 16) & 0x00ff0000) |
-				((rgba >> 16) & 0x000000ff);
 	}
 
 	// Whether the program and an atlas for count pictures are there.

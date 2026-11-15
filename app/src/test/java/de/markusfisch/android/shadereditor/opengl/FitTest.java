@@ -81,14 +81,19 @@ public class FitTest {
 		engine.draw(0);
 		var fit = new Fit(path("life.frag"), 0, 10);
 		int before = engine.device.draws.size();
-		new PassInspector(engine.device).pictures(
-				engine.runtime.lastFrames(), fit);
+		var inspector = new PassInspector(engine.device);
+		engine.runtime.lastFrames(inspector.sources());
+		inspector.pictures(fit);
 		var draws = engine.device.draws.subList(before,
 				engine.device.draws.size());
-		assertEquals(3, draws.size());
+		// The three pictures, and the fitted pass once more as its target
+		// holds it, for its facts.
+		assertEquals(4, draws.size());
 		assertEquals(0f, draws.get(0).uniforms().get("scale")[0], 0);
 		assertEquals(fit.scale(), draws.get(1).uniforms().get("scale")[0], 0);
 		assertEquals(0f, draws.get(2).uniforms().get("scale")[0], 0);
+		assertEquals(0f, draws.get(3).uniforms().get("scale")[0], 0);
+		assertEquals(draws.get(1).units(), draws.get(3).units());
 	}
 
 	private static float shown(@NonNull Fit fit, float value) {
