@@ -1,0 +1,921 @@
+# The words of GLSL ES 1.00 and 3.00 a fragment shader can use, in
+# ShaderEditor's own words, from the facts of the two specifications.
+#
+# One block per word, blocks apart by an empty line:
+#   <word> <kind> <versions>  kind: function, type, qualifier, keyword,
+#                             variable or constant; versions: 100, 300
+#   form <declaration>        each form, as many as there are
+#   detail <sentence>         about the forms: what their letters stand
+#                             for, which forms are left out
+#   text <sentence>           what it is or does; every block has one
+#   note <sentence>           what else to know
+#   example <code>            a line of an example, as many as needed
+
+void type 100 300
+text No value: the return type of a function that returns nothing.
+example void main(void) {
+
+bool type 100 300
+form bool(x)
+text true or false. Conditions of if, for, while and ?: must be bool.
+example bool inside = length(p) < 0.5;
+
+float type 100 300
+form float(x)
+text A floating-point number; highp, mediump or lowp, or the precision statement, set how exact it is.
+note No number is converted by itself: write 1.0, not 1.
+example float d = length(uv) * 2.0;
+
+int type 100 300
+form int(x)
+text A signed whole number. int(x) drops the fraction of a float.
+example int steps = int(t * 8.0);
+
+uint type 300
+form uint(x)
+text An unsigned 32-bit whole number. Its literals end in u, as in 7u.
+example uint h = uint(gl_FragCoord.x) * 747796405u;
+
+true keyword 100 300
+text The bool value true.
+
+false keyword 100 300
+text The bool value false.
+
+vec2 type 100 300
+form vec2(float x, float y)
+form vec2(float v)
+text Two floats, read as .x .y, .r .g or .s .t, in any order and repeated: p.yx, p.xx.
+example vec2 uv = gl_FragCoord.xy / resolution;
+
+vec3 type 100 300
+form vec3(float x, float y, float z)
+form vec3(vec2 xy, float z)
+form vec3(float v)
+text Three floats, often a colour (.rgb) or a direction (.xyz).
+example vec3 color = vec3(uv, 0.5);
+
+vec4 type 100 300
+form vec4(float x, float y, float z, float w)
+form vec4(vec3 xyz, float w)
+form vec4(float v)
+text Four floats, often a colour with alpha (.rgba) or what a texture gives.
+example gl_FragColor = vec4(color, 1.0);
+
+bvec2 type 100 300
+form bvec2(bool x, bool y)
+text Two bools, as the comparisons lessThan, equal and the others give for vec2.
+
+bvec3 type 100 300
+form bvec3(bool x, bool y, bool z)
+text Three bools, as the comparisons give for vec3.
+
+bvec4 type 100 300
+form bvec4(bool x, bool y, bool z, bool w)
+text Four bools, as the comparisons give for vec4.
+
+ivec2 type 100 300
+form ivec2(int x, int y)
+text Two ints, such as a pixel or cell position.
+example ivec2 cell = ivec2(floor(uv * 8.0));
+
+ivec3 type 100 300
+form ivec3(int x, int y, int z)
+text Three ints.
+
+ivec4 type 100 300
+form ivec4(int x, int y, int z, int w)
+text Four ints.
+
+uvec2 type 300
+form uvec2(uint x, uint y)
+text Two unsigned ints.
+
+uvec3 type 300
+form uvec3(uint x, uint y, uint z)
+text Three unsigned ints, often the input of a hash.
+example uvec3 seed = uvec3(gl_FragCoord.xy, frame);
+
+uvec4 type 300
+form uvec4(uint x, uint y, uint z, uint w)
+text Four unsigned ints.
+
+mat2 type 100 300
+form mat2(vec2 column0, vec2 column1)
+form mat2(float diagonal)
+text A 2 by 2 matrix of floats, built and indexed by columns: m[0] is the first column.
+note matrix * vector transforms the vector.
+example p = mat2(cos(a), sin(a), -sin(a), cos(a)) * p;
+
+mat3 type 100 300
+form mat3(vec3 column0, vec3 column1, vec3 column2)
+form mat3(float diagonal)
+text A 3 by 3 matrix of floats, built and indexed by columns.
+example vec3 n = mat3(t, b, normal) * local;
+
+mat4 type 100 300
+form mat4(vec4 column0, vec4 column1, vec4 column2, vec4 column3)
+form mat4(float diagonal)
+text A 4 by 4 matrix of floats, built and indexed by columns.
+
+mat2x2 type 300
+text The same type as mat2: 2 columns of 2 rows.
+
+mat2x3 type 300
+text A matrix of 2 columns of 3 rows: two vec3 columns. It turns a vec2 into a vec3.
+
+mat2x4 type 300
+text A matrix of 2 columns of 4 rows: two vec4 columns.
+
+mat3x2 type 300
+text A matrix of 3 columns of 2 rows: three vec2 columns. It turns a vec3 into a vec2.
+
+mat3x3 type 300
+text The same type as mat3: 3 columns of 3 rows.
+
+mat3x4 type 300
+text A matrix of 3 columns of 4 rows: three vec4 columns.
+
+mat4x2 type 300
+text A matrix of 4 columns of 2 rows: four vec2 columns.
+
+mat4x3 type 300
+text A matrix of 4 columns of 3 rows: four vec3 columns.
+
+mat4x4 type 300
+text The same type as mat4: 4 columns of 4 rows.
+
+sampler2D type 100 300
+text A 2D texture, set from outside; read it with texture2D in 1.00 and texture in 3.00.
+example uniform sampler2D noise;
+
+samplerCube type 100 300
+text A cube map, read by a direction; textureCube in 1.00, texture in 3.00.
+example uniform samplerCube sky;
+
+sampler3D type 300
+text A 3D texture, read by a vec3 position.
+
+sampler2DShadow type 300
+text A depth texture whose reads compare P's last coordinate with the stored depth and give 0 to 1.
+
+samplerCubeShadow type 300
+text A depth cube map whose reads compare with a reference depth.
+
+sampler2DArray type 300
+text An array of 2D textures of one size; P.z picks the layer.
+
+sampler2DArrayShadow type 300
+text An array of depth textures whose reads compare with a reference depth.
+
+isampler2D type 300
+text A 2D texture of signed integers; reads give ivec4.
+
+isampler3D type 300
+text A 3D texture of signed integers; reads give ivec4.
+
+isamplerCube type 300
+text A cube map of signed integers; reads give ivec4.
+
+isampler2DArray type 300
+text An array of 2D textures of signed integers; reads give ivec4.
+
+usampler2D type 300
+text A 2D texture of unsigned integers; reads give uvec4.
+
+usampler3D type 300
+text A 3D texture of unsigned integers; reads give uvec4.
+
+usamplerCube type 300
+text A cube map of unsigned integers; reads give uvec4.
+
+usampler2DArray type 300
+text An array of 2D textures of unsigned integers; reads give uvec4.
+
+samplerExternalOES type 100 300
+text A texture the system fills, such as a camera frame; ShaderEditor's camera uniforms have this type.
+note It needs #extension GL_OES_EGL_image_external : require in 1.00, and GL_OES_EGL_image_external_essl3 in 3.00.
+example uniform samplerExternalOES cameraBack;
+
+gl_DepthRangeParameters type 100 300
+form struct gl_DepthRangeParameters { float near; float far; float diff; }
+text The type of gl_DepthRange: the near and far ends of the depth range and far - near.
+
+struct keyword 100 300
+text Declares a type of named fields; its name is then also its constructor.
+example struct Ray { vec3 origin; vec3 dir; };
+
+attribute qualifier 100
+text An input of a vertex shader, one value per vertex. A fragment shader cannot use it.
+note 3.00 reserves the word; a vertex shader there uses in.
+
+varying qualifier 100
+text A value the vertex shader writes and the fragment shader reads, blended across the triangle.
+note 3.00 reserves the word: it is out in the vertex shader and in in the fragment shader.
+
+centroid qualifier 300
+text With in or out: with multisampling, the value is taken at a point inside the triangle's covered part of the pixel.
+
+in qualifier 100 300
+text A parameter copied into the function, the default. In 3.00 also an input of the fragment shader from the vertex shader.
+example float shade(in vec3 n) {
+
+out qualifier 100 300
+text A parameter the function writes for the caller. In 3.00 also an output of the fragment shader, such as its colour.
+example out vec4 fragColor;
+
+inout qualifier 100 300
+text A parameter copied in and written back to the caller at the end.
+example void rotate(inout vec2 p, float a) {
+
+uniform qualifier 100 300
+text A value the app sets, the same for every pixel of a frame. ShaderEditor fills its own uniforms by name.
+example uniform float time;
+
+flat qualifier 300
+text With in or out: no blending; the value of one vertex is used for the whole triangle. Integer inputs need it.
+
+smooth qualifier 300
+text With in or out: blended across the triangle, corrected for perspective; the default.
+
+layout qualifier 300
+text Sets where an input or output goes; layout(location = 1) writes an output to the second draw buffer.
+example layout(location = 0) out vec4 fragColor;
+
+invariant qualifier 100 300
+text An output computed the same way in every program that writes it, so that equal inputs give equal results.
+
+const qualifier 100 300
+text A value fixed when the shader compiles, or a parameter the function does not change.
+example const float PI = 3.14159265;
+
+highp keyword 100 300
+text The highest precision; in 3.00 floats and ints of 32 bits.
+note A fragment shader in 1.00 may lack it; GL_FRAGMENT_PRECISION_HIGH is defined where it has it.
+example #ifdef GL_FRAGMENT_PRECISION_HIGH
+
+mediump keyword 100 300
+text Medium precision: floats up to at least 16384 with about 3 decimal digits.
+note Enough for colours and positions on screen; long times and large coordinates lose detail.
+
+lowp keyword 100 300
+text Low precision: floats at least from -2 to 2 in steps of 1/256, enough for a colour.
+
+precision keyword 100 300
+form precision <highp, mediump or lowp> <type>;
+text Sets the precision of a type for every later declaration that names none.
+note A fragment shader has no default for float: without this statement every float needs its own.
+example precision mediump float;
+
+while keyword 100 300
+text Repeats the statement as long as the condition is true; the condition is checked first.
+note A 1.00 GPU does not have to support while; for with a constant bound always works.
+
+do keyword 100 300
+text Runs the statement, then repeats it while the condition after while is true.
+note A 1.00 GPU does not have to support do; for with a constant bound always works.
+example do { p *= 0.5; } while (length(p) > 1.0);
+
+for keyword 100 300
+text Repeats the statement: for (start; condition; step).
+note 1.00 only promises loops of one int or float counter, compared with a constant and changed by a constant.
+example for (int i = 0; i < 8; i++) {
+
+break keyword 100 300
+text Leaves the innermost loop, or in 3.00 a switch.
+
+continue keyword 100 300
+text Skips the rest of this round of the innermost loop.
+
+if keyword 100 300
+text Runs the statement only when the bool condition is true.
+example if (d < 0.0) {
+
+else keyword 100 300
+text What runs when the condition of the if before it is false.
+
+discard keyword 100 300
+text Drops the current pixel: nothing is written for it. Fragment shaders only.
+example if (alpha < 0.5) discard;
+
+return keyword 100 300
+text Leaves the function, with the value it returns unless it is void.
+
+switch keyword 300
+text Jumps to the case label equal to an int or uint value, or to default.
+note 1.00 reserves the word.
+example switch (mode) { case 0: c = a; break; default: c = b; }
+
+case keyword 300
+text A label of a switch: where to go on for this value.
+
+default keyword 300
+text The label of a switch for every value no case names.
+
+gl_FragCoord variable 100 300
+form vec4 gl_FragCoord
+text The pixel's place in the window: .xy in pixels, (0.5, 0.5) at the centre of the bottom-left pixel; .z its depth.
+note It is mediump in 1.00 and highp in 3.00.
+example vec2 uv = gl_FragCoord.xy / resolution.xy;
+
+gl_FrontFacing variable 100 300
+form bool gl_FrontFacing
+text true when the triangle being drawn faces the viewer.
+
+gl_FragColor variable 100
+form vec4 gl_FragColor
+text The colour a 1.00 fragment shader writes for its pixel.
+note 3.00 has no gl_FragColor: declare your own output.
+example gl_FragColor = vec4(color, 1.0);
+
+gl_FragData variable 100
+form vec4 gl_FragData[gl_MaxDrawBuffers]
+text The colours a 1.00 fragment shader writes, one per draw buffer; a shader writes this or gl_FragColor.
+
+gl_FragDepth variable 300
+form float gl_FragDepth
+text The depth to store for this pixel; without a write, gl_FragCoord.z is stored.
+
+gl_PointCoord variable 100 300
+form vec2 gl_PointCoord
+text Where in a drawn point this pixel lies, from 0 to 1 across.
+
+gl_DepthRange variable 100 300
+form gl_DepthRangeParameters gl_DepthRange
+text The depth range: .near, .far, and .diff, which is far - near.
+
+gl_MaxVertexAttribs constant 100 300
+form const int gl_MaxVertexAttribs
+text How many vec4 inputs a vertex shader may have: at least 8 in 1.00, 16 in 3.00.
+
+gl_MaxVertexUniformVectors constant 100 300
+form const int gl_MaxVertexUniformVectors
+text How many vec4 of uniforms a vertex shader may use: at least 128 in 1.00, 256 in 3.00.
+
+gl_MaxVaryingVectors constant 100
+form const int gl_MaxVaryingVectors
+text How many vec4 of varyings a program may pass on: at least 8.
+
+gl_MaxVertexOutputVectors constant 300
+form const int gl_MaxVertexOutputVectors
+text How many vec4 of outputs a vertex shader may have: at least 16.
+
+gl_MaxFragmentInputVectors constant 300
+form const int gl_MaxFragmentInputVectors
+text How many vec4 of inputs a fragment shader may have: at least 15.
+
+gl_MaxVertexTextureImageUnits constant 100 300
+form const int gl_MaxVertexTextureImageUnits
+text How many textures a vertex shader may read: at least 0 in 1.00, 16 in 3.00.
+
+gl_MaxCombinedTextureImageUnits constant 100 300
+form const int gl_MaxCombinedTextureImageUnits
+text How many textures a program may read in all: at least 8 in 1.00, 32 in 3.00.
+
+gl_MaxTextureImageUnits constant 100 300
+form const int gl_MaxTextureImageUnits
+text How many textures a fragment shader may read: at least 8 in 1.00, 16 in 3.00.
+
+gl_MaxFragmentUniformVectors constant 100 300
+form const int gl_MaxFragmentUniformVectors
+text How many vec4 of uniforms a fragment shader may use: at least 16 in 1.00, 224 in 3.00.
+
+gl_MaxDrawBuffers constant 100 300
+form const int gl_MaxDrawBuffers
+text How many outputs a fragment shader may write at once: at least 1 in 1.00, 4 in 3.00.
+
+gl_MinProgramTexelOffset constant 300
+form const int gl_MinProgramTexelOffset
+text The smallest offset textureOffset and its kin take: at most -8.
+
+gl_MaxProgramTexelOffset constant 300
+form const int gl_MaxProgramTexelOffset
+text The largest offset textureOffset and its kin take: at least 7.
+
+radians function 100 300
+form T radians(T degrees)
+detail T is float, vec2, vec3 or vec4.
+text Degrees turned into radians: degrees * PI / 180.
+example float a = radians(45.0);
+
+degrees function 100 300
+form T degrees(T radians)
+detail T is float, vec2, vec3 or vec4.
+text Radians turned into degrees: radians * 180 / PI.
+
+sin function 100 300
+form T sin(T angle)
+detail T is float, vec2, vec3 or vec4.
+text The sine of an angle in radians, from -1 to 1.
+example float wave = 0.5 + 0.5 * sin(time);
+
+cos function 100 300
+form T cos(T angle)
+detail T is float, vec2, vec3 or vec4.
+text The cosine of an angle in radians, from -1 to 1.
+example vec2 dir = vec2(cos(a), sin(a));
+
+tan function 100 300
+form T tan(T angle)
+detail T is float, vec2, vec3 or vec4.
+text The tangent of an angle in radians.
+
+asin function 100 300
+form T asin(T x)
+detail T is float, vec2, vec3 or vec4.
+text The angle whose sine is x, from -PI/2 to PI/2.
+note Undefined when x is outside -1 to 1.
+
+acos function 100 300
+form T acos(T x)
+detail T is float, vec2, vec3 or vec4.
+text The angle whose cosine is x, from 0 to PI.
+note Undefined when x is outside -1 to 1.
+
+atan function 100 300
+form T atan(T y, T x)
+form T atan(T y_over_x)
+detail T is float, vec2, vec3 or vec4.
+text The angle of the point (x, y), from -PI to PI; with one argument, from -PI/2 to PI/2.
+note y comes first. Undefined when x and y are both 0.
+example float angle = atan(p.y, p.x);
+
+sinh function 300
+form T sinh(T x)
+detail T is float, vec2, vec3 or vec4.
+text The hyperbolic sine: (exp(x) - exp(-x)) / 2.
+
+cosh function 300
+form T cosh(T x)
+detail T is float, vec2, vec3 or vec4.
+text The hyperbolic cosine: (exp(x) + exp(-x)) / 2.
+
+tanh function 300
+form T tanh(T x)
+detail T is float, vec2, vec3 or vec4.
+text The hyperbolic tangent: sinh(x) / cosh(x), from -1 to 1; a soft limit.
+
+asinh function 300
+form T asinh(T x)
+detail T is float, vec2, vec3 or vec4.
+text The inverse of sinh.
+
+acosh function 300
+form T acosh(T x)
+detail T is float, vec2, vec3 or vec4.
+text The inverse of cosh, 0 or more.
+note Undefined when x is under 1.
+
+atanh function 300
+form T atanh(T x)
+detail T is float, vec2, vec3 or vec4.
+text The inverse of tanh.
+note Undefined when x is -1 or less, or 1 or more.
+
+pow function 100 300
+form T pow(T x, T y)
+detail T is float, vec2, vec3 or vec4.
+text x to the power y.
+note Undefined when x is negative, or 0 with y 0 or less.
+example vec3 gamma = pow(color, vec3(1.0 / 2.2));
+
+exp function 100 300
+form T exp(T x)
+detail T is float, vec2, vec3 or vec4.
+text e to the power x.
+example float fade = exp(-3.0 * d);
+
+log function 100 300
+form T log(T x)
+detail T is float, vec2, vec3 or vec4.
+text The natural logarithm of x, the inverse of exp.
+note Undefined when x is 0 or less.
+
+exp2 function 100 300
+form T exp2(T x)
+detail T is float, vec2, vec3 or vec4.
+text 2 to the power x.
+
+log2 function 100 300
+form T log2(T x)
+detail T is float, vec2, vec3 or vec4.
+text The base 2 logarithm of x, the inverse of exp2.
+note Undefined when x is 0 or less.
+
+sqrt function 100 300
+form T sqrt(T x)
+detail T is float, vec2, vec3 or vec4.
+text The square root of x.
+note Undefined when x is negative.
+
+inversesqrt function 100 300
+form T inversesqrt(T x)
+detail T is float, vec2, vec3 or vec4.
+text 1 divided by the square root of x.
+note Undefined when x is 0 or less.
+
+abs function 100 300
+form T abs(T x)
+detail T is float, vec2, vec3 or vec4; in 3.00 also int or ivec.
+text x without its sign.
+example float ring = abs(length(p) - 0.3);
+
+sign function 100 300
+form T sign(T x)
+detail T is float, vec2, vec3 or vec4; in 3.00 also int or ivec.
+text 1 for a positive x, -1 for a negative one, 0 for 0.
+
+floor function 100 300
+form T floor(T x)
+detail T is float, vec2, vec3 or vec4.
+text The largest whole number not above x: floor(-1.5) is -2.0.
+example vec2 cell = floor(uv * 8.0);
+
+trunc function 300
+form T trunc(T x)
+detail T is float, vec2, vec3 or vec4.
+text x without its fraction, towards 0: trunc(-1.5) is -1.0.
+
+round function 300
+form T round(T x)
+detail T is float, vec2, vec3 or vec4.
+text The whole number nearest to x; which way 0.5 goes is up to the GPU.
+
+roundEven function 300
+form T roundEven(T x)
+detail T is float, vec2, vec3 or vec4.
+text The whole number nearest to x, with 0.5 going to the even one: 2.5 gives 2.0.
+
+ceil function 100 300
+form T ceil(T x)
+detail T is float, vec2, vec3 or vec4.
+text The smallest whole number not below x: ceil(1.2) is 2.0.
+
+fract function 100 300
+form T fract(T x)
+detail T is float, vec2, vec3 or vec4.
+text The part of x after floor(x), from 0 up to 1; it repeats a pattern every 1.0.
+example vec2 tile = fract(uv * 4.0);
+
+mod function 100 300
+form T mod(T x, T y)
+form T mod(T x, float y)
+detail T is float, vec2, vec3 or vec4.
+text x - y * floor(x / y): what is left of x after whole steps of y, with y's sign.
+example float stripe = mod(gl_FragCoord.x, 20.0);
+
+modf function 300
+form T modf(T x, out T i)
+detail T is float, vec2, vec3 or vec4.
+text Splits x: returns the fraction and writes the whole part to i, both with x's sign.
+
+min function 100 300
+form T min(T x, T y)
+form T min(T x, float y)
+detail T is float, vec2, vec3 or vec4; in 3.00 also int, ivec, uint or uvec, with a scalar of the same kind.
+text The smaller of x and y, for each component.
+example float d = min(circle, box);
+
+max function 100 300
+form T max(T x, T y)
+form T max(T x, float y)
+detail T is float, vec2, vec3 or vec4; in 3.00 also int, ivec, uint or uvec, with a scalar of the same kind.
+text The larger of x and y, for each component.
+example float light = max(dot(n, l), 0.0);
+
+clamp function 100 300
+form T clamp(T x, T minVal, T maxVal)
+form T clamp(T x, float minVal, float maxVal)
+detail T is float, vec2, vec3 or vec4; in 3.00 also int, ivec, uint or uvec, with scalars of the same kind.
+text x kept between minVal and maxVal: min(max(x, minVal), maxVal).
+note Undefined when minVal is above maxVal.
+example color = clamp(color, 0.0, 1.0);
+
+mix function 100 300
+form T mix(T x, T y, T a)
+form T mix(T x, T y, float a)
+form T mix(T x, T y, B a)
+detail T is float, vec2, vec3 or vec4; B is bool or bvec of T's size, 3.00 only.
+text The blend x * (1 - a) + y * a: x at a = 0, y at a = 1.
+note With a bool a it picks, for each component, y where a is true and x where it is false.
+example vec3 c = mix(dark, light, t);
+
+step function 100 300
+form T step(T edge, T x)
+form T step(float edge, T x)
+detail T is float, vec2, vec3 or vec4.
+text 0 when x is below edge, else 1.
+example float inside = step(length(p), 0.3);
+
+smoothstep function 100 300
+form T smoothstep(T edge0, T edge1, T x)
+form T smoothstep(float edge0, float edge1, T x)
+detail T is float, vec2, vec3 or vec4.
+text 0 when x is at or below edge0, 1 at or above edge1, and a smooth S-curve in between.
+note Undefined when edge0 is at or above edge1; for a falling edge write 1.0 - smoothstep(edge0, edge1, x).
+example float disc = 1.0 - smoothstep(0.29, 0.31, length(uv));
+
+isnan function 300
+form B isnan(T x)
+detail T is float, vec2, vec3 or vec4; B is bool or bvec of the same size.
+text true where x is not a number, as 0.0 / 0.0 gives.
+note GPUs may not keep NaNs at all; then it is always false.
+
+isinf function 300
+form B isinf(T x)
+detail T is float, vec2, vec3 or vec4; B is bool or bvec of the same size.
+text true where x is positive or negative infinity.
+
+floatBitsToInt function 300
+form I floatBitsToInt(T value)
+detail T is float or vec; I is int or ivec of the same size.
+text The bits of a highp float, read as a signed int.
+
+floatBitsToUint function 300
+form U floatBitsToUint(T value)
+detail T is float or vec; U is uint or uvec of the same size.
+text The bits of a highp float, read as an unsigned int; a start for hashing a float.
+
+intBitsToFloat function 300
+form T intBitsToFloat(I value)
+detail I is int or ivec; T is float or vec of the same size.
+text The bits of an int, read as a float; the inverse of floatBitsToInt.
+
+uintBitsToFloat function 300
+form T uintBitsToFloat(U value)
+detail U is uint or uvec; T is float or vec of the same size.
+text The bits of a uint, read as a float; the inverse of floatBitsToUint.
+
+packSnorm2x16 function 300
+form uint packSnorm2x16(vec2 v)
+text Two values from -1 to 1, each turned into 16 bits and packed into one uint.
+
+unpackSnorm2x16 function 300
+form vec2 unpackSnorm2x16(uint p)
+text The two values from -1 to 1 that packSnorm2x16 packed.
+
+packUnorm2x16 function 300
+form uint packUnorm2x16(vec2 v)
+text Two values from 0 to 1, each turned into 16 bits and packed into one uint.
+
+unpackUnorm2x16 function 300
+form vec2 unpackUnorm2x16(uint p)
+text The two values from 0 to 1 that packUnorm2x16 packed.
+
+packHalf2x16 function 300
+form uint packHalf2x16(vec2 v)
+text Two floats as 16-bit half floats, packed into one uint.
+
+unpackHalf2x16 function 300
+form vec2 unpackHalf2x16(uint v)
+text The two half floats that packHalf2x16 packed.
+
+length function 100 300
+form float length(T x)
+detail T is float, vec2, vec3 or vec4.
+text The length of the vector x: sqrt(dot(x, x)).
+example float d = length(uv - 0.5);
+
+distance function 100 300
+form float distance(T p0, T p1)
+detail T is float, vec2, vec3 or vec4.
+text The distance between the points p0 and p1: length(p0 - p1).
+example float d = distance(p, finger);
+
+dot function 100 300
+form float dot(T x, T y)
+detail T is float, vec2, vec3 or vec4.
+text The sum of the products of the components: x.x * y.x + x.y * y.y + ...
+note For two unit vectors it is the cosine of the angle between them.
+example float light = max(dot(normal, toLight), 0.0);
+
+cross function 100 300
+form vec3 cross(vec3 x, vec3 y)
+text A vector at a right angle to both x and y, as long as the area of their parallelogram.
+example vec3 right = normalize(cross(forward, up));
+
+normalize function 100 300
+form T normalize(T x)
+detail T is float, vec2, vec3 or vec4.
+text x shortened or stretched to length 1, in the same direction.
+note Undefined for a zero vector.
+example vec3 dir = normalize(vec3(uv, 1.0));
+
+faceforward function 100 300
+form T faceforward(T N, T I, T Nref)
+detail T is float, vec2, vec3 or vec4.
+text N when dot(Nref, I) is negative, else -N: N turned to face against I.
+
+reflect function 100 300
+form T reflect(T I, T N)
+detail T is float, vec2, vec3 or vec4.
+text The direction I bounced off a surface with the normal N: I - 2 * dot(N, I) * N.
+note N should have length 1.
+example vec3 r = reflect(rayDir, normal);
+
+refract function 100 300
+form T refract(T I, T N, float eta)
+detail T is float, vec2, vec3 or vec4.
+text The direction I bent into a surface with the normal N, by the ratio eta of the refractive indices; zero for total reflection.
+note I and N should have length 1.
+
+matrixCompMult function 100 300
+form M matrixCompMult(M x, M y)
+detail M is a matrix type; in 1.00 mat2, mat3 or mat4.
+text x and y multiplied component by component; x * y is the matrix product instead.
+
+outerProduct function 300
+form M outerProduct(C c, R r)
+detail C and R are vec2, vec3 or vec4; M has as many columns as R has components, and as many rows as C has.
+text The matrix product of the column c and the row r.
+
+transpose function 300
+form M transpose(N m)
+detail N is any matrix type; M has N's rows as columns.
+text m with its rows and columns swapped.
+
+determinant function 300
+form float determinant(M m)
+detail M is mat2, mat3 or mat4.
+text The determinant of m.
+
+inverse function 300
+form M inverse(M m)
+detail M is mat2, mat3 or mat4.
+text The matrix that undoes m.
+note Undefined when m has no inverse.
+
+lessThan function 100 300
+form B lessThan(V x, V y)
+detail V is a vec or ivec, in 3.00 also a uvec; B is a bvec of the same size.
+text For each component, whether x is below y.
+note < compares only scalars; for vectors use this.
+
+lessThanEqual function 100 300
+form B lessThanEqual(V x, V y)
+detail V is a vec or ivec, in 3.00 also a uvec; B is a bvec of the same size.
+text For each component, whether x is at or below y.
+
+greaterThan function 100 300
+form B greaterThan(V x, V y)
+detail V is a vec or ivec, in 3.00 also a uvec; B is a bvec of the same size.
+text For each component, whether x is above y.
+
+greaterThanEqual function 100 300
+form B greaterThanEqual(V x, V y)
+detail V is a vec or ivec, in 3.00 also a uvec; B is a bvec of the same size.
+text For each component, whether x is at or above y.
+
+equal function 100 300
+form B equal(V x, V y)
+detail V is a vec, ivec or bvec, in 3.00 also a uvec; B is a bvec of the same size.
+text For each component, whether x equals y; x == y says whether all of them do.
+
+notEqual function 100 300
+form B notEqual(V x, V y)
+detail V is a vec, ivec or bvec, in 3.00 also a uvec; B is a bvec of the same size.
+text For each component, whether x differs from y.
+
+any function 100 300
+form bool any(B x)
+detail B is bvec2, bvec3 or bvec4.
+text true when at least one component of x is true.
+example if (any(greaterThan(c, vec3(1.0)))) {
+
+all function 100 300
+form bool all(B x)
+detail B is bvec2, bvec3 or bvec4.
+text true when every component of x is true.
+
+not function 100 300
+form B not(B x)
+detail B is bvec2, bvec3 or bvec4.
+text Each component of x negated; ! negates only a bool.
+
+texture2D function 100
+form vec4 texture2D(sampler2D s, vec2 P)
+form vec4 texture2D(sampler2D s, vec2 P, float bias)
+text Reads the texture at P, which runs from 0 to 1 across the image, filtered as the texture is set up.
+note 3.00 calls it texture.
+example vec4 c = texture2D(noise, uv);
+
+texture2DProj function 100
+form vec4 texture2DProj(sampler2D s, vec3 P)
+form vec4 texture2DProj(sampler2D s, vec4 P)
+detail Each form takes an optional float bias last.
+text Reads the texture at P.xy divided by P's last component.
+note 3.00 calls it textureProj.
+
+textureCube function 100
+form vec4 textureCube(samplerCube s, vec3 P)
+form vec4 textureCube(samplerCube s, vec3 P, float bias)
+text Reads the cube map in the direction P.
+note 3.00 calls it texture.
+example vec4 sky = textureCube(cube, reflect(dir, n));
+
+texture function 300
+form vec4 texture(sampler2D s, vec2 P)
+form vec4 texture(samplerCube s, vec3 P)
+form vec4 texture(sampler3D s, vec3 P)
+form float texture(sampler2DShadow s, vec3 P)
+detail Each takes an optional float bias last. More forms read arrays and shadow cube maps; an isampler or usampler gives ivec4 or uvec4.
+text Reads the texture at P, filtered as it is set up. For a 2D texture P runs from 0 to 1 across the image; for a cube map it is a direction.
+note bias shifts the level of detail. In 1.00 it is texture2D and textureCube.
+example vec4 c = texture(noise, uv);
+
+textureProj function 300
+form vec4 textureProj(sampler2D s, vec3 P)
+form vec4 textureProj(sampler2D s, vec4 P)
+form vec4 textureProj(sampler3D s, vec4 P)
+detail Each takes an optional float bias last; there is a form for sampler2DShadow.
+text texture, with P divided by its last component first.
+
+textureLod function 300
+form vec4 textureLod(sampler2D s, vec2 P, float lod)
+form vec4 textureLod(samplerCube s, vec3 P, float lod)
+detail There are also forms for 3D, array and shadow samplers.
+text texture, at the mipmap level lod: 0 is the full image, 1 half its size.
+example vec4 blurred = textureLod(image, uv, 3.0);
+
+textureOffset function 300
+form vec4 textureOffset(sampler2D s, vec2 P, ivec2 offset)
+detail Each takes an optional float bias last; also for 3D, array and shadow samplers.
+text texture, moved by offset whole texels; offset must be a constant.
+
+texelFetch function 300
+form vec4 texelFetch(sampler2D s, ivec2 P, int lod)
+detail Also for 3D and array samplers.
+text The one texel at the whole-number position P of level lod, without filtering.
+example vec4 c = texelFetch(state, ivec2(gl_FragCoord.xy), 0);
+
+texelFetchOffset function 300
+form vec4 texelFetchOffset(sampler2D s, ivec2 P, int lod, ivec2 offset)
+detail Also for 3D and array samplers.
+text texelFetch, moved by offset texels; offset must be a constant.
+
+textureProjOffset function 300
+form vec4 textureProjOffset(sampler2D s, vec3 P, ivec2 offset)
+detail Also with a vec4 P, for 3D and shadow samplers, and with an optional bias last.
+text textureProj, moved by offset texels.
+
+textureLodOffset function 300
+form vec4 textureLodOffset(sampler2D s, vec2 P, float lod, ivec2 offset)
+detail Also for 3D, array and shadow samplers.
+text textureLod, moved by offset texels.
+
+textureProjLod function 300
+form vec4 textureProjLod(sampler2D s, vec3 P, float lod)
+detail Also with a vec4 P and for 3D and shadow samplers.
+text textureProj at the mipmap level lod.
+
+textureProjLodOffset function 300
+form vec4 textureProjLodOffset(sampler2D s, vec3 P, float lod, ivec2 offset)
+detail Also with a vec4 P and for 3D and shadow samplers.
+text textureProjLod, moved by offset texels.
+
+textureGrad function 300
+form vec4 textureGrad(sampler2D s, vec2 P, vec2 dPdx, vec2 dPdy)
+detail Also for 3D, cube, array and shadow samplers.
+text texture, with the level of detail chosen from the given derivatives of P instead of the GPU's own.
+
+textureGradOffset function 300
+form vec4 textureGradOffset(sampler2D s, vec2 P, vec2 dPdx, vec2 dPdy, ivec2 offset)
+detail Also for 3D, array and shadow samplers.
+text textureGrad, moved by offset texels.
+
+textureProjGrad function 300
+form vec4 textureProjGrad(sampler2D s, vec3 P, vec2 dPdx, vec2 dPdy)
+detail Also with a vec4 P and for 3D and shadow samplers.
+text textureProj with given derivatives, as textureGrad.
+
+textureProjGradOffset function 300
+form vec4 textureProjGradOffset(sampler2D s, vec3 P, vec2 dPdx, vec2 dPdy, ivec2 offset)
+detail Also with a vec4 P and for 3D and shadow samplers.
+text textureProjGrad, moved by offset texels.
+
+textureSize function 300
+form ivec2 textureSize(sampler2D s, int lod)
+form ivec2 textureSize(samplerCube s, int lod)
+form ivec3 textureSize(sampler3D s, int lod)
+detail Also for array and shadow samplers.
+text The size in texels of level lod of the texture.
+example vec2 px = 1.0 / vec2(textureSize(image, 0));
+
+dFdx function 300
+form T dFdx(T p)
+detail T is float, vec2, vec3 or vec4.
+text How much p changes from this pixel to the next one to the right.
+note In 1.00 only with #extension GL_OES_standard_derivatives : enable.
+
+dFdy function 300
+form T dFdy(T p)
+detail T is float, vec2, vec3 or vec4.
+text How much p changes from this pixel to the next one up.
+note In 1.00 only with #extension GL_OES_standard_derivatives : enable.
+
+fwidth function 300
+form T fwidth(T p)
+detail T is float, vec2, vec3 or vec4.
+text abs(dFdx(p)) + abs(dFdy(p)): how much p changes over one pixel; good for edges one pixel wide.
+note In 1.00 only with #extension GL_OES_standard_derivatives : enable.
+example float edge = smoothstep(-fwidth(d), fwidth(d), d);
