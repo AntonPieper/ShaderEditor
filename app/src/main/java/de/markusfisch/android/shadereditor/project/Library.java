@@ -2,6 +2,8 @@ package de.markusfisch.android.shadereditor.project;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -205,10 +207,122 @@ public final class Library {
 	}
 
 	/** Return the library's files, of a folder that is made if needed. */
-	ProjectFiles files() {
+	DirectoryProjectFiles files() {
 		File folder = folder();
 		folder.mkdirs();
 		return new DirectoryProjectFiles(folder);
+	}
+
+	/**
+	 * What an export wrote: how many files, and how many files and
+	 * folders with a dot name it left out; or why nothing was written.
+	 */
+	public record Exported(int files, int hidden, String problem) {
+	}
+
+	/**
+	 * Write the library to out as one zip, see {@link LibraryArchive}:
+	 * its files as they are saved, and what is kept beside them. What
+	 * was written to out before a problem is of no use.
+	 *
+	 * @param app  the version of the app
+	 * @param time the time of the export
+	 */
+	Exported export(String app, long time, OutputStream out,
+			Relocation relocation) {
+		String barrier = enter(relocation);
+		if (barrier != null) {
+			return new Exported(0, 0, barrier);
+		}
+		LibrarySettings.State settings;
+		try {
+			settings = settings().read();
+		} catch (IOException e) {
+			return new Exported(0, 0, "the settings of the library cannot " +
+					"be read");
+		}
+		try {
+			LibraryExport.Written written = LibraryExport.write(files(),
+					settings, app, time, LibraryArchive.Limits.DEFAULT, out);
+			return new Exported(written.files(), written.hidden(), null);
+		} catch (LibraryArchive.Refused e) {
+			return new Exported(0, 0, e.getMessage());
+		} catch (IOException e) {
+			return new Exported(0, 0, "the file cannot be written" +
+					(e.getMessage() != null ? ": " + e.getMessage() : ""));
+		}
+	}
+
+	/**
+	 * What an import did: how many shaders and other files it made, how
+	 * many were there already, what came in under another name because
+	 * its own was taken, by its path in the archive, the files the
+	 * library has with other bytes, which were kept as they are, how
+	 * many entries with a dot name were skipped, and whether the
+	 * qualities of the new files could not be kept. With a problem
+	 * nothing was imported, and the library is as it was.
+	 */
+	public record Imported(int shaders, int files, int there,
+			Map<ProjectPath, ProjectPath> renamed, List<ProjectPath> kept,
+			int hidden, boolean unkept, String problem) {
+		public Imported {
+			renamed = Collections.unmodifiableMap(
+					new LinkedHashMap<>(renamed));
+			kept = List.copyOf(kept);
+		}
+
+		static Imported refused(String problem) {
+			return new Imported(0, 0, 0, Map.of(), List.of(), 0, false,
+					problem);
+		}
+	}
+
+	/**
+	 * Add the files of the zip in to the library, see
+	 * {@link LibraryImport} and {@link LibraryMerge}: it is read whole
+	 * into staging, a folder of its own that is removed again, and
+	 * only an archive that is good as a whole is added. It may unpack
+	 * to half of the room there is, as its files are there twice until
+	 * it is done.
+	 */
+	Imported take(InputStream in, File staging, Relocation relocation) {
+		String barrier = enter(relocation);
+		if (barrier != null) {
+			return Imported.refused(barrier);
+		}
+		// One left by a process that died.
+		remove(staging);
+		DirectoryProjectFiles files = files();
+		File folder = folder();
+		LibraryArchive.Limits most = LibraryArchive.Limits.DEFAULT;
+		long room = folder.getUsableSpace() / 2;
+		try {
+			LibraryImport.Archive archive = LibraryImport.read(in, staging,
+					new LibraryArchive.Limits(most.entries(),
+							Math.min(most.bytes(), room)));
+			LibraryMerge.Result merged = LibraryMerge.place(files, archive,
+					settings(), (path, time) -> new File(folder,
+							path.toString()).setLastModified(time));
+			return new Imported(merged.shaders(), merged.files(),
+					merged.there(), merged.renamed(), merged.kept(),
+					archive.hidden(), merged.unkept(), merged.problem());
+		} catch (LibraryArchive.TooLarge e) {
+			return Imported.refused(e.getMessage() + (room < most.bytes()
+					? ", and this phone has no room for more"
+					: ""));
+		} catch (LibraryArchive.Refused e) {
+			return Imported.refused(e.getMessage());
+		} finally {
+			remove(staging);
+		}
+	}
+
+	private static void remove(File file) {
+		File[] inside = file.listFiles();
+		for (File child : inside != null ? inside : new File[0]) {
+			remove(child);
+		}
+		file.delete();
 	}
 
 	/**

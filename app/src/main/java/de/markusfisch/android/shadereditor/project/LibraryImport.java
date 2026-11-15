@@ -162,8 +162,7 @@ final class LibraryImport {
 			throws IOException, Refused {
 		for (int n; (n = in.read(buffer)) > -1; ) {
 			if ((left -= n) < 0) {
-				throw new Refused("it holds more than " +
-						(limits.bytes() >> 20) + " MiB");
+				throw new LibraryArchive.TooLarge(limits);
 			}
 			if (out != null) {
 				out.write(buffer, 0, n);

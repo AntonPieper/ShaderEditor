@@ -9,6 +9,8 @@ import android.os.Looper;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.legacy.KeptText;
@@ -438,6 +441,101 @@ public final class Projects {
 				return new Imported(created.path(), converted.name(),
 						converted.warnings(), created.problem());
 			}, problem -> new Imported(null, null, List.of(), problem));
+			main.post(() -> done.done(imported));
+		});
+	}
+
+	/** Where an export is written to, opened on the queue. */
+	public interface Output {
+		OutputStream open() throws IOException;
+	}
+
+	/** Where an import is read from, opened on the queue. */
+	public interface Input {
+		InputStream open() throws IOException;
+	}
+
+	/**
+	 * What an export of the library did, see {@link Library.Exported},
+	 * and what is not in it: how many of its files have text that is
+	 * not saved, which were written as saved last, and how many
+	 * shaders are still in the database.
+	 */
+	public record Exported(Library.Exported written, int unsaved,
+			int unmoved) {
+	}
+
+	/**
+	 * Write the library as one zip to output, on the queue, so that
+	 * nothing changes a file between two that are written: see
+	 * {@link Library#export}. The database is only read. With a
+	 * problem, what output holds is of no use.
+	 *
+	 * @param app the version of the app
+	 */
+	public void exportLibrary(DataSource database, String app,
+			Output output, Callback<Exported> done) {
+		QUEUE.execute(() -> {
+			Exported exported = guarded(() -> {
+				Library library = library();
+				Library.Exported written = null;
+				try (OutputStream out = output.open()) {
+					written = out != null
+							? library.export(app, System.currentTimeMillis(),
+									out, this::relocated)
+							: new Library.Exported(0, 0,
+									"the file cannot be opened");
+				} catch (IOException e) {
+					written = new Library.Exported(0, 0, "the file cannot " +
+							"be written: " + e.getMessage());
+				}
+				if (written.problem() != null) {
+					return new Exported(written, 0, 0);
+				}
+				Locator locator = libraryLocator();
+				String id = locator != null ? sessions.find(locator) : null;
+				MoveNote note = library.note();
+				int unmoved = 0;
+				for (DataRecords.ShaderRow row :
+						database.shader.getShaderRows()) {
+					unmoved += note.moved(row.id()) == null ? 1 : 0;
+				}
+				return new Exported(written, id != null
+						? sessions.unsaved(id).size()
+						: 0, unmoved);
+			}, problem -> new Exported(new Library.Exported(0, 0, problem),
+					0, 0));
+			main.post(() -> done.done(exported));
+		});
+	}
+
+	/**
+	 * Add the files of the zip input gives to the library, on the
+	 * queue: see {@link Library#take}. It only adds, and an archive
+	 * that is not good as a whole adds nothing. The library's project
+	 * sees the new files once it looks again, as with any change made
+	 * elsewhere: {@link OpenProject#refresh}.
+	 */
+	public void importLibrary(Input input, Callback<Library.Imported> done) {
+		QUEUE.execute(() -> {
+			Library.Imported imported = guarded(() -> {
+				Library.Imported taken = null;
+				try (InputStream in = input.open()) {
+					taken = in != null
+							? library().take(in, new File(
+									context.getCacheDir(), "library-import"),
+									this::relocated)
+							: Library.Imported.refused(
+									"the file cannot be opened");
+				} catch (IOException e) {
+					// What was read whole is not undone by its close.
+					if (taken == null) {
+						taken = Library.Imported.refused("the file cannot " +
+								"be read: " + e.getMessage());
+					}
+				}
+				return taken;
+			}, Library.Imported::refused);
 			main.post(() -> done.done(imported));
 		});
 	}

@@ -77,8 +77,7 @@ final class LibraryExport {
 			try (InputStream in = new FileInputStream(file)) {
 				for (int n; (n = in.read(buffer)) > -1; ) {
 					if ((left -= n) < 0) {
-						throw new Refused("it holds more than " +
-								(limits.bytes() >> 20) + " MiB");
+						throw new LibraryArchive.TooLarge(limits);
 					}
 					zip.write(buffer, 0, n);
 				}
