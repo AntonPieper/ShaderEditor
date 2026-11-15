@@ -30,7 +30,7 @@ public class NavigationTest {
 	public void aTapOnAFolderOrImageNeverOpensTheEditor() {
 		assertEquals(Tap.ENTER, Tap.of(Row.Kind.FOLDER, false));
 		assertEquals(Tap.SHOW_IMAGE, Tap.of(Row.Kind.IMAGE, true));
-		assertEquals(Tap.NOTHING, Tap.of(Row.Kind.OTHER, false));
+		assertEquals(Tap.SAY_WHY, Tap.of(Row.Kind.OTHER, false));
 	}
 
 	@Test

@@ -38,7 +38,8 @@ public record Recent(String key, boolean file, String name,
 					Row.Kind.FOLDER,
 					Face.of(opened.file
 							? Face.Of.SINGLE_FILE
-							: Face.Of.FOLDER, pictures.get(opened.key)),
+							: Face.Of.FOLDER, opened.name,
+							pictures.get(opened.key), true),
 					opened.name,
 					opened.detail(singleFile, lost),
 					opened.opened,

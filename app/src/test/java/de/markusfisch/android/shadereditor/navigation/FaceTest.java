@@ -8,42 +8,104 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import de.markusfisch.android.shadereditor.navigation.Row.Picture.Icon;
+import de.markusfisch.android.shadereditor.navigation.Row.Picture.Spoken;
+
+/** What stands in front of a row, by what it is and what is known. */
 public class FaceTest {
 	private static final byte[] PNG = {1, 2, 3};
 
-	// A picture wherever one is known: a shader that ran, what runs in
-	// a folder, in the library, in the examples.
+	// A shader that ran shows its picture edge to edge, wherever it is.
 	@Test
-	public void aKnownPictureStandsInFront() {
-		for (Face.Of of : new Face.Of[]{Face.Of.LIBRARY, Face.Of.EXAMPLES,
-				Face.Of.FOLDER, Face.Of.SINGLE_FILE, Face.Of.FILE}) {
-			assertArrayEquals(of.name(), PNG, Face.of(of, PNG).png());
+	public void aShaderThatRanShowsItsPicture() {
+		Row.Picture face = Face.of(Row.Kind.TEXT, "Aurora.frag", PNG);
+		assertArrayEquals(PNG, face.png());
+		assertFalse(face.frame());
+		assertEquals(Spoken.SHADER, face.spoken());
+		assertArrayEquals(PNG, Face.of(Face.Of.SINGLE_FILE, "wave.frag", PNG,
+				true).png());
+	}
+
+	// One that never ran shows the empty place of its picture, with
+	// nothing in it: the play symbol means only "this runs now".
+	@Test
+	public void aShaderThatNeverRanIsAnEmptyFrame() {
+		for (String name : new String[]{"Grüße.frag", "blur.FS", "x.fsh"}) {
+			Row.Picture face = Face.of(Row.Kind.TEXT, name, null);
+			assertTrue(name, face.frame());
+			assertNull(face.png());
+			assertFalse(face.own());
+			assertEquals(Spoken.SHADER_NOT_RUN, face.spoken());
 		}
-		assertArrayEquals(PNG, Face.of(Row.Kind.SHADER, PNG).png());
 	}
 
-	// Without one, an icon of what it is.
+	// Text without a picture: a stock icon without a tile, no letters.
 	@Test
-	public void elseAnIconOfWhatItIs() {
-		assertIcon(Row.Picture.Icon.LIBRARY, Face.of(Face.Of.LIBRARY, null));
-		assertIcon(Row.Picture.Icon.EXAMPLES,
-				Face.of(Face.Of.EXAMPLES, new byte[0]));
-		assertIcon(Row.Picture.Icon.FOLDER, Face.of(Row.Kind.FOLDER, null));
-		assertIcon(Row.Picture.Icon.SHADER, Face.of(Row.Kind.TEXT, null));
-		assertIcon(Row.Picture.Icon.SHADER,
-				Face.of(Face.Of.SINGLE_FILE, null));
+	public void textWithoutAPictureShowsTheIconOfItsKind() {
+		assertFace(Icon.CODE, Spoken.INCLUDE, false,
+				Face.of(Row.Kind.TEXT, "sdf.glsl", null));
+		assertFace(Icon.SETTINGS, Spoken.SETTINGS, false,
+				Face.of(Row.Kind.TEXT, "shader-project.json", null));
+		assertFace(Icon.DATA, Spoken.JSON, false,
+				Face.of(Row.Kind.TEXT, "palette.json", null));
+		assertFace(Icon.NOTES, Spoken.MARKDOWN, false,
+				Face.of(Row.Kind.TEXT, "README.md", null));
+		assertFace(Icon.FILE, Spoken.FILE, false,
+				Face.of(Row.Kind.TEXT, "LICENSE", null));
+		assertFace(Icon.FILE, Spoken.FILE, false,
+				Face.of(Row.Kind.TEXT, "notes.txt", null));
 	}
 
-	// An image is read small while its row is shown; the icon stands
-	// until then. A picture kept for it is not shown instead.
+	// Another shading language is code this app does not run: dimmed.
+	@Test
+	public void anotherLanguageIsDimmedCode() {
+		assertFace(Icon.CODE, Spoken.OTHER_LANGUAGE, true,
+				Face.of(Row.Kind.TEXT, "blur.wgsl", null));
+	}
+
+	// A file the editor cannot open is dimmed and says so.
+	@Test
+	public void aFileThatCannotBeOpenedIsDimmed() {
+		assertFace(Icon.FILE, Spoken.CANNOT_OPEN, true,
+				Face.of(Row.Kind.OTHER, "data.bin", null));
+		assertFace(Icon.IMAGE, Spoken.CANNOT_OPEN, true,
+				Face.of(Face.Of.IMAGE, "huge.png", null, false));
+		assertFace(Icon.FILE, Spoken.CANNOT_OPEN, true,
+				Face.of(Face.Of.FILE, "huge.frag", PNG, false));
+	}
+
+	// An image is its own picture, framed on a mat, read while its row
+	// is shown; a picture kept for it is not shown instead.
 	@Test
 	public void anImageIsItsOwnPicture() {
-		Row.Picture picture = Face.of(Row.Kind.IMAGE, PNG);
-		assertTrue(picture.own());
-		assertNull(picture.png());
-		assertEquals(Row.Picture.Icon.IMAGE, picture.icon());
-		assertFalse(Face.of(Row.Kind.SHADER, PNG).own());
-		assertFalse(Face.of(Row.Kind.FOLDER, null).own());
+		Row.Picture face = Face.of(Row.Kind.IMAGE, "noise.png", PNG);
+		assertTrue(face.own());
+		assertNull(face.png());
+		assertFalse(face.frame());
+		assertEquals(Icon.IMAGE, face.icon());
+		assertEquals(Spoken.IMAGE, face.spoken());
+	}
+
+	// A folder, also a place on the top level, shows the picture of
+	// what runs in it, else the folder icon.
+	@Test
+	public void aFolderShowsItsShader() {
+		assertArrayEquals(PNG, Face.of(Row.Kind.FOLDER, "Ink", PNG).png());
+		assertFace(Icon.FOLDER, Spoken.FOLDER, false,
+				Face.of(Row.Kind.FOLDER, "lib", null));
+		assertFace(Icon.LIBRARY, Spoken.FOLDER, false,
+				Face.of(Face.Of.LIBRARY, null, null, true));
+		assertFace(Icon.EXAMPLES, Spoken.FOLDER, false,
+				Face.of(Face.Of.EXAMPLES, null, new byte[0], true));
+		assertEquals(Spoken.FOLDER,
+				Face.of(Face.Of.LIBRARY, null, PNG, true).spoken());
+	}
+
+	@Test
+	public void showMoreHasNoFace() {
+		Row.Picture face = Face.of(Row.Kind.MORE, "Show more", PNG);
+		assertNull(face.png());
+		assertEquals(Spoken.NONE, face.spoken());
 	}
 
 	// On its mat an image is whole, in its own proportions.
@@ -78,16 +140,14 @@ public class FaceTest {
 				Face.place(0, 0, 84));
 	}
 
-	@Test
-	public void showMoreHasNoPicture() {
-		assertNull(Face.of(Row.Kind.MORE, PNG).png());
-	}
-
-	private static void assertIcon(Row.Picture.Icon icon,
-			Row.Picture picture) {
-		assertEquals(icon, picture.icon());
-		assertNull(picture.png());
-		assertEquals(0, picture.resource());
-		assertFalse(picture.own());
+	private static void assertFace(Icon icon, Spoken spoken, boolean dim,
+			Row.Picture face) {
+		assertEquals(icon, face.icon());
+		assertEquals(spoken, face.spoken());
+		assertEquals(dim, face.dim());
+		assertNull(face.png());
+		assertFalse(face.own());
+		assertFalse(face.frame());
+		assertEquals(0, face.resource());
 	}
 }

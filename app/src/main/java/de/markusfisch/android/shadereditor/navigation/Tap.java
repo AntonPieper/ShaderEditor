@@ -12,7 +12,9 @@ public enum Tap {
 	SHOW_IMAGE,
 	/** Shows more rows of the level. */
 	MORE,
-	/** Nothing: the editor cannot open the file. */
+	/** Says why the editor cannot open the file, or what it waits for. */
+	SAY_WHY,
+	/** Nothing: a heading. */
 	NOTHING;
 
 	/**
@@ -27,7 +29,7 @@ public enum Tap {
 			case SHADER -> inUse ? OPEN : OPEN_AND_RUN;
 			case TEXT -> OPEN;
 			case IMAGE -> SHOW_IMAGE;
-			case OTHER -> NOTHING;
+			case OTHER -> SAY_WHY;
 			case MORE -> MORE;
 		};
 	}
