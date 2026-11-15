@@ -581,6 +581,14 @@ public final class LibraryScreen implements ShaderScreen {
 		}
 	}
 
+	@Override
+	public void forgetErrors() {
+		if (open instanceof ProjectFile) {
+			files.onDiagnostics(List.of());
+		}
+		editorFragment.clearError();
+	}
+
 	// Nothing is drawn: ▶ goes wherever it stands.
 	private void showNothing() {
 		shaderViewManager.showNothing();
@@ -841,9 +849,11 @@ public final class LibraryScreen implements ShaderScreen {
 				file.setDrawing(drawing);
 				moving = false;
 				showOpen();
-				// The last build's, until the next one reports.
-				editorFragment.setErrors(file.getProject().diagnostics(),
-						file.getPath());
+				// The last build's, until the next one reports; that
+				// runs where the picture runs behind the code.
+				editorFragment.keepErrors(file.getProject().diagnostics(),
+						file.getPath(),
+						ShaderEditorApp.preferences.doesRunInBackground());
 				onChanged();
 				askToImportAgain();
 			}

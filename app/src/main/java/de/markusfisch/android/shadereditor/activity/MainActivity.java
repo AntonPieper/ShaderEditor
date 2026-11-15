@@ -230,6 +230,15 @@ public class MainActivity extends AppCompatActivity {
 			}
 
 			@Override
+			public void onNothingReported() {
+				runOnUiThread(() -> {
+					screen.forgetErrors();
+					showErrors.setVisibility(View.GONE);
+					shownWarnings = List.of();
+				});
+			}
+
+			@Override
 			public void onInfoLog(@NonNull List<ProjectDiagnostic> reported) {
 				runOnUiThread(() -> {
 					// A report of a build of what was open before is

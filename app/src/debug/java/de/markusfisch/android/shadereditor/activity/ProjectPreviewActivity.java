@@ -8,6 +8,7 @@ import android.util.Log;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
 import java.io.File;
@@ -30,6 +31,7 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.provider.UserFilesProvider;
+import de.markusfisch.android.shadereditor.fragment.ListedErrors;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
 
 /**
@@ -52,7 +54,8 @@ import de.markusfisch.android.shadereditor.widget.ErrorListModal;
  * "file".</li>
  * </ul>
  */
-public class ProjectPreviewActivity extends PreviewActivity {
+public class ProjectPreviewActivity extends PreviewActivity
+		implements ErrorListModal.Host {
 	public static final String FOLDER = "folder";
 
 	private static final String TAG = "ProjectHarness";
@@ -73,6 +76,8 @@ public class ProjectPreviewActivity extends PreviewActivity {
 						}
 					});
 	private DialogFragment errorList;
+	@NonNull
+	private List<ProjectDiagnostic> listed = List.of();
 	private Projects projects;
 	private OpenProject.Build build;
 	private OpenProject project;
@@ -296,9 +301,32 @@ public class ProjectPreviewActivity extends PreviewActivity {
 		if (diagnostics.isEmpty() || isFinishing()) {
 			return;
 		}
-		errorList = new ErrorListModal(diagnostics, (file, line) -> {
-		});
+		listed = diagnostics;
+		errorList = new ErrorListModal();
 		errorList.showNow(getSupportFragmentManager(), ErrorListModal.TAG);
+	}
+
+	@NonNull
+	@Override
+	public ListedErrors.State getListedState() {
+		return listed.isEmpty()
+				? ListedErrors.State.NONE
+				: ListedErrors.State.ERRORS;
+	}
+
+	@NonNull
+	@Override
+	public List<ProjectDiagnostic> getListedErrors() {
+		return listed;
+	}
+
+	@Override
+	public boolean showsLastPicture() {
+		return false;
+	}
+
+	@Override
+	public void onErrorChosen(@Nullable ProjectPath file, int line) {
 	}
 
 	private static ProjectPath path(String path) {

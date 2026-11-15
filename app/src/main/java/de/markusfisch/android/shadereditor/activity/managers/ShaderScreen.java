@@ -128,6 +128,12 @@ public interface ShaderScreen {
 	void showErrors(@NonNull List<ProjectDiagnostic> infoLog);
 
 	/**
+	 * Nothing runs: what a run reported is gone, and what the next one
+	 * reports is not known yet.
+	 */
+	void forgetErrors();
+
+	/**
 	 * Return whether diagnostic is about what is open, not of a build
 	 * of what was open before, whose report may come after.
 	 */
