@@ -15,14 +15,16 @@ import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
-import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.widget.ImageSheet;
 
 /**
- * The sheet of an image of a folder: what it looks like, which shader
- * that runs uses it, and what can be done with it. Insert as texture
- * is offered only where {@link InsertTexture#offer} says so; else one
- * sentence says why. Call it on the main thread.
+ * The sheet of an image of a folder: what it looks like, whether the
+ * shader that runs now uses it (only that one: which other shaders
+ * read it is not known without reading them all), and what can be
+ * done with it. Insert as texture is offered only where
+ * {@link InsertTexture#offer} says so, and Rename and Delete where its
+ * folder can be changed; else one sentence says why. Call it on the
+ * main thread.
  */
 final class ImageSheets {
 	/** What the editor has, as far as an image sheet asks. */
@@ -32,21 +34,13 @@ final class ImageSheets {
 		 * opened before with key, else null.
 		 */
 		@Nullable
-		Edited edited(@NonNull String key);
+		InsertTexture.Target edited(@NonNull String key);
 
 		/**
 		 * Add statement to the text in the editor as one step to undo,
 		 * and put the caret on the sampler name it declares.
 		 */
 		void insertTexture(@NonNull String statement, @NonNull String name);
-	}
-
-	/**
-	 * A file in the editor: its path, text, language, and whether it
-	 * can run, null while that is not known.
-	 */
-	record Edited(@NonNull ProjectPath path, @NonNull String text,
-			@NonNull ShaderLanguage language, @Nullable Boolean runs) {
 	}
 
 	/** Reads the image for its sheet, until the sheet goes. */
@@ -97,11 +91,8 @@ final class ImageSheets {
 			where += " · " + activity.getString(R.string.nav_used_by,
 					runs.substring(runs.lastIndexOf('/') + 1));
 		}
-		Edited edited = editor.edited(key);
-		InsertTexture.Offer offer = edited != null
-				? InsertTexture.offer(edited.path().getFileName(),
-						edited.language(), edited.runs())
-				: InsertTexture.Offer.NO_SHADER_HERE;
+		InsertTexture.Target edited = editor.edited(key);
+		InsertTexture.Offer offer = InsertTexture.offer(edited, path);
 		InsertTexture.Lines lines = offer == InsertTexture.Offer.OFFERED
 				? InsertTexture.of(edited.text(), edited.path().toString(),
 						path.toString())
@@ -113,12 +104,26 @@ final class ImageSheets {
 			case NOT_A_SHADER -> activity.getString(
 					R.string.nav_insert_not_shader,
 					edited.path().getFileName());
+			case READ_ONLY -> activity.getString(
+					R.string.nav_insert_read_only,
+					edited.path().getFileName());
+			case READS_ALREADY -> activity.getString(
+					R.string.nav_insert_reads_already,
+					edited.path().getFileName());
 		};
+		// Where Rename and Delete are not offered, why: its folder
+		// cannot be changed, or was not read yet, as for a file under
+		// Running.
+		String noChanges = row.actions().contains(Row.Action.RENAME)
+				? null
+				: source.isReadOnly()
+				? activity.getString(R.string.nav_image_read_only)
+				: activity.getString(R.string.nav_image_open_folder,
+						source.title(place.level()));
 		dismiss();
 		ImageSheet shown = new ImageSheet(activity, row.name(), where,
 				lines != null ? edited.path().getFileName() : null, says,
-				row.actions().contains(Row.Action.RENAME),
-				new ImageSheet.Listener() {
+				noChanges, new ImageSheet.Listener() {
 					@Override
 					public void onInsert() {
 						if (lines != null) {

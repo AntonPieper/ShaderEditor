@@ -22,7 +22,9 @@ import java.util.concurrent.RejectedExecutionException;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
+import de.markusfisch.android.shadereditor.editor.InsertTexture;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.project.FileRole;
 import de.markusfisch.android.shadereditor.project.Library;
 import de.markusfisch.android.shadereditor.project.LibraryMove;
 import de.markusfisch.android.shadereditor.project.OpenProject;
@@ -738,20 +740,29 @@ public final class LibraryScreen implements ShaderScreen {
 					// The file in the editor, for an image's sheet.
 					@Nullable
 					@Override
-					public ImageSheets.Edited edited(@NonNull String key) {
+					public InsertTexture.Target edited(@NonNull String key) {
 						if (!(open instanceof ProjectFile file) ||
 								!key.equals(files.key())) {
 							return null;
 						}
 						ProjectPath path = file.getPath();
 						String text = editorFragment.getText();
-						OpenProject.Runs runs = file.getProject().runs(path);
-						return new ImageSheets.Edited(path,
+						OpenProject project = file.getProject();
+						OpenProject.Runs runs = project.runs(path);
+						// Included by what runs: never the target.
+						boolean included = false;
+						for (OpenProject.Used use : project.used()) {
+							included |= use.path().equals(path) &&
+									use.role() != null &&
+									use.role().kind() == FileRole.Kind.INCLUDE;
+						}
+						return new InsertTexture.Target(path,
 								text != null ? text : "",
 								ShaderLanguage.of(path.toString()),
 								runs == OpenProject.Runs.UNKNOWN
 										? null
-										: runs == OpenProject.Runs.YES);
+										: runs == OpenProject.Runs.YES,
+								included, file.isReadOnly());
 					}
 
 					// As Add uniform adds a statement: one step to undo.
