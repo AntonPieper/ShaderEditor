@@ -68,6 +68,7 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
 import de.markusfisch.android.shadereditor.navigation.Face;
+import de.markusfisch.android.shadereditor.navigation.FolderListing;
 import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
@@ -1200,7 +1201,7 @@ public class NavigationDrawer implements ShaderList {
 						: activity.getString(R.string.library_moving));
 			}
 			case MORE -> {
-				if (folder != null && FolderSource.ALL_RUNNING.equals(key)) {
+				if (folder != null && FolderListing.ALL_RUNNING.equals(key)) {
 					folder.showAllRunning();
 				} else if (folder != null) {
 					folder.more(level);

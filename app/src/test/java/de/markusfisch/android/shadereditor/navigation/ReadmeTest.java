@@ -103,4 +103,39 @@ public class ReadmeTest {
 		assertTrue(Readme.is("readme.MD"));
 		assertEquals(false, Readme.is("README.txt"));
 	}
+
+	// A fenced code block is text, not a list: a README that shows how
+	// to write such a README does not reorder its own folder.
+	@Test
+	public void aCodeBlockIsNoList() {
+		assertEquals(List.of(), Readme.sections("""
+				# How to order a folder
+
+				Write a README like this:
+
+				```markdown
+				## Start here
+				- [Loop](Loop.frag) Rotate to restart
+				```
+				""", NAMES));
+		assertEquals("Shapes.frag", Readme.sections("""
+				~~~
+				- [Loop](Loop.frag)
+				~~~
+				- [Shapes](Shapes.frag)
+				""", NAMES).get(0).entries().get(0).name());
+	}
+
+	// "## Start here ##" is the heading "Start here".
+	@Test
+	public void closingHashesAreNoPartOfTheHeading() {
+		assertEquals("Start here", Readme.sections("""
+				## Start here ##
+				- [Shapes](Shapes.frag) Touch
+				""", NAMES).get(0).heading());
+		assertEquals("C# notes", Readme.sections("""
+				## C# notes
+				- [Shapes](Shapes.frag) Touch
+				""", NAMES).get(0).heading());
+	}
 }
