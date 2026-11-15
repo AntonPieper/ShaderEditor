@@ -162,8 +162,14 @@ public final class LibraryScreen implements ShaderScreen {
 					}
 
 					@Override
-					public void open(@NonNull ProjectPath path) {
-						files.openAt(path, 0);
+					public void open(@NonNull ProjectPath path, int line) {
+						files.openAt(path, line);
+					}
+
+					@Override
+					public void showBack(@NonNull String name, int line,
+							@Nullable Runnable back) {
+						extraKeysManager.showBack(name, line, back);
 					}
 				});
 		libraryAdd = new LibraryAdd(activity, holds.projects(), dataSource,
@@ -1034,6 +1040,7 @@ public final class LibraryScreen implements ShaderScreen {
 			links.show(file.getProject(), file.getPath());
 			editorFragment.setFileLinks(links);
 		} else {
+			links.hide();
 			editorFragment.setFileLinks(null);
 		}
 		TextView cover = activity.findViewById(R.id.no_file);

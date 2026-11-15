@@ -20,6 +20,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.fragment.FileLinks;
 import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.navigation.Face;
@@ -49,8 +51,23 @@ final class ProjectLinks implements FileLinks {
 		/** Show reference in the strip, the completions when null. */
 		void showReference(@Nullable ExtraKeysManager.Reference reference);
 
-		/** Open path of the project in the editor. */
-		void open(@NonNull ProjectPath path);
+		/**
+		 * Open path of the project in the editor at line, from 1, or
+		 * where its caret is when 0.
+		 */
+		void open(@NonNull ProjectPath path, int line);
+
+		/**
+		 * Show the key back to the file named name at line, from 1,
+		 * doing back; none when back is null.
+		 */
+		void showBack(@NonNull String name, int line,
+				@Nullable Runnable back);
+	}
+
+	// Where Open went from, and to.
+	private record Back(@NonNull OpenProject project,
+			@NonNull ProjectPath from, int line, @NonNull ProjectPath to) {
 	}
 
 	/**
@@ -95,6 +112,10 @@ final class ProjectLinks implements FileLinks {
 	private Runnable changed;
 	@Nullable
 	private HostCompletion.Named pointed;
+	// The way back after Open, until it is taken or another file is
+	// shown; or null.
+	@Nullable
+	private Back back;
 	// The number of the last rename or deletion heard of.
 	private int heard;
 	// Counts the forgettings; a listing made before one is void.
@@ -114,12 +135,38 @@ final class ProjectLinks implements FileLinks {
 		passShow = show;
 	}
 
-	/** file of project is in the editor now. */
+	/**
+	 * file of project is in the editor now. After Open, the key back
+	 * shows in the file opened; any other file takes it away.
+	 */
 	void show(@NonNull OpenProject project, @NonNull ProjectPath file) {
+		if (project == this.project && file.equals(this.file)) {
+			return;
+		}
 		forget();
 		this.project = project;
 		this.file = file;
 		heard = last(project.events(0));
+		Back way = back;
+		if (way != null && way.project() == project &&
+				way.to().equals(file)) {
+			host.showBack(way.from().getFileName(), way.line(), () -> {
+				back = null;
+				host.open(way.from(), way.line());
+			});
+		} else {
+			back = null;
+			host.showBack("", 0, null);
+		}
+	}
+
+	/** No file is in the editor. */
+	void hide() {
+		forget();
+		project = null;
+		file = null;
+		back = null;
+		host.showBack("", 0, null);
 	}
 
 	/** The project told of a change: a move makes the listings old. */
@@ -146,8 +193,7 @@ final class ProjectLinks implements FileLinks {
 	}
 
 	void destroy() {
-		forget();
-		project = null;
+		hide();
 		listings.shutdownNow();
 	}
 
@@ -264,7 +310,24 @@ final class ProjectLinks implements FileLinks {
 				show != null && !code && !image
 						? () -> show.show(path)
 						: null,
-				image ? null : () -> host.open(path));
+				image ? null : () -> open(path, 0));
+	}
+
+	@Override
+	public void open(@NonNull ProjectPath path, int line) {
+		OpenProject open = project;
+		ProjectPath from = file;
+		Document document = open != null && from != null
+				? open.document(from)
+				: null;
+		if (document == null) {
+			return;
+		} else if (!path.equals(from)) {
+			Text text = document.text();
+			back = new Back(open, from,
+					text.lineOf(document.selection().head()) + 1, path);
+		}
+		host.open(path, line);
 	}
 
 	// The picture of the pass as it ran last, or null. Off the main

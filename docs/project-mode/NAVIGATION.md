@@ -537,6 +537,8 @@ Each with my recommendation first.
 - b. A key at the start of the extra-keys row that names the previous file. One tap, in thumb reach while typing, no line of code lost; absent when extra keys are switched off.
 - c. A tab row for the files in use, shown only when there is more than one. One tap and all marks in view; three lines of code and a second place to look.
 
+Decided again on 2026-11-15, after following references made going back frequent: b, but only after a file is opened from a line: **Open** from a line that names a file, or **Open file** in Look up's sheet, which go the same way. The key ("‹ main.frag", `colorSecondaryContainer`, 36 dp tall, the name cut in the middle at 160 dp) returns to the line Open was tapped on, once, and goes when it is used or another file is shown.
+
 **D5. What Back does.**
 - **a (recommended).** It closes what is on top, then leaves the app.
 - b. With the drawer open it goes up one level first. Familiar from file managers; leaving the drawer from a deep folder takes several presses.
@@ -649,7 +651,7 @@ The owner took every open decision as recommended (option a in each):
 | D1 | What a tap on a file does to what runs | Runs it, unless the running shader already uses it or it has no `main` |
 | D2 | What entering a folder does | Shows it, with the shader that ran there last as the first row; nothing starts running by entering |
 | D3 | Where the frame rate goes | Into the quality control; the toolbar's second line names what runs and the folder |
-| D4 | A faster way back to the previous file | None in the first version: two taps through Running |
+| D4 | A faster way back to the previous file | None in the first version: two taps through Running. Changed on 2026-11-15: after **Open** from a line that names a file, or **Open file** in Look up's sheet, a key "‹ main.frag" stands in front of the extra keys of the file opened; one tap returns to the line Open was tapped on, once. It goes when it is used or another file is shown. Android's Back still never changes the file (principle 9); with the extra keys hidden, Running is the way back, as before |
 | D5 | What Back does | Closes what is on top, then leaves the app |
 | D6 | Where Examples is reached | A folder at the top of the drawer, plus the menu entry as a shortcut |
 | D7 | Wide screens | The drawer stays open from 840 dp |

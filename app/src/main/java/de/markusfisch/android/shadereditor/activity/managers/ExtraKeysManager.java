@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.LinearLayout;
+import android.widget.Button;
 import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
@@ -58,6 +59,8 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	@NonNull
 	private final View referenceOpen;
 	@NonNull
+	private final Button backView;
+	@NonNull
 	private final View insertTabView;
 	@NonNull
 	private final CompletionsAdapter completionsAdapter;
@@ -86,6 +89,7 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		referencePicture = extraKeysView.findViewById(R.id.reference_picture);
 		referenceShow = extraKeysView.findViewById(R.id.reference_show);
 		referenceOpen = extraKeysView.findViewById(R.id.reference_open);
+		backView = extraKeysView.findViewById(R.id.back_to_file);
 		completions.setLayoutManager(new LinearLayoutManager(
 				activity, RecyclerView.HORIZONTAL, false));
 		completionsAdapter = new CompletionsAdapter(editor::complete, editor);
@@ -182,6 +186,19 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 				name);
 		bind(referenceOpen, reference.open(), R.string.a11y_reference_open,
 				name);
+	}
+
+	/**
+	 * Show the key back to the file named name at line, from 1, in
+	 * front of the keys, doing back; none when back is null.
+	 */
+	public void showBack(@NonNull String name, int line,
+			@Nullable Runnable back) {
+		backView.setVisibility(getVisibility(back != null));
+		backView.setText(name);
+		backView.setOnClickListener(back != null ? v -> back.run() : null);
+		backView.setContentDescription(backView.getContext().getString(
+				R.string.a11y_back_to_file, name, line));
 	}
 
 	private static void bind(@NonNull View button, @Nullable Runnable action,
