@@ -22,6 +22,7 @@ import de.markusfisch.android.shadereditor.adapter.ErrorAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.ProjectParseResult;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
@@ -138,6 +139,17 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 			public void onShaderToyShader(@NonNull String json) {
 				if (shaderToyShaderListener != null) {
 					shaderToyShaderListener.onShaderToyShader(json);
+				}
+			}
+
+			// A file is shown at a line as an error of the list leads
+			// to its file.
+			@Override
+			public void onOpenFile(@NonNull String file, int line) {
+				ProjectParseResult<ProjectPath> path = ProjectPath.parse(
+						file);
+				if (errorListener != null && path.isSuccess()) {
+					errorListener.onItemClick(path.value(), line);
 				}
 			}
 		});

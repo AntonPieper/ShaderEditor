@@ -490,6 +490,15 @@
 	<string name="docs_builtin_uniform">Built-in uniform</string>
 	<string name="docs_not_declared">Not declared in this file yet, so the shader cannot read it.</string>
 	<string name="docs_add_uniform">Add uniform</string>
+	<string name="docs_function">Function</string>
+	<string name="docs_uniform">Uniform</string>
+	<string name="docs_macro">Macro</string>
+	<string name="docs_struct">Struct</string>
+	<string name="docs_variable">Variable</string>
+	<string name="docs_where">%1$s, line %2$d</string>
+	<string name="docs_where_line">line %1$d</string>
+	<string name="docs_open">Open %1$s</string>
+	<string name="docs_go_to_line">Go to line %1$d</string>
 	<string name="a11y_completion_function">%1$s, function</string>
 	<string name="fix_add_uniform">Add uniform %1$s %2$s</string>
 	<string name="a11y_added_uniform">Added %1$s on line %2$d</string>

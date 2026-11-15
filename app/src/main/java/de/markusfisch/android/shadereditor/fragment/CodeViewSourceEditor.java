@@ -122,6 +122,36 @@ final class CodeViewSourceEditor implements SourceEditor {
 					return view.getAnalysis().knowledge();
 				}
 
+				@NonNull
+				@Override
+				public Knowledge.Scope scope() {
+					return scope;
+				}
+
+				@Override
+				public int offset() {
+					return document.selection().start();
+				}
+
+				@Override
+				public int lineOf(int offset) {
+					Text text = document.text();
+					return text.lineOf(Math.max(0, Math.min(offset,
+							text.length())));
+				}
+
+				@Override
+				public void goToLine(int line) {
+					navigateToLine(line + 1);
+				}
+
+				@Override
+				public void open(@NonNull String file, int line) {
+					if (listener != null) {
+						listener.onOpenFile(file, line + 1);
+					}
+				}
+
 				@Override
 				public void addUniform(@NonNull String statement) {
 					addMarked(statement);

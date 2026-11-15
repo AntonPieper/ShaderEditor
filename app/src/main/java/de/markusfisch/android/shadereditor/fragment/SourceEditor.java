@@ -41,6 +41,13 @@ interface SourceEditor {
 		 * in place.
 		 */
 		void onShaderToyShader(@NonNull String json);
+
+		/**
+		 * Called to show file, a path of the project of the document
+		 * shown, at line, from 1: where a name is declared.
+		 */
+		default void onOpenFile(@NonNull String file, int line) {
+		}
 	}
 
 	/** Return the view that shows the text and takes the keyboard. */

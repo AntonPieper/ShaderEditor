@@ -1744,6 +1744,11 @@ public final class OpenProject {
 			public List<Knowledge.Symbol> find(CharSequence word) {
 				return knowledge.find(path(), word);
 			}
+
+			@Override
+			public int line(Knowledge.Symbol symbol) {
+				return knowledge.line(symbol);
+			}
 		};
 	}
 

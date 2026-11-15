@@ -31,18 +31,20 @@ import de.markusfisch.android.shadereditor.syntax.Syntax;
 /**
  * What a word of the code is, in a sheet: the word, what kind of word
  * it is, what it means, its forms or declaration, the notes on them and
- * an example, and one action. Code is in the editor's font and colours; a form wider
+ * an example, and one action: a filled button for what changes the
+ * text, a text button for what leads to where a name is declared. Code
+ * is in the editor's font and colours; a form wider
  * than its box takes a line per parameter. A part that is null is not
  * shown. The sheet opens fitted to its content, at most 90 % of the
  * screen high, and scrolls inside.
  */
 public final class DocsSheet {
 	/**
-	 * What the sheet says; only word, kind and text are needed. spoken
+	 * What the sheet says; only word and kind are needed. spoken
 	 * is what TalkBack says for code instead of its characters.
 	 */
 	public record Content(@NonNull String word, @NonNull String kind,
-			@NonNull String text, @Nullable String code,
+			@Nullable String text, @Nullable String code,
 			@Nullable String spoken, @Nullable String detail,
 			@Nullable String note, @Nullable String example) {
 	}
@@ -56,10 +58,22 @@ public final class DocsSheet {
 	 * @param action   the label of the button, or null for none
 	 * @param onAction what it does; the sheet closes first
 	 */
+	public DocsSheet(@NonNull Context context, @NonNull Content content,
+			@Nullable String action, @Nullable Runnable onAction) {
+		this(context, content, action, onAction, false);
+	}
+
+	/**
+	 * @param action   the label of the button, or null for none
+	 * @param onAction what it does; the sheet closes first
+	 * @param leads    whether the action leads somewhere, a text button,
+	 *                 or changes the text, a filled one
+	 */
 	// The sheet gives its content a parent only once it is set.
 	@SuppressLint("InflateParams")
 	public DocsSheet(@NonNull Context context, @NonNull Content content,
-			@Nullable String action, @Nullable Runnable onAction) {
+			@Nullable String action, @Nullable Runnable onAction,
+			boolean leads) {
 		View view = LayoutInflater.from(context).inflate(R.layout.sheet_docs,
 				null);
 		TextView word = view.findViewById(R.id.docs_word);
@@ -86,7 +100,11 @@ public final class DocsSheet {
 			return insets;
 		});
 		dialog = new BottomSheetDialog(context);
-		TextView button = view.findViewById(R.id.docs_action);
+		TextView button = view.findViewById(leads
+				? R.id.docs_link
+				: R.id.docs_action);
+		view.findViewById(leads ? R.id.docs_action : R.id.docs_link)
+				.setVisibility(View.GONE);
 		if (action != null && onAction != null) {
 			button.setText(action);
 			button.setOnClickListener(v -> {

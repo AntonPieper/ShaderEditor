@@ -74,6 +74,10 @@ public class ProjectKnowledgeTest {
 		assertEquals("A number in 0..1 for each p.",
 				hash.get(0).documentation());
 		assertEquals(NOISE.indexOf("hash"), hash.get(0).start());
+		// Its line in its own file, from 0.
+		assertEquals(1, project.line(hash.get(0)));
+		assertEquals(2, project.line(project.find(path("main.frag"),
+				"OCTAVES").get(0)));
 		// A function with every form.
 		assertEquals(List.of("float disc(vec2 p)",
 				"float disc(vec2 p, float r)"), details(project.find(

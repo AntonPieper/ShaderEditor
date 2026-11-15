@@ -277,6 +277,28 @@ public final class ProjectKnowledge {
 		return find(around, word);
 	}
 
+	/**
+	 * Return the line, from 0, the name of symbol stands in in its
+	 * file, for a symbol find gave; -1 if the file is not known.
+	 */
+	public int line(Symbol symbol) {
+		ProjectParseResult<ProjectPath> path = symbol.file() != null
+				? ProjectPath.parse(symbol.file()) : null;
+		Entry entry = path != null && path.isSuccess()
+				? entries.get(path.value()) : null;
+		String text = entry != null ? SourceText.decode(entry.bytes) : null;
+		if (text == null) {
+			return -1;
+		}
+		int line = 0;
+		for (int i = Math.min(symbol.start(), text.length()); i-- > 0; ) {
+			if (text.charAt(i) == '\n') {
+				++line;
+			}
+		}
+		return line;
+	}
+
 	private List<Symbol> find(Set<ProjectPath> files, CharSequence word) {
 		List<Symbol> found = new ArrayList<>();
 		for (ProjectPath file : files) {
