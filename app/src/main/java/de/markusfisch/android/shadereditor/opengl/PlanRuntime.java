@@ -627,7 +627,8 @@ final class PlanRuntime implements ShaderSwap.Build {
 				sources.add(new PassInspector.Source(
 						plan.programs().get(plan.passes().get(pass).program())
 								.file(),
-						texture, size.width(), size.height()));
+						texture, size.width(), size.height(),
+						targets[pass].format()));
 			}
 		}
 		return sources;

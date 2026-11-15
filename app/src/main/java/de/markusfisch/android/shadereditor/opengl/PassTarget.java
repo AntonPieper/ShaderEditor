@@ -88,6 +88,11 @@ final class PassTarget {
 		return size;
 	}
 
+	@NonNull
+	HostDirective.Format format() {
+		return format;
+	}
+
 	// Whether it is what create() makes for target at size with or
 	// without history.
 	boolean fits(@NonNull RenderPlan.Target target,
