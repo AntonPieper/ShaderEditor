@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.opengl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -45,8 +46,7 @@ public class FrameRateReportTest {
 		report.paused(57f);
 		long play = 30_000 * MILLI;
 		report.start();
-		assertEquals(NOTHING, report.frame(play));
-		assertEquals(60, report.frame(play + 16_667_000L));
+		assertEquals(60, firstTold(report, play, 16_667_000L));
 	}
 
 	// A build swapped in just before a frame: the moment between them is
@@ -55,20 +55,39 @@ public class FrameRateReportTest {
 	public void theFrameAfterABuildOnlyMarksTheTime() {
 		var report = playedAt60();
 		report.start();
-		long frame = 1000 * MILLI;
-		assertEquals(NOTHING, report.frame(frame));
-		assertEquals(30, report.frame(frame + 33_333_000L));
+		assertEquals(30, firstTold(report, 1000 * MILLI, 33_333_000L));
+	}
+
+	// After a start nothing is told before 200 ms of frames are in, so
+	// a new picture's slow first frames are not shown as its rate.
+	@Test
+	public void theFirstRateWaitsForItsWindow() {
+		var report = new FrameRateReport();
+		report.start();
+		long t = 0;
+		assertEquals(NOTHING, report.frame(t));
+		// Warm-up: one frame of 90 ms, then 60 a second.
+		t += 90 * MILLI;
+		assertEquals(NOTHING, report.frame(t));
+		int told = NOTHING;
+		while (told == NOTHING) {
+			t += 16_667_000L;
+			told = report.frame(t);
+			if (told == NOTHING) {
+				assertTrue(t <= 200 * MILLI);
+			}
+		}
+		assertTrue(t > 200 * MILLI);
+		assertTrue("told " + told, told > 50);
 	}
 
 	// The host cleared its label for the new shader: the same rate is
-	// told again.
+	// told again, once its window is in.
 	@Test
 	public void aNewShaderAtTheSameRateIsToldAgain() {
 		var report = playedAt60();
 		report.start();
-		long frame = 1000 * MILLI;
-		report.frame(frame);
-		assertEquals(60, report.frame(frame + 16_667_000L));
+		assertEquals(60, firstTold(report, 1000 * MILLI, 16_667_000L));
 	}
 
 	@Test
@@ -76,6 +95,20 @@ public class FrameRateReportTest {
 		var report = playedAt60();
 		assertEquals(0, report.none());
 		assertEquals(NOTHING, report.none());
+	}
+
+	// The first rate told after a start, frames every interval from
+	// start on; it is never told before 200 ms after the first frame.
+	private static int firstTold(FrameRateReport report, long start,
+			long interval) {
+		for (long t = start; t < start + 2000 * MILLI; t += interval) {
+			int told = report.frame(t);
+			if (told != NOTHING) {
+				assertTrue(t > start + 200 * MILLI);
+				return told;
+			}
+		}
+		return NOTHING;
 	}
 
 	private static FrameRateReport playedAt60() {

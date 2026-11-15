@@ -10,9 +10,10 @@ package de.markusfisch.android.shadereditor.opengl;
 //   nothing else, so the number shown can be trusted;
 // - a new build, new targets and Play measure again from the first frame
 //   after them, so the stopped time, or the time a build took, is in no
-//   sample;
+//   sample, and tell nothing before 200 ms of frames are in: neither one
+//   quick frame nor the first slow ones of a new picture are its rate;
 // - nothing drawing: 0.
-// After a new start, the next rate is told even when it is the one told
+// After a new start, the first rate is told even when it is the one told
 // before: a host clears what it shows when the shader changes (the
 // toolbar's title does), and waits for the rate of the new one.
 // Each call returns the rate to tell, or NOTHING.
@@ -35,7 +36,8 @@ final class FrameRateReport {
 	}
 
 	// Measuring starts again: the next frame only marks the time the
-	// one after it is measured from.
+	// one after it is measured from, and the first rate is told one
+	// interval after that frame.
 	void start() {
 		sum = 0;
 		samples = 0;
@@ -46,8 +48,13 @@ final class FrameRateReport {
 
 	// A frame drawn while playing.
 	int frame(long now) {
-		long delta = marked ? now - last : 0;
-		marked = true;
+		if (!marked) {
+			marked = true;
+			last = now;
+			next = now + TELL_EVERY_NS;
+			return NOTHING;
+		}
+		long delta = now - last;
 		last = now;
 		if (delta > 0) {
 			sum += Math.min(NS_PER_SECOND / delta, refreshRate);
