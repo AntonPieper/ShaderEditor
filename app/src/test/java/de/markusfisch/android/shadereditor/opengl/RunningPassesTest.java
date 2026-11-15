@@ -98,6 +98,26 @@ public class RunningPassesTest {
 				rows.get(0).reads());
 	}
 
+	// The line the sheet's Size line opens: the target directive, or
+	// where a new one goes.
+	@Test
+	public void everyRowSaysWhereItsSizeIsWritten() {
+		var ink = example("Ink/main.frag").rows();
+		// ink.frag: "#pragma se target scale=0.5 initial=..." on line 9.
+		assertEquals(new RunningPasses.SizeLine(path("Ink/ink.frag"), 9, true),
+				ink.get(1).sizeLine());
+		// main.frag has none and no #version: a new one goes first.
+		assertEquals(new RunningPasses.SizeLine(path("Ink/main.frag"), 1,
+				false), ink.get(2).sizeLine());
+		// With #version on line 1, it goes on line 2.
+		var engine = new FakeEngine(prepare("main.frag", lines(
+				"#version 300 es", "precision mediump float;",
+				"out vec4 color;",
+				"void main(void) {", "	color = vec4(1.0);", "}")), 3);
+		assertEquals(new RunningPasses.SizeLine(path("main.frag"), 2, false),
+				engine.runtime.running().rows().get(0).sizeLine());
+	}
+
 	// A first frame whose pass reads no last frame has no effect: it is
 	// listed above the pass, not drawn, with the build's warning.
 	@Test

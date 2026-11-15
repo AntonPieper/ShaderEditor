@@ -251,6 +251,17 @@ final class EngineInputs {
 		counting = false;
 	}
 
+	// GL thread. The number of the frame drawn last.
+	int lastFrame() {
+		return lastFrame;
+	}
+
+	// GL thread. Q in Playback's table: the rate measured last, which
+	// the frameRate uniform has while paused.
+	float frameRate() {
+		return frameRate;
+	}
+
 	// GL thread. Whether the clock started again since the frame drawn
 	// last.
 	boolean restarted() {

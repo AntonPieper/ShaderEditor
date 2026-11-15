@@ -62,6 +62,15 @@ public final class ShaderEngine {
 		// that calls watchPasses().
 		void onPictures(@NonNull List<PassPicture> pictures);
 
+		// Called on the GL thread right before onPictures(): the number
+		// of the frame the pictures are of, the frame drawn last. A pause
+		// and every frame drawn while paused tell it at once, so while
+		// paused it is the frame shown, as the table in Playback has it:
+		// F + 1 after Step, F after a frame drawn again, 0 after Restart
+		// or a new build.
+		default void onFrame(int frame) {
+		}
+
 		// Called on the GL thread right after onPictures(), at most once
 		// a second, and after every frame drawn while paused: facts of
 		// every row of passes(), in their order.
@@ -124,8 +133,6 @@ public final class ShaderEngine {
 		}
 	};
 
-	private static final long FPS_UPDATE_FREQUENCY_NS = 200000000L;
-	private static final float NS_PER_SECOND = 1000000000f;
 	private static final float DEFAULT_REFRESH_RATE = 60f;
 	private static final float DEFAULT_FTIME_MAX = 3f;
 	// About four pictures of the passes a second.
@@ -179,12 +186,10 @@ public final class ShaderEngine {
 	// What formats says of rgba16f targets, for any thread.
 	private volatile boolean halfFloat;
 	private float fTimeMax = DEFAULT_FTIME_MAX;
-	private long lastRender;
-	private volatile long nextFpsUpdate;
-	private volatile float sum;
-	private volatile float samples;
-	private volatile int lastFps;
-	private volatile float refreshRate = DEFAULT_REFRESH_RATE;
+	// What it tells of the frame rate; GL thread only, as is whether the
+	// frame drawn last was paused.
+	private final FrameRateReport rate = new FrameRateReport();
+	private boolean wasPaused;
 	@NonNull
 	private volatile Limit limit = new Limit(1f, false);
 	// The limit the frames drawn last ease to, the ceiling they eased
@@ -394,8 +399,7 @@ public final class ShaderEngine {
 	// GL thread.
 	public void onSurfaceChanged(int width, int height) {
 		long now = System.nanoTime();
-		lastRender = now;
-		refreshRate = getRefreshRate(context);
+		rate.setRefreshRate(getRefreshRate(context));
 		boolean renderSizeChanged = inputs.resize(width, height);
 		sources.setDeviceRotation(getDeviceRotation(context));
 		sources.setRenderSize(inputs.getRenderWidth(), inputs.getRenderHeight());
@@ -411,7 +415,7 @@ public final class ShaderEngine {
 			}
 		}
 
-		resetFps();
+		rate.start();
 	}
 
 	// GL thread.
@@ -436,17 +440,19 @@ public final class ShaderEngine {
 			}
 			// No picture runs, as after a build that failed: the rate
 			// of the one before is not this one's.
-			var listener = this.listener;
-			if (lastFps != 0 && listener != null) {
-				resetFps();
-				listener.onFramesPerSecond(0);
-			}
+			tellRate(rate.none());
 			return;
 		}
 
 		long now = System.nanoTime();
 		boolean paused = this.paused;
 		inputs.setPaused(paused, now);
+		boolean pauseChanged = paused != wasPaused;
+		wasPaused = paused;
+		if (pauseChanged && !paused) {
+			// Play: the stopped time is in no sample.
+			rate.start();
+		}
 		if (restartAsked.getAndSet(false)) {
 			build.restart();
 			inputs.restart(now);
@@ -469,7 +475,8 @@ public final class ShaderEngine {
 					inputs.getSurfaceHeight(), shownPass);
 			thumbnails.onFrame(revision.number());
 			answerThumbnails();
-			watch(build, now, false);
+			tellRate(rate.paused(inputs.frameRate()));
+			watch(build, now, pauseChanged);
 			return;
 		}
 		var frame = inputs.capture(draw, now, fTimeMax);
@@ -485,11 +492,11 @@ public final class ShaderEngine {
 		thumbnails.onFrame(revision.number());
 		answerThumbnails();
 		watch(build, now, draw != Playback.Draw.FRAME ||
-				swap != Playback.Swap.NONE);
+				swap != Playback.Swap.NONE || pauseChanged);
 
-		if (draw == Playback.Draw.FRAME && listener != null) {
-			updateFps(now);
-		}
+		tellRate(draw == Playback.Draw.FRAME
+				? rate.frame(now)
+				: rate.paused(inputs.frameRate()));
 		// Steps asked for faster than frames come are drawn one a frame.
 		if (paused && steps.get() > 0) {
 			requestRender();
@@ -627,7 +634,6 @@ public final class ShaderEngine {
 			tuning.live();
 		}
 		long now = System.nanoTime();
-		lastRender = now;
 		if (!continues) {
 			inputs.showRuntime(
 					shown.shader().origin(),
@@ -640,7 +646,7 @@ public final class ShaderEngine {
 		showPasses(next.running());
 		built = errors;
 		sources.takeWarned();
-		resetFps();
+		rate.start();
 		report(shown, sources.withWarnings(built));
 		return continues ? Playback.Swap.CONTINUED : Playback.Swap.NEW;
 	}
@@ -727,13 +733,6 @@ public final class ShaderEngine {
 		return PictureLimit.strength(limitCeiling);
 	}
 
-	private void resetFps() {
-		sum = 0;
-		samples = 0;
-		lastFps = 0;
-		nextFpsUpdate = 0;
-	}
-
 	private void submitErrors(@NonNull List<ProjectDiagnostic> errors) {
 		submitErrors(errors, false);
 	}
@@ -788,7 +787,8 @@ public final class ShaderEngine {
 		build.lastFrames(inspector.sources());
 		var pictures = inspector.pictures(fit);
 		// Not to one that stopped watching meanwhile, nor after.
-		if (!watching.pictures(watcher, pictures)) {
+		if (!watching.frame(watcher, inputs.lastFrame()) ||
+				!watching.pictures(watcher, pictures)) {
 			return;
 		}
 		if (fresh || first || now - lastFacts >= FACT_INTERVAL_NS) {
@@ -856,29 +856,12 @@ public final class ShaderEngine {
 		told = null;
 	}
 
-	private void updateFps(long now) {
-		long delta = now - lastRender;
-
-		synchronized (this) {
-			sum += Math.min(NS_PER_SECOND / delta, refreshRate);
-
-			if (++samples > 0xffff) {
-				sum = sum / samples;
-				samples = 1;
-			}
+	// Tells the listener a rate FrameRateReport said, if any.
+	private void tellRate(int fps) {
+		var listener = this.listener;
+		if (fps != FrameRateReport.NOTHING && listener != null) {
+			listener.onFramesPerSecond(fps);
 		}
-
-		if (now > nextFpsUpdate) {
-			int fps = Math.round(sum / samples);
-			var listener = this.listener;
-			if (fps != lastFps && listener != null) {
-				listener.onFramesPerSecond(fps);
-				lastFps = fps;
-			}
-			nextFpsUpdate = now + FPS_UPDATE_FREQUENCY_NS;
-		}
-
-		lastRender = now;
 	}
 
 	private static int getDeviceRotation(@NonNull Context context) {
