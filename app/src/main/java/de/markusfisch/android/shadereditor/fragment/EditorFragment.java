@@ -525,7 +525,8 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 
 
 	public String getText() {
-		return editor.getCleanText();
+		// Before the view is made, the text it will show.
+		return editor != null ? editor.getCleanText() : pendingText;
 	}
 
 	public void setText(String text) {
