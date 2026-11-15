@@ -26,7 +26,8 @@ import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeListener {
 	public interface Editor extends CompletionsAdapter.LookUp {
-		void insert(@NonNull CharSequence text);
+		/** Put in word, of which typed characters are typed already. */
+		void complete(@NonNull String word, int typed);
 
 		/** Do what the Tab key does. */
 		void tab();
@@ -61,7 +62,7 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		});
 		completions.setLayoutManager(new LinearLayoutManager(
 				activity, RecyclerView.HORIZONTAL, false));
-		completionsAdapter = new CompletionsAdapter(editor::insert, editor);
+		completionsAdapter = new CompletionsAdapter(editor::complete, editor);
 		completions.setAdapter(completionsAdapter);
 
 		var divider = new DividerItemDecoration(

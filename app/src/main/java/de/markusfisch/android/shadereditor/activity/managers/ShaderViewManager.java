@@ -213,6 +213,11 @@ public class ShaderViewManager {
 		shaderView.getEngine().limitPicture(ceiling, fade);
 	}
 
+	/** Whether the picture's context draws into rgba16f targets. */
+	public boolean drawsHalfFloat() {
+		return shaderView.getEngine().drawsHalfFloat();
+	}
+
 	public void requestThumbnail(@NonNull ShaderEngine.ThumbnailCallback callback) {
 		shaderView.getEngine().requestThumbnail(callback);
 	}

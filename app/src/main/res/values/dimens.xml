@@ -9,6 +9,8 @@
 	<!-- The menu's narrowest width; it grows with its labels -->
 	<dimen name="menu_width">200dp</dimen>
 	<dimen name="extra_key_tab_height">40dp</dimen>
+	<!-- The widest word in the strip; a longer one, a file name, is cut in the middle. -->
+	<dimen name="strip_word_max_width">240dp</dimen>
 	<dimen name="extra_key_divider_padding">12dp</dimen>
 	<dimen name="error_list_divider_padding">16dp</dimen>
 	<!-- Sizes and the one radius of the project-mode UI -->

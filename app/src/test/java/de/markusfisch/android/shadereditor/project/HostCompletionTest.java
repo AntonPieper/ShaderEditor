@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.project;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -53,6 +54,24 @@ public class HostCompletionTest {
 		assertEquals(List.of(), words("#pragma se input \"seed.frag|\""));
 		assertEquals(List.of("seed.frag"),
 				words("#pragma se input \"seed.frag|"));
+	}
+
+	@Test
+	public void ownsTheStripOnlyWhereItCompletes() {
+		String input = "#pragma se input \"blur.frag\" filter=linear";
+		// In the path, among the options, at the command.
+		assertTrue(owns(input, 20));
+		assertTrue(owns(input, input.length()));
+		assertTrue(owns("#pragma se ", 11));
+		assertTrue(owns("#include \"lib/", 14));
+		// The language's: after an include's path, in a comment, on
+		// other lines, the line after a directive, a commented line.
+		assertFalse(owns("#include \"a.glsl\" ", 19));
+		assertFalse(owns("#pragma se input \"a.png\" // fil", 32));
+		assertFalse(owns("#pragma once", 12));
+		assertFalse(owns("\tcolor = mix(", 14));
+		assertFalse(owns("", 0));
+		assertFalse(HostCompletion.owns(input, 20, false));
 	}
 
 	@Test
@@ -176,6 +195,10 @@ public class HostCompletionTest {
 		assertTrue(at.closed());
 		assertNull(HostCompletion.pathAt(
 				"#pragma se input \"blur.frag\" filter=linear", 35));
+	}
+
+	private static boolean owns(String line, int column) {
+		return HostCompletion.owns(line, column, true);
 	}
 
 	private static List<String> words(String marked) {

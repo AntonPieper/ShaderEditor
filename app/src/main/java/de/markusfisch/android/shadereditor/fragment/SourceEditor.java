@@ -141,6 +141,21 @@ interface SourceEditor {
 	/** Replace the selection by text. */
 	void insert(@NonNull CharSequence text);
 
+	/**
+	 * Put in a word offered last, of which typed characters are typed
+	 * already before the caret.
+	 */
+	default void complete(@NonNull String word, int typed) {
+		insert(word.substring(Math.min(typed, word.length())));
+	}
+
+	/**
+	 * Complete the lines that name files from links, or not when null;
+	 * an editor that cannot need not.
+	 */
+	default void setFileLinks(@Nullable FileLinks links) {
+	}
+
 	/** Do what the Tab key does, for a Tab key on the screen. */
 	void tab();
 

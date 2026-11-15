@@ -49,6 +49,8 @@ public final class LibraryScreen implements ShaderScreen {
 	// Reads which file of the library follows one that went.
 	private final ExecutorService newest =
 			Executors.newSingleThreadExecutor();
+	@NonNull
+	private final ProjectLinks links;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	// Whether a picture of what runs is being drawn, as the engine
 	// reports it: the one truth of "runs now", for the toolbar's ▶ and
@@ -141,6 +143,7 @@ public final class LibraryScreen implements ShaderScreen {
 		uiManager.setTitleIsFileName(true);
 		editorFragment.setAddsByFileRule(true);
 		this.shaderViewManager = shaderViewManager;
+		links = new ProjectLinks(shaderViewManager::drawsHalfFloat);
 		this.extraKeysManager = extraKeysManager;
 		this.navigationManager = navigationManager;
 		this.dataSource = dataSource;
@@ -399,6 +402,7 @@ public final class LibraryScreen implements ShaderScreen {
 		}
 		shaderViewManager.setDrawingListener(null);
 		newest.shutdownNow();
+		links.destroy();
 		handler.removeCallbacksAndMessages(null);
 		files.destroy();
 		if (libraryStart != null) {
@@ -891,6 +895,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 			@Override
 			public void onChanged() {
+				links.changed();
 				showRunning();
 			}
 
@@ -1008,6 +1013,12 @@ public final class LibraryScreen implements ShaderScreen {
 	// cover is empty: nothing is typed into nowhere, and nothing runs.
 	private void showOpen() {
 		boolean text = open.hasText();
+		if (open instanceof ProjectFile file) {
+			links.show(file.getProject(), file.getPath());
+			editorFragment.setFileLinks(links);
+		} else {
+			editorFragment.setFileLinks(null);
+		}
 		TextView cover = activity.findViewById(R.id.no_file);
 		boolean covered = cover.getVisibility() == View.VISIBLE;
 		cover.setText(moving ? "" : activity.getString(R.string.no_file_open));

@@ -28,6 +28,7 @@ import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
+import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
@@ -110,6 +111,17 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// The call the strip shows, or null.
 	@Nullable
 	private SignatureView.Signature signature;
+	// The files a file of a folder names, or null.
+	@Nullable
+	private FileLinks links;
+	// What was offered last in a line naming files, for which revision
+	// and caret, or null.
+	@Nullable
+	private HostCompletion.Offer hostOffer;
+	private int hostRevision;
+	private int hostCaret;
+	// Whether the caret was in a path of a line naming files.
+	private boolean inPath;
 
 	CodeViewSourceEditor(@NonNull CodeView view) {
 		this.view = view;
@@ -278,6 +290,42 @@ final class CodeViewSourceEditor implements SourceEditor {
 		Document.Selection selection = document.selection();
 		document.replace(selection.start(), selection.end(), Text.of(text));
 		view.bringCaretIntoView();
+	}
+
+	@Override
+	public void complete(@NonNull String word, int typed) {
+		HostCompletion.Offer offer = hostOffer;
+		HostCompletion.Choice choice = offer != null &&
+				hostRevision == document.revision() &&
+				hostCaret == document.selection().head() &&
+				document.selection().isEmpty()
+				? offer.choice(word)
+				: null;
+		if (choice == null) {
+			SourceEditor.super.complete(word, typed);
+			return;
+		}
+		int lineStart = document.text().lineStart(
+				document.text().lineOf(hostCaret));
+		document.beginBatch();
+		document.replace(lineStart + choice.start(),
+				lineStart + choice.end(), Text.of(choice.text()));
+		document.select(lineStart + choice.caret(),
+				lineStart + choice.caret());
+		document.endBatch();
+		view.bringCaretIntoView();
+	}
+
+	@Override
+	public void setFileLinks(@Nullable FileLinks links) {
+		if (this.links != null) {
+			this.links.setListener(null);
+		}
+		this.links = links;
+		hostOffer = null;
+		if (links != null) {
+			links.setListener(this::complete);
+		}
 	}
 
 	@Override
@@ -516,6 +564,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 		Knowledge known = analysis.knowledge();
 		LexedLine line = styles.runs(n).line();
 		int column = caret - lineStart;
+		if (completeHostLine(line, column, caret)) {
+			return;
+		}
 		// Functions with their parenthesis, unless one follows already.
 		boolean parentheses = docs != null && styles.syntax() == DATABASE &&
 				(column == line.text().length() ||
@@ -591,6 +642,42 @@ final class CodeViewSourceEditor implements SourceEditor {
 			}
 		}
 		return result;
+	}
+
+	// Offers what a line naming files takes at the caret, from its text
+	// and the listings links has; returns whether it is such a line.
+	private boolean completeHostLine(@NonNull LexedLine line, int column,
+			int caret) {
+		hostOffer = null;
+		String text = line.text();
+		enter(text, column);
+		int hash = text.indexOf('#');
+		int index = hash >= 0 ? line.indexAt(hash) : -1;
+		// HostCompletion.owns is the rule between these lines and the
+		// language; where it holds, no call shows behind the keys.
+		if (links == null || styles.syntax() != DATABASE ||
+				!HostCompletion.owns(text, column,
+						index >= 0 && line.inDirective(index))) {
+			return false;
+		}
+		signature(-1, 0);
+		HostCompletion.Offer offer = HostCompletion.offer(text, column,
+				links.file(), links, links.drawsHalfFloat());
+		hostOffer = offer;
+		hostRevision = document.revision();
+		hostCaret = caret;
+		listener.onCompletions(offer.words(), offer.typed());
+		return true;
+	}
+
+	// Lets links list again when the caret enters a path, once.
+	private void enter(@NonNull String text, int column) {
+		boolean path = links != null &&
+				HostCompletion.pathAt(text, column) != null;
+		if (path && !inPath) {
+			links.refresh();
+		}
+		inPath = path;
 	}
 
 	// Whether the text defines mainImage and no main, as ShaderToy's do;

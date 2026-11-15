@@ -115,6 +115,7 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 			editorContainer = view.findViewById(R.id.editor_container);
 		}
 		editor.setAddsByFileRule(addsByFileRule);
+		editor.setFileLinks(fileLinks);
 		editor.setListener(new SourceEditor.Listener() {
 			@Override
 			public void onTextModified() {
@@ -583,8 +584,17 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 		return editor != null ? editor.getDocumentState() : null;
 	}
 
-	public void insert(@NonNull CharSequence text) {
-		editor.insert(text);
+	/** Put in a completion; see SourceEditor.complete. */
+	public void complete(@NonNull String word, int typed) {
+		editor.complete(word, typed);
+	}
+
+	/** Complete the lines naming files from links, none when null. */
+	public void setFileLinks(@Nullable FileLinks links) {
+		fileLinks = links;
+		if (editor != null) {
+			editor.setFileLinks(links);
+		}
 	}
 
 	public void tab() {
@@ -601,6 +611,8 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 
 	// Whether statements are added by the rule files have.
 	private boolean addsByFileRule;
+	@Nullable
+	private FileLinks fileLinks;
 
 	public void addUniform(@Nullable String statement) {
 		if (statement != null) {
