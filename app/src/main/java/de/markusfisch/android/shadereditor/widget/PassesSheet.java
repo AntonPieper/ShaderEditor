@@ -164,14 +164,15 @@ public final class PassesSheet {
 	 * @param facts     the latest facts of each pass
 	 * @param fit       the range the pass shown is fitted from, or null
 	 * @param limit     the most frames a second, 0 for none
+	 * @param frame     the number of the frame drawn last
 	 */
 	record State(boolean open, boolean available, boolean paused,
 			@NonNull RunningPasses passes, @Nullable ProjectPath shown,
 			float quality, @NonNull Map<ProjectPath, Bitmap> pictures,
 			@NonNull Map<ProjectPath, PassFacts> facts, @Nullable Fit fit,
-			int limit) {
+			int limit, int frame) {
 		static final State CLOSED = new State(false, false, false,
-				RunningPasses.NONE, null, 1f, Map.of(), Map.of(), null, 0);
+				RunningPasses.NONE, null, 1f, Map.of(), Map.of(), null, 0, 0);
 
 		boolean runs() {
 			return !passes.rows().isEmpty();
@@ -191,52 +192,57 @@ public final class PassesSheet {
 
 		State withOpen(boolean open) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
 		}
 
 		State withAvailable(boolean available) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
 		}
 
 		State withPaused(boolean paused) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
 		}
 
 		State withPasses(@NonNull RunningPasses passes) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
 		}
 
 		State withShown(@Nullable ProjectPath shown) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
 		}
 
 		State withQuality(float quality) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
 		}
 
 		State withPictures(@NonNull Map<ProjectPath, Bitmap> pictures) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
 		}
 
 		State withFacts(@NonNull Map<ProjectPath, PassFacts> facts) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
 		}
 
 		State withFit(@Nullable Fit fit) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
 		}
 
 		State withLimit(int limit) {
 			return new State(open, available, paused, passes, shown, quality,
-					pictures, facts, fit, limit);
+					pictures, facts, fit, limit, frame);
+		}
+
+		State withFrame(int frame) {
+			return new State(open, available, paused, passes, shown, quality,
+					pictures, facts, fit, limit, frame);
 		}
 	}
 
@@ -257,6 +263,7 @@ public final class PassesSheet {
 	private final MaterialButton pause;
 	private final View step;
 	private final View restart;
+	private final TextView frame;
 	private final Chip[] qualities;
 	private final Chip limit;
 	private final float[] qualityValues;
@@ -374,6 +381,7 @@ public final class PassesSheet {
 			v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
 		});
 		restart = sheet.findViewById(R.id.passes_restart);
+		frame = sheet.findViewById(R.id.passes_frame);
 		restart.setOnClickListener(v -> {
 			view.restart();
 			lightFirstFrames();
@@ -685,6 +693,15 @@ public final class PassesSheet {
 				}
 
 				@Override
+				public void onFrame(int frame) {
+					handler.post(() -> {
+						if (watching == token) {
+							set(state.withFrame(frame));
+						}
+					});
+				}
+
+				@Override
 				public void onFacts(@NonNull List<PassFacts> facts) {
 					var kept = new HashMap<ProjectPath, PassFacts>();
 					for (var f : facts) {
@@ -754,6 +771,9 @@ public final class PassesSheet {
 		pause.setContentDescription(pauseName);
 		ViewCompat.setTooltipText(pause, pauseName);
 		step.setEnabled(runs && state.paused);
+		// Where Step is: only while paused, where it changes.
+		frame.setVisibility(runs && state.paused ? View.VISIBLE : View.GONE);
+		frame.setText(activity.getString(R.string.passes_frame, state.frame));
 		restart.setEnabled(runs);
 		limit.setEnabled(runs);
 		// Filled while the shader is throttled, outlined otherwise.
