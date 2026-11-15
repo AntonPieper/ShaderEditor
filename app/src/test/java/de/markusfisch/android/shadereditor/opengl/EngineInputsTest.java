@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class EngineInputsTest {
 	private static final float EPSILON = 1e-6f;
+	private static final long SECOND = 1000000000L;
+	private static final long MILLI = 1000000L;
 
 	@Test
 	public void renderSizeIsSurfaceSizeTimesQuality() {
@@ -270,6 +272,79 @@ public class EngineInputsTest {
 			done.set(true);
 			poster.join();
 		}
+	}
+
+	// What the frame before took: the time between two frames, 1/60 s
+	// where there is no frame before, and never a long step.
+	@Test
+	public void timeDeltaIsTheTimeSinceTheFrameBefore() {
+		var inputs = new EngineInputs();
+		inputs.resize(100, 100);
+		inputs.restart(5 * SECOND);
+		// The first frame, however late it comes.
+		assertEquals(1f / 60f, inputs.capture(8 * SECOND, 3f).timeDelta,
+				EPSILON);
+		assertEquals(.02f, inputs.capture(8 * SECOND + 20 * MILLI, 3f)
+				.timeDelta, EPSILON);
+		assertEquals(.008f, inputs.capture(8 * SECOND + 28 * MILLI, 3f)
+				.timeDelta, EPSILON);
+		// Frames that stopped coming without a word: half a second at
+		// most.
+		assertEquals(.5f, inputs.capture(60 * SECOND, 3f).timeDelta, EPSILON);
+		// A resize that keeps the targets keeps the clock.
+		assertFalse(inputs.resize(100, 100));
+		assertEquals(.1f, inputs.capture(60 * SECOND + 100 * MILLI, 3f)
+				.timeDelta, EPSILON);
+		// After a pause, and after a restart, as on the first frame.
+		inputs.pause();
+		assertEquals(1f / 60f, inputs.capture(90 * SECOND, 3f).timeDelta,
+				EPSILON);
+		assertEquals(.016f, inputs.capture(90 * SECOND + 16 * MILLI, 3f)
+				.timeDelta, EPSILON);
+		inputs.restart(.5f, 91 * SECOND);
+		assertEquals(1f / 60f, inputs.capture(91 * SECOND + 300 * MILLI, 3f)
+				.timeDelta, EPSILON);
+	}
+
+	// 60 until frames were counted for more than half a second, then
+	// the frames of that time by its length, and so on. It is no
+	// 1 / timeDelta.
+	@Test
+	public void frameRateIsCountedOverHalfASecond() {
+		var inputs = new EngineInputs();
+		inputs.resize(100, 100);
+		inputs.restart(0L);
+		long now = 0;
+		// 30 frames a second: 15 frames reach half a second, the 16th
+		// is past it.
+		for (int i = 0; i < 15; ++i) {
+			now += SECOND / 30;
+			assertEquals(60f, inputs.capture(now, 3f).frameRate, 0f);
+		}
+		now += SECOND / 30;
+		assertEquals(30f, inputs.capture(now, 3f).frameRate, 1e-3f);
+		// One slow frame does not change it before the next count.
+		now += 400 * MILLI;
+		var in = inputs.capture(now, 3f);
+		assertEquals(30f, in.frameRate, 1e-3f);
+		assertEquals(.4f, in.timeDelta, EPSILON);
+		// 2 frames in 600 ms.
+		now += 200 * MILLI;
+		assertEquals(2f / .6f, inputs.capture(now, 3f).frameRate, 1e-3f);
+		// A pause is not counted: the rate stays, and frames are
+		// counted from the first that comes.
+		inputs.pause();
+		now += 100 * SECOND;
+		assertEquals(2f / .6f, inputs.capture(now, 3f).frameRate, 1e-3f);
+		for (int i = 0; i < 60; ++i) {
+			now += SECOND / 120;
+			inputs.capture(now, 3f);
+		}
+		now += SECOND / 120;
+		assertEquals(120f, inputs.capture(now, 3f).frameRate, 1e-2f);
+		// A restart starts at 60 again.
+		inputs.restart(now);
+		assertEquals(60f, inputs.capture(now + MILLI, 3f).frameRate, 0f);
 	}
 
 	private static EngineInputs.Touch touch(int action, float... pointers) {

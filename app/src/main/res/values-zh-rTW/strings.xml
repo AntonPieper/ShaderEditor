@@ -132,6 +132,8 @@
 	<string name="int_seconds_since_load">自載入後的整秒時間</string>
 	<string name="fractional_part_of_seconds_since_load">執行時間的小數部分</string>
 	<string name="frame_number">目前幀編號（從零開始）</string>
+	<string name="time_delta">Seconds the frame before took, 1/60 on the first frame</string>
+	<string name="frame_rate">Frames per second, counted over half a second, 60 until then</string>
 	<string name="time_in_cycle">在 FTIME_PERIOD 定義的週期內的時間循環（-1.0 到 +1.0）</string>
 	<string name="touch_position_in_pixels">第一個手指觸碰位置的像素座標</string>
 	<string name="touch_start_position_in_pixels">初始觸碰位置的像素座標</string>

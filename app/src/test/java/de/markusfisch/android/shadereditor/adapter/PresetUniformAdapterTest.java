@@ -38,6 +38,7 @@ public class PresetUniformAdapterTest {
 				"date",
 				"daytime",
 				"frame",
+				"frameRate",
 				"ftime",
 				"gravity",
 				"gyroscope",
@@ -67,6 +68,7 @@ public class PresetUniformAdapterTest {
 				"startRandom",
 				"subsecond",
 				"time",
+				"timeDelta",
 				"touch",
 				"touchStart"), names);
 	}

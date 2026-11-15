@@ -140,6 +140,8 @@
 	<string name="int_seconds_since_load">Время с начала исполнения (целочисленное)</string>
 	<string name="fractional_part_of_seconds_since_load">Fractional part of seconds since load</string>
 	<string name="frame_number">Текущий номер кадра, начинающийся с нуля</string>
+	<string name="time_delta">Seconds the frame before took, 1/60 on the first frame</string>
+	<string name="frame_rate">Frames per second, counted over half a second, 60 until then</string>
 	<string name="time_in_cycle">Time within a cycle of #define FTIME_PERIOD seconds from -1.0 to +1.0</string>
 	<string name="touch_position_in_pixels">Position of the first touching finger in pixels</string>
 	<string name="touch_start_position_in_pixels">Position of the initial touch in pixels</string>

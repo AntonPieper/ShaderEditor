@@ -28,6 +28,8 @@ public class FrameInputsTest {
 		project.pointers[4] = 960;
 		project.pointers[5] = 9;
 		project.time = 1.5f;
+		project.timeDelta = .02f;
+		project.frameRate = 48f;
 		project.frame = 42;
 		project.offsetX = .3f;
 
@@ -51,6 +53,8 @@ public class FrameInputsTest {
 		assertEquals(240, pass.pointers[4], DELTA);
 		assertEquals(9, pass.pointers[5], DELTA);
 		assertEquals(1.5f, pass.time, DELTA);
+		assertEquals(.02f, pass.timeDelta, 0f);
+		assertEquals(48f, pass.frameRate, 0f);
 		assertEquals(42, pass.frame);
 		assertEquals(.3f, pass.offsetX, DELTA);
 		assertEquals(1080, pass.surfaceWidth);

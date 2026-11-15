@@ -522,7 +522,7 @@ public final class ShaderEngine {
 	}
 
 	private void clearConfiguration() {
-		inputs.pauseRuntime();
+		inputs.pause();
 		fTimeMax = DEFAULT_FTIME_MAX;
 		runSources(null);
 	}

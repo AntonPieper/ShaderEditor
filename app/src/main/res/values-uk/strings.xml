@@ -140,6 +140,8 @@
 	<string name="int_seconds_since_load">Час у цілих секундах з моменту завантаження</string>
 	<string name="fractional_part_of_seconds_since_load">Дробові частини секунди з моменту завантаження</string>
 	<string name="frame_number">Номер поточного фрейму, починаючи з 0</string>
+	<string name="time_delta">Seconds the frame before took, 1/60 on the first frame</string>
+	<string name="frame_rate">Frames per second, counted over half a second, 60 until then</string>
 	<string name="time_in_cycle">Час у межах циклу #define FTIME_PERIOD секунд від -1,0 до +1,0</string>
 	<string name="touch_position_in_pixels">Позиція першого дотику пальця в пікселях</string>
 	<string name="touch_start_position_in_pixels">Позиція початкового дотику в пікселях</string>
