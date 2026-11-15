@@ -1,0 +1,1193 @@
+--------- beginning of main
+11-15 20:10:44.723 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:44.723 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:44.948 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:10:45.006 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:45.006 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+--------- beginning of system
+11-15 20:10:45.060 D/ShellBackPreview(  929): Finishing gesture with event action: 1
+11-15 20:10:45.060 D/ShellBackPreview(  929): onGestureFinished called while no gesture is started
+11-15 20:10:45.098 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:10:45.110 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:10:45.172 W/InputChannel-JNI(  661): Channel already disposed.
+11-15 20:10:45.216 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:45.261 I/APM_AudioPolicyManager(  527): getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-15 20:10:45.291 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:45.291 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:45.292 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): android.widget.PopupWindow$PopupDecorView$$ExternalSyntheticLambda1@e4dfa16
+11-15 20:10:45.294 D/CoreBackPreview(  661): Window{7a11480 u0 PopupWindow:871c20}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@975a65f, mPriority=0, mIsAnimationCallback=false, mOverrideBehavior=0}
+11-15 20:10:45.297 D/WindowManager(  661): setClientSurface Surface(name=VRI-PopupWindow:871c20#5494)/@0xc42f8ac for 7a11480 PopupWindow:871c20
+11-15 20:10:45.358 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:45.381 I/Surface (15813): Creating surface for consumer unnamed-15813-6 with slotExpansion=1 for 64 slots
+11-15 20:10:45.384 I/Surface (15813): Creating surface for consumer VRI[PopupWindow:871c20]#6(BLAST Consumer)6 with slotExpansion=1 for 64 slots
+11-15 20:10:45.460 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:45.563 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:45.577 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:45.577 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:45.665 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:45.768 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:45.779 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:45.779 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:45.964 W/AccessibilityManagerService(  661):  wait for adding window timeout: 550
+11-15 20:10:46.063 D/SatelliteController( 1045): isInCarrierRoamingNbIotNtn: satellite is disabled
+11-15 20:10:46.063 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:10:46.063 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:46.063 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:46.063 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:10:46.063 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:10:46.063 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:10:46.063 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:46.064 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:46.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:10:46.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:10:46.064 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:46.064 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:46.064 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:10:46.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:10:46.064 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:46.064 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:46.064 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:10:46.066 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:10:46.066 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:10:46.066 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:46.066 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:46.066 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:10:46.067 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:10:46.067 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:46.067 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:46.067 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:10:46.285 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:46.285 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:46.396 I/HWUI    (15813): Davey! duration=944ms; Flags=1, FrameTimelineVsyncId=775560, IntendedVsync=9006723056262, Vsync=9006789722922, InputEventId=0, HandleInputStart=9006798348100, AnimationStart=9006798378700, PerformTraversalsStart=9006798618600, DrawStart=9007353045500, FrameDeadline=9006739722928, FrameStartTime=9006796381500, FrameInterval=16666666, WorkloadTarget=16666666, AnimationTime=9006789722922, SyncQueued=9007355704900, SyncStart=9007594229900, IssueDrawCommandsStart=9007594445900, SwapBuffers=9007791209800, FrameCompleted=9007906039700, DequeueBufferDuration=22200, QueueBufferDuration=242300, GpuCompleted=9007906039700, SwapBuffersCompleted=9007811502500, DisplayPresentTime=0, CommandSubmissionCompleted=9007791209800, 
+11-15 20:10:46.457 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:46.483 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:10:46.571 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:46.571 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:46.724 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:46.868 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:46.868 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:47.041 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:47.163 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:47.163 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:47.309 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:47.439 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:10:47.448 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:47.448 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:47.461 D/IpClient/wlan0( 1001): interfaceLinkStateChanged: ifindex 16 up
+11-15 20:10:47.502 D/IpClient/wlan0( 1001): interfaceLinkStateChanged: ifindex 16 up
+11-15 20:10:47.598 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:47.817 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:47.817 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:47.964 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:48.093 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:48.093 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:48.144 D/android.hardware.audio@7.1-impl.ranchu(  476): threadLoop: entering standby, frames: 55214912
+11-15 20:10:48.144 D/android.hardware.audio@7.1-impl.ranchu(  476): ~TinyalsaSink: joining consumeThread
+11-15 20:10:48.144 D/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: exiting
+11-15 20:10:48.388 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:48.388 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:48.676 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:48.676 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:48.819 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:10:48.959 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:48.959 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:49.244 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:49.244 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:49.524 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:49.524 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:49.808 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:49.808 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:50.167 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:50.167 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:50.442 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:10:50.442 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:10:50.444 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:10:50.453 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:50.453 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:50.454 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:50.455 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:10:50.455 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:10:50.461 D/ConnectivityService(  661): NetReassign [no changes] [c 0] [a 1] [i 0]
+11-15 20:10:50.463 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:10:50.463 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:10:50.524 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:50.524 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:50.796 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:50.796 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:50.960 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:10:51.065 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:51.065 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:51.335 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:51.335 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:51.616 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:51.616 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:51.768 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:10:51.889 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:51.889 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:52.175 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:52.175 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:52.450 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:52.450 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:52.728 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:52.728 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:53.087 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:53.087 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:53.359 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:53.359 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:53.453 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:10:53.455 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:10:53.455 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:10:53.473 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:53.473 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:53.474 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:53.481 D/ConnectivityService(  661): NetReassign [no changes] [c 0] [a 2] [i 1]
+11-15 20:10:53.482 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:10:53.482 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:10:53.517 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:10:53.517 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:10:53.641 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:53.641 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:53.836 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:10:53.917 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:53.917 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:53.965 I/system_server(  661): Background young concurrent mark compact GC freed 21MB AllocSpace bytes, 68(1672KB) LOS objects, 38% free, 38MB/62MB, paused 2.221ms,2.094ms total 104.990ms
+11-15 20:10:53.988 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:10:54.015 V/GrammaticalInflectionUtils(  661): AttributionSource: android.content.AttributionSource@906d5748 does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+11-15 20:10:54.032 V/ActivityTaskManager(  661): TaskLaunchParamsModifier: phase=3 task=Task{fe85d59 #197 type=standard A=10264:de.markusfisch.android.shadereditor.debug} activity=ActivityRecord{231176838 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity t-1} display-area-from-source=DefaultTaskDisplayArea@40692420 display-id=0 task-display-area-windowing-mode=1 suggested-display-area=DefaultTaskDisplayArea@40692420 inherit-from-source=fullscreen non-freeform-task-display-area display-area=DefaultTaskDisplayArea@40692420 skip-bounds-fullscreen
+11-15 20:10:54.033 I/ActivityTaskManager(  661): START u0 {xflg=0x4 cmp=de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity} with LAUNCH_MULTIPLE from uid 10264 (de.markusfisch.android.shadereditor.debug) (sr=19526351) (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+11-15 20:10:54.033 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): null
+11-15 20:10:54.035 V/WindowManagerShell(  929): Transition requested (#514): android.os.BinderProxy@e22c2b4 TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=197 effectiveUid=10264 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.DEFAULT,android.intent.category.LAUNCHER] flg=0x10000000 cmp=de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity } baseActivity=ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity} topActivity=ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity} origActivity=null realActivity=ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity} realActivityIsAppLockEnabled=false numActivities=2 lastActiveTime=9015643 supportsMultiWindow=true supportsMultiWindowWithoutConstraints=true resizeMode=2 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.os.BinderProxy@361838f} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 0 - 0, 0) topActivityInfo=ActivityInfo{757eedd de.markusfisch.android.shadereditor.activity.PreferencesActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isInteractive=true isVisible=true isVisibleRequested=true isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=false lastNonFullscreenBounds=null leafTaskBoundsFromOptions= false capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=503 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false isLeafTask= true eligibleForLetterboxEducation= false isLetterboxEducationEnabled= true isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 1080, 2400) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null topNonResizableActivityAspectRatio=-1.0} topActivityMainWindowFrame=null isAppBubble=false}, pipChange = null, remoteTransitionInfo = null, displayChanges = null, requestedLocation = null, userChange = null, windowingLayerChange = null, fullscreenRequestChange = null, flags = 0, debugId = 514 }
+11-15 20:10:54.035 W/DisconnectHandler(  929): No disconnect change found in the transition, not handling request.
+11-15 20:10:54.036 V/ShellDesktopMode(  929): DesktopTasksController: skipping handleRequest reason=triggerTask's display doesn't support desktop mode
+11-15 20:10:54.036 D/ShellSplitScreen(  929): logExit: no-op, mLoggerSessionId is null
+11-15 20:10:54.038 D/CoreBackPreview(  661): Window{7a11480 u0 PopupWindow:871c20}: Setting back callback null
+11-15 20:10:54.043 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:10:54.044 D/AudioFlinger(  527): mixer(0x7b56f8e71790) throttle end: throttle time(34)
+11-15 20:10:54.061 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:10:54.068 I/libbinder.BpBinder(  531): onLastStrongRef automatically unlinking death recipients for binder (0x79f39803c140) with descriptor: '(not cached)'
+11-15 20:10:54.115 D/HWUI    (15813): endAllActiveAnimators on 0x781b2029b0e0 (RippleDrawable) with handle 0x781ae0270530
+11-15 20:10:54.207 I/APM_AudioPolicyManager(  527): getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-15 20:10:54.209 V/WindowManager(  661): Unknown focus tokens, dropping reportFocusChanged
+11-15 20:10:54.338 D/CorePackageUpdate(  661): Couldn't find a persistent state for task= 197
+11-15 20:10:54.338 D/WifiConfigStore(  661): Writing to stores completed in 13 ms.
+11-15 20:10:54.350 D/ActivityManager(  661): sync unfroze 1849 com.google.android.as.oss for 6
+11-15 20:10:54.358 W/ProcessStats(  661): Tracking association SourceState{a38bb9a system/1000 ImpBg #9104} whose proc state 6 is better than process ProcessState{35a48cb com.google.android.as.oss/10148 pkg=com.google.android.as.oss} proc state 14 (0 skipped)
+11-15 20:10:54.360 W/JobServiceContext(  661): Sending onNetworkChanged for a job that isn't started. JobStatus{96a3e63 #u0a148/-1667279869 com.google.android.as.oss/com.google.android.gms.learning.internal.training.InAppJobService u=0 s=10148 TIME=-2s737ms:none NET CHARGING PERSISTED READY}
+11-15 20:10:54.380 W/InputChannel-JNI(  661): Channel already disposed.
+11-15 20:10:54.381 D/StrictMode(15813): StrictMode policy violation; ~duration=14 ms: android.os.strictmode.DiskReadViolation
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-15 20:10:54.381 D/StrictMode(15813): 	at libcore.io.BlockGuardOs.access(BlockGuardOs.java:74)
+11-15 20:10:54.381 D/StrictMode(15813): 	at libcore.io.ForwardingOs.access(ForwardingOs.java:129)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.AndroidForwardingOs.access(AndroidForwardingOs.java:111)
+11-15 20:10:54.381 D/StrictMode(15813): 	at java.io.UnixFileSystem.checkAccess(UnixFileSystem.java:337)
+11-15 20:10:54.381 D/StrictMode(15813): 	at java.io.File.exists(File.java:829)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.ContextImpl.getDataDir(ContextImpl.java:3544)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.ContextImpl.getPreferencesDir(ContextImpl.java:807)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.ContextImpl.getSharedPreferencesPath(ContextImpl.java:1046)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.ContextImpl.getSharedPreferences(ContextImpl.java:641)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.content.ContextWrapper.getSharedPreferences(ContextWrapper.java:223)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.content.ContextWrapper.getSharedPreferences(ContextWrapper.java:223)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.PreferenceManager.getSharedPreferences(PreferenceManager.java:409)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.Preference.getSharedPreferences(Preference.java:1250)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.Preference.dispatchSetInitialValue(Preference.java:1602)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.Preference.onAttachedToHierarchy(Preference.java:1330)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.PreferenceInflater.onMergeRoots(PreferenceInflater.java:186)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.PreferenceInflater.inflate(PreferenceInflater.java:158)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.PreferenceInflater.inflate(PreferenceInflater.java:112)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.PreferenceManager.inflateFromResource(PreferenceManager.java:217)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.PreferenceFragmentCompat.setPreferencesFromResource(PreferenceFragmentCompat.java:380)
+11-15 20:10:54.381 D/StrictMode(15813): 	at de.markusfisch.android.shadereditor.fragment.PreferencesFragment.onCreatePreferences(PreferencesFragment.java:139)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.preference.PreferenceFragmentCompat.onCreate(PreferenceFragmentCompat.java:161)
+11-15 20:10:54.381 D/StrictMode(15813): 	at de.markusfisch.android.shadereditor.fragment.PreferencesFragment.onCreate(PreferencesFragment.java:88)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.Fragment.performCreate(Fragment.java:3090)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.FragmentStateManager.create(FragmentStateManager.java:475)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.FragmentStateManager.moveToExpectedState(FragmentStateManager.java:257)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.executeOpsTogether(FragmentManager.java:1899)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.removeRedundantOperationsAndExecute(FragmentManager.java:1817)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.execPendingActions(FragmentManager.java:1760)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.dispatchStateChange(FragmentManager.java:2985)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.dispatchActivityCreated(FragmentManager.java:2895)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.FragmentController.dispatchActivityCreated(FragmentController.java:263)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.fragment.app.FragmentActivity.onStart(FragmentActivity.java:351)
+11-15 20:10:54.381 D/StrictMode(15813): 	at androidx.appcompat.app.AppCompatActivity.onStart(AppCompatActivity.java:235)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.Instrumentation.callActivityOnStart(Instrumentation.java:1718)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.Activity.performStart(Activity.java:9383)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.ActivityThread.handleStartActivity(ActivityThread.java:4601)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.performLifecycleSequence(TransactionExecutor.java:214)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.cycleToPath(TransactionExecutor.java:194)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.executeLifecycleItem(TransactionExecutor.java:166)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:101)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3032)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-15 20:10:54.381 D/StrictMode(15813): 	at android.os.Looper.loop(Looper.java:397)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-15 20:10:54.382 D/StrictMode(15813): 	at java.lang.reflect.Method.invoke(Native Method)
+11-15 20:10:54.382 D/StrictMode(15813): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-15 20:10:54.382 D/StrictMode(15813): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+11-15 20:10:54.382 D/StrictMode(15813): StrictMode policy violation; ~duration=14 ms: android.os.strictmode.DiskReadViolation
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-15 20:10:54.382 D/StrictMode(15813): 	at libcore.io.BlockGuardOs.access(BlockGuardOs.java:74)
+11-15 20:10:54.382 D/StrictMode(15813): 	at libcore.io.ForwardingOs.access(ForwardingOs.java:129)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.AndroidForwardingOs.access(AndroidForwardingOs.java:111)
+11-15 20:10:54.382 D/StrictMode(15813): 	at java.io.UnixFileSystem.checkAccess(UnixFileSystem.java:337)
+11-15 20:10:54.382 D/StrictMode(15813): 	at java.io.File.exists(File.java:829)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:868)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:857)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.ContextImpl.getPreferencesDir(ContextImpl.java:809)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.ContextImpl.getSharedPreferencesPath(ContextImpl.java:1046)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.ContextImpl.getSharedPreferences(ContextImpl.java:641)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.content.ContextWrapper.getSharedPreferences(ContextWrapper.java:223)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.content.ContextWrapper.getSharedPreferences(ContextWrapper.java:223)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.PreferenceManager.getSharedPreferences(PreferenceManager.java:409)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.Preference.getSharedPreferences(Preference.java:1250)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.Preference.dispatchSetInitialValue(Preference.java:1602)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.Preference.onAttachedToHierarchy(Preference.java:1330)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.PreferenceInflater.onMergeRoots(PreferenceInflater.java:186)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.PreferenceInflater.inflate(PreferenceInflater.java:158)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.PreferenceInflater.inflate(PreferenceInflater.java:112)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.PreferenceManager.inflateFromResource(PreferenceManager.java:217)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.PreferenceFragmentCompat.setPreferencesFromResource(PreferenceFragmentCompat.java:380)
+11-15 20:10:54.382 D/StrictMode(15813): 	at de.markusfisch.android.shadereditor.fragment.PreferencesFragment.onCreatePreferences(PreferencesFragment.java:139)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.preference.PreferenceFragmentCompat.onCreate(PreferenceFragmentCompat.java:161)
+11-15 20:10:54.382 D/StrictMode(15813): 	at de.markusfisch.android.shadereditor.fragment.PreferencesFragment.onCreate(PreferencesFragment.java:88)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.Fragment.performCreate(Fragment.java:3090)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.FragmentStateManager.create(FragmentStateManager.java:475)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.FragmentStateManager.moveToExpectedState(FragmentStateManager.java:257)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.executeOpsTogether(FragmentManager.java:1899)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.removeRedundantOperationsAndExecute(FragmentManager.java:1817)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.execPendingActions(FragmentManager.java:1760)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.dispatchStateChange(FragmentManager.java:2985)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.FragmentManager.dispatchActivityCreated(FragmentManager.java:2895)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.FragmentController.dispatchActivityCreated(FragmentController.java:263)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.fragment.app.FragmentActivity.onStart(FragmentActivity.java:351)
+11-15 20:10:54.382 D/StrictMode(15813): 	at androidx.appcompat.app.AppCompatActivity.onStart(AppCompatActivity.java:235)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.Instrumentation.callActivityOnStart(Instrumentation.java:1718)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.Activity.performStart(Activity.java:9383)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.ActivityThread.handleStartActivity(ActivityThread.java:4601)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.performLifecycleSequence(TransactionExecutor.java:214)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.cycleToPath(TransactionExecutor.java:194)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.executeLifecycleItem(TransactionExecutor.java:166)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:101)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3032)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-15 20:10:54.382 D/StrictMode(15813): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-15 20:10:54.383 D/StrictMode(15813): 	at android.os.Looper.loop(Looper.java:397)
+11-15 20:10:54.383 D/StrictMode(15813): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-15 20:10:54.383 D/StrictMode(15813): 	at java.lang.reflect.Method.invoke(Native Method)
+11-15 20:10:54.383 D/StrictMode(15813): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-15 20:10:54.383 D/StrictMode(15813): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+11-15 20:10:54.385 I/ImeTracker(  661): de.markusfisch.android.shadereditor.debug:a0ff2a0e: onRequestHide at ORIGIN_SERVER reason HIDE_SAME_WINDOW_FOCUSED_WITHOUT_EDITOR fromUser false userId 0 displayId 0
+11-15 20:10:54.387 W/InputChannel-JNI(  661): Channel already disposed.
+11-15 20:10:54.421 W/JobScheduler(  661): Job didn't exist in JobStore: 96a3e63 #u0a148/-1667279869 com.google.android.as.oss/com.google.android.gms.learning.internal.training.InAppJobService
+11-15 20:10:54.446 V/RecentTasksController(  929): Notify recent tasks changed
+11-15 20:10:54.446 D/RecentTasksList( 1054): invalidateLoadedTasks - previous requestLoadId: -1
+11-15 20:10:54.449 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): android.app.Activity$$ExternalSyntheticLambda0@561b1fb
+11-15 20:10:54.449 V/RecentTasksController(  929): generateList(getRecentTasks)
+11-15 20:10:54.450 V/RecentTasksController(  929): initializeDesksMap - allDeskIds: []
+11-15 20:10:54.450 V/RecentTasksController(  929): Task 197 is not an active desktop task
+11-15 20:10:54.450 V/RecentTasksController(  929): Added fullscreen task: 197
+11-15 20:10:54.450 V/RecentTasksController(  929): Task 195 is not an active desktop task
+11-15 20:10:54.450 V/RecentTasksController(  929): Added fullscreen task: 195
+11-15 20:10:54.450 V/RecentTasksController(  929): Task 150 is not an active desktop task
+11-15 20:10:54.450 V/RecentTasksController(  929): Added fullscreen task: 150
+11-15 20:10:54.450 V/RecentTasksController(  929): generateList - complete
+11-15 20:10:54.450 D/CoreBackPreview(  661): Window{1ef21a4 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@93fbb09, mPriority=-1, mIsAnimationCallback=false, mOverrideBehavior=0}
+11-15 20:10:54.451 D/PreloadThumbnailUseCase( 1054): Preloading thumbnails for task ids: [[id=150 windowingMode=1 user=0 lastActiveTime=642730] null, [id=195 windowingMode=1 user=0 lastActiveTime=8705629] null, [id=197 windowingMode=1 user=0 lastActiveTime=9015959] null]
+11-15 20:10:54.451 D/VRI[PreferencesActivity](15813): WindowInsets changed: 1080x2400 statusBars:[0,132,0,0] navigationBars:[0,0,0,63] mandatorySystemGestures:[0,164,0,84] 
+11-15 20:10:54.453 D/WindowManager(  661): setClientSurface Surface(name=VRI-de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity#5501)/@0xd15910e for 1ef21a4 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity
+11-15 20:10:54.495 I/Surface (15813): Creating surface for consumer unnamed-15813-7 with slotExpansion=1 for 64 slots
+11-15 20:10:54.496 I/Surface (15813): Creating surface for consumer VRI[PreferencesActivity]#7(BLAST Consumer)7 with slotExpansion=1 for 64 slots
+11-15 20:10:54.942 D/InsetsController(15813): hide(ime())
+11-15 20:10:54.942 I/ImeTracker(15813): de.markusfisch.android.shadereditor.debug:a0ff2a0e: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-15 20:10:54.943 I/Choreographer(15813): Skipped 32 frames!  The application may be doing too much work on its main thread.
+11-15 20:10:54.944 I/ActivityTaskManager(  661): Displayed de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity for user 0: +931ms
+11-15 20:10:54.944 V/WindowManagerShell(  929): onTransitionReady(transaction=2838973426599)
+11-15 20:10:54.945 V/WindowManagerShell(  929): onTransitionReady (#514) android.os.BinderProxy@e22c2b4: {id=514 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+11-15 20:10:54.945 V/WindowManagerShell(  929):         {m=OPEN f=FILLS_TASK leash=Surface(name=ActivityRecord{231176838 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity t197}#5496)/@0x7263a52 sb=Rect(0, 0 - 0, 0) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=-1->0 r=-1->0:-1 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}},
+11-15 20:10:54.945 V/WindowManagerShell(  929):         {m=TO_BACK f=FILLS_TASK leash=Surface(name=ActivityRecord{19526351 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity t197}#5442)/@0xe780123 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}}
+11-15 20:10:54.945 V/WindowManagerShell(  929):     ]}
+11-15 20:10:54.946 V/WindowManagerShell(  929): Playing animation for (#514) android.os.BinderProxy@e22c2b4@0
+11-15 20:10:54.946 D/ShellSplitScreen(  929): startAnimation: transition=514 isSplitActive=false
+11-15 20:10:54.946 V/ShellRecents(  929): RecentsTransitionHandler.startAnimation: no controller found
+11-15 20:10:54.946 V/ShellDesktopMode(  929): DesktopMixedTransitionHandler: No pending desktop transition
+11-15 20:10:54.946 V/WindowManagerShell(  929): Transition doesn't have explicit remote, search filters for match for {id=514 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=OPEN f=FILLS_TASK leash=Surface(name=ActivityRecord{231176838 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity t197}#5496)/@0x7263a52 sb=Rect(0, 0 - 0, 0) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=-1->0 r=-1->0:-1 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}},{m=TO_BACK f=FILLS_TASK leash=Surface(name=ActivityRecord{19526351 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity t197}#5442)/@0xe780123 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}}]}
+11-15 20:10:54.946 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x0 checks=[{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null taskFragmentToken=android.os.BinderProxy@31a3110 windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@f79f409, appThread = android.app.IApplicationThread$Stub$Proxy@73dd60e, debugName = overlayBackTransition, filter = {types=[] flags=0x0 notFlags=0x0 checks=[{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null taskFragmentToken=android.os.BinderProxy@31a3110 windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:10:54.946 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@960982f, appThread = android.app.IApplicationThread$Stub$Proxy@fd94e3c, debugName = LauncherToDream, filter = {types=[] flags=0x0 notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:10:54.946 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=false modes=[CHANGE] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=true}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@3c4c7c5, appThread = android.app.IApplicationThread$Stub$Proxy@705451a, debugName = QuickstepDisplayMove, filter = {types=[] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=false modes=[CHANGE] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=true}]} }}
+11-15 20:10:54.947 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@468884b, appThread = android.app.IApplicationThread$Stub$Proxy@f0b1228, debugName = QuickstepLaunchHome, filter = {types=[] flags=0x0 notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:10:54.947 V/WindowManagerShell(  929):  Checking filter Pair{{types=[OPEN,TO_FRONT] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=freeform isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@12399f5, appThread = null, debugName = DesktopWindowLimitUnminimize, filter = {types=[OPEN,TO_FRONT] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=freeform isCrossDisplayMove=false}]} }}
+11-15 20:10:54.947 V/WindowManagerShell(  929):  Delegate animation for (#514) to null
+11-15 20:10:54.947 V/WindowManagerShell(  929): start default transition animation, info = {id=514 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=OPEN f=FILLS_TASK leash=Surface(name=ActivityRecord{231176838 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity t197}#5496)/@0x7263a52 sb=Rect(0, 0 - 0, 0) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=-1->0 r=-1->0:-1 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}},{m=TO_BACK f=FILLS_TASK leash=Surface(name=ActivityRecord{19526351 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity t197}#5442)/@0xe780123 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}}]}
+11-15 20:10:54.947 V/WindowManagerShell(  929): loadAnimation: anim=android.view.animation.AnimationSet@5bf8c7f animAttr=0x5 type=OPEN isEntrance=false
+11-15 20:10:54.953 V/WindowManagerShell(  929): loadAnimation: anim=android.view.animation.AnimationSet@bca719b animAttr=0x4 type=OPEN isEntrance=true
+11-15 20:10:54.953 V/WindowManagerShell(  929):  animated by com.android.wm.shell.transition.DefaultTransitionHandler@a98db7d
+11-15 20:10:54.954 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:54.954 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:54.954 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:54.955 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:54.955 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:54.955 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.039 W/AccessibilityManagerService(  661):  wait for adding window timeout: 551
+11-15 20:10:55.047 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:55.051 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.051 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.101 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.101 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.101 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.101 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.101 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.101 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.101 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.135 V/WindowManager(  661): Sent Transition (#514) createdAt=11-15 20:10:54.016 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=197 effectiveUid=10264 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.DEFAULT,android.intent.category.LAUNCHER] flg=0x10000000 cmp=de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity } baseActivity=ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity} topActivity=ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity} origActivity=null realActivity=ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity} realActivityIsAppLockEnabled=false numActivities=2 lastActiveTime=9015643 supportsMultiWindow=true supportsMultiWindowWithoutConstraints=true resizeMode=2 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{c61a273 Task{fe85d59 #197 type=standard A=10264:de.markusfisch.android.shadereditor.debug}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 0 - 0, 0) topActivityInfo=ActivityInfo{156b3e6 de.markusfisch.android.shadereditor.activity.PreferencesActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isInteractive=true isVisible=true isVisibleRequested=true isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=false lastNonFullscreenBounds=null leafTaskBoundsFromOptions= false capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=503 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false isLeafTask= true eligibleForLetterboxEducation= false isLetterboxEducationEnabled= true isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 1080, 2400) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null topNonResizableActivityAspectRatio=-1.0} topActivityMainWindowFrame=null isAppBubble=false}, pipChange = null, remoteTransitionInfo = null, displayChanges = null, requestedLocation = null, userChange = null, windowingLayerChange = null, fullscreenRequestChange = null, flags = 0, debugId = 514 }
+11-15 20:10:55.135 V/WindowManager(  661):     startWCT=WindowContainerTransaction { changes= {} hops= [] flags= 0 errorCallbackToken=null taskFragmentOrganizer=null }
+11-15 20:10:55.135 V/WindowManager(  661):     info={id=514 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+11-15 20:10:55.135 V/WindowManager(  661):         {m=OPEN f=FILLS_TASK leash=Surface(name=ActivityRecord{231176838 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity t197}#5496)/@0x68174b sb=Rect(0, 0 - 0, 0) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=-1->0 r=-1->0:-1 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}},
+11-15 20:10:55.135 V/WindowManager(  661):         {m=TO_BACK f=FILLS_TASK leash=Surface(name=ActivityRecord{19526351 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity t197}#5442)/@0x8133e06 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}}
+11-15 20:10:55.135 V/WindowManager(  661):     ]}
+11-15 20:10:55.150 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:55.206 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.206 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.206 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.206 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.206 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.250 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.290 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.290 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.290 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.290 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.290 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.351 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:55.358 I/HWUI    (15813): Davey! duration=700ms; Flags=0, FrameTimelineVsyncId=776343, IntendedVsync=9016023045294, Vsync=9016556378606, InputEventId=0, HandleInputStart=9016565079700, AnimationStart=9016565098900, PerformTraversalsStart=9016565815400, DrawStart=9016661337000, FrameDeadline=9016606378604, FrameStartTime=9016564619100, FrameInterval=16666666, WorkloadTarget=16666666, AnimationTime=9016556378606, SyncQueued=9016662746200, SyncStart=9016721448400, IssueDrawCommandsStart=9016721668200, SwapBuffers=9016722926600, FrameCompleted=9016782359100, DequeueBufferDuration=78700, QueueBufferDuration=239300, GpuCompleted=9016782359100, SwapBuffersCompleted=9016778878000, DisplayPresentTime=0, CommandSubmissionCompleted=9016722926600, 
+11-15 20:10:55.359 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.359 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.359 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.359 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.359 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.437 V/WindowManagerShell(  929): Transition animation finished (aborted=false), notifying core (#514) android.os.BinderProxy@e22c2b4@0
+11-15 20:10:55.439 V/WindowManager(  661): Finish Transition (#514): created at 11-15 20:10:54.016 collect-started=3.49ms request-sent=16.007ms started=20.48ms ready=323.72ms sent=925.868ms commit=12.156ms finished=1422.652ms
+11-15 20:10:55.441 V/WindowManagerShell(  929): Track 0 became idle
+11-15 20:10:55.441 V/WindowManagerShell(  929): All active transition animations finished
+11-15 20:10:55.446 I/Surface (  661): Creating surface for consumer unnamed-661-142 with slotExpansion=1 for 64 slots
+11-15 20:10:55.446 I/Surface (  661): Creating surface for consumer ImageReader-648x1440f1m1-661-142 with slotExpansion=1 for 64 slots
+11-15 20:10:55.447 W/ImageReader_JNI(  661): Unable to acquire a buffer item, very likely client tried to acquire more than maxImages buffers
+11-15 20:10:55.460 I/ImeTracker(  661): de.markusfisch.android.shadereditor.debug:7d2fd51: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false userId 0 displayId 0
+11-15 20:10:55.464 I/ImeTracker(  661): system_server:e049b948: onRequestHide at ORIGIN_SERVER reason IME_REQUESTED_CHANGED_LISTENER fromUser false displayId 0
+11-15 20:10:55.465 W/InputChannel-JNI(  661): Channel already disposed.
+11-15 20:10:55.466 I/ImeTracker(  661): system_server:e049b948: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-15 20:10:55.490 E/ConsumerBase(  661): [ImageReader-648x1440f1m1-661-142] abandonLocked: ConsumerBase is abandoned!
+11-15 20:10:55.552 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:55.654 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:55.690 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.759 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:55.849 D/VRI[MainActivity](15813): visibilityChanged oldVisibility=true newVisibility=false
+11-15 20:10:55.891 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:55.954 D/InsetsController(15813): hide(ime())
+11-15 20:10:55.954 I/ImeTracker(15813): de.markusfisch.android.shadereditor.debug:7d2fd51: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-15 20:10:55.965 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:10:56.005 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:56.063 D/SatelliteController( 1045): isInCarrierRoamingNbIotNtn: satellite is disabled
+11-15 20:10:56.063 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:10:56.063 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:56.063 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:56.063 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:10:56.064 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:10:56.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:10:56.064 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:56.064 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:56.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:10:56.076 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:10:56.076 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:56.076 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:56.076 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:10:56.077 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:10:56.077 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:56.077 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:56.077 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:10:56.077 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:10:56.078 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:10:56.078 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:56.078 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:56.078 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:10:56.079 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:10:56.079 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:10:56.080 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:10:56.080 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:10:56.101 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:56.107 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:56.210 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:56.322 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:56.327 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:56.435 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:56.459 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:10:56.459 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:10:56.463 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:10:56.465 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:56.465 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:56.465 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:56.470 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:10:56.470 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:10:56.472 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:10:56.472 D/ConnectivityService(  661): NetReassign [no changes] [c 1] [a 1] [i 3]
+11-15 20:10:56.472 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:10:56.474 D/IpClient/wlan0( 1001): interfaceLinkStateChanged: ifindex 16 up
+11-15 20:10:56.480 I/NearbyPresence( 1279): (REDACTED) %s verified [==] new request %s equals to the old request
+11-15 20:10:56.480 I/NearbyPresence( 1279): (REDACTED) %s verified [==] new request %s equals to the old request
+11-15 20:10:56.483 D/IpClient/wlan0( 1001): interfaceLinkStateChanged: ifindex 16 up
+11-15 20:10:56.535 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:56.715 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:56.815 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:10:56.829 E/Nl80211Native(  661): getChannelsMhzForBand: Wiphy index not recorded for band 8
+11-15 20:10:56.829 E/Nl80211Native(  661): getChannelsMhzForBand: Wiphy index not recorded for band 16
+11-15 20:10:56.829 D/Nl80211Native(  661): Ignoring unsupported scan type 2
+11-15 20:10:56.830 I/Nl80211Proxy(  661): Sending Nl80211 message: GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{56}, nlmsg_type{30()}, nlmsg_flags{5(NLM_F_REQUEST|NLM_F_ACK)}, nlmsg_seq{257}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{33}, version{1}, reserved{0} }}, attributes{[StructNlAttr{ nla_len{8}, nla_type{-32723}, nla_value{04000000}, }, StructNlAttr{ nla_len{8}, nla_type{3}, nla_value{10000000}, }, StructNlAttr{ nla_len{12}, nla_type{-32724}, nla_value{0800000085090000}, }, StructNlAttr{ nla_len{8}, nla_type{158}, nla_value{00000000}, }]} }
+11-15 20:10:56.832 I/Nl80211Proxy(  661): Received NLMSG_ERROR with error 0 for message GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{56}, nlmsg_type{30()}, nlmsg_flags{5(NLM_F_REQUEST|NLM_F_ACK)}, nlmsg_seq{257}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{33}, version{1}, reserved{0} }}, attributes{[StructNlAttr{ nla_len{8}, nla_type{-32723}, nla_value{04000000}, }, StructNlAttr{ nla_len{8}, nla_type{3}, nla_value{10000000}, }, StructNlAttr{ nla_len{12}, nla_type{-32724}, nla_value{0800000085090000}, }, StructNlAttr{ nla_len{8}, nla_type{158}, nla_value{00000000}, }]} }
+11-15 20:10:56.906 D/WifiNative(  661): Scan result ready event
+11-15 20:10:56.906 I/Nl80211Proxy(  661): Sending Nl80211 message: GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{20}, nlmsg_type{30()}, nlmsg_flags{769(NLM_F_REQUEST|NLM_F_DUMP)}, nlmsg_seq{258}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{5}, version{1}, reserved{0} }}, attributes{[]} }
+11-15 20:10:56.907 I/Nl80211Proxy(  661): Received NLMSG_DONE for message GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{20}, nlmsg_type{30()}, nlmsg_flags{769(NLM_F_REQUEST|NLM_F_DUMP)}, nlmsg_seq{258}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{5}, version{1}, reserved{0} }}, attributes{[]} }
+11-15 20:10:56.907 W/Nl80211Utils(  661): Malformed NEW_INTERFACE response: missing attributes
+11-15 20:10:56.907 I/Nl80211Proxy(  661): Sending Nl80211 message: GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{28}, nlmsg_type{30()}, nlmsg_flags{769(NLM_F_REQUEST|NLM_F_DUMP)}, nlmsg_seq{259}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{32}, version{1}, reserved{0} }}, attributes{[StructNlAttr{ nla_len{8}, nla_type{3}, nla_value{10000000}, }]} }
+11-15 20:10:56.907 I/Nl80211Proxy(  661): Received NLMSG_DONE for message GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{28}, nlmsg_type{30()}, nlmsg_flags{769(NLM_F_REQUEST|NLM_F_DUMP)}, nlmsg_seq{259}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{32}, version{1}, reserved{0} }}, attributes{[StructNlAttr{ nla_len{8}, nla_type{3}, nla_value{10000000}, }]} }
+11-15 20:10:56.910 I/WifiScanner( 1279): onFullResults
+11-15 20:10:56.911 I/WifiScanner( 1279): onFullResults
+11-15 20:10:56.919 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:10:56.926 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:56.973 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:10:57.030 E/TaskPersister(  661): File error accessing recents directory (directory doesn't exist?).
+11-15 20:10:57.093 D/android.hardware.audio@7.1-impl.ranchu(  476): threadLoop: entering standby, frames: 55362880
+11-15 20:10:57.094 D/android.hardware.audio@7.1-impl.ranchu(  476): ~TinyalsaSink: joining consumeThread
+11-15 20:10:57.094 D/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: exiting
+11-15 20:10:57.137 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:57.371 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:57.418 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:57.582 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:57.785 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:57.977 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:58.040 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:10:58.168 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:58.438 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:58.632 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:58.831 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:59.025 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:59.390 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:59.438 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+11-15 20:10:59.438 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+11-15 20:10:59.438 D/InetDiagMessage(  661): Destroyed live tcp sockets for uids={10148} in 1ms
+11-15 20:10:59.439 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+11-15 20:10:59.439 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+11-15 20:10:59.439 D/InetDiagMessage(  661): Destroyed live tcp sockets for uids={20148} in 1ms
+11-15 20:10:59.472 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:10:59.472 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:10:59.476 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:59.476 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:59.477 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:10:59.479 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:10:59.488 D/ConnectivityService(  661): NetReassign [no changes] [c 0] [a 2] [i 1]
+11-15 20:10:59.489 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:10:59.489 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:10:59.490 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:10:59.490 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:10:59.595 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:59.875 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:10:59.988 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:11:00.112 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:00.168 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:00.450 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:00.645 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:00.842 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:00.902 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:01.648 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:01.694 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): androidx.activity.OnBackPressedDispatcher$Api34Impl$createOnBackAnimationCallback$1@5346dea
+11-15 20:11:01.695 D/CoreBackPreview(  661): Window{1ef21a4 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@56a2788, mPriority=0, mIsAnimationCallback=true, mOverrideBehavior=0}
+11-15 20:11:01.697 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:11:01.698 D/AudioFlinger(  527): mixer(0x7b56f8e71790) throttle end: throttle time(38)
+11-15 20:11:01.699 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:11:01.736 D/AF::Track(  527): interceptBuffer: took 646us to intercept 0 tracks
+11-15 20:11:01.843 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:01.859 I/APM_AudioPolicyManager(  527): getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-15 20:11:01.936 W/InputChannel-JNI(  661): Channel already disposed.
+11-15 20:11:01.939 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): android.app.Activity$$ExternalSyntheticLambda0@561b1fb
+11-15 20:11:01.943 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:01.943 D/CoreBackPreview(  661): Window{1ef21a4 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@a7fd5cc, mPriority=-1, mIsAnimationCallback=false, mOverrideBehavior=0}
+11-15 20:11:01.944 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): android.app.Dialog$$ExternalSyntheticLambda2@b97488f
+11-15 20:11:01.945 D/CoreBackPreview(  661): Window{d81fb07 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@35a6015, mPriority=-1, mIsAnimationCallback=false, mOverrideBehavior=0}
+11-15 20:11:01.959 D/WindowManager(  661): setClientSurface Surface(name=VRI-de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity#5510)/@0xbff7f2a for d81fb07 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity
+11-15 20:11:02.041 I/Surface (15813): Creating surface for consumer unnamed-15813-8 with slotExpansion=1 for 64 slots
+11-15 20:11:02.042 I/Surface (15813): Creating surface for consumer VRI[PreferencesActivity]#8(BLAST Consumer)8 with slotExpansion=1 for 64 slots
+11-15 20:11:02.045 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:02.149 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:02.251 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:02.258 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:02.353 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:02.457 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:02.463 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:02.493 W/resolv  (  463): SSL_connect ssl error =5, mark 0xf006a: Connection refused
+11-15 20:11:02.493 W/resolv  (  463): SSL_connect ssl error =5, mark 0xf006a: Connection refused
+11-15 20:11:02.493 W/resolv  (  463): SSL_connect ssl error =5, mark 0xf006a: Connection refused
+11-15 20:11:02.493 W/resolv  (  463): TLS Handshake failed
+11-15 20:11:02.493 W/resolv  (  463): TLS Handshake failed
+11-15 20:11:02.493 W/resolv  (  463): query failed
+11-15 20:11:02.493 W/resolv  (  463): query failed
+11-15 20:11:02.493 W/resolv  (  463): TLS Handshake failed
+11-15 20:11:02.493 W/resolv  (  463): validateDnsTlsServer returned 0 for {10.0.2.5/}
+11-15 20:11:02.493 W/resolv  (  463): validateDnsTlsServer returned 0 for {10.0.2.4/}
+11-15 20:11:02.493 W/resolv  (  463): query failed
+11-15 20:11:02.493 W/resolv  (  463): validateDnsTlsServer returned 0 for {10.0.2.3/}
+11-15 20:11:02.493 W/resolv  (  463): Validation failed
+11-15 20:11:02.494 W/resolv  (  463): Validation failed
+11-15 20:11:02.494 W/resolv  (  463): Validation failed
+11-15 20:11:02.522 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:11:02.522 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:11:02.526 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:02.526 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:02.527 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:02.529 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:02.533 D/ConnectivityService(  661): NetReassign [no changes] [c 0] [a 2] [i 0]
+11-15 20:11:02.534 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:11:02.534 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:11:02.536 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:11:02.536 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:11:02.553 W/AccessibilityManagerService(  661):  wait for adding window timeout: 552
+11-15 20:11:02.614 D/NetworkStatsObservers(  661): Registering observer for RequestInfo from pid/uid:661/1000(android) for DataUsageRequest [ requestId=29, networkTemplate=NetworkTemplate: matchRule=MOBILE, matchSubscriberIds=[310260...], matchWifiNetworkKeys=[], metered=YES, defaultNetwork=NO, thresholdInBytes=3442565 ] accessLevel:3
+11-15 20:11:02.615 D/NetworkStatsObservers(  661): Unregistering RequestInfo from pid/uid:661/1000(android) for DataUsageRequest [ requestId=28, networkTemplate=NetworkTemplate: matchRule=MOBILE, matchSubscriberIds=[310260...], matchWifiNetworkKeys=[], metered=YES, defaultNetwork=NO, thresholdInBytes=3447838 ] accessLevel:3
+11-15 20:11:02.632 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:02.636 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:02.731 I/Choreographer(15813): Skipped 46 frames!  The application may be doing too much work on its main thread.
+11-15 20:11:02.830 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:02.844 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:02.938 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:03.033 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:11:03.042 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:03.052 I/HWUI    (15813): Davey! duration=924ms; Flags=0, FrameTimelineVsyncId=777516, IntendedVsync=9023573052558, Vsync=9024339719148, InputEventId=0, HandleInputStart=9024352374400, AnimationStart=9024352403600, PerformTraversalsStart=9024352603100, DrawStart=9024355846700, FrameDeadline=9024289711630, FrameStartTime=9024351916200, FrameInterval=16666666, WorkloadTarget=16666666, AnimationTime=9024339719148, SyncQueued=9024356453800, SyncStart=9024419966900, IssueDrawCommandsStart=9024420978200, SwapBuffers=9024421864100, FrameCompleted=9024561419200, DequeueBufferDuration=21600, QueueBufferDuration=259400, GpuCompleted=9024561419200, SwapBuffersCompleted=9024464362800, DisplayPresentTime=0, CommandSubmissionCompleted=9024421864100, 
+11-15 20:11:03.137 I/HWUI    (15813): Davey! duration=917ms; Flags=0, FrameTimelineVsyncId=777516, IntendedVsync=9023573052558, Vsync=9024339719148, InputEventId=0, HandleInputStart=9024352374400, AnimationStart=9024352403600, PerformTraversalsStart=9024352603100, DrawStart=9024420338000, FrameDeadline=9024389711626, FrameStartTime=9024351916200, FrameInterval=16666665, WorkloadTarget=16666666, AnimationTime=9024339719148, SyncQueued=9024420955900, SyncStart=9024515845000, IssueDrawCommandsStart=9024516013900, SwapBuffers=9024517867100, FrameCompleted=9024584989200, DequeueBufferDuration=1012000, QueueBufferDuration=380200, GpuCompleted=9024584989200, SwapBuffersCompleted=9024561261500, DisplayPresentTime=0, CommandSubmissionCompleted=9024517867100, 
+11-15 20:11:03.137 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:03.242 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:03.529 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:03.820 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:03.915 W/resolv  (  463): SSL_connect ssl error =5, mark 0xf006a: Connection refused
+11-15 20:11:03.915 W/resolv  (  463): TLS Handshake failed
+11-15 20:11:03.916 W/resolv  (  463): query failed
+11-15 20:11:03.916 W/resolv  (  463): validateDnsTlsServer returned 0 for {fec0::3/}
+11-15 20:11:03.916 W/resolv  (  463): Validation failed
+11-15 20:11:04.020 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:04.222 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:04.339 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:04.426 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:04.469 D/ActivityManager(  661): freezing 1849 com.google.android.as.oss
+11-15 20:11:04.470 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+11-15 20:11:04.471 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+11-15 20:11:04.471 D/InetDiagMessage(  661): Destroyed live tcp sockets for uids={10148} in 0ms
+11-15 20:11:04.574 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:04.724 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:04.768 D/android.hardware.audio@7.1-impl.ranchu(  476): threadLoop: entering standby, frames: 55511936
+11-15 20:11:04.768 D/android.hardware.audio@7.1-impl.ranchu(  476): ~TinyalsaSink: joining consumeThread
+11-15 20:11:04.768 D/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: exiting
+11-15 20:11:04.920 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:05.109 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:05.220 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:05.400 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:05.473 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): null
+11-15 20:11:05.473 D/CoreBackPreview(  661): Window{d81fb07 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}: Setting back callback null
+11-15 20:11:05.478 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:11:05.479 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:11:05.486 D/AudioFlinger(  527): mixer(0x7b56f8e71790) throttle end: throttle time(36)
+11-15 20:11:05.544 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:05.544 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:05.545 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:05.549 D/ConnectivityService(  661): NetReassign [no changes] [c 0] [a 0] [i 1]
+11-15 20:11:05.550 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:11:05.550 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:11:05.551 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:05.556 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:11:05.556 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:11:05.557 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:11:05.557 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:11:05.642 D/HWUI    (15813): endAllActiveAnimators on 0x781b20287be0 (AlertController$RecycleListView) with handle 0x781ae0263990
+11-15 20:11:05.647 I/APM_AudioPolicyManager(  527): getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-15 20:11:05.651 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): androidx.activity.OnBackPressedDispatcher$Api34Impl$createOnBackAnimationCallback$1@5346dea
+11-15 20:11:05.652 D/CoreBackPreview(  661): Window{1ef21a4 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@5efdc94, mPriority=0, mIsAnimationCallback=true, mOverrideBehavior=0}
+11-15 20:11:05.653 D/LeakCanary(15813): Watching instance of androidx.lifecycle.SavedStateHandlesVM (androidx.lifecycle.SavedStateHandlesVM received ViewModel#onCleared() callback) with key 6b2b21a6-f1f9-4cdd-85ef-6fb83c441980
+11-15 20:11:05.653 D/LeakCanary(15813): Watching instance of leakcanary.internal.ViewModelClearedWatcher (leakcanary.internal.ViewModelClearedWatcher received ViewModel#onCleared() callback) with key b837ff0b-d6e3-4b22-aaa9-f0ca98680f60
+11-15 20:11:05.653 D/LeakCanary(15813): Watching instance of androidx.loader.app.LoaderManagerImpl$LoaderViewModel (androidx.loader.app.LoaderManagerImpl$LoaderViewModel received ViewModel#onCleared() callback) with key 03775ff9-ce8d-47c7-8e32-3491790e99c0
+11-15 20:11:05.654 D/LeakCanary(15813): Watching instance of de.markusfisch.android.shadereditor.fragment.ListPreferenceDialogFragment (de.markusfisch.android.shadereditor.fragment.ListPreferenceDialogFragment received Fragment#onDestroy() callback) with key c119d2ab-4cc1-49e0-ae3f-47af7ec7edf0
+11-15 20:11:05.654 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): android.app.Activity$$ExternalSyntheticLambda0@561b1fb
+11-15 20:11:05.655 D/CoreBackPreview(  661): Window{1ef21a4 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@ace333d, mPriority=-1, mIsAnimationCallback=false, mOverrideBehavior=0}
+11-15 20:11:05.807 I/ImeTracker(  661): de.markusfisch.android.shadereditor.debug:45389d3e: onRequestHide at ORIGIN_SERVER reason HIDE_SAME_WINDOW_FOCUSED_WITHOUT_EDITOR fromUser false userId 0 displayId 0
+11-15 20:11:05.807 D/InsetsController(15813): hide(ime())
+11-15 20:11:05.807 I/ImeTracker(15813): de.markusfisch.android.shadereditor.debug:45389d3e: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-15 20:11:05.809 W/InputChannel-JNI(  661): Channel already disposed.
+11-15 20:11:05.892 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:06.056 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:11:06.062 D/SatelliteController( 1045): isInCarrierRoamingNbIotNtn: satellite is disabled
+11-15 20:11:06.062 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:11:06.063 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:06.063 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:06.063 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:06.064 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:11:06.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:11:06.064 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:06.064 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:06.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:11:06.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:11:06.064 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:06.064 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:06.064 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:06.065 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:11:06.065 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:06.065 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:06.065 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:06.065 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:11:06.065 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:11:06.065 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:06.065 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:06.065 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:11:06.066 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:11:06.066 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:06.066 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:06.066 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:06.168 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:06.449 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:06.450 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:06.514 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:07.399 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:07.604 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:07.604 V/WindowManagerShell(  929): Transition requested (#515): android.os.BinderProxy@9338362 TransitionRequestInfo { type = CLOSE, triggerTask = null, pipChange = null, remoteTransitionInfo = null, displayChanges = null, requestedLocation = null, userChange = null, windowingLayerChange = null, fullscreenRequestChange = null, flags = 0, debugId = 515 }
+11-15 20:11:07.604 W/DisconnectHandler(  929): No disconnect change found in the transition, not handling request.
+11-15 20:11:07.604 V/ShellDesktopMode(  929): DesktopTasksController: skipping handleRequest reason=triggerTask is null
+11-15 20:11:07.713 I/libbinder.BpBinder(  531): onLastStrongRef automatically unlinking death recipients for binder (0x79f398022d00) with descriptor: '(not cached)'
+11-15 20:11:07.800 V/RecentTasksController(  929): Notify recent tasks changed
+11-15 20:11:07.801 D/RecentTasksList( 1054): invalidateLoadedTasks - previous requestLoadId: -1
+11-15 20:11:07.802 V/RecentTasksController(  929): generateList(getRecentTasks)
+11-15 20:11:07.802 V/RecentTasksController(  929): initializeDesksMap - allDeskIds: []
+11-15 20:11:07.803 V/RecentTasksController(  929): Task 197 is not an active desktop task
+11-15 20:11:07.803 V/RecentTasksController(  929): Added fullscreen task: 197
+11-15 20:11:07.803 V/RecentTasksController(  929): Task 195 is not an active desktop task
+11-15 20:11:07.803 V/RecentTasksController(  929): Added fullscreen task: 195
+11-15 20:11:07.803 V/RecentTasksController(  929): Task 150 is not an active desktop task
+11-15 20:11:07.803 V/RecentTasksController(  929): Added fullscreen task: 150
+11-15 20:11:07.803 V/RecentTasksController(  929): generateList - complete
+11-15 20:11:07.804 D/PreloadThumbnailUseCase( 1054): Preloading thumbnails for task ids: [[id=150 windowingMode=1 user=0 lastActiveTime=642730] null, [id=195 windowingMode=1 user=0 lastActiveTime=8705629] null, [id=197 windowingMode=1 user=0 lastActiveTime=9029314] null]
+11-15 20:11:07.989 D/WindowManager(  661): setClientSurface Surface(name=VRI-de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity#5516)/@0xefd8cf5 for 1315b7 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity
+11-15 20:11:07.989 I/Surface (15813): Creating surface for consumer unnamed-15813-9 with slotExpansion=1 for 64 slots
+11-15 20:11:07.990 I/Surface (15813): Creating surface for consumer VRI[MainActivity]#9(BLAST Consumer)9 with slotExpansion=1 for 64 slots
+11-15 20:11:08.390 V/WindowManagerShell(  929): onTransitionReady(transaction=2838973426733)
+11-15 20:11:08.391 V/WindowManagerShell(  929): onTransitionReady (#515) android.os.BinderProxy@9338362: {id=515 t=CLOSE f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+11-15 20:11:08.391 V/WindowManagerShell(  929):         {m=CLOSE f=FILLS_TASK leash=Surface(name=ActivityRecord{231176838 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity t197}#5496)/@0xcc2fcf3 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}},
+11-15 20:11:08.391 V/WindowManagerShell(  929):         {m=TO_FRONT f=FILLS_TASK leash=Surface(name=ActivityRecord{19526351 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity t197}#5442)/@0xf09edb0 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}}
+11-15 20:11:08.391 V/WindowManagerShell(  929):     ]}
+11-15 20:11:08.391 V/WindowManagerShell(  929): Playing animation for (#515) android.os.BinderProxy@9338362@0
+11-15 20:11:08.391 V/WindowManager(  661): Sent Transition (#515) createdAt=11-15 20:11:07.602 via request=TransitionRequestInfo { type = CLOSE, triggerTask = null, pipChange = null, remoteTransitionInfo = null, displayChanges = null, requestedLocation = null, userChange = null, windowingLayerChange = null, fullscreenRequestChange = null, flags = 0, debugId = 515 }
+11-15 20:11:08.391 V/WindowManager(  661):     startWCT=WindowContainerTransaction { changes= {} hops= [] flags= 0 errorCallbackToken=null taskFragmentOrganizer=null }
+11-15 20:11:08.392 V/WindowManager(  661):     info={id=515 t=CLOSE f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+11-15 20:11:08.392 V/WindowManager(  661):         {m=CLOSE f=FILLS_TASK leash=Surface(name=ActivityRecord{231176838 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity t197}#5496)/@0x68174b sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}},
+11-15 20:11:08.392 V/WindowManager(  661):         {m=TO_FRONT f=FILLS_TASK leash=Surface(name=ActivityRecord{19526351 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity t197}#5442)/@0x8133e06 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}}
+11-15 20:11:08.392 V/WindowManager(  661):     ]}
+11-15 20:11:08.392 D/ShellSplitScreen(  929): startAnimation: transition=515 isSplitActive=false
+11-15 20:11:08.392 V/ShellRecents(  929): RecentsTransitionHandler.startAnimation: no controller found
+11-15 20:11:08.392 V/ShellDesktopMode(  929): DesktopMixedTransitionHandler: No pending desktop transition
+11-15 20:11:08.393 V/WindowManagerShell(  929): Transition doesn't have explicit remote, search filters for match for {id=515 t=CLOSE f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=CLOSE f=FILLS_TASK leash=Surface(name=ActivityRecord{231176838 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity t197}#5496)/@0xcc2fcf3 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}},{m=TO_FRONT f=FILLS_TASK leash=Surface(name=ActivityRecord{19526351 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity t197}#5442)/@0xf09edb0 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}}]}
+11-15 20:11:08.393 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x0 checks=[{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null taskFragmentToken=android.os.BinderProxy@31a3110 windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@f79f409, appThread = android.app.IApplicationThread$Stub$Proxy@73dd60e, debugName = overlayBackTransition, filter = {types=[] flags=0x0 notFlags=0x0 checks=[{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null taskFragmentToken=android.os.BinderProxy@31a3110 windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:11:08.393 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@960982f, appThread = android.app.IApplicationThread$Stub$Proxy@fd94e3c, debugName = LauncherToDream, filter = {types=[] flags=0x0 notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:11:08.393 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=false modes=[CHANGE] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=true}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@3c4c7c5, appThread = android.app.IApplicationThread$Stub$Proxy@705451a, debugName = QuickstepDisplayMove, filter = {types=[] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=false modes=[CHANGE] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=true}]} }}
+11-15 20:11:08.393 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@468884b, appThread = android.app.IApplicationThread$Stub$Proxy@f0b1228, debugName = QuickstepLaunchHome, filter = {types=[] flags=0x0 notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:11:08.393 V/WindowManagerShell(  929):  Checking filter Pair{{types=[OPEN,TO_FRONT] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=freeform isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@12399f5, appThread = null, debugName = DesktopWindowLimitUnminimize, filter = {types=[OPEN,TO_FRONT] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=freeform isCrossDisplayMove=false}]} }}
+11-15 20:11:08.393 V/WindowManagerShell(  929):  Delegate animation for (#515) to null
+11-15 20:11:08.393 V/WindowManagerShell(  929): start default transition animation, info = {id=515 t=CLOSE f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=CLOSE f=FILLS_TASK leash=Surface(name=ActivityRecord{231176838 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity t197}#5496)/@0xcc2fcf3 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}},{m=TO_FRONT f=FILLS_TASK leash=Surface(name=ActivityRecord{19526351 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity t197}#5442)/@0xf09edb0 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 bc=ff121316 activity=ActivityTransitionInfo { component = ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity}, taskId = 197, appCompatTransitionInfo = null } opt={t=FROM_STYLE mUserId=0}}]}
+11-15 20:11:08.393 V/WindowManagerShell(  929): loadAnimation: anim=android.view.animation.AnimationSet@286754f animAttr=0x6 type=CLOSE isEntrance=true
+11-15 20:11:08.393 V/WindowManagerShell(  929): loadAnimation: anim=android.view.animation.AnimationSet@991b9e5 animAttr=0x7 type=CLOSE isEntrance=false
+11-15 20:11:08.394 V/WindowManagerShell(  929):  animated by com.android.wm.shell.transition.DefaultTransitionHandler@a98db7d
+11-15 20:11:08.431 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.432 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.432 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.432 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.432 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.488 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.488 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.488 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.488 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.488 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.488 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.516 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:08.530 D/android.hardware.audio@7.1-impl.ranchu(  476): threadLoop: entering standby, frames: 55660992
+11-15 20:11:08.530 D/android.hardware.audio@7.1-impl.ranchu(  476): ~TinyalsaSink: joining consumeThread
+11-15 20:11:08.530 D/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: exiting
+11-15 20:11:08.559 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:08.559 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:08.559 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:08.561 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:08.561 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:11:08.561 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:11:08.565 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:11:08.566 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:11:08.573 D/ConnectivityService(  661): NetReassign [no changes] [c 0] [a 2] [i 2]
+11-15 20:11:08.574 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:11:08.574 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:11:08.687 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.687 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.687 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.687 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.688 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.688 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.742 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.742 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.742 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.742 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.742 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.806 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.806 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.806 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.806 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.806 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.871 V/WindowManagerShell(  929): Transition animation finished (aborted=false), notifying core (#515) android.os.BinderProxy@9338362@0
+11-15 20:11:08.873 V/WindowManager(  661): Finish Transition (#515): created at 11-15 20:11:07.602 collect-started=0.04ms request-sent=0.85ms started=47.573ms ready=92.464ms sent=786.794ms commit=42.497ms finished=1270.574ms
+11-15 20:11:08.876 V/WindowManagerShell(  929): Track 0 became idle
+11-15 20:11:08.876 V/WindowManagerShell(  929): All active transition animations finished
+11-15 20:11:08.921 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:08.932 I/ImeTracker(  661): de.markusfisch.android.shadereditor.debug:928c57e9: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false userId 0 displayId 0
+11-15 20:11:08.933 W/InputChannel-JNI(  661): Channel already disposed.
+11-15 20:11:08.934 I/ImeTracker(  661): system_server:3c584f43: onRequestHide at ORIGIN_SERVER reason IME_REQUESTED_CHANGED_LISTENER fromUser false displayId 0
+11-15 20:11:08.940 I/ImeTracker(  661): system_server:3c584f43: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-15 20:11:09.039 D/VRI[PreferencesActivity](15813): visibilityChanged oldVisibility=true newVisibility=false
+11-15 20:11:09.071 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:11:09.086 D/LeakCanary(15813): Watching instance of androidx.fragment.app.FragmentManagerViewModel (androidx.fragment.app.FragmentManagerViewModel received ViewModel#onCleared() callback) with key e214eca4-d4fa-4d12-8695-d726238c8082
+11-15 20:11:09.086 D/LeakCanary(15813): Watching instance of leakcanary.internal.ViewModelClearedWatcher (leakcanary.internal.ViewModelClearedWatcher received ViewModel#onCleared() callback) with key f8f83947-7383-4c9b-b692-edf5ccbc55ed
+11-15 20:11:09.086 D/LeakCanary(15813): Watching instance of androidx.lifecycle.SavedStateHandlesVM (androidx.lifecycle.SavedStateHandlesVM received ViewModel#onCleared() callback) with key b0b3b656-83a5-4b12-9058-b5872913f791
+11-15 20:11:09.086 D/LeakCanary(15813): Watching instance of androidx.lifecycle.ReportFragment (androidx.lifecycle.ReportFragment received Fragment#onDestroy() callback) with key 2d84c2fb-114a-494a-b4b8-3c2e26f4ec7e
+11-15 20:11:09.087 D/LeakCanary(15813): Watching instance of de.markusfisch.android.shadereditor.activity.PreferencesActivity (de.markusfisch.android.shadereditor.activity.PreferencesActivity received Activity#onDestroy() callback) with key c422351c-ffea-40bd-ab09-9e48f21c98a7
+11-15 20:11:09.087 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): null
+11-15 20:11:09.087 D/CoreBackPreview(  661): Window{1ef21a4 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.PreferencesActivity}: Setting back callback null
+11-15 20:11:09.089 D/LeakCanary(15813): Watching instance of android.widget.LinearLayout (de.markusfisch.android.shadereditor.fragment.PreferencesFragment received Fragment#onDestroyView() callback (references to its views should be cleared to prevent leaks)) with key 3974180c-2805-4e1f-a237-91e497c610e0
+11-15 20:11:09.089 D/LeakCanary(15813): Watching instance of androidx.lifecycle.SavedStateHandlesVM (androidx.lifecycle.SavedStateHandlesVM received ViewModel#onCleared() callback) with key 47ec8b8e-76d3-453d-80b7-4ff44e88a1d6
+11-15 20:11:09.089 D/LeakCanary(15813): Watching instance of leakcanary.internal.ViewModelClearedWatcher (leakcanary.internal.ViewModelClearedWatcher received ViewModel#onCleared() callback) with key f987709a-48e8-4209-afeb-32817747208c
+11-15 20:11:09.089 D/LeakCanary(15813): Watching instance of androidx.loader.app.LoaderManagerImpl$LoaderViewModel (androidx.loader.app.LoaderManagerImpl$LoaderViewModel received ViewModel#onCleared() callback) with key b41982df-a778-4634-81fe-bcb17feefa4b
+11-15 20:11:09.089 D/LeakCanary(15813): Watching instance of de.markusfisch.android.shadereditor.fragment.PreferencesFragment (de.markusfisch.android.shadereditor.fragment.PreferencesFragment received Fragment#onDestroy() callback) with key 932f0f93-de86-4533-aee9-06619d5c3870
+11-15 20:11:09.092 D/ViewRootImpl(15813): Skipping stats log for color mode
+11-15 20:11:09.095 D/InsetsController(15813): hide(ime())
+11-15 20:11:09.095 I/ImeTracker(15813): de.markusfisch.android.shadereditor.debug:928c57e9: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-15 20:11:09.193 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:09.280 W/ProcessStats(  661): Tracking association SourceState{444fd7b system/1000 ImpBg #9115} whose proc state 6 is better than process ProcessState{b62cbb6 com.callstack.agentdevice.imehelper/10236 pkg=com.callstack.agentdevice.imehelper} proc state 14 (2 skipped)
+11-15 20:11:09.381 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:09.575 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:09.683 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:09.876 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:10.161 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:10.395 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:10.432 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:10.521 I/QuickAccessWalletTile(  929): QAW service is unavailable, recreating the wallet client.
+11-15 20:11:10.524 D/ControlsListingControllerImpl(  929): Subscribing callback, service count: 0
+11-15 20:11:10.527 D/ControlsListingControllerImpl(  929): Unsubscribing callback
+11-15 20:11:10.595 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:11.569 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:11:11.569 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:11:11.570 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:11.570 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:11.570 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:11.573 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:11:11.573 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:11:11.574 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:11.576 D/ConnectivityService(  661): NetReassign [no changes] [c 1] [a 0] [i 1]
+11-15 20:11:11.577 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:11:11.577 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:11:11.749 D/ConnectivityService(  661): handleLingerComplete for [101 CELLULAR]
+11-15 20:11:11.749 I/ConnectivityService(  661): Update capabilities for net 101 : -FOREGROUND
+11-15 20:11:11.749 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+11-15 20:11:11.749 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+11-15 20:11:11.749 D/InetDiagMessage(  661): Destroyed live tcp sockets for lacking permission for netId:101 and permission:1 in 1ms
+11-15 20:11:11.752 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+11-15 20:11:11.752 D/InetDiagMessage(  661): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+11-15 20:11:11.753 D/InetDiagMessage(  661): Destroyed live tcp sockets for lacking permission for netId:101 and permission:1 in 0ms
+11-15 20:11:11.753 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:12.102 E/TaskPersister(  661): File error accessing recents directory (directory doesn't exist?).
+11-15 20:11:12.256 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:11:12.594 D/WindowManager(  661): captureDisplay
+11-15 20:11:12.617 I/adbd    (  539): adbd service requested 'shell,v2,raw:dumpsys display'
+11-15 20:11:12.661 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:12.747 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:12.747 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:12.747 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:13.213 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:13.221 I/ImeTracker(15813): de.markusfisch.android.shadereditor.debug:2672772f: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser true userId 0 displayId 0
+11-15 20:11:13.226 D/InsetsController(15813): show(ime())
+11-15 20:11:13.227 D/InsetsController(15813): Setting requestedVisibleTypes to 511 (was 503)
+11-15 20:11:13.231 W/InputChannel-JNI(  661): Channel already disposed.
+11-15 20:11:13.237 I/ImeTracker( 1385): de.markusfisch.android.shadereditor.debug:2672772f: onFailed at PHASE_IME_ON_SHOW_SOFT_INPUT_TRUE
+11-15 20:11:13.410 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:13.553 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:13.697 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:13.813 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:14.294 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:14.420 I/adbd    (  539): adbd service requested 'shell,v2,raw:am broadcast -p com.callstack.agentdevice.imehelper -a com.callstack.agentdevice.imehelper.ACTION_INPUT_TEXT_B64 --es protocol android-ime-helper-v1 --es text Ow=='
+11-15 20:11:14.444 I/ActivityManager(  661): Broadcasting: Intent { act=com.callstack.agentdevice.imehelper.ACTION_INPUT_TEXT_B64 flg=0x400000 pkg=com.callstack.agentdevice.imehelper (has extras) }
+11-15 20:11:14.445 I/ActivityManager(  661): Enqueued broadcast Intent { act=com.callstack.agentdevice.imehelper.ACTION_INPUT_TEXT_B64 flg=0x400000 pkg=com.callstack.agentdevice.imehelper (has extras) }: 0
+11-15 20:11:14.447 I/AgentDeviceTestIME( 1385): commitText length=1
+11-15 20:11:14.450 I/ActivityManager(  661): Broadcast completed: result=0
+11-15 20:11:14.550 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:14.592 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:11:14.592 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:11:14.597 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:14.597 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:14.598 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:14.600 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:11:14.601 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:11:14.609 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:14.617 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:11:14.617 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:11:14.617 D/ConnectivityService(  661): NetReassign [no changes] [c 0] [a 6] [i 1]
+11-15 20:11:14.731 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:14.751 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:15.030 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:15.113 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:11:15.531 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:16.029 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:16.063 D/SatelliteController( 1045): isInCarrierRoamingNbIotNtn: satellite is disabled
+11-15 20:11:16.063 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:11:16.063 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:16.063 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:16.064 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:16.064 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:11:16.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:11:16.064 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:16.064 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:16.065 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:11:16.065 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:11:16.065 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:16.065 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:16.065 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:16.066 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:11:16.066 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:16.066 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:16.066 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:16.066 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:11:16.066 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:11:16.066 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:16.067 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:16.067 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:11:16.067 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:11:16.067 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:16.067 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:16.067 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:16.530 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:16.823 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:16.835 E/Nl80211Native(  661): getChannelsMhzForBand: Wiphy index not recorded for band 8
+11-15 20:11:16.835 E/Nl80211Native(  661): getChannelsMhzForBand: Wiphy index not recorded for band 16
+11-15 20:11:16.835 D/Nl80211Native(  661): Ignoring unsupported scan type 2
+11-15 20:11:16.835 I/Nl80211Proxy(  661): Sending Nl80211 message: GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{56}, nlmsg_type{30()}, nlmsg_flags{5(NLM_F_REQUEST|NLM_F_ACK)}, nlmsg_seq{260}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{33}, version{1}, reserved{0} }}, attributes{[StructNlAttr{ nla_len{8}, nla_type{-32723}, nla_value{04000000}, }, StructNlAttr{ nla_len{8}, nla_type{3}, nla_value{10000000}, }, StructNlAttr{ nla_len{12}, nla_type{-32724}, nla_value{0800000085090000}, }, StructNlAttr{ nla_len{8}, nla_type{158}, nla_value{00000000}, }]} }
+11-15 20:11:16.837 I/Nl80211Proxy(  661): Received NLMSG_ERROR with error 0 for message GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{56}, nlmsg_type{30()}, nlmsg_flags{5(NLM_F_REQUEST|NLM_F_ACK)}, nlmsg_seq{260}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{33}, version{1}, reserved{0} }}, attributes{[StructNlAttr{ nla_len{8}, nla_type{-32723}, nla_value{04000000}, }, StructNlAttr{ nla_len{8}, nla_type{3}, nla_value{10000000}, }, StructNlAttr{ nla_len{12}, nla_type{-32724}, nla_value{0800000085090000}, }, StructNlAttr{ nla_len{8}, nla_type{158}, nla_value{00000000}, }]} }
+11-15 20:11:16.882 D/WifiNative(  661): Scan result ready event
+11-15 20:11:16.882 I/Nl80211Proxy(  661): Sending Nl80211 message: GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{20}, nlmsg_type{30()}, nlmsg_flags{769(NLM_F_REQUEST|NLM_F_DUMP)}, nlmsg_seq{261}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{5}, version{1}, reserved{0} }}, attributes{[]} }
+11-15 20:11:16.883 I/Nl80211Proxy(  661): Received NLMSG_DONE for message GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{20}, nlmsg_type{30()}, nlmsg_flags{769(NLM_F_REQUEST|NLM_F_DUMP)}, nlmsg_seq{261}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{5}, version{1}, reserved{0} }}, attributes{[]} }
+11-15 20:11:16.883 W/Nl80211Utils(  661): Malformed NEW_INTERFACE response: missing attributes
+11-15 20:11:16.883 I/Nl80211Proxy(  661): Sending Nl80211 message: GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{28}, nlmsg_type{30()}, nlmsg_flags{769(NLM_F_REQUEST|NLM_F_DUMP)}, nlmsg_seq{262}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{32}, version{1}, reserved{0} }}, attributes{[StructNlAttr{ nla_len{8}, nla_type{3}, nla_value{10000000}, }]} }
+11-15 20:11:16.883 I/Nl80211Proxy(  661): Received NLMSG_DONE for message GenericNetlinkMsg{ nlHeader{StructNlMsgHdr{ nlmsg_len{28}, nlmsg_type{30()}, nlmsg_flags{769(NLM_F_REQUEST|NLM_F_DUMP)}, nlmsg_seq{262}, nlmsg_pid{0} }}, genNlHeader{StructGenNlMsgHdr{ command{32}, version{1}, reserved{0} }}, attributes{[StructNlAttr{ nla_len{8}, nla_type{3}, nla_value{10000000}, }]} }
+11-15 20:11:16.884 I/WifiScanner( 1279): onFullResults
+11-15 20:11:16.884 I/WifiScanner( 1279): onFullResults
+11-15 20:11:16.886 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:17.029 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:17.295 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:17.529 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:17.613 I/AdbWifiNetworkMonitor(  661): Wi-Fi network available
+11-15 20:11:17.614 I/AdbWifiNetworkMonitor(  661): Received the same Wi-Fi SSID. Ignoring.
+11-15 20:11:17.616 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:17.616 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:17.617 W/libbinder.IPCThreadState(  661): Sending oneway calls to frozen process.
+11-15 20:11:17.618 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:17.619 I/NullBinder( 1279): NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+11-15 20:11:17.619 W/libbinder.Binder( 1279): Large reply transaction of 1056768 bytes, interface descriptor , function: UNKNOWN_FUNCTION_NAME, code: 1, flags: 17
+11-15 20:11:17.622 D/ConnectivityService(  661): NetReassign [no changes] [c 1] [a 1] [i 0]
+11-15 20:11:17.623 I/NearbyMediums( 1279): Wifi changed new SSID: "AndroidWifi"
+11-15 20:11:17.623 I/NearbyMediums( 1279): WifiLanConnectivityInfo is not changed, skip notify.
+11-15 20:11:18.029 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:18.075 I/adbd    (  539): adbd service requested 'shell,v2,raw:dumpsys display'
+11-15 20:11:18.085 D/WindowManager(  661): captureDisplay
+11-15 20:11:18.122 I/NearbySharing( 1279): Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-15 20:11:18.183 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:18.183 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:18.183 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:18.531 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:18.891 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:19.031 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:19.565 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:20.045 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:20.546 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:20.623 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:20.957 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:21.046 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:21.547 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:22.046 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:22.549 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:23.048 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:23.048 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:23.546 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:23.631 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:24.060 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:24.564 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:25.063 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:25.113 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:25.581 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:26.063 D/SatelliteController( 1045): isInCarrierRoamingNbIotNtn: satellite is disabled
+11-15 20:11:26.064 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:11:26.064 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:26.064 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:26.065 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:26.065 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:11:26.066 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:11:26.066 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:26.066 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:26.066 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:11:26.066 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:11:26.066 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:26.066 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:26.067 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:26.067 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Checking connect type from PLMN config for subId: 1
+11-15 20:11:26.067 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:26.067 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:26.067 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:26.067 D/SatelliteController( 1045): getSatellitePerPlmnConfiguration: invalid subId or not supported via carrier.
+11-15 20:11:26.067 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: config: null
+11-15 20:11:26.067 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:26.068 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:26.068 D/SatelliteController( 1045): getCarrierRoamingNtnConnectTypeViaConfigUpdater: return null (satelliteConfig is null)
+11-15 20:11:26.068 D/SatelliteController( 1045): getCarrierRoamingNtnConnectType: Falling back to global carrier config connect type: 0
+11-15 20:11:26.068 D/TelephonyConfigUpdateInstallReceiver( 1045): getConfigParser: domain=satellite
+11-15 20:11:26.068 V/SatelliteController( 1045): satelliteConfigParser is not ready
+11-15 20:11:26.068 D/SatelliteController( 1045): isSatelliteAttachSupportedViaConfigupdater: return null (satelliteConfig is null)
+11-15 20:11:26.186 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:26.561 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:26.640 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:27.083 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:27.179 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:27.562 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:28.068 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:28.213 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:28.289 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:11:28.293 D/AudioFlinger(  527): mixer(0x7b56f8e71790) throttle end: throttle time(36)
+11-15 20:11:28.300 W/AS.PlaybackActivityMon(  661): No piid assigned for invalid/internal port id 15
+11-15 20:11:28.409 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:28.418 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:28.505 I/APM_AudioPolicyManager(  527): getNewOutputDevices io 13 recent device override {AUDIO_DEVICE_OUT_SPEAKER, @:}
+11-15 20:11:28.601 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:28.606 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:28.717 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:28.751 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:28.905 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:28.910 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:29.057 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:29.111 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:29.212 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:29.223 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:29.241 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:29.372 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:29.434 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:29.535 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:29.542 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:29.650 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:29.652 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:29.766 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:30.214 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:30.714 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:30.815 W/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: timeout waiting for tinyalsa, error: ''
+11-15 20:11:31.213 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:31.322 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:31.340 D/android.hardware.audio@7.1-impl.ranchu(  476): threadLoop: entering standby, frames: 55808960
+11-15 20:11:31.340 D/android.hardware.audio@7.1-impl.ranchu(  476): ~TinyalsaSink: joining consumeThread
+11-15 20:11:31.340 D/android.hardware.audio@7.1-impl.ranchu(  476): consumeThread: exiting
+11-15 20:11:31.713 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:31.880 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:32.076 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:32.276 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:32.469 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:32.570 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:32.654 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:32.729 I/adbd    (  539): adbd service requested 'shell,v2,raw:dumpsys display'
+11-15 20:11:32.732 D/WindowManager(  661): captureDisplay
+11-15 20:11:32.746 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:32.900 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:32.900 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:32.901 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:33.247 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:33.389 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:33.632 D/WindowManager(  661): captureDisplay
+11-15 20:11:33.656 I/adbd    (  539): adbd service requested 'shell,v2,raw:dumpsys display'
+11-15 20:11:33.726 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:33.726 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:33.726 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:33.784 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:34.216 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:34.225 V/WindowManagerShell(  929): Transition requested (#516): android.os.BinderProxy@baa7a2c TransitionRequestInfo { type = CLOSE, triggerTask = TaskInfo{userId=0 taskId=197 effectiveUid=10264 displayId=0 isRunning=false baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.DEFAULT,android.intent.category.LAUNCHER] flg=0x10000000 cmp=de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity } baseActivity=null topActivity=null origActivity=null realActivity=ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity} realActivityIsAppLockEnabled=false numActivities=0 lastActiveTime=9029314 supportsMultiWindow=true supportsMultiWindowWithoutConstraints=true resizeMode=2 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.os.BinderProxy@361838f} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 0 - 0, 0) topActivityInfo=null launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isInteractive=true isVisible=true isVisibleRequested=true isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=true lastNonFullscreenBounds=null leafTaskBoundsFromOptions= false capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=503 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false isLeafTask= true eligibleForLetterboxEducation= false isLetterboxEducationEnabled= false isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 0, 0) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null topNonResizableActivityAspectRatio=-1.0} topActivityMainWindowFrame=null isAppBubble=false}, pipChange = null, remoteTransitionInfo = null, displayChanges = null, requestedLocation = null, userChange = null, windowingLayerChange = null, fullscreenRequestChange = null, flags = 0, debugId = 516 }
+11-15 20:11:34.225 W/DisconnectHandler(  929): No disconnect change found in the transition, not handling request.
+11-15 20:11:34.225 V/ShellDesktopMode(  929): DesktopTasksController: skipping handleRequest reason=triggerTask's display doesn't support desktop mode
+11-15 20:11:34.236 V/WindowManager(  661): Defer transition id=516 for TaskFragmentTransaction=android.os.Binder@68d03ee
+11-15 20:11:34.237 D/ViewRootImpl( 1054): Skipping stats log for color mode
+11-15 20:11:34.238 D/BaseActivity( 1054): Launcher flags updated: [state_started] +[state_started]
+11-15 20:11:34.238 D/BaseActivity( 1054): Launcher flags updated: [state_started|state_resumed|state_user_active] +[state_resumed|state_user_active]
+11-15 20:11:34.239 D/BaseActivity( 1054): Launcher flags updated: [state_started|state_resumed|state_user_active] +[]
+11-15 20:11:34.239 D/BaseActivity( 1054): Launcher flags updated: [state_started|state_resumed|state_deferred_resumed|state_user_active] +[state_deferred_resumed]
+11-15 20:11:34.239 D/StatsLog( 1054): LAUNCHER_ONRESUME
+11-15 20:11:34.248 D/QuickstepModelDelegate( 1054): notifyAppTargetEvent action=1 launchLocation=workspace/0/[-1,-1]/[1,1]
+11-15 20:11:34.250 V/RecentTasksController(  929): Notify recent tasks changed
+11-15 20:11:34.255 D/SmartspaceInteractor( 1054): notifySmartspaceEvent: SmartspaceTargetEvent{mSmartspaceTarget=null, mSmartspaceActionId='null', mEventType=6}
+11-15 20:11:34.260 D/WindowManager(  661): setClientSurface Surface(name=VRI-com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#5521)/@0x951608f for 14cf83c com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity
+11-15 20:11:34.260 I/Surface ( 1054): Creating surface for consumer unnamed-1054-182 with slotExpansion=1 for 64 slots
+11-15 20:11:34.261 I/Surface ( 1054): Creating surface for consumer VRI[NexusLauncherActivity]#92(BLAST Consumer)92 with slotExpansion=1 for 64 slots
+11-15 20:11:34.266 D/SsBaseTemplateCard( 1054): Passed-in item info is null
+11-15 20:11:34.269 D/SsBaseTemplateCard( 1054): Passed-in item info is null
+11-15 20:11:34.269 D/SsBaseTemplateCard( 1054): Passed-in item info is null
+11-15 20:11:34.269 D/SsBaseTemplateCard( 1054): Passed-in item info is null
+11-15 20:11:34.269 I/SsBaseTemplateCard( 1054): Secondary card pane is null
+11-15 20:11:34.274 D/WallpaperService(  929): onVisibilityChanged(true): com.android.systemui.wallpapers.ImageWallpaper$CanvasEngine@fb14123
+11-15 20:11:34.275 D/BaseDepthController( 1054): setSurface:
+11-15 20:11:34.275 D/BaseDepthController( 1054): 	mWaitingOnSurfaceValidity: false
+11-15 20:11:34.275 D/BaseDepthController( 1054): 	mBaseSurface: Surface(name=VRI-com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#5521)/@0xb558e71
+11-15 20:11:34.276 V/BaseDepthController( 1054): Applying blur: 0 to Surface(name=VRI-com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#5521)/@0xb558e71 applyImmediately: false
+11-15 20:11:34.276 D/BaseDepthController( 1054): shouldBlurWorkspace: false targetState: Normal currentStableState: Normal mCurrentBlur: 0 mLauncher.getDepthBlurTargets(): [com.android.launcher3.Workspace{a1a6094 V.ED..... ......ID 0,0-1080,2400 #7f0a0486 app:id/workspace}, com.android.launcher3.Hotseat{ae240f5 V.ED..... .......D 0,1905-1080,2400 #7f0a01f6 app:id/hotseat}]
+11-15 20:11:34.337 V/RecentTasksController(  929): Notify recent tasks changed
+11-15 20:11:34.400 I/AiAiEcho( 1485): Predicting[0]:  [CONTEXT sampling_count=5 ]
+11-15 20:11:34.400 I/AiAiEcho( 1485): EchoTargets: 
+11-15 20:11:34.400 I/AiAiEcho( 1485): Filtered by AiAi flag check: 
+11-15 20:11:34.400 I/AiAiEcho( 1485): [CONTEXT ratelimit_period="10 SECONDS" ]
+11-15 20:11:34.400 I/AiAiEcho( 1485): #remoteViewsTwiddler: feature disabled.
+11-15 20:11:34.402 I/AiAiEcho( 1485): #postPredictionTargets: Sending updates to UISurface home with targets# 0 (types=[])
+11-15 20:11:34.427 I/libbinder.BpBinder(  531): onLastStrongRef automatically unlinking death recipients for binder (0x79f3980474b0) with descriptor: '(not cached)'
+11-15 20:11:34.433 D/WindowManagerShell(  929): setLauncherKeepClearAreaHeight: visible=true, height=495
+11-15 20:11:34.438 V/RecentTasksController(  929): generateList(getRecentTasks)
+11-15 20:11:34.438 V/RecentTasksController(  929): initializeDesksMap - allDeskIds: []
+11-15 20:11:34.438 V/RecentTasksController(  929): Task 197 is not an active desktop task
+11-15 20:11:34.438 V/RecentTasksController(  929): Added fullscreen task: 197
+11-15 20:11:34.438 V/RecentTasksController(  929): Task 195 is not an active desktop task
+11-15 20:11:34.438 V/RecentTasksController(  929): Added fullscreen task: 195
+11-15 20:11:34.439 V/RecentTasksController(  929): Task 150 is not an active desktop task
+11-15 20:11:34.439 V/RecentTasksController(  929): Added fullscreen task: 150
+11-15 20:11:34.439 V/RecentTasksController(  929): generateList - complete
+11-15 20:11:34.439 D/PreloadThumbnailUseCase( 1054): Preloading thumbnails for task ids: [[id=150 windowingMode=1 user=0 lastActiveTime=642730] null, [id=195 windowingMode=1 user=0 lastActiveTime=8705629] null, [id=197 windowingMode=1 user=0 lastActiveTime=9055847] null]
+11-15 20:11:34.771 D/RecentTasksList( 1054): invalidateLoadedTasks - previous requestLoadId: -1
+11-15 20:11:34.771 I/Choreographer( 1054): Skipped 30 frames!  The application may be doing too much work on its main thread.
+11-15 20:11:34.772 D/RecentTasksList( 1054): invalidateLoadedTasks - previous requestLoadId: -1
+11-15 20:11:34.774 V/WindowManager(  661): Continue transition id=516 for TaskFragmentTransaction=android.os.Binder@68d03ee
+11-15 20:11:34.775 W/AccessibilityManagerService(  661):  wait for adding window timeout: 505
+11-15 20:11:34.778 V/WindowManagerShell(  929): onTransitionReady(transaction=2838973426793)
+11-15 20:11:34.782 V/WindowManagerShell(  929): onTransitionReady (#516) android.os.BinderProxy@baa7a2c: {id=516 t=CLOSE f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+11-15 20:11:34.782 V/WindowManagerShell(  929):         {m=CLOSE f=FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=197#5434)/@0x2d79cf5 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1 winMode=1 userId=0},
+11-15 20:11:34.782 V/WindowManagerShell(  929):         {m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP|FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=1#33)/@0x21eaa8a sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1 winMode=1 userId=0},
+11-15 20:11:34.782 V/WindowManagerShell(  929):         {m=TO_FRONT f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{587edc6}#2828)/@0xfc0d8fb sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}
+11-15 20:11:34.782 V/WindowManagerShell(  929):     ]}
+11-15 20:11:34.782 V/WindowManagerShell(  929): Playing animation for (#516) android.os.BinderProxy@baa7a2c@0
+11-15 20:11:34.782 D/ShellSplitScreen(  929): startAnimation: transition=516 isSplitActive=false
+11-15 20:11:34.783 V/ShellRecents(  929): RecentsTransitionHandler.startAnimation: no controller found
+11-15 20:11:34.783 V/ShellDesktopMode(  929): DesktopMixedTransitionHandler: No pending desktop transition
+11-15 20:11:34.783 V/WindowManagerShell(  929): Transition doesn't have explicit remote, search filters for match for {id=516 t=CLOSE f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=CLOSE f=FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=197#5434)/@0x2d79cf5 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1 winMode=1 userId=0},{m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP|FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=1#33)/@0x21eaa8a sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1 winMode=1 userId=0},{m=TO_FRONT f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{587edc6}#2828)/@0xfc0d8fb sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}]}
+11-15 20:11:34.783 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x0 checks=[{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null taskFragmentToken=android.os.BinderProxy@31a3110 windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@f79f409, appThread = android.app.IApplicationThread$Stub$Proxy@73dd60e, debugName = overlayBackTransition, filter = {types=[] flags=0x0 notFlags=0x0 checks=[{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null taskFragmentToken=android.os.BinderProxy@31a3110 windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:11:34.783 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@960982f, appThread = android.app.IApplicationThread$Stub$Proxy@fd94e3c, debugName = LauncherToDream, filter = {types=[] flags=0x0 notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:11:34.783 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=false modes=[CHANGE] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=true}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@3c4c7c5, appThread = android.app.IApplicationThread$Stub$Proxy@705451a, debugName = QuickstepDisplayMove, filter = {types=[] flags=0x0 notFlags=0x0 checks=[{atype=standard independent=false modes=[CHANGE] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=true}]} }}
+11-15 20:11:34.783 V/WindowManagerShell(  929):  Checking filter Pair{{types=[] flags=0x0 notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@468884b, appThread = android.app.IApplicationThread$Stub$Proxy@f0b1228, debugName = QuickstepLaunchHome, filter = {types=[] flags=0x0 notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:11:34.783 D/RemoteTransitionHandler(  929): Found filterPair{{types=[] flags=0x0 notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined isCrossDisplayMove=false}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@468884b, appThread = android.app.IApplicationThread$Stub$Proxy@f0b1228, debugName = QuickstepLaunchHome, filter = {types=[] flags=0x0 notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined isCrossDisplayMove=false}]} }}
+11-15 20:11:34.785 V/WindowManagerShell(  929):  Delegate animation for (#516) to RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@468884b, appThread = android.app.IApplicationThread$Stub$Proxy@f0b1228, debugName = QuickstepLaunchHome, filter = {types=[] flags=0x0 notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined isCrossDisplayMove=false},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined isCrossDisplayMove=false}]} }
+11-15 20:11:34.789 D/SsBaseTemplateCard( 1054): Passed-in item info is null
+11-15 20:11:34.789 D/SsBaseTemplateCard( 1054): Passed-in item info is null
+11-15 20:11:34.789 D/SsBaseTemplateCard( 1054): Passed-in item info is null
+11-15 20:11:34.789 D/SsBaseTemplateCard( 1054): Passed-in item info is null
+11-15 20:11:34.789 I/SsBaseTemplateCard( 1054): Secondary card pane is null
+11-15 20:11:34.797 D/LauncherStateManager( 1054): StateManager.cancelAnimation: animation ongoing: false, partial trace:
+11-15 20:11:34.797 D/LauncherStateManager( 1054): 	at com.android.launcher3.statemanager.StateManager.setCurrentAnimation(go/retraceme 9bf9d747b28c192bd799fb0161a08498ac2b938f666e7966c0095b4da2c9b843:59)
+11-15 20:11:34.797 D/LauncherStateManager( 1054): 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(go/retraceme 9bf9d747b28c192bd799fb0161a08498ac2b938f666e7966c0095b4da2c9b843:712)
+11-15 20:11:34.797 D/LauncherStateManager( 1054): 	at com.android.launcher3.QuickstepTransitionManager$WallpaperOpenLauncherAnimationRunner.onAnimationStart(go/retraceme 9bf9d747b28c192bd799fb0161a08498ac2b938f666e7966c0095b4da2c9b843:135)
+11-15 20:11:34.798 D/LauncherStateManager( 1054): StateManager.createAtomicAnimation: fromState: Normal, toState: Normal, partial trace:
+11-15 20:11:34.798 D/LauncherStateManager( 1054): 	at com.android.quickstep.util.WorkspaceRevealAnim.prepareToAnimate(go/retraceme 9bf9d747b28c192bd799fb0161a08498ac2b938f666e7966c0095b4da2c9b843:19)
+11-15 20:11:34.798 D/LauncherStateManager( 1054): 	at com.android.quickstep.util.WorkspaceRevealAnim.<init>(go/retraceme 9bf9d747b28c192bd799fb0161a08498ac2b938f666e7966c0095b4da2c9b843:10)
+11-15 20:11:34.798 D/LauncherStateManager( 1054): 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(go/retraceme 9bf9d747b28c192bd799fb0161a08498ac2b938f666e7966c0095b4da2c9b843:753)
+11-15 20:11:34.798 D/AllAppsTransitionController( 1054): shouldProtectHeader: false skipScrim: true state: Normal stateManager.getState(): Normal
+11-15 20:11:34.798 D/KeyboardInsetsHandler( 1054): removePendingImeController: pendingImeController=null
+11-15 20:11:34.798 D/b/311077782( 1054): LauncherAnimationRunner.setAnimation
+11-15 20:11:35.052 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.122 I/RanchuHwc(  494): logCompositionFallbackIfChanged: layer 1077 CompositionType fallback from 2 to 1
+11-15 20:11:35.122 I/RanchuHwc(  494): logCompositionFallbackIfChanged: layer 1078 CompositionType fallback from 2 to 1
+11-15 20:11:35.122 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.123 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.123 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.123 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.123 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.123 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.123 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.152 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.152 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.152 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.154 V/WindowManager(  661): Sent Transition (#516) createdAt=11-15 20:11:34.224 via request=TransitionRequestInfo { type = CLOSE, triggerTask = TaskInfo{userId=0 taskId=197 effectiveUid=10264 displayId=0 isRunning=false baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.DEFAULT,android.intent.category.LAUNCHER] flg=0x10000000 cmp=de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity } baseActivity=null topActivity=null origActivity=null realActivity=ComponentInfo{de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity} realActivityIsAppLockEnabled=false numActivities=0 lastActiveTime=9029314 supportsMultiWindow=true supportsMultiWindowWithoutConstraints=true resizeMode=2 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{c61a273 Task{fe85d59 #197 type=standard A=10264:de.markusfisch.android.shadereditor.debug}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 0 - 0, 0) topActivityInfo=null launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isInteractive=true isVisible=true isVisibleRequested=true isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=true lastNonFullscreenBounds=null leafTaskBoundsFromOptions= false capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=503 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false isLeafTask= true eligibleForLetterboxEducation= false isLetterboxEducationEnabled= false isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 0, 0) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null topNonResizableActivityAspectRatio=-1.0} topActivityMainWindowFrame=null isAppBubble=false}, pipChange = null, remoteTransitionInfo = null, displayChanges = null, requestedLocation = null, userChange = null, windowingLayerChange = null, fullscreenRequestChange = null, flags = 0, debugId = 516 }
+11-15 20:11:35.154 D/WorkspaceRevealAnim( 1054): onAnimationEnd: workspace alpha = 1.0
+11-15 20:11:35.154 V/WindowManager(  661):     startWCT=WindowContainerTransaction { changes= {} hops= [] flags= 0 errorCallbackToken=null taskFragmentOrganizer=null }
+11-15 20:11:35.155 V/WindowManagerShell(  929): Received remote transition finished callback for (#516)
+11-15 20:11:35.156 W/ActivityTaskManager(  661): setRunningRemoteTransition: no process for null
+11-15 20:11:35.157 V/WindowManagerShell(  929):  animated by com.android.wm.shell.transition.RemoteTransitionHandler@35f021a
+11-15 20:11:35.158 V/WindowManager(  661):     info={id=516 t=CLOSE f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+11-15 20:11:35.158 V/WindowManager(  661):         {WCT{RemoteToken{c61a273 Task{fe85d59 #197 type=standard A=10264:de.markusfisch.android.shadereditor.debug}}} m=CLOSE f=FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=197#5434)/@0xb053bad sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1 winMode=1 userId=0},
+11-15 20:11:35.158 V/WindowManager(  661):         {WCT{RemoteToken{93201b2 Task{e02e46f #1 type=home}}} m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP|FLAG_CHANGED_INTERACTIVE leash=Surface(name=Task=1#33)/@0x6ca4f8b sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1 winMode=1 userId=0},
+11-15 20:11:35.158 V/WindowManager(  661):         {m=TO_FRONT f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{587edc6}#2828)/@0x32a902 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}
+11-15 20:11:35.158 V/WindowManager(  661):     ]}
+11-15 20:11:35.159 V/WindowManagerShell(  929): Transition animation finished (aborted=false), notifying core (#516) android.os.BinderProxy@baa7a2c@0
+11-15 20:11:35.218 V/WindowManager(  661): Finish Transition (#516): created at 11-15 20:11:34.224 collect-started=0.039ms request-sent=0.136ms started=4.22ms ready=549.969ms sent=552.709ms commit=185.06ms finished=993.368ms
+11-15 20:11:35.224 D/VRI[MainActivity](15813): visibilityChanged oldVisibility=true newVisibility=false
+11-15 20:11:35.225 V/WindowManagerShell(  929): Track 0 became idle
+11-15 20:11:35.225 V/WindowManagerShell(  929): All active transition animations finished
+11-15 20:11:35.245 I/Surface (  661): Creating surface for consumer unnamed-661-143 with slotExpansion=1 for 64 slots
+11-15 20:11:35.245 I/Surface (  661): Creating surface for consumer ImageReader-864x1920f1m1-661-143 with slotExpansion=1 for 64 slots
+11-15 20:11:35.245 W/ImageReader_JNI(  661): Unable to acquire a buffer item, very likely client tried to acquire more than maxImages buffers
+11-15 20:11:35.340 I/dereditor.debug(15813): Waiting for a blocking GC ProfileSaver
+11-15 20:11:35.355 I/dereditor.debug(15813): WaitForGcToComplete blocked ProfileSaver on CollectorTransition for 15.660ms
+11-15 20:11:35.360 E/ConsumerBase(  661): [ImageReader-864x1920f1m1-661-143] abandonLocked: ConsumerBase is abandoned!
+11-15 20:11:35.415 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.415 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.415 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.416 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.416 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.416 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.416 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.416 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.417 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.417 W/System  (  929): A resource failed to call release. 
+11-15 20:11:35.461 I/adbd    (  539): adbd service requested 'shell,v2,raw:wm size'
+11-15 20:11:35.471 W/libbinder.Binder(  661): Binder transaction to android.view.IWindowManager, function: UNKNOWN_FUNCTION_NAME, code: 110, took 1246ms. Data bytes: 76 Reply bytes: 4 Flags: 18
+11-15 20:11:35.471 W/libbinder.Binder( 2165): Binder transaction to android.app.IUiAutomationConnection, function: UNKNOWN_FUNCTION_NAME, code: 3, took 1251ms. Data bytes: 168 Reply bytes: 8 Flags: 18
+11-15 20:11:35.487 D/BaseActivity( 1054): Launcher flags updated: [state_started|state_resumed|state_deferred_resumed|state_window_focused|state_user_active] +[state_window_focused]
+11-15 20:11:35.489 I/ImeTracker(  661): com.google.android.apps.nexuslauncher:1772c612: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false userId 0 displayId 0
+11-15 20:11:35.494 D/InputMethodManagerService(  661): Attach new input but force hide
+11-15 20:11:35.495 I/ImeTracker(  661): com.google.android.apps.nexuslauncher:1be94a50: onRequestHide at ORIGIN_SERVER reason HIDE_SOFT_INPUT fromUser false userId 0 displayId 0
+11-15 20:11:35.501 I/ImeTracker( 1385): com.google.android.apps.nexuslauncher:1be94a50: onHidden
+11-15 20:11:35.503 W/InputChannel-JNI(  661): Channel already disposed.
+11-15 20:11:35.506 I/ImeTracker(  661): system_server:62f6a41: onRequestHide at ORIGIN_SERVER reason IME_REQUESTED_CHANGED_LISTENER fromUser false displayId 0
+11-15 20:11:35.508 I/ImeTracker(  661): system_server:62f6a41: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-15 20:11:35.663 I/HalDevMgr(  661): bestIfaceCreationProposal is null, requestIface=STA, existingIface=[name=wlan0 type=STA]
+11-15 20:11:35.673 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.674 W/skia    (  531): AGTM parsing failed flags.readFromStream(s) at 159
+11-15 20:11:35.674 D/InsetsController( 1054): hide(ime())
+11-15 20:11:35.674 I/ImeTracker( 1054): com.google.android.apps.nexuslauncher:1772c612: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-15 20:11:35.706 D/LeakCanary(15813): Watching instance of androidx.fragment.app.FragmentManagerViewModel (androidx.fragment.app.FragmentManagerViewModel received ViewModel#onCleared() callback) with key cd0d728e-c0a7-422b-a802-f122400f9b22
+11-15 20:11:35.706 D/LeakCanary(15813): Watching instance of leakcanary.internal.ViewModelClearedWatcher (leakcanary.internal.ViewModelClearedWatcher received ViewModel#onCleared() callback) with key 93ac137c-4453-4852-9b0b-80210189111d
+11-15 20:11:35.706 D/LeakCanary(15813): Watching instance of androidx.lifecycle.SavedStateHandlesVM (androidx.lifecycle.SavedStateHandlesVM received ViewModel#onCleared() callback) with key 71b5fdef-866b-4f8c-983c-d4f2e52f7516
+11-15 20:11:35.707 D/LeakCanary(15813): Watching instance of androidx.lifecycle.ReportFragment (androidx.lifecycle.ReportFragment received Fragment#onDestroy() callback) with key a21770bb-c6ac-449f-ba21-edc4c42d7c39
+11-15 20:11:35.716 D/LeakCanary(15813): Watching instance of de.markusfisch.android.shadereditor.activity.MainActivity (de.markusfisch.android.shadereditor.activity.MainActivity received Activity#onDestroy() callback) with key 615895da-a748-47b5-a20d-64e3bbbce723
+11-15 20:11:35.718 D/WindowOnBackDispatcher(15813): setTopOnBackInvokedCallback (unwrapped): null
+11-15 20:11:35.718 D/CoreBackPreview(  661): Window{1315b7 u0 de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity}: Setting back callback null
+11-15 20:11:35.724 D/LeakCanary(15813): Watching instance of de.markusfisch.android.shadereditor.widget.CodeView (de.markusfisch.android.shadereditor.fragment.EditorFragment received Fragment#onDestroyView() callback (references to its views should be cleared to prevent leaks)) with key 4ecb3cb2-a4f1-41a0-aa66-714b466e1632
+11-15 20:11:35.724 D/LeakCanary(15813): Watching instance of androidx.lifecycle.SavedStateHandlesVM (androidx.lifecycle.SavedStateHandlesVM received ViewModel#onCleared() callback) with key 6b248ee6-d4d2-4ee8-86ce-4bf8092ac0ac
+11-15 20:11:35.725 D/LeakCanary(15813): Watching instance of leakcanary.internal.ViewModelClearedWatcher (leakcanary.internal.ViewModelClearedWatcher received ViewModel#onCleared() callback) with key 5c95c7d3-7d10-420e-9edc-4d78eaca728e
+11-15 20:11:35.725 D/LeakCanary(15813): Watching instance of de.markusfisch.android.shadereditor.fragment.EditorFragment$DraftHolder (de.markusfisch.android.shadereditor.fragment.EditorFragment$DraftHolder received ViewModel#onCleared() callback) with key cba30964-754d-427d-b991-cb5b37b95aa2
+11-15 20:11:35.725 D/LeakCanary(15813): Watching instance of androidx.loader.app.LoaderManagerImpl$LoaderViewModel (androidx.loader.app.LoaderManagerImpl$LoaderViewModel received ViewModel#onCleared() callback) with key 552e38c5-e359-48f9-afb4-b82a5db0d9d5
+11-15 20:11:35.725 D/LeakCanary(15813): Watching instance of de.markusfisch.android.shadereditor.fragment.EditorFragment (de.markusfisch.android.shadereditor.fragment.EditorFragment received Fragment#onDestroy() callback) with key 6d495e81-accf-402d-bcd2-e71841c5583a
+11-15 20:11:35.752 I/adbd    (  539): adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-v' 'time''
+11-15 20:11:35.754 D/ViewRootImpl(15813): Skipping stats log for color mode
+11-15 20:11:35.771 V/ShellTaskOrganizer(  929): Task vanished taskId=197
+11-15 20:11:35.771 V/ShellTaskOrganizer(  929): Fullscreen Task Vanished: #197
+11-15 20:11:35.771 V/ShellDesktopMode(  929): Task Vanished: #197 closed=true
+11-15 20:11:35.771 D/ShellPackageUpdate(  929): PackageUpdateController: Removing handlePackageUpdate for task: 197
+11-15 20:11:35.771 E/WindowOrganizerController(  661): Attempting to externally change a non-organized container: Task{fe85d59 #197 type=standard A=10264:de.markusfisch.android.shadereditor.debug}={handlePackageUpdate:false,} playercount=2 taskorg=android.window.ITaskOrganizer$Stub$Proxy@353194e
+11-15 20:11:35.771 V/RecentTasksController(  929): Notify recent tasks changed
+11-15 20:11:35.771 D/ShellDesktopMode(  929): AppToWebRepository: Task 197 is vanishing. Removing task data from repository
+11-15 20:11:35.772 V/AppCompat(  929): SingleSurfaceLetterboxController: []
+11-15 20:11:35.772 V/AppCompat(  929): MultiSurfaceLetterboxController: []
+11-15 20:11:35.772 V/AppCompat(  929): LetterboxInputController: []
+11-15 20:11:35.772 V/AppCompat(  929): RoundedCornersLetterboxController: {}
+11-15 20:11:35.789 D/RecentsView( 1054): onTaskRemoved: 197, not handling task stack changes
+11-15 20:11:35.790 D/RecentsView( 1054): onTaskRemoved: 197, not handling task stack changes
+11-15 20:11:35.790 D/RecentTasksList( 1054): invalidateLoadedTasks - previous requestLoadId: -1
