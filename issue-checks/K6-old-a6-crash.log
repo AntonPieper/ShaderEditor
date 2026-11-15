@@ -1,0 +1,13 @@
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: FATAL EXCEPTION: main
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: Process: de.markusfisch.android.shadereditor, PID: 22900
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: java.lang.RuntimeException: Unable to destroy activity {de.markusfisch.android.shadereditor/de.markusfisch.android.shadereditor.activity.SplashActivity}: java.lang.IllegalStateException: no event down from INITIALIZED in component de.markusfisch.android.shadereditor.activity.SplashActivity@265a8a2
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at android.app.ActivityThread.performDestroyActivity(ActivityThread.java:3831)
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at android.app.ActivityThread.handleDestroyActivity(ActivityThread.java:3849)
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at android.app.ActivityThread.-wrap5(ActivityThread.java)
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1398)
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:102)
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:148)
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:5417)
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:726)
+11-15 18:49:27.628 22900 22900 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:616)
