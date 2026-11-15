@@ -6,8 +6,8 @@ import androidx.annotation.NonNull;
 
 import java.util.Arrays;
 
+import de.markusfisch.android.shadereditor.syntax.GlslKnowledge;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
-import de.markusfisch.android.shadereditor.syntax.Outline;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
 
@@ -40,7 +40,7 @@ final class Styles {
 		char[] styles = new char[source.length()];
 		Arrays.fill(styles, '.');
 		Tokens tokens = GlslLexer.lex(source);
-		tokens = Outline.of(tokens, source).colourTypes(tokens, source);
+		tokens = GlslKnowledge.of(source).colourTypes(tokens, source);
 		for (int t = 0; t < tokens.size(); ++t) {
 			char letter = letter(tokens.style(t));
 			for (int i = tokens.start(t); i < tokens.end(t); ++i) {

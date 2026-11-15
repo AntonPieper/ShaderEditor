@@ -23,10 +23,7 @@ public class SyntaxSeamTest {
 				"syntax/LineTokens"}) {
 			String text = Files.readString(
 					new File(folder + name + ".java").toPath());
-			for (String language : new String[]{"Glsl", "Outline.builder"}) {
-				assertFalse(name + " knows " + language,
-						text.contains(language));
-			}
+			assertFalse(name + " knows GLSL", text.contains("Glsl"));
 		}
 	}
 }

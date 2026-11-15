@@ -138,6 +138,52 @@ public final class GlslKnowledge implements Knowledge {
 		return symbols;
 	}
 
+	/** Return whether a declared function has name. */
+	public boolean isFunction(String name) {
+		for (int i = first(name); i > -1 && i < byName.length &&
+				byName[i].name().equals(name); ++i) {
+			if (byName[i].kind() == Kind.FUNCTION) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Returns the tokens with every identifier that names a declared type
+	 * styled as {@link Style#TYPE}.
+	 *
+	 * @param tokens The tokens of the text this knowledge was made of.
+	 * @param text   That text.
+	 */
+	public Tokens colourTypes(Tokens tokens, CharSequence text) {
+		String[] types = new String[symbols.size()];
+		int count = 0;
+		for (Symbol symbol : symbols) {
+			if (symbol.kind() == Kind.TYPE) {
+				types[count++] = symbol.name();
+			}
+		}
+		if (count == 0) {
+			return tokens;
+		}
+		Arrays.sort(types, 0, count);
+		int[] indices = new int[16];
+		int retyped = 0;
+		for (int i = 0, size = tokens.size(); i < size; ++i) {
+			if (tokens.style(i) == Style.IDENTIFIER && GlslWords.contains(
+					types, count, text, tokens.start(i), tokens.end(i))) {
+				if (retyped == indices.length) {
+					indices = Arrays.copyOf(indices, retyped * 2);
+				}
+				indices[retyped++] = i;
+			}
+		}
+		return retyped == 0
+				? tokens
+				: tokens.withStyle(indices, retyped, Style.TYPE);
+	}
+
 	/**
 	 * Return what word refers to at offset: a parameter of the function
 	 * or macro around offset, else what is declared with that name. A

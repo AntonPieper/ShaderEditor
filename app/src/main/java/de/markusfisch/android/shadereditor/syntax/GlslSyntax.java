@@ -19,7 +19,7 @@ public final class GlslSyntax implements Syntax {
 
 	@Override
 	public Knowledge.Builder knowledge(int maxSymbols, int maxChars) {
-		return Outline.builder(maxSymbols, maxChars);
+		return GlslKnowledge.builder(maxSymbols, maxChars);
 	}
 
 	@Override
@@ -29,9 +29,9 @@ public final class GlslSyntax implements Syntax {
 		// Knowledge of another language declares nothing GLSL completes.
 		GlslCompletion.Completions completions = GlslCompletion.atColumn(
 				line, column, lineStart, GlslCompletion.Names.of(
-						known instanceof Outline outline
-								? outline
-								: Outline.NONE),
+						known instanceof GlslKnowledge glsl
+								? glsl
+								: GlslKnowledge.NONE),
 				current, extraWords);
 		offer.offer(completions.words(), completions.position());
 	}
