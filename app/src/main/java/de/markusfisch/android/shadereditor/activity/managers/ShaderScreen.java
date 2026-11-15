@@ -126,4 +126,10 @@ public interface ShaderScreen {
 
 	/** Mark in the editor what the run reported. */
 	void showErrors(@NonNull List<ProjectDiagnostic> infoLog);
+
+	/**
+	 * Return whether diagnostic is about what is open, not of a build
+	 * of what was open before, whose report may come after.
+	 */
+	boolean isAbout(@NonNull ProjectDiagnostic diagnostic);
 }

@@ -258,6 +258,10 @@ public final class OpenProject {
 	private final FileTexts texts;
 	private final Executor worker;
 	private final Executor main;
+	// The same, also once closed: for what was asked on behalf of
+	// someone the project does not outlive, such as a copy.
+	private final Executor anyWorker;
+	private final Executor anyMain;
 	private final Later later;
 	// The only file of a project of one document, else null.
 	private final ProjectPath lone;
@@ -268,6 +272,8 @@ public final class OpenProject {
 	private String unsynced;
 	private List<ProjectDiagnostic> diagnostics = List.of();
 	private List<Used> used = List.of();
+	// What ran when the files used were built.
+	private ProjectPath usedFor;
 	private ProjectPath running;
 	private ProjectPath shown;
 	// The file shown as the session keeps it; the file chosen to run
@@ -315,6 +321,8 @@ public final class OpenProject {
 		this.sessions = sessions;
 		this.journal = journal;
 		this.histories = histories;
+		anyWorker = worker;
+		anyMain = main;
 		// Once closed, nothing more is asked of the worker, and what
 		// arrives late does nothing.
 		this.worker = task -> {
@@ -1125,10 +1133,20 @@ public final class OpenProject {
 	 * where it must not exist yet; nothing of this project changes. A
 	 * stored file larger than a document may be is not read, and a text
 	 * no file can hold, see {@link #save}, is not written as another. done gets
-	 * by path null when it was written, else why not.
+	 * by path null when it was written, else why not. A copy asked for
+	 * is made and answered also when the project closes meanwhile; one
+	 * asked of a closed project is answered with why it was not made.
 	 */
 	public void copyTo(ProjectFiles destination, Collection<ProjectPath> paths,
 			Callback<Map<ProjectPath, String>> done) {
+		if (closed) {
+			Map<ProjectPath, String> problems = new LinkedHashMap<>();
+			for (ProjectPath path : paths) {
+				problems.put(path, "the folder was closed");
+			}
+			anyMain.execute(() -> done.done(problems));
+			return;
+		}
 		Map<ProjectPath, Text> texts = new HashMap<>();
 		for (ProjectPath path : paths) {
 			FileRecord record = loaded(path);
@@ -1138,7 +1156,7 @@ public final class OpenProject {
 		}
 		List<ProjectPath> copied = new ArrayList<>(paths);
 		ProjectFiles current = new Edited(Map.of(), journaled(), true);
-		worker.execute(() -> {
+		anyWorker.execute(() -> {
 			Map<ProjectPath, String> problems = new LinkedHashMap<>();
 			for (ProjectPath path : copied) {
 				Text text = texts.get(path);
@@ -1162,7 +1180,7 @@ public final class OpenProject {
 				problems.put(path, change instanceof ProjectFiles.Refused
 						refused ? refused.reason() : null);
 			}
-			main.execute(() -> done.done(problems));
+			anyMain.execute(() -> done.done(problems));
 		});
 	}
 
@@ -1422,6 +1440,7 @@ public final class OpenProject {
 			built.add(new Used(move.moved(file.path()), file.image()));
 		}
 		this.used = Collections.unmodifiableList(built);
+		usedFor = usedFor != null ? move.moved(usedFor) : null;
 		// What was built is of the old paths.
 		++generation;
 		// The journals and histories follow, behind what was written
@@ -1512,6 +1531,7 @@ public final class OpenProject {
 					return;
 				}
 				used = Collections.unmodifiableList(read);
+				usedFor = entry;
 				changed();
 				done.done(new Build(preparation, nothingRuns, generation));
 			});
@@ -1525,6 +1545,15 @@ public final class OpenProject {
 	 */
 	public List<Used> used() {
 		return used;
+	}
+
+	/**
+	 * Return whether the build of what runs now is made of path; false
+	 * while what runs changed and was not built yet, as the last build
+	 * is of what ran before.
+	 */
+	public boolean reads(ProjectPath path) {
+		return running != null && running.equals(usedFor) && uses(path);
 	}
 
 	/** Return whether the last build of what runs is made of path. */

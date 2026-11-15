@@ -520,6 +520,16 @@ public final class LibraryScreen implements ShaderScreen {
 	}
 
 	@Override
+	public boolean isAbout(@NonNull ProjectDiagnostic diagnostic) {
+		if (!(open instanceof ProjectFile file)) {
+			return true;
+		}
+		OpenProject project = file.getProject();
+		return diagnostic.isAbout(file.getPath(), project.running(),
+				project::reads);
+	}
+
+	@Override
 	public void showErrors(@NonNull List<ProjectDiagnostic> infoLog) {
 		if (open instanceof ProjectFile file) {
 			files.onDiagnostics(infoLog);

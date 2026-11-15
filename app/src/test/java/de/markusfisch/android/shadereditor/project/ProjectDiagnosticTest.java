@@ -23,6 +23,31 @@ public class ProjectDiagnosticTest {
 		assertEquals("bad", ProjectDiagnostic.error("bad").raw());
 	}
 
+	// "Untitled 2.frag:1: syntax error" under a new Untitled 3.frag:
+	// a report of the file that ran before is not told.
+	@Test
+	public void isAboutWhatIsOpenOnly() {
+		ProjectPath shown = path("Untitled 3.frag");
+		ProjectPath before = path("Untitled 2.frag");
+		ProjectPath lib = path("lib/noise.glsl");
+		ProjectDiagnostic.Severity error = ProjectDiagnostic.Severity.ERROR;
+		ProjectDiagnostic ofBefore = new ProjectDiagnostic(error,
+				"syntax error", before, 1);
+		ProjectDiagnostic ofLib = new ProjectDiagnostic(error, "bad", lib, 3);
+		ProjectDiagnostic ofShown = new ProjectDiagnostic(error, "bad",
+				shown, 2);
+
+		assertFalse(ofBefore.isAbout(shown, shown, lib::equals));
+		assertTrue(ofShown.isAbout(shown, shown, lib::equals));
+		assertTrue(ofLib.isAbout(shown, shown, lib::equals));
+		// The shown file is read by another that runs.
+		assertTrue(ofBefore.isAbout(lib, before, path -> false));
+		assertTrue(ProjectDiagnostic.error("bad").isAbout(shown, shown,
+				path -> false));
+		// Nothing runs: what is told is of the manifest.
+		assertTrue(ofBefore.isAbout(shown, null, path -> false));
+	}
+
 	@Test
 	public void onlyAnErrorIsAnError() {
 		ProjectDiagnostic warning = new ProjectDiagnostic(
@@ -31,5 +56,9 @@ public class ProjectDiagnosticTest {
 		assertFalse(ProjectDiagnostic.anyError(List.of(warning, warning)));
 		assertTrue(ProjectDiagnostic.anyError(List.of(warning,
 				ProjectDiagnostic.error("bad"))));
+	}
+
+	private static ProjectPath path(String path) {
+		return ProjectPath.parse(path).value();
 	}
 }

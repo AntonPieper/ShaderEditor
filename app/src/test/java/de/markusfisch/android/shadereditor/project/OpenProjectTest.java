@@ -889,6 +889,44 @@ public class OpenProjectTest {
 		assertEquals(Set.of(path("a.glsl")), reopened.unsaved());
 	}
 
+	// The screen that asked may be gone before the copy is: the copy is
+	// made all the same, and what waits for it hears so.
+	@Test
+	public void copyAskedBeforeTheFolderClosesIsMadeAndAnswered()
+			throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open();
+		edit(project, document(project, "a.glsl"), "mine");
+		MemoryProjectFiles destination = new MemoryProjectFiles();
+		destination.writable = true;
+
+		Map<ProjectPath, String> problems = await(done -> {
+			project.copyTo(destination, List.of(path("a.glsl")), done);
+			project.close();
+		});
+
+		assertTrue(problems.containsKey(path("a.glsl")));
+		assertNull(problems.get(path("a.glsl")));
+		assertEquals("mine", destination.text("a.glsl"));
+	}
+
+	@Test
+	public void copyAskedOfAClosedFolderIsAnsweredWithWhyNot()
+			throws IOException {
+		write("a.glsl", "stored");
+		OpenProject project = open();
+		project.close();
+		settle();
+		MemoryProjectFiles destination = new MemoryProjectFiles();
+		destination.writable = true;
+
+		Map<ProjectPath, String> problems = await(done -> project.copyTo(
+				destination, List.of(path("a.glsl")), done));
+
+		assertNotNull(problems.get(path("a.glsl")));
+		assertNull(destination.text("a.glsl"));
+	}
+
 	@Test
 	public void typingWithinTheDelayWritesTheJournalOnce()
 			throws IOException {
@@ -2926,6 +2964,31 @@ public class OpenProjectTest {
 		assertTrue(project.uses(path("lib/common.glsl")));
 		assertFalse(project.uses(path("other.glsl")));
 		assertFalse(project.uses(ProjectManifest.FILE));
+	}
+
+	// A report of the build of what ran before may come after what
+	// runs changed: that build is not read by what runs now.
+	@Test
+	public void readsOnlyOfTheBuildOfWhatRunsNow() throws IOException {
+		write("a.frag", "#include \"lib/common.glsl\"\n" + SHADER);
+		write("b.frag", SHADER);
+		write("lib/common.glsl", "// common\n");
+		OpenProject project = open();
+		project.runThisFile(path("a.frag"));
+		prepare(project);
+		assertTrue(project.reads(path("lib/common.glsl")));
+		assertTrue(project.reads(path("a.frag")));
+
+		project.runThisFile(path("b.frag"));
+
+		assertTrue(project.uses(path("a.frag")));
+		assertFalse(project.reads(path("a.frag")));
+		assertFalse(project.reads(path("lib/common.glsl")));
+
+		prepare(project);
+
+		assertTrue(project.reads(path("b.frag")));
+		assertFalse(project.reads(path("a.frag")));
 	}
 
 	@Test
