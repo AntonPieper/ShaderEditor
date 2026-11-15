@@ -21,7 +21,7 @@ import de.markusfisch.android.shadereditor.adapter.CompletionsAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 
 public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeListener {
-	public interface Editor {
+	public interface Editor extends CompletionsAdapter.LookUp {
 		void insert(@NonNull CharSequence text);
 
 		/** Do what the Tab key does. */
@@ -46,7 +46,7 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		RecyclerView completions = extraKeysView.findViewById(R.id.completions);
 		completions.setLayoutManager(new LinearLayoutManager(
 				activity, RecyclerView.HORIZONTAL, false));
-		completionsAdapter = new CompletionsAdapter(editor::insert);
+		completionsAdapter = new CompletionsAdapter(editor::insert, editor);
 		completions.setAdapter(completionsAdapter);
 
 		var divider = new DividerItemDecoration(

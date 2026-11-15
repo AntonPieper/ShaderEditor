@@ -103,9 +103,22 @@ final class CodeViewSourceEditor implements SourceEditor {
 			return insets;
 		});
 		view.setAnalysisListener(this::analysed);
-		docs = view.getResources().getBoolean(R.bool.project_mode)
-				? new WordDocs(view)
-				: null;
+		if (view.getResources().getBoolean(R.bool.project_mode)) {
+			docs = new WordDocs(view, new WordDocs.Host() {
+				@NonNull
+				@Override
+				public Outline declared() {
+					return view.getAnalysis().outline();
+				}
+
+				@Override
+				public void addUniform(@NonNull String statement) {
+					CodeViewSourceEditor.this.addUniform(statement);
+				}
+			});
+		} else {
+			docs = null;
+		}
 		show(new Document(Text.EMPTY), DATABASE);
 	}
 
@@ -222,6 +235,18 @@ final class CodeViewSourceEditor implements SourceEditor {
 	public void addUniform(@NonNull String statement) {
 		AddUniform.apply(document, statement);
 		view.bringCaretIntoView();
+	}
+
+	@Override
+	public boolean hasDocs(@NonNull String word) {
+		return docs != null && styles.syntax() == DATABASE && docs.has(word);
+	}
+
+	@Override
+	public void lookUp(@NonNull String word) {
+		if (hasDocs(word)) {
+			docs.lookUp(word);
+		}
 	}
 
 	@Override

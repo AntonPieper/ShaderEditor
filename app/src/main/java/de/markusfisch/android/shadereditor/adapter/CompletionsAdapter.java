@@ -11,6 +11,8 @@ import android.view.ViewGroup;
 import android.widget.Button;
 
 import androidx.annotation.NonNull;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
@@ -28,15 +30,25 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 		void onInsert(@NonNull CharSequence sequence);
 	}
 
+	/** Explains words; a long press on a word asks it. */
+	public interface LookUp {
+		boolean hasDocs(@NonNull String word);
+
+		void lookUp(@NonNull String word);
+	}
+
 	private static final DiffUtil.ItemCallback<String> DIFF_CALLBACK = new StringDiffer();
 
 	private final OnInsertListener onInsertListener;
+	private final LookUp lookUp;
 
 	private int position = 0;
 
-	public CompletionsAdapter(OnInsertListener onInsertListener) {
+	public CompletionsAdapter(OnInsertListener onInsertListener,
+			LookUp lookUp) {
 		super(DIFF_CALLBACK);
 		this.onInsertListener = onInsertListener;
+		this.lookUp = lookUp;
 	}
 
 	@NonNull
@@ -94,6 +106,24 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 			text.setSpan(new ForegroundColorSpan(typedColor), 0, prefixLength(),
 					Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 			btn.setText(text);
+			// A word with docs looks itself up on a long press, which
+			// TalkBack offers as Look up.
+			if (lookUp.hasDocs(item)) {
+				btn.setOnLongClickListener(v -> {
+					lookUp.lookUp(this.item);
+					return true;
+				});
+				ViewCompat.replaceAccessibilityAction(btn,
+						AccessibilityNodeInfoCompat.AccessibilityActionCompat
+								.ACTION_LONG_CLICK,
+						btn.getContext().getString(R.string.look_up), null);
+			} else {
+				btn.setOnLongClickListener(null);
+				btn.setLongClickable(false);
+				ViewCompat.replaceAccessibilityAction(btn,
+						AccessibilityNodeInfoCompat.AccessibilityActionCompat
+								.ACTION_LONG_CLICK, null, null);
+			}
 		}
 
 		private int prefixLength() {
