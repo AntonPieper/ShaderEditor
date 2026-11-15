@@ -110,6 +110,11 @@ public final class ImageSheet {
 		dialog.dismiss();
 	}
 
+	/** Run when the sheet goes, however it goes. */
+	public void setOnDismiss(@NonNull Runnable gone) {
+		dialog.setOnDismissListener(d -> gone.run());
+	}
+
 	public boolean isShowing() {
 		return dialog.isShowing();
 	}

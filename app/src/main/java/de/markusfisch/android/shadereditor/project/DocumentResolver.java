@@ -39,9 +39,11 @@ public interface DocumentResolver {
 	 */
 	/**
 	 * Return the provider's own small picture of the image id, about
-	 * size pixels on its longer side, or null when it offers none.
+	 * size pixels on its longer side, or null when it offers none;
+	 * cancel stops the provider's work.
 	 */
-	default android.graphics.Bitmap thumbnail(String id, int size) {
+	default android.graphics.Bitmap thumbnail(String id, int size,
+			android.os.CancellationSignal cancel) {
 		return null;
 	}
 

@@ -682,22 +682,36 @@ public final class OpenProject {
 		});
 	}
 
-	/** A look at the files of the project, on its worker. */
-	public interface Look<T> {
-		T at(ProjectFiles files);
-	}
-
 	/**
-	 * Have look read the files of the project on the worker, after what
-	 * was asked of storage before, for something that only looks, such
-	 * as a small picture of an image; done gets what it found on main.
-	 * Nothing is asked once the project is closed.
+	 * Return the files of the project to look at off its queue, as
+	 * {@link #list} does: they read only, and refuse every change. For
+	 * what only looks and may take long, such as reading an image, so
+	 * that it holds up no save.
 	 */
-	public <T> void look(Look<T> look, Callback<T> done) {
-		worker.execute(() -> {
-			T found = look.at(store);
-			main.execute(() -> done.done(found));
-		});
+	public ProjectFiles reading() {
+		ProjectFiles files = store;
+		return new ProjectFiles() {
+			@Override
+			public Read read(ProjectPath path) {
+				return files.read(path);
+			}
+
+			@Override
+			public Read read(ProjectPath path, long limit) {
+				return files.read(path, limit);
+			}
+
+			@Override
+			public byte[] head(ProjectPath path, int count) {
+				return files.head(path, count);
+			}
+
+			@Override
+			public android.graphics.Bitmap thumbnail(ProjectPath path,
+					int size, android.os.CancellationSignal cancel) {
+				return files.thumbnail(path, size, cancel);
+			}
+		};
 	}
 
 	/**

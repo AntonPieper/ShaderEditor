@@ -49,10 +49,10 @@ final class ImageSheets {
 			@NonNull ShaderLanguage language, @Nullable Boolean runs) {
 	}
 
-	/** Reads the image for its sheet. */
+	/** Reads the image for its sheet, until the sheet goes. */
 	interface Reader {
 		void large(@NonNull OpenProject project, @NonNull ProjectPath path,
-				int side, @NonNull ImageSheet sheet);
+				@NonNull ImageSheet sheet);
 	}
 
 	private final AppCompatActivity activity;
@@ -79,8 +79,7 @@ final class ImageSheets {
 	 */
 	void show(@NonNull FolderSource source, @NonNull Level level,
 			@NonNull Row row, @Nullable Item.Place running,
-			@NonNull Set<Item.Place> used, int side,
-			@NonNull Reader reader) {
+			@NonNull Set<Item.Place> used, @NonNull Reader reader) {
 		OpenProject project = source.project();
 		var parsed = ProjectPath.parse(row.key());
 		if (project == null || !parsed.isSuccess()) {
@@ -141,7 +140,7 @@ final class ImageSheets {
 				});
 		sheet = shown;
 		shown.show();
-		reader.large(project, path, side, shown);
+		reader.large(project, path, shown);
 	}
 
 	/** The image's info line, as the sheet shows it. */

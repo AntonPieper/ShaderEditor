@@ -357,6 +357,7 @@
 	<string name="nav_insert_not_shader">%1$s is no shader: open a shader of this folder to insert this image as a texture.</string>
 	<string name="nav_image_info">%1$d × %2$d · %3$s · %4$s</string>
 	<string name="nav_image_unreadable">%1$s cannot be shown as a picture</string>
+	<string name="nav_image_not_read">%1$s could not be read now; open it again to try once more</string>
 	<string name="nav_still_reading">Still reading this folder…</string>
 	<string name="nav_stop">Stop</string>
 	<string name="nav_stopped">Stopped reading this folder</string>

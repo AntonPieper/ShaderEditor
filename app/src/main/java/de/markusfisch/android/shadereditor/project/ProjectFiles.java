@@ -150,9 +150,11 @@ public interface ProjectFiles {
 	/**
 	 * Return the small picture storage keeps itself of the image at
 	 * path, as a documents provider does, about size pixels on its
-	 * longer side; null where it keeps none.
+	 * longer side; null where it keeps none. cancel stops the
+	 * provider's work.
 	 */
-	default android.graphics.Bitmap thumbnail(ProjectPath path, int size) {
+	default android.graphics.Bitmap thumbnail(ProjectPath path, int size,
+			android.os.CancellationSignal cancel) {
 		return null;
 	}
 
