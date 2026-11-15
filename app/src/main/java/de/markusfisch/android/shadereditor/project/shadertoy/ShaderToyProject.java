@@ -47,6 +47,15 @@ public final class ShaderToyProject {
 	private record Drawn(Pass pass, String file, String label, int order) {
 	}
 
+	// The version and the precisions ShaderToy compiles a tab with.
+	// Samplers are highp too: their default is lowp, which need not
+	// hold what a float buffer does.
+	private static final String VERSION = "#version 300 es\n" +
+			"precision highp float;\n" +
+			"precision highp int;\n" +
+			"precision highp sampler2D;\n" +
+			"precision highp sampler3D;\n" +
+			"precision highp samplerCube;\n";
 	private static final Pattern MAIN = Pattern.compile(
 			"\\bvoid\\s+main\\s*\\(");
 	private static final Pattern BUFFER_NAME = Pattern.compile(
@@ -99,7 +108,9 @@ public final class ShaderToyProject {
 	// Return why there is no project, or null.
 	private String convert() {
 		Pass image = null;
-		Pass shared = null;
+		// ShaderToy puts every Common above a tab's code, in their
+		// order: one file here.
+		StringBuilder shared = null;
 		Map<String, String> kept = new LinkedHashMap<>();
 		Set<String> letters = new LinkedHashSet<>();
 		for (Pass pass : shader.passes()) {
@@ -111,10 +122,9 @@ public final class ShaderToyProject {
 					image = pass;
 					break;
 				case COMMON:
-					if (shared != null) {
-						return "it has two Common passes";
-					}
-					shared = pass;
+					shared = shared == null
+							? new StringBuilder(ended(pass.code()))
+							: shared.append(ended(pass.code()));
 					break;
 				case BUFFER:
 					String letter = letter(pass, letters);
@@ -129,12 +139,17 @@ public final class ShaderToyProject {
 				default:
 					String file = unused(kept, pass.kind() == Kind.CUBEMAP
 							? "cubeA"
+							: pass.kind() == Kind.VOLUME ? "volumeA"
 							: pass.kind() == Kind.SOUND ? "sound"
 							: pass.name().replaceAll("[^A-Za-z0-9 _-]", "_"));
 					kept.put(file, pass.code());
-					warnings.add(pass.kind() == Kind.CUBEMAP
-							? "The " + pass.name() + " tab draws a cubemap, " +
-							"which the app cannot do. Its code is kept in " +
+					warnings.add(pass.kind() == Kind.CUBEMAP ||
+							pass.kind() == Kind.VOLUME
+							? "The " + pass.name() + " tab draws a " +
+							(pass.kind() == Kind.CUBEMAP
+									? "cubemap"
+									: "volume texture") +
+							", which the app cannot do. Its code is kept in " +
 							file + " and is not run."
 							: pass.kind() == Kind.SOUND
 							? "The " + pass.name() + " tab makes sound, " +
@@ -151,7 +166,7 @@ public final class ShaderToyProject {
 		}
 		if (shared != null) {
 			hasCommon = true;
-			common = ShaderToyHeader.code(shared.code(), false);
+			common = ShaderToyHeader.code(shared.toString(), false);
 		}
 		Map<String, String> passes = new LinkedHashMap<>();
 		for (Drawn buffer : buffers) {
@@ -162,7 +177,7 @@ public final class ShaderToyProject {
 		files.put(README, ShaderToyReadme.text(shader, listed(kept),
 				!buffers.isEmpty(), warnings));
 		if (hasCommon) {
-			files.put(COMMON, ended(shared.code()));
+			files.put(COMMON, shared.toString());
 		}
 		if (empties) {
 			files.put(EMPTY, "#version 300 es\n" +
@@ -237,15 +252,8 @@ public final class ShaderToyProject {
 			return ended(drawn.pass().code());
 		}
 		String all = common + "\n" + code;
-		StringBuilder sb = new StringBuilder("#version 300 es\n" +
-				"precision highp float;\nprecision highp int;\n");
+		StringBuilder sb = new StringBuilder(VERSION);
 		List<ShaderToyChannel> channels = channels(drawn, all);
-		for (ShaderToyChannel channel : channels) {
-			if (channel.sampler().equals("sampler3D")) {
-				sb.append("precision mediump sampler3D;\n");
-				break;
-			}
-		}
 		sb.append("\n// ").append(drawn.label());
 		if (shader.name() != null) {
 			sb.append(" of \"").append(ShaderToyHeader.line(shader.name())).append('"');
@@ -268,8 +276,7 @@ public final class ShaderToyProject {
 				warnings.add(drawn.file() + ": " + channel.warning());
 			}
 		}
-		sb.append('\n').append(ShaderToyHeader.inputs(all, channels,
-				drawn.file(), warnings));
+		sb.append('\n').append(ShaderToyHeader.inputs(all, channels));
 		sb.append("\nout vec4 shaderToyColor;\n\n" +
 				"void mainImage(out vec4 c, in vec2 f);\n\n" +
 				"void main() {\n" +

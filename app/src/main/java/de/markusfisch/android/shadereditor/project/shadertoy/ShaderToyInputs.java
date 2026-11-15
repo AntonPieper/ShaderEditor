@@ -20,10 +20,12 @@ public final class ShaderToyInputs {
 			String declaration, String value) {
 	}
 
-	// iTime and iGlobalTime are seconds as a float, iFrame counts
-	// frames from 0, iMouse is mouse in its vec4 form, iDate is year,
-	// month from 0, day and seconds of the day. iResolution is a vec3
-	// there and a vec2 here; .xy works on the uniform itself.
+	// iTime and iGlobalTime are seconds as a float, iTimeDelta is what
+	// the frame before took and iFrameRate the frames per second
+	// counted over half a second, iFrame counts frames from 0, iMouse
+	// is mouse in its vec4 form, iDate is year, month from 0, day and
+	// seconds of the day. iResolution is a vec3 there and a vec2 here;
+	// .xy works on the uniform itself.
 	public static final List<Input> ALL = List.of(
 			new Input("iResolution", "vec3", "resolution",
 					"uniform vec2 resolution;", "vec3(resolution, 1.0)"),
@@ -31,6 +33,10 @@ public final class ShaderToyInputs {
 					"uniform float time;", "time"),
 			new Input("iTime", "float", "time",
 					"uniform float time;", "time"),
+			new Input("iTimeDelta", "float", "timeDelta",
+					"uniform float timeDelta;", "timeDelta"),
+			new Input("iFrameRate", "float", "frameRate",
+					"uniform float frameRate;", "frameRate"),
 			new Input("iFrame", "int", "frame",
 					"uniform int frame;", "frame"),
 			new Input("iMouse", "vec4", "mouse",

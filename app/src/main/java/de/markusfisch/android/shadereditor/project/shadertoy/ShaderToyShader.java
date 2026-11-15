@@ -25,7 +25,7 @@ public record ShaderToyShader(String name, String author, String id,
 		passes = List.copyOf(passes);
 	}
 
-	public enum Kind {IMAGE, BUFFER, COMMON, CUBEMAP, SOUND, OTHER}
+	public enum Kind {IMAGE, BUFFER, COMMON, CUBEMAP, VOLUME, SOUND, OTHER}
 
 	/**
 	 * One tab.
@@ -49,8 +49,8 @@ public record ShaderToyShader(String name, String author, String id,
 	 *                "musicstream" or "video"
 	 * @param id      for a buffer, the output of its pass
 	 * @param source  the path of the medium on ShaderToy, or ""
-	 * @param filter  "nearest", "linear" or "mipmap"
-	 * @param wrap    "clamp", "repeat" or "mirror"
+	 * @param filter  "linear" or "mipmap"; anything else is nearest
+	 * @param wrap    "clamp"; anything else repeats
 	 * @param upright false when the picture is read upside down
 	 */
 	public record Input(int channel, String kind, String id, String source,
@@ -59,8 +59,8 @@ public record ShaderToyShader(String name, String author, String id,
 
 	/**
 	 * A shader from the code of its tabs by their names on ShaderToy:
-	 * "Image", "Common", "Buffer A" to "Buffer D", "Cube A", "Sound",
-	 * in any case. Buffers are drawn in the order of their letters. A
+	 * "Image", "Common", "Buffer A" to "Buffer D", "Cube A", "Volume A",
+	 * "Sound", in any case. Buffers are drawn in the order of their letters. A
 	 * buffer's output is its name.
 	 */
 	public static ShaderToyShader ofTabs(String name,
@@ -85,6 +85,7 @@ public record ShaderToyShader(String name, String author, String id,
 				: lower.equals("sound") ? Kind.SOUND
 				: lower.startsWith("buf") ? Kind.BUFFER
 				: lower.startsWith("cube") ? Kind.CUBEMAP
+				: lower.startsWith("volume") ? Kind.VOLUME
 				: Kind.OTHER;
 	}
 }

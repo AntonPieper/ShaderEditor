@@ -1,0 +1,87 @@
+{
+	"Shader": {
+		"ver": "0.1",
+		"info": {
+			"id": "fixture5",
+			"date": "1763164800",
+			"viewed": 0,
+			"name": "Pace",
+			"username": "the tests",
+			"description": "A fixture of ShaderEditor's tests, written for them.",
+			"likes": 0,
+			"published": 3,
+			"flags": 0,
+			"usePreview": 0,
+			"tags": [
+				"test"
+			],
+			"hasliked": 0
+		},
+		"renderpass": [
+			{
+				"inputs": [
+					{
+						"id": 257,
+						"src": "/media/previz/buffer00.png",
+						"ctype": "buffer",
+						"channel": 0,
+						"sampler": {
+							"filter": "nearest",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": 37,
+						"channel": 0
+					}
+				],
+				"code": "// Three markers that should move alike. Top: where iTime says.\n// Middle: moved by iTimeDelta in every frame. Bottom: moved by 1/60 s\n// in every frame, which falls behind when frames come slower than 60\n// a second. The bar at the very bottom is iFrameRate, with marks at\n// 30, 60 and 90.\n\n// Set to a few hundred to make frames slow.\n#define WORK 0\n\nfloat marker(float x, float at) {\n\tfloat d = abs(fract(x - at + 0.5) - 0.5);\n\treturn smoothstep(0.03, 0.02, d);\n}\n\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tvec2 uv = fragCoord / iResolution.xy;\n\tvec4 state = texelFetch(iChannel0, ivec2(0), 0);\n\tfloat band = floor(uv.y * 4.0);\n\tvec3 color = vec3(0.05);\n\tif (band == 3.0) {\n\t\tcolor += marker(uv.x, fract(SPEED * iTime)) * vec3(0.9);\n\t} else if (band == 2.0) {\n\t\tcolor += marker(uv.x, state.x + state.y) * vec3(0.3, 0.9, 0.4);\n\t} else if (band == 1.0) {\n\t\tcolor += marker(uv.x, state.z + state.w) * vec3(0.9, 0.4, 0.3);\n\t} else {\n\t\tfloat rate = iFrameRate / 120.0;\n\t\tcolor += step(uv.x, rate) * vec3(0.2, 0.4, 0.9);\n\t\tcolor += step(abs(fract(uv.x * 4.0 + 0.5) - 0.5), 0.004) * 0.6;\n\t}\n\t// A line between the bands.\n\tcolor *= step(0.01, fract(uv.y * 4.0));\n\tfloat work = 0.0;\n\tfor (int i = 0; i < WORK; ++i) {\n\t\twork += sin(float(i) * uv.x + iTime) * 1e-6;\n\t}\n\tfragColor = vec4(color + work, 1.0);\n}\n",
+				"name": "Image",
+				"description": "",
+				"type": "image"
+			},
+			{
+				"inputs": [],
+				"outputs": [],
+				"code": "// How far a marker moves, in widths of the picture per second.\nconst float SPEED = 0.2;\n\n// A position kept in two numbers, sixty-fourths and what is left of\n// one, so that small steps add up exactly in a 16-bit float.\nvec2 advance(vec2 at, float step) {\n\tat.y += step;\n\tfloat whole = floor(at.y * 64.0);\n\treturn vec2(fract(at.x + whole / 64.0), at.y - whole / 64.0);\n}\n",
+				"name": "Common",
+				"description": "",
+				"type": "common"
+			},
+			{
+				"inputs": [
+					{
+						"id": 257,
+						"src": "/media/previz/buffer00.png",
+						"ctype": "buffer",
+						"channel": 0,
+						"sampler": {
+							"filter": "nearest",
+							"wrap": "clamp",
+							"vflip": "true",
+							"srgb": "false",
+							"internal": "byte"
+						},
+						"published": 1
+					}
+				],
+				"outputs": [
+					{
+						"id": 257,
+						"channel": 0
+					}
+				],
+				"code": "// Two positions that this buffer moves on in every frame: xy by what\n// the frame took (iTimeDelta), zw by a sixtieth of a second, whatever\n// the frame took. Every pixel holds the same.\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) {\n\tvec4 before = iFrame == 0\n\t\t? vec4(0.0)\n\t\t: texelFetch(iChannel0, ivec2(0), 0);\n\tfragColor = vec4(\n\t\tadvance(before.xy, SPEED * iTimeDelta),\n\t\tadvance(before.zw, SPEED / 60.0));\n}\n",
+				"name": "Buffer A",
+				"description": "",
+				"type": "buffer"
+			}
+		]
+	}
+}

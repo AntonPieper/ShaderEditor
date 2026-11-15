@@ -27,9 +27,7 @@ record ShaderToyChannel(int number, String sampler, String lines,
 						: ", as drawn in this frame.\n") +
 						"#pragma se input \"" + file + "\"" +
 						(previous ? " frame=previous" : "") +
-						(input.filter().equals("nearest")
-								? ""
-								: " filter=linear") +
+						(smooth(input) ? " filter=linear" : "") +
 						wrap(input) + "\n" +
 						"uniform sampler2D " + name + ";\n",
 				mipmap
@@ -54,11 +52,10 @@ record ShaderToyChannel(int number, String sampler, String lines,
 				what = "a texture of ShaderToy" + source;
 				why = "which is not part of the shader. It reads black " +
 						"until you attach a picture; the file says how.";
-				attach = (input.filter().equals("nearest")
-						? " filter=nearest"
-						: input.filter().equals("mipmap")
+				attach = (input.filter().equals("mipmap")
 						? " mipmap=linear"
-						: "") + wrap(input);
+						: smooth(input) ? "" : " filter=nearest") +
+						wrap(input);
 				break;
 			case "cubemap":
 				sampler = "samplerCube";
@@ -166,9 +163,14 @@ record ShaderToyChannel(int number, String sampler, String lines,
 						"lists the lines to choose from.");
 	}
 
+	// As ShaderToy reads the settings: linear and mipmap are smooth,
+	// anything else is nearest; clamp clamps, anything else repeats.
+	private static boolean smooth(Input input) {
+		return input.filter().equals("linear") ||
+				input.filter().equals("mipmap");
+	}
+
 	private static String wrap(Input input) {
-		return input.wrap().equals("repeat") || input.wrap().equals("mirror")
-				? " wrap=" + input.wrap()
-				: "";
+		return input.wrap().equals("clamp") ? "" : " wrap=repeat";
 	}
 }

@@ -37,6 +37,9 @@ public class ShaderToyProjectTest {
 		assertEquals("#version 300 es\n" +
 				"precision highp float;\n" +
 				"precision highp int;\n" +
+				"precision highp sampler2D;\n" +
+				"precision highp sampler3D;\n" +
+				"precision highp samplerCube;\n" +
 				"\n" +
 				"// Image of \"Rings\" by the tests, imported from " +
 				"ShaderToy.\n" +
@@ -144,7 +147,9 @@ public class ShaderToyProjectTest {
 	// Image; a read gets the picture finished last.
 	@Test
 	public void whichFrameAReadSeesFollowsTheOrderOfTheBuffers() {
-		Input readsA = buffer(0, "idA", "nearest", "clamp");
+		// As ShaderToy reads them: what is neither linear nor mipmap
+		// is nearest, and what is not clamp repeats.
+		Input readsA = buffer(0, "idA", "none", "clamp");
 		Input readsB = buffer(1, "idB", "linear", "mirror");
 		String code = "void mainImage(out vec4 c, in vec2 p) {\n" +
 				"\tc = texture(iChannel0, p) + texture(iChannel1, p);\n}\n";
@@ -159,17 +164,17 @@ public class ShaderToyProjectTest {
 		assertEquals(List.of(
 				"#pragma se input \"bufferA.frag\"",
 				"#pragma se input \"bufferB.frag\" filter=linear " +
-						"wrap=mirror"),
+						"wrap=repeat"),
 				inputs(converted, "main.frag"));
 		assertEquals(List.of(
 				"#pragma se input \"bufferA.frag\" frame=previous",
 				"#pragma se input \"bufferB.frag\" frame=previous " +
-						"filter=linear wrap=mirror"),
+						"filter=linear wrap=repeat"),
 				inputs(converted, "bufferB.frag"));
 		assertEquals(List.of(
 				"#pragma se input \"bufferA.frag\" frame=previous",
 				"#pragma se input \"bufferB.frag\" filter=linear " +
-						"wrap=mirror"),
+						"wrap=repeat"),
 				inputs(converted, "bufferA.frag"));
 	}
 
@@ -223,13 +228,7 @@ public class ShaderToyProjectTest {
 						"picture; the file says how.",
 				"main.frag: iChannel2 read a volume texture of ShaderToy " +
 						"(/media/a/noise.bin), which the app cannot load. " +
-						"It reads black.",
-				"main.frag: iTimeDelta is always 1/60 s here, as the app " +
-						"does not tell a shader how long a frame took. On " +
-						"a screen that is not 60 Hz, what is computed " +
-						"from it runs at another speed.",
-				"main.frag: iFrameRate is always 60 here, as the app " +
-						"does not tell a shader its frame rate."),
+						"It reads black."),
 				converted.warnings());
 		assertEquals(List.of("README.md", "empty.frag", "bufferA.frag",
 						"bufferB.frag", "bufferC.frag", "cubeA.glsl",
@@ -244,7 +243,6 @@ public class ShaderToyProjectTest {
 		Converted converted = ShaderToyProject.ofJson(
 				Fixtures.text("media.json"));
 		String main = converted.files().get("main.frag");
-		assertTrue(main, main.contains("precision mediump sampler3D;\n"));
 		assertTrue(main, main.contains(
 				"// iChannel0 read a texture of ShaderToy " +
 						"(/media/a/stone.jpg),\n" +
@@ -276,13 +274,17 @@ public class ShaderToyProjectTest {
 				inputs(converted, "bufferA.frag"));
 	}
 
+	// What a frame took and the frame rate are the app's uniforms, so
+	// nothing is said of them; what has no uniform has one value.
 	@Test
-	public void inputsWithoutAnAppUniformAreSetToWhatIsSaid() {
+	public void frameTimingIsTheAppsAndTheRestIsSetToOneValue() {
 		Converted converted = ShaderToyProject.ofJson(
 				Fixtures.text("media.json"));
 		String main = converted.files().get("main.frag");
-		assertTrue(main, main.contains("\tiTimeDelta = 1.0 / 60.0;\n" +
-				"\tiFrameRate = 60.0;\n"));
+		assertTrue(main, main.contains("uniform float timeDelta;\n" +
+				"uniform float frameRate;\n"));
+		assertTrue(main, main.contains("\tiTimeDelta = timeDelta;\n" +
+				"\tiFrameRate = frameRate;\n"));
 		assertTrue(main, main.contains(
 				"// ShaderToy's mark of a slow device.\n" +
 						"#define HW_PERFORMANCE 0\n"));
@@ -388,12 +390,19 @@ public class ShaderToyProjectTest {
 				new Pass(Kind.OTHER, "a?b", "two", List.of(), ""),
 				new Pass(Kind.OTHER, "common", "four", List.of(), ""),
 				new Pass(Kind.COMMON, "Common", "five", List.of(), ""),
+				new Pass(Kind.COMMON, "Common", "six\n", List.of(), ""),
+				new Pass(Kind.VOLUME, "Volume A", "seven", List.of(), ""),
 				new Pass(Kind.SOUND, "Sound", "three", List.of(), "")));
 		assertEquals("one\n", kept.files().get("a_b.glsl"));
 		assertEquals("two\n", kept.files().get("a_b 2.glsl"));
 		assertEquals("three\n", kept.files().get("sound.glsl"));
 		assertEquals("four\n", kept.files().get("common 2.glsl"));
-		assertEquals("five\n", kept.files().get("common.glsl"));
+		// ShaderToy puts every Common above a tab, in their order.
+		assertEquals("five\nsix\n", kept.files().get("common.glsl"));
+		assertEquals("seven\n", kept.files().get("volumeA.glsl"));
+		assertEquals("The Volume A tab draws a volume texture, which the " +
+				"app cannot do. Its code is kept in volumeA.glsl and is " +
+				"not run.", kept.warnings().get(3));
 		assertEquals("The tab a/b is of a kind the import does not know. " +
 				"Its code is kept in a_b.glsl and is not run.",
 				kept.warnings().get(0));
@@ -421,11 +430,6 @@ public class ShaderToyProjectTest {
 				.refusal());
 		assertEquals("it has two Image passes", ShaderToyProject.of(shader(
 				image(CODE), image(CODE))).refusal());
-		assertEquals("it has two Common passes", ShaderToyProject.of(shader(
-				image(CODE),
-				new Pass(Kind.COMMON, "Common", "", List.of(), ""),
-				new Pass(Kind.COMMON, "Common", "", List.of(), "")))
-				.refusal());
 		Converted broken = ShaderToyProject.ofJson("{\"renderpass\": [");
 		assertEquals("the JSON is cut off or broken (line 1: the text " +
 				"ends in the middle)", broken.refusal());
