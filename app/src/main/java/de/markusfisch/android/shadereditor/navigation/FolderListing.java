@@ -104,12 +104,16 @@ public final class FolderListing {
 			sections.add(new Listing.Section(words.running(shader),
 					FileMarks.unsaved(running, facts.unsaved())));
 		} else if (facts.defaultShader() != null &&
-				facts.defaultShader().indexOf('/') < 0 &&
 				facts.pictures().get(facts.defaultShader()) == null) {
 			// It was not built here yet, as it has no picture: what
-			// would run comes first.
-			for (Row row : files(facts, words, facts.reading().rowsNamed(
-					facts.level(), List.of(facts.defaultShader())))) {
+			// would run comes first, also from a folder below, as a
+			// manifest's "passes/main.frag", named by its path then.
+			List<Row> named = facts.defaultShader().indexOf('/') < 0
+					? files(facts, words, facts.reading().rowsNamed(
+							facts.level(), List.of(facts.defaultShader())))
+					: List.of(fileRow(facts, words, facts.defaultShader(),
+							Row.Kind.TEXT, null));
+			for (Row row : named) {
 				sections.add(new Listing.Section(words.defaultShader(),
 						List.of(withDetail(row, words.defaultShaderLine()))));
 			}
@@ -159,8 +163,9 @@ public final class FolderListing {
 			rest = ordering(rest, words);
 		}
 		// Links before the first heading: first, when nothing stands
-		// above them; else at the start of the rest, which has one.
-		if (!untitled.isEmpty() && running.isEmpty()) {
+		// above them, neither Running nor the default shader; else at
+		// the start of the rest, which has a heading.
+		if (!untitled.isEmpty() && sections.isEmpty()) {
 			sections.add(new Listing.Section(null, untitled));
 		} else {
 			rest.addAll(0, untitled);
@@ -243,28 +248,9 @@ public final class FolderListing {
 				? used.size()
 				: RUNNING_SHOWN;
 		for (OpenProject.Used file : used.subList(0, shown)) {
-			String key = file.path().toString();
-			Row.Kind kind = file.image() ? Row.Kind.IMAGE : Row.Kind.TEXT;
-			byte[] picture = facts.pictures().get(key);
-			Row row = new Row(key, kind, isPass(file.role())
-					? Face.of(Face.Of.PASS, key, picture, true)
-					: Face.of(kind, file.path().getFileName(), picture), key,
-					role(file.role(), words), 0, null,
-					EnumSet.noneOf(Row.Mark.class),
-					EnumSet.noneOf(Row.Action.class));
-			// Its menu, as in its own folder: changes only where that
-			// folder was read and can be changed.
-			int slash = key.lastIndexOf('/');
-			Map<String, OpenProject.Runs> runs = new HashMap<>();
-			OpenProject.Runs known = facts.runs().of(key,
-					file.path().getFileName());
-			if (known != null) {
-				runs.put(key, known);
-			}
-			rows.addAll(FileActions.of(List.of(row), facts.running(), runs,
-					facts.writableFolders().contains(slash > -1
-							? key.substring(0, slash)
-							: "")));
+			rows.add(fileRow(facts, words, file.path().toString(), file.image()
+					? Row.Kind.IMAGE
+					: Row.Kind.TEXT, file.role()));
 		}
 		if (shown < used.size()) {
 			rows.add(new Row(ALL_RUNNING, Row.Kind.MORE,
@@ -290,6 +276,31 @@ public final class FolderListing {
 	private static boolean isPass(FileRole role) {
 		return role != null && (role.kind() == FileRole.Kind.PASS ||
 				role.kind() == FileRole.Kind.FIRST_FRAME);
+	}
+
+	// The row of the file at key, a path from the root, shown at a level
+	// that may not be its folder, named by that path: its face, its
+	// role in what runs as its line, and its menu as in its own folder,
+	// with changes only where that folder was read and can be changed.
+	private static Row fileRow(Facts facts, Words words, String key,
+			Row.Kind kind, FileRole role) {
+		int slash = key.lastIndexOf('/');
+		String name = key.substring(slash + 1);
+		byte[] picture = facts.pictures().get(key);
+		Row row = new Row(key, kind, isPass(role)
+				? Face.of(Face.Of.PASS, key, picture, true)
+				: Face.of(kind, name, picture), key, role(role, words), 0,
+				null, EnumSet.noneOf(Row.Mark.class),
+				EnumSet.noneOf(Row.Action.class));
+		Map<String, OpenProject.Runs> runs = new HashMap<>();
+		OpenProject.Runs known = facts.runs().of(key, name);
+		if (known != null) {
+			runs.put(key, known);
+		}
+		return FileActions.of(List.of(row), facts.running(), runs,
+				facts.writableFolders().contains(slash > -1
+						? key.substring(0, slash)
+						: "")).get(0);
 	}
 
 	private static String role(FileRole role, Words words) {

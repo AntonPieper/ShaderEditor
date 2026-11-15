@@ -138,4 +138,15 @@ public class ReadmeTest {
 				- [Shapes](Shapes.frag) Touch
 				""", NAMES).get(0).heading());
 	}
+
+	// A fence closes only at a fence of its character at least as long:
+	// a README that shows a Markdown block with a shorter fence in it
+	// orders nothing by what that block shows (from a review's probe).
+	@Test
+	public void aLongFenceMustNotEndAtAShorterFence() {
+		assertTrue(Readme.sections("````markdown\n```\n## Fake\n" +
+				"- [A](a.frag)\n```\n````\n", Set.of("a.frag")).isEmpty());
+		assertEquals(1, Readme.sections("~~~~\n~~~\n~~~~\n## Real\n" +
+				"- [A](a.frag)\n", Set.of("a.frag")).size());
+	}
 }

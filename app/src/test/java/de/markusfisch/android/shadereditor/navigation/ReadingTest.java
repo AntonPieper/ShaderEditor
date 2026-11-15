@@ -254,4 +254,26 @@ public class ReadingTest {
 	private static Reading listed(Reading.Entry... entries) {
 		return Reading.started().listed(List.of(entries));
 	}
+
+	// Two reads overlap, as after two renames close together: the one
+	// asked for last wins, whichever ends first (from a review's probe,
+	// with the generation each read now carries).
+	@Test
+	public void oldestCompletionCannotConsumeTheNewReread() {
+		List<Reading.Entry> old = List.of(new Reading.Entry("a.frag", false));
+		List<Reading.Entry> fresh = List.of(
+				new Reading.Entry("b.frag", false));
+		Reading a = Reading.started().again();
+		// B is asked for while A still reads.
+		Reading b = a.again();
+		Reading afterA = b.listed(old, a.generation());
+		Reading afterB = afterA.listed(fresh, b.generation());
+		assertEquals(fresh, afterB.entries());
+		// The other way round: B ends first, then A, which is dropped.
+		Reading bFirst = b.listed(fresh, b.generation());
+		assertEquals(fresh, bFirst.listed(old, a.generation()).entries());
+		// A failure of the older read is dropped too.
+		assertEquals(Reading.Phase.READING, b.failed("gone", true, true,
+				false, a.generation()).phase());
+	}
 }

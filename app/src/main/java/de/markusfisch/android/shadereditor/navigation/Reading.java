@@ -13,10 +13,11 @@ import de.markusfisch.android.shadereditor.project.FileKind;
 /**
  * How far the files of one folder are read: being read, read, or not,
  * and how many of its rows are shown. A result that comes after
- * reading was stopped changes nothing.
+ * reading was stopped changes nothing, nor does one of a read asked
+ * for before the last: each read has its generation.
  */
 public record Reading(Phase phase, List<Entry> entries, String reason,
-		int shown) {
+		int shown, int generation) {
 	/** Rows come in pages of this many. */
 	public static final int PAGE = 200;
 	/** After this many milliseconds, reading may be stopped. */
@@ -50,6 +51,11 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 		}
 	}
 
+	public Reading(Phase phase, List<Entry> entries, String reason,
+			int shown) {
+		this(phase, entries, reason, shown, 0);
+	}
+
 	public static Reading started() {
 		return new Reading(Phase.READING, List.of(), null, PAGE);
 	}
@@ -68,13 +74,23 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 	 * fails: the list does not empty and jump to its top.
 	 */
 	public Reading again() {
-		return new Reading(Phase.READING, entries, null, shown);
+		return new Reading(Phase.READING, entries, null, shown,
+				generation + 1);
 	}
 
 	/** Takes the entries of the folder, folders first. */
 	public Reading listed(List<Entry> entries) {
-		return isReading()
-				? new Reading(Phase.LISTED, entries, null, shown)
+		return listed(entries, generation);
+	}
+
+	/**
+	 * Takes the entries a read of generation found: only of the last
+	 * read asked for, so that an older read that ends later is never
+	 * taken for the newer one.
+	 */
+	public Reading listed(List<Entry> entries, int generation) {
+		return isReading() && generation == this.generation
+				? new Reading(Phase.LISTED, entries, null, shown, generation)
 				: this;
 	}
 
@@ -91,11 +107,17 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 	 */
 	public Reading failed(String reason, boolean reachable, boolean granted,
 			boolean file) {
+		return failed(reason, reachable, granted, file, generation);
+	}
+
+	/** As failed, for the read of generation only; see listed. */
+	public Reading failed(String reason, boolean reachable, boolean granted,
+			boolean file, int generation) {
 		Phase phase = reachable && granted
 				? Phase.FAILED
 				: file ? Phase.LOST_FILE : Phase.LOST_FOLDER;
-		return isReading()
-				? new Reading(phase, List.of(), reason, shown)
+		return isReading() && generation == this.generation
+				? new Reading(phase, List.of(), reason, shown, generation)
 				: this;
 	}
 
@@ -106,7 +128,7 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 
 	/** Shows the next page of rows. */
 	public Reading more() {
-		return new Reading(phase, entries, reason, shown + PAGE);
+		return new Reading(phase, entries, reason, shown + PAGE, generation);
 	}
 
 	/**
@@ -229,7 +251,7 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 	}
 
 	private Reading with(Phase phase) {
-		return new Reading(phase, entries, reason, shown);
+		return new Reading(phase, entries, reason, shown, generation);
 	}
 
 	private List<Entry> visible() {

@@ -578,6 +578,8 @@ final class FolderSource {
 		// What was read of its README before, from here: the cache is
 		// written on this thread only.
 		Ordered was = readmes.get(path);
+		// Which read this is: one asked for later replaces it.
+		int generation = readings.get(path).generation();
 		ProjectPath folder = path.isEmpty()
 				? null
 				: ProjectPath.parse(path).value();
@@ -636,6 +638,11 @@ final class FolderSource {
 				}
 				Ordered readme = ordered;
 				handler.post(() -> {
+					Reading now = readings.get(path);
+					if (now == null || now.generation() != generation) {
+						// A newer read was asked for: this one is old.
+						return;
+					}
 					// What was read replaces the folder's pictures: a
 					// file made again under a gone file's name never shows
 					// the gone file's picture.
@@ -660,7 +667,7 @@ final class FolderSource {
 					} else {
 						writable.remove(path);
 					}
-					listed(path, items, reachable, access);
+					listed(path, items, reachable, access, generation);
 				});
 			});
 		} catch (RejectedExecutionException e) {
@@ -736,7 +743,7 @@ final class FolderSource {
 
 	private void listed(@NonNull String path,
 			@NonNull OpenProject.Folder folder, boolean reachable,
-			@Nullable Access access) {
+			@Nullable Access access, int generation) {
 		Reading reading = readings.get(path);
 		if (closed || reading == null) {
 			return;
@@ -744,7 +751,7 @@ final class FolderSource {
 			file = access.file();
 			uri = access.uri();
 			reading = reading.failed(folder.problem(), reachable,
-					access.granted(), file);
+					access.granted(), file, generation);
 			folders.setLost(key, reading.isLost());
 			put(path, reading);
 			return;
@@ -755,7 +762,7 @@ final class FolderSource {
 			entries.add(new Reading.Entry(item.path().getFileName(),
 					item.folder(), item.modified(), item.size()));
 		}
-		put(path, reading.listed(entries));
+		put(path, reading.listed(entries, generation));
 	}
 
 	// Reading that takes long may be stopped.
