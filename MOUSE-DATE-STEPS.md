@@ -1,8 +1,8 @@
 # Android 6 (API 23) check: ShaderToy mouse.w and date
 
-These two branches of github.com/AntonPieper/ShaderEditor (remote `origin`) are independent and both are cut from markusfisch/ShaderEditor `master` (acacf4d4):
+These two branches of github.com/AntonPieper/ShaderEditor (remote `origin`) are independent of each other and cut from markusfisch/ShaderEditor `master` (mouse from f251c8e0, date from acacf4d4):
 
-- `upstream-fix-shadertoy-mouse` (06621195)
+- `upstream-fix-shadertoy-mouse` (d47dc450, now on top of master f251c8e0; it replaces 06621195)
 - `upstream-fix-shadertoy-date` (ec9da885)
 
 Save screenshots to `.foreman/show/upstream-batch-4/shadertoy-mouse/android6/` and `.foreman/show/upstream-batch-4/shadertoy-date/android6/`.
@@ -60,6 +60,7 @@ done
    If `input motionevent` is missing on that image, hold a finger with the emulator's mouse instead.
 5. Repeat step 4 once.
 6. Tap five times quickly: `adb shell "input motionevent DOWN 540 1400; input motionevent UP 540 1400"`, or `adb shell input tap 540 1400`, about 0.6 s apart. Take one screenshot afterwards.
+   Taps closer together than one frame merge into one click, as on ShaderToy, so keep at least about 50 ms between them. A loop of `input tap` without a pause sends one about every 10 ms on a fast machine, and the count then follows the frames, not the taps. Optional stress test: `adb shell 'for i in $(seq 20); do input tap 540 1400; sleep 0.05; done'`. With the fix the count must grow by exactly 20. The 0.1-step counter of this shader is full after 10, so use a fresh start, or read only up to 10.
 
 **Expected on master:**
 - While held: red and green in every screenshot.
