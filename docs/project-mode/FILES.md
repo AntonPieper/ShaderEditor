@@ -357,6 +357,51 @@ The redo is refused while the library is open at all, with or without unsaved te
 
 **The wallpaper's snapshot** is a folder `files/wallpaper/<number>/` with the files the shader was made of in the build it was set from, and the file `files/wallpaper/current`, which names that folder, the file that runs, its quality and the library file it was taken of. `current` is replaced in one rename after the folder is whole. That makes the pointer atomic, not the reading of the folder behind it: the service reads `current` and then the files on a thread of its own, while the queue may install the next snapshot. So the snapshot that was current stays until the install after the next, and a reader whose files are gone all the same reads `current` once more. A build that fails is never set as the wallpaper. The folders are copies the app made, not files of the user. Without `current` the service reads the database shader whose id the preference holds, as it always did.
 
+### 5.1c Exporting and importing the library
+
+SPEC 12.2 says what the archive holds. In short: export reads the library on the one queue and writes a zip; import first reads the whole archive into a staging folder, checking every entry, and only when all of it is good adds its files to the library through the library's own store, each shader appearing whole, with everything taken back when one write fails.
+
+**One owner, as for everything else (5.1b).** Both are tasks of `Projects` on the one queue, so no save, rename or move runs between two files of an export, and an import is never interleaved with another change of the library. Both go in through the library's one way in: a redo that was begun is finished first, and when it cannot be, nothing is read or written and the reason is told. The zip code itself is plain Java in `project/` without Android (`java.util.zip`), tested on the JVM; the screen hands over a stream and gets a result.
+
+**Export** walks the folder through the library's store, in the order of the paths, and streams each file into the zip, so memory does not grow with the library. A file that cannot be read fails the export: an archive that silently lacks a file is worse than none. The names are checked by the rule the import checks them by, so a name an import would refuse fails the export as well. The screen removes the document it began.
+
+**Import, step 1: read and check, without touching the library.** The archive is read once as a stream. Each file is written to a numbered file in a staging folder of the app's cache, never under a name from the archive, so no name of the archive is a path anywhere before it was checked. Sizes are counted as bytes arrive, never taken from what the archive says about itself. Any refusal below refuses the whole archive, names the entry, removes the staging folder and leaves the library as it was.
+
+| In the archive | What happens |
+| --- | --- |
+| A `..` or `.` part of a name, an absolute name, an empty part (`a//b`) | Refused: it is not a name inside the library. From Android 14 the system's own reader refuses `..` and a leading slash before this check sees the name; the archive is refused all the same, with the system's words |
+| A backslash, a drive letter, a NUL or other control character, `" : * ? < > \|` | Refused by the rule that says what a new name may be (`Naming`): a backslash is a path separator to some tools, and the others no folder holds |
+| A part longer than 255 bytes | Refused: the storage of a phone holds no such name |
+| A name that begins with a dot, at any depth | Skipped and counted, not refused: it is not a file of the library. `.shadereditor/library.txt` is read as the settings |
+| The same name twice, or two names that differ only by case or by Unicode form | Refused: one of them would have to give way, and a phone's shared storage cannot hold both |
+| A name that is a file and a folder (`a` and `a/b`, or `a` and `a/`) | Refused |
+| An entry that is a link elsewhere | A link is never made. The import writes ordinary files only, so such an entry is a small file holding the link's text and leads nowhere |
+| More than 20 000 entries, or more than 1 GiB of content, or more than half of the free space | Refused as soon as the count is passed; nothing the archive declares is believed. Half, because the files are on the phone twice until the import is done |
+| An archive that is cut off or damaged | Refused: a wrong checksum or an entry that ends early is an error of the read, and after the last entry the end record of the zip must follow and name as many entries as were read, so an archive cut between two entries is not taken for a whole one |
+| An encrypted entry, a zip of a newer layout (`format` above 1), a file that is no zip | Refused with that reason |
+| No file at all | Refused: there is nothing to import |
+| A folder entry with nothing under it | An empty folder to make. One that holds only skipped names is not made |
+
+**Import, step 2: add to the library.** What is added, and under which name, is decided against the library as it is at that moment. Three kinds, told without reading any text:
+
+- **A shader of several files** is a folder that holds `main.frag`, the outermost such folder. It is taken as a whole so that the paths between its files stay true. Not there: made. There with every one of these files, byte for byte: already there. There otherwise: made beside it under the next free name (`Ink 2`).
+- **A shader of one file** is any other file named as a shader that runs (`.frag`, `.fs`, `.fsh`). Not there: made. There with the same bytes: already there. There with other bytes: made beside it under the next free name (`Plasma 2.frag`); it reads shared files by the same paths as before.
+- **Any other file is shared**: textures, included code, presets, READMEs. Not there: made. There with the same bytes: already there. There with other bytes: **kept as it is and named in the result**, the rule of Save a copy and of every other way a file comes into the library (`Library.copy`, `Library.add`): what other shaders read is never written over, and a second copy under another name would be read by nobody.
+
+Names are compared without regard to case where a new one is chosen, as everywhere (`Naming`). Nothing is written over and nothing is deleted. The settings of the archive apply only to files this import made: each gets its quality from the archive, or 1; the shader new ones are copied from is taken only when the library has none and this import made that file in the root. Each file gets the time the archive has for it, so a list ordered by date keeps its order.
+
+**Every shader appears whole.** A single file is written by the store in one rename. A shader of several files is written into a folder with a dot name inside the library (`.shadereditor-import`, hidden everywhere and never exported), and then put in place by one rename of its folder.
+
+| It stops | Left behind | What follows |
+| --- | --- | --- |
+| A check of step 1 refuses | The staging folder, removed at once | Nothing was imported |
+| A write of step 2 is refused (storage full, a name another app took meanwhile) | Nothing: every file and folder this import made is removed again | Nothing was imported, with the reason; a file that could not be removed is named |
+| The process dies in step 1 | A staging folder in the cache | The next import removes it first |
+| The process dies in step 2 | Some shaders and files of the archive, each whole, and maybe the hidden folder | Importing the same archive again finds those already there and adds the rest; the hidden folder is removed first |
+| The settings cannot be written after the files are in | The files, with quality 1 | Told with the result |
+
+The tests are named after these rows: `LibraryExportTest` (round trip, order, the same bytes twice, some thousand entries), `LibraryImportTest` (every row of the first table with an archive built in the test), `LibraryMergeTest` (the three kinds, a second import, a refused write that leaves nothing).
+
 ### 5.2 Checked with a model
 
 **[probe]** `file-lifecycle-probes/LifecycleProbe.java` beside this document is a 300-line model of the record with these rules: the real `Document` and `Text`, storage and journal as maps, worker and main as queues stepped by hand. It is not the implementation and its journal always sends whole texts. It ran these sequences, all with the expected result:
