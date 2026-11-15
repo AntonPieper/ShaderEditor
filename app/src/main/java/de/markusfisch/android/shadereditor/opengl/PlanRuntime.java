@@ -381,6 +381,20 @@ final class PlanRuntime implements ShaderSwap.Build {
 			int width,
 			int height,
 			@NonNull List<ProjectDiagnostic> errors) {
+		return createTargets(width, height, null, errors);
+	}
+
+	// Like createTargets(width, height, errors), for a build that goes
+	// on from build from, which draws: when every target from has is
+	// the one this build would make, of the same pass, size, format and
+	// history, it draws into those, and the previous frames of its
+	// passes go on. Else it makes its own, which start again.
+	@NonNull
+	ShaderSwap.Allocation createTargets(
+			int width,
+			int height,
+			@Nullable PlanRuntime from,
+			@NonNull List<ProjectDiagnostic> errors) {
 		var invalid = new ArrayList<ProjectDiagnostic>();
 		var sizes = targetSizes(plan, schedule, width, height,
 				device.getMaxTextureSize(), invalid);
@@ -400,6 +414,10 @@ final class PlanRuntime implements ShaderSwap.Build {
 		}
 		releaseTargets();
 		madeSizes = sizes;
+		if (from != null && adopt(from, sizes)) {
+			reset = false;
+			return ShaderSwap.Allocation.MADE;
+		}
 		for (int i = 0; i < targets.length; ++i) {
 			if (sizes[i] == null) {
 				continue;
@@ -413,6 +431,31 @@ final class PlanRuntime implements ShaderSwap.Build {
 		}
 		reset = true;
 		return ShaderSwap.Allocation.MADE;
+	}
+
+	// Shares the targets of from when they are the ones this build needs
+	// at sizes, all of them or none.
+	private boolean adopt(@NonNull PlanRuntime from,
+			@NonNull RenderPlan.Size[] sizes) {
+		if (!Arrays.equals(from.madeSizes, sizes)) {
+			return false;
+		}
+		for (int i = 0; i < targets.length; ++i) {
+			var target = from.targets[i];
+			var pass = plan.passes().get(i).target();
+			if ((target == null) != (sizes[i] == null) ||
+					(target != null && (!target.fits(pass, sizes[i],
+							schedule.keepsHistory(i)) ||
+							!pass.file().equals(from.plan.passes().get(i)
+									.target().file())))) {
+				return false;
+			}
+		}
+		for (int i = 0; i < targets.length; ++i) {
+			var target = from.targets[i];
+			targets[i] = target != null ? target.share() : null;
+		}
+		return true;
 	}
 
 	// The size of every target the schedule needs at a render size,
