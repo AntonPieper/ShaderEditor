@@ -107,6 +107,15 @@ public class GlslDocsTest {
 	}
 
 	@Test
+	public void namesTheParametersOfAForm() {
+		assertEquals(List.of("edge0", "edge1", "x"), GlslDocs.parameterNames(
+				"T smoothstep(T edge0, T edge1, T x)"));
+		assertEquals(List.of("m"), GlslDocs.parameterNames(
+				"mat2 inverse(mat2 m)"));
+		assertEquals(List.of(), GlslDocs.parameterNames("vec4 f()"));
+	}
+
+	@Test
 	public void examplesAreAscii() throws IOException {
 		for (GlslDocs.Entry entry : read().entries()) {
 			for (String line : entry.example()) {

@@ -91,6 +91,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 	private boolean toldJson;
 	@NonNull
 	private List<ProjectDiagnostic> errors = Collections.emptyList();
+	// Where the new editor is the default; null elsewhere.
+	@Nullable
+	private final WordDocs docs;
 
 	CodeViewSourceEditor(@NonNull CodeView view) {
 		this.view = view;
@@ -100,6 +103,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 			return insets;
 		});
 		view.setAnalysisListener(this::analysed);
+		docs = view.getResources().getBoolean(R.bool.project_mode)
+				? new WordDocs(view)
+				: null;
 		show(new Document(Text.EMPTY), DATABASE);
 	}
 
@@ -332,6 +338,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 		revision = document.revision();
 		errors = Collections.emptyList();
 		styles = new LineStyles(document, syntax, STYLE_BUDGET);
+		// GLSL's words, in GLSL only.
+		view.setLookUp(syntax == DATABASE ? docs : null);
 		marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
 		document.addListener(documentListener);

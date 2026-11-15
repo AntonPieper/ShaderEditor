@@ -179,6 +179,29 @@
 		<item name="cornerRadius">0dp</item>
 	</style>
 
+	<!-- GLSL in a sheet: on a box, in the code font, which the sheet sets. -->
+	<style name="DocsCode">
+		<item name="android:layout_width">match_parent</item>
+		<item name="android:layout_height">wrap_content</item>
+		<item name="android:layout_marginStart">@dimen/se_margin_sheet</item>
+		<item name="android:layout_marginEnd">@dimen/se_margin_sheet</item>
+		<item name="android:background">@drawable/docs_code_box</item>
+		<item name="android:padding">12dp</item>
+		<item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+		<item name="android:textColor">@color/editor_text</item>
+	</style>
+
+	<!-- What a sheet says about the GLSL above it. -->
+	<style name="DocsNote">
+		<item name="android:layout_width">match_parent</item>
+		<item name="android:layout_height">wrap_content</item>
+		<item name="android:layout_marginStart">@dimen/se_margin_sheet</item>
+		<item name="android:layout_marginEnd">@dimen/se_margin_sheet</item>
+		<item name="android:layout_marginTop">8dp</item>
+		<item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+		<item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+	</style>
+
 	<style name="CodeView">
 		<item name="android:scrollbars">vertical|horizontal</item>
 	</style>

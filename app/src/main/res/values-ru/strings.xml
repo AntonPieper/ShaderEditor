@@ -510,4 +510,20 @@
 	<string name="library_not_imported">Nothing was imported: %1$s</string>
 	<string name="library_unknown">this file is neither a zip file nor a database backup</string>
 	<string name="library_left">the settings were closed; choose the file again</string>
+	<string name="look_up">Look up</string>
+	<string name="a11y_look_up">Look up %1$s</string>
+	<string name="docs_kind_versions">%1$s · %2$s</string>
+	<string name="docs_builtin_function">Built-in function</string>
+	<string name="docs_builtin_type">Built-in type</string>
+	<string name="docs_qualifier">Qualifier</string>
+	<string name="docs_keyword">Keyword</string>
+	<string name="docs_builtin_variable">Built-in variable</string>
+	<string name="docs_builtin_constant">Built-in constant</string>
+	<string name="docs_es_both">GLSL ES 1.00 and 3.00</string>
+	<string name="docs_es_100">GLSL ES 1.00 only</string>
+	<string name="docs_es_300">GLSL ES 3.00 only</string>
+	<string name="docs_example">Example</string>
+	<string name="a11y_takes">%1$s takes %2$s</string>
+	<string name="a11y_takes_nothing">%1$s takes nothing</string>
+	<string name="a11y_and">%1$s and %2$s</string>
 </resources>

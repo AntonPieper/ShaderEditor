@@ -134,6 +134,15 @@ public class CodeView extends View {
 				float right, float bottom);
 	}
 
+	/** Explains words, on request. */
+	public interface LookUp {
+		/** Return whether word can be looked up. */
+		boolean has(@NonNull String word);
+
+		/** Explain word. */
+		void lookUp(@NonNull String word);
+	}
+
 	/** The input type of today's editor with native suggestions hidden. */
 	public static final int INPUT_TYPE_NO_SUGGESTIONS = InputType.TYPE_NULL;
 	/** The input type of today's editor with native suggestions shown. */
@@ -156,6 +165,8 @@ public class CodeView extends View {
 	private static final int DRAG_MOUSE = 3;
 	// While text dragged by the system is over the view.
 	private static final int DRAG_DROP = 4;
+	// The longest selection Look up is offered for.
+	private static final int MAX_WORD = 64;
 
 	private final CodeAppearance appearance;
 	private final LineGeometry lines = new LineGeometry();
@@ -313,6 +324,7 @@ public class CodeView extends View {
 	private LineMarks marks;
 	private boolean connected;
 	private LineBackdrop backdrop;
+	private LookUp lookUp;
 	private AnalysisScheduler.Callback analysisListener;
 	private boolean tabIndents = true;
 	private boolean showLineNumbers = true;
@@ -591,6 +603,14 @@ public class CodeView extends View {
 	 */
 	public void setTabIndents(boolean tabIndents) {
 		this.tabIndents = tabIndents;
+	}
+
+	/**
+	 * Offer Look up for a selected word that lookUp has, or nothing for
+	 * null, the default.
+	 */
+	public void setLookUp(@Nullable LookUp lookUp) {
+		this.lookUp = lookUp;
 	}
 
 	public void setLineBackdrop(@Nullable LineBackdrop backdrop) {
@@ -1324,7 +1344,9 @@ public class CodeView extends View {
 
 	/** Do a context menu action of the keyboard; return if it is known. */
 	boolean contextMenuAction(int id) {
-		if (id == android.R.id.shareText) {
+		if (id == R.id.look_up) {
+			return lookUpSelection();
+		} else if (id == android.R.id.shareText) {
 			share();
 			return true;
 		}
@@ -1356,6 +1378,9 @@ public class CodeView extends View {
 	 * as the platform's do; an action that did nothing changes nothing.
 	 */
 	boolean toolbarAction(int id) {
+		if (id == R.id.look_up) {
+			return lookUpSelection();
+		}
 		KeyCommands.Command command = KeyCommands.contextMenuCommand(id);
 		boolean done;
 		selecting = true;
@@ -1499,9 +1524,60 @@ public class CodeView extends View {
 	int[] offered() {
 		Document.Selection selection = document.selection();
 		ClipboardManager manager = clipboardManager();
-		return TextActions.offered(selection.start(), selection.end(),
+		int[] ids = TextActions.offered(selection.start(), selection.end(),
 				document.text().length(),
 				manager != null && manager.hasPrimaryClip());
+		if (selectedWord() == null) {
+			return ids;
+		}
+		// After paste, before what goes to the overflow first.
+		int at = 0;
+		while (at < ids.length && ids[at] != android.R.id.shareText &&
+				ids[at] != android.R.id.selectAll) {
+			++at;
+		}
+		int[] withLookUp = new int[ids.length + 1];
+		System.arraycopy(ids, 0, withLookUp, 0, at);
+		withLookUp[at] = R.id.look_up;
+		System.arraycopy(ids, at, withLookUp, at + 1, ids.length - at);
+		return withLookUp;
+	}
+
+	// Returns the selection if it is one word that can be looked up,
+	// else null.
+	@Nullable
+	private String selectedWord() {
+		Document.Selection selection = document.selection();
+		int start = selection.start();
+		int end = selection.end();
+		if (lookUp == null || start == end || end - start > MAX_WORD) {
+			return null;
+		}
+		String word = document.text().substring(start, end);
+		for (int i = 0; i < word.length(); ++i) {
+			char c = word.charAt(i);
+			if (!(c == '_' || (c >= 'a' && c <= 'z') ||
+					(c >= 'A' && c <= 'Z') ||
+					(i > 0 && c >= '0' && c <= '9'))) {
+				return null;
+			}
+		}
+		return lookUp.has(word) ? word : null;
+	}
+
+	/** Return the selected word Look up explains, or null. */
+	@Nullable
+	String lookUpWord() {
+		return document != null ? selectedWord() : null;
+	}
+
+	/** Look up the selected word; return whether it could. */
+	boolean lookUpSelection() {
+		String word = selectedWord();
+		if (word != null) {
+			lookUp.lookUp(word);
+		}
+		return word != null;
 	}
 
 	private void toggleToolbar() {
