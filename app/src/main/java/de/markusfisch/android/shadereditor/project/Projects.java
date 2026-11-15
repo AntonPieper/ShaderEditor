@@ -406,14 +406,41 @@ public final class Projects {
 	}
 
 	/**
-	 * Keep png as the picture of the file of the library at path, made
-	 * from its content at revision, on the queue; done gets why it is
-	 * not kept, or null.
+	 * Return the pictures of the files of session id: the library's
+	 * where id is the library's session, else those kept beside the
+	 * session; null for an id that names none. Off the main thread.
 	 */
-	public void setPreview(ProjectPath path, String revision, byte[] png,
-			Callback<String> done) {
-		change(() -> library().setPreview(path, revision, png,
-				this::relocated), done);
+	public Previews previews(String id) {
+		Locator locator = sessions.locator(id);
+		if (locator == null) {
+			return null;
+		}
+		return locator.equals(libraryLocator())
+				? library().previews()
+				: sessions.previews(id);
+	}
+
+	/**
+	 * Keep png as the picture of the file at path of session id, made
+	 * from its content at revision, on the queue; done gets why it is
+	 * not kept, or null. Any folder keeps the pictures of its shaders,
+	 * in app data, never among its files.
+	 */
+	public void setPreview(String id, ProjectPath path, String revision,
+			byte[] png, Callback<String> done) {
+		change(() -> {
+			Locator locator = sessions.locator(id);
+			if (locator == null) {
+				return "the folder is not known";
+			} else if (locator.equals(libraryLocator())) {
+				return library().setPreview(path, revision, png,
+						this::relocated);
+			}
+			Previews previews = sessions.previews(id);
+			return previews != null && previews.put(path, revision, png)
+					? null
+					: "the picture cannot be kept";
+		}, done);
 	}
 
 	/**
@@ -595,12 +622,15 @@ public final class Projects {
 					}
 
 					// The settings and pictures of the library follow
+					// its files, and the pictures of any other folder
 					// its files.
 					@Override
-					public FileTexts.Kept kept(Locator locator) {
-						return locator.equals(libraryLocator())
-								? library().kept()
-								: null;
+					public FileTexts.Kept kept(String id, Locator locator) {
+						if (locator.equals(libraryLocator())) {
+							return library().kept();
+						}
+						Previews previews = sessions.previews(id);
+						return previews != null ? previews::follow : null;
 					}
 				},
 				project -> {

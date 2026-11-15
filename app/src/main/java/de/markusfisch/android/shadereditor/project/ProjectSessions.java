@@ -69,6 +69,7 @@ public final class ProjectSessions {
 	private static final String RUNNING = "running";
 	private static final String SHOWN = "shown";
 	private static final String RECENT = "recent";
+	private static final String PREVIEWS = "previews";
 	private static final String LAST = "last";
 	private static final String DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
 	private static final int LENGTH = 8;
@@ -175,6 +176,15 @@ public final class ProjectSessions {
 	 * Return the undo histories of the files of session id, or null when
 	 * there is no such session.
 	 */
+	/**
+	 * Return the pictures of the files of session id, app data beside
+	 * its journal, or null for an id that names no session.
+	 */
+	Previews previews(String id) {
+		File folder = file(id, PREVIEWS);
+		return folder != null ? new Previews(folder) : null;
+	}
+
 	Histories histories(String id) {
 		return locator(id) != null
 				? new Histories(file(id, HISTORY))
@@ -360,6 +370,8 @@ public final class ProjectSessions {
 		if (recent.exists() && !recent.delete()) {
 			return false;
 		}
+		// Its pictures go with it: they show it among the recent ones.
+		delete(new File(dir, PREVIEWS));
 		// A project open on the session may write its journal yet.
 		Journal.ifAbandoned(new File(dir, DRAFTS), () -> discard(id));
 		return true;

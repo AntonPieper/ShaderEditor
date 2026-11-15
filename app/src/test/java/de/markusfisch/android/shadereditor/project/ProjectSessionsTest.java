@@ -124,6 +124,28 @@ public class ProjectSessionsTest {
 		assertEquals("stored", read(new File(project, "main.frag")));
 	}
 
+	// Any folder keeps the pictures of its shaders beside its session,
+	// never among its files; they go when it leaves Recent.
+	@Test
+	public void keepsPicturesOfAFolderUntilItIsRemoved() {
+		Locator locator = new Locator(Kind.DIRECTORY, project.getPath());
+		String id = sessions.open(locator);
+		assertTrue(sessions.remember(id, "project", "Shaders", 10));
+		byte[] png = {1, 2, 3};
+		assertTrue(sessions.previews(id).put(path("Aurora.frag"), "r1", png));
+
+		Previews.Picture picture = new ProjectSessions(root).previews(id)
+				.get(path("Aurora.frag"));
+		assertNotNull(picture);
+		assertEquals(3, picture.png().length);
+		assertEquals(0, project.list().length);
+
+		assertTrue(sessions.remove(id));
+
+		assertNull(sessions.previews(id).get(path("Aurora.frag")));
+		assertNull(sessions.previews("../escape"));
+	}
+
 	@Test
 	public void removingARecentProjectKeepsItsDrafts() {
 		Locator locator = new Locator(Kind.DIRECTORY, project.getPath());

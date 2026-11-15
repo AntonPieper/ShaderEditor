@@ -67,6 +67,7 @@ import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
+import de.markusfisch.android.shadereditor.navigation.Face;
 import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
@@ -142,8 +143,6 @@ public class NavigationDrawer implements ShaderList {
 	private final ExecutorService listings =
 			Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
-	// What the library's rows show besides names.
-	private final FolderSource.Looks libraryLooks;
 	// The shaders of the database that could not be moved.
 	@NonNull
 	private List<LibraryMove.Failed> notMoved = Collections.emptyList();
@@ -185,25 +184,6 @@ public class NavigationDrawer implements ShaderList {
 		projects = holds.projects();
 		projects.examples(activity.getString(R.string.load_sample),
 				key -> examplesKey = key);
-		libraryLooks = new FolderSource.Looks() {
-			@Nullable
-			@Override
-			public byte[] picture(@NonNull ProjectPath path) {
-				Previews.Picture picture = projects.library().previews()
-						.get(path);
-				return picture != null
-						? OldPlaceholder.real(activity, picture.png())
-						: null;
-			}
-
-			@Nullable
-			@Override
-			public ProjectPath wallpaper() {
-				return projects.library().wallpaperFile(
-						projects.wallpaper().current(),
-						ShaderEditorApp.preferences.getWallpaperShader());
-			}
-		};
 		pickFolder = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(),
 				result -> onPicked(result, true));
@@ -394,7 +374,7 @@ public class NavigationDrawer implements ShaderList {
 		// A level of it listed before it was known lists it as the
 		// library from now on.
 		if (folder != null && folder.key().equals(key)) {
-			folder.setLooks(libraryLooks);
+			folder.setLooks(looks(key, true));
 		}
 		// The screen can show a file by now.
 		newFile.resume();
@@ -407,11 +387,12 @@ public class NavigationDrawer implements ShaderList {
 		}
 	}
 
-	// The library is listed like any folder; this reads it again.
+	// Something kept changed, a picture of any folder among it: the
+	// folder shown and the places are read again.
 	@Override
 	public void loadShadersAsync() {
 		loadRecent();
-		if (folder != null && folder.key().equals(libraryKey)) {
+		if (folder != null) {
 			folder.forget();
 		}
 	}
@@ -623,6 +604,7 @@ public class NavigationDrawer implements ShaderList {
 
 	private void loadRecent() {
 		String library = libraryKey;
+		String examples = examplesKey;
 		try {
 			executor.execute(() -> {
 				List<ProjectSessions.Recent> recent =
@@ -630,9 +612,24 @@ public class NavigationDrawer implements ShaderList {
 				int shaders = library != null
 						? projects.library().rootFiles().size()
 						: -1;
+				// Each place shows the picture of what runs there.
+				Map<String, byte[]> pictures = new HashMap<>();
+				List<String> keys = new ArrayList<>();
+				for (ProjectSessions.Recent session : recent) {
+					keys.add(session.id());
+				}
+				keys.add(library);
+				for (String key : keys) {
+					byte[] png = runningPicture(key);
+					if (png != null) {
+						pictures.put(key, png);
+					}
+				}
+				byte[] examplesPicture = runningPicture(examples);
 				handler.post(() -> {
 					folders.setRecent(recent);
 					folders.setLibrary(library, shaders);
+					folders.setPictures(pictures, examplesPicture);
 					if (level.equals(Level.FOLDERS)) {
 						refresh();
 					}
@@ -641,6 +638,60 @@ public class NavigationDrawer implements ShaderList {
 		} catch (RejectedExecutionException e) {
 			// Destroyed.
 		}
+	}
+
+	// The picture of the file that runs in session key, else of the
+	// one shown last there, or null. Off the main thread.
+	@Nullable
+	private byte[] runningPicture(@Nullable String key) {
+		if (key == null) {
+			return null;
+		}
+		ProjectSessions sessions = projects.sessions();
+		ProjectPath path = sessions.running(key);
+		if (path == null) {
+			path = sessions.shown(key);
+		}
+		Previews previews = path != null ? projects.previews(key) : null;
+		Previews.Picture picture = previews != null
+				? previews.get(path)
+				: null;
+		return picture != null
+				? OldPlaceholder.real(activity.getApplicationContext(),
+						picture.png())
+				: null;
+	}
+
+	// What the rows of the folder opened before with key show besides
+	// names: the pictures of its shaders, and for the library, of
+	// library, the file the wallpaper shows. Read off the main thread.
+	@NonNull
+	private FolderSource.Looks looks(@NonNull String key, boolean library) {
+		Context app = activity.getApplicationContext();
+		return new FolderSource.Looks() {
+			@Nullable
+			@Override
+			public byte[] picture(@NonNull ProjectPath path) {
+				Previews previews = projects.previews(key);
+				Previews.Picture picture = previews != null
+						? previews.get(path)
+						: null;
+				return picture != null
+						? OldPlaceholder.real(app, picture.png())
+						: null;
+			}
+
+			@Nullable
+			@Override
+			public ProjectPath wallpaper() {
+				return library
+						? projects.library().wallpaperFile(
+								projects.wallpaper().current(),
+								ShaderEditorApp.preferences
+										.getWallpaperShader())
+						: null;
+			}
+		};
 	}
 
 	private void pick(boolean folder) {
@@ -786,7 +837,7 @@ public class NavigationDrawer implements ShaderList {
 					// Asked where it is known, not of what the drawer
 					// was told so far: a level listed before the start
 					// told it is the library's all the same.
-					projects.isLibrary(key) ? libraryLooks : null,
+					looks(key, projects.isLibrary(key)),
 					() -> {
 				if (folder != null && folder.key().equals(level.key())) {
 					refresh();
@@ -902,9 +953,7 @@ public class NavigationDrawer implements ShaderList {
 			String title = failed.title();
 			byte[] png = notMovedPictures.get(failed.id());
 			rows.add(new Row(NOT_MOVED + failed.id(), Row.Kind.SHADER,
-					png != null
-							? Row.Picture.png(png)
-							: Row.Picture.of(Row.Picture.Icon.SHADER),
+					Face.of(Face.Of.FILE, png),
 					title != null && !title.isEmpty()
 							? title
 							: activity.getString(R.string.nav_untitled),

@@ -21,8 +21,11 @@ final class LiveProjects {
 	interface Opener {
 		SafProjects.Opened open(Locator locator);
 
-		/** Return what follows the files of the project at locator. */
-		default FileTexts.Kept kept(Locator locator) {
+		/**
+		 * Return what follows the files of the project of session id
+		 * at locator.
+		 */
+		default FileTexts.Kept kept(String id, Locator locator) {
 			return null;
 		}
 	}
@@ -96,7 +99,7 @@ final class LiveProjects {
 						? opened.problem()
 						: "it cannot be opened",
 				sessions, worker, main, later, budget,
-				opener.kept(locator));
+				opener.kept(id, locator));
 	}
 
 	// How many openings are under way that have not come to open
