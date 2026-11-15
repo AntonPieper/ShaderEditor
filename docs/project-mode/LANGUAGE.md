@@ -342,6 +342,74 @@ The rules that make it tolerant, each a thing GLSL cannot mean:
 3. **A name needs a type before it to be declared.** `x = y` on one line and `z = 1;` on the next declare nothing.
 4. **After `#else` the nesting is what it was at `#if`**, so a function head written once per branch with one body counts its brace once. Code between `#if 0` and its `#else` or `#endif` is not read; every other branch is, so the outline has the names of all of them.
 
+#### How the reader is built
+
+Three classes, each with one job:
+
+| Class | What it is | Lives for |
+| --- | --- | --- |
+| `GlslStatement` | The tokens of one statement: what each is, its text once with single spaces, where it stood. Answers where the words it starts with, a pair of brackets or a declarator end, and which of its words is the name it declares | One statement |
+| `GlslSymbols` | A function from a statement's tokens to what they declare: function with parameters, variables, struct with fields, block. Reads nothing else and keeps nothing | A call |
+| `GlslDeclarations` | The reader: one pass over the lines, fills the statement, asks `GlslSymbols` when it ends, keeps the symbols within the budget | One text |
+
+**The name a statement declares** is the last of the words it starts with, if it is a name and a type or another name stands before it; what stands before those two qualifies them, whether GLSL knows the word or not. So `uniform PREC float speed;`, `COMPAT_VARYING vec4 TEX0;`, `static const float x = 1.0;` and `inline float2 f()` declare `speed`, `TEX0`, `x` and `f`: macros for a precision or a qualifier and words of other shading languages cost no name. The same rule reads a parameter and a field. The scan this parser replaced took "the last name before `;`, `,`, `=`, `[` or `(` that a word precedes"; over a macro-heavy corpus (libretro's GLSL shaders, 604 files, 29,287 names) the parser now finds every name the scan found and 25 more.
+
+The reader is one state machine and stays one class: its parts read the same token stream and must agree on its order. Every token is a comment, part of a directive, or code, tried in that order:
+
+| Part | Its state | Ends |
+| --- | --- | --- |
+| Comment | The comment lines right above the line being read; whether the line before left a comment open, which the lexer tells | A line of code or an empty line |
+| Directive | What the directive expects next, as one enum (`COMMAND`, `DEFINE`, `MACRO`, `PARAMETERS`, `TEXT`, `IF`, `IF_ZERO`, `INCLUDE`, `PRAGMA`, `HOST`, ...); the macro being defined. Per open `#if`: where the code reader was, and the level `#if 0` disabled code at | With its line, unless the lexer tells that it goes on; `#endif` |
+| Code | The mode, the statement, how many of its brackets are open, the comment above its first token; in braces their depth and the function whose body is read. Beside it the words read last, from one that began a line or a statement on, with the end of the code before them, their line and the comment above them | The end of the declaration |
+
+What each event keeps and clears:
+
+| Event | Effect |
+| --- | --- |
+| A line ends | The comment above is cleared unless the line was nothing but comment. A directive that does not go on ends: its macro is declared, `#if 0` starts to disable code |
+| `{` outside of an initializer | `TOP` to `BODY` for a function (declared at once, its range grows with the body) or for nothing, to `FIELDS` for a struct or block (the statement goes on). Open brackets are forgotten: no `{` stands in them |
+| `}` that closes the fields | `FIELDS` to `TOP`; the statement goes on to its `;` |
+| `}` that closes the body | `BODY` to `TOP`, the function ends there |
+| Recovery, see below | `FIELDS` or `BODY` to `TOP`; in `TOP` the statement before the words is declared. The words become the statement, with their comment |
+| `#else`, `#elif` | The mode, the depth and the function are what they were at `#if`; the statement and the words read last are dropped if it began in a body. Open brackets are not restored |
+| The text ends | A directive, a body and a statement end where the last code did |
+
+**Recovery is one rule with one way out.** What is being read (a body, the fields of a struct, a declaration that did not end) is left only for what can start a declaration outside of it **and** cannot go on with it; and never for a line that merely looks like a declaration, since a parameter list, a struct and a body all go on with `type name` lines of their own. Two things qualify:
+
+- a function head, `type name (` with any qualifiers before it, that began a line or a statement. Among fields any such head counts, since a field has no `(`. In a body and in a declaration that did not end, the type must be a built-in or a struct declared above, since an unknown word before `name(` may be a macro there;
+- `uniform`, `varying` or `attribute` at the start of a line or a statement.
+
+`recover()` then ends what was being read at the end of the code before those words and goes on with them as the statement. Besides that rule, two things are no recovery but belong to it: a `{` inside `(` or `[` outside of an initializer means they lost their closing ones (`float f(vec3 p {` is a function), and a declaration that lost its `;` ends where a new line starts another (rule 2). The acceptance table is `GlslRecoveryTest`: 39 rows over an expression, parameters, fields, a body, conditional branches and statements, each context once written over several lines as it may be, where nothing must be left, and once with its delimiter missing, with a comment before the candidate, and at the end of the text; every row is also read cut at every character.
+
+Known gaps of half 1:
+
+- A type and a name alone are never enough to leave a bracket: in `float x = sin(` above `float y = 2.0;` above `void main() {}`, `y` is taken into `x`; `main` and what follows are found.
+- After `#else` the brackets that were open at `#if` are not open again: a parameter list that a conditional cuts in two declares the function with the parameters of the first branch.
+- A function head among fields or in a body must begin its line or statement; behind a stray character on its line it is not seen.
+- A statement keeps 2,048 tokens and 16,384 characters and says nothing when it had more.
+
+#### The caps, and what is shown beyond them
+
+| Cap | Where | Beyond it |
+| --- | --- | --- |
+| 10,000 symbols | the new editor, and what files know of each other | later declarations are not known: they do not complete, fold marks and links are kept |
+| 524,288 characters, a quarter of them for names alone | the same | a symbol keeps its name while names fit (131,072 characters, what the scan's cap counted), and says no more than its name once the other three quarters are used up by declarations as text, comments and parts |
+| A line of more than 65,536 characters | the same | nothing of the text is known |
+| none | the old editor, which reads the whole text as it always did | |
+
+In every case the knowledge is of the text it was made of: a text that outgrows a cap gets its own, smaller knowledge, never the one of the text before (`AnalysisTest.knowsNothingOfATextWithATooLongLine`). The editor may ask a knowledge of an older revision while the next is made; that is what `at`'s word is for, and nothing is drawn from it as fact.
+
+#### Before half 2 starts
+
+Half 2 enters at `BODY`, which today is skipped but for its braces. These are its entry conditions, decided before code is written:
+
+1. **What survives a statement.** A symbol is a view for the outline and Look up: its `detail` is text, cut at 240 characters, and a parameter without a name has no symbol. Scopes, overloads by argument types and rename need the type, the qualifiers, the array sizes and the whole signature of a declaration, its identity, its scope and the ranges of its uses, kept apart from `Symbol.detail` and made while the tokens are still there. `symbols()` stays the flat outline it is.
+2. **Truncation is an outcome.** A statement that had more than it keeps, and a knowledge that hit a cap, must say so, and nothing may be answered as certain about them.
+3. **Uses cost memory per use, not per declaration.** Either they are kept under a cap of their own, or rename reads the files again when it is asked for; "memory does not grow with the file" holds for declarations only.
+4. **Which callers of `at` only ask by name** (the Add uniform fix, the cross-file lookup: offset -1) and which ask from a place (Look up, the call in the strip): only the second kind may become exact, and an exact answer needs a knowledge of the same revision.
+5. **No scope type in the seam without an editor feature that needs it.** `Knowledge.Scope` is what a file sees of other files and stays that.
+6. **The body's reader replaces the words-read-last window** for bodies, with the statement it then reads in full; the conditional checkpoint must then restore the scope as well as the mode, the depth and the function.
+
 ### 8.4 The comment that belongs to a declaration
 
 1. The comment lines directly above it, with no empty line and nothing but comments between: `//` lines or a `/* */` block, their marks removed, joined.

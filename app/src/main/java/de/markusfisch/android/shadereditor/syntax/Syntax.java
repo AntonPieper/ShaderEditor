@@ -43,7 +43,9 @@ public interface Syntax {
 	 * null when it knows nothing of a text; the text is then not
 	 * tokenized for it. The knowledge keeps at most maxSymbols symbols
 	 * whose texts have at most maxChars characters together, the first
-	 * in the text.
+	 * in the text. Names come first: a quarter of the characters is
+	 * theirs alone, and a symbol there is no room to say more of keeps
+	 * its name.
 	 */
 	Knowledge.Builder knowledge(int maxSymbols, int maxChars);
 
