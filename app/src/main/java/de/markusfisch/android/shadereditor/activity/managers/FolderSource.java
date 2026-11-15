@@ -12,7 +12,6 @@ import androidx.annotation.Nullable;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -23,9 +22,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.navigation.Face;
-import de.markusfisch.android.shadereditor.navigation.FileActions;
-import de.markusfisch.android.shadereditor.navigation.FileMarks;
+import de.markusfisch.android.shadereditor.navigation.FolderListing;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Order;
@@ -37,7 +34,6 @@ import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
 import de.markusfisch.android.shadereditor.project.FileRole;
 import de.markusfisch.android.shadereditor.project.OpenProject;
-import de.markusfisch.android.shadereditor.project.ProjectManifest;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.SafProjects;
@@ -102,6 +98,8 @@ final class FolderSource {
 	private final String key;
 	private final FoldersSource folders;
 	private final Runnable changed;
+	// What its listings say, in the user's language.
+	private final FolderListing.Words words;
 	@NonNull
 	private Looks looks;
 	// The pictures of the files read, by path, and the wallpaper's file.
@@ -158,6 +156,7 @@ final class FolderSource {
 		this.key = key;
 		this.folders = folders;
 		this.changed = changed;
+		words = words(context);
 		Recent known = folders.find(key);
 		if (known != null) {
 			name = known.name();
@@ -165,11 +164,6 @@ final class FolderSource {
 			file = known.file();
 		}
 	}
-
-	/** The key of the row that shows all files of the Running section. */
-	static final String ALL_RUNNING = "\u0000running";
-	/** The Running section shows this many files before Show all. */
-	static final int RUNNING_SHOWN = 6;
 
 	@NonNull
 	String key() {
@@ -355,32 +349,20 @@ final class FolderSource {
 				}
 			}, Reading.SLOW_MILLIS);
 		}
-		// A level is sorted whole, then cut into pages.
-		List<Row> rows = dressed(reading.rows(level,
-				context.getString(R.string.nav_show_more),
-				context.getString(R.string.nav_shown_of), order), reading);
-		List<Listing.Section> sections = new ArrayList<>();
-		List<Row> running = runningRows();
-		if (!running.isEmpty()) {
-			sections.add(new Listing.Section(
-					context.getString(R.string.nav_running),
-					FileMarks.unsaved(running, unsaved())));
-		}
-		List<Row> files = new ArrayList<>(FileMarks.unsaved(FileActions.of(
-				rows, running(), runs(rows), !file && writable.contains(path)),
-				unsaved()));
+		// The level as FolderListing builds it from what is known.
 		Ordered ordered = readmes.get(path);
-		List<Listing.Section> described = ordered != null
-				? described(ordered.sections(), files)
+		ProjectPath runs = project != null ? project.running() : null;
+		List<OpenProject.Used> used = runs != null && project.reads(runs)
+				? project.used()
 				: List.of();
-		sections.addAll(described);
-		if (!files.isEmpty() || described.isEmpty()) {
-			sections.add(new Listing.Section(!described.isEmpty()
-					? context.getString(R.string.nav_other_files)
-					: running.isEmpty()
-					? null
-					: context.getString(R.string.nav_all_files), files));
-		}
+		readPictures(used);
+		List<Listing.Section> sections = FolderListing.sections(
+				new FolderListing.Facts(level, order, reading, pictures,
+						wallpaper, manifestRuns, ordered != null
+								? ordered.sections()
+								: List.of(), used, allRunning, running(),
+						this::runs, !file && writable.contains(path),
+						unsaved()), words);
 		// A folder that cannot be changed, such as the examples, says
 		// so; New there makes a shader in the library.
 		boolean readOnly = !file && !reading.isLost() && (this.readOnly ||
@@ -408,186 +390,15 @@ final class FolderSource {
 				reading.notice());
 	}
 
-	// The rows with their faces, when they were changed, and the
-	// wallpaper's mark; a file that cannot be opened says so with its
-	// size, and the manifest says what it runs.
-	@NonNull
-	private List<Row> dressed(@NonNull List<Row> rows,
-			@NonNull Reading reading) {
-		long now = System.currentTimeMillis();
-		Map<String, Long> sizes = new HashMap<>();
-		for (Reading.Entry entry : reading.entries()) {
-			sizes.put(entry.name(), entry.size());
-		}
-		List<Row> dressed = new ArrayList<>(rows.size());
-		for (Row row : rows) {
-			if (row.kind() == Row.Kind.MORE) {
-				dressed.add(row);
-				continue;
-			} else if (row.kind() == Row.Kind.FOLDER) {
-				dressed.add(new Row(row.key(), row.kind(),
-						Face.of(row.kind(), row.name(),
-								pictures.get(row.key())),
-						row.name(), row.detail(), row.changed(), row.enters(),
-						row.marks(), row.actions()));
-				continue;
-			}
-			Set<Row.Mark> marks = EnumSet.noneOf(Row.Mark.class);
-			marks.addAll(row.marks());
-			if (row.key().equals(wallpaper)) {
-				marks.add(Row.Mark.WALLPAPER);
-			}
-			Long size = sizes.get(row.name());
-			// An image's line is its format and size, once read.
-			String detail = row.kind() == Row.Kind.IMAGE
-					? null
-					: row.kind() == Row.Kind.OTHER
-					? context.getString(R.string.nav_cannot_open_size,
-							Formatter.formatShortFileSize(context,
-									size != null ? size : 0))
-					: manifestRuns != null &&
-					row.key().equals(ProjectManifest.FILE.toString())
-					? context.getString(R.string.nav_runs, manifestRuns)
-					: ChangeTimes.describe(context, row.changed(), now);
-			dressed.add(new Row(row.key(), row.kind(),
-					Face.of(row.kind(), row.name(), pictures.get(row.key())),
-					row.name(), detail, row.changed(), row.enters(), marks,
-					row.actions()));
-		}
-		return dressed;
-	}
-
-	// The sections a folder's README gives it, with the rows it links,
-	// in its order, each with its line; the rows it does not link stay
-	// in rows. The README itself says that it orders the list.
-	@NonNull
-	private List<Listing.Section> described(
-			@NonNull List<Readme.Section> readme, @NonNull List<Row> rows) {
-		Map<String, Row> byName = new HashMap<>();
-		for (Row row : rows) {
-			if (row.kind() != Row.Kind.MORE) {
-				byName.put(row.name(), row);
+	// The pictures of the files under Running that are outside the
+	// folders read: read once each, off the main thread.
+	private void readPictures(@NonNull List<OpenProject.Used> used) {
+		List<ProjectPath> paths = new ArrayList<>();
+		for (OpenProject.Used file : used) {
+			if (!file.image() && asked.add(file.path().toString())) {
+				paths.add(file.path());
 			}
 		}
-		List<Listing.Section> sections = new ArrayList<>();
-		for (Readme.Section section : readme) {
-			List<Row> linked = new ArrayList<>();
-			for (Readme.Linked entry : section.entries()) {
-				Row row = byName.remove(entry.name());
-				if (row != null) {
-					linked.add(entry.line() != null
-							? withDetail(row, entry.line())
-							: row);
-				}
-			}
-			if (!linked.isEmpty()) {
-				sections.add(new Listing.Section(section.heading(), linked));
-			}
-		}
-		if (sections.isEmpty()) {
-			return sections;
-		}
-		for (int i = 0; i < rows.size(); ++i) {
-			Row row = rows.get(i);
-			if (Readme.is(row.name())) {
-				rows.set(i, withDetail(row, context.getString(
-						R.string.nav_readme_orders)));
-			}
-		}
-		List<Row> left = rowsOf(rows, byName);
-		rows.clear();
-		rows.addAll(left);
-		return sections;
-	}
-
-	// The rows of rows still in byName, or that show more, in order.
-	@NonNull
-	private static List<Row> rowsOf(@NonNull List<Row> rows,
-			@NonNull Map<String, Row> byName) {
-		List<Row> left = new ArrayList<>();
-		for (Row row : rows) {
-			if (row.kind() == Row.Kind.MORE ||
-					byName.containsKey(row.name()) ||
-					Readme.is(row.name())) {
-				left.add(row);
-			}
-		}
-		return left;
-	}
-
-	@NonNull
-	private static Row withDetail(@NonNull Row row, @NonNull String detail) {
-		return new Row(row.key(), row.kind(), row.picture(), row.name(),
-				detail, row.changed(), row.enters(), row.marks(),
-				row.actions());
-	}
-
-	// The files the last build of what runs read, in build order, each
-	// with its path from the root and what it is to the shader that
-	// runs: on top of every level of this folder, when that is more
-	// than the file that runs. Six of them, then Show all.
-	@NonNull
-	private List<Row> runningRows() {
-		ProjectPath runs = project != null ? project.running() : null;
-		List<OpenProject.Used> used = runs != null && project.reads(runs)
-				? project.used()
-				: List.of();
-		List<Row> rows = new ArrayList<>();
-		if (used.size() < 2) {
-			return rows;
-		}
-		int shown = allRunning || used.size() <= RUNNING_SHOWN + 1
-				? used.size()
-				: RUNNING_SHOWN;
-		List<ProjectPath> unread = new ArrayList<>();
-		for (OpenProject.Used file : used.subList(0, shown)) {
-			String key = file.path().toString();
-			Row.Kind kind = file.image() ? Row.Kind.IMAGE : Row.Kind.TEXT;
-			if (!file.image() && asked.add(key)) {
-				unread.add(file.path());
-			}
-			rows.add(new Row(key, kind, Face.of(kind,
-					file.path().getFileName(), pictures.get(key)), key,
-					role(file.role()), 0, null,
-					EnumSet.noneOf(Row.Mark.class),
-					EnumSet.noneOf(Row.Action.class)));
-		}
-		if (shown < used.size()) {
-			rows.add(new Row(ALL_RUNNING, Row.Kind.MORE,
-					Face.of(Row.Kind.MORE, null, null),
-					context.getString(R.string.nav_running_show_all,
-							used.size()), null, 0, null,
-					EnumSet.noneOf(Row.Mark.class),
-					EnumSet.noneOf(Row.Action.class)));
-		}
-		readPictures(unread);
-		return rows;
-	}
-
-	// What a file is to the running shader, as its row's line.
-	@Nullable
-	private String role(@Nullable FileRole role) {
-		if (role == null) {
-			return null;
-		}
-		List<String> names = new ArrayList<>();
-		for (ProjectPath to : role.of()) {
-			names.add(to.getFileName());
-		}
-		String of = String.join(", ", names);
-		return switch (role.kind()) {
-			case RUNS -> context.getString(R.string.nav_role_runs);
-			case PASS -> context.getString(R.string.nav_role_pass);
-			case FIRST_FRAME -> context.getString(
-					R.string.nav_role_first_frame, of);
-			case INCLUDE -> context.getString(R.string.nav_role_include, of);
-			case TEXTURE -> context.getString(R.string.nav_role_texture, of);
-		};
-	}
-
-	// The pictures of files outside the folders read, for the Running
-	// section; read once each, off the main thread.
-	private void readPictures(@NonNull List<ProjectPath> paths) {
 		if (paths.isEmpty()) {
 			return;
 		}
@@ -612,26 +423,20 @@ final class FolderSource {
 		}
 	}
 
-	// What is known of whether the files of rows can run: a name of a
-	// language that does not run says so, and the text of a file in
-	// memory does; of any other file it is told when it runs.
-	@NonNull
-	private Map<String, OpenProject.Runs> runs(@NonNull List<Row> rows) {
-		Map<String, OpenProject.Runs> runs = new HashMap<>();
-		ShaderLanguage language;
-		for (Row row : rows) {
-			var path = ProjectPath.parse(row.key());
-			if (row.kind() == Row.Kind.FOLDER || !path.isSuccess()) {
-				continue;
-			} else if ((language = ShaderLanguage.listed(row.name())) !=
-					null && !language.runs()) {
-				runs.put(row.key(), OpenProject.Runs.NO);
-			} else if (project != null &&
-					project.document(path.value()) != null) {
-				runs.put(row.key(), project.runs(path.value()));
-			}
+	// What is known of whether the file at key, named name, can run: a
+	// name of a language that does not run says so, and the text of a
+	// file in memory does; of any other file it is told when it runs.
+	@Nullable
+	private OpenProject.Runs runs(@NonNull String key, @NonNull String name) {
+		ShaderLanguage language = ShaderLanguage.listed(name);
+		var path = ProjectPath.parse(key);
+		if (language != null && !language.runs()) {
+			return OpenProject.Runs.NO;
+		} else if (project != null && path.isSuccess() &&
+				project.document(path.value()) != null) {
+			return project.runs(path.value());
 		}
-		return runs;
+		return null;
 	}
 
 	@Nullable
@@ -851,6 +656,78 @@ final class FolderSource {
 	private void put(@NonNull String path, @NonNull Reading reading) {
 		readings.put(path, reading);
 		changed.run();
+	}
+
+	@NonNull
+	private static FolderListing.Words words(@NonNull Context context) {
+		return new FolderListing.Words() {
+			@Override
+			public String running() {
+				return context.getString(R.string.nav_running);
+			}
+
+			@Override
+			public String allFiles() {
+				return context.getString(R.string.nav_all_files);
+			}
+
+			@Override
+			public String otherFiles() {
+				return context.getString(R.string.nav_other_files);
+			}
+
+			@Override
+			public String readmeOrders() {
+				return context.getString(R.string.nav_readme_orders);
+			}
+
+			@Override
+			public String showMore() {
+				return context.getString(R.string.nav_show_more);
+			}
+
+			@Override
+			public String shownOf() {
+				return context.getString(R.string.nav_shown_of);
+			}
+
+			@Override
+			public String showAllRunning(int count) {
+				return context.getString(R.string.nav_running_show_all,
+						count);
+			}
+
+			@Override
+			public String role(FileRole.Kind kind, String of) {
+				return switch (kind) {
+					case RUNS -> context.getString(R.string.nav_role_runs);
+					case PASS -> context.getString(R.string.nav_role_pass);
+					case FIRST_FRAME -> context.getString(
+							R.string.nav_role_first_frame, of);
+					case INCLUDE -> context.getString(
+							R.string.nav_role_include, of);
+					case TEXTURE -> context.getString(
+							R.string.nav_role_texture, of);
+				};
+			}
+
+			@Override
+			public String cannotOpen(long bytes) {
+				return context.getString(R.string.nav_cannot_open_size,
+						Formatter.formatShortFileSize(context, bytes));
+			}
+
+			@Override
+			public String runs(String entry) {
+				return context.getString(R.string.nav_runs, entry);
+			}
+
+			@Override
+			public String changed(long time) {
+				return ChangeTimes.describe(context, time,
+						System.currentTimeMillis());
+			}
+		};
 	}
 
 	@NonNull

@@ -2,8 +2,11 @@ package de.markusfisch.android.shadereditor.navigation;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 import de.markusfisch.android.shadereditor.project.FileKind;
 
@@ -116,35 +119,30 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 	 */
 	public List<Row> rows(Level level, String more, String shownOf,
 			Order order) {
-		List<Entry> visible = visible();
+		return rows(level, more, shownOf, order, Set.of());
+	}
+
+	/**
+	 * The rows as {@link #rows(Level, String, String, Order)} without
+	 * the entries named taken, which are shown elsewhere, as a README's
+	 * sections show them: pages count only the rest.
+	 */
+	public List<Row> rows(Level level, String more, String shownOf,
+			Order order, Set<String> taken) {
+		List<Entry> visible = new ArrayList<>();
+		for (Entry entry : visible()) {
+			if (!taken.contains(entry.name)) {
+				visible.add(entry);
+			}
+		}
 		// Ordered whole, then only the rows shown are made.
 		List<Entry> ordered = order != null
 				? order.sortEntries(visible)
 				: visible;
 		List<Row> rows = new ArrayList<>();
-		String path = level.path();
 		for (Entry entry : ordered.subList(0, Math.min(shown,
 				ordered.size()))) {
-			String name = entry.name;
-			// A hint from the name, for the face: what the file is, is
-			// read from its bytes when it is opened or used. A file
-			// larger than the editor opens cannot be opened here.
-			Row.Kind kind = entry.folder
-					? Row.Kind.FOLDER
-					: entry.size > Face.LARGEST
-					? Row.Kind.OTHER
-					: FileKind.hint(name, null) == FileKind.PICTURE
-					? Row.Kind.IMAGE
-					: Row.Kind.TEXT;
-			rows.add(new Row(path != null ? path + "/" + name : name,
-					kind,
-					Face.of(kind, name, null),
-					name,
-					null,
-					Math.max(0, entry.modified),
-					entry.folder ? level.enter(name) : null,
-					EnumSet.noneOf(Row.Mark.class),
-					EnumSet.noneOf(Row.Action.class)));
+			rows.add(row(level, entry));
 		}
 		if (visible.size() > shown) {
 			rows.add(new Row("", Row.Kind.MORE, Face.of(Row.Kind.MORE, more,
@@ -155,6 +153,51 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 					EnumSet.noneOf(Row.Action.class)));
 		}
 		return rows;
+	}
+
+	/**
+	 * The rows of the entries named names that are in the folder, in
+	 * the order of names, wherever they would sort.
+	 */
+	public List<Row> rowsNamed(Level level, List<String> names) {
+		Map<String, Entry> byName = new HashMap<>();
+		for (Entry entry : visible()) {
+			byName.put(entry.name, entry);
+		}
+		List<Row> rows = new ArrayList<>();
+		for (String name : names) {
+			Entry entry = byName.get(name);
+			if (entry != null) {
+				rows.add(row(level, entry));
+			}
+		}
+		return rows;
+	}
+
+	// The row of an entry of the folder at level, before its face and
+	// line are known.
+	private static Row row(Level level, Entry entry) {
+		String name = entry.name;
+		String path = level.path();
+		// A hint from the name, for the face: what the file is, is read
+		// from its bytes when it is opened or used. A file larger than
+		// the editor opens cannot be opened here.
+		Row.Kind kind = entry.folder
+				? Row.Kind.FOLDER
+				: entry.size > Face.LARGEST
+				? Row.Kind.OTHER
+				: FileKind.hint(name, null) == FileKind.PICTURE
+				? Row.Kind.IMAGE
+				: Row.Kind.TEXT;
+		return new Row(path != null ? path + "/" + name : name,
+				kind,
+				Face.of(kind, name, null),
+				name,
+				null,
+				Math.max(0, entry.modified),
+				entry.folder ? level.enter(name) : null,
+				EnumSet.noneOf(Row.Mark.class),
+				EnumSet.noneOf(Row.Action.class));
 	}
 
 	/** What stands under the rows, or null. */

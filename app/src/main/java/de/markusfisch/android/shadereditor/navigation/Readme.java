@@ -21,7 +21,8 @@ import java.util.regex.Pattern;
  * Everything else is ignored: links to the web, to deeper paths or to
  * files that are not there, images, text, other headings. Nothing in
  * a README is ever an error, and it never changes what a tap does. An
- * entry linked twice counts once, where it is first linked.
+ * entry linked twice counts once, where it is first linked. A fenced
+ * code block is text, and a heading's closing hashes are not its name.
  */
 public final class Readme {
 	/** An entry the README links, and the line it gives it, or null. */
@@ -42,6 +43,9 @@ public final class Readme {
 			"^\\s*(?:[-*+]|\\d+[.)])\\s+\\[([^\\]]*)]\\(\\s*(<[^>]*>|[^)\\s]*)" +
 					"(?:\\s+\"[^\"]*\")?\\s*\\)(.*)$");
 
+	// Closing hashes of a heading, after a blank.
+	private static final Pattern CLOSING = Pattern.compile("\\s+#+\\s*$");
+
 	private Readme() {
 	}
 
@@ -59,9 +63,23 @@ public final class Readme {
 		Map<String, List<Linked>> sections = new LinkedHashMap<>();
 		Set<String> linked = new HashSet<>();
 		String heading = "";
+		String fence = null;
 		for (String line : text.split("\r?\n")) {
+			// A fenced code block is text, whatever it shows.
+			String trimmed = line.trim();
+			if (fence != null) {
+				if (trimmed.startsWith(fence)) {
+					fence = null;
+				}
+				continue;
+			} else if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
+				fence = trimmed.substring(0, 3);
+				continue;
+			}
 			if (line.startsWith("## ")) {
-				heading = line.substring(3).trim();
+				// "## Start here ##": closing hashes are no part of it.
+				heading = CLOSING.matcher(line.substring(3)).replaceFirst("")
+						.trim();
 				continue;
 			}
 			Matcher item = ITEM.matcher(line);
