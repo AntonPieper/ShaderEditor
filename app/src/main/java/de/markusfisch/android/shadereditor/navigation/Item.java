@@ -46,7 +46,12 @@ public record Item(String heading, Row row, boolean selected,
 						EnumSet.noneOf(Row.Mark.class), Tap.NOTHING));
 			}
 			for (Row row : section.rows()) {
-				Place place = new Place(level, row.key());
+				// A row of a folder opened before is its file, wherever
+				// it is listed: in its folder or under Running.
+				Place place = level.key() != null &&
+						row.kind() != Row.Kind.MORE
+						? Place.file(level.key(), row.key())
+						: new Place(level, row.key());
 				boolean runs = place.equals(running);
 				Set<Row.Mark> marks = row.marks().isEmpty()
 						? EnumSet.noneOf(Row.Mark.class)

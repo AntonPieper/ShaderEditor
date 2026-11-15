@@ -223,10 +223,13 @@ public final class OpenProject {
 	}
 
 	/**
-	 * A file the last build of what runs is made of, and whether it is
-	 * an image.
+	 * A file the last build of what runs is made of, whether it is an
+	 * image, and what it is to the running shader, null when not known.
 	 */
-	public record Used(ProjectPath path, boolean image) {
+	public record Used(ProjectPath path, boolean image, FileRole role) {
+		public Used(ProjectPath path, boolean image) {
+			this(path, image, null);
+		}
 	}
 
 	// What the listener hears about.
@@ -1474,7 +1477,18 @@ public final class OpenProject {
 		}
 		List<Used> built = new ArrayList<>();
 		for (Used file : this.used) {
-			built.add(new Used(move.moved(file.path()), file.image()));
+			FileRole role = file.role();
+			if (role != null) {
+				List<ProjectPath> of = new ArrayList<>();
+				for (ProjectPath to : role.of()) {
+					ProjectPath moved = move.moved(to);
+					if (moved != null) {
+						of.add(moved);
+					}
+				}
+				role = new FileRole(role.kind(), of);
+			}
+			built.add(new Used(move.moved(file.path()), file.image(), role));
 		}
 		this.used = Collections.unmodifiableList(built);
 		usedFor = usedFor != null ? move.moved(usedFor) : null;
@@ -1558,7 +1572,8 @@ public final class OpenProject {
 					if (dependency.revision() != null && content != null) {
 						// By its bytes, as the build told it.
 						read.add(new Used(path, FileKind.picture(
-								content.bytes()) != null));
+								content.bytes()) != null,
+								preparation.roles().get(path)));
 					}
 				}
 			}

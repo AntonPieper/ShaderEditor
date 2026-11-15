@@ -1232,7 +1232,9 @@ public class NavigationDrawer implements ShaderList {
 						: activity.getString(R.string.library_moving));
 			}
 			case MORE -> {
-				if (folder != null) {
+				if (folder != null && FolderSource.ALL_RUNNING.equals(key)) {
+					folder.showAllRunning();
+				} else if (folder != null) {
 					folder.more(level);
 				}
 			}
