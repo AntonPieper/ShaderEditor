@@ -77,6 +77,8 @@ public class EditorFragment extends Fragment {
 	private boolean showsLastPicture;
 	@Nullable
 	private ErrorAdapter.OnItemClickListener errorListener;
+	// Whether code is shown over the picture, for its brightness limit.
+	private final CodeShown codeShown = new CodeShown();
 
 	/**
 	 * The text at the last onSaveInstanceState(), kept in memory over a
@@ -440,12 +442,43 @@ public class EditorFragment extends Fragment {
 		return editorContainer.getVisibility() == View.VISIBLE;
 	}
 
+	/**
+	 * Whether code is shown over the picture: not hidden with the code
+	 * button and not covered. Its listener hears every change.
+	 */
+	public boolean isCodeShown() {
+		return codeShown.shown();
+	}
+
+	/** Tell listener whether code is shown, now and on every change. */
+	public void setOnCodeShownListener(@Nullable CodeShown.Listener listener) {
+		codeShown.listen(listener);
+	}
+
+	/**
+	 * With nothing open a cover stands where the code is: the editor's
+	 * view goes, and comes back when something is open.
+	 */
+	public void setCovered(boolean covered) {
+		View view = getView();
+		if (view != null) {
+			// In the new editor the view is the code, which the code
+			// button may have hidden.
+			view.setVisibility(covered ||
+					(view == editorContainer && codeShown.hidden())
+					? View.GONE
+					: View.VISIBLE);
+		}
+		codeShown.setCovered(covered);
+	}
+
 	public boolean toggleCode() {
 		boolean visible = isCodeVisible();
 		editorContainer.setVisibility(visible ? View.GONE : View.VISIBLE);
 		if (visible) {
 			SoftKeyboard.hide(getActivity(), editor.getView());
 		}
+		codeShown.setHidden(visible);
 		return visible;
 	}
 
