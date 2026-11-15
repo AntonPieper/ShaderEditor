@@ -76,9 +76,10 @@ public record HostDirective(
 			Filter present) {
 	}
 
-	private static final List<String> INPUT_KEYS = List.of(
+	// The option keys of each command; HostCompletion offers them.
+	static final List<String> INPUT_KEYS = List.of(
 			"frame", "filter", "min", "mag", "mipmap", "wrap");
-	private static final List<String> TARGET_KEYS = List.of(
+	static final List<String> TARGET_KEYS = List.of(
 			"scale", "size", "format", "initial", "present");
 	private static final Pattern MISSPELLED = Pattern.compile(
 			"se(\\.|::|_)(input|target)\\b.*");
