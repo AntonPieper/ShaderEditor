@@ -28,7 +28,7 @@
 		android:layout_weight="1"
 		android:orientation="vertical">
 
-		<TextView
+		<de.markusfisch.android.shadereditor.widget.FileNameView
 			android:id="@+id/navigation_name"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
