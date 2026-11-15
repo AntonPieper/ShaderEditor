@@ -53,6 +53,12 @@ public final class ShaderEngine {
 		// passes() that draws, in their order, as the screen would show
 		// that pass.
 		void onPictures(@NonNull List<PassPicture> pictures);
+
+		// Called on the GL thread right after onPictures(), at most once
+		// a second, and after every frame drawn while paused: facts of
+		// every row of passes(), in their order.
+		default void onFacts(@NonNull List<PassFacts> facts) {
+		}
 	}
 
 	public interface ThumbnailCallback {
@@ -116,6 +122,8 @@ public final class ShaderEngine {
 	private static final float DEFAULT_FTIME_MAX = 3f;
 	// About four pictures of the passes a second.
 	private static final long PICTURE_INTERVAL_NS = 250000000L;
+	// Facts at most once a second.
+	private static final long FACT_INTERVAL_NS = 1000000000L;
 
 	private final GlDevice device = new GlDevice();
 	private final ShaderRenderPipeline renderPipeline =
@@ -155,6 +163,7 @@ public final class ShaderEngine {
 	@Nullable
 	private PassInspector inspector;
 	private long lastPictures;
+	private long lastFacts;
 	private final AtomicInteger steps = new AtomicInteger();
 	private final AtomicBoolean restartAsked = new AtomicBoolean();
 	private final AtomicBoolean againAsked = new AtomicBoolean();
@@ -732,12 +741,20 @@ public final class ShaderEngine {
 				now - lastPictures < PICTURE_INTERVAL_NS) {
 			return;
 		}
+		boolean first = watcher != told;
 		told = watcher;
 		lastPictures = now;
 		if (inspector == null) {
 			inspector = new PassInspector(device);
 		}
-		watcher.onPictures(inspector.pictures(build.lastFrames()));
+		var sources = build.lastFrames();
+		var pictures = inspector.pictures(sources);
+		watcher.onPictures(pictures);
+		if (fresh || first || now - lastFacts >= FACT_INTERVAL_NS) {
+			lastFacts = now;
+			watcher.onFacts(inspector.facts(build.running(), sources,
+					pictures, now, formats.glesVersion() >= 3));
+		}
 	}
 
 	// A step asked for, taken.

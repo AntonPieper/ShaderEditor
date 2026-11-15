@@ -7,8 +7,12 @@ import androidx.annotation.Nullable;
 
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import de.markusfisch.android.shadereditor.project.HostDirective;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
@@ -40,10 +44,59 @@ final class PassInspector {
 			}
 			""";
 
-	// What to take a picture of: the texture a pass drew, at its size.
+	// What to take a picture of: the texture a pass drew, at its size
+	// and in its format.
 	record Source(@NonNull ProjectPath file, @NonNull GlTexture2D texture,
-			int width, int height) {
+			int width, int height, @NonNull HostDirective.Format format) {
 	}
+
+	// The side of the sample of a float target.
+	static final int FLOAT_SAMPLE = 32;
+	// Each of FLOAT_SAMPLE × FLOAT_SAMPLE texels of frame, spread evenly
+	// over it, as four pixels: the 32 bits of its red, green, blue and
+	// alpha, low byte first, which 8 bits per channel carry exactly.
+	static final String ENCODE_SHADER = """
+			#version 300 es
+			precision highp float;
+			precision highp int;
+			precision highp sampler2D;
+
+			uniform vec2 origin;
+			uniform sampler2D frame;
+			out vec4 color;
+			void main(void) {
+				ivec2 cell = ivec2(gl_FragCoord.xy - origin);
+				ivec2 size = textureSize(frame, 0);
+				// "sample" is a reserved word in GLSL ES 3.00.
+				ivec2 taken = ivec2(cell.x / 4, cell.y);
+				ivec2 texel = min((2 * taken + 1) * size / 64, size - 1);
+				vec4 value = texelFetch(frame, texel, 0);
+				int channel = cell.x - taken.x * 4;
+				float f = channel == 0 ? value.r
+						: channel == 1 ? value.g
+						: channel == 2 ? value.b
+						: value.a;
+				uint bits = floatBitsToUint(f);
+				color = vec4(uvec4(bits, bits >> 8u, bits >> 16u,
+						bits >> 24u) & 255u) / 255.0;
+			}
+			""";
+
+	// The sample a fact was last made of, and since when it is so.
+	private record Seen(@NonNull int[] values, long since) {
+	}
+
+	private final Map<ProjectPath, Seen> seen = new HashMap<>();
+	@Nullable
+	private GlProgram encoder;
+	private int encoderOrigin;
+	private int encoderFrame;
+	@Nullable
+	private GlTexture2D encoded;
+	@Nullable
+	private GlFramebuffer encodedFramebuffer;
+	private int encodedHeight;
+	private boolean encoderFailed;
 
 	@NonNull
 	private final GlDevice device;
@@ -137,11 +190,75 @@ final class PassInspector {
 		return pictures;
 	}
 
+	// Facts of every row of running, from sources and their pictures,
+	// at now. A float target is sampled in its own values where the
+	// context is OpenGL ES 3; anything else from its 8-bit picture.
+	@NonNull
+	List<PassFacts> facts(@NonNull RunningPasses running,
+			@NonNull List<Source> sources,
+			@NonNull List<PassPicture> pictures,
+			long now,
+			boolean es3) {
+		var floats = new ArrayList<Source>();
+		for (var source : sources) {
+			if (es3 && source.format() == HostDirective.Format.RGBA16F) {
+				floats.add(source);
+			}
+		}
+		var bits = encode(floats);
+		var facts = new ArrayList<PassFacts>();
+		var kept = new HashMap<ProjectPath, Seen>();
+		for (var row : running.rows()) {
+			var file = row.file();
+			Source source = null;
+			for (var s : sources) {
+				if (s.file().equals(file)) {
+					source = s;
+				}
+			}
+			int[] values = bits.get(file);
+			PassPicture picture = null;
+			for (var p : pictures) {
+				if (p.file().equals(file)) {
+					picture = p;
+				}
+			}
+			if (source == null || (values == null && picture == null)) {
+				facts.add(new PassFacts(file, row.drawn(), row.problems(),
+						0, 0, null, 0, null, null, null, false, 0));
+				continue;
+			}
+			if (values == null) {
+				values = picture.argb();
+			}
+			var before = seen.get(file);
+			var still = before != null && Arrays.equals(before.values, values)
+					? before
+					: new Seen(values, now);
+			kept.put(file, still);
+			long unchanged = now - still.since;
+			if (bits.containsKey(file)) {
+				facts.add(floatFacts(row, source, values, unchanged));
+			} else {
+				facts.add(new PassFacts(file, row.drawn(), row.problems(),
+						source.width(), source.height(), source.format(),
+						PICTURE, same(picture.argb()), null, null, false,
+						unchanged));
+			}
+		}
+		seen.clear();
+		seen.putAll(kept);
+		return facts;
+	}
+
 	// GL thread. Deletes what it made.
 	void release() {
 		device.deleteProgram(program);
 		device.deleteFramebuffer(framebuffer);
 		device.deleteTexture(atlas);
+		device.deleteProgram(encoder);
+		device.deleteFramebuffer(encodedFramebuffer);
+		device.deleteTexture(encoded);
 		discard();
 	}
 
@@ -152,6 +269,143 @@ final class PassInspector {
 		atlas = null;
 		atlasWidth = 0;
 		atlasHeight = 0;
+		encoder = null;
+		encodedFramebuffer = null;
+		encoded = null;
+		encodedHeight = 0;
+		seen.clear();
+	}
+
+	// The value every pixel of argb holds, as red, green, blue and alpha
+	// of 0..1, or null when they differ.
+	@Nullable
+	static float[] same(@NonNull int[] argb) {
+		for (int pixel : argb) {
+			if (pixel != argb[0]) {
+				return null;
+			}
+		}
+		int pixel = argb[0];
+		return new float[]{
+				((pixel >> 16) & 0xff) / 255f,
+				((pixel >> 8) & 0xff) / 255f,
+				(pixel & 0xff) / 255f,
+				(pixel >>> 24) / 255f};
+	}
+
+	// The facts of a float sample: bits of red, green, blue and alpha of
+	// each sampled texel.
+	@NonNull
+	static PassFacts floatFacts(@NonNull RunningPasses.Row row,
+			@NonNull Source source, @NonNull int[] bits, long unchanged) {
+		var low = new float[4];
+		var high = new float[4];
+		Arrays.fill(low, Float.POSITIVE_INFINITY);
+		Arrays.fill(high, Float.NEGATIVE_INFINITY);
+		boolean nonFinite = false;
+		boolean same = true;
+		for (int i = 0; i < bits.length; ++i) {
+			float value = Float.intBitsToFloat(bits[i]);
+			int channel = i % 4;
+			same &= bits[i] == bits[channel];
+			if (Float.isNaN(value) || Float.isInfinite(value)) {
+				nonFinite = true;
+				continue;
+			}
+			low[channel] = Math.min(low[channel], value);
+			high[channel] = Math.max(high[channel], value);
+		}
+		boolean finite = true;
+		for (int c = 0; c < 4; ++c) {
+			finite &= low[c] <= high[c];
+		}
+		float[] value = same
+				? new float[]{
+						Float.intBitsToFloat(bits[0]),
+						Float.intBitsToFloat(bits[1]),
+						Float.intBitsToFloat(bits[2]),
+						Float.intBitsToFloat(bits[3])}
+				: null;
+		return new PassFacts(row.file(), row.drawn(), row.problems(),
+				source.width(), source.height(), source.format(),
+				FLOAT_SAMPLE, value, finite ? low : null,
+				finite ? high : null, nonFinite, unchanged);
+	}
+
+	// The bits of a FLOAT_SAMPLE square sample of every source, by its
+	// file: four ints a texel, red, green, blue, alpha, the bottom row
+	// first; nothing where the encoder cannot be made.
+	@NonNull
+	private Map<ProjectPath, int[]> encode(@NonNull List<Source> floats) {
+		var bits = new HashMap<ProjectPath, int[]>();
+		if (floats.isEmpty() || !prepareEncoder(floats.size())) {
+			return bits;
+		}
+		int width = FLOAT_SAMPLE * 4;
+		device.bindFramebuffer(encodedFramebuffer);
+		device.useProgram(encoder);
+		for (int i = 0; i < floats.size(); ++i) {
+			int y = i * FLOAT_SAMPLE;
+			device.setViewport(0, y, width, FLOAT_SAMPLE);
+			vector[0] = 0;
+			vector[1] = y;
+			device.uniform2fv(encoderOrigin, 1, vector);
+			device.bindTexture(encoderFrame, floats.get(i).texture());
+			device.draw(quad);
+		}
+		int[] read = new int[width * floats.size() * FLOAT_SAMPLE];
+		device.readPixels(0, 0, width, floats.size() * FLOAT_SAMPLE,
+				IntBuffer.wrap(read));
+		device.bindFramebuffer(null);
+		int size = width * FLOAT_SAMPLE;
+		for (int i = 0; i < floats.size(); ++i) {
+			bits.put(floats.get(i).file(),
+					Arrays.copyOfRange(read, i * size, (i + 1) * size));
+		}
+		return bits;
+	}
+
+	// Whether the encoder and its target for count samples are there.
+	private boolean prepareEncoder(int count) {
+		if (encoderFailed) {
+			return false;
+		}
+		if (encoder == null) {
+			var built = device.createProgram("#version 300 es\n" +
+					FullScreenQuad.VERTEX_SHADER_3, ENCODE_SHADER, null);
+			var made = built.getProgram();
+			if (made == null) {
+				encoderFailed = true;
+				return false;
+			}
+			encoder = made;
+			encoderOrigin = device.getUniformLocation(made, "origin");
+			encoderFrame = made.getTextureUnit("frame");
+		}
+		int height = count * FLOAT_SAMPLE;
+		if (encoded != null && height <= encodedHeight) {
+			return true;
+		}
+		device.deleteFramebuffer(encodedFramebuffer);
+		device.deleteTexture(encoded);
+		var texture = device.createTexture2D();
+		device.allocateTexture2D(texture, FLOAT_SAMPLE * 4, height);
+		var made = device.createFramebuffer();
+		var message = device.attachColor(made, texture);
+		if (message != null || device.checkFramebufferStatus(made) !=
+				GLES20.GL_FRAMEBUFFER_COMPLETE) {
+			device.bindFramebuffer(null);
+			device.deleteFramebuffer(made);
+			device.deleteTexture(texture);
+			encoded = null;
+			encodedFramebuffer = null;
+			encoderFailed = true;
+			return false;
+		}
+		encoded = texture;
+		encodedFramebuffer = made;
+		encodedHeight = height;
+		return true;
 	}
 
 	// Bytes R, G, B, A in memory, as glReadPixels writes them, read as a
