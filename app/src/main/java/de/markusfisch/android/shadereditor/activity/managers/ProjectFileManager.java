@@ -156,6 +156,12 @@ public final class ProjectFileManager {
 	// one step of undo; the last write ends it.
 	@Nullable
 	private Document partsBatch;
+	// The vector's arguments as they were when the bar opened: from
+	// where they start, the text up to the closing parenthesis, so that
+	// Revert puts every part back, not only the one tuned last.
+	private int partsStart = -1;
+	@Nullable
+	private String partsText;
 	private boolean retuning;
 	@Nullable
 	private ProjectFile file;
@@ -614,7 +620,10 @@ public final class ProjectFileManager {
 		String text = keep ? tunedText : null;
 		TunedPlace place = tunedPlace;
 		if (text == null) {
-			// Nothing is written: the parts written before are one step.
+			// Revert: every part as it was when the bar opened, in the
+			// batch of the parts written before, so the sitting is one
+			// step that changes nothing, and built once by the session.
+			revertParts();
 			endPartsBatch();
 		}
 		try {
@@ -653,6 +662,11 @@ public final class ProjectFileManager {
 					? shown.getProject().document(shown.getPath())
 					: null;
 			if (partsBatch != null) {
+				TunedPlace last = vector.parts().get(
+						vector.parts().size() - 1);
+				partsStart = vector.parts().get(0).signStart;
+				partsText = partsBatch.text().toString().substring(
+						partsStart, last.end);
 				partsBatch.beginBatch();
 			}
 		}
@@ -696,8 +710,39 @@ public final class ProjectFileManager {
 	private void endPartsBatch() {
 		Document batch = partsBatch;
 		partsBatch = null;
+		partsStart = -1;
+		partsText = null;
 		if (batch != null) {
 			batch.endBatch();
+		}
+	}
+
+	// Puts the vector's arguments back as they were when the bar opened,
+	// when parts of it were written since; the session that ends then
+	// builds the text.
+	private void revertParts() {
+		Document batch = partsBatch;
+		String before = partsText;
+		TunedPlace place = tunedPlace;
+		TunedPlace.Vector vector = place != null ? place.vector() : null;
+		if (batch == null || before == null || vector == null) {
+			return;
+		}
+		// Where the arguments end now: the last part of the vector the
+		// tuned part is in, as the text has it.
+		TunedPlace now = numberAt(place.start);
+		TunedPlace.Vector parts = now != null ? now.vector() : null;
+		if (parts == null) {
+			return;
+		}
+		int end = parts.parts().get(parts.parts().size() - 1).end;
+		if (!batch.text().toString().substring(partsStart, end)
+				.equals(before)) {
+			ProjectFile shown = file;
+			if (shown != null) {
+				editor.skipNextRun();
+			}
+			batch.replace(partsStart, end, Text.of(before));
 		}
 	}
 

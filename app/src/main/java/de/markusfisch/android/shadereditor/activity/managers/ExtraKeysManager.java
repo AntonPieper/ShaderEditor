@@ -72,6 +72,8 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	@androidx.annotation.Nullable
 	private Runnable onTune;
 	private boolean hasText = true;
+	// While a number is tuned the bar stands where the keys are.
+	private boolean covered;
 
 	public ExtraKeysManager(@NonNull Activity activity,
 			@NonNull View rootView, @NonNull Editor editor) {
@@ -245,8 +247,15 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 				getVisibility(preferences.doesShowInsertTab()));
 	}
 
+	/** Hide the keys while something else stands where they are. */
+	public void setCovered(boolean covered) {
+		this.covered = covered;
+		setVisible(ShaderEditorApp.preferences.showExtraKeys());
+	}
+
 	public void setVisible(boolean visible) {
 		extraKeysView.setVisibility(getVisibility(visible && hasText &&
+				!covered &&
 				(!ShaderEditorApp.preferences.autoHideExtraKeys() ||
 						isKeyboardOpen())));
 	}

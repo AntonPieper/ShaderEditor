@@ -36,6 +36,7 @@ import de.markusfisch.android.shadereditor.tuning.LiteralText;
 import de.markusfisch.android.shadereditor.tuning.TunedPlace;
 import de.markusfisch.android.shadereditor.tuning.TuningStep;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
+import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
 
 /**
  * The bar that tunes one number of the code while the picture shows:
@@ -205,7 +206,26 @@ public class TuningBar extends LinearLayout {
 		});
 		ruler.setListener(new TuningRuler.Listener() {
 			@Override
+			public void onStep(long count) {
+				move(count);
+			}
+
+			@NonNull
+			@Override
+			public CharSequence describe() {
+				Tuned now = tuned;
+				return now == null
+						? ""
+						: getContext().getString(R.string.a11y_tuning_value,
+						now.text().replace("(", "").replace(")", ""),
+						LiteralText.write(now.place().literal, now.start(),
+								now.step()));
+			}
+
+			@Override
 			public void onDragStart() {
+				// A drag ends typing: the field shows the ruler's value.
+				dropTyping();
 				if (tuned != null) {
 					dragFrom = tuned.value();
 				}
@@ -224,7 +244,7 @@ public class TuningBar extends LinearLayout {
 			Insets bars = insets.getInsets(
 					WindowInsetsCompat.Type.navigationBars() |
 							WindowInsetsCompat.Type.ime());
-			bottomInset = bars.bottom;
+			bottomInset = SystemBarMetrics.bottomInset(v, insets);
 			setPadding(bars.left, 0, bars.right, bottomInset);
 			return insets;
 		});
@@ -232,9 +252,14 @@ public class TuningBar extends LinearLayout {
 
 	@Override
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-		// The content at most 600 dp wide, centred, on wide screens.
+		// The content at most 600 dp wide, centred, on wide screens; in
+		// landscape the one row takes the width, the ruler what is left.
 		View content = findViewById(R.id.tuning_content);
-		int max = Math.round(600 * getResources().getDisplayMetrics().density);
+		boolean landscape = getResources().getConfiguration().orientation ==
+				android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+		int max = landscape
+				? Integer.MAX_VALUE
+				: Math.round(600 * getResources().getDisplayMetrics().density);
 		LayoutParams params = (LayoutParams) content.getLayoutParams();
 		int width = MeasureSpec.getSize(widthMeasureSpec) - getPaddingLeft() -
 				getPaddingRight();
@@ -244,12 +269,82 @@ public class TuningBar extends LinearLayout {
 			content.setLayoutParams(params);
 		}
 		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+		// Done goes on a line of its own, at the end, when the session's
+		// row is too narrow for all three, so that nothing is cut.
+		LinearLayout session = findViewById(R.id.tuning_session);
+		View done = findViewById(R.id.tuning_done);
+		if (done.getParent() != session) {
+			// The landscape row: Done is in it, not under it.
+			return;
+		}
+		int needed = 0;
+		for (int i = 0; i < session.getChildCount(); ++i) {
+			View child = session.getChildAt(i);
+			if (child.getVisibility() != GONE &&
+					child.getId() != R.id.tuning_session_space) {
+				LayoutParams lp = (LayoutParams) child.getLayoutParams();
+				child.measure(MeasureSpec.makeMeasureSpec(0,
+								MeasureSpec.UNSPECIFIED),
+						MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+				needed += child.getMeasuredWidth() + lp.leftMargin +
+						lp.rightMargin;
+			}
+		}
+		boolean wrap = needed > session.getMeasuredWidth();
+		int orientation = wrap ? VERTICAL : HORIZONTAL;
+		if (session.getOrientation() != orientation) {
+			session.setOrientation(orientation);
+			session.setGravity(wrap
+					? android.view.Gravity.START
+					: android.view.Gravity.CENTER_VERTICAL);
+			LayoutParams lp = (LayoutParams) done.getLayoutParams();
+			lp.gravity = wrap ? android.view.Gravity.END : 0;
+			done.setLayoutParams(lp);
+			super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+		}
 	}
 
 	@Override
 	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
 		post(this::showLine);
+	}
+
+	@Override
+	public boolean dispatchKeyEvent(KeyEvent event) {
+		// Enter is Done and Escape is Revert, unless a value is typed.
+		if (tuned != null && !valueView.hasFocus() &&
+				event.getAction() == KeyEvent.ACTION_DOWN) {
+			switch (event.getKeyCode()) {
+				case KeyEvent.KEYCODE_ENTER:
+				case KeyEvent.KEYCODE_NUMPAD_ENTER:
+					done();
+					return true;
+				case KeyEvent.KEYCODE_ESCAPE:
+					revert();
+					return true;
+				case KeyEvent.KEYCODE_DPAD_LEFT:
+				case KeyEvent.KEYCODE_DPAD_RIGHT:
+					if (!ruler.hasFocus()) {
+						move((event.getKeyCode() ==
+								KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1) *
+								(event.isShiftPressed() ? 10L : 1L));
+						return true;
+					}
+					break;
+				default:
+					break;
+			}
+		}
+		return super.dispatchKeyEvent(event);
+	}
+
+	// Whether animations run: "Remove animations" makes them instant.
+	private boolean animates() {
+		return android.provider.Settings.Global.getFloat(
+				getContext().getContentResolver(),
+				android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+				1f) > 0f;
 	}
 
 	/** Whether the bar is open. */
@@ -275,9 +370,25 @@ public class TuningBar extends LinearLayout {
 		tuned = new Tuned(place, place.value, place.value,
 				step != null ? step : first, first, place.literal);
 		colourMode = false;
-		setVisibility(VISIBLE);
 		showParts();
 		show();
+		// Fades in and rises 16 dp, emphasized decelerate, 200 ms.
+		setVisibility(VISIBLE);
+		animate().cancel();
+		if (animates()) {
+			setAlpha(0f);
+			setTranslationY(16 * getResources().getDisplayMetrics().density);
+			animate().alpha(1f).translationY(0f).setDuration(200)
+					.setInterpolator(new android.view.animation.PathInterpolator(
+							0.05f, 0.7f, 0.1f, 1f))
+					.withEndAction(null).start();
+		} else {
+			setAlpha(1f);
+			setTranslationY(0f);
+		}
+		ruler.requestFocus();
+		announceForAccessibility(getContext().getString(
+				R.string.a11y_tuning_open, place.literalWithSign()));
 	}
 
 	/**
@@ -312,11 +423,33 @@ public class TuningBar extends LinearLayout {
 
 	private void setColourMode(boolean colour) {
 		colourMode = colour && colourable();
-		findViewById(R.id.tuning_numbers).setVisibility(
-				colourMode ? GONE : VISIBLE);
+		// Numbers and colour fade through, 200 ms.
+		View fading = colourMode ? coloursView : findViewById(R.id.tuning_numbers);
+		if (animates()) {
+			fading.setAlpha(0f);
+			fading.animate().alpha(1f).setDuration(200).start();
+		}
+		showNumbers(!colourMode);
 		coloursView.setVisibility(colourMode ? VISIBLE : GONE);
 		partsView.setVisibility(colourMode ? GONE : VISIBLE);
 		showParts();
+	}
+
+	// Shows or hides what tunes a number: −, the value, + and the ruler.
+	// In landscape Revert, the step and Done share their row and stay.
+	private void showNumbers(boolean shown) {
+		View numbers = findViewById(R.id.tuning_numbers);
+		if (findViewById(R.id.tuning_done).getParent() != numbers) {
+			numbers.setVisibility(shown ? VISIBLE : GONE);
+			return;
+		}
+		int visibility = shown ? VISIBLE : GONE;
+		for (int id : new int[]{R.id.tuning_decrease, R.id.tuning_value,
+				R.id.tuning_increase, R.id.tuning_ruler}) {
+			findViewById(id).setVisibility(visibility);
+		}
+		// The step's chip and Done keep the row's end.
+		findViewById(R.id.tuning_step).setVisibility(visibility);
 	}
 
 	// The parts of the vector: a segment each, the one tuned checked;
@@ -328,7 +461,7 @@ public class TuningBar extends LinearLayout {
 		if (vector == null) {
 			row.setVisibility(GONE);
 			coloursView.setVisibility(GONE);
-			findViewById(R.id.tuning_numbers).setVisibility(VISIBLE);
+			showNumbers(true);
 			colourMode = false;
 			return;
 		}
@@ -478,7 +611,24 @@ public class TuningBar extends LinearLayout {
 		setBuilding(false);
 		SoftKeyboard.hide(getContext(), valueView);
 		valueView.clearFocus();
-		setVisibility(GONE);
+		// Fades and sinks 16 dp, emphasized accelerate, 150 ms.
+		animate().cancel();
+		if (animates() && getVisibility() == VISIBLE) {
+			animate().alpha(0f)
+					.translationY(16 * getResources().getDisplayMetrics().density)
+					.setDuration(150)
+					.setInterpolator(new android.view.animation.PathInterpolator(
+							0.3f, 0f, 0.8f, 0.15f))
+					.withEndAction(() -> {
+						if (tuned == null) {
+							setVisibility(GONE);
+						}
+						setAlpha(1f);
+						setTranslationY(0f);
+					}).start();
+		} else {
+			setVisibility(GONE);
+		}
 	}
 
 	/**
@@ -528,7 +678,10 @@ public class TuningBar extends LinearLayout {
 		if (now == null || ending == null) {
 			return;
 		}
-		if (valueView.hasFocus()) {
+		// What was typed counts only when it is not what the field shows
+		// of the value anyway.
+		if (valueView.hasFocus() && !valueView.getText().toString().equals(
+				shownValue(now))) {
 			takeTyped();
 			now = tuned;
 		}
@@ -536,7 +689,19 @@ public class TuningBar extends LinearLayout {
 		ending.end(keep && now.changed());
 	}
 
+	// Lets the value field go without taking what was typed, so that it
+	// shows the value again.
+	private void dropTyping() {
+		if (valueView.hasFocus()) {
+			SoftKeyboard.hide(getContext(), valueView);
+			valueView.clearFocus();
+			valueView.setError(null);
+			showValue();
+		}
+	}
+
 	private void move(long steps) {
+		dropTyping();
 		Tuned now = tuned;
 		if (now != null) {
 			change(TuningStep.move(now.value(), now.step(), steps,
@@ -556,6 +721,8 @@ public class TuningBar extends LinearLayout {
 		if (moveRuler) {
 			ruler.show(value, tuned.start(), tuned.step());
 		}
+		ruler.sendAccessibilityEvent(android.view.accessibility
+				.AccessibilityEvent.TYPE_VIEW_SELECTED);
 		showValue();
 		showLine();
 		if (tuned.place().vector() != null) {
@@ -670,8 +837,15 @@ public class TuningBar extends LinearLayout {
 	private void showValue() {
 		Tuned now = tuned;
 		if (now != null && !valueView.hasFocus()) {
-			valueView.setText(now.text().replace("(", "").replace(")", ""));
+			valueView.setText(shownValue(now));
 		}
+	}
+
+	// The value as the field shows it: with its sign, without the
+	// parentheses a negative one has after a binary operator.
+	@NonNull
+	private static String shownValue(@NonNull Tuned tuned) {
+		return tuned.text().replace("(", "").replace(")", "");
 	}
 
 	// The tuned line with the new digits, cut on both sides around them

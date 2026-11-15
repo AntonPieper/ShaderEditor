@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.activity.OnBackPressedCallback;
@@ -168,6 +169,11 @@ public final class LibraryScreen implements ShaderScreen {
 		// file's rule puts it.
 		uiManager.setTitleIsFileName(true);
 		editorFragment.setAddsByFileRule(true);
+		// The window is resized for the keyboard whatever has the focus,
+		// also the tuning bar's value with the code set aside, so that
+		// the views keep clear of it themselves (SystemBarMetrics).
+		activity.getWindow().setSoftInputMode(
+				WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 		this.shaderViewManager = shaderViewManager;
 		this.extraKeysManager = extraKeysManager;
 		this.navigationManager = navigationManager;
@@ -337,6 +343,17 @@ public final class LibraryScreen implements ShaderScreen {
 						looks.keepFrameRateLimit(files.key(), file != null
 								? file.getProject().running()
 								: null, limit);
+					}
+
+					@Override
+					public void opening() {
+						// The sheet would lie over the bar: the number is
+						// kept, as Done keeps it, and the code comes back
+						// behind the sheet, without the keyboard.
+						if (files.isTuning()) {
+							keyboardBeforeTuning = false;
+							tuningBar.done();
+						}
 					}
 				});
 		// Show in the strip shows the pass the line names, as the sheet does.
@@ -635,6 +652,9 @@ public final class LibraryScreen implements ShaderScreen {
 		if (!started) {
 			return;
 		}
+		// The bar takes the sheet's place: the sheet closes, a pass it
+		// shows stays shown, so the number is tuned in what is seen.
+		passes.close();
 		codeBeforeTuning = editorFragment.isCodeVisible();
 		keyboardBeforeTuning = SoftKeyboard.isOpen(tuningBar);
 		tuningBar.open(place, tuningSteps.get(number), new TuningBar.Session() {
@@ -661,8 +681,10 @@ public final class LibraryScreen implements ShaderScreen {
 			}
 		});
 		backTunes.setEnabled(true);
+		extraKeysManager.setCovered(true);
 		// The code and the keyboard step aside; the picture shows as it
-		// is, without the limit code puts on it.
+		// is, without the limit code puts on it. The code fades out with
+		// the limit, 150 ms, unless animations are removed.
 		if (codeBeforeTuning) {
 			uiManager.toggleCodeVisibility();
 		}
@@ -699,6 +721,7 @@ public final class LibraryScreen implements ShaderScreen {
 	// The bar closed: what showed before comes back.
 	private void tuningEnded(@NonNull List<ProjectDiagnostic> errors) {
 		backTunes.setEnabled(false);
+		extraKeysManager.setCovered(false);
 		tuningBar.close();
 		if (codeBeforeTuning && !editorFragment.isCodeVisible()) {
 			uiManager.toggleCodeVisibility();

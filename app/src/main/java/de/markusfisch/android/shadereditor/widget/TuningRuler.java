@@ -34,6 +34,19 @@ import java.math.RoundingMode;
 public class TuningRuler extends View {
 	/** Hears the ruler move the value. */
 	public interface Listener {
+		/**
+		 * Step count steps from where the value is now, as a key or
+		 * TalkBack asks; not part of a drag.
+		 */
+		default void onStep(long count) {
+		}
+
+		/** What TalkBack says for the value and where it started. */
+		@NonNull
+		default CharSequence describe() {
+			return "";
+		}
+
 		/** The value is count steps from where the drag started. */
 		void onSteps(long count);
 
@@ -82,6 +95,10 @@ public class TuningRuler extends View {
 	private double downPosition;
 	private long told;
 	private boolean dragging;
+	// The last position a tick was felt at, at most one per frame, and
+	// when.
+	private long tickedAt = Long.MIN_VALUE;
+	private long tickFrame;
 	@Nullable
 	private ValueAnimator settle;
 	// Where a fling began.
@@ -128,6 +145,11 @@ public class TuningRuler extends View {
 		maxFling = config.getScaledMaximumFlingVelocity();
 		scroller = new OverScroller(context);
 		setLayerType(LAYER_TYPE_HARDWARE, null);
+		setFocusable(true);
+		// Takes the keys while the bar is open, also in touch mode.
+		setFocusableInTouchMode(true);
+		setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
+		setHapticFeedbackEnabled(true);
 	}
 
 	// Whether animations run: "Remove animations" makes them instant.
@@ -324,7 +346,86 @@ public class TuningRuler extends View {
 			if (listener != null) {
 				listener.onSteps(count);
 			}
+			tick();
 		}
+	}
+
+	// A light tick per step while dragging, at most one per frame; no
+	// ticks while flinging, one when it settles; a firmer one passing
+	// the start. performHapticFeedback follows the touch-feedback
+	// setting, and returns at once.
+	private void tick() {
+		if (!dragging) {
+			return;
+		}
+		long step = Math.round(position);
+		long frame = android.os.SystemClock.uptimeMillis() / 16;
+		if (step == tickedAt || frame == tickFrame) {
+			return;
+		}
+		boolean start = Math.round(startPosition) == step;
+		tickedAt = step;
+		tickFrame = frame;
+		performHapticFeedback(start
+				? (android.os.Build.VERSION.SDK_INT >= 34
+				? android.view.HapticFeedbackConstants.SEGMENT_TICK
+				: android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+				: android.view.HapticFeedbackConstants.CLOCK_TICK);
+	}
+
+	@Override
+	public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+		int sign = keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT
+				? -1
+				: keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 0;
+		if (sign == 0 || listener == null) {
+			return super.onKeyDown(keyCode, event);
+		}
+		// Shift: ten steps.
+		listener.onStep(sign * (event.isShiftPressed() ? 10L : 1L));
+		return true;
+	}
+
+	@Override
+	public void onInitializeAccessibilityNodeInfo(
+			@NonNull android.view.accessibility.AccessibilityNodeInfo info) {
+		super.onInitializeAccessibilityNodeInfo(info);
+		// One adjustable node: a slider whose value is spoken.
+		info.setClassName("android.widget.SeekBar");
+		info.setRangeInfo(android.view.accessibility.AccessibilityNodeInfo
+				.RangeInfo.obtain(android.view.accessibility
+						.AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_FLOAT,
+						Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY,
+						(float) position));
+		if (listener != null) {
+			// The value spoken: a state where the platform has one, the
+			// text before that.
+			if (android.os.Build.VERSION.SDK_INT >= 30) {
+				info.setStateDescription(listener.describe());
+			} else {
+				info.setText(listener.describe());
+			}
+		}
+		info.addAction(android.view.accessibility.AccessibilityNodeInfo
+				.AccessibilityAction.ACTION_SCROLL_FORWARD);
+		info.addAction(android.view.accessibility.AccessibilityNodeInfo
+				.AccessibilityAction.ACTION_SCROLL_BACKWARD);
+	}
+
+	@Override
+	public boolean performAccessibilityAction(int action,
+			@Nullable android.os.Bundle arguments) {
+		if (listener != null && (action == android.view.accessibility
+				.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD ||
+				action == android.view.accessibility.AccessibilityNodeInfo
+						.ACTION_SCROLL_BACKWARD)) {
+			listener.onStep(action == android.view.accessibility
+					.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD ? 1 : -1);
+			sendAccessibilityEvent(android.view.accessibility
+					.AccessibilityEvent.TYPE_VIEW_SELECTED);
+			return true;
+		}
+		return super.performAccessibilityAction(action, arguments);
 	}
 
 	private void fling(float velocityX) {

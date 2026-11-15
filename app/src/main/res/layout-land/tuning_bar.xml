@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The tuning bar in landscape (TUNING-UI 11.5): the tuned line on top,
+	then one row: Revert, −, the value, +, the ruler, the step and Done, so
+	that the picture keeps most of the height. The same ids as in portrait. -->
+<de.markusfisch.android.shadereditor.widget.TuningBar
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:id="@+id/tuning_bar"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:layout_gravity="bottom"
+	android:background="@drawable/tuning_bar_background"
+	android:clickable="true"
+	android:focusable="true"
+	android:orientation="vertical"
+	android:visibility="gone">
+
+	<!-- While a constant's build runs. -->
+	<com.google.android.material.progressindicator.LinearProgressIndicator
+		android:id="@+id/tuning_building"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:indeterminate="true"
+		android:visibility="invisible"
+		app:hideAnimationBehavior="none"
+		app:minHideDelay="300"
+		app:showAnimationBehavior="none"
+		app:showDelay="150"
+		app:trackThickness="4dp" />
+
+	<LinearLayout
+		android:id="@+id/tuning_content"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center_horizontal"
+		android:orientation="vertical"
+		android:paddingStart="16dp"
+		android:paddingTop="8dp"
+		android:paddingEnd="16dp"
+		android:paddingBottom="8dp">
+
+		<TextView
+			android:id="@+id/tuning_line"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:importantForAccessibility="no"
+			android:maxLines="1"
+			android:textColor="?attr/colorOnSurface"
+			android:textSize="14sp" />
+
+		<!-- Where GLSL needs a constant. -->
+		<TextView
+			android:id="@+id/tuning_note"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="8dp"
+			android:drawablePadding="8dp"
+			android:gravity="center_vertical"
+			android:text="@string/tuning_constant"
+			android:textAppearance="?attr/textAppearanceBodyMedium"
+			android:textColor="?attr/colorOnSurfaceVariant"
+			android:visibility="gone"
+			app:drawableStartCompat="@drawable/ic_info_18"
+			app:drawableTint="?attr/colorOnSurfaceVariant" />
+
+		<!-- The parts of a vector, and Colour for a vec3 or vec4. -->
+		<LinearLayout
+			android:id="@+id/tuning_parts_row"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="12dp"
+			android:gravity="center_vertical"
+			android:orientation="horizontal"
+			android:visibility="gone">
+
+			<com.google.android.material.button.MaterialButtonToggleGroup
+				android:id="@+id/tuning_parts"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				app:selectionRequired="true"
+				app:singleSelection="true" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/tuning_colour"
+				style="@style/Widget.Material3.Button.OutlinedButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginStart="8dp"
+				android:minHeight="40dp"
+				android:text="@string/tuning_colour"
+				android:visibility="gone"
+				app:cornerRadius="@dimen/se_corner"
+				app:iconTint="@null" />
+		</LinearLayout>
+
+		<!-- R, G, B (A) from 0 to 1, in colour mode. -->
+		<LinearLayout
+			android:id="@+id/tuning_colours"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="8dp"
+			android:orientation="vertical"
+			android:visibility="gone" />
+
+		<LinearLayout
+			android:id="@+id/tuning_numbers"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="8dp"
+			android:gravity="center_vertical"
+			android:orientation="horizontal">
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/tuning_revert"
+				style="@style/Widget.Material3.Button.TextButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/tuning_revert" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/tuning_decrease"
+				style="@style/TuningIconButton"
+				android:layout_width="48dp"
+				android:layout_height="48dp"
+				android:layout_marginStart="8dp"
+				app:icon="@drawable/ic_remove" />
+
+			<EditText
+				android:id="@+id/tuning_value"
+				android:layout_width="112dp"
+				android:layout_height="wrap_content"
+				android:layout_marginStart="8dp"
+				android:layout_marginEnd="8dp"
+				android:background="@drawable/tuning_value_background"
+				android:gravity="center"
+				android:hint="@string/tuning_value"
+				android:imeOptions="actionDone|flagNoExtractUi"
+				android:importantForAutofill="no"
+				android:inputType="numberDecimal|numberSigned"
+				android:minHeight="48dp"
+				android:paddingHorizontal="8dp"
+				android:selectAllOnFocus="true"
+				android:textColor="?attr/colorOnSurface"
+				android:textSize="24sp" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/tuning_increase"
+				style="@style/TuningIconButton"
+				android:layout_width="48dp"
+				android:layout_height="48dp"
+				app:icon="@drawable/ic_add" />
+
+			<de.markusfisch.android.shadereditor.widget.TuningRuler
+				android:id="@+id/tuning_ruler"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_marginStart="8dp"
+				android:layout_marginEnd="8dp"
+				android:layout_weight="1" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/tuning_step"
+				style="@style/TuningStepChip"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				app:icon="@drawable/ic_arrow_drop_down"
+				app:iconGravity="end" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/tuning_done"
+				style="@style/Widget.Material3.Button"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginStart="8dp"
+				android:text="@string/tuning_done"
+				app:icon="@drawable/ic_check" />
+		</LinearLayout>
+
+		<!-- Present for the code that looks for them; empty here. -->
+		<LinearLayout
+			android:id="@+id/tuning_session"
+			android:layout_width="0dp"
+			android:layout_height="0dp"
+			android:orientation="horizontal"
+			android:visibility="gone">
+
+			<Space
+				android:id="@+id/tuning_session_space"
+				android:layout_width="0dp"
+				android:layout_height="0dp" />
+		</LinearLayout>
+	</LinearLayout>
+</de.markusfisch.android.shadereditor.widget.TuningBar>

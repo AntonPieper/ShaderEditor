@@ -560,26 +560,38 @@ final class CodeViewSourceEditor implements SourceEditor {
 		skipRun = true;
 	}
 
-	// The strip offers to tune the number the caret was moved onto, by
-	// the tokens of the caret's line only; typing offers nothing.
+	// The strip offers to tune the number the caret was moved onto, or
+	// that an edit other than typing left it on, such as Undo or the
+	// bar's Done, by the tokens of the caret's line only; typing offers
+	// nothing.
 	private void offerTuning(boolean edited) {
 		String number = null;
 		Document.Selection selection = document.selection();
-		if (!edited && docs != null && styles.syntax() == DATABASE &&
+		if (!(edited && document.isTyping()) && docs != null &&
+				styles.syntax() == DATABASE &&
 				selection.isEmpty()) {
 			Text text = document.text();
 			int caret = selection.head();
 			int n = text.lineOf(caret);
 			LexedLine line = styles.runs(n).line();
 			int column = caret - text.lineStart(n);
+			// Not on a line the host reads, such as #pragma se: its
+			// numbers are no GLSL the engine can tune.
+			boolean directive = false;
+			boolean onNumber = false;
 			for (int i = 0, size = line.size(); i < size; ++i) {
-				if (line.style(i) == Style.NUMBER && !line.inDirective(i) &&
-						line.start(i) <= column && column <= line.end(i)) {
-					number = line.text().substring(line.start(i),
-							line.end(i));
-					break;
-				}
+				directive |= line.inDirective(i);
+				onNumber |= line.style(i) == Style.NUMBER &&
+						line.start(i) <= column && column <= line.end(i);
 			}
+			// The number as the bar tunes it, with the minus that
+			// belongs to it, from the caret's line alone.
+			de.markusfisch.android.shadereditor.tuning.TunedPlace place =
+					onNumber && !directive
+							? de.markusfisch.android.shadereditor.tuning
+							.TunedPlace.at(line.text(), column)
+							: null;
+			number = place != null ? place.literalWithSign() : null;
 		}
 		if (listener != null && !java.util.Objects.equals(number, tunable)) {
 			tunable = number;
