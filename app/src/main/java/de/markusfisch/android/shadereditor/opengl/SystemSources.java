@@ -135,6 +135,8 @@ final class SystemSources {
 		float minute;
 		float second;
 		private long lastUpdate;
+		// The second of the day when the calendar was last asked.
+		private float secondOfDayThen;
 
 		@Override
 		public void start(@NonNull EngineHost host, @NonNull UniformSources sources) {
@@ -146,18 +148,21 @@ final class SystemSources {
 
 		@Override
 		public void update(long now) {
-			if (now - lastUpdate <= DATE_UPDATE_INTERVAL) {
-				return;
+			if (now - lastUpdate > DATE_UPDATE_INTERVAL) {
+				Calendar calendar = Calendar.getInstance();
+				year = calendar.get(Calendar.YEAR);
+				month = calendar.get(Calendar.MONTH);
+				day = calendar.get(Calendar.DAY_OF_MONTH);
+				hour = calendar.get(Calendar.HOUR_OF_DAY);
+				minute = calendar.get(Calendar.MINUTE);
+				second = calendar.get(Calendar.SECOND);
+				secondOfDayThen = hour * 3600f + minute * 60f + second +
+						calendar.get(Calendar.MILLISECOND) / 1000f;
+				lastUpdate = now;
 			}
-			Calendar calendar = Calendar.getInstance();
-			year = calendar.get(Calendar.YEAR);
-			month = calendar.get(Calendar.MONTH);
-			day = calendar.get(Calendar.DAY_OF_MONTH);
-			hour = calendar.get(Calendar.HOUR_OF_DAY);
-			minute = calendar.get(Calendar.MINUTE);
-			second = calendar.get(Calendar.SECOND);
-			secondOfDay = hour * 3600f + minute * 60f + second;
-			lastUpdate = now;
+			// With the part of a second, in every frame, as ShaderToy's
+			// iDate has it; the calendar is asked less often.
+			secondOfDay = secondOfDayThen + (now - lastUpdate) / 1e9f;
 		}
 	}
 

@@ -274,6 +274,37 @@ public class EngineInputsTest {
 		}
 	}
 
+	// A touch that began is told to one frame, the first after it,
+	// also when it ended before that frame.
+	@Test
+	public void oneFrameIsToldThatATouchBegan() {
+		var inputs = new EngineInputs();
+		inputs.resize(100, 100);
+		inputs.restart(1f, 0L);
+		assertFalse(inputs.capture(0L, 3f).touchBegan);
+		inputs.post(touch(MotionEvent.ACTION_DOWN, 10f, 20f, 1f));
+		inputs.post(touch(MotionEvent.ACTION_MOVE, 30f, 40f, 1f));
+		var in = inputs.capture(1L, 3f);
+		assertTrue(in.touchBegan);
+		assertEquals(1, in.pointerCount);
+		var pass = new FrameInputs();
+		pass.scale(in, 50, 50);
+		assertTrue(pass.touchBegan);
+		in = inputs.capture(2L, 3f);
+		assertFalse(in.touchBegan);
+		assertEquals(1, in.pointerCount);
+		inputs.post(touch(MotionEvent.ACTION_UP, 30f, 40f, 1f));
+		assertFalse(inputs.capture(3L, 3f).touchBegan);
+		// Down and up between two frames.
+		inputs.post(touch(MotionEvent.ACTION_DOWN, 50f, 60f, 1f));
+		inputs.post(touch(MotionEvent.ACTION_UP, 50f, 60f, 1f));
+		in = inputs.capture(4L, 3f);
+		assertTrue(in.touchBegan);
+		assertEquals(0, in.pointerCount);
+		assertEquals(50f, in.touchStartX, 0f);
+		assertFalse(inputs.capture(5L, 3f).touchBegan);
+	}
+
 	// What the frame before took: the time between two frames, 1/60 s
 	// where there is no frame before, and never a long step.
 	@Test

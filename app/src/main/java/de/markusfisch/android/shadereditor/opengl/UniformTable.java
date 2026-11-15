@@ -68,13 +68,13 @@ public final class UniformTable {
 					(in, out) -> out.setVec2(in.touchStartX, in.touchStartY)),
 			uniform("mouse", VEC2, R.string.normalized_touch_position,
 					(in, out) -> out.setVec2(in.mouseX, in.mouseY))
-					// As ShaderToy has it: in pixels, with where the touch
-					// started, negative after it ended.
-					.orAs(VEC4, (in, out) -> {
-						float down = in.pointerCount > 0 ? 1 : -1;
-						out.setVec4(in.touchX, in.touchY,
-								down * in.touchStartX, down * in.touchStartY);
-					}),
+					// As ShaderToy has it: where the touch is, in pixels,
+					// and where it began; z is negative once it ended,
+					// and w is positive only in the frame it began in.
+					.orAs(VEC4, (in, out) -> out.setVec4(
+							in.touchX, in.touchY,
+							(in.pointerCount > 0 ? 1 : -1) * in.touchStartX,
+							(in.touchBegan ? 1 : -1) * in.touchStartY)),
 			uniform("pointerCount", INT, R.string.number_of_touches,
 					(in, out) -> out.setInt(in.pointerCount)),
 			array("pointers", VEC3, FrameInputs.MAX_POINTERS, R.string.positions_of_touches,

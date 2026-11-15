@@ -20,6 +20,8 @@ final class FrameInputs {
 	float touchY;
 	float touchStartX;
 	float touchStartY;
+	// Whether a touch began since the frame before.
+	boolean touchBegan;
 	float mouseX;
 	float mouseY;
 	int pointerCount;
@@ -46,6 +48,7 @@ final class FrameInputs {
 		touchY = project.touchY * sy;
 		touchStartX = project.touchStartX * sx;
 		touchStartY = project.touchStartY * sy;
+		touchBegan = project.touchBegan;
 		mouseX = project.mouseX;
 		mouseY = project.mouseY;
 		pointerCount = project.pointerCount;
