@@ -298,8 +298,10 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 					: com.google.android.material.R.style.TextAppearance_Material3_BodyLarge);
 			name.setTextColor(AppCompatResources.getColorStateList(
 					name.getContext(), R.color.navigation_row_text));
-			// An image says its size in pixels, once it is read.
-			String size = row.picture().own() && images != null
+			// An image without a line of its own, such as its role in
+			// the running shader, says its format and size once read.
+			String size = row.picture().own() && images != null &&
+					row.detail() == null
 					? images.size(row)
 					: null;
 			String line = size != null ? size : row.detail();

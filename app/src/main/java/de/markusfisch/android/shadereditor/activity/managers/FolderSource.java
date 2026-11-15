@@ -33,6 +33,7 @@ import de.markusfisch.android.shadereditor.navigation.Recent;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
 import de.markusfisch.android.shadereditor.navigation.Tap;
+import de.markusfisch.android.shadereditor.project.FileRole;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectManifest;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -108,6 +109,10 @@ final class FolderSource {
 	private String manifestRuns;
 	// How far each folder is read, by its path; the root is "".
 	private final Map<String, Reading> readings = new HashMap<>();
+	// The paths whose pictures were asked for beside a listing, for the
+	// Running section, and whether it shows all of its files.
+	private final Set<String> asked = new HashSet<>();
+	private boolean allRunning;
 	// The paths of the folders that can be changed.
 	private final Set<String> writable = new HashSet<>();
 	private String name;
@@ -149,6 +154,11 @@ final class FolderSource {
 			file = known.file();
 		}
 	}
+
+	/** The key of the row that shows all files of the Running section. */
+	static final String ALL_RUNNING = "\u0000running";
+	/** The Running section shows this many files before Show all. */
+	static final int RUNNING_SHOWN = 6;
 
 	@NonNull
 	String key() {
@@ -253,6 +263,12 @@ final class FolderSource {
 		};
 	}
 
+	/** The Running section shows all of its files. */
+	void showAllRunning() {
+		allRunning = true;
+		changed.run();
+	}
+
 	void more(@NonNull Level level) {
 		Reading reading = readings.get(path(level));
 		if (reading != null) {
@@ -332,6 +348,18 @@ final class FolderSource {
 		List<Row> rows = dressed(reading.rows(level,
 				context.getString(R.string.nav_show_more),
 				context.getString(R.string.nav_shown_of), order), reading);
+		List<Listing.Section> sections = new ArrayList<>();
+		List<Row> running = runningRows();
+		if (!running.isEmpty()) {
+			sections.add(new Listing.Section(
+					context.getString(R.string.nav_running),
+					FileMarks.unsaved(running, unsaved())));
+		}
+		sections.add(new Listing.Section(running.isEmpty()
+				? null
+				: context.getString(R.string.nav_all_files),
+				FileMarks.unsaved(FileActions.of(rows, running(), runs(rows),
+						!file && writable.contains(path)), unsaved())));
 		return new Listing(title(level),
 				location == null || location.isEmpty() ? null : location,
 				false,
@@ -341,10 +369,7 @@ final class FolderSource {
 				file ? Listing.Bar.OPEN_FOLDER : reading.isLost()
 						? Listing.Bar.NONE
 						: Listing.Bar.NEW,
-				List.of(new Listing.Section(null, FileMarks.unsaved(
-						FileActions.of(rows, running(), runs(rows),
-								!file && writable.contains(path)),
-						unsaved()))),
+				sections,
 				reading.notice());
 	}
 
@@ -378,7 +403,10 @@ final class FolderSource {
 				marks.add(Row.Mark.WALLPAPER);
 			}
 			Long size = sizes.get(row.name());
-			String detail = row.kind() == Row.Kind.OTHER
+			// An image's line is its format and size, once read.
+			String detail = row.kind() == Row.Kind.IMAGE
+					? null
+					: row.kind() == Row.Kind.OTHER
 					? context.getString(R.string.nav_cannot_open_size,
 							Formatter.formatShortFileSize(context,
 									size != null ? size : 0))
@@ -392,6 +420,96 @@ final class FolderSource {
 					row.actions()));
 		}
 		return dressed;
+	}
+
+	// The files the last build of what runs read, in build order, each
+	// with its path from the root and what it is to the shader that
+	// runs: on top of every level of this folder, when that is more
+	// than the file that runs. Six of them, then Show all.
+	@NonNull
+	private List<Row> runningRows() {
+		ProjectPath runs = project != null ? project.running() : null;
+		List<OpenProject.Used> used = runs != null && project.reads(runs)
+				? project.used()
+				: List.of();
+		List<Row> rows = new ArrayList<>();
+		if (used.size() < 2) {
+			return rows;
+		}
+		int shown = allRunning || used.size() <= RUNNING_SHOWN + 1
+				? used.size()
+				: RUNNING_SHOWN;
+		List<ProjectPath> unread = new ArrayList<>();
+		for (OpenProject.Used file : used.subList(0, shown)) {
+			String key = file.path().toString();
+			Row.Kind kind = file.image() ? Row.Kind.IMAGE : Row.Kind.TEXT;
+			if (!file.image() && asked.add(key)) {
+				unread.add(file.path());
+			}
+			rows.add(new Row(key, kind, Face.of(kind,
+					file.path().getFileName(), pictures.get(key)), key,
+					role(file.role()), 0, null,
+					EnumSet.noneOf(Row.Mark.class),
+					EnumSet.noneOf(Row.Action.class)));
+		}
+		if (shown < used.size()) {
+			rows.add(new Row(ALL_RUNNING, Row.Kind.MORE,
+					Face.of(Row.Kind.MORE, null, null),
+					context.getString(R.string.nav_running_show_all,
+							used.size()), null, 0, null,
+					EnumSet.noneOf(Row.Mark.class),
+					EnumSet.noneOf(Row.Action.class)));
+		}
+		readPictures(unread);
+		return rows;
+	}
+
+	// What a file is to the running shader, as its row's line.
+	@Nullable
+	private String role(@Nullable FileRole role) {
+		if (role == null) {
+			return null;
+		}
+		List<String> names = new ArrayList<>();
+		for (ProjectPath to : role.of()) {
+			names.add(to.getFileName());
+		}
+		String of = String.join(", ", names);
+		return switch (role.kind()) {
+			case RUNS -> context.getString(R.string.nav_role_runs);
+			case PASS -> context.getString(R.string.nav_role_pass);
+			case FIRST_FRAME -> context.getString(
+					R.string.nav_role_first_frame, of);
+			case INCLUDE -> context.getString(R.string.nav_role_include, of);
+			case TEXTURE -> context.getString(R.string.nav_role_texture, of);
+		};
+	}
+
+	// The pictures of files outside the folders read, for the Running
+	// section; read once each, off the main thread.
+	private void readPictures(@NonNull List<ProjectPath> paths) {
+		if (paths.isEmpty()) {
+			return;
+		}
+		try {
+			listings.execute(() -> {
+				Map<String, byte[]> read = new HashMap<>();
+				for (ProjectPath path : paths) {
+					byte[] png = looks.picture(path);
+					if (png != null) {
+						read.put(path.toString(), png);
+					}
+				}
+				handler.post(() -> {
+					if (!closed && !read.isEmpty()) {
+						pictures.putAll(read);
+						changed.run();
+					}
+				});
+			});
+		} catch (RejectedExecutionException e) {
+			// Closed.
+		}
 	}
 
 	// What is known of whether the files of rows can run: a name of a
