@@ -30,9 +30,16 @@ final class LibraryArchive {
 	}
 
 	/** Why an archive is not written or not read, for the user. */
-	static final class Refused extends Exception {
+	static class Refused extends Exception {
 		Refused(String reason) {
 			super(reason);
+		}
+	}
+
+	/** It holds more bytes than the limit. */
+	static final class TooLarge extends Refused {
+		TooLarge(Limits limits) {
+			super("it holds more than " + (limits.bytes() >> 20) + " MiB");
 		}
 	}
 
