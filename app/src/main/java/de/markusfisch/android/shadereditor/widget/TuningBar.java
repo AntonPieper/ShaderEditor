@@ -36,6 +36,7 @@ import de.markusfisch.android.shadereditor.tuning.LiteralText;
 import de.markusfisch.android.shadereditor.tuning.TunedPlace;
 import de.markusfisch.android.shadereditor.tuning.TuningStep;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
+import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
 
 /**
  * The bar that tunes one number of the code while the picture shows:
@@ -243,7 +244,7 @@ public class TuningBar extends LinearLayout {
 			Insets bars = insets.getInsets(
 					WindowInsetsCompat.Type.navigationBars() |
 							WindowInsetsCompat.Type.ime());
-			bottomInset = bars.bottom;
+			bottomInset = SystemBarMetrics.bottomInset(v, insets);
 			setPadding(bars.left, 0, bars.right, bottomInset);
 			return insets;
 		});

@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.activity.OnBackPressedCallback;
@@ -168,6 +169,11 @@ public final class LibraryScreen implements ShaderScreen {
 		// file's rule puts it.
 		uiManager.setTitleIsFileName(true);
 		editorFragment.setAddsByFileRule(true);
+		// The window is resized for the keyboard whatever has the focus,
+		// also the tuning bar's value with the code set aside, so that
+		// the views keep clear of it themselves (SystemBarMetrics).
+		activity.getWindow().setSoftInputMode(
+				WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 		this.shaderViewManager = shaderViewManager;
 		this.extraKeysManager = extraKeysManager;
 		this.navigationManager = navigationManager;

@@ -3,8 +3,11 @@ package de.markusfisch.android.shadereditor.view;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.os.Build;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.SystemBarStyle;
@@ -56,9 +59,10 @@ public class SystemBarMetrics {
 					WindowInsetsCompat.Type.systemBars() |
 							WindowInsetsCompat.Type.ime());
 
-			mainLayout.setPadding(bars.left, 0, bars.right, bars.bottom);
+			int bottom = bottomInset(v, insets);
+			mainLayout.setPadding(bars.left, 0, bars.right, bottom);
 			if (windowInsets != null) {
-				windowInsets.set(bars.left, bars.top, bars.right, bars.bottom);
+				windowInsets.set(bars.left, bars.top, bars.right, bottom);
 			}
 
 			// The toolbar lies behind the status bar. It measures its
@@ -69,11 +73,36 @@ public class SystemBarMetrics {
 			}
 
 			if (navbar != null) {
-				navbar.getLayoutParams().height = bars.bottom;
+				navbar.getLayoutParams().height = bottom;
 				navbar.requestLayout();
 			}
 
 			return insets;
 		});
+	}
+
+	/**
+	 * The inset the navigation bar and the keyboard take at the bottom
+	 * of view's window. Before Android 11, in a window resized for the
+	 * keyboard, it is the system's own inset, which holds the keyboard
+	 * then: the keyboard read from the window's visible area lags behind
+	 * when it closes as the focus moves, as when the tuning bar opens,
+	 * and no later dispatch tells the views it is gone.
+	 */
+	@SuppressWarnings("deprecation")
+	public static int bottomInset(@NonNull View view,
+			@NonNull WindowInsetsCompat insets) {
+		return Build.VERSION.SDK_INT < Build.VERSION_CODES.R && resizes(view)
+				? insets.getSystemWindowInsetBottom()
+				: insets.getInsets(WindowInsetsCompat.Type.systemBars() |
+						WindowInsetsCompat.Type.ime()).bottom;
+	}
+
+	private static boolean resizes(@NonNull View view) {
+		ViewGroup.LayoutParams params = view.getRootView().getLayoutParams();
+		return params instanceof WindowManager.LayoutParams window &&
+				(window.softInputMode &
+						WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST) ==
+						WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
 	}
 }
