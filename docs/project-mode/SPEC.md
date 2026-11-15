@@ -33,6 +33,8 @@ Both fields are optional and default to the values shown. A missing manifest per
 
 A folder without a manifest is a complete project: nothing in this format needs one. The manifest exists only to make another file than `main.frag` the portable default.
 
+`README.md` is an ordinary file; the format never reads it. The drawer may use it to order a listing (NAVIGATION 6.4).
+
 The project root is the folder the user opened. Only a manifest directly in that root is read; a `shader-project.json` deeper in the tree is an ordinary file. A file can therefore sit under different roots at different times, and a reference that leaves the current root is an error. Code shared by several shaders belongs in a folder that contains all of them (DECISIONS, Reusing code across shaders).
 
 One rule selects the running shader, and it applies identically on open, reopen, and refresh:

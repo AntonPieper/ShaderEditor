@@ -80,7 +80,7 @@ Each is followed by its reason. They are numbered because the comparison refers 
 4. **A shader is known by its picture, a source file by its name and place.** Thumbnails for what has a picture: a shader that has run, an image, a folder by its default shader. Nothing is rendered to fill a list. An image is its own picture and is read small for the rows on screen.
 5. **Looking changes nothing.** Only a tap on a file changes what is edited. Browsing a folder, the examples or the folder list never stops or starts a shader. Reason: observation 3, and it makes exploring free.
 6. **What runs and what is edited can both be read without opening anything**, and every mark is an icon with a spoken text, not a colour. Reason: story 6 and 7, UX 9.
-7. **A folder is shown as it is, one level per look.** Nothing is scanned or guessed (SPEC 1, UX 3). What the app knows by itself (what runs, what is unsaved, where the errors are, what was open last) comes from memory and is there at once, before storage answers.
+7. **A folder is shown as it is, one level per look.** Its own `README.md` may give it headings, order and lines; nothing is hidden. Nothing is scanned or guessed (SPEC 1, UX 3). What the app knows by itself (what runs, what is unsaved, where the errors are, what was open last) comes from memory and is there at once, before storage answers.
 8. **An action lives on its object.** On a file: long press. On the file in the editor: the toolbar menu. On the list: the drawer. A fixed menu of actions that apply "sometimes" was one of the first attempt's patch sites.
 9. **Back closes the thing on top (keyboard, sheet, filter, drawer) and then leaves the app. It never changes the file.** Unsaved text is always kept, so leaving never asks.
 10. **The same thing on every width.** A wide screen keeps the column open; it does not get a different design.
@@ -269,7 +269,7 @@ The file in the editor has the selected background and is announced as selected.
 | --- | --- | --- | --- | --- |
 | **Folders** | "Folders", no arrow | Shaders; Examples; then **Recent**: folders and single files opened before, newest first, each with where it is | Open folder; Open file | `r-03` |
 | **Shaders** (the library) | "Shaders", "23 shaders" | Every shader: thumbnail, name or date, date of last change. Before the migration these are the database shaders, afterwards the files of `ShaderEditor/Shaders`; the list is the same. Section 11 says how it looks once the shaders are files | New | `r-02` |
-| **Examples** | "Examples", lock, "Read-only" | The four sections of EXAMPLES 2, each example with its line | New shader | `r-01` |
+| **Examples** | "Examples", lock, "Read-only" | The examples' folder, listed like any folder; its `README.md` gives the four sections of EXAMPLES 2, each example with its line, then Shared files (`lib`, `textures`) and the README. Names with their ending; `Ink`, `Bloom` and `Game of Life` are folders with their pictures | New shader | `r-01` |
 | **A folder's root** | its name; where it is | Running or Last opened; All files | New | `r-04`, `r-29` |
 | **A folder inside** | the path from the root, last part bold, shortened at the start | the same | New | `r-06`, `r-07` |
 
@@ -301,6 +301,8 @@ With a hardware keyboard: Ctrl+O opens the drawer with the filter focused, arrow
 ### 6.4 The sections
 
 **Running** appears on top of every level of the folder whose shader runs, when its last build read more than one file. It holds the files the build read in build order, the running shader first, each with its path from the root and its role as its line: "Runs", "Pass", "First frame of ink.frag", "Included by ink.frag, seed.frag", "Texture of main.frag" (images too; the roles come from the pass graph, `FileRole`). Under it, **All files** of the level. More than seven: the first six and "Show all 14". With one file per shader the section is absent and the ▶ sits on the shader's row in the list. Not built yet: files with unsaved text, an error or a conflict that the build did not read.
+
+**A folder's README orders it**, any folder at any depth. If it has a `README.md` (any case), its first 64 KB are read with the listing, and again when its time of change differs. Each line starting with `## ` begins a section named by the rest of the line; each list item (`- `, `* `, `+ `, `1. `) that begins with a link `[text](target)` to an entry directly in the folder (`Tilt.frag`, `Ink/` or `Ink`, percent-encoded or in `<…>`) puts that entry into the section, in that order, and the text after the link, without a leading `-`, `–`, `—` or `:`, is its line. Everything else is ignored: links to the web, to deeper paths or to files that are not there, images, text, other headings. Nothing in a README is ever an error, and it never changes what a tap does. An entry linked twice counts where it is first linked. What it does not link comes after, under **Other files**, in the drawer's order; the README itself says "Orders this list". A README that links nothing changes nothing (`navigation/Readme`).
 
 **Last opened** takes its place in a folder that is not the open one: the shader that ran there last and the files that still have unsaved text.
 
@@ -502,7 +504,7 @@ All behind the existing gate `@bool/project_mode` (on in debug builds only). Thi
 | N7 ★ | The New sheet; the row menus for files and folders; the toolbar menu built from what the open item can do | Emulator |
 | N8 ★ | The image sheet: a tap on an image shows it fitted on a checkerboard with "256 × 256 · PNG · 86 KB", the folder and the shader that reads it; **Insert as texture** adds UX 4's two lines (path from the edited file, an unused sampler name) after the uniforms as one Undo step, shown before the tap, offered only while the editor has a text file of the same folder, else one sentence says why; Rename and Delete where the folder can be changed (with M12) | Emulator |
 | N9 ★ | Read-only, the conflict bar, Save a copy through the New sheet (with M13) | Emulator |
-| N10 ★ | Examples as a folder (with X10); the Examples menu entry opens the drawer there | Emulator |
+| N10 ★ | Examples as a folder (with X10): the drawer lists the examples' folder like any other, ordered by its README; their pictures come with the app and fill their store; the Examples menu entry opens the drawer there | Emulator |
 | N11 ★ | Filter; landscape; the drawer kept open from 840 dp; keyboard shortcuts; spoken names and row actions | Emulator; TalkBack on the phone |
 | N12 | Thumbnails for shader files, in every folder: a picture is taken when a shader of any folder runs, and the top level shows the picture of what runs in each place | Emulator |
 | N13 ★ | With the gate lifted: delete `ShaderListManager`, `ShaderAdapter`, `drawer.xml`, `row_shader.xml`, the fixed `main_menu.xml`, the "Sort by last modification" setting, and after X10 the Examples screen with its fragment and adapter | Emulator |

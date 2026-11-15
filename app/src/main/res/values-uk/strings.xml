@@ -340,6 +340,8 @@
 	<string name="nav_new">New</string>
 	<string name="nav_running">Running</string>
 	<string name="nav_all_files">All files</string>
+	<string name="nav_other_files">Other files</string>
+	<string name="nav_readme_orders">Orders this list</string>
 	<string name="nav_running_show_all">Show all %1$d</string>
 	<string name="nav_role_runs">Runs</string>
 	<string name="nav_role_pass">Pass</string>

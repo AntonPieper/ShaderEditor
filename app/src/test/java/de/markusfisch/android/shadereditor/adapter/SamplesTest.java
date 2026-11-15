@@ -126,4 +126,38 @@ public class SamplesTest {
 		}
 		return paths;
 	}
+
+	// The drawer lists the examples' folder as any folder, ordered by
+	// its README: every example is linked there once, under the
+	// heading of its section, in the order of the list.
+	@Test
+	public void theExamplesReadmeListsEveryExampleInItsSection()
+			throws java.io.IOException {
+		java.io.File folder = ExamplesTest.folder();
+		String text = new String(java.nio.file.Files.readAllBytes(new java.io.File(
+				folder, "README.md").toPath()),
+				java.nio.charset.StandardCharsets.UTF_8);
+		String[] names = folder.list();
+		java.util.List<de.markusfisch.android.shadereditor.navigation.Readme.Section>
+				sections = de.markusfisch.android.shadereditor.navigation.Readme
+				.sections(text, new HashSet<>(java.util.Arrays.asList(names)));
+		java.util.List<String> linked = new java.util.ArrayList<>();
+		for (var section : sections.subList(0,
+				Samples.Section.values().length)) {
+			for (var entry : section.entries()) {
+				linked.add(entry.name());
+			}
+		}
+		java.util.List<String> expected = new java.util.ArrayList<>();
+		for (Samples.Section section : Samples.Section.values()) {
+			for (Samples.Sample sample : Samples.ALL) {
+				if (sample.section() == section) {
+					expected.add(sample.path().split("/")[0]);
+				}
+			}
+		}
+		assertEquals(expected, linked);
+		assertEquals("Shared files", sections.get(sections.size() - 1)
+				.heading());
+	}
 }
