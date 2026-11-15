@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -29,6 +30,7 @@ import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
 import de.markusfisch.android.shadereditor.navigation.Order;
 import de.markusfisch.android.shadereditor.navigation.Reading;
+import de.markusfisch.android.shadereditor.navigation.Readme;
 import de.markusfisch.android.shadereditor.navigation.Recent;
 import de.markusfisch.android.shadereditor.navigation.Row;
 import de.markusfisch.android.shadereditor.navigation.Source;
@@ -109,6 +111,12 @@ final class FolderSource {
 	private String manifestRuns;
 	// How far each folder is read, by its path; the root is "".
 	private final Map<String, Reading> readings = new HashMap<>();
+	// How each folder's README orders it, by the folder's path, with
+	// the time the README was changed when it was read.
+	private record Ordered(long modified, List<Readme.Section> sections) {
+	}
+
+	private final Map<String, Ordered> readmes = new HashMap<>();
 	// The paths whose pictures were asked for beside a listing, for the
 	// Running section, and whether it shows all of its files.
 	private final Set<String> asked = new HashSet<>();
@@ -355,11 +363,21 @@ final class FolderSource {
 					context.getString(R.string.nav_running),
 					FileMarks.unsaved(running, unsaved())));
 		}
-		sections.add(new Listing.Section(running.isEmpty()
-				? null
-				: context.getString(R.string.nav_all_files),
-				FileMarks.unsaved(FileActions.of(rows, running(), runs(rows),
-						!file && writable.contains(path)), unsaved())));
+		List<Row> files = new ArrayList<>(FileMarks.unsaved(FileActions.of(
+				rows, running(), runs(rows), !file && writable.contains(path)),
+				unsaved()));
+		Ordered ordered = readmes.get(path);
+		List<Listing.Section> described = ordered != null
+				? described(ordered.sections(), files)
+				: List.of();
+		sections.addAll(described);
+		if (!files.isEmpty() || described.isEmpty()) {
+			sections.add(new Listing.Section(!described.isEmpty()
+					? context.getString(R.string.nav_other_files)
+					: running.isEmpty()
+					? null
+					: context.getString(R.string.nav_all_files), files));
+		}
 		return new Listing(title(level),
 				location == null || location.isEmpty() ? null : location,
 				false,
@@ -420,6 +438,71 @@ final class FolderSource {
 					row.actions()));
 		}
 		return dressed;
+	}
+
+	// The sections a folder's README gives it, with the rows it links,
+	// in its order, each with its line; the rows it does not link stay
+	// in rows. The README itself says that it orders the list.
+	@NonNull
+	private List<Listing.Section> described(
+			@NonNull List<Readme.Section> readme, @NonNull List<Row> rows) {
+		Map<String, Row> byName = new HashMap<>();
+		for (Row row : rows) {
+			if (row.kind() != Row.Kind.MORE) {
+				byName.put(row.name(), row);
+			}
+		}
+		List<Listing.Section> sections = new ArrayList<>();
+		for (Readme.Section section : readme) {
+			List<Row> linked = new ArrayList<>();
+			for (Readme.Linked entry : section.entries()) {
+				Row row = byName.remove(entry.name());
+				if (row != null) {
+					linked.add(entry.line() != null
+							? withDetail(row, entry.line())
+							: row);
+				}
+			}
+			if (!linked.isEmpty()) {
+				sections.add(new Listing.Section(section.heading(), linked));
+			}
+		}
+		if (sections.isEmpty()) {
+			return sections;
+		}
+		for (int i = 0; i < rows.size(); ++i) {
+			Row row = rows.get(i);
+			if (Readme.is(row.name())) {
+				rows.set(i, withDetail(row, context.getString(
+						R.string.nav_readme_orders)));
+			}
+		}
+		List<Row> left = rowsOf(rows, byName);
+		rows.clear();
+		rows.addAll(left);
+		return sections;
+	}
+
+	// The rows of rows still in byName, or that show more, in order.
+	@NonNull
+	private static List<Row> rowsOf(@NonNull List<Row> rows,
+			@NonNull Map<String, Row> byName) {
+		List<Row> left = new ArrayList<>();
+		for (Row row : rows) {
+			if (row.kind() == Row.Kind.MORE ||
+					byName.containsKey(row.name()) ||
+					Readme.is(row.name())) {
+				left.add(row);
+			}
+		}
+		return left;
+	}
+
+	@NonNull
+	private static Row withDetail(@NonNull Row row, @NonNull String detail) {
+		return new Row(row.key(), row.kind(), row.picture(), row.name(),
+				detail, row.changed(), row.enters(), row.marks(),
+				row.actions());
 	}
 
 	// The files the last build of what runs read, in build order, each
@@ -594,12 +677,45 @@ final class FolderSource {
 				ProjectPath runs = folder == null && listed != null
 						? listed.manifestEntry()
 						: null;
+				// The README, read again only when it was changed.
+				Ordered ordered = null;
+				Ordered was = readmes.get(path);
+				for (OpenProject.Item item : items.items()) {
+					String name = item.path().getFileName();
+					if (item.folder() || !Readme.is(name)) {
+						continue;
+					}
+					if (was != null && was.modified() == item.modified() &&
+							item.modified() != 0) {
+						ordered = was;
+						break;
+					}
+					byte[] head = listed != null
+							? listed.head(item.path(), Readme.HEAD)
+							: null;
+					if (head != null) {
+						Set<String> names = new HashSet<>();
+						for (OpenProject.Item entry : items.items()) {
+							names.add(entry.path().getFileName());
+						}
+						ordered = new Ordered(item.modified(),
+								Readme.sections(new String(head,
+										StandardCharsets.UTF_8), names));
+					}
+					break;
+				}
+				Ordered readme = ordered;
 				handler.post(() -> {
 					// What was read replaces the folder's pictures: a
 					// file made again under a gone file's name never shows
 					// the gone file's picture.
 					forgetPictures(path);
 					pictures.putAll(read);
+					if (readme != null) {
+						readmes.put(path, readme);
+					} else {
+						readmes.remove(path);
+					}
 					if (folder == null) {
 						manifestRuns = runs != null ? runs.toString() : null;
 					}
