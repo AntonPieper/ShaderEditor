@@ -117,11 +117,7 @@ public class ShaderToyProjectTest {
 		assertEquals("# Trail\n\n" +
 				"By the tests on ShaderToy: " +
 				"https://www.shadertoy.com/view/fixture2\n\n" +
-				"This shader is its author's work, under the licence " +
-				"they chose. Look for one in the comments of the code. " +
-				"Where a shader states none, ShaderToy's default is " +
-				"reported to be CC BY-NC-SA 3.0: name the author, no " +
-				"commercial use, share changes under the same terms.\n\n" +
+				ShaderToyReadmeTest.DEFAULT +
 				"## Files\n" +
 				"- [main.frag](main.frag) Image: what you see\n" +
 				"- [bufferA.frag](bufferA.frag) Buffer A\n" +
@@ -141,6 +137,24 @@ public class ShaderToyProjectTest {
 				"- [cubeA.glsl](cubeA.glsl) Kept from ShaderToy, not run\n"));
 		assertTrue(readme, readme.endsWith("\n## Not carried over\n- " +
 				String.join("\n- ", media.warnings()) + "\n"));
+	}
+
+	// The licence an author put at the top of the code is what the
+	// README states: of Image first, else of the first tab that has one.
+	@Test
+	public void theReadmeStatesTheLicenceOfTheCode() {
+		String mit = "// MIT License, Copyright 2024 Someone\n" + CODE;
+		assertTrue(ShaderToyProject.of(shader(image(mit))).files()
+				.get("README.md").contains("Its code begins with this " +
+						"licence:\n\n> MIT License, Copyright 2024 Someone\n"));
+		String readme = ShaderToyProject.of(shader(image(CODE),
+				new Pass(Kind.BUFFER, "Buffer A", "/* CC0 */\n" + CODE,
+						List.of(), "257"),
+				new Pass(Kind.COMMON, "Common",
+						"// Public domain.\nfloat one() { return 1.0; }\n",
+						List.of(), ""))).files().get("README.md");
+		assertTrue(readme, readme.contains("licence:\n\n> Public domain.\n"));
+		assertFalse(readme, readme.contains("Creative Commons"));
 	}
 
 	// ShaderToy draws the buffers in the order they stand in, then
