@@ -580,4 +580,8 @@
 	<string name="passes_last_chip">%1$s, last frame</string>
 	<string name="passes_fit">Fit</string>
 	<string name="passes_name_fit">%1$s · fit</string>
+	<string name="passes_no_limit">No fps limit</string>
+	<string name="passes_limit">At most %1$d fps</string>
+	<string name="passes_limit_none">None</string>
+	<string name="passes_limit_menu">Frame rate limit</string>
 </resources>

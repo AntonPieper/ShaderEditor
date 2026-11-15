@@ -64,6 +64,7 @@ public class ShaderViewManager implements PassesSheet.Engine {
 	@NonNull
 	private float[] qualityValues;
 	private float quality = 1f;
+	private int frameRateLimit;
 	// Whether the run mode shows the picture behind the code, and
 	// whether there is a picture to show.
 	private boolean visible = true;
@@ -152,6 +153,7 @@ public class ShaderViewManager implements PassesSheet.Engine {
 	 * as the shader's settings keep it. Main thread.
 	 */
 	public void setFrameRateLimit(int limit) {
+		frameRateLimit = limit;
 		shaderView.setFrameRateLimit(limit);
 	}
 
@@ -271,6 +273,11 @@ public class ShaderViewManager implements PassesSheet.Engine {
 				return;
 			}
 		}
+	}
+
+	/** The most frames a second drawn, 0 for as fast as the screen. */
+	public int getFrameRateLimit() {
+		return frameRateLimit;
 	}
 
 	/** The quality chosen. */

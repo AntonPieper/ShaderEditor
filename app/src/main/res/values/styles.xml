@@ -345,4 +345,15 @@
 		<item name="android:textColor">@color/fit_chip_text</item>
 		<item name="checkedIconTint">?attr/colorSecondaryContainer</item>
 	</style>
+	<!-- The frame-rate limit in the passes sheet: a menu chip, not a
+	filter, filled while the shader is throttled. -->
+	<style name="Widget.ShaderEditor.Chip.Limit" parent="Widget.Material3.Chip.Assist">
+		<item name="chipSurfaceColor">@android:color/transparent</item>
+		<item name="shapeAppearance">?attr/shapeAppearanceCornerSmall</item>
+		<item name="chipMinHeight">32dp</item>
+		<item name="closeIconVisible">true</item>
+		<item name="closeIcon">@drawable/ic_arrow_drop_down</item>
+		<item name="closeIconSize">18dp</item>
+		<item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+	</style>
 </resources>

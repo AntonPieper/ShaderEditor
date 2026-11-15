@@ -297,9 +297,22 @@ public final class LibraryScreen implements ShaderScreen {
 		});
 		editorFragment.setOnShaderToyShaderListener(this::askToImport);
 		passes = new PassesSheet(activity, shaderViewManager, editorFragment,
-				uiManager,
-				// The one way a file opens from a line, with a way back.
-				(path, line) -> links.open(path, line));
+				uiManager, new PassesSheet.Host() {
+					@Override
+					public void open(@NonNull ProjectPath path, int line) {
+						// The one way a file opens from a line, with a
+						// way back.
+						links.open(path, line);
+					}
+
+					@Override
+					public void keepFrameRateLimit(int limit) {
+						ProjectFile file = files.file();
+						looks.keepFrameRateLimit(files.key(), file != null
+								? file.getProject().running()
+								: null, limit);
+					}
+				});
 		// Show in the strip shows the pass the line names, as the sheet does.
 		links.setPassShow(passes::show);
 	
