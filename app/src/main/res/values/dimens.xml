@@ -28,10 +28,24 @@
 	<dimen name="se_row_height_two_line">56dp</dimen>
 	<dimen name="se_row_height_picture">72dp</dimen>
 	<dimen name="se_row_padding_vertical">4dp</dimen>
-	<!-- The fix in the row under a line with errors, a text button. -->
-	<dimen name="editor_fix_height">40dp</dimen>
+	<!-- The row under a line with errors: its padding above and below,
+		the height of a line of its text (BodyMedium, 14/20) and the widest
+		it is from where the code starts. -->
+	<dimen name="editor_row_padding_vertical">6dp</dimen>
+	<dimen name="editor_row_line_height">20sp</dimen>
+	<dimen name="editor_row_max_width">560dp</dimen>
+	<!-- The fix in that row, a text button on a line of its own: the
+		line's height (LabelLarge, 14/20), the space between it and the text
+		above, which is also the space between the button and the row's
+		end, the space beside its label, and how high it is pressed. -->
+	<dimen name="editor_fix_height">20sp</dimen>
 	<dimen name="editor_fix_inset">4dp</dimen>
 	<dimen name="editor_fix_padding">12dp</dimen>
+	<dimen name="editor_fix_pressed_height">32dp</dimen>
+	<!-- Between two fixes side by side, from button to button, and between
+		two lines of fixes when they do not fit side by side. -->
+	<dimen name="editor_fix_gap">16dp</dimen>
+	<dimen name="editor_fix_line_gap">12dp</dimen>
 	<dimen name="se_tap_target">48dp</dimen>
 	<!-- Keys above the keyboard, where a 48 dp row would cost a line of code -->
 	<dimen name="se_key_height">44dp</dimen>

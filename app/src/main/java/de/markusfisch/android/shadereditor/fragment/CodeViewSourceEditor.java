@@ -198,8 +198,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 				}
 
 				@Override
-				public void addUniform(@NonNull String statement) {
-					addMarked(statement);
+				public void addUniforms(@NonNull List<String> statements) {
+					addMarked(statements);
 				}
 			});
 			fixes = new FileFixes(view.getContext(), new FileFixes.Host() {
@@ -381,15 +381,28 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.bringCaretIntoView();
 	}
 
-	// Adds statement as Add uniform does, for a fix: marks its line until
-	// the next edit and says where it went.
-	private void addMarked(@NonNull String statement) {
-		int line = document.text().lineOf(AddUniform.apply(document,
-				statement));
-		view.markLine(line);
-		view.announceForAccessibility(view.getResources().getString(
-				R.string.a11y_added_uniform, statement.substring(0,
-						statement.length() - 1), line + 1));
+	// Adds statements as Add uniform does, for a fix, as one undo step:
+	// marks their lines until the next edit and says where they went.
+	private void addMarked(@NonNull List<String> statements) {
+		int[] at = AddUniform.apply(document, statements);
+		int[] lines = new int[at.length];
+		List<String> added = new ArrayList<>();
+		List<String> numbers = new ArrayList<>();
+		for (int i = 0; i < at.length; ++i) {
+			lines[i] = document.text().lineOf(at[i]);
+			String statement = statements.get(i);
+			added.add(statement.substring(0, statement.length() - 1));
+			numbers.add(String.valueOf(lines[i] + 1));
+		}
+		view.markLines(lines);
+		android.content.res.Resources res = view.getResources();
+		String and = res.getString(R.string.a11y_list_and);
+		view.announceForAccessibility(lines.length == 1
+				? res.getString(R.string.a11y_added_uniform, added.get(0),
+				lines[0] + 1)
+				: res.getString(R.string.a11y_added_uniforms,
+				WordDocs.joinAnd(added, and),
+				WordDocs.joinAnd(numbers, and)));
 	}
 
 	@Override

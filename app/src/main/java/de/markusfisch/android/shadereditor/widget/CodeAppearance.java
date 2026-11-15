@@ -48,13 +48,21 @@ final class CodeAppearance {
 	// whose text is in markColor.
 	final TextPaint rowPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 	final int rowColor;
-	// Of the fix a row offers, a text button: its label, its fill while
-	// pressed, its height, the space around it and inside it.
+	// Of the fix a row offers, a text button on a line of its own: its
+	// label, its fill while pressed and how high that is, the height of
+	// its line and where the label's baseline is in it, the space
+	// between it and the text above, and the space beside its label.
 	final TextPaint fixPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 	final int fixPressedColor;
-	final float fixHeight;
-	final float fixInset;
+	final float fixPressedHeight;
+	final int fixHeight;
+	final float fixBaseline;
+	final int fixInset;
 	final float fixPadding;
+	// Between two fixes side by side, and between two lines of fixes
+	// when they do not fit side by side.
+	final float fixGap;
+	final int fixLineGap;
 	// Of things that float, such as the shadow of dragged text, and the
 	// hairline around them.
 	final int cardColor;
@@ -64,6 +72,8 @@ final class CodeAppearance {
 	final int rowPaddingVertical;
 	final int rowLineHeight;
 	final int rowBaseline;
+	// The widest a row is, from where the text of the code starts.
+	final float rowMaxWidth;
 	final float corner;
 	final float tapTarget;
 	final int selectionColor;
@@ -112,12 +122,17 @@ final class CodeAppearance {
 					.updateMeasureState(rowPaint);
 		}
 		rowPaint.setColor(markColor);
+		// Lines of 20 sp, as BodyMedium's, each baseline in the middle of
+		// its line; more if the font needs more.
 		Paint.FontMetricsInt rowMetrics = rowPaint.getFontMetricsInt();
-		rowLineHeight = rowMetrics.descent - rowMetrics.ascent;
-		rowBaseline = -rowMetrics.ascent;
+		int rowText = rowMetrics.descent - rowMetrics.ascent;
+		rowLineHeight = Math.max(rowText, res.getDimensionPixelSize(
+				R.dimen.editor_row_line_height));
+		rowBaseline = (rowLineHeight - rowText) / 2 - rowMetrics.ascent;
 		rowPadding = res.getDimension(R.dimen.editor_padding);
 		rowPaddingVertical = res.getDimensionPixelSize(
-				R.dimen.se_row_padding_vertical);
+				R.dimen.editor_row_padding_vertical);
+		rowMaxWidth = res.getDimension(R.dimen.editor_row_max_width);
 		corner = res.getDimension(R.dimen.se_corner);
 		tapTarget = res.getDimension(R.dimen.se_tap_target);
 		caretColor = ContextCompat.getColor(context, R.color.editor_caret);
@@ -139,9 +154,21 @@ final class CodeAppearance {
 		fixPaint.setColor(handleColor);
 		// 12 % of the accent, as the library's text button when pressed.
 		fixPressedColor = (handleColor & 0xffffff) | 0x1f000000;
-		fixHeight = res.getDimension(R.dimen.editor_fix_height);
-		fixInset = res.getDimension(R.dimen.editor_fix_inset);
+		// LabelLarge's line of 20 sp, as the row's lines.
+		Paint.FontMetricsInt fixMetrics = fixPaint.getFontMetricsInt();
+		int fixText = fixMetrics.descent - fixMetrics.ascent;
+		fixHeight = Math.max(fixText, res.getDimensionPixelSize(
+				R.dimen.editor_fix_height));
+		fixBaseline = (fixHeight - fixText) / 2f - fixMetrics.ascent;
+		// 32 dp, centred on the label's line: as far below it as the
+		// row's padding; more where large text makes the line higher.
+		fixPressedHeight = Math.max(res.getDimension(
+						R.dimen.editor_fix_pressed_height),
+				fixHeight + 2 * rowPaddingVertical);
+		fixInset = res.getDimensionPixelSize(R.dimen.editor_fix_inset);
 		fixPadding = res.getDimension(R.dimen.editor_fix_padding);
+		fixGap = res.getDimension(R.dimen.editor_fix_gap);
+		fixLineGap = res.getDimensionPixelSize(R.dimen.editor_fix_line_gap);
 		caretWidth = res.getDimension(R.dimen.editor_caret_width);
 		underline = res.getDimension(R.dimen.editor_composing_underline);
 		padding = res.getDimension(R.dimen.editor_padding);

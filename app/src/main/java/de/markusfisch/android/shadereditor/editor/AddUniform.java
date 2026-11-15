@@ -1,5 +1,7 @@
 package de.markusfisch.android.shadereditor.editor;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,19 +37,50 @@ public final class AddUniform {
 	 * starts at.
 	 */
 	public static int apply(Document document, String statement) {
-		Change change = change(document.text().toString(), statement);
+		return apply(document, Collections.singletonList(statement))[0];
+	}
+
+	/**
+	 * Add statements to document, in this order, as one undo step;
+	 * return the offsets they start at in the text that results.
+	 */
+	public static int[] apply(Document document, List<String> statements) {
+		int[] at = new int[statements.size()];
 		document.beginBatch();
 		try {
-			if (change.removeEnd() > change.removeStart()) {
-				document.replace(change.removeStart(), change.removeEnd(),
-						Text.EMPTY);
+			for (int i = 0; i < at.length; ++i) {
+				String statement = statements.get(i);
+				Change change = change(document.text().toString(),
+						statement);
+				if (change.removeEnd() > change.removeStart()) {
+					document.replace(change.removeStart(),
+							change.removeEnd(), Text.EMPTY);
+				}
+				document.replace(change.insertAt(), change.insertAt(),
+						Text.of(change.inserted()));
+				for (int j = 0; j < i; ++j) {
+					at[j] = moved(at[j], change);
+				}
+				at[i] = change.insertAt() +
+						change.inserted().indexOf(statement);
 			}
-			document.replace(change.insertAt(), change.insertAt(),
-					Text.of(change.inserted()));
 		} finally {
 			document.endBatch();
 		}
-		return change.insertAt() + change.inserted().indexOf(statement);
+		return at;
+	}
+
+	// Where offset, the start of a line, is after change.
+	private static int moved(int offset, Change change) {
+		int removed = change.removeEnd() - change.removeStart();
+		if (offset >= change.removeEnd()) {
+			offset -= removed;
+		} else if (offset > change.removeStart()) {
+			offset = change.removeStart();
+		}
+		return offset >= change.insertAt()
+				? offset + change.inserted().length()
+				: offset;
 	}
 
 	/** What adding statement to text does; see the class. */
