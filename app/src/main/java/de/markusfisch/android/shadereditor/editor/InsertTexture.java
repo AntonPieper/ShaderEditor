@@ -133,7 +133,7 @@ public final class InsertTexture {
 	 */
 	public static boolean reads(String text, ProjectPath edited,
 			ProjectPath image) {
-		Matcher pragma = PRAGMA.matcher(blank(text, false));
+		Matcher pragma = PRAGMA.matcher(CodeText.blank(text, false));
 		while (pragma.find()) {
 			String argument = pragma.group(1).trim();
 			if (!HostDirective.isHostPragma(argument)) {
@@ -218,47 +218,6 @@ public final class InsertTexture {
 		return RESERVED.contains(name) ||
 				name.toLowerCase(Locale.ROOT).startsWith("gl_") ||
 				Pattern.compile("\\b" + Pattern.quote(name) + "\\b")
-						.matcher(blank(text, true)).find();
-	}
-
-	// The text with its comments, and with strings their contents,
-	// blanked; lines stay where they are.
-	private static String blank(String text, boolean strings) {
-		StringBuilder code = new StringBuilder(text);
-		int length = text.length();
-		for (int i = 0; i < length; ++i) {
-			char c = text.charAt(i);
-			char next = i + 1 < length ? text.charAt(i + 1) : 0;
-			int end;
-			int from = i;
-			if (c == '/' && next == '/') {
-				end = text.indexOf('\n', i);
-			} else if (c == '/' && next == '*') {
-				end = text.indexOf("*/", i + 2);
-				end = end < 0 ? -1 : end + 2;
-			} else if (c == '"' && strings) {
-				from = i + 1;
-				end = text.indexOf('"', from);
-				int line = text.indexOf('\n', from);
-				if (end < 0 || (line > -1 && line < end)) {
-					end = line;
-				}
-			} else {
-				continue;
-			}
-			if (end < 0) {
-				end = length;
-			}
-			for (int j = from; j < end; ++j) {
-				if (code.charAt(j) != '\n') {
-					code.setCharAt(j, ' ');
-				}
-			}
-			// The closing quote is no opening one.
-			i = c == '"' && end < length && text.charAt(end) == '"'
-					? end
-					: end - 1;
-		}
-		return code.toString();
+						.matcher(CodeText.blank(text, true)).find();
 	}
 }

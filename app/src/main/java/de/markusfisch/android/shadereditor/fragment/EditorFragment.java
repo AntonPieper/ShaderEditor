@@ -110,6 +110,7 @@ public class EditorFragment extends Fragment {
 			editor = new EditTextSourceEditor(view.findViewById(R.id.editor));
 			editorContainer = view.findViewById(R.id.editor_container);
 		}
+		editor.setAddsByFileRule(addsByFileRule);
 		editor.setListener(new SourceEditor.Listener() {
 			@Override
 			public void onTextModified() {
@@ -450,6 +451,17 @@ public class EditorFragment extends Fragment {
 	public void insert(@NonNull CharSequence text) {
 		editor.insert(text);
 	}
+
+	/** Add statements by the rule files have; see ShaderEditor. */
+	public void setAddsByFileRule(boolean byFileRule) {
+		addsByFileRule = byFileRule;
+		if (editor != null) {
+			editor.setAddsByFileRule(byFileRule);
+		}
+	}
+
+	// Whether statements are added by the rule files have.
+	private boolean addsByFileRule;
 
 	public void addUniform(@Nullable String statement) {
 		if (statement != null) {

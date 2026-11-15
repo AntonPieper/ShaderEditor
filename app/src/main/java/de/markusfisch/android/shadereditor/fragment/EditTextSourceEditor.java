@@ -121,6 +121,11 @@ final class EditTextSourceEditor implements SourceEditor {
 	}
 
 	@Override
+	public void setAddsByFileRule(boolean byFileRule) {
+		shaderEditor.setAddsByFileRule(byFileRule);
+	}
+
+	@Override
 	public void navigateToLine(int line) {
 		shaderEditor.navigateToLine(line);
 	}
