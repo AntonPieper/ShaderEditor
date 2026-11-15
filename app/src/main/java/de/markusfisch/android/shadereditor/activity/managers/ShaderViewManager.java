@@ -118,6 +118,15 @@ public class ShaderViewManager {
 	}
 
 	/**
+	 * Let watcher hear small pictures of the passes about four times a
+	 * second, on the GL thread, or no one for null; nothing of it costs
+	 * anything while no one watches.
+	 */
+	public void watchPasses(@Nullable ShaderEngine.PassWatcher watcher) {
+		shaderView.watchPasses(watcher);
+	}
+
+	/**
 	 * Pause the picture at the frame drawn last, or let it run on from
 	 * there. Paused, nothing is drawn but what is asked for.
 	 */

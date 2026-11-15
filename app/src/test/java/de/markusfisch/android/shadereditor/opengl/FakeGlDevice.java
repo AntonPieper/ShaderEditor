@@ -58,6 +58,8 @@ class FakeGlDevice extends GlDevice {
 	// Textures that were allocated or attached.
 	final List<Integer> touched = new ArrayList<>();
 	private int failAfter;
+	private int[] viewport;
+	private final List<Cell> cells = new ArrayList<>();
 	private final Map<Integer, Integer> units = new HashMap<>();
 	private final Map<Integer, Map<String, float[]>> values = new HashMap<>();
 	private int nextName = 1;
@@ -104,6 +106,36 @@ class FakeGlDevice extends GlDevice {
 
 	@Override
 	void setViewport(int x, int y, int width, int height) {
+		viewport = new int[]{x, y, width, height};
+	}
+
+	// What readPixels() answers: at every pixel of the bound target, the
+	// texture the last draw over it read at the unit of the program's
+	// "frame" sampler, as red, with 0x80 green and the pixel's row in
+	// that draw as blue, opaque. A test that draws pictures reads which
+	// pass is where, and which way up.
+	@Override
+	void readPixels(int x, int y, int width, int height,
+			@NonNull java.nio.Buffer buffer) {
+		var out = (java.nio.IntBuffer) buffer;
+		for (int row = y; row < y + height; ++row) {
+			for (int column = x; column < x + width; ++column) {
+				int value = 0;
+				for (int i = cells.size() - 1; i >= 0; --i) {
+					var cell = cells.get(i);
+					int[] v = cell.viewport;
+					if (cell.target == target() &&
+							column >= v[0] && column < v[0] + v[2] &&
+							row >= v[1] && row < v[1] + v[3]) {
+						int red = cell.texture & 0xff;
+						int blue = (row - v[1]) & 0xff;
+						value = 0xff000000 | (blue << 16) | 0x8000 | red;
+						break;
+					}
+				}
+				out.put((row - y) * width + column - x, value);
+			}
+		}
 	}
 
 	@NonNull
@@ -219,6 +251,16 @@ class FakeGlDevice extends GlDevice {
 			uniforms.putAll(written);
 		}
 		draws.add(new Draw(target(), program, new HashMap<>(units), uniforms));
+		var drawn = programs.get(program);
+		int unit = drawn != null ? drawn.getTextureUnit("frame") : -1;
+		Integer texture = unit > -1 ? units.get(unit) : null;
+		if (viewport != null && texture != null) {
+			cells.add(new Cell(target(), viewport.clone(), texture));
+		}
+	}
+
+	// Where a draw went, and the texture it read as "frame".
+	private record Cell(int target, int[] viewport, int texture) {
 	}
 
 	@Override

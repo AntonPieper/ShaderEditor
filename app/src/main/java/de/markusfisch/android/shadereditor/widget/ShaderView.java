@@ -206,6 +206,12 @@ public class ShaderView extends GLSurfaceView {
 				: requestedRenderMode);
 	}
 
+	// Lets watcher hear small pictures of the passes, or no one for
+	// null: see ShaderEngine.watchPasses().
+	public void watchPasses(@Nullable ShaderEngine.PassWatcher watcher) {
+		engine.watchPasses(watcher);
+	}
+
 	// Shows the pass of file instead of the output, or the output for
 	// null: see ShaderEngine.showPass().
 	public void showPass(@Nullable ProjectPath file) {
