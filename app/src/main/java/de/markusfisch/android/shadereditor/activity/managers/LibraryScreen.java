@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.Lifecycle;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -32,6 +33,7 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.project.Projects;
+import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.Message;
 
@@ -55,6 +57,7 @@ public final class LibraryScreen implements ShaderScreen {
 	private boolean destroyed;
 
 	private static final String OPEN = "open";
+	private static final String ASKS_IMPORT = "asks_shadertoy_import";
 	private static final int NEEDS_NEW_EDITOR_MILLIS = 10000;
 
 	private final AppCompatActivity activity;
@@ -113,6 +116,12 @@ public final class LibraryScreen implements ShaderScreen {
 	// screen, and where the shaders are rows of the database.
 	@Nullable
 	private OpenState restored;
+	// The question whether to import the JSON put into a shader, while
+	// it is asked, and whether the screen before this one was asking
+	// it: this one asks again once that shader is shown.
+	@Nullable
+	private AlertDialog importQuestion;
+	private boolean asksImportAgain;
 
 	public LibraryScreen(@NonNull AppCompatActivity activity,
 			@NonNull EditorFragment editorFragment,
@@ -279,6 +288,7 @@ public final class LibraryScreen implements ShaderScreen {
 		restored = state != null
 				? OpenState.decode(state.getString(OPEN))
 				: null;
+		asksImportAgain = state != null && state.getBoolean(ASKS_IMPORT);
 		holdsUnshownFile = restored != null &&
 				restored.kind() == OpenState.Kind.FILE &&
 				!ShaderEditorApp.preferences.useNewEditor();
@@ -333,6 +343,7 @@ public final class LibraryScreen implements ShaderScreen {
 	@Override
 	public void onSaveInstanceState(@NonNull Bundle state) {
 		state.putString(OPEN, openState().encode());
+		state.putBoolean(ASKS_IMPORT, importQuestion != null);
 		// With nothing open the editor's view is gone for that reason.
 		state.putBoolean(ShaderScreen.CODE_VISIBLE, open.hasText()
 				? editorFragment.isCodeVisible()
@@ -379,6 +390,11 @@ public final class LibraryScreen implements ShaderScreen {
 			holds.keepOpen();
 		}
 		destroyed = true;
+		if (importQuestion != null) {
+			// The screen made again asks; no window is left behind.
+			importQuestion.setOnDismissListener(null);
+			importQuestion.dismiss();
+		}
 		shaderViewManager.setDrawingListener(null);
 		newest.shutdownNow();
 		handler.removeCallbacksAndMessages(null);
@@ -671,13 +687,28 @@ public final class LibraryScreen implements ShaderScreen {
 	// converted in place as one tab's code is: asked, it becomes a
 	// folder. The text put in is the user's and stays.
 	private void askToImport(@NonNull String json) {
-		new MaterialAlertDialogBuilder(activity)
+		importQuestion = new MaterialAlertDialogBuilder(activity)
 				.setTitle(R.string.shadertoy_import_title)
 				.setMessage(R.string.shadertoy_import_message)
 				.setPositiveButton(R.string.shadertoy_import,
 						(d, w) -> libraryAdd.importShaderToy(json))
 				.setNegativeButton(android.R.string.cancel, null)
+				.setOnDismissListener(d -> importQuestion = null)
 				.show();
+	}
+
+	// The screen before this one was asking when it went: the text is
+	// in the shader that is shown again, and the editor does not tell
+	// of JSON that is there when a file is shown.
+	private void askToImportAgain() {
+		if (!asksImportAgain) {
+			return;
+		}
+		asksImportAgain = false;
+		String text = editorFragment.getText();
+		if (text != null && ShaderToyJson.recognizes(text)) {
+			askToImport(text);
+		}
 	}
 
 	// Asks first: the library is put aside and made anew.
@@ -812,6 +843,7 @@ public final class LibraryScreen implements ShaderScreen {
 				editorFragment.setErrors(file.getProject().diagnostics(),
 						file.getPath());
 				onChanged();
+				askToImportAgain();
 			}
 
 			// What comes next is the library's last shader, until there
