@@ -3,7 +3,9 @@ package de.markusfisch.android.shadereditor.project;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * What is kept by path about the files of one folder, in app data: the
@@ -35,6 +37,14 @@ public final class PictureStore {
 	private final StateFile.Gate gate;
 	private final Entry entry;
 	private final List<Follower> others;
+	// The moves that could not even be noted, by the note they wait
+	// for, for as long as the app runs: a store is made anew for each
+	// use. Until they are noted, the pictures are shown as if they
+	// were, so a file made under a name another file left never shows
+	// its picture.
+	private static final Map<String, List<Journal.Move>> UNNOTED =
+			new HashMap<>();
+	private final List<Journal.Move> unnoted;
 
 	/**
 	 * @param folder the store's own folder: its pictures in
@@ -51,6 +61,15 @@ public final class PictureStore {
 		this.gate = gate;
 		this.entry = entry;
 		this.others = others;
+		synchronized (UNNOTED) {
+			String key = following.getAbsolutePath();
+			List<Journal.Move> moves = UNNOTED.get(key);
+			if (moves == null) {
+				moves = new ArrayList<>();
+				UNNOTED.put(key, moves);
+			}
+			unnoted = moves;
+		}
 	}
 
 	/** The pictures, as they are kept under the noted moves. */
@@ -109,9 +128,6 @@ public final class PictureStore {
 	 * deletes one: each move is noted first, then followed.
 	 */
 	FileTexts.Kept kept() {
-		// Those that could not even be noted, for as long as the
-		// project is open.
-		List<Journal.Move> unnoted = new ArrayList<>();
 		follow();
 		return move -> {
 			synchronized (unnoted) {
@@ -131,6 +147,8 @@ public final class PictureStore {
 	}
 
 	private Following following() {
-		return new Following(following, gate);
+		synchronized (unnoted) {
+			return new Following(following, gate, new ArrayList<>(unnoted));
+		}
 	}
 }

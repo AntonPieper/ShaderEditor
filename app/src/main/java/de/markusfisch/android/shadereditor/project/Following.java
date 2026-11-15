@@ -18,14 +18,22 @@ import java.util.List;
 final class Following {
 	private final File file;
 	private final StateFile.Gate gate;
+	// Moves made that could not be noted yet, after the noted ones: a
+	// reader is told about them all the same.
+	private final List<Journal.Move> unnoted;
 
 	Following(File file) {
 		this(file, StateFile.Gate.OPEN);
 	}
 
 	Following(File file, StateFile.Gate gate) {
+		this(file, gate, List.of());
+	}
+
+	Following(File file, StateFile.Gate gate, List<Journal.Move> unnoted) {
 		this.file = file;
 		this.gate = gate;
+		this.unnoted = unnoted;
 	}
 
 	/**
@@ -127,12 +135,16 @@ final class Following {
 		return stored;
 	}
 
+	// What is noted, then what could not be noted yet.
 	private List<Journal.Move> noted() {
+		List<Journal.Move> moves = new ArrayList<>();
 		try {
-			return read();
+			moves.addAll(read());
 		} catch (IOException e) {
-			return List.of();
+			// Taken as none, to show something.
 		}
+		moves.addAll(unnoted);
+		return moves;
 	}
 
 	private boolean write(List<Journal.Move> moves) {
