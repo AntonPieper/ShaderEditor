@@ -279,8 +279,12 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 			this.item = item;
 			Row row = item.row();
 			itemView.setSelected(item.selected());
+			// Two lines or a 40 dp tile: a picture or an empty frame.
+			Row.Picture face = row.picture();
+			boolean tile = face.png() != null || face.resource() != 0 ||
+					face.own() || face.frame();
 			itemView.setMinimumHeight(itemView.getResources()
-					.getDimensionPixelSize(row.detail() == null
+					.getDimensionPixelSize(row.detail() == null && !tile
 							? R.dimen.se_row_height
 							: R.dimen.se_row_height_two_line));
 			bindPicture(item, row.picture());
@@ -289,8 +293,15 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 					? View.INVISIBLE
 					: View.VISIBLE);
 			// Beside the name when there is a second line, else centred.
-			((LinearLayout.LayoutParams) picture.getLayoutParams()).gravity =
-					row.detail() == null ? Gravity.CENTER_VERTICAL : Gravity.TOP;
+			LinearLayout.LayoutParams place =
+					(LinearLayout.LayoutParams) picture.getLayoutParams();
+			place.gravity = row.detail() == null
+					? Gravity.CENTER_VERTICAL
+					: Gravity.TOP;
+			place.topMargin = row.detail() == null
+					? 0
+					: itemView.getResources().getDimensionPixelSize(
+							R.dimen.se_row_padding_vertical);
 			name.setText(row.name());
 			// The scale's medium weight for the selected row.
 			TextViewCompat.setTextAppearance(name, item.selected()

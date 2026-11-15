@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Set;
 
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.navigation.Face;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Listing;
@@ -43,10 +42,13 @@ final class FoldersSource implements Source {
 	private final Set<String> lost = new HashSet<>();
 	private List<ProjectSessions.Recent> sessions = List.of();
 	// The picture of what runs in each folder opened before, by its
-	// session, and in the examples.
+	// session, the library's and the examples' among them.
 	private Map<String, byte[]> pictures = Map.of();
+	// The session of the examples, or null while it is not known, and
+	// how many shaders they hold, or -1 while that is not known.
 	@Nullable
-	private byte[] examples;
+	private String examples;
+	private int exampleShaders = -1;
 
 	FoldersSource(@NonNull Context context, @NonNull Remover remover) {
 		this.context = context;
@@ -65,12 +67,20 @@ final class FoldersSource implements Source {
 
 	/**
 	 * Takes the picture of what runs in each folder opened before, by
-	 * its session, the library's among them, and in the examples.
+	 * its session, the library's and the examples' among them.
 	 */
-	void setPictures(@NonNull Map<String, byte[]> pictures,
-			@Nullable byte[] examples) {
+	void setPictures(@NonNull Map<String, byte[]> pictures) {
 		this.pictures = pictures;
-		this.examples = examples;
+	}
+
+	/**
+	 * Takes the session of the examples, which the row Examples leads
+	 * into like any folder, and how many shaders they hold, -1 when
+	 * that is not known.
+	 */
+	void setExamples(@Nullable String key, int shaders) {
+		examples = key;
+		exampleShaders = shaders;
 	}
 
 	/** Takes the recent projects, the one opened last first. */
@@ -121,16 +131,23 @@ final class FoldersSource implements Source {
 					EnumSet.noneOf(Row.Mark.class),
 					EnumSet.noneOf(Row.Action.class)));
 		}
+		// The examples are a read-only folder like any other.
+		Row.Picture examplesFace = Face.of(Face.Of.EXAMPLES, null,
+				examples != null ? pictures.get(examples) : null, true);
+		String examplesCount = exampleShaders < 0
+				? null
+				: context.getString(R.string.nav_examples_count,
+						exampleShaders);
+		top.add(examples != null
+				? folder(Level.root(examples), examplesFace,
+						context.getString(R.string.load_sample), examplesCount,
+						EnumSet.of(Row.Mark.READ_ONLY))
+				: new Row("examples", Row.Kind.OTHER, examplesFace,
+						context.getString(R.string.load_sample), null, 0, null,
+						EnumSet.of(Row.Mark.READ_ONLY),
+						EnumSet.noneOf(Row.Action.class)));
 		List<Listing.Section> sections = new ArrayList<>();
-		sections.add(new Listing.Section(null, List.of(
-				folder(Level.EXAMPLES, Face.of(Face.Of.EXAMPLES, null,
-						examples, true),
-						context.getString(R.string.load_sample),
-						context.getString(R.string.nav_examples_count,
-								Samples.ALL.size()),
-						EnumSet.of(Row.Mark.READ_ONLY)))));
-		top.addAll(sections.remove(0).rows());
-		sections.add(0, new Listing.Section(null, top));
+		sections.add(new Listing.Section(null, top));
 		List<Recent> recent = recent();
 		if (!recent.isEmpty()) {
 			sections.add(new Listing.Section(

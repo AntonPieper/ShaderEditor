@@ -19,9 +19,11 @@ public class ReadingTest {
 		assertEquals("abcd1234", inner.key());
 		assertEquals("lib/noise", inner.path());
 		assertNull(ROOT.path());
-		assertNull(Level.EXAMPLES.key());
+		assertNull(Level.FOLDERS.key());
 		assertEquals(inner, Level.of(inner.name()));
-		assertEquals(Level.EXAMPLES, Level.of(Level.EXAMPLES.name()));
+		assertEquals(Level.FOLDERS, Level.of(Level.FOLDERS.name()));
+		// The examples are a folder like any other: no level of their own.
+		assertNull(Level.of("examples"));
 		assertEquals(Level.FOLDERS, inner.up().up().up());
 	}
 
