@@ -29,6 +29,7 @@ import de.markusfisch.android.shadereditor.project.DatabaseProjectFiles;
 import de.markusfisch.android.shadereditor.project.Preparation;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectLimits;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.legacy.LegacyShaderConverter;
 
 public class ShaderView extends GLSurfaceView {
@@ -167,6 +168,12 @@ public class ShaderView extends GLSurfaceView {
 			@NonNull Object picture, @Nullable Tuning tuning) {
 		engine.continuePlan(preparation, quality, picture, tuning);
 		requestRender();
+	}
+
+	// Shows the pass of file instead of the output, or the output for
+	// null: see ShaderEngine.showPass().
+	public void showPass(@Nullable ProjectPath file) {
+		engine.showPass(file);
 	}
 
 	// After the value of the tuning set with the plan changed: the GL

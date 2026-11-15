@@ -131,13 +131,21 @@ final class ShaderRenderPipeline {
 	}
 
 	// Stretches the texture over the surface, sampled as it is set up,
-	// limited by setLimit().
+	// limited by setLimit(). picture is what a thumbnail is of: the
+	// running pass, also while another one is shown.
 	void present(
 			@Nullable GlTexture2D texture,
+			@Nullable GlTexture2D picture,
 			int surfaceWidth,
 			int surfaceHeight) {
-		presented = texture;
+		presented = picture;
 		drawSurface(texture, surfaceWidth, surfaceHeight, null, limit);
+	}
+
+	// What a thumbnail is of.
+	@Nullable
+	GlTexture2D picture() {
+		return presented;
 	}
 
 	// Stretches the texture over the framebuffer, sampled as it is set up.
