@@ -174,6 +174,37 @@ public final class Projects {
 	}
 
 	/**
+	 * Return how many shaders the root of session id holds: the files
+	 * named as shaders that run, and the folders with a main.frag, or
+	 * -1 when it cannot be listed. Reads storage: off the main thread.
+	 */
+	public int shaderCount(String id) {
+		Locator locator = sessions.locator(id);
+		SafProjects.Opened opened = locator != null
+				? SafProjects.open(context, locator)
+				: null;
+		ProjectFiles files = opened != null ? opened.files() : null;
+		if (files == null ||
+				!(files.list(null) instanceof ProjectFiles.Entries entries)) {
+			return -1;
+		}
+		int count = 0;
+		for (ProjectFiles.Entry entry : entries.entries()) {
+			String name = entry.name();
+			if (entry.folder()) {
+				ProjectPath main = ProjectPath.parse(name + "/" +
+						OpenProject.MAIN).value();
+				count += main != null && files.head(main, 1) != null ? 1 : 0;
+			} else if (ShaderLanguage.listed(name) == ShaderLanguage.GLSL &&
+					!name.toLowerCase(java.util.Locale.ROOT)
+							.endsWith(ShaderLanguage.INCLUDE)) {
+				++count;
+			}
+		}
+		return count;
+	}
+
+	/**
 	 * Save a copy of paths of project, a read-only folder, in the
 	 * library, where {@link Library#places} says, with the text each
 	 * has now; a file the library has already is used as it is, and

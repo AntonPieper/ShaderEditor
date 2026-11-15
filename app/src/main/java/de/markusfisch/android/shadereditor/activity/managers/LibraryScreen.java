@@ -20,7 +20,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import de.markusfisch.android.shadereditor.R;
-import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
@@ -279,6 +278,10 @@ public final class LibraryScreen implements ShaderScreen {
 		showOpen();
 		startLibrary(show);
 		libraryAdd.resume();
+		// The examples are a folder like any other, with the pictures
+		// that come with them.
+		ExamplePictures.fill(activity, holds.projects(),
+				shaderListManager::loadShadersAsync);
 	}
 
 	@Override
@@ -700,30 +703,6 @@ public final class LibraryScreen implements ShaderScreen {
 							}
 							editorFragment.navigateToLine(line);
 						}
-					}
-
-					// Opened where it is, in the read-only examples;
-					// Save a copy keeps it.
-					@Override
-					public void onOpenExample(@NonNull Samples.Sample sample) {
-						ProjectPath path = ProjectPath.parse(sample.path())
-								.value();
-						holds.projects().examples(activity.getString(
-								R.string.load_sample), key -> {
-							if (activity.isFinishing() || activity.isDestroyed()) {
-								return;
-							} else if (key == null) {
-								Message.show(activity, activity.getString(
-										R.string.file_cannot_open,
-										sample.path(),
-										"its session cannot be kept"));
-								return;
-							}
-							if (ShaderEditorApp.preferences.autoSave()) {
-								open.save(false);
-							}
-							files.open(key, path, false);
-						});
 					}
 				});
 	}

@@ -269,7 +269,7 @@ The file in the editor has the selected background and is announced as selected.
 | --- | --- | --- | --- | --- |
 | **Folders** | "Folders", no arrow | Shaders; Examples; then **Recent**: folders and single files opened before, newest first, each with where it is | Open folder; Open file | `r-03` |
 | **Shaders** (the library) | "Shaders", "23 shaders" | Every shader: thumbnail, name or date, date of last change. Before the migration these are the database shaders, afterwards the files of `ShaderEditor/Shaders`; the list is the same. Section 11 says how it looks once the shaders are files | New | `r-02` |
-| **Examples** | "Examples", lock, "Read-only" | The four sections of EXAMPLES 2, each example with its line | New shader | `r-01` |
+| **Examples** | "Examples", lock, "Read-only" | The examples' folder, listed like any folder; its `README.md` gives the four sections of EXAMPLES 2, each example with its line, then Shared files (`lib`, `textures`) and the README. Names with their ending; `Ink`, `Bloom` and `Game of Life` are folders with their pictures | New shader | `r-01` |
 | **A folder's root** | its name; where it is | Running or Last opened; All files | New | `r-04`, `r-29` |
 | **A folder inside** | the path from the root, last part bold, shortened at the start | the same | New | `r-06`, `r-07` |
 
@@ -504,7 +504,7 @@ All behind the existing gate `@bool/project_mode` (on in debug builds only). Thi
 | N7 ★ | The New sheet; the row menus for files and folders; the toolbar menu built from what the open item can do | Emulator |
 | N8 ★ | The image sheet: a tap on an image shows it fitted on a checkerboard with "256 × 256 · PNG · 86 KB", the folder and the shader that reads it; **Insert as texture** adds UX 4's two lines (path from the edited file, an unused sampler name) after the uniforms as one Undo step, shown before the tap, offered only while the editor has a text file of the same folder, else one sentence says why; Rename and Delete where the folder can be changed (with M12) | Emulator |
 | N9 ★ | Read-only, the conflict bar, Save a copy through the New sheet (with M13) | Emulator |
-| N10 ★ | Examples as a folder (with X10); the Examples menu entry opens the drawer there | Emulator |
+| N10 ★ | Examples as a folder (with X10): the drawer lists the examples' folder like any other, ordered by its README; their pictures come with the app and fill their store; the Examples menu entry opens the drawer there | Emulator |
 | N11 ★ | Filter; landscape; the drawer kept open from 840 dp; keyboard shortcuts; spoken names and row actions | Emulator; TalkBack on the phone |
 | N12 | Thumbnails for shader files, in every folder: a picture is taken when a shader of any folder runs, and the top level shows the picture of what runs in each place | Emulator |
 | N13 ★ | With the gate lifted: delete `ShaderListManager`, `ShaderAdapter`, `drawer.xml`, `row_shader.xml`, the fixed `main_menu.xml`, the "Sort by last modification" setting, and after X10 the Examples screen with its fragment and adapter | Emulator |

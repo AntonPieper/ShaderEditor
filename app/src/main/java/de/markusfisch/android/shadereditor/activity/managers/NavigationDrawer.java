@@ -65,7 +65,6 @@ import java.util.concurrent.RejectedExecutionException;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.adapter.NavigationAdapter;
-import de.markusfisch.android.shadereditor.adapter.Samples;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.database.Database;
@@ -98,8 +97,6 @@ import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
  */
 public class NavigationDrawer implements ShaderList {
 	public interface Host {
-		void onOpenExample(@NonNull Samples.Sample sample);
-
 		/**
 		 * Open the file at path of the folder or single file opened
 		 * before with key in the editor; return whether it is being
@@ -186,10 +183,12 @@ public class NavigationDrawer implements ShaderList {
 	// The library's session, or null until the start opened it.
 	@Nullable
 	private String libraryKey;
-	// The session of the examples, or null until it is known: their
-	// files are shown in the level Examples.
+	// The session of the examples, a read-only folder listed like any
+	// other, or null until it is known.
 	@Nullable
 	private String examplesKey;
+	// Whether the examples were asked for before they were known.
+	private boolean examplesAsked;
 	// Whether New shader was asked for before the library was known.
 	private boolean newShaderAsked;
 	// The folder opened before whose levels are shown, or null.
@@ -205,13 +204,17 @@ public class NavigationDrawer implements ShaderList {
 		this.activity = activity;
 		this.host = host;
 		imageFaces = new ImageFaces(activity);
-		sources.put(Level.EXAMPLES, new ExamplesSource(activity, host));
 		folders = new FoldersSource(activity, this::remove);
 		sources.put(Level.FOLDERS, folders);
 		this.holds = holds;
 		projects = holds.projects();
-		projects.examples(activity.getString(R.string.load_sample),
-				key -> examplesKey = key);
+		projects.examples(activity.getString(R.string.load_sample), key -> {
+			examplesKey = key;
+			loadRecent();
+			if (key != null && examplesAsked) {
+				showExamples();
+			}
+		});
 		pickFolder = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(),
 				result -> onPicked(result, true));
@@ -387,9 +390,12 @@ public class NavigationDrawer implements ShaderList {
 		loadRecent();
 	}
 
-	/** Opens the drawer on the examples. */
+	/** Opens the drawer on the examples' folder. */
 	public void showExamples() {
-		go(Level.EXAMPLES);
+		examplesAsked = examplesKey == null;
+		if (examplesKey != null) {
+			go(Level.root(examplesKey));
+		}
 		drawerLayout.openDrawer(drawer);
 	}
 
@@ -605,7 +611,7 @@ public class NavigationDrawer implements ShaderList {
 
 					@Override
 					public void onShowExamples() {
-						go(Level.EXAMPLES);
+						showExamples();
 					}
 
 					@Override
@@ -660,10 +666,17 @@ public class NavigationDrawer implements ShaderList {
 					}
 				}
 				byte[] examplesPicture = runningPicture(examples);
+				if (examplesPicture != null) {
+					pictures.put(examples, examplesPicture);
+				}
+				int exampleShaders = examples != null
+						? projects.shaderCount(examples)
+						: -1;
 				handler.post(() -> {
 					folders.setRecent(recent);
 					folders.setLibrary(library, shaders);
-					folders.setPictures(pictures, examplesPicture);
+					folders.setExamples(examples, exampleShaders);
+					folders.setPictures(pictures);
 					if (level.equals(Level.FOLDERS)) {
 						refresh();
 					}
@@ -1030,10 +1043,7 @@ public class NavigationDrawer implements ShaderList {
 	@NonNull
 	private Level home() {
 		if (open != null) {
-			return open.level().key() != null &&
-					open.level().key().equals(examplesKey)
-					? Level.EXAMPLES
-					: open.level();
+			return open.level();
 		}
 		return libraryKey != null ? Level.root(libraryKey) : Level.FOLDERS;
 	}

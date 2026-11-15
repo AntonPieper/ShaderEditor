@@ -111,6 +111,9 @@ final class FolderSource {
 	private String manifestRuns;
 	// How far each folder is read, by its path; the root is "".
 	private final Map<String, Reading> readings = new HashMap<>();
+	// Whether nothing of it can be changed, as the examples', once its
+	// root was read.
+	private boolean readOnly;
 	// How each folder's README orders it, by the folder's path, with
 	// the time the README was changed when it was read.
 	private record Ordered(long modified, List<Readme.Section> sections) {
@@ -378,14 +381,28 @@ final class FolderSource {
 					? null
 					: context.getString(R.string.nav_all_files), files));
 		}
+		// A folder that cannot be changed, such as the examples, says
+		// so; New there makes a shader in the library.
+		boolean readOnly = !file && !reading.isLost() && (this.readOnly ||
+				project != null && project.storage().access() ==
+						OpenProject.Access.READ_ONLY);
+		String where = location == null || location.isEmpty()
+				? null
+				: location;
+		if (readOnly) {
+			String said = context.getString(R.string.nav_read_only);
+			where = where != null ? where + " \u00b7 " + said : said;
+		}
 		return new Listing(title(level),
-				location == null || location.isEmpty() ? null : location,
-				false,
+				where,
+				readOnly,
 				true,
 				// A single file's folder can be opened to load the rest;
 				// nothing can be created in a folder that is lost.
 				file ? Listing.Bar.OPEN_FOLDER : reading.isLost()
 						? Listing.Bar.NONE
+						: readOnly
+						? Listing.Bar.NEW_SHADER
 						: Listing.Bar.NEW,
 				sections,
 				reading.notice());
@@ -661,6 +678,9 @@ final class FolderSource {
 				Access access = items.problem() != null ? access() : null;
 				boolean changes = listed != null && reachable &&
 						listed.offers(folder).create();
+				// Nothing of a folder whose root offers nothing changes.
+				boolean fixed = folder == null && listed != null &&
+						reachable && !listed.offers(null).any();
 				Map<String, byte[]> read = new HashMap<>();
 				for (OpenProject.Item item : items.items()) {
 					// A folder shows its default shader's picture.
@@ -722,6 +742,9 @@ final class FolderSource {
 					wallpaper = wallpaperFile != null
 							? wallpaperFile.toString()
 							: null;
+					if (folder == null) {
+						readOnly = fixed;
+					}
 					if (changes) {
 						writable.add(path);
 					} else {
