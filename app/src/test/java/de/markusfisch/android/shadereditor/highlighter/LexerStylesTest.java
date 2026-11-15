@@ -74,6 +74,14 @@ public class LexerStylesTest {
 	}
 
 	@Test
+	public void unsignedSuffixBelongsToTheNumber() {
+		// "0xu" has no hex digit, so the "u" stays a name.
+		assertStyles(
+				"0x7fu 0X1FU 017u 1u 0xFFFFFFFFu 1.0f 1e3 .5 0xu",
+				"nnnnn.nnnnn.nnnn.nn.nnnnnnnnnnn.nnnn.nnn.nn.nn.");
+	}
+
+	@Test
 	public void exponentWithoutDigits() {
 		assertStyles(
 				"1e x;",
