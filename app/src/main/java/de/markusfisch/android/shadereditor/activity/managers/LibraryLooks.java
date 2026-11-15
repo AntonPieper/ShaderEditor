@@ -43,6 +43,7 @@ public final class LibraryLooks {
 	private final Projects projects;
 	private final ShaderViewManager view;
 	private final Runnable kept;
+	private final Pictured pictured;
 	private final Consumer<String> told;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final ExecutorService reading = Executors.newSingleThreadExecutor();
@@ -52,17 +53,27 @@ public final class LibraryLooks {
 	private int runs;
 	private boolean destroyed;
 
+	/** Hears a picture kept for a file of a folder. */
+	public interface Pictured {
+		void pictured(@NonNull String key, @NonNull ProjectPath path,
+				@NonNull byte[] png);
+	}
+
 	/**
-	 * @param kept called when something was kept that a list shows
-	 * @param told called with why something could not be kept
+	 * @param kept     called when something was kept that a list shows,
+	 *                 such as the wallpaper
+	 * @param pictured called with a picture kept for a file, which is
+	 *                 all a list needs to show it: nothing is read again
+	 * @param told     called with why something could not be kept
 	 */
 	public LibraryLooks(@NonNull Context context, @NonNull Projects projects,
 			@NonNull ShaderViewManager view, @NonNull Runnable kept,
-			@NonNull Consumer<String> told) {
+			@NonNull Pictured pictured, @NonNull Consumer<String> told) {
 		this.context = context.getApplicationContext();
 		this.projects = projects;
 		this.view = view;
 		this.kept = kept;
+		this.pictured = pictured;
 		this.told = told;
 	}
 
@@ -250,7 +261,7 @@ public final class LibraryLooks {
 					projects.setPreview(key, path, null, png, problem -> {
 						tell(problem);
 						if (problem == null && !destroyed) {
-							kept.run();
+							pictured.pictured(key, path, png);
 						}
 					});
 				}

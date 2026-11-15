@@ -72,6 +72,16 @@ public class FolderListingTest {
 				}
 
 				@Override
+				public String defaultShader() {
+					return "Default shader";
+				}
+
+				@Override
+				public String defaultShaderLine() {
+					return "Tap to run it";
+				}
+
+				@Override
 				public String changed(long time) {
 					return "date";
 				}
@@ -221,6 +231,53 @@ public class FolderListingTest {
 		assertEquals("All files", sections.get(1).heading());
 	}
 
+	// A file under Running has its menu, as in its own folder: Run where
+	// it can run and does not, and changes where that folder was read
+	// and can be changed.
+	@Test
+	public void runningRowsHaveTheirMenu() {
+		List<OpenProject.Used> used = List.of(
+				new OpenProject.Used(path("main.frag"), false,
+						new FileRole(FileRole.Kind.RUNS, List.of())),
+				new OpenProject.Used(path("pass.frag"), false,
+						new FileRole(FileRole.Kind.PASS, List.of())),
+				new OpenProject.Used(path("lib/sdf.glsl"), false,
+						new FileRole(FileRole.Kind.INCLUDE,
+								List.of(path("main.frag")))));
+		List<Row> running = FolderListing.sections(new FolderListing.Facts(
+				ROOT, Order.BY_NAME, Reading.started().listed(entries(
+						"main.frag", "pass.frag")), Map.of(), null, null,
+				null, List.of(), used, false, "main.frag", (key, name) -> null,
+				true, Set.of(""), Set.of()), WORDS).get(0).rows();
+		assertEquals(Set.of(Row.Action.RENAME, Row.Action.DUPLICATE,
+				Row.Action.DELETE), running.get(0).actions());
+		assertEquals(Set.of(Row.Action.RUN, Row.Action.RENAME,
+				Row.Action.DUPLICATE, Row.Action.DELETE),
+				running.get(1).actions());
+		// lib was not read: nothing that changes it is offered.
+		assertEquals(Set.of(Row.Action.RUN), running.get(2).actions());
+	}
+
+	// A folder where nothing ran yet offers what would run first; an
+	// invalid manifest says why.
+	@Test
+	public void theDefaultShaderStandsFirstWhereNothingRanYet() {
+		List<Listing.Section> sections = FolderListing.sections(
+				new FolderListing.Facts(ROOT, Order.BY_NAME,
+						Reading.started().listed(entries("blur.frag",
+								"main.frag", "shader-project.json")),
+						Map.of(), null, "Not valid: entry is missing",
+						"main.frag", List.of(), List.of(), false, "main.frag",
+						(key, name) -> null, true, Set.of(""), Set.of()),
+				WORDS);
+		assertEquals("Default shader", sections.get(0).heading());
+		assertEquals("main.frag", sections.get(0).rows().get(0).name());
+		assertEquals("Tap to run it", sections.get(0).rows().get(0).detail());
+		assertEquals("All files", sections.get(1).heading());
+		assertEquals("Not valid: entry is missing",
+				sections.get(1).rows().get(2).detail());
+	}
+
 	private static List<Listing.Section> list(List<Reading.Entry> entries,
 			String readme, List<OpenProject.Used> used) {
 		Set<String> names = new HashSet<>();
@@ -229,8 +286,8 @@ public class FolderListingTest {
 		}
 		return FolderListing.sections(new FolderListing.Facts(ROOT,
 				Order.BY_NAME, Reading.started().listed(entries), Map.of(),
-				null, null, Readme.sections(readme, names), used, false,
-				null, (key, name) -> null, true, Set.of()), WORDS);
+				null, null, null, Readme.sections(readme, names), used, false,
+				null, (key, name) -> null, true, Set.of(""), Set.of()), WORDS);
 	}
 
 	private static List<Reading.Entry> entries(String... names) {

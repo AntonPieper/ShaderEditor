@@ -54,6 +54,12 @@ public final class FolderListing {
 		/** "Runs main.frag". */
 		String runs(String entry);
 
+		/** "Default shader". */
+		String defaultShader();
+
+		/** What the default shader's row says: "Tap to run it". */
+		String defaultShaderLine();
+
 		/** When a file was changed, from milliseconds since the epoch. */
 		String changed(long time);
 	}
@@ -65,16 +71,21 @@ public final class FolderListing {
 
 	/**
 	 * What is known of a level: its reading, the pictures by path, the
-	 * file the wallpaper shows, what the manifest runs, the README's
+	 * file the wallpaper shows, the manifest's line (what it runs or
+	 * why not), the file that runs by the rule of SPEC 1 before it was
+	 * built here, offered as the default shader, the README's
 	 * sections, the files the running shader's last build read and
 	 * whether all of them are shown, the file that runs, whether the
-	 * folder can be changed, and the files with unsaved text.
+	 * folder can be changed, the paths of the folders read that can be
+	 * changed ("" for the root), and the files with unsaved text.
 	 */
 	public record Facts(Level level, Order order, Reading reading,
 			Map<String, byte[]> pictures, String wallpaper,
-			String manifestRuns, List<Readme.Section> readme,
+			String manifestLine, String defaultShader,
+			List<Readme.Section> readme,
 			List<OpenProject.Used> used, boolean allRunning, String running,
-			Runs runs, boolean writable, Set<String> unsaved) {
+			Runs runs, boolean writable, Set<String> writableFolders,
+			Set<String> unsaved) {
 	}
 
 	private FolderListing() {
@@ -87,6 +98,14 @@ public final class FolderListing {
 		if (!running.isEmpty()) {
 			sections.add(new Listing.Section(words.running(),
 					FileMarks.unsaved(running, facts.unsaved())));
+		} else if (facts.defaultShader() != null &&
+				facts.defaultShader().indexOf('/') < 0) {
+			// Nothing ran here yet: what would run comes first.
+			for (Row row : files(facts, words, facts.reading().rowsNamed(
+					facts.level(), List.of(facts.defaultShader())))) {
+				sections.add(new Listing.Section(words.defaultShader(),
+						List.of(withDetail(row, words.defaultShaderLine()))));
+			}
 		}
 		// The entries the README takes leave the pages to the rest.
 		Set<String> linked = new LinkedHashSet<>();
@@ -188,9 +207,9 @@ public final class FolderListing {
 					? null
 					: row.kind() == Row.Kind.OTHER
 					? words.cannotOpen(size != null ? size : 0)
-					: facts.manifestRuns() != null &&
+					: facts.manifestLine() != null &&
 					row.key().equals(ProjectManifest.FILE.toString())
-					? words.runs(facts.manifestRuns())
+					? facts.manifestLine()
 					: words.changed(row.changed());
 			dressed.add(new Row(row.key(), row.kind(),
 					Face.of(row.kind(), row.name(), picture), row.name(),
@@ -216,11 +235,24 @@ public final class FolderListing {
 		for (OpenProject.Used file : used.subList(0, shown)) {
 			String key = file.path().toString();
 			Row.Kind kind = file.image() ? Row.Kind.IMAGE : Row.Kind.TEXT;
-			rows.add(new Row(key, kind, Face.of(kind,
+			Row row = new Row(key, kind, Face.of(kind,
 					file.path().getFileName(), facts.pictures().get(key)), key,
 					role(file.role(), words), 0, null,
 					EnumSet.noneOf(Row.Mark.class),
-					EnumSet.noneOf(Row.Action.class)));
+					EnumSet.noneOf(Row.Action.class));
+			// Its menu, as in its own folder: changes only where that
+			// folder was read and can be changed.
+			int slash = key.lastIndexOf('/');
+			Map<String, OpenProject.Runs> runs = new HashMap<>();
+			OpenProject.Runs known = facts.runs().of(key,
+					file.path().getFileName());
+			if (known != null) {
+				runs.put(key, known);
+			}
+			rows.addAll(FileActions.of(List.of(row), facts.running(), runs,
+					facts.writableFolders().contains(slash > -1
+							? key.substring(0, slash)
+							: "")));
 		}
 		if (shown < used.size()) {
 			rows.add(new Row(ALL_RUNNING, Row.Kind.MORE,

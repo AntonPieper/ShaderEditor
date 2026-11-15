@@ -576,23 +576,28 @@ public final class OpenProject {
 		return store.head(path, count);
 	}
 
+	/** What the manifest at the root says: the file it runs, or why not. */
+	public record Manifest(ProjectPath entry, String problem) {
+	}
+
 	/**
-	 * Return the file the manifest at the root names to run, or null
-	 * where there is no valid manifest. Reads storage, as
-	 * {@link #list} does: off the main thread.
+	 * Return what the manifest at the root says, or null where there is
+	 * none. Reads storage, as {@link #list} does: off the main thread.
 	 */
-	public ProjectPath manifestEntry() {
+	public Manifest manifest() {
 		if (lone != null || !(store.read(ProjectManifest.FILE,
 				Document.MAX_BYTES) instanceof Content content)) {
 			return null;
 		}
 		String text = SourceText.decode(content.bytes());
-		ProjectParseResult<ProjectManifest> manifest = text != null
-				? ProjectManifest.parse(text)
-				: null;
-		return manifest != null && manifest.isSuccess()
-				? manifest.value().entry()
-				: null;
+		if (text == null) {
+			return new Manifest(null, "it is not text");
+		}
+		ProjectParseResult<ProjectManifest> manifest =
+				ProjectManifest.parse(text);
+		return manifest.isSuccess()
+				? new Manifest(manifest.value().entry(), null)
+				: new Manifest(null, manifest.diagnostic().message());
 	}
 
 	/**

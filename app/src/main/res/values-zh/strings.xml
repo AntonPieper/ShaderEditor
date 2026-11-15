@@ -339,6 +339,9 @@
 	<string name="nav_show_more">Show more</string>
 	<string name="nav_shown_of">%1$d of %2$d</string>
 	<string name="nav_runs">Runs %1$s</string>
+	<string name="nav_manifest_invalid">Not valid: %1$s</string>
+	<string name="nav_default_shader">Default shader</string>
+	<string name="nav_default_shader_line">Tap to run it</string>
 	<string name="nav_cannot_open_size">Cannot be opened here · %1$s</string>
 	<string name="nav_cannot_open_tap">%1$s cannot be opened here: the editor opens files up to 16 MB</string>
 	<string name="nav_kind_folder">folder</string>

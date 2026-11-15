@@ -65,9 +65,6 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.adapter.NavigationAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
-import de.markusfisch.android.shadereditor.database.DataSource;
-import de.markusfisch.android.shadereditor.database.Database;
-import de.markusfisch.android.shadereditor.navigation.Face;
 import de.markusfisch.android.shadereditor.navigation.FolderListing;
 import de.markusfisch.android.shadereditor.navigation.Item;
 import de.markusfisch.android.shadereditor.navigation.Level;
@@ -84,7 +81,6 @@ import de.markusfisch.android.shadereditor.project.Previews;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ProjectSessions;
 import de.markusfisch.android.shadereditor.project.Projects;
-import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.widget.Message;
 import de.markusfisch.android.shadereditor.widget.NewSheet;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
@@ -109,9 +105,6 @@ public class NavigationDrawer implements ShaderList {
 	}
 
 	private static final String STATE = "navigation_drawer";
-	// The key of a row of a shader that was not moved; no file name
-	// holds the character it starts with.
-	private static final String NOT_MOVED = "\u0000not moved ";
 	private static final String LEVEL = "level";
 	private static final long SLIDE_MILLIS = 200;
 
@@ -146,11 +139,8 @@ public class NavigationDrawer implements ShaderList {
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	// The images of the folder shown, read small for its rows.
 	private final ImageFaces imageFaces;
-	// The shaders of the database that could not be moved.
-	@NonNull
-	private List<LibraryMove.Failed> notMoved = Collections.emptyList();
-	@NonNull
-	private Map<Long, byte[]> notMovedPictures = Collections.emptyMap();
+	// What the library's root lists besides its files.
+	private final LibraryRoot libraryRoot;
 
 	// The list in view and the one the next level slides in with.
 	private RecyclerView list;
@@ -187,6 +177,8 @@ public class NavigationDrawer implements ShaderList {
 		this.activity = activity;
 		this.host = host;
 		imageFaces = new ImageFaces(activity);
+		libraryRoot = new LibraryRoot(activity, executor, handler,
+				this::refreshLibraryRoot);
 		folders = new FoldersSource(activity, this::remove);
 		sources.put(Level.FOLDERS, folders);
 		this.holds = holds;
@@ -413,6 +405,7 @@ public class NavigationDrawer implements ShaderList {
 		// library from now on.
 		if (folder != null && folder.key().equals(key)) {
 			folder.setLooks(looks(key, true));
+			folder.setDecoration(libraryRoot);
 		}
 		// The screen can show a file by now.
 		newFile.resume();
@@ -425,8 +418,21 @@ public class NavigationDrawer implements ShaderList {
 		}
 	}
 
-	// Something kept changed, a picture of any folder among it: the
-	// folder shown and the places are read again.
+	/**
+	 * Takes the picture kept for the file at path of the folder opened
+	 * before with key: the rows that show it change, and nothing is
+	 * read again.
+	 */
+	public void setPicture(@NonNull String key, @NonNull ProjectPath path,
+			@NonNull byte[] png) {
+		if (folder != null && folder.key().equals(key)) {
+			folder.setPicture(path, png);
+		}
+		loadRecent();
+	}
+
+	// Something kept changed: the folder shown and the places are read
+	// again.
 	@Override
 	public void loadShadersAsync() {
 		loadRecent();
@@ -441,7 +447,7 @@ public class NavigationDrawer implements ShaderList {
 	 */
 	public void closeLibrary() {
 		libraryKey = null;
-		notMoved = Collections.emptyList();
+		libraryRoot.clear();
 		open = running = null;
 		used = Collections.emptySet();
 		go(Level.FOLDERS);
@@ -452,33 +458,7 @@ public class NavigationDrawer implements ShaderList {
 	 * the files of the library's root, where a tap opens them.
 	 */
 	public void setNotMoved(@NonNull List<LibraryMove.Failed> failed) {
-		notMoved = failed;
-		refreshLibraryRoot();
-		// Each with its database thumbnail (NAVIGATION 11.2), read off
-		// the main thread; the database's grey square is none.
-		Context app = activity.getApplicationContext();
-		try {
-			executor.execute(() -> {
-				Map<Long, byte[]> read = new HashMap<>();
-				DataSource database = Database.getInstance(app)
-						.getDataSource();
-				for (LibraryMove.Failed shader : failed) {
-					byte[] png = OldPlaceholder.real(app,
-							database.shader.getThumbnail(shader.id()));
-					if (png != null) {
-						read.put(shader.id(), png);
-					}
-				}
-				handler.post(() -> {
-					if (notMoved == failed) {
-						notMovedPictures = read;
-						refreshLibraryRoot();
-					}
-				});
-			});
-		} catch (RejectedExecutionException e) {
-			// Destroyed.
-		}
+		libraryRoot.setNotMoved(failed);
 	}
 
 	private void refreshLibraryRoot() {
@@ -492,7 +472,7 @@ public class NavigationDrawer implements ShaderList {
 	public void setSelectedShaderId(long id) {
 		// Only a shader that was not moved is still in the database.
 		open = id > 0 && libraryKey != null
-				? new Item.Place(Level.root(libraryKey), NOT_MOVED + id)
+				? new Item.Place(Level.root(libraryKey), LibraryRoot.key(id))
 				: null;
 		running = open;
 		used = Collections.emptySet();
@@ -543,12 +523,14 @@ public class NavigationDrawer implements ShaderList {
 	/**
 	 * Shows the New sheet for the folder of the file at path of the
 	 * folder opened before with key; for a file of the library, at the
-	 * library's root, where its shaders are.
+	 * library's root, where its shaders are, and for one of a folder
+	 * that cannot be changed, readOnly, such as the examples, too.
 	 */
-	public void showNew(@NonNull String key, @NonNull ProjectPath path) {
-		// Nothing can be made in the examples, which are read-only: a
-		// shader is made in the library.
-		if (key.equals(libraryKey) || key.equals(examplesKey)) {
+	public void showNew(@NonNull String key, @NonNull ProjectPath path,
+			boolean readOnly) {
+		// Nothing can be made in a read-only folder: a shader is made
+		// in the library.
+		if (key.equals(libraryKey) || readOnly) {
 			showNewShader();
 			return;
 		}
@@ -651,8 +633,10 @@ public class NavigationDrawer implements ShaderList {
 			executor.execute(() -> {
 				List<ProjectSessions.Recent> recent =
 						projects.sessions().recent();
+				// Every place is counted by one rule: the shaders of its
+				// root and its folders with a main.frag.
 				int shaders = library != null
-						? projects.library().rootFiles().size()
+						? projects.shaderCount(library)
 						: -1;
 				// Each place shows the picture of what runs there.
 				Map<String, byte[]> pictures = new HashMap<>();
@@ -985,6 +969,9 @@ public class NavigationDrawer implements ShaderList {
 					refresh();
 				}
 			});
+			if (projects.isLibrary(key)) {
+				folder.setDecoration(libraryRoot);
+			}
 		}
 		return folder;
 	}
@@ -1052,62 +1039,10 @@ public class NavigationDrawer implements ShaderList {
 
 	@NonNull
 	private Listing list(@NonNull Level level) {
-		Listing listing = source(level).list(
+		return source(level).list(
 				ShaderEditorApp.preferences.sortByLastModification()
 						? Order.CHANGED
 						: Order.BY_NAME);
-		return libraryKey != null && level.equals(Level.root(libraryKey))
-				? withNotMoved(withoutShaders(listing))
-				: listing;
-	}
-
-	// A library without a shader says so and offers to make one; its
-	// folders, such as textures, may be there (NAVIGATION 6.7).
-	@NonNull
-	private Listing withoutShaders(@NonNull Listing listing) {
-		Notice notice = listing.notice();
-		if (!notMoved.isEmpty() || (notice != null &&
-				notice.kind() != Notice.Kind.EMPTY)) {
-			return listing;
-		}
-		for (Listing.Section section : listing.sections()) {
-			for (Row row : section.rows()) {
-				if (row.kind() != Row.Kind.FOLDER) {
-					return listing;
-				}
-			}
-		}
-		return new Listing(listing.title(), listing.subtitle(),
-				listing.readOnly(), listing.sortable(), listing.bar(),
-				listing.sections(), new Notice(Notice.Kind.NO_SHADERS, null));
-	}
-
-	// The shaders that could not be moved, by title and why, after
-	// the files.
-	@NonNull
-	private Listing withNotMoved(@NonNull Listing listing) {
-		if (notMoved.isEmpty()) {
-			return listing;
-		}
-		List<Row> rows = new ArrayList<>();
-		for (LibraryMove.Failed failed : notMoved) {
-			String title = failed.title();
-			byte[] png = notMovedPictures.get(failed.id());
-			rows.add(new Row(NOT_MOVED + failed.id(), Row.Kind.SHADER,
-					// A shader of the database, named as a shader is.
-					Face.of(Face.Of.FILE, ShaderLanguage.PASS, png, true),
-					title != null && !title.isEmpty()
-							? title
-							: activity.getString(R.string.nav_untitled),
-					failed.reason(), 0, null, Collections.emptySet(),
-					Collections.emptySet()));
-		}
-		List<Listing.Section> sections = new ArrayList<>(listing.sections());
-		sections.add(new Listing.Section(activity.getString(
-				R.string.library_not_moved_section, rows.size()), rows));
-		return new Listing(listing.title(), listing.subtitle(),
-				listing.readOnly(), listing.sortable(), listing.bar(),
-				sections, listing.notice());
 	}
 
 	private void show(@NonNull RecyclerView list) {
@@ -1172,9 +1107,9 @@ public class NavigationDrawer implements ShaderList {
 
 	private void tap(@NonNull Item item) {
 		String key = item.row() != null ? item.row().key() : null;
-		if (key != null && key.startsWith(NOT_MOVED)) {
-			host.onOpenShader(Long.parseLong(
-					key.substring(NOT_MOVED.length())));
+		long shader = LibraryRoot.shader(key);
+		if (shader > -1) {
+			host.onOpenShader(shader);
 			close();
 			return;
 		}
