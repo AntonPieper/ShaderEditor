@@ -89,7 +89,13 @@ public class LifecycleSequencesTest {
 		 * place of reload, save and flush(done); FAIL fails journal and
 		 * history.
 		 */
-		MOVED(4, MOVED_SEQUENCES);
+		MOVED(4, MOVED_SEQUENCES),
+		/**
+		 * A saved file another app deleted while the app was in front,
+		 * so no check saw it; FAIL fails journal and history. A save
+		 * that tells of no failure leaves a file.
+		 */
+		GONE(4, GONE_SEQUENCES);
 
 		private final int length;
 		private final int sequences;
@@ -100,11 +106,12 @@ public class LifecycleSequencesTest {
 		}
 	}
 
-	private static final int SAVED_SEQUENCES = 3371;
-	private static final int UNSTORABLE_SEQUENCES = 1340;
+	private static final int SAVED_SEQUENCES = 3379;
+	private static final int UNSTORABLE_SEQUENCES = 1336;
 	private static final int HELD_SEQUENCES = 1925;
-	private static final int RELOADED_SEQUENCES = 1931;
+	private static final int RELOADED_SEQUENCES = 1929;
 	private static final int MOVED_SEQUENCES = 926;
+	private static final int GONE_SEQUENCES = 485;
 	private static final ProjectPath B = ProjectPath.parse("b.glsl").value();
 	private static final ProjectPath A = ProjectPath.parse("a.glsl").value();
 
@@ -224,7 +231,7 @@ public class LifecycleSequencesTest {
 		private World(Start start) {
 			this.start = start;
 			boolean held = start != Start.SAVED &&
-					start != Start.UNSTORABLE;
+					start != Start.UNSTORABLE && start != Start.GONE;
 			failing = start == Start.HELD || start == Start.RELOADED
 					? new File[]{history}
 					: new File[]{drafts, history};
@@ -256,6 +263,9 @@ public class LifecycleSequencesTest {
 				assertEquals("typed 1", journaled());
 				assertEquals("typed 1", replaced);
 			}
+			if (start == Start.GONE) {
+				store.delete(A);
+			}
 		}
 
 		private void open() {
@@ -265,7 +275,8 @@ public class LifecycleSequencesTest {
 					steps.main, steps.timers, OpenProject.MAX_BUDGET);
 			closed = false;
 			load(A);
-			assertNotNull(document);
+			// A file deleted elsewhere opens only from unsaved text.
+			assertTrue(start == Start.GONE || document != null);
 		}
 
 		private void load(ProjectPath path) {
@@ -278,6 +289,9 @@ public class LifecycleSequencesTest {
 		// Return where the project has the document, or null when it
 		// closed it.
 		private ProjectPath at() {
+			if (document == null) {
+				return null;
+			}
 			return project.document(A) == document ? A
 					: project.document(B) == document ? B : null;
 		}
@@ -295,7 +309,8 @@ public class LifecycleSequencesTest {
 					case SAVE, BACKGROUND -> !closed && step != last &&
 							start != Start.MOVED;
 					case RELOAD -> !closed && step != last &&
-							start != Start.SAVED && start != Start.MOVED;
+							start != Start.SAVED && start != Start.MOVED &&
+							start != Start.GONE;
 					case RENAME, DELETE -> !closed && step != last &&
 							start == Start.MOVED && at() != null;
 					case CLOSE -> !closed;
@@ -331,6 +346,13 @@ public class LifecycleSequencesTest {
 					});
 				}
 				case SAVE -> project.save(true, outcomes -> {
+					OpenProject.Outcome outcome = outcomes.get(A);
+					if (start == Start.GONE && at() == A &&
+							(outcome == null ||
+									outcome instanceof OpenProject.Saved)) {
+						assertNotNull(sequence + ": saved, but no file",
+								store.read(A));
+					}
 				});
 				case BACKGROUND -> {
 					OpenProject asked = project;
@@ -430,6 +452,13 @@ public class LifecycleSequencesTest {
 				}
 			} else {
 				open();
+			}
+			if (document == null) {
+				// Neither file nor journal: nothing typed was held since
+				// the file was deleted elsewhere.
+				assertEquals(sequence + ": held text is gone", 0, floor);
+				closed = true;
+				return;
 			}
 			String found = document.text().toString();
 			if (store.read(A) != null || store.read(B) != null) {

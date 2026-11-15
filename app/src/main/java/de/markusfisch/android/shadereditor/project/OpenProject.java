@@ -953,8 +953,11 @@ public final class OpenProject {
 	 * can hold, so that opening the file would give another text, as
 	 * one with half of a surrogate pair, fails with the place of the
 	 * character and stays unsaved; nothing is written for it. When explicit, a
-	 * document without unsaved text whose file was seen to be gone is
-	 * written too, creating the file again unless one is there.
+	 * document without unsaved text is first checked as a refresh checks
+	 * it, so that nothing is told saved that storage does not hold: one
+	 * whose file is gone is written, creating the file again unless one
+	 * is there; one whose file changed takes the stored text and is told
+	 * as a conflict; one whose file cannot be read fails.
 	 */
 	public void save(boolean explicit, Callback<Map<ProjectPath, Outcome>> done) {
 		persist();
@@ -973,8 +976,19 @@ public final class OpenProject {
 				outcomes.put(path, new Unreadable(record.unreadable));
 				continue;
 			} else if (!record.edited() && !(explicit &&
-					record.document() != null &&
-					record.found == FileTexts.Found.MISSING)) {
+					record.document() != null)) {
+				continue;
+			} else if (!record.edited()) {
+				outcomes.put(path, null);
+				++left[0];
+				record.whenIdle(() -> saveChecked(record, outcome -> {
+					if (outcome != null) {
+						outcomes.put(path, outcome);
+					} else {
+						outcomes.remove(path);
+					}
+					finished.run();
+				}));
 				continue;
 			} else if (record.conflict() != null) {
 				outcomes.put(path, new Conflict(record.conflict()));
@@ -2036,6 +2050,36 @@ public final class OpenProject {
 					flush(record);
 					done.done(save);
 				});
+	}
+
+	// Save record, whose document has no unsaved text, as an explicit
+	// save does: look at storage first, write the text again where the
+	// file is gone, and tell what was found otherwise; done gets the
+	// outcome, null when storage holds the text and nothing was written.
+	private void saveChecked(FileRecord record, Callback<Outcome> done) {
+		Set<ProjectPath> reread = new HashSet<>();
+		Callback<FileTexts.Save> saved = save -> done.done(save.outcome());
+		check(record, reread, () -> {
+			if (records.get(record.path) != record) {
+				done.done(null);
+			} else if (record.edited()) {
+				// Typed in meanwhile: saved as any unsaved text.
+				String conflict = record.conflict();
+				if (conflict != null) {
+					done.done(new Conflict(conflict));
+				} else {
+					record.whenIdle(() -> save(record, saved));
+				}
+			} else if (reread.contains(record.path)) {
+				done.done(new Conflict("the file has changed"));
+			} else if (record.found == FileTexts.Found.MISSING) {
+				record.whenIdle(() -> save(record, saved));
+			} else if (record.found != FileTexts.Found.SAME) {
+				done.done(new Failed("it cannot be read"));
+			} else {
+				done.done(null);
+			}
+		});
 	}
 
 	// See what storage holds of record: give its document the stored

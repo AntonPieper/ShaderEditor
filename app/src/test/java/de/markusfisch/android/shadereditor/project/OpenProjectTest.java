@@ -1999,6 +1999,23 @@ public class OpenProjectTest {
 		assertNotNull(problem);
 	}
 
+	// Changed elsewhere while the app was in front, so no check saw it:
+	// an explicit save looks first, says so and takes the stored text.
+	@Test
+	public void explicitSaveOfACleanFileChangedElsewhereSaysSo()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		write("a.glsl", "theirs");
+
+		assertTrue(save(project, true).get(a) instanceof Conflict);
+
+		assertEquals("theirs", read("a.glsl"));
+		assertEquals("theirs", document.text().toString());
+		assertFalse(document.isModified());
+	}
+
 	@Test
 	public void explicitSaveCreatesACleanFileDeletedElsewhereAgain()
 			throws IOException {
