@@ -2,4 +2,6 @@
 <resources>
 	<!-- The code view's toolbar action that explains the selected word. -->
 	<item name="look_up" type="id" />
+	<!-- The code view's accessibility action that fixes the caret's line. -->
+	<item name="row_fix" type="id" />
 </resources>

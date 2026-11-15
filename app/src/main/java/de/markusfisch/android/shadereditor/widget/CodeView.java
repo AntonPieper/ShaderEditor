@@ -19,6 +19,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.text.TextPaint;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -143,6 +144,16 @@ public class CodeView extends View {
 		void lookUp(@NonNull String word);
 	}
 
+	/** Offers one certain fix for the messages of a line. */
+	public interface RowFix {
+		/** Return the label of the fix for messages, or null for none. */
+		@Nullable
+		String label(@NonNull List<String> messages);
+
+		/** Apply the fix of messages. */
+		void apply(@NonNull List<String> messages);
+	}
+
 	/** The input type of today's editor with native suggestions hidden. */
 	public static final int INPUT_TYPE_NO_SUGGESTIONS = InputType.TYPE_NULL;
 	/** The input type of today's editor with native suggestions shown. */
@@ -181,6 +192,7 @@ public class CodeView extends View {
 		public void onChange(Document.Change change, Text before) {
 			accessibility.changed(change, before);
 			edited = true;
+			markedLine = -1;
 			invalidate();
 		}
 
@@ -325,6 +337,10 @@ public class CodeView extends View {
 	private boolean connected;
 	private LineBackdrop backdrop;
 	private LookUp lookUp;
+	private RowFix rowFix;
+	// The line marked after a fix put it in, until the next edit.
+	private int markedLine = -1;
+	private boolean fixPressed;
 	private AnalysisScheduler.Callback analysisListener;
 	private boolean tabIndents = true;
 	private boolean showLineNumbers = true;
@@ -376,6 +392,10 @@ public class CodeView extends View {
 	private List<String> rowMessages;
 	private int rowWidth;
 	private String[] rowText = new String[0];
+	// The label of the fix the row offers under its text, or null, and
+	// where it was drawn.
+	private String rowFixLabel;
+	private final RectF fixRect = new RectF();
 	// Whether the document changed since the last update; a row that
 	// moved with its line then moved with the text, and the scroll
 	// position stays.
@@ -424,7 +444,9 @@ public class CodeView extends View {
 					@Override
 					public boolean onSingleTapUp(@NonNull MotionEvent e) {
 						int mark = markAt(e.getX(), e.getY());
-						if (mark >= 0) {
+						if (fixAt(e.getX(), e.getY())) {
+							applyRowFix();
+						} else if (mark >= 0) {
 							toggleRow(mark);
 						} else {
 							placeCaret(e.getX(), e.getY());
@@ -613,6 +635,25 @@ public class CodeView extends View {
 		this.lookUp = lookUp;
 	}
 
+	/**
+	 * Offer the fix rowFix has for the messages of a line in its row,
+	 * or none for null, the default.
+	 */
+	public void setRowFix(@Nullable RowFix rowFix) {
+		this.rowFix = rowFix;
+		rowMessages = null;
+		placeRow();
+	}
+
+	/**
+	 * Mark line, as one that was just put in, until the next edit; -1
+	 * for none.
+	 */
+	public void markLine(int line) {
+		markedLine = line;
+		invalidate();
+	}
+
 	public void setLineBackdrop(@Nullable LineBackdrop backdrop) {
 		this.backdrop = backdrop;
 		invalidate();
@@ -637,7 +678,9 @@ public class CodeView extends View {
 		placeRow();
 		invalidate();
 		accessibility.errorsChanged(failing.length > 0
-				? errorOnLine(failing[0], marks.messages(failing[0]).get(0))
+				? withFix(errorOnLine(failing[0],
+				marks.messages(failing[0]).get(0)),
+				marks.messages(failing[0]))
 				: null);
 	}
 
@@ -764,6 +807,14 @@ public class CodeView extends View {
 			downX = event.getX();
 			downY = event.getY();
 			grabHandle(downX, downY);
+			fixPressed = fixAt(downX, downY);
+			if (fixPressed) {
+				invalidate();
+			}
+		} else if (fixPressed && (action != MotionEvent.ACTION_MOVE ||
+				!fixAt(event.getX(), event.getY()))) {
+			fixPressed = false;
+			invalidate();
 		}
 		boolean handled = dragging == DRAG_HANDLE ||
 				gestures.onTouchEvent(event);
@@ -1190,6 +1241,10 @@ public class CodeView extends View {
 				fill.setColor(severity == ProjectDiagnostic.Severity.ERROR
 						? a.errorColor
 						: a.warningColor);
+				canvas.drawRect(clipLeft, top, right, top + lineHeight, fill);
+			}
+			if (n == markedLine) {
+				fill.setColor(a.selectionColor);
 				canvas.drawRect(clipLeft, top, right, top + lineHeight, fill);
 			}
 			canvas.translate(textLeft, top);
@@ -2047,7 +2102,10 @@ public class CodeView extends View {
 				toolbar.close();
 				touched = null;
 				int mark = markAt(x, y);
-				if (mark >= 0 &&
+				if (fixAt(x, y)) {
+					applyRowFix();
+					return true;
+				} else if (mark >= 0 &&
 						!event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)) {
 					toggleRow(mark);
 					return true;
@@ -2451,14 +2509,21 @@ public class CodeView extends View {
 		int oldHeight = lines.rowHeight();
 		rowMessages = messages;
 		rowWidth = width;
+		rowFixLabel = null;
 		if (line < 0) {
 			lines.setRow(-1, 0);
 		} else {
 			CodeAppearance a = appearance;
 			rowText = MessageRow.lines(messages, Math.max(1, width),
 					rowStyle);
+			if (rowFix != null) {
+				rowFixLabel = rowFix.label(messages);
+			}
 			lines.setRow(line, rowText.length * a.rowLineHeight +
-					2 * a.rowPaddingVertical);
+					2 * a.rowPaddingVertical +
+					(rowFixLabel != null
+							? Math.round(a.fixInset + a.fixHeight)
+							: 0));
 		}
 		int scrollY = getScrollY();
 		if (!edited || line == oldLine) {
@@ -2545,6 +2610,84 @@ public class CodeView extends View {
 			canvas.drawText(text, x, y, a.rowPaint);
 			y += a.rowLineHeight;
 		}
+		if (rowFixLabel != null) {
+			drawFix(canvas, x, right, bottom);
+		}
+	}
+
+	// Draws the row's fix under its text as a text button, 40 dp high,
+	// at the end of the row, cut to the row's width; its touch target
+	// is 48 dp high.
+	private void drawFix(Canvas canvas, float left, float right,
+			float bottom) {
+		CodeAppearance a = appearance;
+		TextPaint paint = a.fixPaint;
+		float end = right - a.fixInset;
+		CharSequence label = TextUtils.ellipsize(rowFixLabel, paint,
+				Math.max(0, end - left - 2 * a.fixPadding),
+				TextUtils.TruncateAt.END);
+		float start = end - 2 * a.fixPadding -
+				paint.measureText(label, 0, label.length());
+		float top = bottom - a.rowPaddingVertical - a.fixHeight;
+		if (fixPressed) {
+			fill.setColor(a.fixPressedColor);
+			rowRect.set(start, top, end, top + a.fixHeight);
+			canvas.drawRoundRect(rowRect, a.corner, a.corner, fill);
+		}
+		Paint.FontMetrics fm = paint.getFontMetrics();
+		canvas.drawText(label, 0, label.length(), start + a.fixPadding,
+				top + (a.fixHeight - fm.descent - fm.ascent) / 2, paint);
+		float slack = (a.tapTarget - a.fixHeight) / 2;
+		fixRect.set(start, top - slack, end, top + a.fixHeight + slack);
+	}
+
+	// Whether the view's point x, y is on the fix of the row.
+	private boolean fixAt(float x, float y) {
+		return rowFixLabel != null && lines.rowLine() >= 0 &&
+				fixRect.contains(x + getScrollX(), y + getScrollY());
+	}
+
+	private void applyRowFix() {
+		List<String> messages = rowMessages;
+		if (rowFix != null && messages != null) {
+			rowFix.apply(messages);
+		}
+	}
+
+	// Returns what is said of an error, and of its fix if it has one.
+	private String withFix(String said, List<String> messages) {
+		String fix = rowFix != null ? rowFix.label(messages) : null;
+		return fix != null
+				? said + " " + getResources().getString(
+				R.string.a11y_fix_available, fix)
+				: said;
+	}
+
+	/** Return the label of the fix for the caret's line, or null. */
+	@Nullable
+	CharSequence caretLineFix() {
+		List<String> messages = caretLineMessages();
+		return messages != null ? rowFix.label(messages) : null;
+	}
+
+	/** Apply the fix for the caret's line; return whether it had one. */
+	boolean applyCaretLineFix() {
+		List<String> messages = caretLineMessages();
+		if (messages == null || rowFix.label(messages) == null) {
+			return false;
+		}
+		rowFix.apply(messages);
+		return true;
+	}
+
+	@Nullable
+	private List<String> caretLineMessages() {
+		if (rowFix == null || document == null || marks == null) {
+			return null;
+		}
+		List<String> messages = marks.messages(document.text().lineOf(
+				document.selection().head()));
+		return messages.isEmpty() ? null : messages;
 	}
 
 	// Returns the first line all of which is on screen.

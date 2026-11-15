@@ -83,6 +83,10 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		if (error != null) {
 			info.setContentInvalid(true);
 			info.setError(error);
+			CharSequence fix = view.caretLineFix();
+			if (fix != null) {
+				info.addAction(new AccessibilityAction(R.id.row_fix, fix));
+			}
 		}
 		String word = view.lookUpWord();
 		if (word != null) {
@@ -273,6 +277,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			return super.performAccessibilityAction(host, action, arguments);
 		} else if (action == R.id.look_up) {
 			return view.lookUpSelection();
+		} else if (action == R.id.row_fix) {
+			return view.applyCaretLineFix();
 		}
 		switch (action) {
 			case AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY:

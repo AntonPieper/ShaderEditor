@@ -21,6 +21,10 @@
 	<dimen name="se_row_height_two_line">56dp</dimen>
 	<dimen name="se_row_height_picture">72dp</dimen>
 	<dimen name="se_row_padding_vertical">4dp</dimen>
+	<!-- The fix in the row under a line with errors, a text button. -->
+	<dimen name="editor_fix_height">40dp</dimen>
+	<dimen name="editor_fix_inset">4dp</dimen>
+	<dimen name="editor_fix_padding">12dp</dimen>
 	<dimen name="se_tap_target">48dp</dimen>
 	<!-- Keys above the keyboard, where a 48 dp row would cost a line of code -->
 	<dimen name="se_key_height">44dp</dimen>

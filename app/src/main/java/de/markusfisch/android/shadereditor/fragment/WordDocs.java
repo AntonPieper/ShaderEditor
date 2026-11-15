@@ -20,9 +20,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
@@ -39,9 +42,11 @@ import de.markusfisch.android.shadereditor.widget.DocsSheet;
  * asset, which is read on the first request, off the main thread, or
  * one of the app's uniforms with its text of Add uniform, and Add
  * uniform while the file does not declare it. Nothing happens per
- * keystroke; a word is looked up only on request.
+ * keystroke; a word is looked up only on request. The same certain fix
+ * goes into the row of a line where the compiler quotes one of the
+ * app's uniforms as undeclared and the file does not declare it.
  */
-final class WordDocs implements CodeView.LookUp {
+final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	interface Host {
 		/** The declarations of the file, possibly of an older text. */
 		@NonNull
@@ -52,6 +57,9 @@ final class WordDocs implements CodeView.LookUp {
 	}
 
 	private static final String ASSET = "glsl-docs.txt";
+	// A name in single quotes, as compilers quote the undeclared one.
+	private static final Pattern QUOTED = Pattern.compile(
+			"'([A-Za-z_][A-Za-z0-9_]*)'");
 	private static final Map<String, UniformDef> UNIFORMS = new HashMap<>();
 	private static final Executor READER = Executors.newSingleThreadExecutor();
 	// Read once, on the main thread's word, for the process.
@@ -84,6 +92,48 @@ final class WordDocs implements CodeView.LookUp {
 	@Nullable
 	static UniformDef uniform(@NonNull String name) {
 		return UNIFORMS.get(name);
+	}
+
+	/**
+	 * The app's uniform a message of messages says is undeclared, while
+	 * the declarations do not have its name, or null.
+	 */
+	@Nullable
+	static UniformDef undeclaredUniform(@NonNull List<String> messages,
+			@NonNull Outline declarations) {
+		for (String message : messages) {
+			if (!message.toLowerCase(Locale.ROOT)
+					.contains("undeclared")) {
+				continue;
+			}
+			Matcher m = QUOTED.matcher(message);
+			while (m.find()) {
+				UniformDef uniform = UNIFORMS.get(m.group(1));
+				if (uniform != null &&
+						!declares(declarations, uniform.getName())) {
+					return uniform;
+				}
+			}
+		}
+		return null;
+	}
+
+	@Nullable
+	@Override
+	public String label(@NonNull List<String> messages) {
+		UniformDef uniform = undeclaredUniform(messages, host.declared());
+		return uniform != null
+				? view.getContext().getString(R.string.fix_add_uniform,
+				uniform.getType().getKeyword(), uniform.getDeclarator())
+				: null;
+	}
+
+	@Override
+	public void apply(@NonNull List<String> messages) {
+		UniformDef uniform = undeclaredUniform(messages, host.declared());
+		if (uniform != null) {
+			host.addUniform(statement(uniform));
+		}
 	}
 
 	@Override
@@ -149,11 +199,7 @@ final class WordDocs implements CodeView.LookUp {
 		Context context = view.getContext();
 		String name = uniform.getName();
 		String statement = statement(uniform);
-		boolean declared = false;
-		for (Outline.Declaration declaration :
-				host.declared().declarations()) {
-			declared |= declaration.name().equals(name);
-		}
+		boolean declared = declares(host.declared(), name);
 		show(new DocsSheet.Content(name,
 						context.getString(R.string.docs_kind_versions,
 								context.getString(R.string.docs_builtin_uniform),
@@ -227,6 +273,16 @@ final class WordDocs implements CodeView.LookUp {
 		if (imm != null) {
 			imm.showSoftInput(view, 0);
 		}
+	}
+
+	private static boolean declares(@NonNull Outline declarations,
+			@NonNull String name) {
+		for (Outline.Declaration declaration : declarations.declarations()) {
+			if (declaration.name().equals(name)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Nullable

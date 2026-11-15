@@ -48,6 +48,13 @@ final class CodeAppearance {
 	// whose text is in markColor.
 	final TextPaint rowPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 	final int rowColor;
+	// Of the fix a row offers, a text button: its label, its fill while
+	// pressed, its height, the space around it and inside it.
+	final TextPaint fixPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+	final int fixPressedColor;
+	final float fixHeight;
+	final float fixInset;
+	final float fixPadding;
 	// Of things that float, such as the shadow of dragged text, and the
 	// hairline around them.
 	final int cardColor;
@@ -123,6 +130,18 @@ final class CodeAppearance {
 		} finally {
 			a.recycle();
 		}
+		TypedValue label = new TypedValue();
+		if (context.getTheme().resolveAttribute(com.google.android.material
+				.R.attr.textAppearanceLabelLarge, label, true)) {
+			new TextAppearanceSpan(context, label.resourceId)
+					.updateMeasureState(fixPaint);
+		}
+		fixPaint.setColor(handleColor);
+		// 12 % of the accent, as the library's text button when pressed.
+		fixPressedColor = (handleColor & 0xffffff) | 0x1f000000;
+		fixHeight = res.getDimension(R.dimen.editor_fix_height);
+		fixInset = res.getDimension(R.dimen.editor_fix_inset);
+		fixPadding = res.getDimension(R.dimen.editor_fix_padding);
 		caretWidth = res.getDimension(R.dimen.editor_caret_width);
 		underline = res.getDimension(R.dimen.editor_composing_underline);
 		padding = res.getDimension(R.dimen.editor_padding);
