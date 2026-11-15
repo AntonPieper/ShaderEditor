@@ -96,6 +96,15 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// Where the new editor is the default; null elsewhere.
 	@Nullable
 	private final WordDocs docs;
+	// What the file shown sees of other files, and the words completion
+	// offers besides the language's own: the names they declare, then
+	// the app's uniforms, made again when those names change.
+	@NonNull
+	private Knowledge.Scope scope = Knowledge.Scope.NONE;
+	@NonNull
+	private List<String> outside = Collections.emptyList();
+	@NonNull
+	private List<String> extraWords = BUILTIN_UNIFORMS;
 
 	CodeViewSourceEditor(@NonNull CodeView view) {
 		this.view = view;
@@ -149,6 +158,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public void setText(@NonNull String text) {
+		scope = Knowledge.Scope.NONE;
 		show(new Document(Text.of(text)), DATABASE);
 		convert = true;
 		if (listener != null) {
@@ -159,9 +169,10 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public boolean showDocument(@NonNull Document document,
-			@NonNull Syntax syntax, @Nullable Object state,
-			boolean shaderToy) {
+			@NonNull Syntax syntax, @NonNull Knowledge.Scope scope,
+			@Nullable Object state, boolean shaderToy) {
 		show(document, syntax);
+		this.scope = scope;
 		// The text as it is now is not the user's doing: only what is
 		// put in after is converted.
 		converting = shaderToy ? getText() : null;
@@ -467,10 +478,52 @@ final class CodeViewSourceEditor implements SourceEditor {
 						line.text().charAt(column) != '(');
 		styles.syntax().complete(line, column,
 				lineStart, known,
-				analysis.revision() == document.revision(), BUILTIN_UNIFORMS,
+				analysis.revision() == document.revision(), extraWords(),
 				(words, position) -> listener.onCompletions(parentheses
-						? GlslCompletion.withParentheses(words, known)
+						? withParentheses(words, known)
 						: words, position));
+	}
+
+	// The names other files declare for this one, then the app's
+	// uniforms. The scope gives the same list until the names change,
+	// so a keypress makes no list.
+	@NonNull
+	private List<String> extraWords() {
+		List<String> names = scope.names();
+		if (names != outside) {
+			outside = names;
+			if (names.isEmpty()) {
+				extraWords = BUILTIN_UNIFORMS;
+			} else {
+				List<String> joined = new ArrayList<>(names);
+				joined.addAll(BUILTIN_UNIFORMS);
+				extraWords = joined;
+			}
+		}
+		return extraWords;
+	}
+
+	// A function gets its parenthesis whether this file declares it or
+	// a file it includes.
+	@NonNull
+	private List<String> withParentheses(@NonNull List<String> words,
+			@NonNull Knowledge known) {
+		List<String> result = GlslCompletion.withParentheses(words, known);
+		if (outside.isEmpty()) {
+			return result;
+		}
+		for (int i = 0, n = result.size(); i < n; ++i) {
+			String word = result.get(i);
+			if (word.endsWith("(")) {
+				continue;
+			}
+			List<Knowledge.Symbol> found = scope.find(word);
+			if (!found.isEmpty() && found.get(0).kind() ==
+					Knowledge.Kind.FUNCTION) {
+				result.set(i, word + "(");
+			}
+		}
+		return result;
 	}
 
 	// Whether the text defines mainImage and no main, as ShaderToy's do;

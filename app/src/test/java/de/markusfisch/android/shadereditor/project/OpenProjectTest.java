@@ -224,6 +224,80 @@ public class OpenProjectTest {
 		assertNull(destination.text("big.glsl"));
 	}
 
+	// What a file sees of the others is what the last build read.
+	@Test
+	public void aFileSeesTheNamesOfTheFilesItIncludes() throws IOException {
+		write("main.frag", "#include \"lib/common.glsl\"\n" + SHADER);
+		write("lib/common.glsl", "// Half of x.\nfloat half(float x) " +
+				"{ return x * 0.5; }\n");
+		OpenProject project = open();
+		shown(project, "main.frag");
+		Knowledge.Scope scope = project.scope(path("main.frag"));
+		// Nothing is built yet.
+		assertEquals(List.of(), scope.names());
+
+		prepare(project);
+		assertEquals(List.of("half"), scope.names());
+		Knowledge.Symbol half = scope.find("half").get(0);
+		assertEquals("lib/common.glsl", half.file());
+		assertEquals("float half(float x)", half.detail());
+		assertEquals("Half of x.", half.documentation());
+		assertEquals(List.of(), project.scope(path("lib/common.glsl"))
+				.names());
+
+		// The text of an edit is what the next build reads.
+		edit(project, document(project, "lib/common.glsl"),
+				"float third(float x) { return x / 3.0; }\n");
+		prepare(project);
+		assertEquals(List.of("third"), scope.names());
+	}
+
+	// The editor asks once for what the file it shows sees, and keeps
+	// showing that file when it is renamed.
+	@Test
+	public void aRenamedFileStillSeesWhatItIncludes() throws IOException {
+		write("main.frag", "#include \"lib/common.glsl\"\n" + SHADER);
+		write("lib/common.glsl", "float half(float x) { return x * 0.5; }\n");
+		OpenProject project = open();
+		shown(project, "main.frag");
+		project.runThisFile(path("main.frag"));
+		Knowledge.Scope scope = project.scope(path("main.frag"));
+		prepare(project);
+		assertEquals(List.of("half"), scope.names());
+
+		OpenProject.Moved moved = await(done -> project.rename(
+				path("main.frag"), path("image.frag"), done));
+		assertTrue(moved instanceof OpenProject.Renamed);
+		prepare(project);
+		assertEquals(List.of("half"), scope.names());
+		assertEquals("lib/common.glsl", scope.find("half").get(0).file());
+		// What is asked for the old path sees nothing, as before.
+		assertEquals(List.of(), project.scope(path("main.frag")).names());
+	}
+
+	// A build for tuning has one number replaced: what the files know
+	// of each other stays as the build before it left it.
+	@Test
+	public void aBuildForTuningLeavesWhatFilesKnowOfEachOther()
+			throws IOException {
+		write("main.frag", "#include \"lib/common.glsl\"\n" + SHADER);
+		write("lib/common.glsl", "float half(float x) { return x * 0.5; }\n");
+		OpenProject project = open();
+		shown(project, "main.frag");
+		Knowledge.Scope scope = project.scope(path("main.frag"));
+		prepare(project);
+		List<String> names = scope.names();
+		assertEquals(List.of("half"), names);
+
+		int at = ("#include \"lib/common.glsl\"\n" + SHADER).indexOf("1.0");
+		OpenProject.Build tuned = await(done -> project.prepare(
+				BuiltinNames.ALL, new OpenProject.Replacement(
+						path("main.frag"), at, at + 3, "se_tune0"), done));
+		assertTrue(tuned.preparation().temporary());
+		// The same list: nothing was read again.
+		assertSame(names, scope.names());
+	}
+
 	@Test
 	public void editingAnotherFileKeepsWhatRunsU10() throws IOException {
 		write("main.frag", "#include \"lib/common.glsl\"\n" + SHADER);

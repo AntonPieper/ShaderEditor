@@ -319,6 +319,8 @@ What stays as decided: no incremental parsing (a whole file of 5,000 lines is mi
 | `links()` | The files the text names: an include (its text is part of this one) or another file | Files knowing each other (8.5), following a path |
 | `folds()` | The regions that fold, as pairs of lines | Folding and the partner of a bracket, when they are built |
 
+Beside it stands `Knowledge.Scope`: what is declared outside of a text and known in it. The editor is given one with the document it shows and asks it at the moment it needs to: `names()` for completion, `find(word)` for what a word refers to in another file. Plain text and a shader of the database have the empty one.
+
 A `Symbol` is a name, a kind (function, variable, uniform, constant, macro, type, parameter, field, include, file), its **detail** (how the language writes it: `vec2 flow(vec2 p)`, `uniform vec2 resolution`, the line of a macro), its **documentation** (the comment that belongs to it, 8.4), the place of its name and of the whole declaration, its **parts** (the parameters of a function or macro, the fields of a struct) and, once it is handed to another file, the file it comes from.
 
 Three points of its shape:
@@ -423,13 +425,13 @@ A comment separated by an empty line is about the file or a section. This is wha
 
 A shader is several files: `#include` pulls text in, an input names another pass. The language knows no paths: a knowledge reports its `links()` as written, and the project layer resolves them and keeps, for the files of the running shader as its last build read them, each file's knowledge and which files it includes. From that:
 
-- **Down:** a file sees what the files it includes declare, directly or through other includes: their names complete, and Look up answers with the declaration, its comment and its file. A declaration crosses between files as its `Symbol`, whose detail is the declaration as text; no types are shared.
+- **Down:** a file sees what the files it includes declare, directly or through other includes: their names complete (after the language's own words, with the app's uniforms; a function with its parenthesis), and a word is found with its declaration, its comment and its file. A declaration crosses between files as its `Symbol`, whose detail is the declaration as text; no types are shared.
 - **Up, as a fallback:** a library that uses a name its includer declares finds it among the declarations of the files that include it.
 - **Not across passes:** an input is another program. It is a file to open, not a source of names.
-- It is rebuilt when a build has read the files, on the project's worker, and belongs to that build as the list of used files does: when the text or what runs changes, the next build replaces it.
+- It is rebuilt when a build has read the files, on the project's worker, and belongs to that build as the list of used files does: when the text or what runs changes, the next build replaces it. Only a file whose bytes changed is read again, and a file that includes nothing and that nothing includes is not read at all, since nobody asks about it: a shader of one file costs a search for a word per build. The editor asks `OpenProject.scope(path)`, which answers from the last build whenever it is asked, so nothing is stale and nothing has to be told. A file the last build did not read sees nothing. A build for tuning, which runs the shader with one number replaced, reads nothing for it and leaves it as it is.
 - It ignores order: a name declared below the `#include` line counts as visible inside the include. The editor is then more generous than the compiler, which is harmless while its knowledge marks no errors.
 
-**The index is per file, with the include edges in both directions**, and that is what the owner's question needs: "what if I want to rename a define in an include file?"
+**The index (`project/ProjectKnowledge`) is per file, with the include edges in both directions** (`includes(path)`, `includers(path)`, both through other includes), and that is what the owner's question needs: "what if I want to rename a define in an include file?"
 
 ### 8.6 How half 2 will rename a name declared in an include
 
@@ -454,5 +456,5 @@ Comments and strings are not touched. Before the first change every file's revis
 | --- | --- |
 | The seam: `Knowledge`, `Syntax.knowledge`, `complete` reading it | Built |
 | Half 1 of the parser | Built; the outline and its scan are gone. Both editors read it: the one release builds ship reads the names it completes and the struct names it colours from it |
-| Files know each other | Not yet |
+| Files know each other | Built for the files of the running shader as the last build read them: completion, and `Scope.find` for Look up and the call in the strip |
 | Half 2, usages, rename | Not built |

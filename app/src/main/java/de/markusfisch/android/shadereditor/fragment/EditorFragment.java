@@ -23,6 +23,7 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.CodeView;
@@ -47,6 +48,7 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 	private Document pendingDocument;
 	@Nullable
 	private Syntax pendingSyntax;
+	private Knowledge.Scope pendingScope;
 	@Nullable
 	private Object pendingDocumentState;
 	private boolean pendingShaderToy;
@@ -155,10 +157,11 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 			pendingText = null;
 		}
 		if (pendingDocument != null) {
-			editor.showDocument(pendingDocument, pendingSyntax,
+			editor.showDocument(pendingDocument, pendingSyntax, pendingScope,
 					pendingDocumentState, pendingShaderToy);
 			pendingDocument = null;
 			pendingSyntax = null;
+			pendingScope = null;
 			pendingDocumentState = null;
 		}
 
@@ -504,14 +507,15 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 	/**
 	 * Show document itself, with its undo history and selection, without
 	 * telling the listeners of a change, with the syntax of its file's
-	 * language; state is what getDocumentState returned for it before,
-	 * or null. shaderToy is whether text put in that defines mainImage
+	 * language and with what its file sees of other files; state is
+	 * what getDocumentState returned for it before, or null. shaderToy
+	 * is whether text put in that defines mainImage
 	 * and no main is converted from ShaderToy's form. Return false when
 	 * the editor in use cannot show a document.
 	 */
 	public boolean showDocument(@NonNull Document document,
-			@NonNull Syntax syntax, @Nullable Object state,
-			boolean shaderToy) {
+			@NonNull Syntax syntax, @NonNull Knowledge.Scope scope,
+			@Nullable Object state, boolean shaderToy) {
 		if (editor == null) {
 			if (!ShaderEditorApp.preferences.useNewEditor()) {
 				return false;
@@ -519,11 +523,13 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host {
 			pendingText = null;
 			pendingDocument = document;
 			pendingSyntax = syntax;
+			pendingScope = scope;
 			pendingDocumentState = state;
 			pendingShaderToy = shaderToy;
 			return true;
 		}
-		return editor.showDocument(document, syntax, state, shaderToy);
+		return editor.showDocument(document, syntax, scope, state,
+				shaderToy);
 	}
 
 	/**

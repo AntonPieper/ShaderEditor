@@ -280,7 +280,7 @@ public final class ProjectFileManager {
 		project.setListener(ContextCompat.getMainExecutor(activity),
 				this::changed);
 		editor.showDocument(document, project.syntax(path),
-				project.editorState(path),
+				project.scope(path), project.editorState(path),
 				holds.projects().isLibrary(key) &&
 						Library.convertsShaderToy(path));
 		listener.onShown(shown);

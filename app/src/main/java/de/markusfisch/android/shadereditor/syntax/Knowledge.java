@@ -57,6 +57,38 @@ public interface Knowledge {
 		}
 	}
 
+	/**
+	 * What is declared outside of a text and known in it, as the files
+	 * around it tell at the moment it is asked.
+	 */
+	interface Scope {
+		/** Nothing is declared outside. */
+		Scope NONE = new Scope() {
+			@Override
+			public List<String> names() {
+				return Collections.emptyList();
+			}
+
+			@Override
+			public List<Symbol> find(CharSequence word) {
+				return Collections.emptyList();
+			}
+		};
+
+		/**
+		 * Return the names declared outside, each once; the same list
+		 * for as long as they stay the same.
+		 */
+		List<String> names();
+
+		/**
+		 * Return what word refers to outside of the text, as
+		 * {@link Knowledge#at} does inside: a function with every form,
+		 * else one symbol, or nothing; each with its file.
+		 */
+		List<Symbol> find(CharSequence word);
+	}
+
 	/** Reads a text line by line. */
 	interface Builder {
 		/**
@@ -98,7 +130,8 @@ public interface Knowledge {
 	/**
 	 * Return what word, which stands at offset, refers to: a function
 	 * with every form it is declared in, else one symbol, or nothing.
-	 * The word says what is asked for, the offset from where.
+	 * The word says what is asked for, the offset from where; an offset
+	 * of -1 asks from outside of the text.
 	 */
 	List<Symbol> at(int offset, CharSequence word);
 
