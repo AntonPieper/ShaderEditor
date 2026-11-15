@@ -191,6 +191,44 @@ public class TuningUniformTest {
 				tuning.declaration());
 	}
 
+	// F2: an int is written with the language's 32-bit wrap, as the
+	// literal's bit pattern is, never clamped.
+	@Test
+	public void anIntOutsideItsRangeWraps() {
+		var tuning = tuning(Tuning.Type.INT, -1);
+		var engine = new FakeEngine(new FakeGlDevice(), prepare("main.frag",
+				lines("#version 300 es", PRECISION, "out vec4 color;",
+						"void main(void) {",
+						"	color = vec4(float(se_tune0));",
+						"}")),
+				TargetFormats.of(3, ""), tuning);
+		engine.resize(4, 4);
+		engine.draw(0);
+		assertEquals(-1f, value(engine, "main.frag"), 0f);
+		tuning.set(0xffffffffL);
+		engine.runtime.applyTuning();
+		engine.draw(1);
+		assertEquals(-1f, value(engine, "main.frag"), 0f);
+	}
+
+	// F5: never inside a block comment an #extension line opens, nor
+	// on a line a backslash continues into.
+	@Test
+	public void theDeclarationFollowsACommentOpenedOnAnExtension() {
+		for (String[] start : new String[][]{
+				{"#extension GL_OES_standard_derivatives : enable /*",
+						"still a comment */"},
+				{"#extension GL_OES_standard_derivatives : enable // a\\",
+						"comment continued"}}) {
+			var lines = List.of(source(lines(start[0], start[1], PRECISION,
+					"void main(void) {",
+					"	gl_FragColor = vec4(se_tune0);",
+					"}"), 2).fragment().split("\n"));
+			assertEquals(start[1], lines.get(2));
+			assertEquals(DECLARATION, lines.subList(3, 8));
+		}
+	}
+
 	@NonNull
 	private PlanSource source(@NonNull String text, int glesVersion) {
 		var errors = new ArrayList<ProjectDiagnostic>();

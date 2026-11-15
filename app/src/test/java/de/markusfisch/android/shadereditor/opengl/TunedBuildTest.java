@@ -124,6 +124,35 @@ public class TunedBuildTest {
 		assertEquals(List.of("se_tune0", "se_tune5"), replacedBy);
 	}
 
+	// F4: GLSL splices a line that ends in a backslash with the next one
+	// before it reads names (GLSL ES 3.00, 3.3): a name split so is the
+	// text's own.
+	@Test
+	public void aNameSplitByALineContinuationIsNotTaken() {
+		texts.put("main.frag", lines("#version 300 es", PRECISION,
+				"out vec4 color;",
+				"void main(void) {",
+				"	float se_tu\\",
+				"ne0 = 0.7;",
+				"	color = vec4(0.3);",
+				"}"));
+		assertEquals("se_tune1", ready("main.frag", "0.3").name());
+	}
+
+	// F3: the period of ftime is read by the app, not compiled.
+	@Test
+	public void theNumberOfFtimePeriodIsBuiltAsText() {
+		texts.put("main.frag", lines("#define FTIME_PERIOD 7.0", PRECISION,
+				"uniform float ftime;",
+				"void main(void) {",
+				"	gl_FragColor = vec4(ftime);",
+				"}"));
+		int at = texts.get("main.frag").indexOf("7.0");
+		assertEquals(new TunedPreparation.Constant(ConstantContext.Kind.HOST,
+						new NumberLiteral(Tuning.Type.FLOAT, 7.0)),
+				prepare("main.frag", at, at + 3, Tuning.Type.FLOAT));
+	}
+
 	// Where the tokens say a constant is needed nothing is built.
 	@Test
 	public void aConstantOfAnIncludeReadInGlslEs100() {

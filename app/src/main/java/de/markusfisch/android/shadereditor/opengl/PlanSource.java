@@ -26,8 +26,10 @@ record PlanSource(
 		float fTimeMax) {
 	private static final float DEFAULT_FTIME_MAX = 3f;
 	private static final Pattern VERSION = Pattern.compile("\\d{1,9}");
+	// The macro whose number is the period of ftime.
+	static final String FTIME_PERIOD = "FTIME_PERIOD";
 	private static final Pattern FTIME = Pattern.compile(
-			"^#define[ \\t]+FTIME_PERIOD[ \\t]+([0-9.]+)[ \\t]*$",
+			"^#define[ \\t]+" + FTIME_PERIOD + "[ \\t]+([0-9.]+)[ \\t]*$",
 			Pattern.MULTILINE);
 	private static final Pattern EXTERNAL_SAMPLER = Pattern.compile(
 			"\\bsamplerExternalOES\\b");
@@ -86,7 +88,8 @@ record PlanSource(
 		var sourceMap = program.sourceMap();
 		if (tuning != null && uses(scan, tuning.name)) {
 			// After every #extension, which no declaration may precede.
-			int after = declarationLine(scan, program.head());
+			int after = declarationLine(scan, program.lines(),
+					program.head());
 			var declaration = tuning.declaration();
 			lines.addAll(after, declaration);
 			sourceMap = sourceMap.insertGenerated(after, declaration.size());
@@ -116,8 +119,11 @@ record PlanSource(
 
 	// The 1-based line after which a declaration goes: after head and
 	// after the last #extension, or after the #endif that closes the
-	// outermost conditional around it, so that it is never left out.
-	static int declarationLine(@NonNull PreprocessorScan scan, int head) {
+	// outermost conditional around it, so that it is never left out;
+	// and past a block comment or a backslash continuation that goes on
+	// from that line, so that it is not swallowed by them.
+	static int declarationLine(@NonNull PreprocessorScan scan,
+			@NonNull List<String> lines, int head) {
 		int after = head;
 		var directives = scan.directives();
 		for (int i = 0; i < directives.size(); ++i) {
@@ -137,6 +143,11 @@ record PlanSource(
 				}
 			}
 			after = Math.max(after, line);
+		}
+		var open = scan.openComments();
+		while (after > 0 && after < lines.size() &&
+				(open.get(after - 1) || lines.get(after - 1).endsWith("\\"))) {
+			++after;
 		}
 		return after;
 	}

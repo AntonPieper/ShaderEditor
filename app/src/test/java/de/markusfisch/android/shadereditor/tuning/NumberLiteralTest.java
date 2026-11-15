@@ -31,6 +31,23 @@ public class NumberLiteralTest {
 		assertNull(parse("0x100000000"));
 	}
 
+	// F2: GLSL ES 3.00 (4.1.3) keeps the bit pattern of an int literal,
+	// so one with the high bit set is negative.
+	@Test
+	public void anIntIsItsSigned32BitPattern() {
+		assertEquals(new NumberLiteral(Tuning.Type.INT, -1),
+				parse("0xffffffff"));
+		assertEquals(new NumberLiteral(Tuning.Type.INT, -1),
+				parse("4294967295"));
+		assertEquals(new NumberLiteral(Tuning.Type.INT, Integer.MIN_VALUE),
+				parse("020000000000"));
+		assertEquals(new NumberLiteral(Tuning.Type.INT, Integer.MAX_VALUE),
+				parse("2147483647"));
+		// A uint keeps all 32 bits as its value.
+		assertEquals(new NumberLiteral(Tuning.Type.UINT, 0xffffffffL),
+				parse("0xffffffffu"));
+	}
+
 	@Test
 	public void itIsExactlyOneNumberOfTheCode() {
 		String text = "float a = -0.25; // 0.5\nint b = 12;\n";

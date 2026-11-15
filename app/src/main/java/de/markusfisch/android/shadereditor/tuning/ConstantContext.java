@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
+import de.markusfisch.android.shadereditor.opengl.Tuning;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
@@ -24,6 +25,11 @@ public final class ConstantContext {
 	public enum Kind {
 		/** On a directive line other than #define: #if, #line, #pragma. */
 		DIRECTIVE,
+		/**
+		 * In a macro the app reads from the text itself, such as
+		 * FTIME_PERIOD: a uniform there would not change what it reads.
+		 */
+		HOST,
 		/** Inside layout(...). */
 		LAYOUT,
 		/**
@@ -65,7 +71,11 @@ public final class ConstantContext {
 			return null;
 		}
 		if (tokens.inDirective(at)) {
-			return isDefine(text, tokens, at) ? null : Kind.DIRECTIVE;
+			String macro = defined(text, tokens, at);
+			if (macro == null) {
+				return Kind.DIRECTIVE;
+			}
+			return Tuning.HOST_MACROS.contains(macro) ? Kind.HOST : null;
 		}
 		Deque<Group> open = new ArrayDeque<>();
 		// The tokens of the statement so far, from after the last ";",
@@ -151,16 +161,22 @@ public final class ConstantContext {
 				TYPES.contains(tokens.style(beforePrevious)));
 	}
 
-	// The directive the token at index is on is a #define.
-	private static boolean isDefine(@NonNull String text,
+	// The name of the macro when the directive the token at index is on
+	// is a #define, else null.
+	@Nullable
+	private static String defined(@NonNull String text,
 			@NonNull Tokens tokens, int index) {
 		int hash = index;
 		while (hash > 0 && tokens.inDirective(hash - 1) &&
 				!is(text, tokens, hash, "#")) {
 			--hash;
 		}
-		return hash + 1 < tokens.size() &&
-				is(text, tokens, hash + 1, "define");
+		if (hash + 2 >= tokens.size() ||
+				!is(text, tokens, hash + 1, "define")) {
+			return null;
+		}
+		int name = hash + 2;
+		return text.substring(tokens.start(name), tokens.end(name));
 	}
 
 	private static boolean is(@NonNull String text, @NonNull Tokens tokens,

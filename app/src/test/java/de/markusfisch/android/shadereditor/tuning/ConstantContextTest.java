@@ -71,6 +71,9 @@ public class ConstantContextTest {
 		assertEquals(Kind.DIRECTIVE, es100("#line @10\n"));
 		assertEquals(Kind.DIRECTIVE, es100(
 				"#pragma se input \"a.frag\" scale @0.5\n"));
+		// F3: the app reads FTIME_PERIOD from the text itself.
+		assertEquals(Kind.HOST, es100("#define FTIME_PERIOD @7.0\n"));
+		assertEquals(Kind.HOST, es100("# define  FTIME_PERIOD \\\n@7.0\n"));
 		// A macro may be used anywhere: the compiler tells.
 		assertNull(es100("#define SPEED @2.0\nvoid main() { }"));
 		assertNull(es100("#define N 3\nvoid main() { float a = @1.0; }"));
