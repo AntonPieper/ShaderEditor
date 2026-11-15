@@ -651,6 +651,24 @@ public final class OpenProject {
 		});
 	}
 
+	/** A look at the files of the project, on its worker. */
+	public interface Look<T> {
+		T at(ProjectFiles files);
+	}
+
+	/**
+	 * Have look read the files of the project on the worker, after what
+	 * was asked of storage before, for something that only looks, such
+	 * as a small picture of an image; done gets what it found on main.
+	 * Nothing is asked once the project is closed.
+	 */
+	public <T> void look(Look<T> look, Callback<T> done) {
+		worker.execute(() -> {
+			T found = look.at(store);
+			main.execute(() -> done.done(found));
+		});
+	}
+
 	/**
 	 * Return the document of path, with its text, selection and undo
 	 * history, while it is in memory, else null.

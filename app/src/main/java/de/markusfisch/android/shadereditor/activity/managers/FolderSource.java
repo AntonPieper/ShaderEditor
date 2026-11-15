@@ -351,8 +351,14 @@ final class FolderSource {
 		long now = System.currentTimeMillis();
 		List<Row> dressed = new ArrayList<>(rows.size());
 		for (Row row : rows) {
-			if (row.kind() == Row.Kind.FOLDER || row.kind() == Row.Kind.MORE) {
+			if (row.kind() == Row.Kind.MORE) {
 				dressed.add(row);
+				continue;
+			} else if (row.kind() == Row.Kind.FOLDER) {
+				dressed.add(new Row(row.key(), row.kind(),
+						Face.of(row.kind(), pictures.get(row.key())),
+						row.name(), row.detail(), row.changed(), row.enters(),
+						row.marks(), row.actions()));
 				continue;
 			}
 			Set<Row.Mark> marks = EnumSet.noneOf(Row.Mark.class);
@@ -436,9 +442,12 @@ final class FolderSource {
 						listed.offers(folder).create();
 				Map<String, byte[]> read = new HashMap<>();
 				for (OpenProject.Item item : items.items()) {
-					byte[] png = item.folder()
-							? null
-							: looks.picture(item.path());
+					// A folder shows its default shader's picture.
+					ProjectPath shows = item.folder()
+							? ProjectPath.parse(item.path() + "/" +
+									OpenProject.MAIN).value()
+							: item.path();
+					byte[] png = shows != null ? looks.picture(shows) : null;
 					if (png != null) {
 						read.put(item.path().toString(), png);
 					}

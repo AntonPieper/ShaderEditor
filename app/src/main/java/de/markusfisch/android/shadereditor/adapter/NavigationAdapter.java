@@ -11,6 +11,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.widget.ImageViewCompat;
 import androidx.core.widget.TextViewCompat;
@@ -37,12 +38,33 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 		void onNotice(@NonNull Notice.Action action);
 	}
 
+	/**
+	 * The images rows stand for, read small while the rows are shown.
+	 */
+	public interface Images {
+		/** The image of row read small, or null while it is not. */
+		@Nullable
+		Bitmap image(@NonNull Row row);
+
+		/** The size of the image of row in pixels, or null. */
+		@Nullable
+		String size(@NonNull Row row);
+
+		/** Read the image of row small; ready is called when it is. */
+		void want(@NonNull Row row, @NonNull Runnable ready);
+
+		/** The row is not shown anymore. */
+		void unwant(@NonNull Row row);
+	}
+
 	private static final int HEADING = 0;
 	private static final int ROW = 1;
 	private static final int EMPTY = 2;
 	private static final int NOTICE = 3;
 
 	private final Listener listener;
+	@Nullable
+	private Images images;
 	// Decoded thumbnails, for as long as the listing holds their bytes.
 	private final WeakHashMap<byte[], Bitmap> bitmaps = new WeakHashMap<>();
 	private List<Item> items = List.of();
@@ -51,6 +73,19 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
 	public NavigationAdapter(@NonNull Listener listener) {
 		this.listener = listener;
+	}
+
+	/** Takes what reads the images rows stand for. */
+	public void setImages(@Nullable Images images) {
+		this.images = images;
+	}
+
+	@Override
+	public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
+		if (holder instanceof RowHolder row && row.item != null &&
+				row.item.row().picture().own() && images != null) {
+			images.unwant(row.item.row());
+		}
 	}
 
 	/**
@@ -244,7 +279,7 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 					.getDimensionPixelSize(row.detail() == null
 							? R.dimen.se_row_height
 							: R.dimen.se_row_height_two_line));
-			bindPicture(row.picture());
+			bindPicture(item, row.picture());
 			// Its place stays, so that the text lines up with the names.
 			picture.setVisibility(row.kind() == Row.Kind.MORE
 					? View.INVISIBLE
@@ -259,8 +294,13 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 					: com.google.android.material.R.style.TextAppearance_Material3_BodyLarge);
 			name.setTextColor(AppCompatResources.getColorStateList(
 					name.getContext(), R.color.navigation_row_text));
-			detail.setText(row.detail());
-			detail.setVisibility(row.detail() == null ? View.GONE : View.VISIBLE);
+			// An image says its size in pixels, once it is read.
+			String size = row.picture().own() && images != null
+					? images.size(row)
+					: null;
+			String line = size != null ? size : row.detail();
+			detail.setText(line);
+			detail.setVisibility(line == null ? View.GONE : View.VISIBLE);
 			unsaved.setVisibility(visibleIf(item, Row.Mark.UNSAVED));
 			wallpaper.setVisibility(visibleIf(item, Row.Mark.WALLPAPER));
 			readOnly.setVisibility(visibleIf(item, Row.Mark.READ_ONLY));
@@ -270,9 +310,21 @@ public class NavigationAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 					: View.GONE);
 		}
 
-		private void bindPicture(@NonNull Row.Picture picture) {
+		private void bindPicture(@NonNull Item item,
+				@NonNull Row.Picture picture) {
 			byte[] png = picture.png();
 			Bitmap bitmap = png != null && png.length > 0 ? decode(png) : null;
+			if (picture.own() && images != null) {
+				Row row = item.row();
+				bitmap = images.image(row);
+				if (bitmap == null) {
+					images.want(row, () -> {
+						if (this.item == item) {
+							bind(item);
+						}
+					});
+				}
+			}
 			int icon = switch (picture.icon()) {
 				case LIBRARY -> R.drawable.ic_grid_view;
 				case EXAMPLES -> R.drawable.ic_book_2;

@@ -352,6 +352,7 @@
 	<string name="nav_cannot_open_file">This file cannot be opened</string>
 	<string name="nav_show_more">Show more</string>
 	<string name="nav_shown_of">%1$d of %2$d</string>
+	<string name="nav_image_size" translatable="false">%1$s · %2$d × %3$d</string>
 	<string name="nav_still_reading">Still reading this folder…</string>
 	<string name="nav_stop">Stop</string>
 	<string name="nav_stopped">Stopped reading this folder</string>

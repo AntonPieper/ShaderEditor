@@ -37,6 +37,14 @@ public interface DocumentResolver {
 	 * Return the content of a file, or null as soon as it has more than
 	 * limit bytes, whatever its size said.
 	 */
+	/**
+	 * Return the provider's own small picture of the image id, about
+	 * size pixels on its longer side, or null when it offers none.
+	 */
+	default android.graphics.Bitmap thumbnail(String id, int size) {
+		return null;
+	}
+
 	byte[] read(String id, long limit) throws IOException;
 
 	/** Return at most the first count bytes of document id. */

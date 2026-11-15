@@ -352,6 +352,7 @@ Spacing is 4, 8, 12, 16 or 24 dp; nothing else.
 | `navigation_state_mark` | 16 dp | The running and read-only marks at the end of a row and in the drawer header (6.6) |
 | `navigation_mark_spacing` | 8 dp | Between the text of a row and each mark after it |
 | `se_thumbnail` / `_large` | 40 / 56 dp | Shader pictures in lists; in Examples. Never cut to a circle: the corners are part of the picture |
+| `se_picture_mat` | `#34373E`, 4 dp | What an image stands on in a 40 dp row: the image whole, in its own proportions, 4 dp inside the square, with a 1 dp hairline of 45 % black around it; a checkerboard under transparent pixels; a tiny image at a whole multiple of its size with crisp pixels; a strip longer than 3:1 by its middle. A shader's picture stays edge to edge, so the mat tells an image from a shader |
 | `se_drawer_max_width` | 328 dp | The drawer: the smaller of this and the screen minus 56 dp |
 | `se_hairline` | 1 dp | Dividers, in `colorOutlineVariant`. Between groups, not between rows |
 

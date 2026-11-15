@@ -49,8 +49,12 @@ public record Row(String key, Kind kind, Picture picture, String name,
 		REMOVE
 	}
 
-	/** What stands at the start of a row: a picture or an icon. */
-	public record Picture(Icon icon, byte[] png, int resource) {
+	/**
+	 * What stands at the start of a row: a picture, an icon, or the
+	 * file itself, an image read small while its row is shown, with
+	 * the icon until it is read.
+	 */
+	public record Picture(Icon icon, byte[] png, int resource, boolean own) {
 		/** Icons for rows without a picture. */
 		public enum Icon {
 			SHADER,
@@ -61,17 +65,22 @@ public record Row(String key, Kind kind, Picture picture, String name,
 		}
 
 		public static Picture of(Icon icon) {
-			return new Picture(icon, null, 0);
+			return new Picture(icon, null, 0, false);
+		}
+
+		/** The image the row stands for, read small. */
+		public static Picture ofItself() {
+			return new Picture(Icon.IMAGE, null, 0, true);
 		}
 
 		/** A PNG image; a shader without one shows the shader icon. */
 		public static Picture png(byte[] png) {
-			return new Picture(Icon.SHADER, png, 0);
+			return new Picture(Icon.SHADER, png, 0, false);
 		}
 
 		/** A picture that comes with the app, by its resource id. */
 		public static Picture resource(int resource) {
-			return new Picture(Icon.SHADER, null, resource);
+			return new Picture(Icon.SHADER, null, resource, false);
 		}
 	}
 }

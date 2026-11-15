@@ -17,6 +17,8 @@
 	<color name="se_surface_1">#1a1b20</color>
 	<color name="se_surface_2">#1f2126</color>
 	<color name="se_surface_3">#24262c</color>
+	<!-- What an image stands on in a row, lighter than the drawer. -->
+	<color name="se_picture_mat">#34373e</color>
 	<color name="se_on_surface">#ecedef</color>
 	<color name="se_on_surface_dim">#a9adb5</color>
 	<color name="se_outline">#6b7078</color>
