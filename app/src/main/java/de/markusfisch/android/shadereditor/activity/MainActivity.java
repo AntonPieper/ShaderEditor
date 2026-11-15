@@ -142,6 +142,7 @@ public class MainActivity extends AppCompatActivity {
 		editorFragment.setOnTextModifiedListener(() ->
 				screen.open().onTextModified());
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
+		editorFragment.setOnSignatureListener(extraKeysManager::setSignature);
 	}
 
 	@Override

@@ -61,4 +61,18 @@ public class WordDocsTest {
 		assertEquals("#define SAT(x) clamp(x, 0.0, 1.0)",
 				WordDocs.code(known.at(-1, "SAT")));
 	}
+
+	// The form the strip shows is chosen by the argument the caret is
+	// in: the first with that many parameters.
+	@Test
+	public void choosesAFormByTheArgumentCount() {
+		List<List<String>> forms = List.of(List.of("y_over_x"),
+				List.of("y", "x"), List.of("a", "b", "c"));
+		assertEquals(List.of("y_over_x"), WordDocs.form(forms, 0));
+		assertEquals(List.of("y", "x"), WordDocs.form(forms, 1));
+		assertEquals(List.of("a", "b", "c"), WordDocs.form(forms, 2));
+		// More arguments than any form takes: the longest.
+		assertEquals(List.of("a", "b", "c"), WordDocs.form(forms, 5));
+		assertNull(WordDocs.form(List.of(), 0));
+	}
 }

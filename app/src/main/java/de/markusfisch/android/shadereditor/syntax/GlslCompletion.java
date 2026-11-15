@@ -100,6 +100,84 @@ public final class GlslCompletion {
 				current ? lineStart + start : -1, extraWords));
 	}
 
+	/** How many lines above the caret's a call may begin. */
+	static final int CALL_LINES = 20;
+	private static final int CALL_TOKENS = 400;
+
+	/**
+	 * The call the caret at column of line is an argument of, or null:
+	 * the nearest "(" before it that is still open and follows a name,
+	 * and how many commas of that call stand before the caret. It looks
+	 * back no further than the statement, {@link #CALL_LINES} lines and
+	 * 400 tokens, so its work does not grow with the text.
+	 */
+	public static Syntax.Call call(Syntax.Lines lines, int line,
+			int column) {
+		int nesting = 0;
+		int commas = 0;
+		int budget = CALL_TOKENS;
+		for (int n = line; n >= 0 && n > line - CALL_LINES; --n) {
+			LexedLine tokens = lines.line(n);
+			String text = tokens.text();
+			int i = tokens.size() - 1;
+			if (n == line) {
+				// The last token that starts before the caret, however
+				// long the line is behind it.
+				int low = 0;
+				while (low <= i) {
+					int mid = (low + i) >>> 1;
+					if (tokens.start(mid) < column) {
+						low = mid + 1;
+					} else {
+						i = mid - 1;
+					}
+				}
+			}
+			for (; i >= 0; --i) {
+				if (--budget < 0) {
+					return null;
+				} else if (tokens.style(i) != Style.OPERATOR) {
+					continue;
+				}
+				char c = text.charAt(tokens.start(i));
+				if (c == ')' || c == ']') {
+					++nesting;
+				} else if (c == '(' || c == '[') {
+					if (nesting > 0) {
+						--nesting;
+						continue;
+					}
+					int name = i - 1;
+					while (name >= 0 &&
+							tokens.style(name) == Style.COMMENT) {
+						--name;
+					}
+					if (c == '(' && name >= 0 && isName(tokens.style(name))) {
+						return new Syntax.Call(text.substring(
+								tokens.start(name), tokens.end(name)), n,
+								tokens.start(name), commas);
+					}
+					// A parenthesis that groups, a constructor, an
+					// index: the caret is in an argument of a call
+					// further out, if any.
+					commas = 0;
+				} else if (nesting == 0) {
+					if (c == ',') {
+						++commas;
+					} else if (c == ';' || c == '{' || c == '}') {
+						return null;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	private static boolean isName(Style style) {
+		return style == Style.IDENTIFIER || style == Style.TYPE ||
+				style == Style.BUILTIN_FUNCTION;
+	}
+
 	/**
 	 * The words with a parenthesis after each that names a function,
 	 * built-in or declared as known tells, but main: what a tap inserts.

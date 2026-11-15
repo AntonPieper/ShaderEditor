@@ -15,6 +15,7 @@ import com.google.android.material.snackbar.Snackbar;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
@@ -34,6 +35,7 @@ import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.widget.CodeView;
+import de.markusfisch.android.shadereditor.widget.SignatureView;
 import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
 import de.markusfisch.android.shadereditor.widget.ShaderToySource;
 
@@ -105,6 +107,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 	private List<String> outside = Collections.emptyList();
 	@NonNull
 	private List<String> extraWords = BUILTIN_UNIFORMS;
+	// The call the strip shows, or null.
+	@Nullable
+	private SignatureView.Signature signature;
 
 	CodeViewSourceEditor(@NonNull CodeView view) {
 		this.view = view;
@@ -150,6 +155,12 @@ final class CodeViewSourceEditor implements SourceEditor {
 					if (listener != null) {
 						listener.onOpenFile(file, line + 1);
 					}
+				}
+
+				// The call the caret is in can be shown now.
+				@Override
+				public void onDocsRead() {
+					complete();
 				}
 
 				@Override
@@ -491,7 +502,10 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// analysis; nothing while text is selected.
 	private void complete() {
 		Document.Selection selection = document.selection();
-		if (listener == null || !selection.isEmpty()) {
+		if (listener == null) {
+			return;
+		} else if (!selection.isEmpty()) {
+			signature(-1, 0);
 			return;
 		}
 		Text text = document.text();
@@ -509,9 +523,32 @@ final class CodeViewSourceEditor implements SourceEditor {
 		styles.syntax().complete(line, column,
 				lineStart, known,
 				analysis.revision() == document.revision(), extraWords(),
-				(words, position) -> listener.onCompletions(parentheses
-						? withParentheses(words, known)
-						: words, position));
+				(words, position) -> {
+					// The call shows behind the keys, not behind words.
+					signature(words == GlslCompletion.KEYS ? n : -1, column);
+					listener.onCompletions(parentheses
+							? withParentheses(words, known)
+							: words, position);
+				});
+	}
+
+	// Tells the listener the call the caret at column of line is an
+	// argument of, when it changed; none for a line of -1. The call is
+	// found from the tokens of at most twenty lines, and what it calls
+	// by two lookups, so a keypress pays microseconds for it.
+	private void signature(int line, int column) {
+		SignatureView.Signature found = null;
+		if (line > -1 && docs != null && styles.syntax() == DATABASE) {
+			Syntax.Call call = styles.syntax().call(
+					n -> styles.runs(n).line(), line, column);
+			if (call != null) {
+				found = docs.signature(call.name(), call.argument());
+			}
+		}
+		if (!Objects.equals(found, signature)) {
+			signature = found;
+			listener.onSignature(found);
+		}
 	}
 
 	// The names other files declare for this one, then the app's

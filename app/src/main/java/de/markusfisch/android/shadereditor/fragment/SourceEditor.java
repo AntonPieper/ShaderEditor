@@ -13,6 +13,7 @@ import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
+import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 /**
  * What EditorFragment needs of the view that edits the shader's source.
@@ -41,6 +42,14 @@ interface SourceEditor {
 		 * in place.
 		 */
 		void onShaderToyShader(@NonNull String json);
+
+		/**
+		 * Called with the call the caret is an argument of while the
+		 * strip shows its keys, and with null when there is none.
+		 */
+		default void onSignature(
+				@Nullable SignatureView.Signature signature) {
+		}
 
 		/**
 		 * Called to show file, a path of the project of the document

@@ -539,6 +539,8 @@
 	<string name="docs_open">Open %1$s</string>
 	<string name="docs_go_to_line">Go to line %1$d</string>
 	<string name="a11y_completion_function">%1$s, function</string>
+	<string name="a11y_signature">%1$s, argument %2$d of %3$d, %4$s. Double-tap for docs.</string>
+	<string name="a11y_signature_open">%1$s: %2$s</string>
 	<string name="fix_add_uniform">Add uniform %1$s %2$s</string>
 	<string name="a11y_added_uniform">Added %1$s on line %2$d</string>
 	<string name="a11y_fix_available">Fix in the actions menu: %1$s</string>

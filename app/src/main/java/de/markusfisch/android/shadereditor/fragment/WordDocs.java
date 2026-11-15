@@ -36,6 +36,7 @@ import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.DocsSheet;
+import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 /**
  * Explains a word in a sheet: a built-in word of GLSL ES from the docs
@@ -70,6 +71,9 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		/** Show file, a path of the project, at line, from 0. */
 		void open(@NonNull String file, int line);
 
+		/** The docs are read: what waited for them can be asked again. */
+		void onDocsRead();
+
 		/** Add statement as Add uniform does. */
 		void addUniform(@NonNull String statement);
 	}
@@ -93,6 +97,10 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	private final View view;
 	private final Host host;
 	private final Handler handler = new Handler(Looper.getMainLooper());
+	private boolean reading;
+	// The word to explain once the docs are read.
+	@Nullable
+	private String asked;
 
 	WordDocs(@NonNull View view, @NonNull Host host) {
 		this.view = view;
@@ -181,19 +189,36 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		} else if (docs != null) {
 			showBuiltin(word);
 		} else {
-			Context app = view.getContext().getApplicationContext();
-			READER.execute(() -> {
-				GlslDocs read = read(app);
-				handler.post(() -> {
-					if (read != null) {
-						docs = read;
-						if (view.isAttachedToWindow()) {
-							showBuiltin(word);
-						}
-					}
-				});
-			});
+			readDocs(word);
 		}
+	}
+
+	// Reads the docs off the main thread, once, and then explains
+	// word, if any.
+	private void readDocs(@Nullable String word) {
+		if (word != null) {
+			asked = word;
+		}
+		if (reading) {
+			return;
+		}
+		reading = true;
+		Context app = view.getContext().getApplicationContext();
+		READER.execute(() -> {
+			GlslDocs read = read(app);
+			handler.post(() -> {
+				reading = false;
+				String explain = asked;
+				asked = null;
+				if (read != null) {
+					docs = read;
+					if (explain != null && view.isAttachedToWindow()) {
+						showBuiltin(explain);
+					}
+					host.onDocsRead();
+				}
+			});
+		});
 	}
 
 	@Nullable
@@ -305,6 +330,93 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		if (imm != null) {
 			imm.showSoftInput(view, 0);
 		}
+	}
+
+	// The names of the parameters of the last function asked for, form
+	// by form, so that typing its arguments reads them once.
+	@Nullable
+	private String formsOf;
+	@Nullable
+	private Knowledge formsKnown;
+	@NonNull
+	private List<List<String>> forms = new ArrayList<>();
+
+	/**
+	 * The call of name the strip shows while the caret is in argument,
+	 * from 0: the function with the names of its parameters, or null
+	 * for a name that is no function with parameters. An own function
+	 * or macro is what the file or a file around it declares; a
+	 * built-in comes from the docs, which are read at the first call
+	 * and answer from the next key on.
+	 */
+	@Nullable
+	SignatureView.Signature signature(@NonNull String name, int argument) {
+		// What the file declares may have changed with its text.
+		Knowledge known = host.declared();
+		if (!name.equals(formsOf) || known != formsKnown) {
+			List<List<String>> read = forms(name);
+			if (read == null) {
+				return null;
+			}
+			formsOf = name;
+			formsKnown = known;
+			forms = read;
+		}
+		List<String> names = form(forms, argument);
+		return names == null ? null
+				: new SignatureView.Signature(name, names, argument);
+	}
+
+	/**
+	 * The form the strip shows for the caret in argument: the first
+	 * that has that many parameters, else the one with the most; null
+	 * when there is none.
+	 */
+	@Nullable
+	static List<String> form(@NonNull List<List<String>> forms,
+			int argument) {
+		List<String> longest = null;
+		for (List<String> form : forms) {
+			if (form.size() > argument) {
+				return form;
+			} else if (longest == null || form.size() > longest.size()) {
+				longest = form;
+			}
+		}
+		return longest;
+	}
+
+	// The parameter names of every form of name; null while the docs
+	// are still being read.
+	@Nullable
+	private List<List<String>> forms(@NonNull String name) {
+		List<List<String>> found = new ArrayList<>();
+		if (GlslWords.style(name, 0, name.length()) == Style.IDENTIFIER) {
+			for (Knowledge.Symbol form : declared(name)) {
+				List<String> names = new ArrayList<>();
+				for (Knowledge.Symbol part : form.parts()) {
+					names.add(part.name());
+				}
+				if (!names.isEmpty()) {
+					found.add(names);
+				}
+			}
+			return found;
+		}
+		if (docs == null) {
+			readDocs(null);
+			return null;
+		}
+		GlslDocs.Entry entry = docs.lookup(name);
+		if (entry != null && entry.kind() == GlslDocs.Kind.FUNCTION) {
+			for (String form : entry.forms()) {
+				List<String> names = GlslDocs.parameterNames(form);
+				if (!names.isEmpty()) {
+					found.add(names);
+				}
+			}
+		}
+		return found;
 	}
 
 	// What the file or a file around it declares: the declaration, the
