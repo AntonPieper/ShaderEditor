@@ -97,6 +97,24 @@ public class SearchTest {
 	}
 
 	@Test
+	public void replaceAllIsOneChangeAndOneUndo() {
+		Document document = new Document(Text.of(
+				"vec4 a = texture2D(t, uv);\nfloat b;\nvec4 c = TEXTURE2D(u);"));
+		String before = document.text().toString();
+		Search.Replace all = Search.replaceAll(Search.all(document.text(),
+				query("texture2D", false, true), Integer.MAX_VALUE, GO_ON),
+				"texture");
+		document.replace(all.from(), all.to(), all.text());
+		assertEquals("vec4 a = texture(t, uv);\nfloat b;\nvec4 c = texture(u);",
+				document.text().toString());
+		document.undo();
+		assertEquals(before, document.text().toString());
+		assertFalse(document.canUndo());
+		assertNull(Search.replaceAll(Search.all(document.text(),
+				query("zzz", true, false), GO_ON), "y"));
+	}
+
+	@Test
 	public void aCancelledSearchHasNoResult() {
 		assertNull(Search.all(DISC, query("radius", false, false),
 				() -> true));

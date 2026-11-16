@@ -254,12 +254,8 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	}
 
 	public void setVisible(boolean visible) {
-		// The keys are for the code: they step aside while Find's field
-		// has the focus.
-		View focus = extraKeysView.getRootView().findFocus();
 		extraKeysView.setVisibility(getVisibility(visible && hasText &&
-				!covered &&
-				(focus == null || focus.getId() != R.id.find_field) &&
+				!covered && !inFind() &&
 				(!ShaderEditorApp.preferences.autoHideExtraKeys() ||
 						isKeyboardOpen())));
 	}
@@ -273,6 +269,21 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	@Override
 	public void onGlobalFocusChanged(View oldFocus, View newFocus) {
 		setVisible(ShaderEditorApp.preferences.showExtraKeys());
+	}
+
+	// Whether a field of Find has the focus: the keys are for the code,
+	// and step aside then.
+	private boolean inFind() {
+		View focus = extraKeysView.getRootView().findFocus();
+		for (View view = focus; view != null;
+				view = view.getParent() instanceof View parent
+						? parent
+						: null) {
+			if (view.getId() == R.id.find_bar) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	// An on-screen keyboard is open, docked or floating.
