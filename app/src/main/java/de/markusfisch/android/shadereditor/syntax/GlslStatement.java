@@ -262,6 +262,50 @@ final class GlslStatement {
 		return i;
 	}
 
+	/** Return the bracket that the closing one at i closes, or -1. */
+	int opening(int i) {
+		int nesting = 0;
+		for (; i >= 0; --i) {
+			char c = punct(i);
+			if (c == ')' || c == ']' || c == '}') {
+				++nesting;
+			} else if ((c == '(' || c == '[' || c == '{') &&
+					--nesting == 0) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * Return the type the words from from up to the name at token name
+	 * say, as GLSL writes it without qualifiers: the last type or name
+	 * among them, an array with its brackets, and with the brackets
+	 * behind the name if it has any ("float a[2]" is a "float[2]").
+	 * Null when there is none.
+	 */
+	String type(int from, int name, int to) {
+		int word = wordBefore(name, from);
+		if (word < 0) {
+			return null;
+		}
+		String type = joined(word, name);
+		int end = name < to ? afterBrackets(name + 1, to) : name;
+		return end > name + 1 ? type + joined(name + 1, end) : type;
+	}
+
+	// The text of the tokens from from to to, with nothing between.
+	private String joined(int from, int to) {
+		if (to - from == 1) {
+			return text(from);
+		}
+		StringBuilder sb = new StringBuilder();
+		for (int i = from; i < to; ++i) {
+			sb.append(text, this.from[i], this.to[i]);
+		}
+		return sb.toString();
+	}
+
 	// Returns the last type or name before token i, from from on, over
 	// qualifiers and whole pairs of brackets, or -1. A bracket that
 	// nothing closes hides nothing before it.
@@ -307,8 +351,8 @@ final class GlslStatement {
 		return closed < 0 ? size : closed + 1;
 	}
 
-	// Returns the bracket that closes the one at i, or -1.
-	private int closing(int i, int size) {
+	/** Return the bracket that closes the one at i, or -1. */
+	int closing(int i, int size) {
 		int nesting = 0;
 		for (; i < size; ++i) {
 			char c = punct(i);

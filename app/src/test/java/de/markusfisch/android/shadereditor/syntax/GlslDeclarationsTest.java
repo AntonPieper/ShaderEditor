@@ -102,7 +102,9 @@ public class GlslDeclarationsTest {
 				"FIELD t: highp float t[2]"), parts(symbols.get(0)));
 		assertEquals(Arrays.asList("PARAMETER r: Ray r",
 				"PARAMETER uv: in vec2 uv",
-				"PARAMETER w: const float w[3]"), parts(symbols.get(1)));
+				"PARAMETER w: const float w[3]",
+				// One without a name is one all the same.
+				"PARAMETER : float"), parts(symbols.get(1)));
 		assertEquals(Arrays.asList("PARAMETER a: a", "PARAMETER b: b"),
 				parts(symbols.get(2)));
 		assertEquals(Arrays.asList(), parts(symbols.get(3)));

@@ -26,7 +26,10 @@ public class GlslSymbolsTest {
 				described(text, drafts));
 		assertEquals(Arrays.asList(
 						"PARAMETER r: in Ray r [in Ray r]",
-						"PARAMETER t: float t[2] [float t[2]]"),
+						"PARAMETER t: float t[2] [float t[2]]",
+						// One without a name is one all the same;
+						// "void" alone is none.
+						"PARAMETER : const highp float [const highp float]"),
 				parts(text, drafts.get(0)));
 		// A head alone is one too: its body is not a statement's.
 		assertEquals(Collections.singletonList(
@@ -102,6 +105,47 @@ public class GlslSymbolsTest {
 	}
 
 	@Test
+	public void theTypeOfWhatIsDeclared() {
+		// Whole and without qualifiers, an array with its brackets.
+		assertEquals(Arrays.asList("a vec3", "b vec3[2]", "c vec3[N][2]"),
+				types(declared("uniform highp vec3 a, b[2], c[N] [2];")));
+		assertEquals(Arrays.asList("lights Ray[4]"),
+				types(declared("const Ray[4] lights = Ray[4](a, b, c, d);")));
+		assertEquals(Arrays.asList("x float"),
+				types(declared("static const PREC float x = 1.0;")));
+		// A function has what it returns, its parameters their own.
+		Draft f = declared("highp vec3 f(in Ray r, const float t[2], " +
+				"out mat3, float[2])").get(0);
+		assertEquals("vec3", f.type);
+		assertEquals(Arrays.asList("r Ray", "t float[2]", " mat3",
+				" float[2]"), types(f.parts));
+		assertEquals("Ray[2]", declared("Ray[2] pair(vec3 o)").get(0).type);
+		assertNull(declared("void main(void)").get(0).parts.isEmpty()
+				? null : "parts");
+		assertEquals("void", declared("void main(void)").get(0).type);
+		// A struct's fields, and what is declared with it.
+		List<Draft> drafts = declared(
+				"struct Ray { vec3 o, d; float hit[2]; Hit last; } near;");
+		assertEquals(Arrays.asList("o vec3", "d vec3", "hit float[2]",
+				"last Hit"), types(drafts.get(0).parts));
+		assertEquals("Ray", drafts.get(1).type);
+		assertNull(declared("struct { float a; } s;").get(0).type);
+		// "struct S" and no more is a type without fields yet.
+		assertEquals(Collections.singletonList("TYPE S: struct S " +
+				"[struct S;]"), described("struct S;"));
+	}
+
+	private static List<String> types(List<?> symbols) {
+		List<String> list = new ArrayList<>();
+		for (Object o : symbols) {
+			Symbol symbol = o instanceof Draft ? ((Draft) o).symbol()
+					: (Symbol) o;
+			list.add(symbol.name() + " " + symbol.type());
+		}
+		return list;
+	}
+
+	@Test
 	public void aStructWithItsFields() {
 		String text = "struct Ray { vec3 o, d; float t[2]; } near, far;";
 		List<Draft> drafts = declared(text);
@@ -152,7 +196,7 @@ public class GlslSymbolsTest {
 	public void whatDeclaresNothing() {
 		for (String text : new String[]{
 				"", ";", "precision highp float;", "x = 1.0;", "x;",
-				"return x;", "float;", "struct;", "struct S;", "uniform;",
+				"return x;", "float;", "struct;", "uniform;",
 				"= 1.0;", "f(x);", "1.0;", ") float x;"}) {
 			assertEquals(text, Collections.emptyList(), described(text));
 		}

@@ -1,0 +1,3023 @@
+# names read at 8d016bf9, integration/project-mode before the second half of the parser
+ed6ea017	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+7eea7233	daytime hash layer main nightMode offset resolution ridge
+d8f37fad	FTIME_PERIOD battery ftime main powerConnected resolution
+c6f43567	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+7084b1d3	main pointerCount pointers resolution time
+1a051c33	main noise resolution time
+3d429fab	main pointerCount pointers resolution
+2040322a	main resolution
+8ec459e5	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+bf9f9315	cameraAddent cameraBack cameraOrientation main resolution
+64359e0	bar light main pressure proximity resolution
+3943c063	backbuffer main mediaVolume micAmplitude radius resolution
+36546a9b	lastNotificationTime main notificationCount resolution time
+ec60ab8b	disc main mouse resolution time
+6d70312d	backbuffer main pointerCount resolution time touch
+b5b22a8d	hash main resolution rotationMatrix stars
+9abaece5	cameraAddent cameraFront cameraOrientation main resolution
+93fcbaa2	main noise resolution touch touchStart
+9e8e9d49	date daytime hand main nightMode resolution
+9ce06411	gravity linear main resolution soft
+243916d1	inclination line magnetic main orientation resolution
+a6961a65	arcs fragColor hash main noise resolution time
+a34c5901	date daytime hand main nightMode resolution
+50aef985	gravity linear main resolution soft
+f0c594fb	backbuffer evaluate get get4 main n oneIfZero pointerCount pointers resoluton tapSize
+13112cd5	hash main resolution rotationMatrix stars
+f92447c8	besmoothstep date daytime hand main nightMode resolution
+d0484ff3	disc main mouse resolution
+a595bde6	FTIME_PERIOD battery ftime main powerConnected resolution
+ade7aa0d	main pointerCount pointers
+3d324dc0	arcs fragColor hash main noise resolution time
+847fd62c	inclination line magnetic main orientation resolution
+67ed9c16	main resolution
+68a36a3c	backbuffer main pointerCount resolution time touch
+c9a6c92a	any down main noise resolution touch
+cd128171	evaluate main oneIfZero pointerCount pointers resolution
+132e676e	hash main mark moon north resolution rotationMatrix stars
+743543c2	gravity linear main resolution soft
+f64b325f	main pointers resolution time
+89ee53c8	daytime hash layer main nightMode offset resolution ridge
+4c56fb23	FTIME_PERIOD battery ftime main powerConnected resolution
+9f352f19	disc main mouse resolution time
+6814f7d6	FTIME_PERIOD dial frame ftime load main resolution second startRandom subsecond
+87b4df09	main noise resolution time
+29d6b162	backbuffer main pointerCount resolution time touch
+3ff58030	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+cd8c6293	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+27195a	backbuffer main pointerCount resolution touch
+11c5ebb	arcs fragColor hash main noise time
+d26a343c	main noise resolution touch touchStart
+c59e7f1f	FTIME_PERIOD battery ftime main powerConnected resolution
+31968c80	inclination line magnetic main orientation resolution
+79c7685b	band cameraAddent cameraFront cameraOrientation luma probe resolution rgb st
+bd36ac34	inclination line magnetic main orientation resolution
+b1c906bb	main resolution
+2beba53b	daytime hash layer main nightMode offset resolution ridge
+cf101e06	FTIME_PERIOD battery ftime main powerConnected resolution
+3985fbf1	main p pointers resolution time
+846440fb	arcs fragColor hash main noise resolution time
+e3b0972d	FTIME_PERIOD battery ftime main powerConnected resolution
+4badeefc	main noise resolution touch touchStart
+9543b5b5	gravity linear main resolution soft
+4ccdfd81	main pointerCount poistructnters resolution time
+2193766c	main resolution touch touchStart
+e5b2adba	any down main noise resolution touch touchStart
+f5e152da	cameraAddent cameraFront cameraOrientation main pixels
+9c5f3e2d	inclination line magnetic main orientation resolution
+c49b2c3f	gravity linear main resolution soft
+c7555d8e	main pointers resolution
+969bd749	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+18f6d682	backbuffer main pointer resolution time touch
+d128cbbf	lastNotificationTime main notificationCount resolution time
+a5811198	main pointerCount pointers resolution time
+93cd1bb3	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+85bcc854	arcs fragColor hash main noise resolutio time
+c4202be5	main noise resolution time
+f029e499	disc mouse resolution time
+ae592157	f inclination line magnetic main orientation resolution
+36a5377c	gravity linear main resolution s
+9798689c	backbuffer main mediaVolume micAmplitude radius resolution
+9ee23fc	backbuffer main mediaVolume micAmplitude radius resolution
+3d53c96c	hash main resolution rotationMatrix stars
+97e0f9e9	lastNotificationTime main notificationCount resolution time
+f8fa61ae	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c5d93234	main pointerCount pointers resolution time
+ceb3158f	dial frame ftime main second startRandom subsecond vec2
+4eccd58c	backbuffer main mediaVolume micAmplitude radius resolution
+a92caf77	FTIME_PERIOD battery ftime main powerConneplugged resolution
+c7149a4d	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+9221e442	above arc cell color day daytime deep dm ds dusk ground hash high hour layer low main moonAt nightMode offset orbit p page px resolution ridge sky star sun sunAt top un
+878fee1f	main resolution time
+e08681f	disc main mouse resolution time
+a9d777d6	main noise resolution time
+cb4dde1c	backbuffer evaluate get4 main oneIfZero pointers resolution
+a0240f95	lastNotificationTime main notificationCount resolution time
+f0bcd96	disc main mouse resolution time
+756e6f97	main noise resolution time
+736bdc9d	bar light main pressure proximity resolution
+648529f5	inclination line magnetic main orientation resolution
+c8259768	main pointerCount pointers resolution
+5289d021	inclination line magnetic main orientation resolution
+a0913da	main noise time
+308b7f67	cameraAddent cameraFront cameraOrientation main resolution
+2c4b8d1	daytime hash layer main nightMode offset resolution ridge
+30ae4d45	cameraAddent cameraFront cameraOrientation main resolution
+a8af0f80	gravity linear main resolution soft
+b8d624ec	main pointerCount pointers resolution
+bbc15397	main pointerCount pointers resolution
+944f4cd2	main noise resolution touch touchStart
+7e15570f	date daytime hand main nightMode resolution
+203ae70	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+3714295d	f gravity linear main resolution soft
+330afdcf	FTIME_PERIOD battery ftime main powerConnected resolution
+1bc92bf9	inclination line magnetic main orientation
+97e62899	main pointerCount pointers
+6a00c397	main pointerCount pointers resolution
+52554755	cameraAddent cameraOrientation main resolution
+d0181234	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+2d7369c7	date daytime hand main nightMode resolution
+a762b1b0	mainstruct resolution
+10197264	backbuffer main mediaVolume micAmplitude radius resolution
+dd9fd15a	backbuffer evaluate get get4 main n oneIfZero pointerCount pointers resolution
+e33921	backbuffer main pointerCount resolution time touch
+3946a80c	inclination line magnetic main orientation resolution
+87f848ec	main resolution time
+b117e2a6	FTIME_PERIOD battery ftime main powerConnected resolution
+52c8aeec	gravity linear main resolution soft
+312b3ba8	main pointerCount pointers resolution time
+6ba47450	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+1b621f25	cameraAddent cameraFront cameraOrientation main resolution
+34fadc36	hash main resolution rotationMatrix stars
+bb62fde8	FTIME_PERIOD battery ftime main powerConnected px resolution uv x
+f217b5d5	main pointerCount resolution
+23537e4b	lastNotificationTime main resolution time
+81f58885	arcs fragColor hash main noise resolution time
+cde1fefa	hash main resolution rotationMatrix stars
+1c5e4ddf	main reoise time
+4569089c	FTIME_PERIOD battery ftime main powerConnected resolution
+b9981b45	disc main mouse resolution time
+64712ed	main noise resolution time
+f26861ea	FTIME_PERIOD battery ftime main powerConnected resolution
+4ab889a7	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+12f8da3d	bar light main only pressure proximity resolution
+43d7ae9e	uv
+f9928169	fill inclination line magnetic main orientation resolution rioothstep
+6552d344	main pointerCount pointers resolution
+4681d814	
+e3f0c062	main pointerCount pointers resolution
+bab8c4d0	bar main pressure proximity resolution
+9efb1065	a b bar c color h light lution p pressure proximity px resolution
+8094e96b	ca cameraAddent main
+3b817ad0	main pointerCount pointers resolution
+d34a7e78	lastNotificationTime main notificationCount resolution time
+4cf38a51	cameraAddent cameraFront cameraOrientation main resolution
+22f5302	main pointerCount pointers resolution time
+ab2196f1	main resolution
+fb1adb2d	arcs fragColor hash main noise resolution time
+925ab716	arcs fragColor hash main noise resolution time
+54a7e94c	cameraAddent cameraFront cameraOrientation main resolution
+4653ade9	main resolution
+8dc3030a	main noise resolution time
+f3a5a183	FTIME_PERIOD dial frame ftime main resolution second subsecond
+9a20c07d	gravity linear main resolution soft
+49eb34f6	arcs fragColor hash main noise resolution time
+fc9c5b0c	disc main mouse resolution time
+a394972b	inclination line magnetic main orientation resolution
+454ea7df	arcs fragColor hash main noise resolution time
+25537b96	pointerCount pointers
+51e45f30	date daytime hand main nightMode resolution
+586cb991	main noise resolution time
+64f0238e	bar light main pressure proximity resolution
+caac267c	backbuffer main mediaVolume micAmplitude radius resolution
+d7314816	gravity linear main resolution soft
+17c9f2e0	main noise resolution touch touchStart
+19cd466f	arcs fragColor hash main noise resolution time
+2127fbbb	backbuffer main pointerCount resolution time touch
+f1fb7789	bar light main pressure proximity
+7d880e86	daytime hash layer main nightMode offset resolution ridge
+9e27c55c	backbuffer main pointerCount resolution touch
+2067947e	mainesolution resolution
+5fa9c68a	main pointerCount pointers resolution time
+4e083693	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+8de74c0c	disc main mouse resolution time
+1f80767a	arcs fragColor hash main noise resolution time
+e493bf94	lastNotificationTime main notificationCount resolution time
+4034bfea	backbuffer main pointerCount resolution time touch
+3f706d66	main pointerCount pointers resolution time
+457b1439	date dauniformytime hand main nightMode resolution
+1b301ba5	main pointerCount pointers resolution
+f1353317	lastNotificationTime main notificationCount resolution
+6689606a	main pointerCount pointers resolution
+d7139916	bar light main pressure proximity resolution
+730cea4e	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+1a27579f	main pointerCount pointers resolution
+b01e5a72	disc main mouse resolution time
+ecba0b53	backbuffer evaluate get main oneIfZero poi pointerCount resolution
+4c2d2c3	arcs fragColor hash main noise resolution time
+9ed11ad6	daytime hash layer main nightMode offset resolution ridge
+4e1bbe68	main noise
+1b0e51fa	main noise resolution time
+437e7c15	backbuffer get main oneIfZero pointerCount pointers
+3c497792	disc main mouse resolution time
+665f0c07	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+5181ea6d	inclination line magnetic main orientation resolution
+8e650c0c	arcs fragColor hash main noise resolution time
+f88bafc5	gravity linear main resolution soft
+ede3c20b	FTIME_PERIOD battery ftime main powerConnected resolution
+5a9671c3	backbuffer evaluate f get oneIfZero pointers resolution
+542528e0	bar light main pressure proximity resolution
+771e430a	main noise time
+c811cc03	daytime hash layer main nightMode offset resolution ridge
+f9bb0adb	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+e9e08f97	hash main resolution rotationMatrix stars
+44520a4d	daytime hash layer main nightMode offset resolution ridge
+205e30f7	main pointerCount pointers resolution
+abdaff22	main resolution
+ab024e81	hash main resolution rotationMatrix stars
+cc7cd435	gravity linear main resolution soft
+33ca9899	daytime hash layer main nightMode offset resolution ridge
+8dc4d27	backbuffer main pointerCount resolution time touch
+abc39c17	main noise resolution time
+126ce5c5	main noise
+1dcc3c33	FTIME_PERIOD battery ftime main powerConnected resolution
+9e2f36c8	arcs fragColor hash main noise resolution time
+a8a3661b	lastNotificationTime main notificationCount resolution time
+386e2d6b	disc main mouse resolution time
+b913d8e3	pointers resolution
+ee7567d9	cameraAddent cameraBack cameraOrientation main resolution
+c667a2c1	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+37826c61	ate daytime hand main nightMode resolution
+81d79e80	backbuffer main mediaVolume micAmplitude radius resolution
+b14f91ca	main resolution
+ecab72be	daytime hash layer main nightMode offset resolution ridge
+3846ea80	disc main mouse resolution time
+c324d169	inclination line magnetic main orientation resolution
+c0c15e59	main noise resolution touch touchStart
+7ba644c8	main noise resolution touch touchStart
+b6df9d84	linear main resolution soft
+832465b4	lastNotificationTime main notificationCount resolution time
+94cd62c7	FTIME_PERIOD dial frame from ftime han main resolution second startRandom subsecond
+4dd4280	main noise time
+255b3a2	disc main mouse resolution time
+cce41015	main pointerCount pointers resolution time
+26cb8392	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+93b0cfb0	bar light main pressure proximity resolution
+7ae41b35	bar light main pressure proximity resolution
+5ff59d20	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+ed6e12e2	main pointerCount pointers resolution time
+7c8f69e2	bar light main pre proximity resolution
+d559504c	backbuffer main pointerCount resolution time touch
+3eab07ad	backbuffer main pointerCount resolution time touch
+26ec2bc	lastNotificationTime main notificationCount resolution time
+14e8091b	main pointerCount pointers resolution
+a1a28f6c	main pointerCount pointers resolution
+e52b9634	backbuffer backdrop faded ink main mark pointerCount previous resolution time touch
+8946e711	backbuffer evaluate get get4 main oneIfZero poierCount pointers resolution
+f9823a67	inclination line magnetic main orientation resolution
+d591e6be	backbuffer main mediaVolume micAmplitude pixels radius
+c1a178a0	disc f main mouse resolution
+31b83510	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+c3204050	disc main mouse resolution time
+303fe884	cameraAddent cameraFront cameraOrientation main
+77c373e3	main resolutiostructn
+1f24522e	hash main resolution rotationMatrix stars
+eb13fd4	arcs fragColor hash main noise resolution time
+903810ee	backbuffer main mediaVolume micAmplitude radius resolution
+2f6e80c7	arcs fragColor hash main noise resolution time
+aa425d34	
+52e826b1	date daytime hand main nightMode resolution turned with
+658c2d89	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+c34a5e29	main pointerCount pointers resolution
+124e2094	main pointerCount pointers resolution
+89d9fe0	hash main resolution rotationMatrix stars
+1b5bc905	cameraAddent cameraBack main resolution
+20f0905a	date daytime hand main nightMode resolution
+1ddbb999	backbuffer evaluate get main poin pointerCount resolution
+f0e214ba	main resolution
+2552f768	daytime hash layer main nightMode offset resolution ridge
+c972735c	arcs fragColor hash main noise resolution time
+b20a04da	inclination line magnetic main orientation resolution
+2edeabf	date daytime hand main nightMode resolution
+d2410ad	lastNotificationTime main notificationCount resolution time
+d2bb4e54	FTIME_PERIOD battery ftime main powerConnected resolution
+ea6628dd	backbuffer evaluate get get4 main pointers resolution
+2574426f	daytime hash layer main nightMode offset resolution ridge
+20efea19	cameraAddent cameraBack cameraOrientation main
+59634b6a	backbuffer main mediaVolume micAmplitude radius resolution
+3dcb82e7	hash main resolution rotationMatrix stars
+b3be7736	main pointerCount pointers resolution
+d03ed584	main resolution
+7089193d	arcs fragColor hash main noise resolution time
+2fbe0bcd	backbuffer main mediaVolume micAmplitude radius resolution
+3fafb1d0	main resolution
+2d954a58	hash main resolution rotationMatrix stars
+79d6ed3b	cameOrientation cameraBack main resolution
+4d283407	arcs fragColor hash main noise resolution time
+51adde77	main pointerCount pointers resolution
+308f2cc8	FTIME_PERIOD battery ftime main powerConnected resolution
+c0f0d477	date daytime hand main nightMode resolution
+f91b178c	arcs fragColor hash main noise resolution time
+c6f8d97b	lastNotificationTime main notificationCount resolution time
+5e08d900	cameraAddent cameraBack cameraOrientation main resolution
+4457b5d1	main noise resolution time
+138929ff	main pointerCount pointers resolution time
+c2d47bae	main pointers resolution
+1f8f70b5	hash main resolution rotationMatrix stars
+eb78905e	backbuffer main pointerCount resolution time touch
+34c3f492	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+d5989dd7	cameraAd cameraFront cameraOrientation dent main pixels
+c79e944b	main pointerCount pointers resolution time
+df6ee6ff	main pointers time
+1750090e	color f field fill inclination line magnetic main needle orientation q r resolution ring sin tick width
+86dcf558	FTIME_PERIOD battery ftime main powerConnected resolution
+c89e2bdd	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+c547b69c	cameraAddent cameraBack cameraOrientation main resolution
+e3f89cb3	at cell d face hash m main resolution rotationMatrix stars uv
+5b759811	inclination line magnetic main orientation resolution
+c8a37487	FTIME_PERIOD ftime main powerConnected resolution
+b9c9d643	date daytime hand main nightMode resolution
+edb80bad	main pointerCount pointers resolution
+b1c00023	main pointers resolution
+b8b6d77a	main noise resolution touch touchStart
+491cc758	gravity linear main resolution soft
+7911604b	backbuffer main mediaVolume micAmplitude radius resolution
+9ae87004	cameraAddent cameraBack cameraOrientation resolution st
+fe300832	evaluate main oneIfZero pointerCount pointers resolution
+59b81c3f	backbuffer main pointerCount resolution time touch
+51e7e6b1	arcs fragColor hash main noise resolution time
+2bc37d63	bar light main pressure proximity resolution
+e85e3665	main noise resolution time
+7b3211e8	daytime hash layer main nightMode offset resolution ridge
+229afab7	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+80a28414	main pointerCount pointers resolution
+7a6184af	cameraAddent cameraOrientation main
+91b7a8a3	disc main mouse resolution time
+ff5f3524	cameraAddent cameraBack cameraOrientation main resolution
+a4b43a64	daytime deep dm ds h hash layer main moonAt nightMode offset orbit resolution ridge sunAt
+b42c1306	main noise time
+d2643e0c	daytime hash layer main nightMode offset resolution ridge
+a9c70da9	colo main pointerCount pointers resolution
+76096c6b	main resolution
+202ca182	backbuffer evaluate main oneIfZero pointerCount pointers r
+3ae19f0a	main noise resolution touch touchStart
+5ff9a4bd	bar light main pressure proximity resolution
+458a6cda	about bar light main pressure proximity resolution
+8341f09b	main pointerCount pointers resolution time
+6b882336	daytime hash layer main nightMode offset resolution ridge
+7ae3b97c	cameraBack cameraOrientation main resmeraAddent
+5d7a1e0e	bar light main pressure proximity resolution
+6c7cc7e0	backbuffer main pointerCount resolution time touch
+a9095c03	main mouse resolution time
+6fde7873	inclination line magnetic main orientation resolution
+4431bcd7	main noise resolution time
+efea7008	
+ad6f28fc	FTIME_PERIOD battery ftime main powerConnected resolution
+a8af717b	backbuffer main pointerCount resolution time touch
+ec98e264	main pointerCount resolution time
+aa5f0fa4	backbuffer main pointerCount resolution time touch
+af57b46f	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+736510e2	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+6d3f7cb1	main noise resolution touch touchStart
+d6229f7d	backbuffer main pointerCount resolution time touch
+e4aba18a	backbuffer main mediaVolume radius resolution
+59e11440	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+c4cc0da5	disc main mouse resolution time
+28e5a4d8	main noise resolution time
+cbf3f951	date daytime hand main nightMode resolution
+3b7ffd33	cameraAddent cameraFront cameraOrientation main resolution
+65b679dd	backbuffer main pointerCount resolution touch
+f491d413	arcs fragColor hash main noise resolution time
+eefe3ca5	main noise resolutios touch touchStart
+b08bd926	daytime hash layer main nightMode offset resolution ridge
+de8c1e63	gravity linear main resolution soft
+138c7928	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+673978fd	arcs fragColor hash main noise resolution time
+44a4d765	disc main mouse resolution time
+3490c555	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+29e4f38	
+80b76e3d	main resolution
+e0fcb91	main resolution
+b712d891	hash main resolution rotationMatrix stars
+2773ba8a	backbuffer evaluate f get get4 main oneIfZero
+5053397	arcs fragColor hash main noise resolution time
+4f4f9fbd	lastNotificationTime main notificationCount resolution time
+5a0f1872	a at cell d face hash m main resolution rotationMatrix uv
+87161ac9	arcs fragColor hash main noise resolution time
+da383a42	cameraAddent cameraOrientation f main resolution
+26b75c64	main resolution
+9fc1d039	main noise resolution touch touchStart
+4ec30e90	lastNotificationTime main notificationCount resolution time
+d6b09fe8	arcs fragColor hash main noise resolution time
+8c400d86	bar light main pressure proximity resolution
+256e1b9e	FTIME_PERIOD battery ftime main resolution
+1b7fc7ac	inclination line magnetic main orientation pixels
+cec3da69	gravity main resolution soft
+2cf7c713	arcs fragColor hash main noise resolution time
+1c711a30	disc main mouse resolution time
+9f2a4bc	main noise resolution touch touchStart
+dcfdea91	main noise resolution touch touchStart
+2e0813b0	main resolution
+9bb054cb	main noise resolution touch touchStart
+1d7ef164	inclination line magnetic main orientation resolution
+9bc1d412	main pointerCount pointers resolution
+d020a63b	cameraAddent cameraBack cameraOrientation main resolution
+39cd5d97	inclination line magnetic main orientation resolution
+ee8c0137	bar light main pressure proximity resolution
+757d514f	bar light main pressure proximity resolution
+62c9e75	arcs fragColor hash main noise resolution time
+aab5534d	main noise resolution touch touchStart
+e70171ab	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+8aefe226	angle cell color disc main moon mouse orbit resolution time
+87402f92	cameraAddent cameraBack cameraOrientation resolution st
+e42809b5	backbuffer erCount evaluate get main oneIfZero
+1dfc8edf	main resolution
+7167d9a1	main noise resolution touch
+774c2d31	arrived main notificationCount resolution time
+79b24419	backbuffer get get4 main pointerCount pointers resolution
+7232eae5	main noise resolution time
+2848ad34	backbuffer main pointerCount resolution time touch
+74cf2910	main noise resolution touch touchStart
+79162c2f	main pointerCount pointers resolution
+e552ee1e	inclination line magnetic main orientation resolution
+d218b51b	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+4302c52	daytime hash layer main nightMode offset resolution ridge
+fc0e8a9	FTIME_PERIOD battery ftime main powerConnected resolution
+7372840e	lastNotificationTime main notificationCount resolution time
+3badffff	hash main resolution rotationMatrix stars
+9cc526fa	backbuffer main pointerCount resolution time touch
+6faa26b1	main pointerCount pointers resolution
+ddffe41d	bar light main pressure proximity resolution
+dea30a56	inclination line magnetic main orientation resolution
+e3763eae	cameraAddent cameraFront cameraOrientation main resolution
+d5161a04	FTIME_PERIOD battery ftime main powerConnected resolution
+5e6787f5	main pointerCount pointers resolution
+285a1476	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+7d883187	bar light main pressure proximity resolution
+fa8466e5	evaluate get4 main pointerCount pointers resolution
+69851d1a	date daytime hand main nightMode resolution
+6eae8fbe	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c3524c7	bar light main pressure proximity resolution
+65ba3d79	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c7155583	main resolution time
+f0e82b04	lastNotificationTime load main notificationCount resolution time
+812f45b1	evaluate get main oneIfZero pointerCount pointers resolution
+285128f8	date daytime hand main nightMode
+7d439568	main noise resolution touch touchStart
+a19eac21	arcs fragColor hash main noise resolution time
+167af0b4	daytime hash layer main nightMode offset resolution ridge
+480f9efe	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c30d6781	disc main mouse resolution time
+dc71da4f	backbuffer main mediaVolume radius resolution
+74fb51a4	backbuffer main mediaVolume micAmplitude radius resolution
+44739ef4	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+82e21c6d	inclination line magnetic main orientation resolution
+5cb0f00	cameraAddent cameraFront cameraOrientation main resolution
+d6b747aa	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+2f7c8116	bar light main pressure proximity resolution
+5f8d05c0	main pointerCount pointers resolution
+12980132	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+d0509e8d	cameraAddent cameraFront cameraOrientation main resolution
+c83578c4	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+db4e62da	co main pointerCount pointers resolution
+9b800b9f	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+2b6477	bar light main pressure proximity resolution
+7a8453be	bar light main proximity resolution
+b483d59e	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+97653ce0	gravity linear main resolution
+a0d0823	inclination line magnetic main orientation resolution
+8b15cef0	arcs fragColor hash main noise resolution time
+f195132a	disc main mouse resolution time
+9e82d421	disc main resolution time
+5d495113	main
+be22d704	hash main resolution rotationMatrix stars
+7cc33b38	main pointerCount pointers resolution
+1f7e9fcd	main noise resolution time
+e21d1403	disc main mouse resolution time
+36d7ed01	gravity linear main resolution soft
+d73e0a19	main pointerCount pointers resolution time
+d6801147	disc main mouse resolution time
+c39bf1f7	arcs fragColor hash main noise resolution time
+3a92ac89	backbuffer main mediaVolume micAmplitude radius resolution
+8cbd85cd	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+66ca950b	backbuffer main mediaVolume micAmplitude radius resolution
+ee2b788b	cameraAddent cameraFront cameraOrientation main resolution
+f5f23bd3	
+c074fd0a	main noise resolution time
+c8294163	FTIME_PERIOD battery ftime main powerConnected resolution
+4f437c38	disc main mouse resolution time
+a38a8d7a	daytime hash layer main nightMode offset resolution ridge
+b82573c5	main noise resolution touch touchStart
+ee565a3	bacifkbuffer evaluate get main oneIfZero pointerCount pointers resolution
+4ee24ee9	backbuffer main mediaVolume micAmplitude radius resolution
+b818f7dc	cameraBack cameraOrientation maigCoord resolution st
+87ea5086	main pointerCount pointers resolution time
+d303cf83	backbuffer main pointerCount resolution time touch
+74238fe6	lastNotificationTime main notificationCount resolution time
+fa90a98e	cameraAddent cameraFront cameraOrientation main resolution
+62716706	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+dfdec3c3	cameraAddent cameraFront cameraOrientation main resolution
+59be2b41	backbuffer main mediaVolume micAmplitude radius resolution
+fc5633ed	backbuffer main pointerCount resolution time touch
+d4e30025	inclination line magnetic main orientation resolution
+eea44e94	FTIME_PERIOD battery ftime main powerConnected resolution
+7a49be29	bar light main proximity resolution
+3414b4	FTIME_PERIOD dial frame main resolution second seconds startRandom subsecond
+c0c9fc46	main pointerCount pointers resolution
+78b3f8db	inclination line magnetic main orientation resolution
+702a6f42	daytime hash layer nightMode offset resolution
+f8a987d4	date daytime hand main nightMode resolution
+672ea547	date daytime hand main nightMode resolution
+ae6641cf	daytime hash layer main nightMode offset resolution ridge
+1bd33e07	cameraAddent cameraBack cameraOrientation main resolution
+81e5fe31	light main pressure proximity resolution
+f3c58822	atan color glints hash main mark moon north resolution rotationMatrix stars tick
+b1958e	resolution
+6078c15b	main noise resolution touch touchStart
+9eaa18b6	backbuffer evaluate get get4 main n oneIfZero pointerCount pointers resolution tapSize
+ddc5089a	backbuffer get4 main oneIfZero pointerCount pointers resolution
+688d0b7	daytime hash layer main nightMode offset resolution ridge
+911c9103	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+c6e0df4d	bar light main pressure proximity resolution
+6536641b	cameraAddent cameraBack cameraOrientation main resolution
+256047cc	cameraAddenion cameraFront cameraOrientation main resolution turns
+ea439c2a	gravity linear main resolution soft
+191f62e0	date daytime hand main nightMode resolution
+2c65cfd4	hash main resolution rotationMatrix stars
+59e7a31b	cameraAddent cameraBack cameraOrientation mainv resolution st
+d7d6e122	inclination line magnetic main orientation reels
+405a278	cameraAddent cameraFront cameraOrientation main resolution
+eec975a6	main noise resolution time
+4c002f5d	GL_FRAGMENT_PRECISION_HIGH noise rd resolution time
+7a6afe3f	main pointerCount pointers resolution
+3efec5bf	backbuffer main mediaVolume micAmplitude radius resolution
+f0e9cbb7	backbuffer main pointerCount resolution time touch
+c8b8baa4	cameraAddent cameraFront cameraOrientation main resolution
+d0dcd8e0	backbuffer evaluate get get4 main n oneIfZero pointerCount pointers resolution
+88d9630	lastNotificationTime main notificationCount resolution
+ad9af437	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+91bbbb04	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+63369395	GL_FRAGMENT_PRECISION_HIGH cameraBack cameraOrientation main resolution
+5dbe7e81	lastNotificationTime main notificationCount resolution time
+bbfecd10	arcs fragColor hash main noise resolution time
+48c7694d	cameraAddent cameraFront cameraOrientation main resolution
+a3211b07	main resolution
+bd7ce752	main pointerCount resolution
+118cf315	evaluate get main oneIfZero pointerCount pointers resolution
+4b3a9380	cameraAddent cameraFront cameraOrientation main resolution
+74a4bf40	gravity linear main resolution soft
+97956671	main resolution
+c90bf24b	FTIME_PERIOD battery ftime main powerConnected resolution
+b11e7904	resolution
+8b605b9a	gravity linear main resolution soft
+5ff8eb82	main pointe pointers resolution t
+3b71774e	hash main resolution rotationMatrix stars
+bc656d42	main noise resolution touc touch
+f9cde9e4	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+213793aa	cell color disc main moon mouse orbit resolution time
+f8746da9	backbuffer main pointerCount resolution touch
+39e676e6	cameraAddent cameraFront cameraOrientation main resolution
+cc36ac0e	date daytime hand main nightMode resolution
+3157de18	arcs fragColor hash main noise resolution time
+d6cd76aa	S indoors main pressure proximity resolution
+56261cd	main pointerCount pointers resolution time
+6ec8c80e	gravity linear main resolution soft
+21043380	disc main mouse resolution time
+a5c54f6e	hash main resolution rotationMatrix stars
+804c99ee	main noise time
+35ba1938	color ma n pointe pointers resolution uv
+c99261c2	main pointerCount pointers resolution time
+b1f82a4b	evaluate get get4 main oneIfZero pointerCount pointers resolution
+aaab9ad6	backbuffer main mediaVolume micAmplitude radius resolution
+9adf119e	inclination line magnetic main orientation resolution
+bb7ecac8	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c691c916	backbuffer evaluate get4 main oneIfZero pointerCount pointers resolution
+84d16e2a	main noise time
+525ef69e	bar light main pressure proximity resolution
+6e3e9595	backbuffer main mediaVolume micAmplitude radius resolution
+50ac03fd	lastNotificationTime main notificationCount resolution time
+d4a4d933	daytime hash layer main nightMode offset resolution ridge
+e04485d7	daytime hash layer main nightMode offset resolution ridge
+cc6fe87d	main pointerCount pointers resolution
+1cd9ef91	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+a589a774	bar light main pressure proximity resolution
+7b0f24a6	color main n pointerCount resolution uv
+2a996f31	main noise resolution
+e0562a69	lastNotificationTime main notificationCount resolution time
+c63bd61a	bar main pressure proximity resolution sensor
+6c9af925	inclination line magnetic main orientation resolution
+c8d05246	cameraAddent cameraBack cameraOrientation main resolution
+de2537	main pointerCount pointers resolution time
+6e65d02a	backbuffer main resolution time touch
+9c9eb171	daytime hash layer main nightMode offset resolution ridge
+e7b343f5	main pointerCount pointers resolution time
+fafc380a	lastNotificationTime main notificationCount resolution time
+1e62d208	color main n pointerCount pointers resolution time uv
+8b7de3b4	main pointerCount pointers resolution
+f48ed17b	backbuffer evaluate get main oneIfZero pointerCount pointers
+85e5cc2d	bar light main pressure proximity resolution
+fd803d40	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+11358bfb	main resolution
+d569d752	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+7f5aecc8	main pointerCount pointers resolution time
+9d871d43	backbuffer main pointerCount resolution time touch
+2e8a022a	cameraBack cameraOrientation main resolution
+1610d28a	inclination line magnetic main orientation resolution
+166c18ea	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+d8fb6f5e	backbuffer main pointerCount resolution time touch
+e6b61e22	cameraAddent cameraBack cameraOrientation main resolution
+12cd3eab	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+f6325f8c	main pointerCount pointers resolution time
+b3f88b83	arcs fragColor hash main noise resolution time
+b899d9b	cameraAddent cameraFront cameraOrientation main resolution
+76edbd45	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+693ba238	backbuffer main resolution time touch
+61772d3e	main resolution
+b38db92c	date daytime hand main nightMode resolution
+d3983e7	date daytime hand main nightMode resolution
+f02dbdae	main noise resolution touch touchStart
+b47dd103	backbuffer main pointerCount resolution time touch
+3e3d60ee	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+1968dd05	lastNotificationTime main notificationCount resolution time
+3c784f7a	cameraAddent cameraFront cameraOrientation main resolution
+67772311	main pointerCount pointers resolution time
+a1d979b8	main resolution
+1faf25b4	daytime hash layer main nightMode offset resolution ridge
+a4877b2c	gravity linear main resolution soft
+f546fc02	hash main resolution rotationMatrix stars
+3c27cd2c	backbuffer main pointerCount resolution time touch
+b11832c0	bar light main pressure proximity resolution
+aec6a93a	main pointerCount pointers resolution
+1020517d	daytime hash layer main nightMode offset resolution ridge
+f8bca981	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+e14e80f1	inclination line magnetic main orientation resolution
+ae26af79	lastNotificationTime main notificationCount resouniformlution time
+d450a97c	gravity linear main resolution soft
+ff373734	backbuffer main pointerCount resolution time touch
+50481510	pointerCount pointers resolution time
+9dc392d	lastNotificationTime main notificationCount resolution time
+12d8dca9	daytime hash layer main nightMode offset resolution ridge
+c3d45fdc	cameraAddent cameraFront cameraOrientation main resolution
+f9ada81	daytime hash layer main nightMode offset resolution ridge
+63a70e59	FTIME_PERIOD battery ftime main powerConnected resolution
+5f7df529	disc main mouse resolution time
+92c1bcf2	backbuffer evaluate get get4 m n oneIfZero pointerCount pointers resolution tapSize
+1fa8580a	main noise resolution time
+dc8fadb7	main noise resolution touch touchStart
+4138ffed	cameraAddent cameraFront cameraOrientation main resolution
+ac1aa0cc	bar light main pressure proximity resolution
+62fa5640	hash main resolution rotationMatrix stars
+80eaa02	image main touch touchStart
+ac1f15db	band cameraAddent cameraFront cameraOrientation color luma probe resolution rgb st uv
+b98cdc33	backbuffer evaluate get main pointerCount pointers resolution
+d969e2ad	backbuffer evaero get has2 main oneIfZero pointerCount pointers resolution
+c6548149	daytime hash layer main nightMode offset resolution ridge
+96f44981	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+13083e68	cameraAddent cameraOrientation main resolution
+9e21c985	inclination line magnetic main orientation resolution
+de932e69	cameraAddent cameraFront cameraOrientation main resolution
+27692e31	daytime hash layer main nightMode offset resolution ridge
+7871c1e1	date daytime hand main nightMode resolution
+179e4b0b	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+26b80bd5	lastNotificationTime main notificationCount resolution time
+d1a704a1	inclination line magnetic main orientation resolution
+6a5a61d6	main noise resolution touch touchStart
+d6b49036	resolution
+c089caa9	main pointers resolution
+efd54e85	pointerCount pointers resolution
+2a8157d5	cameraAddent cameraBack cameraOrientation main
+760d65b4	f fill inclination line magnetic main needlep orientation resolution ring
+1890f6f2	hash main resolution rotationMatrix stars
+f7846f28	main pointerCount pointers resolution time
+2a7c0b43	cameraAddent cameraFront cameraOrientation main resolution
+51ce667	daytime hash layer main nightMode offset resolution ridge
+b26a16ae	lastNotificationTime main notificationCount resolution time
+e29b12d3	
+266e0380	disc main mouse resolution time
+c5a3d76e	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+dba1d458	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+c715d9a5	daytime hash layer main nightMode offset resolution ridge
+a514f876	pointerCount pointers
+e2e0cd51	backbuffer main mediaVolume micAmplitude radius resolution
+e8079721	main pointerCount pointers resolution time
+8bc2e56e	main pointerCount pointers resolution
+c1265ff2	inclination line magnetic main orientation resolution
+77622c81	gravity linear main resolution soft
+2753cfe0	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+81a4bf29	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+75149a85	hash main resolution rotationMatrix stars
+f38e2c33	daytime hash layer main nightMode offset resolution ridge
+2e3081de	backbuffer main pointerCount resolution time touch
+33ef44c7	main pointerCount resolution time
+267efed1	f fill inclination line magnetic main nthstep orientation resolution ring
+18ef3267	FTIME_PERIOD battery ftime main powerConnected resolution
+88dc72b6	daytime hash layer main nightMode offset resolution ridge
+c265517	cameraAddent cameraFront cameraOrientation main resolution
+7af9814b	main noise resolution touch touchStart
+809dfa3	backbuffer main mediaVolume micAmplitude radius resolution
+99aa1461	FTIME_PERIOD battery main powerConnected resolution
+7ac675d2	a cell center color drag fall noise p px q radius resolution spin touch touchStart unit uv v
+6a06ca8d	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+4f25c99b	inclination line magnetic main orientation resolution
+4317373d	angle cell color disc finger main moon mouse orbit px resolution time
+1c853059	date daytime hand main nightMode resolution
+9ac2a9a7	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+3b9737bb	hash main resolution rotationMatrix stars
+f56e18c6	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+a4fb04b7	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+d0177d7b	inclination line magnetic main orientation resolution
+f1b5fe6a	main pointerCount pointers resolution
+f26eb3b3	bar light main pressure proximity resolution
+34de661f	main resolution
+3c306ff0	hash main resolution rotationMatrix stars
+b4c6a400	arrived main notificationCount resolution time
+f08201ec	inclination line magnetic main orientation resolution
+f5b0891b	battery ftime main powerConnected
+b7bc1e0a	main noise resolution time
+b46cadb	evaluate get get4 main oneIfZero pointers resolution
+bf96e651	band cameraAddent cameraFront cameraOrientation color luma probe resolution rgb st uv
+630cd46c	main pointerCount pointers resolution
+81de8f56	lastNotificationTime main notificationCount resolution time
+84ce0f8	main pointerCount resolution time
+51bc5ce0	disc main mouse resolution time
+33397f80	daytime hash layer main nightMode offset resolution ridge
+4721877a	and arcs at fragColor hash main noise resolution time
+49567678	gravity linear main resolution soft
+2e2f6a0e	main noise resolution
+c0d6d316	backbuffer backdrop color faded ink main mark pointerCount previous resolution time touch
+8d54703f	lastNotificationTime main notificationCount resolution time
+3834609d	lastNotificationTime main notificationCount resolution time
+4b2a665d	cameraAddent cameraBack cameraOrientation main resolution
+99676bec	bar light main pressure proximity resolution
+31170653	gravity linear main resolution soft
+4f637448	inclination line magnetic main orientation resolution
+9ed26fa8	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+4fb0c66b	arcs fragColor hash main noise resolution time
+34efaebb	cameraAddent cameraFront cameraOrientation main resolution
+aedaa669	main resolution
+ac20ed1f	cameraBack cameraOrientation main resolut
+68bba29e	daytime hash layer main nightMode offset resolution ridge
+41f59d51	lastNotificationTime main notificationCount resolution time
+351687f3	inclination line magnetic main orientation resolution
+719692b8	disc main mouse resolution time
+63425d91	FTIME_PERIOD battery ftime main powerConnected resolution
+f367699	main noise resolution time
+37137f1f	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+7c5146c0	daytime hash layer main nightMode resolution ridge
+f5816bc2	backbuffer get get4 main oneIfZero pointerCount pointers resolution
+2ea3802b	disc main resolution time
+dbc70244	main pointerCount pointers resolution time
+249bfd99	FTIME_PERIOD battery ftime main powerConnected resolution
+bb6ebc1e	color main pointerCount pointers resolution
+59536d5d	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+213c4fd4	cameraAddent cameraBack cameraOrientation main resolution
+4d94ef85	cameraAddent cameraFront cameraOrientation main resolution
+254c5833	bar main pressure proximity resolution sensor
+597bf7bc	main pointers resolution
+64ca3027	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+ca0695f1	gravity linear main resolution soft
+34274640	FTIME_PERIOD battery ftime main powerConnected resolution
+68aad145	backbuffer main pointerCount resolution time touch
+efd31398	hash main resolution rotationMatrix stars
+e8c6b13c	arcs fragColor hash main noise resolution time
+46a3f9fc	main noise resolution touch touchStart
+538e6a6	daytime hash layer main nightMode offset resolution ridge
+4575e79d	main noise resolution touch touchStart
+91add082	backbuffer main pointerCount resolution time touch
+b03ca03d	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+8de30a7b	main pointerCount pointers resolution
+6dd58722	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+724bbe03	hash resolution rotationMatrix stars
+4bc2dde8	bar light pressure proximity resolution
+7557a2a4	lastNotificationTime main notificationCount resolution time
+77186759	daytime hash layer main nightMode offset resolution ridge
+fc012372	date daytime hand main nightMode resolution
+5e22a599	backbuffer main pointerCount resolution time touch
+73e3995c	main pointerCount pointers resolution time
+652fe583	date daytime hand main nightMode resolution
+13ca969e	main pointerCount pointers resolution
+59e471de	main noise resolution touch touchStart
+f13ba7fe	a c2 color dial dip f field fill inclination line magnetic main meter needle north orientation q r resolution ring slope tick width
+aa4617a8	main noise resolution touch touchStart
+eb2e81f3	gravity linear main resolution soft
+c5c2bfe1	S main
+6794052f	lastNotificationTime main notificationCount resolution time
+1ea11b08	main time
+e66e9f2a	disc main mouse resolution time
+4f8ae4cf	main pointers time y
+dae9576	disc mouse resolution time
+b93842b6	backbuffer main micAmplitude radius resolution
+75373f00	date daytime hand main nightMode resolution
+f13924f4	main noise resolution time
+430d84d1	backbuffer main mediaVolume micAmplitude radius resolution
+efee620a	main noise time
+133f04d2	cameraBack cameraOrientation main
+b84da934	main noise resolution touch touchStart
+15cdad2e	main noise resolution time
+eb64a44f	cameraAddent cameraFront cameraOrientation main resolution
+3a29ae65	main noise resolution time
+efae6e07	lastNotificationTime main notificationCount resolution time
+3e580da0	main noise resolution touch touchStart
+e24cb06f	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+bc2ccb6f	main noise resolution touch touchStart
+35c36a49	resolutionuv
+304e3e44	fragColor hash main noise resolution time
+a8bc294a	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+5fc25170	FTIME_PERIOD dial frame ftime main resolution second startRandom
+f687fabc	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+51b5cd7e	gravity linear main resolution soft
+bf91e1bb	main resolution
+19dad985	cameraAddent cameraFront cameraOrientation main resolution
+2e92882a	backbuffer main mediaV micAmplitude radius resolution
+7ba9c13a	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+e5c07d91	main pointerCount pointers resolution time
+df0ec7e9	backbuffer main mediaVolume micAmplitude radius resolution
+8a8d63db	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+5a67ed4c	backbuffer main pointerCount resolution time touch
+5b1d7bbe	lastNotificationTime main notificationCount resolution time
+8ed4be79	backbuffer evaluate get main n oneIfZero pointers resolutioount
+7168a8f6	disc mouse resolution time
+3a70ead	FTIME_PERIOD dial frame ftime main resolution second startRandom subsec
+bffc7575	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+3ed55365	backbuffer evaluate get mainuniform oneIfZero pointerCount pointers resolution y
+413b825a	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+1643d8b8	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+d8d9cdf7	lastNotificationTime main notificationCount resolution time
+530a52f0	backbuffer main mediaVolume micAmplitude radius resolution
+3e88f2eb	cameraAddent cameraBack cameraOrientation main resolution
+fe6fcedd	FTIME_PERIOD battery ftime main powerConnected resolution
+37a047fd	main noise resolution touch touchStart
+6ca6af7	main pointerCount pointers resolution time
+52d614db	backbuffer main resolution time touch
+3add078	image main resolution touch touchStart
+35fa75d8	cameraAddent cameraFront cameraOrientation main resolution
+737afb99	daytime deep dm hash layer main nightMode offset pixels ridge
+59d1b4f	cameraAddent cameraFront cameraOrientation main resolution
+19f9e995	main pointerCount resolution time
+d82b0657	gravity light linear main n q resolution shade soft
+b61157a5	main pointerCount pointers
+ce64c446	gravity linear main resolution soft
+54f8291f	date daytime hand main nightMode resolution
+95becf61	backbuffer main pointerCount resolution time touch
+43b9b08e	backbuffer main pointerCount resolution time touch
+92427f06	main noise resolution touch touchStart
+25a750e8	gravity linear main resolution soft
+5573c5bc	main pointerCount pointers resolution time
+e9bcb267	daytime hash layer main nightMode offset resolution ridge
+b85ee37e	backbuffer band color d held hot i level mediaVolume micAmplitude now p px r radius resolution turn
+95826761	lastNotificationTime main notificationCount resolution time
+3fb42e25	date daytime hand main nightMode resolution
+40c7b73d	arcs fragColor hash main noise resolution time
+61b766c5	backbuffer main pointerCount resolution time touch
+5ad17809	main noise resolution time
+71bd7a10	main resolution
+c716c79	noise resolution touch touchStart
+fa177e42	bar less level light main proximity resolution sensor
+9d310145	main noise resolution touch touchStart
+f7024ac0	hash main resolution rotationMatrix stars
+7606bdf	arcs fragColor hash main noise resolution time
+b6f05faa	FTIME_PERIOD battery ftime main powerConnected resolution
+351af78e	main pointerCount pointers
+2919385b	cameraBack camientation main resolution
+7e2aa4e5	main pointers resolution
+eacff1b6	band cameraAddent cameraFront cameraOrientation color luma probe resolution rgb st uv
+e5c992e	arcs fragColor hash main noise resolution time
+12d4bc53	gravity linear main resolution soft
+6cdb386f	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+8eb62678	cameraAddent cameraFront cameraOrientation main resolution
+e6cffb38	cameraAddent cameraFront cameraOrientation main resolution
+6fdfaac3	date daytime hand main nightMode resolution
+8e2555bf	cameraAddent cameraBack cameraOrientation main resolution
+3c98d6ee	color n pointerCount pointers resolution uv
+6cbcb4b8	inclination line magnetic main orientation resolution
+7589705a	main pointerCount pointers resolution time
+7af35f3d	gravity linear main resolution soft
+6711ce0	backbuffer main pointerCount resolution time touch
+90f07eda	bar light main pressure proximity
+419a22d2	disc main mouse resolution time
+b16d181d	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+4e430c22	FTIME_PERIOD battery ftime main powerConnected resolution
+e385f068	disc main mouse resolution time
+e6b6687f	main resolution
+aabf2c4f	FTIME_PERIOD battery ftime main powerConnected resolution
+4c3c297c	main pointerCount pointers resolution
+def1ee62	lastNotificationTime main notificationCount resolution time
+5df39f38	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+9eab4c18	disc main mouse resolution time
+5828ca84	arcs fragColor hash main noise resolution time
+df1341d2	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+fdc6d277	backbuffer last main mediaVolume permission radius resolution
+105162e2	arcs fragColor hash main noise resolution time
+1f2c2edc	inclination line main orientation resolution
+ac68d04	main resolution
+600fbb13	inclination line magnetic main orientation resolution
+a5811e67	cameraAddent cameraBack cameraOrientation main resolution
+bc138d96	main noise resolution touch touchStart
+e892aaba	backbuffer evaluate get main oneIfZero pointers resolun
+4841eae5	cameraAddent cameraOrientatiocameraBack main resolution
+4cc73c4	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+f4d4355c	arcs fragColor hash main noise resolution time
+3091fb5b	main
+2849896c	bar light main pressure proximity resolution
+8954b05c	main noise resolution
+e07521f2	cameraAddent cameraBack cameraOrientation main resolution
+984b389d	a date daytime dir main nightMode resolution
+fb49f843	backbuffer main pointerCount resolution time touch
+1c18e0b1	main pointers resolution
+3a7b9e8d	disc main mouse resolution time
+b21750be	main noise resolution time
+1481f9dd	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+37a61cd0	backbuffer main pointerCount resolution time touch
+4e3578d5	cameraAddent cameraFront cameraOrientation main resolution
+5ca4fe95	caent cameraBack cameraOrientation main resolution
+80c0a7ae	cameraAddent cameraFront cameraOrientation main resolution turns
+dc906d1b	main pointerCount pointers resolution
+13ac36dd	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+cc178484	main noise resolution touch touchStart
+c2dd62d4	date daytime hand main nightMode resolution
+645ae89b	backbuffer main pointerCount resolution time touch
+7977607b	backbuffer evaluate main oneIfZero pointerCount pointers resolution
+ed732554	FTIME_PERIOD battery depth ftime liquid main mark powerConnected resolution
+2e216b	gravity resolution
+6d1457c5	arcs fragColor hash main noise resolution time
+c553f64c	a ball color g gravity i light linear main n p px q r resolution shade soft tilt
+750bbe81	main resolution
+2d6d9101	main pointerCount pointers resolution time
+b2a62c12	
+bc7f387a	FTIME_PERIOD battery ftime main powerConnected resolution
+db2717f6	a b bar c color h light main p pressure proximity px resolution
+f9fb4f22	gravity linear main resolution soft
+2a840b44	main pointerCount pointers resolution time
+a0e37262	inclination line magnetic main orientation resolution
+13582b13	hash main resolution stars
+e8703703	main noise resolution touch touchStart
+90f28675	date daytime hand main nightMode resolution
+c87ab3f3	cameraAddent cameraFront cameraOrientation main resolution
+48cb1b5c	daytime hash layer main nightMode offset resolution ridge
+c0cd25a4	backbuffer main pointerCount resolution time touch
+7f1a7b17	pointerCount time
+1516bfbf	backbuffer color d held i level mediaVolume micAmplitude now p px r radius resolution
+e6614400	backbuffer frame main pointerCount resolution time touch
+f343b17b	cameraAddent cameraFront cameraOrientation main resolution
+af7ebcbb	cack cameraAddent cameraOrientation main resolution
+63539777	main noise resolution time
+ea36a855	backbuffer main mediaVolume micAmplitude resolution
+2b1c3731	main time
+47eea806	daytime hash layer nightMode offset resolution ridge
+2b2ada74	inclination line magnetic main orientation resolution
+b1b5d38f	color mx pointerCount pointers resolution uv
+3253c8d	arcs fragColor hash main nois resolution time
+3be91d36	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+f2b88eae	backbuffer main mediaVolume micAmplitude radius resolution
+48355bed	backbuffer main mediaVolume micAmplitude radius resolution
+e5958415	date daytime hand main nightMode resolution
+77a116fb	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+25ab2a1e	FTIME_PERIOD battery ftime main powerConnected resolution
+95dd8d87	ball color gravity i light linear main n q r resolution shade tilt
+c4bd2202	backbuffer main mediaVolume micAmplitude radius resolution
+a1c86055	disc main mouse resolution time
+a5a4c723	lastNotificationTime main notificationCount resolution time
+43658ea8	disc main mouse resolution time
+15285897	main pointerCount pointers resolution time
+e0ba32f0	main noise resolution time
+d429b842	backbuffer main mediaVolume micAmplitude radius resolution
+50e72900	hash main resolution rotationMatrix stars
+f1342d4	FTIME_PERIOD dial frame ftime main resolution startRandom subsecond
+b810c0dd	FTIME_PERIOD battery ftime main powerConnected resolution
+6f9e6824	bar light main pressure proximity resolution
+edcbf294	main pointerCount pointers resolution
+d18cfdca	inclination line magnetic main orientation resolution
+8c83d7e0	FTIME_PERIOD battery ftime main powerConnected resolution
+960dab5b	disc main mouse resolutixels time
+268e0527	backbuffer main mediaVolume micAmplitude radius resolution
+a532842	date daytime hand main nightMode resolution
+7cacb565	arcs fragColor hash main noise resolution time
+227738b7	cameraAddent cameraBack cameraOrientation main resolut
+3b14c0b4	backbuffer main mediaVolume micAmplitude resolution
+d598920e	camera cameraAddent cameraFront cameraOrientation main resolution
+917dfad7	bar light main pressure proximity resolution
+54f5102d	main noise resolution time
+d842dd7f	cameraAddent cameraBack cameraOrientation main resolution
+8852a720	hash main resolution rotationMatrix stars
+af857332	disc load main mouse resolution
+3e935576	backbuffer main pointerCount resolution time touch
+4d73639c	main pointerCount pointers resolution
+9088db6d	backbuffer main pointerCount resolution time touch
+e6c719ec	bar light main pressure proximity resolution
+43f8985c	backbuffer main pointerCount resolution time touch
+261f706e	arcs fragColor hash main noise resolution time
+6c18d04c	gravity linear main resolution soft
+791136d	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+33721ef9	cameraAddent cameraBack cameraOrientation main resolution
+8ffb5d52	camer cameraAddent f resolution
+a8dafff	cameraAddent cameraFront cameraOrientation main resolution
+9caf45c	FTIME_PERIOD battery ed ftime main resolution
+9160768	GL_FRAGMENT_PRECISION_HIGH main resolution
+b57e7c43	main resolution
+62d25872	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+78436249	backbuffer main mediaVolume micAmplitude radius resolution
+26b3aa28	date daytime hand main nightMode resolution
+47dafce8	resolution time
+fb9810bf	main pointerCount pointers resolution
+a9bbb2de	gravity linear main resolution
+7de1f90c	hash main resolution rotationMatrix stars
+a287b222	cameraAddent cameraOrientation resolution
+7b093d45	main noise resolution touch touchStart
+932e8c3d	main mediaVolume micAmplitude radius resolution
+f137fe95	backbuffer band d f hot main micAmplitude radius resolution turn
+bef59e1	daytime hash layer main nightMode offset resolution ridge
+9d4be267	inclination line magnetic main orientation resolution
+76ca0c1d	disc main mouse resolution time
+89eebe88	date daytime hand main nightMode resolution
+c8b2cf1a	disc main mouse resolution time
+ba98a612	main resolution
+4fc41d5b	main resolution
+66e6563a	cameraAddent cameraBack cameraOrientation main resolution
+ff29d324	inclination line magnetic main orientation resolution
+6e19beb7	backbuffer evaluate get get4 main oneIfZero pointerCount pointers
+ea83c790	date daytime hand main nightMode resolution
+ab8ebd71	arcs fragColor hash main noise resolution time
+e2a8abea	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+4add9043	cameraAddent cameraOrientation resolution st uv
+3779102d	backbuffer main mediaVolume micAmplitude radius resolution
+2383d7fc	hash main resolution rotationMatrix stars
+a3083851	cameraAddent cameraFront cameraOrientation main resolution
+e17e5bbd	FTIME_PERIOD battery ftime main powerConnected resolution
+dc6c9518	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+a8a30cab	gravity linear main resolution soft
+ee4af54a	cameraAddent cameraBack cameraOrientation main resolution
+6f7b192f	color n pointerCount pointers resolutionmax time uv
+fd1915fb	backbuffer main pointerCount resolution time touch
+694e4c3	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+63310ea0	main pointerCount resolution
+efdbbb9b	cameraBack centation main resolution
+485daf9d	main pointers resolution
+5bdc6c00	FTIME_PERIOD battery ftime main powerConnected resolution
+6b7a32c8	backbuffer main mediaVolume micAmplitude radius resolution
+afa4be21	date daytime hand main nightMode resolution
+4b3614ed	daytime hash layer main nightMode offset resolution ridge wavelengths
+5e6c7404	arcs fragColor hash main noise resolution time
+8f636fc7	disc mouse resolution
+fec4006a	cameraAddent cameraBack main resolution
+89808dde	cameraAddent cameraFront cameraOrientation main resolution
+303642e3	cameraAddent cameraBack cameraOrientation main resolution
+a5712fcf	bar light main pressure proximity resolution
+a2c583f4	main noise resolution touch touchStart
+8b6ebe12	backbuffer keys main mediaVolume micAmplitude radius resolution second
+ab7eeee3	main noise resolution time
+844cd52c	bar light main pressure proximity
+1f64e7f6	hash main resolution rotationMatrix stars
+dcfc6bd5	hash main resolution rotationMatrix stars
+790de4d7	date daytime hand main nightMode resolution
+baf794c4	bar light main pressure proximity resolution
+8e3f8f7f	inclination line magnetic main orientation resolution
+d336d35	main resolution
+89840a73	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+109b28ba	main noise resolution touch touchStart
+1171c71b	daytime hash layer main nightMode offset resolution ridge
+712b4ade	cameraAddent cameraOrientation main resolution
+bfdb4ba4	evaluate get main oneIfZero pointerCount pointers resolution
+2f47f3a4	evaluate get get4 main oneIfZero pointerCount pointers resolution
+b78ed6b5	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+b0d7dd0c	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+e0da18c7	FTIME_PERIOD battery main powerConnected resolution seconds
+3bd7fe0f	cameraAddent cameraBack cameraOrientation f main resolution
+cd3ff290	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+122268d5	main pointerCount resolution time
+c9b707b5	bar light main pressure proximity resolution
+d10d6c87	main pointerCount pointers resolution time
+532c6901	main pointerCount pointers resolution
+d59c1ae1	inclination line magnetic main orientation resolution
+167f8f43	hash main resolution rotationMatrix stars
+2c72db1c	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+ff24be13	cameraA cameraBack cameraOrientation ddent main
+226eb3f6	inclination line magnetic main orientation resolution
+a8be8a4	gravity linear main resolution soft
+9e4dbef7	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+b72a2dab	a cell center color drag fall noise p px q radius resolution spin touch touchStart unit uv v
+e9b181f8	lastNotificationTime main notificationCount resolution time
+87245792	main pointerCount pointers resolution time
+b78012c2	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+6f71ad50	daytime hash layer main nightMode offset resolution ridge
+57bfa92a	inclination line magnetic main orientation resolution
+e989084d	daytime hash layer main nightMode offset resolution ridge
+d97193ce	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+bd7d76e9	main noise time
+939b9f77	main resolution
+92ed379d	gravity linear main resolution soft
+d387c7e7	main pointerpointers resolution time
+ddff83ef	main pointerCount resolution
+a758bc91	date daytime hand main nightMode resolution
+4363043c	main noise resolution ti
+114e4b44	main
+f2c7b89e	main pointerCount pointers resolution
+29e27642	cameraAddent cameraFront cameraOrientation main resolution
+df694187	FTIME_PERIOD battery ftime main powerConnected resolution
+7e75b6a0	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+6f9d644	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+e9951a54	gravity linear main resolution soft
+7fd56297	and arcs exactly fragColor hash main resolution time
+d95e7116	main
+76f4c8d5	backbuffer main pointerCount resolution time touch
+128e95ca	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+5b0d8fa5	a afloat bead breathe color count dist hub lit min newest none notificationCount p pulse px r resolution rim rrived size slot t time turn warm
+42da3df7	backbuffer backdrop brush color down faded idiom ink main mark plus pointerCount resolution time touch
+c8b6f86	date daytime hand main nightMode resolution
+bdb0c331	backbuffer main mediaVolume micAmplitude radius resolution
+92e519e	evaluate get main oneIfZero pointerCount pointerffer resolution
+46476ffd	resolution
+51a01b76	backbuffer evaluate get get4 main oneIfZero pointerCount pointers
+4b3bf7a9	S cameraAddent cameraBack cameraOrientation main resolution
+f0acb27f	backbuffer evaluate get get4 main oneIfZero po pointerCount resolution
+e5241b46	main resolution
+f671fc9f	date daytime hand main nightMode resolution
+2ce7836c	hash main resolution rotationMatrix stars
+92225c31	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+3d0d66a	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+4612943d	cameraAddent cameraFront cameraOrientation main resolution
+9b735143	main resolution
+f8424615	bar light main pressure proximity resolution
+8e0511c5	bar light main pressure proximity resolution
+82a62a98	FTIME_PERIOD dial frame ftime main resolution second startRandom
+4c697923	daytime hash layer main nightMode offset resolution ridge
+c6081be4	cameraAddent cameraBack cameraOrientation main resolution
+c526988c	main pointerCount pointers resolution
+998b2350	backbuffer main mediaVolume micAmplitude radius resolution
+daf3e8af	main pointerCount pointers resolution time
+4d2b3b4d	daytime hash layer main nightMode offset ridge
+a687809f	lastNotificationTime main notificationCount resolution time
+48ad005	a cell center color drag fall noise p px q radius resolution spin touch touchStart uv v
+11d45c4a	main noise resolution touch touchStart
+8d90341c	gravity light linear main n q resolution shade soft
+5092ef91	hash main resolution rotationMatrix stars
+832621ff	gravity linear main resolution soft
+19e3e122	gravity linear main resolution soft
+8c8cdbec	main noise pixels touch touchStart
+a46519a4	main noise resolution touch touchStart
+b53a2d05	disc main mouse resolution time
+685f8429	gravity linear main resolution soft
+b5210179	disc main resolution time
+96eb4cdc	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+22718793	backbuffer main pointerCount resolution time touch
+a46815	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+65d647ae	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+8217b1d6	inclination line magnetic main orientation resolution
+c2b59268	main noise resolution touch touchStart
+177bb8c1	date daytime hand main nightMode resolution
+b7b91b5f	FTIME_PERIOD battery ftime main powerConnected resolution
+5269cae5	backbuffer evaluate get main oneIfZero pointerCountfloat pointers resolution
+857a9fb5	main noise resolution
+fca085ac	main resolution
+19373c83	backbuffer get pointerCount pointers resolution
+ae9e0df2	inclination line magnetic main orientation resolution
+a1bebe2e	FTIME_PERIOD battery ftime main powerConnected resolution
+15bf3ae1	FTIMEform dial frame ftime main second startRandom subsecond
+54566bbf	main noise resolution touch touchStart
+693f6710	hash main resolution rotationMatrix stars
+254009bc	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+b82f051c	daytime hash layer main nightMode offset resolution ridge
+c05950ea	gravity linear main resolution soft
+ded2a603	main noise resolution touch touchStart
+49d3f554	bar light main pressure proximity resolution
+8e6334e2	hash main resolution rotationMatrix stars
+5940a7e7	backbuffer main pointerCount resolution time touch
+22a11919	inclination line magnetic main orientation resolution
+5f6bef6d	gravity linear main resolution soft
+4b21257a	daytime hash layer main nightMode offset resolution ridge
+f39c5940	bar light main pressure proximity resolution
+6e99b6a	cameraAddent cameraFront cameraOrientation main resolution
+e5f88ef	FTIME_P dial frame ftime main second startRandom subsecond
+719391b9	cameraAddent cameraBack cameraOrientation main
+7c3f5d6a	lastNotificationTime main notificationCount resolution time
+d0eb979c	cameraAddent cameraFront cameraOrientation main permission resolution
+9a506422	backbuffer evaluate get main oneIfZero pointerCount pointforers resolution
+72e0b7d6	bar light main pressure proximity resolution
+a95c96bb	cameraBack main resolution
+deed3c7	date daytime hand main nightMode resolution
+3b0cc32f	main point resolution
+5f59ff1e	main
+dc47c29	accent bead c date daytime gap hand hour ink k main mark month night nightMode paper r resolution size slot today turn y
+1b8683e4	lastNotificationTime main notificationCount resolution time
+7b694671	main noise
+a8c7efad	main noise resolution touch touchStart
+735f3f21	main noise resolution touch touchStart
+720dbbdc	bar light main pressure proximity resolution
+eba5654b	lastNotificationTime main notificationCount resolution time
+f3ff2617	inclination line magnetic main orientation resolution
+8742ff10	gravity linear main resolution soft
+29afa8bd	cameraFront cameraOrientation main resolution
+3d06d17a	disc main mouse resolution time
+b004c9dc	main pointerCount pointers resolution
+429e7e3e	backbuffer main pointerCount resolution time touch
+9f4799de	hash main resolution rotationMatrix stars
+11406035	battery ftime main powerConnected
+c1876a51	camera cameraAddent cameraFront cameraOrientation main resolution
+8194b9f6	bar light main pressure proximity resolution
+f95c35d2	noise resolution time
+dfd1ba00	backbuffer main mediaVolume micAmplitude radius resolution
+edeb74df	arcs fragColor hash main noise time
+6a5e4888	disc main mouse resolution time
+b3d413bd	main pointerCount pointers resolution
+9f3e65dc	daytime hash layer main nightMode offset resolution ridge
+693b8268	arcs fragColor hash main noise resolution time
+db3065fe	date daytime hand main nightMode resolution
+6ee11dda	FTIME_PERIOD battery ftime main powerConnected resolution
+8e519593	backbuffer main pointerCount resolution time touch
+8e7db4e8	cameraAddent cameraFront cameraOrientation main resolution
+85733648	backbuffer main pointerCount resolution time touch
+d13b74c7	daytime hash layer main nightMode offset resolution ridge
+1cf73cc3	date daytime hand main nightMode resolution
+67b65255	daytime hash layer main nightM offset resolution ridge
+54d52492	hash main resolution rotationMatrix stars
+3823e8ed	mai resolution
+997b0ce	main noise resolution touch touchStart
+cead8ab1	main pointerCount pointers
+e25261b7	date daytime hand main nightMode resolution
+1e0471a	main pointerCount pointers resolution
+fbe77064	daytime hash layer main nightMode offset resolution ridge
+43e2a89b	backbuffer get get4 main oneIfZero pointerCount pointers resolution
+9dc59654	gravity lineaty main resolution soft
+14767337	disc main mouse resolution time
+61e395d0	backbuffer main pointerCount resolution time touch
+6f3b2a4c	FTIME_PERIOD dial frame ftime load main resolution second subsecond
+fe35f6e5	main noise resolution time
+735e61ac	main noise resolution touch touchStart
+8df6011d	daytime hash layer main nightMode offset resolution ridge
+3b0f7da5	main noise resolution touch touchStart
+fa4cd212	main pointerCount pointers resolution
+d2fe4241	main pointerCount pointers resolution time
+51e1ec0d	backbuffer main micAmplitude radius resolution second volume
+ce10f4e8	date daytime hand main nightMode resolution
+d94aeb10	lastNotificationTime main notificationCount resolution time
+57a3624a	disc main mouse resolution time
+c5c89770	backbuffer main pointerCount resolution time touch
+a0e374fb	gravity linear main resolution soft
+6491ff94	bar f main pressure proximity resolution
+750d762f	main pointerCount pointers resolution time
+629864be	main resolution
+72b0b967	daytime hash layer main nightMode offset resolution ridge
+aa18b0d5	main pointerCount pointers resolution
+33d8c62	main pointerCount pointers resolution
+a79569a	disc main mouse resolution time
+584932cf	FTIME_PERIOD dial frame ftime load main resolution second startRandom subsecond
+20274376	lastNotificationTime main notificationCount resolution time
+7f3c8094	gravity linear main resolution soft
+46496ea4	main pointerCount pointers resolution
+7edd13c0	backbuffer main mediaVolume micAmplitude radius resolution
+9f5e6e95	daytime hash layer main nightMode offset resolution ridge
+16dde7d4	disc main mouse on resoluti time
+18816369	inclination line magnetic main orientation resolution
+60af7a93	FTIME_PERIOD battery ftime main pixels powerConnected
+c650b314	cameraAddent cameraFront cameraOrientation main resolution
+f35c3e06	main pointerCount resolution time
+23e436e3	backbuffer main pointerCount resolution time touch
+2fca3c22	main pointerCount pointers resolution time
+f22e9f0f	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+47208dce	main pointerCount resolution time
+d9f46211	hash main resolution rotationMatrix stars
+3fb0d468	main pointerCount pointers resolutio time
+e97f9041	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+699cf5e0	lastNotificationTime main notificationCount resolution time
+b2aa42ab	backbuffer main pointerCount resolution time touch
+ec5fad0c	disc main mouse resolution time
+6c6e3459	FTIME_PERIOD battery ftime main powerConnected resolution
+d46281ee	lastNotificationTime main notificationCount resolution time
+de2fe484	hash main resolution rotationMatrix stars
+15f27330	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+4d33ada3	inclination line magnetic main orientation resolution
+44bdd53d	backbuffer ediaVolume m main micAmplitude radius resolution
+1417bc17	arcs fragColor hash main noise resolution time
+6a17bca9	a cell center color drag fall main noise p px q radius resolution spin touch touchStart uv v
+4a34af76	main noise resolution touch touchStart
+2a9815c0	FTIME_PERIOD battery ftime main powerConnected resolution
+696ec208	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+2b626957	backbuffer main mediaVolume micAmplitude radius resolution
+6475c1c	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+c9d55d33	backbuffer evaluate get getexture2D main oneIfZero pointerCount pointers resolution
+58eabbe5	cameraAddent cameraBack cameraOrientation main resolution
+156ea9d9	bar light main pressure proximity resolution tick
+d060a79a	bar light main pressure proximity resolution
+597536f8	arcs fragColor hash main noise resolution time
+c6247178	cameraAddent cameraFront cameraOrientation main resolution
+9aa4d896	lastNotificationTime main notificationCount resolution time
+f97b160e	hash main resolution rotationMatrix stars
+3c893e5b	hash main resolution sensors stars world
+a4978529	battery ftime main powerConnected resolution
+fd258880	bar light main pressure proximity
+e05b1ffd	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+1429bdb0	arcs fragColor hash main noise resolution time
+a8a576ab	cameraAddent cameraFront cameraOrientation resolution
+d08a6db9	main noise resolution touch touchStart
+78ed31c6	lastNotificationTime main notificationCount resolution time
+b4f0c1ec	bar light main pressure proximity resolution
+63645558	bar light main pressure proximity resolution
+4c27564f	FTIME_PERIOD battery ftime main powerConnected resolution
+32969185	cameraAddent cameraFront cameraOrientation main resolution
+aada8783	cameraAddent cameraFront cameraOrientation main resolution
+7794022a	lastNotificationTime main notificationCount resolution time
+225c9b0d	pointerCount pointers resolutionmain time
+170d3f51	bar light main pressure proximity resolution
+6231d8b4	cameraAddent cameraBack cameraOrientation main resolution
+6b3d9cdf	inclination line magnetic main orientation
+81fab705	daytime hash layer main nightMode offset resolution ridge
+532fdb26	daytime hash layer main nightMode offset resolution ridge
+311ce769	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+a9fe052a	gravity linear main resolution soft
+628d2828	main noise
+d248df1c	gravity linear main resolution soft
+1b84c98f	FTIME_PERIOD battery ftime main powerConnected resolution
+81a13a79	disc main mouse resolution time
+e2c006a3	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+b07f7f8b	main noise resolution touch touchStart
+81cfbdcb	cameraAddent cameraFront cameraOrientation main resolution
+22f8f3a7	gravity linear main resolution soft
+5926d3ad	arcs fragColor hash main noise resolution time
+a214d540	inclination line magnetic main orientation resolution
+d070c79f	backbuffer main pointerCount resolution time touch
+f68a53e6	backbuffer evaluate get get4 main oneIfZero po resolution
+16ff25cc	date daytime hand main nightMode resolution
+f1e3118b	backbuffer main pointerCount resolution time touch
+96bfdbe0	main noise resolution time
+65027f47	afterglow backbuffer get get4 has2 has3 isAlive justDied ll main oneIfZero pointerCount pointers resolution wasAlive
+960f3d14	gravity linear main resolution soft
+a055f4a1	main pointerCount pointers resolution
+976914e6	backbuffer evaluate get main oneIfZero pointerCount resolution
+903480db	FTIME_PERIOD battery ftime main powerConnected resolution
+83472149	S date daytime main nightMode resolution
+37384b8e	color main n pointerCount pointers resolution time uv
+8329ce51	backbuffer main pointerCount resolution touch
+ff62fed0	backbuffer main pointerCount resolution time touch
+fff67fc9	arcs fragColor hash main noise resolution time
+4ff46951	cameraAddent cameraFront cameraOrientation main resolution
+ed727860	hash main resolution rotationMatrix stars
+3db036dd	backbuffer main mediaVolume micAmplitude radius resolution
+a106635c	main pointerCount resolution time
+a1fdad6c	cameraAddent cameraFront cameraOrientation main resolution
+de53a665	bar light main pressure proximity resolution
+4af29726	arcs fragColor hash main noise resolution
+e871b82e	main pointerCount pointers
+71f87ce9	arcs fragColor hash main noise resolution time
+4b592161	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+4a524fa4	backbuffer evaluao get has2 main oneIfZero pointerCount pointers resolution
+5ed6dd12	backbuffer backdrop color down faded ink main mark pointerCount previous resolution time touch
+e28fcda5	main noise resolution touch touchStart
+7b8e8edf	gravity linear main resolution soft
+16b88512	main resolution
+df3fa34	date daytime hand main nightMode resolution
+9bcd02ff	main noise resolution touch touchStart
+2b125c79	cameraAddent resolution st
+2177b9d1	date daytime hand main nightMode resolution
+dc0c8216	battery ftime main powerConnected
+edde1d11	disc main mouse pixels resolution time
+f0b7f253	inclination line magnetic main orientation resolution
+3e9bcf42	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+5c78eb8b	f main pointers resolution
+db732a91	disc main resolution time
+42724d9f	cameraAddent cameraFront cameraOrientation main
+9948dbd	pointerCount pointers resolution
+a4150ed2	backbuffer evaluate get main n oneIfZero pointerCount pointers resolution sum tap
+b486d65d	hash main resolution rotationMatrix stars
+af3530ef	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+185dae2e	a cell center color drag fall noise p px q radius resolution spin touch touchStart unit uv v
+c8b8270c	backbuffer main pointerCount resolution time touch
+24085ae3	backbuffer main pointerCount resolution time touch
+e619f613	
+6137d69b	main noise resolution touch touchStart
+46a61bf	hash main resolution rotationMatrix stars
+60fa0a51	hash main resolution rotationMatrix stars
+28e518c5	FTIME_PERIOD dial ftime main resolution second startRandom subsecond sweep
+a529502c	fill inclination line magnetic main orientation resolution
+517971ef	lastNotificationTime main resolution time
+30a8c374	cameraOrientation main resolution
+2382fd52	hash main resolution rotationMatrix stars
+5ce8dfc5	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+9be65acf	main pointers resolution time
+50b20b14	backbuffer main mediaVolume micAmplitude pixels radius
+12f32e0a	backbuffer main pointerCount resolution time touch
+b71323ca	ab inclination magnetic main orientation resolution
+72b9c529	cameraAddent cameraOrientation main resolution
+775a03b4	date daytime hand main nightMode resolution
+98be2dec	backbuffer main pointerCount resolution time touch
+2171ccb2	backbuffer main pointerCount resolution time touch
+9440f022	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+ef2ff79e	ha main resolution rotationMatrix stars
+afb95aa5	daytime hash layer main nightMode offset resolution ridge
+c2b2299	daytime hash layer main nightMode offset resolution ridge
+3975d0eb	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+8c3633d3	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+71327d46	lastNotificationTime main notificationCount resolution time
+430388c7	main noise resolution touch touchStart
+36cb42b6	arcs fragColor hash main noise resolution time
+2ee9b0fd	backbuffer main pointerCount resolution time touch
+48857499	date daytime hand main nightMode resolution
+728de8d6	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+ff02114d	cameraAddent cameraBack cameraOrientation main resolution
+b57bf856	arcs fragColor hash main noise resolution time
+faa5794a	lastNotificationTime main notificationCount resolution time
+e0d5a429	inclination line magnetic main orientation resolution
+b9306f9b	main noise
+9a96913e	main pointerCount resolution
+b9ac78e2	main mediaVolume micAmplitude radius resolution
+110c4ed9	daytime hash layer main nightMode offset resolution ridge
+9328e4da	date daytime hand main nightMode resolution
+1af4790b	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+b77acbc2	gravity linear main resolution soft
+36923b95	disc mouse resolution time
+3c7a81a1	bar light main pressure proximity resolution
+5e142f96	date daytime hand main nightMode resolution
+f462894d	backbuffer main pointerCount resolution time touch
+45da3115	arcs fragColor hash main noise resolution time
+d70a461	backbuffer main mediaVolume micAmplitude radius resolution
+1096d0c3	gravity linear main resolution soft
+c3f2a217	noise resolution time
+b19202ee	cameraAddent cameraBack cameraOrientation resolution
+706bf24e	disc main mouse resolution time
+cb066fde	time y
+b2bfcbf1	
+ed6ea777	main noise time
+d8167f75	daytime hash layer main nightMode offset resolution ridge
+f5b989aa	arcs fragColor hash main noise resolution y
+b5c19235	backbuffer main pointerCount resolution time touch
+53f1675	date daytime hand main nightMode resolution
+88192f34	cameraAddent cameraFront cameraOrientation main resolution
+8dfd1ab5	daytime hash layer main nightMode offset resolution ridge
+e771c1a4	main pointers resolution
+eb9ae74d	backbuffer main mediaVolume micAmplitude radius resolution
+714cbcb5	hash main resolution rotationMatrix stars
+5d8c6b9a	bar light main pressure proximity resolution
+f6eeeede	disc main mouse resolution time
+4f0ec309	bar light main pressure proximity resolution
+cd7e9b20	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+e2d49d21	FTIME_PERIOD battery ftime main powerConnected resolution
+f5c8ce90	battery ftime main powerConnected ution
+fb5fd349	backbuffer main pointerCount resolution time touch
+357e758	backbuffe evaluate get main oneIfZero pointerCount pointers resolution
+d40289dc	bar light main pressure proximity resolution
+dce3f5d4	disc main mouse resolution time
+1896fb43	lastNotificationTime main notificationCount resolution time
+d220624	main noise resolution touch touchStart
+d336a0bc	main pointerCount pointers uniformresolution
+58d39eca	cameraAddent cameraFront cameraOrientation main probe
+84d6abf1	resolution time
+1470069d	bar light main pressure proximity resolution
+fff456d8	daytime hash layer main nightMode offset resolution ridge
+6e3c9c7b	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+542010c5	main pointerCount pointers resolution
+abd8beb4	disc main mouse resolution time
+9b6e213c	main noise resolution touch touchStart
+ae8fbf0e	disc main mouse resolution time
+a08dbb98	main pointerCount pointers resolution
+3856bf3e	backbuffer main pointerCount resolution time touch
+a71c5417	backbuffer main mediaVolume micAmplitude radius resolution
+ed2b2cc6	FTIME_PERIOD battery ftime main powerConnected resolution
+10498b0	lastNotificationTime main notificationCount resolution time
+1a10b62a	main pointerCount pointers resolution
+e5fc42b9	backbuffer main mediaVolume micAmplitude radius resolution
+7bc6af0c	date daytime hand main nightMode pixels
+493a6fe5	arcs fragColor hash main noise resolution
+f6183caf	gravity linear main resolution soft
+43f08264	hash main resolution rotationMatrix stars
+6a2fc0d6	cameraAddent cameraFront cameraOrientation main resolution
+43125ac9	gravity linear main resolution soft
+a1adf2d5	main noise resolution time
+ebdb56af	main pointerCount pointers resolution
+cadbf9e6	lastNotificationTime main notificationCount resolution time
+292b138f	main resolution
+845b196c	daytime hash layer main nightMode offset resolution ridge
+b667595e	cameraAddent cameraFront cameraOrientation main resolution
+e36574f1	FTIME_PERIOD battery ftime main powerConnected resolution
+24da0a17	hash main resolution rotationMatrix stars
+8bb512f2	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+f6abaf49	gravity linear main resolution soft
+6d170e94	lastNotificationTime main notificationCount resolution time
+bf717701	FTIME_PERIOD battery ftime main powerConnected resolution
+669adca9	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+3c7f7cda	backbuffer evaluate get main oneIfZero pointerCount pointers
+637b364e	backbuffer evaluate get main pointerCount pointers resolution
+b71fa605	cameraAddaOrientation cameraBack main resolution
+cc2257ad	cameraAddent cameraOrientation eraBack resolution
+9f456bf5	daytime hash layer main nightMode offset resolution ridge
+7e6fa3ce	date daytime hand main nightMode resolution
+c02e15a4	lastNotificationTime main notificationCount resolution time
+7552e4a4	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+666e176c	lastNotificationTime main notificationCount resolution time
+d03f2dbc	backbuffer main pointerCount time touch
+b26ff27c	gravity linear main resolution soft
+9dd25b33	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+5df7b23d	disc main mouse resolution time
+6cc0bc91	backbuffer main mediaVolume micAmplitude radius resolution
+97bbb8f4	inclination line magnetic main orientation resolution
+a1914e92	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+f8145ede	lastNotificationTime main notificationCount resolution time
+222b1c08	backbuffer main pointerCount resolution time touch
+f6229bb9	main noise resolution
+af9df156	lastNotificationTime main notificationCount resolution time
+ca72660c	formain noise resolution touch touchStart
+bec686be	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+f2c5be4e	disc main mouse resolution time
+6bd67568	bar light main pressure proximity resolution
+5150ebd0	disc main mouse resolution time
+12dd4457	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+8a17304d	backbuffer evaluate get get4 oneIfZero pointerCount pointers resolution
+62d2296b	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+9e521694	S cameraAddent cameraBack cameraOrientation main resolution
+da1e0779	cameraAddent cameraFront cameraOrientation main resolution
+7b813791	bar light main pressure proximity resolution
+a50ba37a	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+d949277b	a ball color g gravity i light linear main n px q r resolution shade soft
+3fb6d641	daytime hash layer main nightMode offset resolution ridge
+dbc0565f	pointerCount pointers resolution
+6278b189	hash main resolution rotationMatrix stars
+482bd13e	cameraAddent cameraBack cameraOrientation main resolution
+4969b1f5	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+e2c8668d	cameraAddent cameraBack main resolution
+3da00caf	cameraAddent cameraFront cameraOrientation main resolution
+6cfd1ee0	disc main mouse resolution time
+91f58128	backbuffer main mediaVolume micAmplitude radius resolution
+98a1a52c	backb evaluate get main oneIfZero pointerCount pointers resolution
+55623b5b	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+1fbe84ef	FTIME_PERIOD color dial frame ftime loop main minute px resolution s second startRandom subsecond tick
+ce662dbd	cameraAddent cameraFront cameraOrientation main resolution
+b8e1b01b	main noise time
+6017eb77	date daytime hand main nightMode resolution
+7efe99b0	main noise resolution touch touchStart
+42154039	cameraAddent cameraBack cameraOrientation main
+9ed94b97	bar light main pressure proximity resolution
+eaadb9dd	arcs fragColor hash main noise resolution time
+1fbdeac0	cameraAddent cameraOrientation resolution
+31f6ae99	main noise resolution time
+b0c63ae4	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+2c7a8a35	main noise resolution touch touchStart
+45cfcbb1	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+bdf1d650	date daytime hand main nightMode resolution
+614f6397	cameraAddent cameraFront cameraOrientation main resolution
+93f50db8	lastNotificationTime main resolution time
+13544a7b	main noise resolution time
+72e33e5e	cameraAddent cameraFront cameraOrientation main resolution
+500fd73a	hash main resolution rotationMatrix stars
+8d348fc3	main pointerCount pointers resolution time
+62ca536e	backbuffer main pointerCount resolution time touch
+633fb7e2	arcs fragColor hash main noise resolution time
+90f5e7bf	main pointerCount pointers resolution time
+31b1ed0d	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c115ca1	disc main mouse resolution time
+1b4f0f97	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+7ae0d1fd	gravity linear main resolution soft
+61ece89f	cameraAddent cameraFront cameraOrientation main resolution
+b08f8cad	disc main mouse resolution time
+cffceef6	date daytime hand main nightMode resolution
+ed46f874	bar light main pressure proximity resolution
+96834944	gravity linear main resolution soft
+fa24ab49	time
+b111351f	lastNotificationTime main notificationCount resolution time
+f6b15fc5	backbuffer main pointerCount resolution time touch
+fa41fb46	bar covered main only pressure resolution sensor sunlight
+f5235fc1	backbuffer main pointerCount resolution time touch
+c986c3ee	main noise resolution touch touchStart
+6c82f0b	gravity linear main resolution soft
+bae82902	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+206a2700	backbuffer main pointerCount resolution time touch
+d4b8c268	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+e398dda	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+e4f6a5fd	arcs fragColor hash main noise resolution time
+176c5995	main noise resolution touch touchStart
+dbb09e68	FTIME_PERIOD battery ftime main powerConnected resolution
+1af41e18	coluniformor n pointerCount pointers resolution uv x
+77fe085a	lastNotificationTime main notificationCount resolution time
+585790eb	arcs fragColor hash main noise resolution time
+dab46f2e	gravity linear main resolution soft
+e529195b	cameraAddent cameraBack cameraOrientation main resolution
+31de4282	cameraAddent cameraFront cameraOrientation main resolution
+1ebbfe0c	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+2eb15466	FTIME_PERIOD dial frame ftime main second startRandom subsecond
+7aae6815	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+37fe0aeb	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+4238879f	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resotion
+be5e1e16	hash main resolution rotationMatrix stars
+3e3d7d16	cameraAddent cameraBack main resolution
+d02395a3	backbuffer evaluate get oneIfZero pointerCount pointers resolution
+bb5a57c6	cameraAddent cameraBack forcameraOrientation main
+d19b74ee	main noise resolution touch touchStart
+18ea045d	gravity linear main resolution soft
+b0add8d7	a color dial dip f field fill inclination line magnetic main metestructr needle north orientation q r resolution ring slope tick width
+7b125b66	cameraA cameraBack main
+f16c9afc	cameraBack cameraOrientation main resolution
+7b37c796	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+d5765a72	disc main mouse resolution time
+24b96005	FTIME_PERIOD battery ftime main powerConnected resolution
+48c813db	daytime hash layer main nightMode offset resolution ridge
+c047cf07	daytime hash layer main nightMode offset resolution ridge
+42abecb0	FTIME_PERIOD battery ftime main powerConnected resolution
+5c51fcfa	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+d231cc9b	gravity linear main resolution soft
+3b374e39	cameraAddent cameraBack cameraOrientation main
+46abfefb	arcs fragColor hash main noise resolution time
+be43e6c8	main
+f3cc9936	arcs fragColor hash main noise resolution time
+d006708	gravity linear main resolution soft
+c401d453	main noise resolution time
+3f199284	hash main resolution rotationMatrix stars
+a34e3476	main pointerCount pointers resolution time
+39cb2b2d	main noise resolution touch touchStart
+24a96e3f	disc main mouse resolution time
+33547d3f	main noise resolution touchStart
+fbe4ee1e	gravity main resolution soft
+32ede3f5	inclination line magnetic main orientation resolution
+1e14c45d	main resolution
+cc6f45d0	hash main resolution rotationMatrix stars
+423ecd40	date daytime hand main nightMode resolution
+6b6de33a	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+d08fbba9	backbuffer main pointerCount previou resolution time touch
+bea4399a	arcs fragColor hash main noise resolution time
+f2c616fc	backbuffer main mediaVolume micAmplitude radius resolution
+43b5a965	hash main resolution rotationMatrix stars
+2dc1ec58	main noise resolution time
+25ad0de0	a ball color g gravity light linear n p px q r resolution shade soft tilt
+abbb7fe8	main n pointerCount pointers resolution time
+9a1ab1d3	cameraAddent cameraBack main resolution
+d927261f	cameraAddent cameraBack resolution
+a6004b1d	date daytime hand main nightMode resolution
+72b20c79	backbuffer get main oneIfZero pointerCount pointers resolution
+278c893a	main pointerCount pointn
+ac5b4a3d	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+4dcce4ea	inclination line magnetic main orientation resolution
+6b07e3ea	main noise resolution touch touchStart
+1fc177af	backbuffer main resolution time touch
+6d086408	lastNotificationTime main notificationCount resolution time
+d225118	cameraAddent cameraFront cameraOrientation main resolution
+e59973e6	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+2ef33be1	main resolution
+77d0995e	hash main resolution rotationMatrix stars
+55e2aade	inclination line magnetic main orientation resolution
+363330cf	backbuffer main pixels pointerCount time touch
+e138c8e5	bar main pressure proximity resolution
+c1c1664	daytime hash layer main nightMode offset resolution ridge
+b1875e22	bar light main pressure proximity resolution
+b62ebeba	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+901353a9	hash main resolution rotationMatrix stars
+a3180b62	FTIME_PERIOD battery ftime main powerConnected resolution
+31a9f8c6	FTIME_PERIOD battery ftime main powerConnected resolution
+961e2c95	FTIME_PERIOD battery ftime main powerConnected resolution
+9888b6d8	main resolution
+d509cbbb	hash main resolution rotationMatrix stars
+881fc746	main noise resolution touch touchStart
+901cb8ea	GL_FRAGMENT_PRECISION_HIGH main pointerCount pointers resolution
+b5b0c341	disc main mouse resolution time
+d4189e33	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+ee1b323b	main pointerCount resolution t
+1a01aa24	main pointerCount pointers resolution time
+677a7515	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+b6c0439c	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+b448dc75	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+1a72afe0	arcs fragColor hash main noise resolution time
+4919723b	gravity linear main resolution soft
+6a6648a5	at cell d face hash main resolution rotationMatrix stars uv
+b24e8e90	disc main mouse resolution time
+96600ba3	daytime hash layer main nightMode offset resolution ridge
+82bed828	backbuffer main pointerCount resolution time touch
+5a42794e	arcs fragColor hash main noise resolution time
+4760ce	inclination line magnetic main orientation resolution
+1db581	backbuffer evaluate get n oneIfZero pointerCount pointers resolution tap
+426ff81f	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+eace6a2f	main pointerCount pointers resolution time
+a490fb69	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+b296522f	main noise resolution time
+36a27092	bar light main pressure proximity resolution
+81eb2d90	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+c36061ab	cameraAddent cameraFront cameraOrientation main resolution
+31318f47	FTIME_PERIOD battery ftime main powerConnected resolution
+67c894fa	bar light main pressure proximity resolution
+5567481e	daytime deep dm ds hash layer main moonAt nightMode offset orbit resolution ridge sunAt
+3ce200a0	FTIME_PERIOD battery ftime main powerConnected resolution
+927e566a	date daytime hand main nightMode resolution
+cb2cf1c4	backbuffer main pointerCount resolution time touch
+5a4f8eac	FTIME_PERIOD battery ftime main powerConnected resolution
+f9e0308a	disc main mouse resolution time
+66438e26	gravity linear main resolution soft
+30c1cd6e	FTIME_PERIOD battery ftime main powerConnected resolution
+f0ac82d4	main pointerCount pointers time
+989f7291	arcs fragColor hash main noise resolution time
+a027d195	FTIME_PERIOD battery ftime main powerConnected resolution
+dc7e66c9	backbuffer main pointerCount resolution time touch
+1362a755	main noise touch touchStart
+a5c31492	arcs fragColor hash noise resolution time
+709e1c98	daytime hash layer main nightMode offset resolution ridge
+713959da	
+60e023be	f poin pointers resolution time
+b05fa118	disc main mouse resolution time
+1fbd6ef	disc main mouse resolution time
+a7616afc	lastNotificationTime main notificationCount resolution time
+67a41009	cameraAddent cameraFront cameraOrientation main resolution
+874f4065	bar light main pressure proximity resolution
+c0d9953f	cameraAddent cameraFront cameraOrientation main resolution
+7140fede	FTIME_PERIOD battery ftime main powerConnected resolution
+da001977	backbuffer main pointerCount resolution time touch
+ee5865b5	hash main resolution rotationMatrix stars
+dd34eb2c	backbuffer main mediaVolume micAmplitude radius resolution
+64cb6d86	main noise resolution time
+f80b3d12	fragColor hash main noise resolution time
+e05066f4	arcs fragColor hash main noise resolution time
+421ed2d3	main
+eb04a94e	arcs hash main noise resolution time
+1391bf76	lastNotificationTime main notificationCount resolution time
+36f88728	hash main resolution rotationMatrix stars
+42df389f	daytime hash layer main nightMode offset resolution ridge
+6ed5841b	arcs fragColor hash main noise resolution time
+a8da4e7c	backbuffer main mediaVolume micAmplitude radius resolution
+d3da3346	inclination line magnetic main orientation resolution
+1a9d85fd	backbuffer main pointerCount resolution time touch
+31d1370c	cameraAddent cameraBack cameraOrientation main resolution
+83f6439d	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+65b16c4f	daytime hash layer main nightMode offset resolution ridge
+549e204f	FTIME_PERIOD color dial froad ftime loop main minute p px resolution s second startRandom starting subsecond tick
+dc965467	backbuffer main pointerCount resolution time touch
+843e6d01	main noise resolution touch touchStart
+1d6ea028	backbuffer band color d held hot i level mediaVolume micAmplitude now p px r radius resolution tion turn
+ac90662e	hash main resolution rotationMatrix stars
+fa38fb25	backbuffer main pointerCount resolution time touch
+ddd436ab	inclination line magnetic main orientation resolution
+6f73b01	backbuffer evaluate ge get main oneIfZero pointerCount pointers resolution
+4f99c6a6	main pointerCount pointers resolution
+26848283	cameraAddent cameraBack cameraOrientation main resolution
+a42bcfd0	main noise resolution time
+37f554e9	daytime hash layer main nightMode offset resolution ridge
+47c44c68	lastNotificationTime main resolution time
+fc6f5d7	daytime hash layer main nightMode offset resolution ridge
+7b498e80	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+77ab98a7	arcs fragColor hash main noise resolution time
+6467c35f	disc main mouse resolution
+e0276e66	main pointerCount pointers resolution
+cdc41bec	lastNotificationTime main notificationCount resolution time
+4d4e1cb3	backbuffer main mediaVolume micAmplitude radius resolution
+cb596515	cameraAddent cameraBack cameraOrientation resolution
+fcd5bfb8	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+5d547aca	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+86f179ef	disc main mouse resolution time
+33ce258	main pointerCount pointers resolution time
+18b9a2e2	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+839470ed	cameraAddent cameraFront cameraOrientation color main probe resolution
+1513c769	pointerCount time
+e7bdd95e	cameraAddent cameraBack cameraOrientation main resolution
+a0de24e5	main pointerCount pointers resolution
+5949832d	color main n pointerCount pointers resolution uv
+92180774	FTIME_PERIOD battery ftime main powerConnected resolution
+d7735aab	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+61daf112	date daytime hand main nightMode resolution
+6e02d831	cameraBack cametation main resolution
+9dd3bc30	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+f4bba0fc	angle color disc main moon mouse orbit resolution time
+1775fc88	date daytime hand main nightMode resolution
+8d4688c5	hash main resolution rotationMatrix stars
+f9f1b388	bar light main pressure proximity resolution
+96f478f2	main resolution
+3d3e43d6	bar light main pressure proximity resolution
+1d2ecde4	main noise resolution time
+97b09ff8	gravity linear main resolution soft
+eb7b3521	daytime hash layer main nightMode offset resolution ridge
+b9663316	inclination line magnetic main orientation resolution
+75191dc4	daytime hash layer main nightMode offset resolution ridge top
+e6a5a597	daytime hash layer main nightMode offset resolution ridge
+153d60d0	cameraAddent main resolution
+ad76b348	date daytime hand main nightMode resolution
+ef94be58	date daytime hand main nightMode resolution
+47281120	backbuffer main pointerCount resolution time touch
+aec36962	inclination line magnetic main orientation resolution
+3cb11c06	bar light main pressure proximity resolution
+624542c7	lastNotificationTime main notificationCount resolution time
+23e00adc	main pointerCount pointers resolution
+3066f689	FTIME_PERIOD battery ftime main powerConnected resolution
+bb935acb	main noise resolution touch touchStart
+a73f3d0	main resolutise time
+37609433	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+a463a581	backbuffer evaluate get oneIfZero pointerCount pointers resolution
+2c215be0	FTIME_PERIOD battery ftime main powerConnected resolution
+eaf4b2c7	disc main mouse resolution time
+2c231c6	FTIME_PERIOD battery ftime main powerConnected resolution
+46aa7ca1	main pointerCount pointers resolution
+786b7938	backbuffer evaluate get main oneIfZero pointerCount
+413d39bf	S bar light main pressure proximity resolution
+99e69315	bar light main pressure proximity resolution
+864475d7	gravity linear main soft
+14034ab8	
+775fadf9	daytime hash layer main nightMode offset resolution ridge
+2dd3d34f	arcs fragColor hash main noise resolution time
+135d9ef8	backbuffer evaluate get oneIfZero pointerCount pointers resolution
+5f0b1914	lastNotificationTime main notificationCount resolution time y
+bf825dce	bar light main pressure proximity resolution
+e896b7a1	hash main resolution rotationMatrix stars
+89513943	main pointerCount pointers resolution
+c36010eb	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+799c7430	lastNotificationTime main notificationCount resolution time
+855ca1ce	backbuffe main pointerCount resolution time touch
+8a839d4c	backbuffer main mediaVolume micAmplitude radius resolution
+9f51329e	arcs fragColor hash main noise pixels time
+c7d68c9c	gravity linear main resolution soft
+e041df96	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+4aca63be	arcs fragColor hash main noise resolution time
+5cc3fcea	FTIME_PERIOD battery ftime main powerConnected resolution
+97546a8c	main noise resolution touch touchStart
+dc2da008	main noise resolution time
+9644af60	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+39fa256b	main
+ac35e302	arcs fragColor hash main noise resolution time
+6476ee8f	FTIME_PERIOD battery ftime main powerConnected resolution
+6db7de0e	arcs fragColor hash main noise resolution time
+ddbdc302	inclination line magnetic main orientation pixels resolution
+6a9937a1	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+995e6dbb	hash main resolution rotationMatrix stars
+e48997e7	f fill inclination line magnetic main needle orientation resolution ring widtbs
+b1a4e8c3	arcs fragColor hash main noise resolution time
+94cef841	gravity linear main resolution soft
+adf0b6d5	daytime hash layer main nightMode offset resolution ridge
+52239fb6	main resolution
+7d9e13e2	main noise resolution touch touchStart
+e9b09b	backbuffer evaluate get main oneIfZero pointerCount pointers
+cf8ec6bf	FTIME_PERIOD battery ftime main powerConnected resolution
+d4e351b5	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+1ea84e97	backbuffer main pointerCount resolution time
+bd6e54a6	cameraAddent cameraFront cameraOrientation main resolution
+74151bda	disc main mouse resolution time
+fc1df469	bar light main pressure proximity resolution
+9d7e8283	date daytime hand main nightMode resolution
+ded017d8	hash main resolution rotationMatrix stars
+2a13034f	main pointerCount pointers resolution time
+75f76104	backbuffer evaluate get main pointerCount pointers resolution
+cf2c2fed	cameraAddent cameraBack cameraOrientation main
+7e477a03	cameraAddent cameraOrientation resolution
+c0cd7aa8	disc main mouse resolution time
+50ee030	cameraAddent cameraBack cameraOrientation main resolution
+c41b047	S main pointerCount pointers time
+eb5cf958	gravity linear main resolution soft
+3ee61560	backbuffer main pointerCount resolution time touch
+543e68d1	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+3034ed93	main noise resolution touch touchStart
+e0c3e33a	disc main mouse resolution time
+2f6e2a6	main pointerCount pointers resolution
+33309a61	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+3dc28a45	backbuffer maforin mediaVolume micAmplitude radius resolution
+b73db82a	date daytime hand main nightMode resolution
+e428fcec	main mouse resolution time
+ddbae006	daytime hash layer main nightMode offset resolution ridge
+8b319097	gravity linear main resolution sensor soft
+83d3d15c	gravity linear main resolution soft
+b582fa6f	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+d9e81ac0	date daytime hand main nightMode resolution
+a0febb86	lastNotificationTime main notificationCount resoluti time
+f502aba4	main pointerCount pointers resolution
+22406062	main noise resolution touch touchStart
+4b149bcf	color main n pointerCount pointers resolution uv
+5c2cd0fc	FTIME_PERIOD battery ftime main powerConnected resolution
+f29fc70a	backbuffer evaluate get main oneIfZero pointers
+ed15f98e	bar light main pressure proximity resolution
+e54fefbc	bar light main pressure proximity resolution
+fd20feee	arcs fragColor hash main noise resolution time
+fc4dd677	backbuffer main mediaVolume micAmplitude radius resolution
+a4bfd774	gravity linear main resolution soft
+c4944c16	backbuffer main pointerCount resolution time touch
+fe165976	date daytime hand main nightMode resolution
+9a422219	inclination line magnetic main orientation resolution
+c0d9b4e8	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+d60b1b0d	cameraAddent cameraFront cameraOrientation main resolution
+b04c7a9e	main pointerCount pointers resolution
+9535465a	bar light main pressure proximity resolution
+ecc43705	hash main resolution rotationMatrix stars
+355d6e44	arcs fragColor hash main noise resolution time
+1386cbd8	FTIME_PERIOD battery ftime main powerConnected resolution
+f94d1e6	backbuffer main mediaVolume micAmplitude radius resolution
+919a99c	gravity linear main resolution soft
+5e89a31a	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+5fe3c8ac	main resolution
+31b0c802	backbuffer main pointerCount resolution time touch
+25da78d0	cameraAddent cameraBack cameraOrientation main resolution
+15e35546	main mediaVolume micAmplitude radius resolution
+3a8a01f5	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+944683f1	hash main resolution rotationMatrix stars
+48be7192	main noise resolution
+d4302e8a	
+a4470020	main resolution
+9cf40216	main noise resolution touch touchStart
+363a7049	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+db6d7613	main pointerCount pointers resolution time
+308cf73d	backbuffer evaluate get main oneIfZero pointerCount pointers
+429dfc00	hash main resolution rotationMatrix stars
+130bac06	main noise resolution touch touchStart
+551bce58	main resolution
+6e241be	main pointerCount pointers resolution time
+fe8cb7f	color field line magnetic main orientation r resolution slope tick tion width
+e7d7c922	main pointerCount pointers res
+78a9c464	main resolution
+90b2f07f	main noise resolution time
+2172098d	gravity linear main resolution soft
+30b35177	hash main resolution rotationMatrix stars
+2e3f0753	main pointerCount pointers resolution
+a120d6c5	inclination line magnetic main orientation resolution
+6581c16	lastNotificationTime main notificationCount resolution time
+eed880f1	hash main resolution rotationMatrix stars
+9463d313	backbuffer evaluate get main oneIfZero pointerCount resolution
+ab6e78d2	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+3a9b9be7	cameraAddent cameraOrientation resolution
+8d5795b5	inclination line magnetic main orientation resolution
+276dec52	hash main resolution rotationMatrix stars
+273ea3e	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+e692ffc8	cameraAddent cameraFront cameraOrientation main resolution
+f86778a8	bearing color dir glints hash mark moon north p px rotationMatrix stars tick up view y
+3faa2bed	hash main resolution rotationMatrix stars
+44c90b00	date daytime hand main nightMode resolution
+7af899c5	lastNotificationTime main notificationCount resolution time
+e9128951	disc main mouse resolution time
+ef74671e	inclination line magnetic main orientation resolution
+43b58d7d	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+2eedd29a	main pointerCount pointers resolution
+d112e425	bar light main pressure proximity resolution
+ce8a0989	main pointerCount pointers resolution time
+bee356b	backbuffer main mediaVolume micAmplitude radius resolution
+d2c61a24	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+152bad51	daytime hand main nightMode resolution
+a33e8fab	backbuffer main mediaVolume radius resolution
+146f0e5	backbuffer main pointerCount resolution time touch
+d8fe9e63	bar light main pressure proximity resolution
+abb6102	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+1922411e	bar light pressure proximity resolution sensor up
+5db42b15	gravity linear main resolution soft
+57476af0	cameraAddent cameraBack cameraOrientation main
+37a66f64	bar light main pressure proximity resolution
+d860d302	main resolution
+5c47dc24	main noise resolution time
+82cb6c97	backbuffer main pointerCount resolution time touch
+9b860811	date daytime hand main nightMode resolution
+292e466e	main pointerCount pointers resolution time
+83bcddac	main noise resolution touch
+e7be6666	backbuffer evaluate get main oneIfZero pointe pointers resolution
+7ccc0c5b	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+1a91e0d4	a arcs color d fragColor hash main noise path resolution shade texels time uv
+5d8f4e0e	gravity linear main resolution soft
+c3ec9573	inclination line magnetic main orientation resolution
+9f1278cf	main noise resolution touch touchStart
+c26699ff	pointers puniformointerCount resolution time
+ef3b4a58	cameraAddent cameraFront cameraOrientation main resolution
+85bee42b	main pointerCount pointers resolution time
+12c114ba	main noise resolution
+a56d08c5	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+572cfdec	bar light main pressure proximity resolution
+fde74f47	main noise resolution time
+d1772e36	backbuffer main pointerCount resolution time touch
+964434f7	cameraAddent cameraOrientation resolution
+cf8c9b86	bar light main pressure proximity resolution
+d307a9b8	arcs fragColor hash main noise resolution time
+53f463ac	main pointerCount pointers resolution time
+e0e57fce	uv
+90a5ee0a	any down main noise resolution touch
+6adb2677	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+eaf555bd	FTIME_PERIOD back battery color depth ftime level liquid main mark powerConnected resolution tint
+a364d05b	disc main mouse resolution time
+eb18025d	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+f34f0373	main noise resolution time
+9030adad	inclination line magnetic main orientation resolution
+e6d1e0f9	disc main mouse resolution
+b76d963	cameraAddent cameraBack cameraOrientation main resolution
+e90be93b	lastNotificationTime main notificationCount resolution time
+81e92521	backbuffer get oneIfZero pointerCount pointers resolution
+e2d6a3d8	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+c86e6674	date daytime hand main nightMode resolution
+56abfd8c	backbuffer main pixels pointerCount time touch
+51787c70	hash main resolution rotationMatrix stars
+ca7abf7b	lastNotificationTime main notificationCount pixels resolution time
+c34e6949	camer cameraAddent cameraOrientation main resolution
+f7788603	disc main mouse resolution time
+7880a4e9	daytime f hash layer main nightMode offset resolution ridge
+ea63ea6a	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+a96e20b	bar light main proximity prve resolution sensor
+c4f6ed3c	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+698992d	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+ce195b6f	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+45243a34	main noise resolution time
+ddcb9980	gravity linear main resolution soft
+4d2b02b6	hash main resolution rotationMatrix stars
+b1744b62	main resolution
+9cc2532e	main noise resolution time
+389af526	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+b24c130f	
+769dc928	FTIME_PERIOD battery ftime main powerConnected resolution
+947aa7bb	arcs fragColor hash main noise resolution time
+602132a6	backbuffer main pointerCount resolution time touch
+b0c5a9f2	FTIME_PERIOD battery ftime main powerConnected resolution
+188cd282	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+62043ba3	cameraAddent cameraBack cameraOrientation main resolution
+71c736d8	main noise resolution time
+e3bab0e9	bar light main pressure proximity resolution
+5c52b665	arcs fragColor hash main noise resolution time
+67347da2	cameraAddent cameraOrientation main resolution st uv
+253d90a4	FTIME_PERIOD battery ftime main powerConnected resolution
+4f7a617f	main resolution
+f69543aa	backbuffer main mediaVolume micAmplitude resolution
+e534a3cd	hash main resolution stars
+65a56269	cameraAddent cameraFront cameraOrientation main resolution
+f61f2a33	cameraAddent cameraFront cameraOrientation main resolution
+990a53f2	backbuffer main mediaVolume micAmplitude radius resolution
+628d380a	FTIME_PERIOD battery ftime main powerConnected resolution
+4ddd567b	main pointerCount pointers resolution
+68da5e65	hash main resolution rotationMatrix stars
+e4ced55f	resolution
+651687b	color main n pointers resolution uv
+6ced3a00	cameraAddent cameraFront cameraOrientation main resolution
+de418a2d	bar light main pressure proximity resolution
+1fd3c396	main resolution
+9abed9c6	cameraAddent cameraFront cameraOrientation main resolution
+fdd12682	inclination line main orientation resolution sensor
+d79b945b	main noise resolution touch touchStart
+67ec2685	main pointerCount pointers resolution time
+cf2f946f	arcs fragColor hash main noise resolution
+12e1caea	hash main resolution rotationMatrix stars
+df85c9bf	main resolution touch touchStart
+3b998f94	main
+ed4c3deb	disc main mouse resolution time
+dc5c4f9e	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+56570361	arcs hash main noise resolution time
+bc42daa1	lastNotificationTime main notificationCount resolution time
+56bbc248	backbuffer main mediaVolume micAmplitude radius
+485a6541	cameraAddent cameraBack cameraOrientation main resolution
+b3264e3b	hash main resolution rotationMatrix stars
+ca3d6c2a	backbuffer main mediaVolume micAmplitude radius resolution
+5f04f132	lastNotifica main notificationCount resolution time
+44a55255	disc main mouse resolution time
+7daeaa77	main noise resolution time
+1d344ed5	main mouse resolution time
+6f0bcccf	daytime hash layer main nightMode offset resolution ridge
+b1549b27	backbuffer main pointerCount resolution time touch
+e099294d	FTIME_PERIOD battery ftime main powerConnected resolution
+ebe8b4ac	cameraBack cameraOrientation main resolution
+972ee8d4	gravity linear main resolution soft
+b1b9bc06	disc main mouse resolution time
+5c48d03f	main noise resolution touch touchStart
+c8dfdc2c	daytime hash layer main nightMode offset resolution ridge
+cf906707	backbvec3uffer keys main micAmplitude radius resolution second
+4ad32254	backbuffer evaluate get get4 main oneIfZero pointers
+703a2781	FTIME_PERIOD battery ftime main powerConnected resolution
+1356fe27	backbuffer main pointerCount resolution time touch
+90bbf3c	date daytime hand main nightMode resolution
+7d1ed600	main pointerCount pointers
+d6beeb4a	arcs fragColor hash main noise resolution time
+576cb3cc	hash main resolution rotationMatrix stars
+1e06da17	arcs fragColor hash main noise resolution time
+2b1089ba	main pointerCount pointers resolution
+699afd4a	gravity linear main resolution soft
+89d52d66	gravity linear main resolution soft
+a0e26ba1	FTIME_PERIOD battery ftime main powerConnected resolution
+ef20efed	f main resolution touch touchStart
+112e65e7	backbuffer main mediaVolume micAmplitude radius resolution
+4307ebba	main pointerCount pointers resolution
+559001a8	main pointerCount pointers resolution time
+e62adb3	inclination line magnetic main orientation resolution
+5afdb16b	backbuffer main mediaVolume micAmplitude radius resolution
+f181cd90	backbuffer main mediaVolume micAmplitude radius resolution
+8b458b42	arcs fragColor hash main noise resolution time
+9f3ee0e1	fragColor hash main noise resolution time
+7144ccef	arcs fragColor hash main noise resolution time
+35ac152a	cameraAddent cameraBack cameraOrientation main resolution
+8aabc4c	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+cd80d647	backbuffer main pointerCount resolution time touch
+8f12baa5	main pointerCount pointers resolution time y
+1de18bd6	disc f main resolution time
+37912ecf	main pointerCount pointers resolution
+7719dd44	daytime hash layer main nightMode offset resolution ridge
+5b51d9d8	lastNotificationTime main notificationCount resolution time
+b2c56b	backbuffer backdrop color f faded ink main mark pointerCount previous resolution time touch
+248d5dd	bar light main pressure proximity resolution
+d992c68f	main noise resolution time
+6254215c	gravity linear main resolution soft
+5690854d	FTIME_PERIOD battery ftime main powerConnected resolution
+80364b1	main noise resolufortion touch touchStart
+7090d7f8	backbuffer main pointerCount resolution time touch
+edb470e8	level magnetic main orientation resolution
+202ad020	date daytime hand main nightMode resolution
+188a88e6	pointerCoun resolution
+14fb773d	date daytime hand main nightMode resolution
+66aeba05	inclination line magnetic main orientation resolution
+bd4cb81b	gravity linear main resolution tilt
+1eb2ba94	backbuffer main pointerCount resolution time touch
+c995cd2c	disc main mouse resolution time touch
+d660a970	date daytime hand main nightMode resolution
+18e74b1c	backbuffer main mediaVolume micAmplitude radius resolution
+d13885e2	disc main mouse resolution time
+1120c8ef	main pointerCount pointers resolution
+3f3ad3b3	gravity linear main resolution soft
+a264b840	date daytime hand main nightMode resol
+8d59d324	main pointers resolution
+4f30508b	daytime hash layer main nightMode offset resolution ridge
+52b694ec	inclination line magnetic main orientation resolution
+324c3498	main noise
+89dab6b1	backbuffer main pointerCount resolution time touch
+2b949225	date daytime hand main nightMode resolution
+9a6f7a6d	bead diec2 lastNotificationTime main notificationCount resolution time warm
+86439e8f	lastNotificationTime main notificationCount resolution
+ebfd42f8	evaluate get main oneIfZero pointerCount resolution
+cd04b318	arcs fragColor hash main noise resolution time
+fdedad9a	disc main mouse pixels resolution time
+bbe07dbc	main pointerCount pointers resolution
+c0e90ade	cameraAddent cameraFront cameraOrientation main resolution
+20794a74	date daytime hand main nightMode resolution
+95110488	main pointerCount resolution
+643d89f2	FTIME_PERIOD dial frame ftime main resstructolution second startRandom subsecond
+a5c27272	bar light main pressure proximity resolution
+388d21ba	angle cell color disc main moon mouse orbit resolution time
+cd6e2932	bar light main pressure proximity resolution
+db9e86f3	cameraAddent cameraFront cameraOrientation main resolution
+22d8e10c	backbuffer main mediaVolume micAmplitude radius resolution
+be143557	inclination line magnetic main orientation resolution
+b5e7f64d	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+be843cce	backbuffer band d f hot main mediaVolume micAmplitude radius resolution turn
+4b7ce460	backbuffer main mediaVolume micAmplitude radius resolution
+be505186	gravity linear main resolution soft
+bd9aee21	main pointerCount pointers
+84ef11c2	cameraAddent cameraBack cameraOrientation main resolution
+1f34d3dd	backbuffer main pointerCount res time touch
+22d6b700	f main pointerCount pointers resolution time
+68572479	hash main resolution rotationMatrix stars
+7f780adc	backbuffer main mediaVolume micAmplitude radius resolution
+fd57a4f6	cameraAddent cameraBack cameraOrientation main resolution
+d4477805	daytime hash layer main nightMode offset resolution ridge
+c2c99dd7	inclination line magnetic main orientation resolution
+671dd0a	inclination line magnetic main orientation resolution
+8832f0df	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+9e2e1fbf	cameraAddent cameraFront cameraOrientation main resolution
+ff9a02e8	hash main resolution rotationMatrild sensors stars
+7ad1fed6	gravity linear main resolution soft
+41304b82	cameraAddent cameraBack cameraOrientation main
+41de8fe2	main noise resolution touch touchStart
+cf10ff5c	backbuffer main mediaVolume micAmplitude radius resolution
+fc6a6893	daytime hash layer main nightMode offset resolution ridge
+6a36f0a0	bar light main pressure proximity resolution
+4ee5a574	main noise resolution time
+288eecd8	daytime hash layer main nightMode offset resolution ridge
+b8602f0a	gravity linear main resolution soft
+f369cfc	inclination line magnetic main orientation resolution
+db692bf2	gravity main resolution soft
+875999ff	FTIME_PERIOD battery ftime main powerConnected resolution
+fc1de199	main pointerCount pointers resolution time
+bbd76f60	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+e2370bae	bar light main pressure proximity resolution
+9648c0f	any down main noise resolution touchStart
+682ebc63	bar light main pressure proximity resolution
+7f6a671	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+aebf8f73	main noise resolution touch touchStart
+a9a8d753	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+a259f897	main pointerCount pointers resolution
+5751ffd6	gravity linear main resolution soft
+abb4a0b8	FTIME_PERIOD battery ftime main powerConnected resolution
+b65f8828	main pointerCount pointers resolution time
+ab954e5	date daytime hand main nightMode resolution
+59ff2619	main pointerCount pointers resolution
+54711385	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+8bea0f94	backbuffer backdrop color faded ink main mark pointerCount previous resolution time touch
+2960cc02	date daytime hand main nightMode resolution
+dd801f7	arcs fragColor hash main noise resolution time
+e99e677d	cameraAddent cameraBack cameraOrientation main resolution
+593545e7	f inclination line magnetic main resolution
+60811e27	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+b5f3b1d4	gravity linear main resolution soft
+c5dd43d3	FTIME_PERIOD a behind d frame ftime main resolution second startRandom subsecond sweep
+fe95c15f	disc main mouse resolution time
+ac0212da	inclination line magnetic main orientation resolution
+b7ce5a8f	backbuffer evaluate get get4 m oneIfZero pointerCount pointers resolution
+d3b82002	daytime hash layer main nightMode offset resolution ridge
+d7e7725f	arcs fragColor hash main noise resolution time
+3baac4a8	inclination line magnetic main orientation resolution
+529f4cfc	FTIME_PERIOD battery ftime main powerConnected resolution
+ffaa68d4	backbuffer evaluate get get4 oneIfZero pointerCount pointers resolution
+35ed02b7	cameraAddent cameraFront cameraOrientation main resolution
+34f91164	backbuffer main pointerCount resolution time touch
+80864bc2	cameraAddent cameraFront cameraOrientation main resolution
+e8326519	hash main resolution rotationMatrix stars
+a99444d9	inclination line magnetic main orientation resolution
+f809ce27	main noise resolution touch touchStart
+cd7d9f2f	main pointerCount pointers resolut
+91942934	gravity linear main resolution soft
+21ae9eb1	main noise resolution touch touchStart
+cc95874	inclination line magnetic main orientation resolution
+49f49cc9	backbuffer main pointerCount resolution time touch
+e772e1b8	backbuffer main mediaVolume micAmplitude radius resolution
+d330eaea	disc main mouse resolution time
+40cce8c8	hash main resolution rotationMatrix stars
+ddb40603	backbuffer main mediaVolume micAmplitude radius resolution
+39d8ce77	main noise resolution time
+5e52f619	hash main resolution rotationMatrix stars
+e2c37240	noise resolution time
+ce651a79	line magnetic main orientation resolution
+1d794814	main pointerCount pointers resolution
+a028f56a	f pointers resolution time x
+6cbec860	f
+609aa24	e main noise resolution timfloat
+dc2fe276	man noise resolution time
+3114b14d	main pointerCount pointers resolution
+1b6cad66	main noise resolution touch touchStart
+d07aedf0	FTIME_PERIOD battery ftime main powerConnected resolution
+bb44a29b	inclination line magnetic main orientation resolution
+19ce12e8	cameraAddent cameraFront main resolution
+a31695b5	backbuffer main pointerCount resolution time touch
+d7da9a78	gravity linear main resolution soft
+6fc90ecd	color f field fill inclination line magnetic main needle orientation r resolution ring slope tick width
+a153c578	disc main mouse resolution time
+5dc30433	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c30f2707	hash main resolution rotationMatrix stars
+dec38520	main pointerCount pointers resolution
+48b345a9	gravity linear main resolution soft
+28c3e8d8	main noise
+418048c7	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+c7d0f7bb	daytime hash nightMode offset resolution ridge
+509ce867	cameraAddent cameraFront cameraOrientation main resolution
+bf8dfd98	cameraAddent cameraFront main resolution rotation
+cd3b8e1	backbuffer main mediaVolume micAmplitude radius resolution
+19d86f62	FTIME_PERIOD dial frame ftime main resolution s second subsecond
+4f5c8a32	cameraAddent cameraFront cameraOrientation main resolution
+343c8fb2	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+85cb825e	backbuffer main mediaVolume micAmplitude radius resolution
+f4f07046	disc main mouse resolution time
+1645dfd2	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+d7f18680	backbuffer main mediaVolume micAmplitude radius resolution
+dce929a2	backbuffer main mediaVolume micAmplitude radius resolution
+4b9d3dd7	main pointerCount pointers resolution time
+576f2338	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+a606c911	daytime hash main nightMode offset resolution ridge
+279da470	main pointerCount pointers resolution
+cd37b7b9	cameraAddent cameraOrientation main resolution
+a570e294	backbuffer evaluate f get main oneIfZero pointerCount pointers resolution
+e036341d	main pointerCount pointers resolution time
+d1e2227f	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+16768ceb	backbuffer evaluate get get4 main oneIfZero pointerCount pointers
+abb1c561	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+c5d462d6	hash main resolution rotationMatrix stars
+ef3b1b9d	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+56a887c2	date daytime hand main nightMode resolution
+bda621df	cameraAddent cameraBack cameraOrientation main
+e60f8b99	gravity linear main resolution soft
+355396e5	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+87fa9fdb	backbuffer main mediaVolume micAmplitude radius resolution
+31f6efe0	hash main resolution rotationMatrix stars
+5ef07dd2	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+3537bdce	main poi pointerCount resolution
+6c2d8a66	disc main mouse resolution time
+329fccff	backbuffer evaluate get4 main oneIfZero pointerCount pointers resolution
+d01f5102	evaluate get get4 main oneIfZero pointerCount resolution
+a2d3e589	resolution
+14b67a37	FTIME_PERIOD battery ftime main powerConnected resolution
+d4e9226f	any backbuffer lifts main pointerCount resolution time touch
+34b14100	main pointers resolution time
+8485d234	main noise resolution time
+248e744d	lastNotificationTime main notificationCount time
+b00f1092	backbuffer main mediaVolume micAmplitude pixels radius
+acb7f761	date daytime hand main nightMode resolution
+231cac04	backbuffer hot main mediaVolume micAmplitude radius resolution turn
+e77da8b5	backbuffer band color d hot i main mediaVolume micAmplitude radius resolution turn
+e27f00b6	FTIME_PERIOD battery ftime main powerConnected resolution
+26a8ea4	main
+97503f68	main pointerCount pointers
+a9a7ccff	disc main mouse resolution time
+bffb5706	main pointerCount pointers resolution time
+7075deb7	main pointerCount pointers resolution time
+d126d57	inclination line magnetic main orientation resolution
+fd0dc26a	lastNotificationTime main notificationCount resolution time
+ec5f316e	bar light main pressure proximity resolution
+2798a6d5	main pointerCnters resolution time
+d40d39e1	lastNotificationTime main notificationCount resolution time
+6a2b08bb	arcs fragColor hash main noise resolution time
+3f40d80a	disc main mouse resolution time
+29d42a35	main noise resolution time
+a1fd734f	mainif pointerCount pointers resolution
+14e8593a	backbuffer main mediaVolume micAmplitude radius resolution
+ae955c99	disc main mouse pixels time
+210191bd	backbuffer main mediaVolume micAmplitude radius resolution
+4576526d	evaluate get get4 main oneIfZero pointerCount pointers resolution
+2792cd4	main pointerCount resolution
+ba52ba3f	backbuffer get get4 main oneIfZero pointerCount pointers resolution
+487d3c56	main pointerCount pointers resolution
+ee595a3c	hash main resolution rotationMatrix stars
+d9810735	date daytime hand main nightMode resolution
+91c27047	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+95aff5c9	gravity linear main resolution soft
+73fcc59c	lastNotificationTime main notificationCount resolution time
+a87e8577	bar light main pressure proximity resolution sensor
+d15d0769	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+62db6082	arcs fragColor hash main noise resolution time
+4b9d12d8	hash main resolution rotationMatrix stars
+cad85f5f	cameraAddent cameraFront main pixels
+a66aeeb6	main pointerCount resolution time
+917864ed	S inclination line magnetic main orientation resolution
+ea9395eb	lastNotificationTime main notificationCount resolution time
+ef42d877	lastNotificationTime main notificationCount resolution time
+1071db4c	main resolution
+1769e630	cameraAddent cameraBackvec3 cameraOrientation main resolution
+1d8dbf59	cameraAddent cameraFront cameraOrientation main resolution
+85c29e94	lastNotificationTime main notificationCount resolution time
+a63f55fe	date daytime hand main nightMode resolution
+64589f6f	disc main mouse resolution time touch
+e50e4c41	date daytime hand main nightMode resolution
+1d8f55cb	disc main mouse resolution time
+ee5f3e3f	daytime hash layer main nightMode offset resolution ridge
+4095205a	FTIuniformME_PERIOD battery ftime main powerConnected resolution
+b5126d61	daytime hash layer main nightMode offset resolution ridge
+b0f44cdc	backbuffer main mediaVolume micAmplitude radius resolution
+719561b2	disc main mouse resolution time
+ce7baafe	date daytime hand main nightMode resolution
+c19549d	S main notificationCount resolution
+5a4aab76	disc main mouse pixels time
+918592e7	disc main mouse resolution time
+2046b6c0	disc main mouse resolution time
+1eb5fe9	hash main resolution rotationMatrix stars
+1eab4a6d	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+d75dc398	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+3e8812c8	main noise resolution time
+94934bc6	arcs fragColor hash noise resolution time
+b1da93db	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+5f88ced4	daytime hash layer main nightMode offset resolution ridge
+e1fb0c0	pointerC resolution
+d69fa261	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+57ddae03	cameraAddent cameraBack cameraOrientation main resolution
+54e1ff09	cameraAddent cameraBack cameraOrientation main resolution
+d945a78a	main noise resolution touch touchStart
+2ad99729	main noise resolution touch touchStart
+f378ab24	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+ea967f11	gravity linear main resolution soft
+1cc0df1f	disc main mouse resolution time
+a276363e	backbuffer main mediaVolume micAmplitude radius
+2308f84f	hash main resolution rotationMatrix stars
+772ec5c1	main pointerCount pointers resolution time
+7a7958c	main noise resolution time
+91cae122	main noise time
+145b1ccd	inclination line magnetic main orientation resolution
+14f201dd	gravity linear main resolution soft
+3f9f18a5	disc main mouse resolution time
+9160db89	main noise resolution touch touchStart y
+fd65981f	disc main mouse resolution time
+2215cdb2	FTIME_PERIOD dial frame ftime main second startRandom subsecond
+6450e1e	lastNotificationTime main notificationCount resolution time
+dd991931	backbuffer evaluate get main oneIfZero pointerCount resolution
+846e343e	main pointerCount pointers resolution time
+b9e9c7dc	backbuffer evaluate f get main oneIfZero pointers resolution
+3b6b8979	main pointerCount pointers resolution
+7d2bbca3	backbuffer main pointerCount time touch
+2d7e7583	lastNotificationTime main notificationCount resolution time
+531410d	main pointerCount pointers resolution time
+a79e389	main pointerCount pointers resolution time
+4106ae24	bead c date daytime hand main nightMode resolution size slot
+4bd5fd50	cameraAddent cameraFront cameraOrientation main resolution
+4c7a1abc	FTIME_PERIOD battery ftime main powerConnected resolution
+9e2a9ad	main noise resolution time
+b523e839	main pointers resolution
+3dc8f682	evaluate f get main oneIfZero pointerCount pointers resolution
+6555caba	main poierCount pointers time
+aae0c121	disc main mouse resolution time
+ed6f34fa	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+247078d2	gravity linear main resolution soft
+8bbded74	main resolution
+28e2494e	main n pointerCount pointers resolution time
+d4992d50	main noise resolution
+252cef05	date daytime hand main nightMode resolution
+ccfbd3d	lastNotificationTime main notificationCount resolution time
+65542b94	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+3bd7892d	FTIME_PERIOD back battery charge charging color depth ftime level lift liquid loop main mark powerConnected pulse px resolution tint wave x
+13ad7ca3	lastNotificationTime main resolution time
+e2503e78	main pointers resolution
+ab3d701c	bar light main pressure proximity resolution
+f4ac56c6	resolution
+d268d04a	and arcs exactly fragColor hash main noise resolution time
+901fc238	main resolution
+46b82dc8	cameraAddent cameraFront cameraOrientation main resolution
+ab251cd9	date daytime hand main nightMode resolution
+f9820c72	FTIME_PERIOD battery ftime main powerConnected resolution
+2db3c015	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+ba0b929e	backbuffer evalua get main oneIfZero pointerCount pointers resolution
+75ec3bf	main resolution
+4c605a3f	cameraAddent cameraBack cameraOrientation main resolution
+9af9df20	backbuffer backdrop brush color down faded ink main mark pointerCount previous resolution time touch
+1e62caef	bar main pressure proximity resolution
+861196c9	date daytime hand main resolution
+8bab2d93	main pointerCount pointers resolution
+fa45dd9b	gravity linear main resolution soft
+628880b	bar light main pressure proximity resolution
+1a5bdcf7	cameraAddent cameraBack cameraOrientation main resolution
+37495702	FTIME_PERIOD battery ftime main powerConnected resolution
+141d47fd	hash main rotationMatrix stars
+8659d67b	main pointerCount pointers resolution time
+d2b5c792	inclination line magnetic main orientation resolution
+db55245a	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+746c244b	hash main resolution rotationMatrix stars
+75c1c413	main resolution
+3bddbfe9	inclination line magnetic main orientation resolution
+20ca2f37	resolution
+7f30be34	main noise resolution touch touchStart
+c8012ed2	linear main resolution sensor soft
+24b2be68	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+9240a9bb	main pointerCount pointers resolution
+80e47364	FTIME_PERIOD battery ftime main powerConnected resolution
+dcb87b17	date daytime f hand main nightMode resolution
+e8dff4b5	arcs fragColor main noise resolution time
+3fe0e61	daytime hash layer main nightMode offset resolution ridge top
+286b4c4	resolution time
+1da375b9	main noise resolution touch touchStart
+9eff274e	disc main mouse resolution time
+f374196c	daytime hash layer main nightMode offset resolution ridge
+efdf0948	cameraAddentmeraOrientation cameraBack main resolution
+fb9496af	gravity linear main resolution soft
+bfcb6254	backbuffer main mediaVolume micAmplitude radius resolution
+3d5e34a7	main pointerCount pointers resolution
+94db1237	resolution
+2af26b02	bar light main pressure proximity resolution
+34268a98	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+9751183c	hash layer main nightMode offset resolution ridge
+91d95dc	hash main resolution rotationMatrix stars
+90836ab2	hash main resolution rotationMatrix stars
+cdd98eee	inclination line magnetic main orientation resolution
+9e7c5cc	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+be13636c	color mx n pointerCount pointers resolution uv
+5c397c19	disc main mouse resolution time
+d62e7f36	arcs fragColor hash main noise resolution time
+87cdc17a	bar light main pressure proximity resolution
+a5994d92	backbuffer main pointerCount resolution time touch
+b515953e	incln line magnetic main orientation resolution
+8d5a5e	backbuffer backdrop brush color down faded ink mark p pointerCount resolution time touch unit
+2b98dee4	FTIME_PERIOD battery ftime main powerConnected resolution
+fc514bff	FTIME_PERIOD battery ftime main powerConnected resolution
+b020c20e	cameraAddent cameraFront cameraOrientation main resolution
+73ad910e	backbuffer evaluate get main n oneIfZero pointerCount pointers resolution tap
+5a2ca973	daytime hash layer main nightMode offset resolution ridge
+246dc76d	FTIME_PERIOD color dial frame ftime loop main minute p px resolution s second startRandom subsecond tick
+98e5138c	main noise resolution time
+3c872b4d	arcs fragColor hash main noise resolution time
+e73b6846	band cameraAddent cameraFront cameraOrientation color luma main probe resolution
+a8c7c439	main noise resolution time
+bccad7fd	main noise resolution touch
+eed0404a	bar light main pressure proximity
+ad687f49	main noise resolution texture2D time
+3b98770f	FTIME_PERIOD battery ftime main powerConnected resolution
+c755140f	arcs fragColor hash main noise resolution time
+837f7123	main noise resolution touch touchStart
+a560ea29	disc main mouse resolution time
+f24fe43c	gravity linear main resolution soft
+e98dabb8	main noise resolution touch touchStart
+dc2174cb	lastNotificationTime main notificationCount resolution time
+83a9a7fa	a cell center color drag f fall noise p px q radius resolution spin touch touchStart unit uv v
+4ea49d7b	cameraAddent cameraFront cameraOrientation main resolution
+14f2b7bd	disc main mouse resolution time
+ae59ecc8	backbuffer evaluate get4 main oneIfZero pointerCount pointers resolution
+2d28857a	lastNotificationTime main notificationCount resolution time
+4c7c3f18	backbuffer main pointerCount resolution time touch
+90059bd7	main resolution
+530ae70c	main resolution
+42afa5aa	main noise resolution time
+55ce2008	bar light main pressure proximity resolution
+7dcae3eb	backbuffer main pointerCount resolution time touch
+fa5ca680	backbuffer main pointerCount resolution time touch
+eed12151	m resolution
+51c32d7e	backbuffer band d hot main mediaVolume micAmplitude radius resolution turn
+83f111ea	arcs fragColor hash main noise resolution time
+72b63ce8	date daytime hand main nightMode resolution
+7d827541	cameraAddent cameraBack cameraOrientation resolution st uv
+dcc5ba9a	FTIME_PERIOD battery ftime main powerConnected resolution
+4278f0e	cameraAddent cameraFront cameraOrientation main resolution
+b0835cb4	main pointerCount pointers resolution
+51f87682	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+fe783a54	gravity linear main resolution soft
+e1c21dfb	main mediaVolume micAmplitude radius resolution
+3e1ae6ef	main noise resolution touch touchStart
+91348a73	gravity linear main resolution soft
+fc83bbfd	main noise resolution time
+6c5c6cba	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+ac14605f	backbuffer main mediaVolume micAmplitude radius resolution
+798ef419	main noise time
+a496655f	FTIME_PERIOD battery ftime main powerConnected resolution
+32eacf51	f fill inclination line magnetic main needle orientation resolution ring width
+35d8e63a	hash main resolution rotationMatrix stars
+3debb6da	inclination line magnetic main orientation resolution
+d3301ec3	gravity linear main resolution soft
+781437f8	main noise
+d22efc6b	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+6eaa5d82	main poi pointerCount resolution time
+d4ae4f30	backbuffer evaluate get hasuniform2 main oneIfZero pointerCount pointers resolution
+c5987e06	hash layer main nightMode offset resolution ridge
+7f974f05	backbuffer evaluate get main oneIfZero pointerCount pointers
+d4140608	disc main mouse resolution time
+2ac1ad9a	main pointerCount resolution time touch
+3cf3be94	daytime hash layer main nightMode offset resolution ridge
+495ad28a	main noise resolution touch
+2bb04930	backbuffer main mediaVolume micAmplitude radius resolution
+16055985	date daytime hand main nightMode resolution
+a496031c	cameraAddent cameraFront cameraOrientation main resolution
+13b731cb	backbuffer main mediaVolume micAmplitude radius resolution
+8d951a69	cameraAddent cameraBack main resolution
+fd5e3369	daytime hash layer main nightMode offset resolution ridge
+6584d4f6	S main noise resolution time
+547a7fc1	gravity linear main resolution soft
+b608946d	backbuffer main pointerCount resolution time touch
+e2e916bd	main pointerCount pointers resolution time
+71212546	gravity linear main resolution soft
+bfd58bf5	backbuffer main mediaVolume micAmplitude radius resolution
+34d16a51	main pointerCount pointers resolution
+e6fb589a	inclination line magnetic main orientation
+ffccdf1e	main noise resolution time y
+e3501793	main pointerCount pointers resolution time
+f7b47f24	disc main mouse resolution time
+c8e017ab	FTIME_PERIOD battery ftime main powerConnected resolution
+d32889a1	main noise resolution time
+14b7c2f0	main pointerCount pointers resolution time
+d0c1dd71	main noise resolution time
+61b74b97	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+3772753f	disc main mouse resolution time
+1e984dd5	band cameraAddent cameraFront cameraOrientation color luma main probe resolution rgb st uv
+51606fca	bar light main pressure proximity resolution
+754429c	disc main resolution time
+9e5f07d1	main resolution
+d213c953	bar light pressure proximity resolution
+2c03749a	cameraAddent cameraFront cameraOrientation main resolution
+38a1e083	lastNotificationTime main notificationCount resolution time
+385de117	disc main resolution time
+bf40552c	main noise resolution touch touchStart
+985fe51e	cameraAddent cameraBack cameraOrientation main
+8d01c011	lastNotificationTime main notificationCount resolution timoad
+ff67b242	main noise resolution time
+7a6fe305	gl_FragCoord resolution
+e5aae5cf	inclination line magnetic main orientation resolution
+28fcacb7	main resolution
+4618bdc	bar light main pressure proximity resolution
+b61f13eb	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+937662eb	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+30d4b8b5	date hand main nightMode resolution second
+bed374e6	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+26751a1b	hash main resolution rotationMatrix stars
+c9afbfdd	lastNotificationTime main notificationCount resolution time
+62e73665	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+aa48f14	date daytime hand main nightMode resolution
+971c94b3	main resolution
+dd79c359	date daytime hand loads main resolution
+6f935fab	backbuffer main mediaVolume micAmplitude radius resolution
+9da6a99e	main pointers resolution
+408e69a9	cameraAddecameraOrientation cameraBack main resolution
+283341e3	FTIME_PERIOD dial frame ft main resolution second startRandom subsecond
+6e99fd3b	arcs fragColor hash main noise resolution time
+fd649df2	main noise time
+aca819c7	hash main resolution rotationMatrix stars
+bb913a2b	hash main resolution rotationMatrix stars
+50df8584	cameraAddent cameraBack cameraOrientation main resolution
+cf1048e9	inclination line magnetic main orientation resolution
+1f196ce7	main noise resolution time
+8d80a33f	arcs fragColor hash main noise resolution time
+6615eb15	inclination line magnetic main orientation resolution
+d4c969ed	daytime hash layer main nightMode offset resolution ridge
+421958c4	main noise resolution touch touchStart
+803db18a	cameraAddent cameraFront cameraOrientation main resolution
+3a100f00	FTIME_PERIOD battery ftime main powerConnected resolution
+e766e3ed	main pointerCount pointers resolution time
+225404e1	arcs fragColor hash main noise resolution time
+b874ae96	hash main resolution rotationMatrix stars
+54327de7	lastNotificationTime main notificationCount resolution
+1f959ee3	any backbuffer brush lifts main pointerCount resolution time
+29c459e1	cameraAddent cameraOrientation main resolution
+a82a81f7	bar light main pressure proximity resolution
+40c5beab	daytime hash layer main nightMode offset resolution ridge
+96d0b05a	FTIME_PERIOD battery ftime main powerConnected resolution
+a4c4be80	main noise resolution touch touchStart
+f9edbaee	date daytime hand main nightMode resolution
+90713b61	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+2a523a8f	date daytime hand main nightMode resolution
+639bf7f1	bar light main pressure proximity resolution
+843abc3a	f main pointers resolution
+a467a610	main pointerCount pointers resolution
+e60de6a6	disc main mouse resolution time
+d5a8b7d3	cameraAddent cameraFront cameraOrientation main resolution
+e32d90f1	backbuffer main pointerCount resolution time touch
+9ccb39a	daytime hash layer main nightMode offset resolution ridge
+69c0b2d2	dial frame ftime main second startRandom subsecond
+3a31d437	backbfloat evaluate get main oneIfZero pointerCount pointers resolution uffer
+569d24b2	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+6aab470d	cameraAddent cameraFront cameraOrientation main resolution
+3e85fb6e	inclination line magnetic main orientation resolution
+4aed433e	backbuffer evaluate get main onvec3eIfZero pointerCount pointers resolution
+1abcaa91	FTIME_PERIOD battery ftime main powerConnected resolution
+fbde7cc8	hash main resolution rotationMatrix stars
+c1a56e71	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+998079a7	date daytime hand main nightMode resolution
+d434669c	backbuffer main mediaVolume micAmplitude radius resolution
+77f06ccc	main noise time
+4861a679	cameraAddent cameraBack cameraOrientation main resolution
+fd657b02	FTIME_PERIOD a behind d dir frame ftime hand main resolution second startRandom subsecond sweep
+19735d8b	S cameraBack camercameraOrientation main resolution
+cc7b5112	bar light main pressure proximity resolution
+5bcb5193	cameraAddent cameraBack cameraOrientation main resolution
+3f89e99	FTIME_PERIOD battery ftime main powerConnected resolution
+b21c8cb4	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+93a83e4e	bar light main pressure proximity resolution
+bfa1f2d4	date daytime hand main nightMode resolution
+3c06d291	cameraAddent cameraOrientation main resolution
+679cb83d	backbuffer main mediaVolume micAmplitude radius resolution
+56aae839	main pointerCount pointers resolution time
+341f97c5	gravity linear main resolution soft
+858a67d2	hash main resolution rotationMatrix stars
+5b29ab92	mai noise resolution touch touchStart
+3dce4f1	bar light main pressure proximity resolution
+8e9504c5	caOrientation cameraBack main resolution
+2141093f	main pointerCount pointers resolution
+14914a90	backbuffer main pointerCount resolution time
+46fa4d23	lastNotificationTime main notificationCount resolution time
+82ebb157	lastNotificationTime main notificationCount resolution time
+9deb4af8	main noise resolution touch touchStart
+7e3b9b17	cameraAddent cameraOrientation main resolution
+22cf4d5f	bar light main pressure proximity resolution
+cd85a5e3	hash main resolution rotationMatrix stars
+9e110303	FTIME_PERIOD dial f ftime main resolution second startRandom subsecond
+95c058cf	disc main mouse resolution time
+21d96f78	date daytime hand main nightMode resolution
+d0b30369	disc main mouse resolution time
+2ac0d70c	main pointerCount pointers resolution
+d370158d	uv
+6ecf56e4	date daytime hand main nightMode resolution
+cbd09418	backbuffer main pointerCount resolution time touch
+ce52c7d1	cameraAddent cameraOrientation main resolution
+53b4d2c7	lastNotificationTime main notificationCount resolution time
+bd7b9890	inclination line magnetic main orientation resolution
+1b823935	main resolution
+59771735	
+fb224290	main pointerCount pointers resolution
+f3bddfd9	date daytime hand main nightMode resolution
+7c2d480c	bar light main pressure proximity resolution
+c46600a8	backbuffer main pointerCount resolution time touch
+dbc0da5e	gravity linear main resolution soft
+ef3373b8	main noise resolution time
+a3042691	main noise resolution time
+f2f01bd8	main resolution
+f923a30c	main point resolution
+1e1dae8d	backbuffer main mediaVolume micAmplitude radius resolution
+db02ae5d	daytime hash layer main nightMode offset resolution ridge
+367b36b8	FTIME_PERIOD battery ftime main powerConnected resolution
+c4ea4d57	disc main mouse resolution time
+25dbdde	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+71617399	main pointerCount pointers resolution time
+a0670fb	FTIME_PERIOD battery ftime main powerConnected resolution
+224860c3	backbuffer main pointerCount resolution time touch
+5fdf1e89	backbuffer main pointerCount resolution time
+d1e2a830	FTIME_PERIOD battery ftime main powerConnected resolution
+c592c259	cameraAddent cameraFront cameraOrientation main resolution
+9a98ec04	a cell center color drag fall noise p px q radius resolution spin touch touchStart uv v
+eb33e517	daytime hash layer main nightMode offset resolution ridge
+a4f1886	cameraAddent cameraFront cameraOrientation main reso
+f870eb76	main noise resolution time
+3d80caac	light main pressure proximity resolution
+2fd62c0b	arcs fragColor hash main noise resolution time
+979702b7	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+e37ac10f	backbuffer main mediaVolume micAmplitude radius resolution
+3251724c	lastNotificationTime main notificationCount resolution
+7b1f13c1	bearing color dze glints hash main mark moon north resolution rotationMatrix stars tick up
+2cc641a6	backbuffer main mediaVolume micAmplitude radius resolution
+c176fdd5	main noise resolution touch touchStart
+b908f804	disc main mouse resolution time
+aff45b06	date dayti hand main nightMode resolution
+277fdbd2	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+be3955c5	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+d36864bd	main reslution
+72f730e9	daytime hash layer main nightMode offset resolution ridge
+90d257dd	arcs fragColor hash main noise resolution time
+bb40da4f	inclination line magnetic main orientation resolution
+79a8b630	main noise resolution touch touchStart
+ba14e2a6	main noise resolution touch touchStart
+82ceed28	lastNotificationTime main notificationCount resolution time
+6b65edaf	main pointers resolution
+639769bf	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond y
+4dd25c01	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+96affbbd	main pointerCount pointers resolution
+496cf147	arcs fragColor hash main noise resolution time
+404982e6	backbuffer main pointerCount resolution time touch
+d59fe036	main noise resolution touch touchStart
+20f0c72b	backbuffer main mediaVolume micAmplitude radius resolution
+2b6e1d22	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c4af4d8e	inclination line magnetic main orientation resolution
+d37073e0	disc main mouse resolution time
+1382e045	hash main resolution rotationMatrix stars
+a65e2e50	FTIME_PERIOD battery ftime main powerConnected resolution
+a9026eba	backbuffer main mediaVolume micAmplitude radius resolution
+335213f8	backbuffer main mediaVolume micAmplitude radius resolution
+fcbb18aa	arcs fragColor hash main noise resolution time
+b7d083e	backbuffer main pointerCount resolution time touch
+ca7069f4	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+d8dcfc55	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+bd0c2235	arcs fragColor hash main noise resolution time
+d470bb4b	p pointerCount
+95ca75ff	FTIME_PERIOD battery ftime main powerConnected resolution
+8e99f6a3	backbuffer main mediaVolume micAmplitude radius resolution
+bcbcf845	cameraAddent cameraBack main resolution
+832b3748	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+2e17e523	backbuffer evaluate get main oneIfZero pointerCount resolution
+f40859f1	cameraAddent cameraBack cameraOrientation main resolution
+70838161	backbuffer evaluate get get4 main oneabs pointerCount pointers resolution
+1d7007b4	backbuffer main mediaVolume micAmplitude radius resolution
+cb128e	lastNotificationTime main notificationCount resolution time
+dd4c99ea	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+71bffd93	daytime hash layer main nightMode offset resolution ridge
+2b5a2414	main pointerCount pointers resolution
+9cea3eb1	daytime hash layer main nightMode offset resolution ridge
+86d12df7	backbuffer main pointerCount resolution time touch
+f832a585	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+a4846a34	arcs fragColor hash main noise resolution time
+f785556a	disc main mouse resolution time
+fe6b5564	lastNotificationTime main notificationCount resolution time
+3f984972	hash main resolution rotationMatrix stars viewer
+4eccfcfa	arcs fragColor hash main noise resolution time
+e5f6c285	cameraBack main resolution
+fe63582e	hash main resolution rotationMatrix stars
+f79f2895	hash main resolution rotationMatrix stars
+45889403	a bead breathe co dist hub lastNotificationTime lit main newest notificationCount resolution rim size slot time turn warm
+54d56f89	lastNotificationTime main notificationCount resolution time
+740e59a2	main noise resolution touch touchStart
+1f8f7fea	daytime hash layer main nightMode offset resolution ridge
+6fedb6cf	main pointerCount pointers resolution time
+a98d5e4d	main noise resolution touch touchStart
+24c79a1d	backbuffer evaluate get oneIfZero pointerCount pointers
+d3642222	FTIME_PERIOD battery ftime main powerConnected resolution
+3f2d9466	bar light main pressure proximity resolution
+648cb023	date daytime hand main nightMode resolution
+1ba22c9c	disc main mouse resolution time
+9148961a	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+f36be488	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+f508e0c	a at cell d face hash m main resolution rotationMatrix uv
+9af120c4	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+d21e33d5	daytime hand main nightMode resolution
+2b349cb2	main noise resolution time
+48f34dd6	main
+ff5c3c3c	lastNotificationTime main notificationCount resolution time
+48a921d4	a date daytime dir main nightMode pixels resolution
+ba2dbebc	bar light main pressure proximity resolution
+bf3c2953	FTIME_PERIOD battery ftime main powerConnected resolution
+7722b01f	FTIME_PERIOD battery ftime main powerConnected
+8d29521a	
+a10adadb	main resolution
+b478cb9a	cameraBack cameraOrientation main resolution
+f8d77d23	main pointerCount pointers resolution
+8b6b19e0	arcs fragColor hash main noise resolution time
+6e95694c	cameraAddent cameraOrientation main
+497f552f	backbuffer main pointerCount resolution time touch
+2e4dbb24	main pointerCount pointers resolution
+19900aac	disc mouse resolution time
+4efbf43c	S main noise
+13a1c37c	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+215f201c	FTIME_PERIOD dial ftime main resolution second startRandom subsecond
+7c4bf58d	resolution
+4b3fb0af	inclination line magnetic main orientation resolution
+b63ff9d6	backbuffer evaluate get get4 main oneIfZero pointerCount resolution
+cc5c333a	daytime hash layer main nightMode offset resolution ridge
+69c253aa	bar light main pressure proximity resolution
+1540ba38	FTIME_PERIOD battery ftime main powerConnected resolution
+d767bd26	arcs fragColor hash main noise resolution time
+700796e5	main pointerCount pointers resolution
+f7697c26	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+343b8b83	main noise resolution time
+22145628	date hand main nightMode resolution
+9f19b986	FTIME_PERIOD battery ftime main powerConnected resolution
+99367818	bar light main pressure proximity resolution
+e089b655	date daytime hand main nightMode resolution
+9cae8149	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+3017fd20	pointerCount
+6b6678a6	gravity linear main resolution soft
+d63b0661	main point pointerCount resolution
+85f11d1f	cameraAddent cameraFront cameraOrientation main resolution
+fb24eeb0	cameraAddent cameraBack cameraOrientation main resoluti
+ba5183b8	main pointerCount pointers resolution
+6f2d8204	cameraAddent cameraFront cameraOrientation main resolution
+cc587006	disc load main mouse resolution time
+f0330f76	arcs fragColor hash main noise resolution time
+2221400d	main noise resolution touch touchStart
+1f6e5621	lastNotificationTime main notificationCount resolution time
+2350f3d9	FTIME_PERIOD dial frame ftime ma resolution second startRandom subsecond
+501d42a2	main pointerCount resolution time touch
+20622b32	backbuffer main mediaVolume micAmplitude r radius
+14cd7a47	arcs fragColor hash main noise resolution time
+57e6f523	daytime hash layer main nightMode offset resolution ridge
+5bae07ec	backbuffer evaluate get has2 main oneIfZero pointerCount pointers resolution
+46c8f76a	backbuffer main mediaVolume micAmplitude radius resolution
+3376aaa8	daytime hash layer main nightMode offset resolution ridge
+4d8aa843	main
+7c8f4174	bar light main pressure proximity resolution
+e4247db5	FTIME_PERIOD dial frame main resolution second startRandom subsecond
+e0de7b2b	main pointerCount pointers resolution time
+95169370	cameraAddent cameraBack cameraOrientation main resolution
+6df9a7de	main pointerCount resolution
+bc08257	FTIME_PERIOD dial f frame main once resolution second startRandom subsecond
+f6c2a72b	hash main resolution rotationMatrix stars
+30a28f15	hash main resolution rotationMatrix stars viewer
+6250cd60	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+b1f23d93	bar light main pressure proximity resolution
+d18567d9	backbuffer main pointerCount resolution time touch
+baaee764	hash main resolution rotationMatrix stars
+7cafdad6	backbuffer main pointerCount resolution time touch
+2ea71e86	hash main resolution rotationMatrix stars
+9669a5b0	main resolution
+6ea7d4f2	backbuffer main pointerCount resolution time touch
+b8007746	lastNotificationTime main notificationCount resolution time
+a75e8c1	S backbuffer main pointerCount resolution time touch
+fe5deafe	cameraAddent cameraFront cameraOrientation main resolution
+7db769be	hash main resolution rotationMatrix stars
+f91b178e	gravity linear main resolution soft
+84bfa3fd	cameraAddent cameraBack cameraOrientation main resolution
+f14c85dc	arcs fragColor hash main noise resolution time
+c07b9a29	lastNotificationTime main notificationCount resolution time
+d5a5ecc6	main noise resolution touch touchStart
+4d9b249	bar light main pressure proximity resolution
+ad0511c9	bar light main pressure proximity resolution
+bf80206d	backbuffer main mediaVolume micAmplitude radius resolution
+b532ae7a	inclination line magnetic main orientation resolution
+56cfd73b	bar light main pressure proximity resolution
+159f1f0b	daytime hash layer main nightMode offset resolution ridge
+12fc36d	date daytime hand main nightMode resolution
+44991d21	arcs fragColor hash main noise resolution time
+b4a945bc	cameraAddentvec3 cameran main resolution
+2c5604bd	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+82792841	color gravity i light linear main n q resolution shade soft
+166f41d3	lastNotificationTime main notificationCount resolution time
+8b61e4e0	gravity linear main resolution soft
+538a7e7b	hash main resolution rotationMatrix stars
+caccea60	res
+73b1c19b	date daytime f hand main nightMode
+49285c15	backbuffer main mediaVolume micAmplitude radius resolution
+29f722b1	cameraAddent cameraFront cameraOrientation main resolution
+4e6953e5	main noise resolution touch touchStart
+fe8539e5	S main resolution
+c3cb8d02	FTIME_PERIOD battery ftime main powerConnected resolution
+80b0879e	daytime hash layer main nightMode offset resolution ridge
+fed2090b	main pointerCount pointers resolution
+f54bd6cf	lastNotificationTime main notificationCount resolution time
+3e01bebe	arcs fragColor hash main noise resolution time
+6bff58c6	backbuffer main mediaVolume micAmplitude radius resolution
+fc48d98b	backbuffer get oneIfZer pointerCount pointers resolution
+92387df2	cameraAddent cameraFront cameraOrientation main resolution
+908f321a	inclination line magnetic main orientation resolution
+623b9484	main pointers time
+48a7272e	main noise resolution time
+51cecd28	main resolution
+be41142a	main noise resolution time
+f2d53a0b	disc main mouse resolution time
+1b478d18	cameraAddent cameraBack cameraOrientation main resolution
+3b8ca490	date daytime hand main nightMode resolution
+7948ee6b	bar light main pressure proximity resoltion
+7e173246	main noise resolution touch touchStart
+70ffedc	backbuffer main mediaVolume micAmplitude radius resolution
+cdcabfab	arcs fragColor hash main noise resolution time
+cbcda582	backbuffer main pointerCount resolution time touch
+7bb8cda4	main pointerCount pointertion
+c5f2fb78	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+12701cdb	cameraAddent cameraBack cameraOrientation main resolution
+77106d13	daytime hash layer main nightMode offset resolution ridge
+c270a65a	cameraAddent cameraBack cameraOrientation main resolution
+e547da98	inclination line magnetic main orientation resolution
+f54a69d5	main resolution
+c6d42805	inclination line magnetic main orientation resolution
+2dc29491	backbuffer main mediaVolume micAmplitude radius resolution
+89f59dd5	main pointerCount pointers resolution
+5021bb24	lastNotificationTime main notificationCount resolution time
+714decd5	f main noise resolution time
+c59c712a	daytime hash layer main nightMode offset resolution ridge
+c61c2762	main noise resolution touch touchStart
+8a0420a9	at d hash main resolution rotationMatrix stars
+8bca1e1f	main pointerCount pointers time
+358dcc0f	cameraAddent cameraFront cameraOrientation main resolution
+1a9b02ca	inclination line magnetic main orientation resolution
+6ee9301a	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+e98f4c8c	disc main mouse resolution time
+928c5294	main pointerCount pointers resolution time
+43ae6bb4	backbuffer main mediaVolume micAmplitude radius resolution
+a9f08d6b	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+ecbdcefd	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+62f502ca	arcs fragColor hash main noise resolution time
+fddd37e9	cameraAddent cameraBack cameraOrientation main resolution
+2ca7ebca	arcs fragColor hash main noise resolution time
+8a979c5e	cameraOrientation f main resolution
+81647711	main resolution
+fe89fc3	backbuffer main pointerCount resolution time touch
+69e75ec0	daytime hash layer main nightMode offset resolution ridge
+3b4b6e92	lastNotificationTime main notificationCount resolution time
+fbf62434	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c45fe447	resolution time
+7bbde33d	inclination line magnetic main orientation resolution
+85d38232	bar light main pressure proximity resolution
+6ff7d23	gravity linear main resolution soft
+a158d06d	resolutagCoord
+d888ec23	cameraAddent cameraFront cameraOrientation main resolution
+36cdba1c	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+4d907d01	lastNotificationTime main notificationCount resolution time
+14c21823	main noise resolution touch touchStart
+49d466e2	lastNotificationTime main notificationCount resolution time
+873b9dd1	main noi resolution time
+2b5fc802	backbuffer main mediaVolume micAmplitude radius
+27a45cd1	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+2d646cf	main pointerCount pointers resolution
+bf3d6b77	gravity linear main resolution soft
+5a98f0d3	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+a7a11a78	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+757e5783	FTIME_PERIOD battery ftime main powerConnected resolution
+f3f9e532	bar light main pressure proximity resolution
+21efe07d	FTIME_PERIOD back battery charge charging color depth ftime level lift liquid loop mark powerConnected pulse px resolution tint unit uv wave x
+cfbe6664	backbuffer main mediaVolume micAmplitude radius resolution
+6213e676	bar light main pressure proximity resolution
+b7f1ff62	gravity linear main resolution soft
+5388f4ee	gravity linear main resolution soft
+2988310d	arcs fragColor hash main noise resolution time
+cee3d088	date daytime hand main nightMode resolution
+93f865b9	hash main resolution rotationMatrix stars
+8da2953f	arcs fragColor hash main noise resolution time
+caea1e1d	date daytime hand main nightMode resolution
+bc9fb2cd	backbuffer main mediaVolume micAmplitude radius resolution
+a802787c	daytime hash layer main nightMode offset resolution ridge
+30851909	backbuffer evaluate get get4 main oneIfZero pointerCount resolution
+7809edd3	cameraAddent cameraBack cameraOrientation main resolution
+56c7c17c	inclination line magnetic main orientation resolution
+2aea1ee6	bar light main pressure proximity resolution
+5c5a6011	inclination line magnetic main orientation resolution
+2275144	main noise
+37b21a10	disc main mouse resolution time
+f7b4fdd5	main resolution
+254c78cb	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+3b433a56	FTIME_PERIOD battery ftime main powerConnected resolution
+9f2e9d8e	backbuffer main mediaVolume micAmplitude radius res
+b59fb9c5	backbuffer main mediaVolume micAmplitude radius resolution
+a55a919f	backbuffer main pointerCount resolution time touch
+101eacfc	date daytime hand main nightMode resolution
+af14e3ea	disc main mouse resolution time
+9f151361	bar light main pressure proximity resolution
+3ca4e555	FTIME_PERIOD battery drift ftime main powerConnected resolution
+308a5867	date daytime hand main nightMode resolution
+6d1cd250	gravity linear main resolution soft
+f10fe254	a ball color g gravity i light linear main n q r resolution shade soft tilt
+d62bf2b0	lastNotificationTime main notificationCount resolution time
+48ba1884	cameraAddent cameraFront cameraOrientation main resolution
+e5e986b5	backbuffer main pointerCount resolution time touch
+f09b9837	main pointerCount pointers uniformresolution
+686f2450	
+68b784c5	backbuffer main mediaVolume micAmplitude radius resolution
+4d6c5f44	backbuffer main mediaVolume micAmplitude radius resolution
+558cdeda	disc main mouse resolution
+a4f404e4	
+a32f559f	daytime hash layer main nightMode offset resolution ridge
+f3302043	disc main mouse resolution time
+599de14d	bar light main pressure proximity resolution
+530a3b70	arcs fragColor hash main noise resolution time
+c4ff606	hash main resolution rotationMatrix stars
+67e73767	backbuffer main pointerCount resolution time touch
+766c6091	main noise resolution time
+3346e6e6	cameraAddent cameraBack cameraOrientation main resolution
+e3cf84bd	date daytime hand main nightMode resolution
+18711709	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+64be7b23	cameraAddent cameraBack cameraOrientation main resolution
+31e5d48b	hash main resolution rotationMatrix stars
+3f0a1aa3	daytime hash layer main nightMode offset resolution ridge
+419d3b75	gravity linear main resolution soft
+24cae702	disc main mouse resolution time
+e5589e1a	bar light main proximity resolution sensor up
+caa7f3cf	backbuffer main pointerCount resolution time touch
+48708900	date daytime hand main nightMode resolution
+6f299906	arcs fragColor hash main noise resolution time
+721eb76d	main resolution
+8bc4aaa5	disc main resolution surface time touch
+cc950cf2	disc main mouse resolution time
+7713fe20	main pointerCount pointers resolution
+90da2a4a	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+b9a5f5d1	cameraAddent cameraFront cameraOrientation main resolution
+872e8c52	daytime hash layer main nightMode offset resolution
+bb2f28ce	arcs fragColor hash main noise resolution time
+53e62db2	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+1268a9bb	inclination line magnetic main orientation resolution
+3d986af6	date daytime hand main nightMode resolution
+7ae441e4	arcs fragColor hash main noise resolution time
+4ed42895	main noise resolution
+a7e89529	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+67a0bc81	hash main resolution rotationMatrix stars
+9bea05d6	gravity linear main resolution soft
+ad3cc172	hash main resolution rotationMatrix stars
+8c2c4627	daytime hash layer main nightMode offset resolution ridge
+7fef029b	main pointerCount pointers resolution time
+a6fb2c4b	main pointerCount pointers resolution time
+644f11b1	backbuffer band color d hot i level main mediaVolume micAmplitude r radius resolution turn
+894a2734	inclination line magnetic main orientation resolution
+3f756af	inclination line magnetic main orientation
+c421bfa1	main resolution
+b7152ba8	backbuffer main mediaVolume micAmplitude radius resolution
+176466df	backbuffer main pointerCount resolution time touch
+1d47a39d	daytime hash layer main nightMode offset resolution ridge
+a16882f9	hash main resolution rotationMatrix stars
+ada0acc	bar light main pressure proximity resolution
+707b097f	cameraAddent cameraBack cameraOrientation main
+83c9f826	cameraAddent main resolution samplerExmeraBack
+60339724	main noise resolution y
+27640910	FTIME_PERIOD dial frame ftime main resolution second startRandom
+6494af55	hash main resolution rotationMatrix stars
+ae1b27aa	arcs fragColor hash main noise resolution time
+990cf945	cameraAddent cameraFront cameraOrientation main resolution
+7d2666a0	arcs fragColor hash main noise resolution time
+4acfef54	evaluate get main oneIfZero pointerCount pointers resolution
+5486e3e	backbuffer main micAmplitude radius resolution
+b5398889	arcs fragColor hash main noise resolution time
+90ae33bc	cameraAddent cameraBack cameraOrientation main resolution
+cd4b2706	date hand main nightMode resolution
+1277fe09	bar light main pressure proximitfory resolution
+8bc41823	bar light main pressure proximity resolution
+221baf4b	main pointerCount pointers resolution
+2ee3889f	inclination line magnetic main orientation resolution
+29d1ee5c	gravity main resolution soft
+d480ed6e	arcs fragColor hash main noise resolution time
+c1a3a748	main noise resolution touch touchStart
+ad726368	lastNotificationTime main notificationCount resolution time
+3006b14a	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond
+c326f33c	gravity linear main resolution soft
+f9bda486	inclination line magnetic main orientation resolution
+79ad4f93	backbuffer main mediaVolume micAmplitude radius resolution
+efbe8335	arcs fragColor hash main noise resolution time
+7cf1a117	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+444d8ef9	backbuffer evaluate get main oneIfZero pointerCount pointers resolution
+a884bacb	inclination line magnetic main orientation resolution
+fbbe6e99	main noise resolution touch
+666c7d78	main noise resolution time
+d56014aa	FTIME_PERIOD battery ftime main powerConnected resolution
+6aabc48d	main noise resolution touch touchStart
+5b69e21c	backbuffer evaluate get get4 main oneIfZero pointerCount pointers resolution
+ebea7e2f	backbuffer evaluate get get4 main n pointerCount pointers resolution tapSize
+ca7ed2d7	main noise resolution touch touchStart
+76cac829	bar light main only pressure resolution
+7ed2ed1a	resolution
+87deacbf	main pointerCount pointers resolution time
+3595c3e6	main pointerCount pointers resolution
+2aca5739	FTIME_PERIOD dial frame ftime main resolution second startRandom subsecond

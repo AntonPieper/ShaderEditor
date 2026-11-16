@@ -45,15 +45,28 @@ public interface Knowledge {
 	 * @param from          where the whole declaration starts
 	 * @param to            where the whole declaration ends
 	 * @param parts         the parameters of a function or a macro, the
-	 *                      fields of a type, in their order
+	 *                      fields of a type, in their order; a parameter
+	 *                      without a name has an empty one
+	 * @param type          what the language calls its type, whole and
+	 *                      without qualifiers: of a variable, a parameter
+	 *                      or a field its own, of a function what it
+	 *                      returns; null where there is none to tell
 	 */
 	record Symbol(String name, Kind kind, String detail,
 			String documentation, String file, int start, int end, int from,
-			int to, List<Symbol> parts) {
+			int to, List<Symbol> parts, String type) {
+		/** A symbol whose type is not told. */
+		public Symbol(String name, Kind kind, String detail,
+				String documentation, String file, int start, int end,
+				int from, int to, List<Symbol> parts) {
+			this(name, kind, detail, documentation, file, start, end, from,
+					to, parts, null);
+		}
+
 		/** Return this symbol as one of file. */
 		public Symbol in(String file) {
 			return new Symbol(name, kind, detail, documentation, file, start,
-					end, from, to, parts);
+					end, from, to, parts, type);
 		}
 	}
 
