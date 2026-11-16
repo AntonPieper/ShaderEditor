@@ -30,6 +30,7 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.editor.InsertTexture;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.fragment.ListedErrors;
 import de.markusfisch.android.shadereditor.project.FileRole;
 import de.markusfisch.android.shadereditor.project.Library;
 import de.markusfisch.android.shadereditor.project.LibraryMove;
@@ -764,7 +765,20 @@ public final class LibraryScreen implements ShaderScreen {
 				open.hasText()) {
 			editorFragment.runningEdit();
 			shaderViewManager.setShader(text, open.getQuality());
+		} else if (open instanceof ProjectFile &&
+				!ShaderEditorApp.preferences.doesRunInBackground() &&
+				editorFragment.getListedState() !=
+						ListedErrors.State.UNKNOWN) {
+			forgetUnbuiltErrors();
 		}
+	}
+
+	// In this run mode no build of a folder's file follows: what the
+	// last one found is not of the text there now, so it is not known.
+	private void forgetUnbuiltErrors() {
+		forgetErrors();
+		host.clearErrors();
+		editorFragment.highlightErrors();
 	}
 
 	@Override
@@ -1354,6 +1368,7 @@ public final class LibraryScreen implements ShaderScreen {
 		if (ShaderEditorApp.preferences.doesRunInBackground()) {
 			runHeld();
 		} else {
+			forgetUnbuiltErrors();
 			Message.show(activity, R.string.file_runs_behind_code);
 		}
 	}
