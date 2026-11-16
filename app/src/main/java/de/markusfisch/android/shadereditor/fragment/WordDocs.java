@@ -448,7 +448,9 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 			for (Knowledge.Symbol form : declared(name)) {
 				List<String> names = new ArrayList<>();
 				for (Knowledge.Symbol part : form.parts()) {
-					names.add(part.name());
+					// A parameter without a name shows its type.
+					names.add(part.name().isEmpty() && part.type() != null
+							? part.type() : part.name());
 				}
 				if (!names.isEmpty()) {
 					found.add(names);
