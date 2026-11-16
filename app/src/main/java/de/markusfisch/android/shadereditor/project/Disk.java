@@ -9,13 +9,14 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 
 /**
- * The operations on files that the journals and undo histories of a
- * session are made of, each one a single step that fails or is done,
- * so that a test can fail any of them, or end the process after it,
- * without anyone remembering to. Nothing here decides what may be
- * written over or deleted: that is {@link Journal}'s, in one place.
- * No file is ever cut: what a file holds changes only by appending to
- * it or by another file taking its name.
+ * The operations on files that a session is made of, its journals,
+ * undo histories and what it remembers, each one a single step that
+ * fails or is done, so that a test can fail any of them, or end the
+ * process after it, without anyone remembering to. Nothing here
+ * decides what may be written over or deleted: that is
+ * {@link Journal}'s, in one place. No file is ever cut: what a file
+ * holds changes only by appending to it or by another file taking its
+ * name.
  */
 interface Disk {
 	/**

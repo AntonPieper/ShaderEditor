@@ -118,6 +118,14 @@ public class ProjectSessionsTest {
 				revision(store, "lib.glsl"));
 		assertFalse(sessions.unsaved(id).isEmpty());
 
+		// Not with unsaved text: nothing of the session goes.
+		assertFalse(sessions.discard(id));
+		assertEquals(locator, sessions.locator(id));
+		assertFalse(sessions.unsaved(id).isEmpty());
+		Journal journal = sessions.journal(id).own();
+		assertTrue(journal.remove(path("lib.glsl")));
+		journal.release();
+
 		assertTrue(sessions.discard(id));
 
 		assertNull(sessions.locator(id));
@@ -134,15 +142,43 @@ public class ProjectSessionsTest {
 		write(new File(project, "main.frag"), "stored");
 		String id = sessions.open(new Locator(Kind.DIRECTORY,
 				project.getPath()));
-		File drafts = new File(root, id + "/drafts");
-		assertTrue(drafts.mkdirs());
-		Files.createSymbolicLink(new File(drafts, "link").toPath(),
+		File previews = new File(root, id + "/previews");
+		assertTrue(previews.mkdirs());
+		Files.createSymbolicLink(new File(previews, "link").toPath(),
 				project.toPath());
 
 		assertTrue(sessions.discard(id));
 
 		assertFalse(new File(root, id).exists());
 		assertEquals("stored", read(new File(project, "main.frag")));
+	}
+
+	@Test
+	public void aSessionWhoseJournalFolderCannotBeListedIsNotForgotten()
+			throws IOException {
+		write(new File(project, "lib.glsl"), "library");
+		Locator locator = new Locator(Kind.DIRECTORY, project.getPath());
+		FaultyDisk disk = new FaultyDisk();
+		sessions.disk = disk;
+		String id = sessions.open(locator);
+		assertTrue(sessions.remember(id, "Project", "Files", 1));
+		keep(sessions.journal(id), "lib.glsl", "unsaved", null);
+		File drafts = new File(root, id + "/drafts");
+		String[] kept = drafts.list();
+		assertEquals(1, kept.length);
+
+		// It leaves Recent while its folder cannot be listed: that is
+		// not an empty folder.
+		disk.unlisted = true;
+		assertTrue(sessions.remove(id));
+		// Nor is one deleted because nothing was asked first.
+		assertFalse(sessions.discard(id));
+		disk.unlisted = false;
+
+		assertEquals(List.of(kept), List.of(drafts.list()));
+		assertEquals(locator, sessions.locator(id));
+		assertEquals(Set.of(path("lib.glsl")), sessions.unsaved(id));
+		assertEquals(id, sessions.open(locator));
 	}
 
 	// Any folder keeps the pictures of its shaders beside its session,

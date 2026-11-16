@@ -310,7 +310,7 @@ public class LifecycleSequencesTest {
 		}
 		assertEquals(told(), 0, broken.size());
 		assertEquals(expected, counted);
-		assertEquals(12131, injected);
+		assertEquals(13761, injected);
 	}
 
 	// Return what did not hold, each kind with how often and where first.

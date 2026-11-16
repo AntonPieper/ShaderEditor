@@ -17,22 +17,22 @@ import java.util.regex.Pattern;
  * it uses, and the types in its descriptors and generic signatures. A
  * name written out in full is in here as much as an imported one.
  */
-final class ClassReferences {
+public final class ClassReferences {
 	/** A field or method of owner that the class uses. */
-	record Member(String owner, String name) {
+	public record Member(String owner, String name) {
 	}
 
 	private static final Pattern TYPE = Pattern.compile("L([^;<>]+)");
 
 	// Binary names, as Class.forName() takes them.
-	final Set<String> classes = new TreeSet<>();
-	final Set<String> typesInSignatures = new TreeSet<>();
-	final List<Member> members = new ArrayList<>();
+	public final Set<String> classes = new TreeSet<>();
+	public final Set<String> typesInSignatures = new TreeSet<>();
+	public final List<Member> members = new ArrayList<>();
 
 	private ClassReferences() {
 	}
 
-	static ClassReferences read(InputStream in) throws IOException {
+	public static ClassReferences read(InputStream in) throws IOException {
 		var data = new DataInputStream(new BufferedInputStream(in));
 		if (data.readInt() != 0xCAFEBABE) {
 			throw new IOException("not a class file");
