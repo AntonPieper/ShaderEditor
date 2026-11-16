@@ -1056,6 +1056,26 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Return the files with unsaved text that no listing of storage can
+	 * be counted on to show: storage was last found not to hold them
+	 * (deleted or renamed elsewhere, or under a folder that was), or
+	 * could not be asked at all (the provider is gone, its permission
+	 * was taken back, or the folder opened was renamed elsewhere). It
+	 * comes from what was found of each file, not from a listing.
+	 */
+	public Set<ProjectPath> missing() {
+		Set<ProjectPath> missing = new HashSet<>();
+		for (FileRecord record : records.values()) {
+			if (record.edited() &&
+					(record.found == FileTexts.Found.MISSING ||
+							record.found == FileTexts.Found.UNAVAILABLE)) {
+				missing.add(record.path);
+			}
+		}
+		return missing;
+	}
+
+	/**
 	 * Look for changes made elsewhere: keep the unsaved text, forget
 	 * what listings told, and see what storage holds of every file in
 	 * memory or with unsaved text: unsaved text storage does not hold

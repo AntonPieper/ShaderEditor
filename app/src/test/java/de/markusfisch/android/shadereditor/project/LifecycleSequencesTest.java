@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -273,6 +274,8 @@ public class LifecycleSequencesTest {
 		assertNotNull(project.conflict(path("gone")));
 		assertEquals(FileTexts.Found.MISSING, project.found(path("gone")));
 		assertNull(project.seen(path("gone")));
+		// Only unsaved text whose file is gone is missing.
+		assertEquals(Set.of(path("gone")), project.missing());
 		// Deleted without unsaved text and not shown: no file of the
 		// folder anymore.
 		assertNull(project.conflict(path("lost")));
@@ -287,6 +290,65 @@ public class LifecycleSequencesTest {
 		assertEquals(FileTexts.Found.UNAVAILABLE,
 				project.found(path("mine")));
 		assertTrue(project.unsaved().contains(path("mine")));
+		// No listing leads to unsaved text of storage that cannot be
+		// asked, so it is told as missing too: the two typed in and the
+		// one undone above.
+		assertEquals(Set.of(path("clean"), path("mine"), path("gone")),
+				project.missing());
+	}
+
+	@Test
+	public void unsavedTextOfDeletedFoldersStaysListedThroughASwitchAndARestart() {
+		MemoryProjectFiles store = new MemoryProjectFiles();
+		store.writable = true;
+		List<String> edited = List.of("root", "notes/a", "notes/deep/b");
+		for (String name : edited) {
+			store.put(name + ".glsl", "stored");
+		}
+		store.put("other.glsl", "stored");
+		Steps steps = new Steps();
+		OpenProject project = OpenProject.open(id, store, null, null,
+				new ProjectSessions(sessionsDir), steps.worker, steps.main,
+				steps.timers, OpenProject.MAX_BUDGET);
+		Set<ProjectPath> gone = new HashSet<>();
+		for (String name : edited) {
+			project.load(path(name), ProjectFiles.UNKNOWN, problem -> {
+			});
+			steps.settle();
+			project.document(path(name)).replace(0, 6, Text.of("typed"));
+			gone.add(path(name));
+		}
+		// Another app deletes a root file and a folder with all in it.
+		for (String name : edited) {
+			store.delete(path(name));
+		}
+		project.refresh(reread -> {
+		});
+		steps.settle();
+		assertEquals(gone, project.missing());
+
+		// Another file is shown: no listing shows the three anymore.
+		project.load(path("other"), ProjectFiles.UNKNOWN,
+				problem -> project.show(path("other")));
+		steps.settle();
+		assertEquals(gone, project.missing());
+		project.flush(() -> {
+		});
+		steps.settle();
+
+		// The process dies. Each is still told, and opens with its text.
+		Steps next = new Steps();
+		OpenProject restarted = OpenProject.open(id, store, null, null,
+				new ProjectSessions(sessionsDir), next.worker, next.main,
+				next.timers, OpenProject.MAX_BUDGET);
+		assertEquals(gone, restarted.missing());
+		assertEquals(gone, restarted.conflicts().keySet());
+		for (ProjectPath path : gone) {
+			restarted.load(path, ProjectFiles.UNKNOWN, Assert::assertNull);
+			next.settle();
+			assertEquals("typed", restarted.document(path).text()
+					.toString());
+		}
 	}
 
 	private static ProjectPath path(String name) {

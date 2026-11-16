@@ -18,21 +18,35 @@ public final class FileMarks {
 	 *                root of the folder opened, as the rows' keys are
 	 */
 	public static List<Row> unsaved(List<Row> rows, Set<String> unsaved) {
+		return marked(rows, unsaved, Row.Mark.UNSAVED);
+	}
+
+	/**
+	 * The rows, a file marked changed outside when another app changed
+	 * or deleted it while it has unsaved text, and a folder when a file
+	 * under it is.
+	 *
+	 * @param outside the paths of those files, as for {@link #unsaved}
+	 */
+	public static List<Row> outside(List<Row> rows, Set<String> outside) {
+		return marked(rows, outside, Row.Mark.CHANGED_OUTSIDE);
+	}
+
+	private static List<Row> marked(List<Row> rows, Set<String> paths,
+			Row.Mark mark) {
 		List<Row> marked = new ArrayList<>(rows.size());
 		for (Row row : rows) {
-			marked.add(holdsUnsaved(row, unsaved)
-					? withMark(row, Row.Mark.UNSAVED)
-					: row);
+			marked.add(holds(row, paths) ? withMark(row, mark) : row);
 		}
 		return marked;
 	}
 
-	private static boolean holdsUnsaved(Row row, Set<String> unsaved) {
+	private static boolean holds(Row row, Set<String> paths) {
 		if (row.kind() != Row.Kind.FOLDER) {
-			return row.kind() != Row.Kind.MORE && unsaved.contains(row.key());
+			return row.kind() != Row.Kind.MORE && paths.contains(row.key());
 		}
 		String prefix = row.key() + "/";
-		for (String path : unsaved) {
+		for (String path : paths) {
 			if (path.startsWith(prefix)) {
 				return true;
 			}
