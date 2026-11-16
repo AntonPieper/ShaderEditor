@@ -62,6 +62,17 @@ public interface Syntax {
 			Knowledge known, boolean current, List<String> extraWords,
 			Offer offer);
 
+	/**
+	 * As {@link #complete}, for a host that knows what is declared
+	 * outside of the text for it: a language that tells types asks it
+	 * what a name of another file is.
+	 */
+	default void complete(LexedLine line, int column, int lineStart,
+			Knowledge known, boolean current, List<String> extraWords,
+			Knowledge.Scope outside, Offer offer) {
+		complete(line, column, lineStart, known, current, extraWords, offer);
+	}
+
 	/** Return how a new line is indented. */
 	Indentation indentation();
 
