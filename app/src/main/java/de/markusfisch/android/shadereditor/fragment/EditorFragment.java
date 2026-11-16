@@ -313,6 +313,19 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 		tunableListener = listener;
 	}
 
+	/**
+	 * Return the code Find finds in: the new editor's where shaders are
+	 * files, while the code is neither covered nor set aside; null
+	 * otherwise.
+	 */
+	@Nullable
+	public CodeView findableCode() {
+		return newEditor && getResources().getBoolean(R.bool.project_mode) &&
+				!codeShown.covered() && !codeShown.aside()
+				? (CodeView) editor.getView()
+				: null;
+	}
+
 	/** Give the code the focus and the keyboard. */
 	public void showKeyboard() {
 		SoftKeyboard.show(getActivity(), editor.getView());

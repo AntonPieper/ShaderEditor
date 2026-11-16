@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewStub;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
@@ -42,7 +43,10 @@ import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.service.ShaderWallpaperService;
 import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
+import de.markusfisch.android.shadereditor.widget.CodeView;
+import de.markusfisch.android.shadereditor.widget.FindBar;
 import de.markusfisch.android.shadereditor.widget.Message;
+import de.markusfisch.android.shadereditor.widget.TuningBar;
 
 public class MainActivity extends AppCompatActivity {
 	private static final String TOOLBAR_TITLE = "toolbar_title";
@@ -58,6 +62,9 @@ public class MainActivity extends AppCompatActivity {
 	private NavigationManager navigationManager;
 	// The world this screen is in: rows of the database, or files.
 	private ShaderScreen screen;
+	// Find in the toolbar's place, made the first time it opens.
+	@Nullable
+	private FindBar findBar;
 	private DataSource dataSource;
 
 	@Override
@@ -145,9 +152,15 @@ public class MainActivity extends AppCompatActivity {
 		});
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
 		editorFragment.setOnSignatureListener(extraKeysManager::setSignature);
-		// Only the new editor in project mode offers it.
+		// Only the new editor in project mode offers it. The tuning bar
+		// and Find never stand together: tuning closes Find.
 		editorFragment.setOnTunableListener(number ->
-				extraKeysManager.setTunable(number, () -> screen.tune()));
+				extraKeysManager.setTunable(number, () -> {
+					if (findBar != null) {
+						findBar.close();
+					}
+					screen.tune();
+				}));
 	}
 
 	@Override
@@ -377,7 +390,39 @@ public class MainActivity extends AppCompatActivity {
 				return screen.open().hasText() && editorFragment != null &&
 						editorFragment.canRedo();
 			}
+
+			@Override
+			public boolean canFind() {
+				return screen.open().hasText() &&
+						editorFragment.findableCode() != null;
+			}
+
+			@Override
+			public void onFind() {
+				find();
+			}
 		};
+	}
+
+	// Opens Find over the code: tuning ends as Done ends it, and code
+	// the code button hid comes back.
+	private void find() {
+		CodeView code = editorFragment.findableCode();
+		if (code == null) {
+			return;
+		}
+		TuningBar tuning = findViewById(R.id.tuning_bar);
+		if (tuning.isOpen()) {
+			tuning.done();
+		}
+		if (!editorFragment.isCodeVisible()) {
+			screen.toggleCode();
+		}
+		if (findBar == null) {
+			findBar = (FindBar) ((ViewStub) findViewById(
+					R.id.find_bar_stub)).inflate();
+		}
+		findBar.open(code, findViewById(R.id.toolbar));
 	}
 
 	@NonNull

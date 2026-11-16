@@ -254,8 +254,12 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	}
 
 	public void setVisible(boolean visible) {
+		// The keys are for the code: they step aside while Find's field
+		// has the focus.
+		View focus = extraKeysView.getRootView().findFocus();
 		extraKeysView.setVisibility(getVisibility(visible && hasText &&
 				!covered &&
+				(focus == null || focus.getId() != R.id.find_field) &&
 				(!ShaderEditorApp.preferences.autoHideExtraKeys() ||
 						isKeyboardOpen())));
 	}

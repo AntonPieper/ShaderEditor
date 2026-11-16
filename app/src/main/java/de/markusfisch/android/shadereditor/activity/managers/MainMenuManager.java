@@ -24,6 +24,11 @@ public class MainMenuManager {
 		boolean canUndo();
 
 		boolean canRedo();
+
+		/** Whether there is code to find in. */
+		boolean canFind();
+
+		void onFind();
 	}
 
 	public interface ShaderActions {
@@ -104,6 +109,7 @@ public class MainMenuManager {
 			editorActions.onRedo();
 			updateUndoRedoMenu(popupWindow.getContentView());
 		}, false);
+		setClickListener(R.id.find, editorActions::onFind);
 		setClickListener(R.id.add_shader, shaderActions::onAddShader);
 		setClickListener(R.id.save_shader, shaderActions::onSaveShader);
 		setClickListener(R.id.duplicate_shader, shaderActions::onDuplicateShader);
@@ -150,6 +156,8 @@ public class MainMenuManager {
 	private void prepareMenu() {
 		View menuView = popupWindow.getContentView();
 		updateUndoRedoMenu(menuView);
+		menuView.findViewById(R.id.find).setVisibility(
+				editorActions.canFind() ? View.VISIBLE : View.GONE);
 
 		((Button) menuView.findViewById(R.id.update_wallpaper)).setText(
 				shaderActions.isWallpaper()

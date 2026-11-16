@@ -20,6 +20,14 @@
 
 			<include layout="@layout/toolbar_main" />
 
+			<!-- Find, in the toolbar's place while it is open; made only
+				where the new editor finds. -->
+			<ViewStub
+				android:id="@+id/find_bar_stub"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout="@layout/find_bar" />
+
 			<!-- What changed outside the app, for the file in the editor;
 				made only where shaders are files. -->
 			<ViewStub

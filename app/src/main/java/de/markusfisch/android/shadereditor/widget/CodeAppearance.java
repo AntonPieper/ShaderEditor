@@ -77,6 +77,7 @@ final class CodeAppearance {
 	final float corner;
 	final float tapTarget;
 	final int selectionColor;
+	final int foundColor;
 	final int caretColor;
 	final int handleColor;
 	final float caretWidth;
@@ -138,6 +139,7 @@ final class CodeAppearance {
 		caretColor = ContextCompat.getColor(context, R.color.editor_caret);
 		selectionColor = ContextCompat.getColor(context,
 				R.color.code_selection);
+		foundColor = ContextCompat.getColor(context, R.color.code_match);
 		TypedArray a = context.obtainStyledAttributes(new int[]{
 				androidx.appcompat.R.attr.colorPrimary});
 		try {

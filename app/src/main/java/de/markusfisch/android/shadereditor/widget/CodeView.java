@@ -74,6 +74,7 @@ import de.markusfisch.android.shadereditor.editor.KeyboardSession;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Motion;
+import de.markusfisch.android.shadereditor.editor.Search;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.editor.TextInput;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
@@ -414,6 +415,10 @@ public class CodeView extends View {
 	private RowFix rowFix;
 	// The lines marked after a fix put them in, until the next edit.
 	private int[] markedLines = NO_LINES;
+	// What Find marks on the lines on screen; nothing when empty.
+	private Search.Query found = Search.Query.NONE;
+	// Called when another document is shown, or null.
+	private Runnable documentShown;
 	// The fix pressed, or -1.
 	private int fixPressed = -1;
 	private AnalysisScheduler.Callback analysisListener;
@@ -607,6 +612,25 @@ public class CodeView extends View {
 		}
 		accessibility.documentChanged();
 		invalidate();
+		if (documentShown != null) {
+			documentShown.run();
+		}
+	}
+
+	/** Run shown after another document is shown; none when null. */
+	public void setOnDocumentShown(@Nullable Runnable shown) {
+		documentShown = shown;
+	}
+
+	/**
+	 * Mark every match of query on the lines on screen, from their own
+	 * text in the frame that draws them; nothing for an empty query.
+	 */
+	public void setFound(@NonNull Search.Query query) {
+		if (!query.equals(found)) {
+			found = query;
+			invalidate();
+		}
 	}
 
 	/**
@@ -818,6 +842,27 @@ public class CodeView extends View {
 		scrollY = revealLine(scrollY, n);
 		scroller.forceFinished(true);
 		scrollInside(scrollX, scrollY);
+	}
+
+	/**
+	 * Show the selection as Find shows a match: its line stays where it
+	 * is when all of it is on screen, else it jumps to a third of the
+	 * way down.
+	 */
+	public void showFound() {
+		if (document == null || getWidth() == 0 || getHeight() == 0) {
+			bringCaretIntoView();
+			return;
+		}
+		int n = document.text().lineOf(document.selection().start());
+		int scrollY = getScrollY();
+		if (n < firstShown() || n > lastShown()) {
+			int visible = getHeight() - insets.bottom - insets.top;
+			scrollY = Math.round(lineTop(n) - insets.top - visible / 3f);
+		}
+		scroller.forceFinished(true);
+		scrollInside(getScrollX(), scrollY);
+		bringCaretIntoView();
 	}
 
 	/** Fling with the given velocity in pixels per second. */
@@ -1339,6 +1384,10 @@ public class CodeView extends View {
 				canvas.drawRect(clipLeft, top, right, top + lineHeight, fill);
 			}
 			canvas.translate(textLeft, top);
+			if (!found.isEmpty()) {
+				drawFound(canvas, s, layout, selStart - lineStart,
+						selEnd - lineStart);
+			}
 			if (selStart < selEnd && selStart <= lineEnd &&
 					selEnd > lineStart) {
 				fill.setColor(a.selectionColor);
@@ -1394,6 +1443,20 @@ public class CodeView extends View {
 		if (unrecorded) {
 			// Record the lines drawn directly in the frames to come.
 			postInvalidateOnAnimation();
+		}
+	}
+
+	// Marks the matches of found in line s, but the one that is the
+	// selection, which the selection marks.
+	private void drawFound(Canvas canvas, String s, LineLayout layout,
+			int selStart, int selEnd) {
+		fill.setColor(appearance.foundColor);
+		int length = found.text().length();
+		for (int at = Search.inLine(s, 0, found); at > -1;
+				at = Search.inLine(s, at + length, found)) {
+			if (at != selStart || at + length != selEnd) {
+				layout.drawSelection(canvas, at, at + length, fill);
+			}
 		}
 	}
 
