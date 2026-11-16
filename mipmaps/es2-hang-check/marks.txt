@@ -1,0 +1,7 @@
+=== 11:17:14 2a start
+=== 11:17:41 2a run code
+=== 11:18:25 2b launch #728 debug
+=== 11:18:52 2b run code
+=== 11:22:02 2c open Mip216/main.frag
+=== 11:22:39 2d #728 release step-10
+=== 11:24:30 extra: base release s10 fps
