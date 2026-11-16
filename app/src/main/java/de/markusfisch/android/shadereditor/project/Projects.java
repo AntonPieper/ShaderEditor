@@ -552,6 +552,26 @@ public final class Projects {
 	}
 
 	/**
+	 * What the library keeps for a file of it: the quality it runs at
+	 * and the most frames a second it is drawn at, none for 0.
+	 */
+	public record Looks(float quality, int frameRateLimit) {
+	}
+
+	/**
+	 * Read what the library keeps for the file at path on the queue, so
+	 * after every change asked before; done gets it on main.
+	 */
+	public void looks(ProjectPath path, Callback<Looks> done) {
+		QUEUE.execute(() -> {
+			LibrarySettings settings = library().settings();
+			Looks looks = new Looks(settings.quality(path),
+					settings.frameRateLimit(path));
+			main.post(() -> done.done(looks));
+		});
+	}
+
+	/**
 	 * Keep quality for the file of the library at path, on the queue;
 	 * done gets why it is not kept, or null.
 	 */
