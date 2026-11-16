@@ -100,11 +100,12 @@ final class GlslStatement {
 	/**
 	 * Add the token from start to end of line, which stands at offset in
 	 * the source. A statement longer than any declaration keeps what it
-	 * has.
+	 * has: false is returned for a token that is not kept.
 	 */
-	void add(CharSequence line, int start, int end, int offset, Token token) {
+	boolean add(CharSequence line, int start, int end, int offset,
+			Token token) {
 		if (size >= MAX_TOKENS || text.length() + end - start >= MAX_CHARS) {
-			return;
+			return false;
 		}
 		if (size == from.length) {
 			int capacity = size * 2;
@@ -122,6 +123,7 @@ final class GlslStatement {
 		this.start[size] = offset;
 		kind[size] = token;
 		++size;
+		return true;
 	}
 
 	/** Forget the first count tokens; the others are a statement. */
@@ -143,9 +145,37 @@ final class GlslStatement {
 		}
 	}
 
+	/** Forget the tokens from the one at count on. */
+	void truncate(int count) {
+		if (count < size) {
+			size = Math.max(0, count);
+			text.setLength(size == 0 ? 0 : to[size - 1]);
+		}
+	}
+
 	void clear() {
 		size = 0;
 		text.setLength(0);
+	}
+
+	/**
+	 * Return whether the first size tokens are qualifiers and no more,
+	 * as "precision highp float" and "layout(std140) uniform" are:
+	 * a statement that by right declares nothing.
+	 */
+	boolean isOnlyQualifiers(int size) {
+		if (size > 0 && kind[0] == Token.PRECISION) {
+			return true;
+		}
+		for (int i = 0; i < size; ++i) {
+			if (!kind[i].keyword) {
+				return false;
+			} else if (kind[i] == Token.LAYOUT && i + 1 < size &&
+					is(i + 1, '(')) {
+				i = afterClosing(i + 1, size) - 1;
+			}
+		}
+		return true;
 	}
 
 	int size() {

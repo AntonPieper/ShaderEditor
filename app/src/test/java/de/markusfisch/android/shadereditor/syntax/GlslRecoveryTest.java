@@ -56,10 +56,14 @@ public class GlslRecoveryTest {
 					"float x = 1.0 +\nvec3 f(vec3 p) {\n\treturn p;\n}\n",
 					"VARIABLE x", "FUNCTION f(p)"},
 			{"expression, missing ) before a type and a name",
-					// Not enough to tell from a parameter: it stays, and
-					// the function below is found.
+					// A type and a name before "=" or ";" are no
+					// parameter and no argument.
 					"float x = sin(\nfloat y = 2.0;\nvoid main() {\n}\n",
-					"VARIABLE x", "FUNCTION main"},
+					"VARIABLE x", "VARIABLE y", "FUNCTION main"},
+			{"expression, valid, an argument that is a type and a name",
+					// Before "," or ")" they may be a parameter.
+					"float f(vec3 p,\nfloat t,\nfloat far);\nfloat after;\n",
+					"FUNCTION f(p, t, far)", "VARIABLE after"},
 			{"expression, missing ) at the end of the text",
 					"float before;\nfloat x = sin(", "VARIABLE before",
 					"VARIABLE x"},
@@ -170,10 +174,16 @@ public class GlslRecoveryTest {
 							"float after;\n",
 					"FUNCTION first", "FUNCTION second(x) // The second.",
 					"VARIABLE after"},
+			// A declaration a branch began and did not end ends with
+			// the branch: each branch declares its own.
 			{"conditional, missing ) in a branch before a function",
 					"#if X\nfloat x = sin(\n#else\nfloat x = cos(\n#endif\n" +
 							"void main() {\n}\n",
-					"VARIABLE x", "FUNCTION main"},
+					"VARIABLE x", "VARIABLE x", "FUNCTION main"},
+			{"conditional, a function head that did not end in a branch",
+					"#if X\nfloat first(vec2 p\n#else\nfloat x = 1.0;\n" +
+							"#endif\nvoid main() {\n}\n",
+					"FUNCTION first(p)", "VARIABLE x", "FUNCTION main"},
 			{"conditional, code that is not read",
 					"#if 0\nfloat x = sin(\nstruct S {\n#endif\n" +
 							"void main() {\n}\n",

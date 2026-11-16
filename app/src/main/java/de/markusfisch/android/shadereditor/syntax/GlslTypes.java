@@ -51,7 +51,26 @@ final class GlslTypes {
 		rule('s', "textureSize");
 	}
 
+	// The names of the types GLSL has itself, each once: a text of a
+	// thousand floats keeps one "float".
+	private static final Map<String, String> NAMES = new HashMap<>();
+
+	static {
+		for (String name : new String[]{"void", "float", "int", "uint",
+				"bool", "vec2", "vec3", "vec4", "ivec2", "ivec3", "ivec4",
+				"uvec2", "uvec3", "uvec4", "bvec2", "bvec3", "bvec4", "mat2",
+				"mat3", "mat4", "sampler2D", "samplerCube", "sampler3D"}) {
+			NAMES.put(name, name);
+		}
+	}
+
 	private GlslTypes() {
+	}
+
+	/** Return type, as the one text all its uses share if it has one. */
+	static String shared(String type) {
+		String shared = type == null ? null : NAMES.get(type);
+		return shared != null ? shared : type;
 	}
 
 	private static void rule(char rule, String... names) {
