@@ -90,6 +90,17 @@
 		app:selectionRequired="false"
 		app:singleSelection="false" />
 
+	<!-- While nothing runs because the build failed: why, and the way to
+		the list of errors. -->
+	<Button
+		android:id="@+id/passes_not_running"
+		style="@style/Widget.ShaderEditor.Button.TextButton"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="4dp"
+		android:minHeight="48dp"
+		android:visibility="gone" />
+
 	<!-- The passes: not shown for a shader of one pass. -->
 	<View
 		android:id="@+id/passes_divider"

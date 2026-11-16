@@ -346,6 +346,11 @@ public final class LibraryScreen implements ShaderScreen {
 					}
 
 					@Override
+					public void showErrors() {
+						editorFragment.showErrors();
+					}
+
+					@Override
 					public void opening() {
 						// The sheet would lie over the bar: the number is
 						// kept, as Done keeps it, and the code comes back
