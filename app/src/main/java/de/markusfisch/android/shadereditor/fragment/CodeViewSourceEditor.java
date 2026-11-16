@@ -742,10 +742,13 @@ final class CodeViewSourceEditor implements SourceEditor {
 		styles.syntax().complete(line, column,
 				lineStart, known,
 				analysis.revision() == document.revision(), extraWords(),
-				(words, position) -> {
+				scope, (words, position) -> {
 					// The call shows behind the keys, not behind words.
 					signature(words == GlslCompletion.KEYS ? n : -1, column);
-					listener.onCompletions(parentheses
+					// What stands behind a "." is a member, no call.
+					int before = column - position - 1;
+					listener.onCompletions(parentheses && (before < 0 ||
+							line.text().charAt(before) != '.')
 							? withParentheses(words, known)
 							: words, position);
 				});

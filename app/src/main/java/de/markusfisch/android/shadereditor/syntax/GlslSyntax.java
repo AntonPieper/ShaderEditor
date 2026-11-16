@@ -26,13 +26,21 @@ public final class GlslSyntax implements Syntax {
 	public void complete(LexedLine line, int column, int lineStart,
 			Knowledge known, boolean current, List<String> extraWords,
 			Offer offer) {
+		complete(line, column, lineStart, known, current, extraWords,
+				Knowledge.Scope.NONE, offer);
+	}
+
+	@Override
+	public void complete(LexedLine line, int column, int lineStart,
+			Knowledge known, boolean current, List<String> extraWords,
+			Knowledge.Scope outside, Offer offer) {
 		// Knowledge of another language declares nothing GLSL completes.
 		GlslCompletion.Completions completions = GlslCompletion.atColumn(
 				line, column, lineStart, GlslCompletion.Names.of(
 						known instanceof GlslKnowledge glsl
 								? glsl
 								: GlslKnowledge.NONE),
-				current, extraWords);
+				current, extraWords, outside);
 		offer.offer(completions.words(), completions.position());
 	}
 

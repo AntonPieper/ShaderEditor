@@ -321,6 +321,86 @@ public class GlslCompletionTest {
 
 	// The call at the mark "|" of text, as "name argument", or null.
 	@Test
+	public void membersBehindADot() {
+		String text = "struct Hit { float d; vec3 normal; };\n" +
+				"struct Ray { vec3 origin; vec3 dir; Hit last; };\n" +
+				"uniform vec2 resolution;\n" +
+				"Ray march(Ray r);\n" +
+				"void main() {\n" +
+				"\tRay ray = Ray(vec3(0.0), vec3(0.0, 0.0, 1.0), Hit(1.0, vec3(0.0)));\n" +
+				"\tvec4 colour = vec4(1.0);\n" +
+				"\tfloat d = 1.0;\n" +
+				"\t|\n" +
+				"}\n";
+		// The fields of a struct, in their order.
+		assertEquals("origin dir last @0", members(text, "ray."));
+		assertEquals("dir @1", members(text, "x = ray.d"));
+		assertEquals("d normal @0", members(text, "ray.last."));
+		assertEquals("normal @1", members(text, "f(ray.last.n"));
+		assertEquals("origin dir last @0", members(text, "march(ray)."));
+		// The components of a vector, for its size.
+		assertEquals("x y r g s t xy @0", members(text, "resolution."));
+		assertEquals("x y z r g b s t p xy xyz rgb @0",
+				members(text, "ray.origin."));
+		assertEquals("x y z w r g b a s t p q xy xyz rgb @0",
+				members(text, "colour."));
+		assertEquals("r rgb @1", members(text, "colour.r"));
+		assertEquals("xy xyz @2", members(text, "colour.xy"));
+		assertEquals("x y z r g b s t p xy xyz rgb @0",
+				members(text, "normalize(ray.dir)."));
+		assertEquals("x y z r g b s t p xy xyz rgb @0",
+				members(text, "(ray.origin + ray.dir * d)."));
+		assertEquals("x y z w r g b a s t p q xy xyz rgb @0",
+				members(text, "gl_FragCoord."));
+		// A local hides what the file declares: d is a float here.
+		assertEquals(KEYS, members(text, "d."));
+		// What has no members, what is not known, and a number: as
+		// without a dot.
+		assertEquals(KEYS, members(text, "unknown."));
+		assertEquals(KEYS, members(text, "ray.last.d."));
+		assertEquals(KEYS, members(text, "1."));
+		assertEquals("resolution reflect refract return @2",
+				members(text, "unknown.re"));
+		// Nothing else starts with what is typed.
+		assertEquals(KEYS, members(text, "ray.origin"));
+		assertEquals(KEYS, members(text, "ray.q"));
+	}
+
+	// A value with more tokens before its "." than are read: the rest
+	// of it would be told as another value, so nothing is offered.
+	@Test
+	public void aValueLongerThanIsReadHasNoMembers() {
+		String text = "struct S { vec2 a[9]; };\nstruct W { S a[9]; };\n" +
+				"void main() {\n\tW w;\n\tvec3 a[9];\n\t|\n}\n";
+		String index = "0" + " + 0".repeat(120);
+		assertEquals("x y r g s t xy @0", members(text, "w.a[0].a[0]."));
+		assertEquals("x y z r g b s t p xy xyz rgb @0",
+				members(text, "a[" + "0" + " + 0".repeat(40) + "]."));
+		// Cut behind "w.", what is left reads as the local "a".
+		assertEquals(KEYS, members(text, "w.a[" + index + "]."));
+		assertEquals(KEYS, members(text, "w.a[0].a[" + index + "]."));
+	}
+
+	private static final String KEYS = String.join(" ",
+			GlslCompletion.KEYS) + " @0";
+
+	// What is offered behind typed, written where the "|" of text is.
+	private static String members(String text, String typed) {
+		int at = text.indexOf('|');
+		String whole = text.substring(0, at) + typed + text.substring(at + 1);
+		int caret = at + typed.length();
+		int lineStart = whole.lastIndexOf('\n', caret - 1) + 1;
+		int lineEnd = whole.indexOf('\n', caret);
+		GlslCompletion.Completions found = GlslCompletion.atColumn(
+				LexedLine.of(GlslSyntax.INSTANCE, whole.substring(lineStart,
+						lineEnd), true, GlslLexer.TEXT_START,
+						new LineTokens()), caret - lineStart, lineStart,
+				GlslCompletion.Names.of(GlslKnowledge.of(text.replace("|",
+						""))), false, List.of(), Knowledge.Scope.NONE);
+		return String.join(" ", found.words()) + " @" + found.position();
+	}
+
+	@Test
 	public void theCallAroundTheCaretOfALongLine() {
 		// The caret is at the start of a line with a hundred thousand
 		// tokens behind it: they are not walked over.

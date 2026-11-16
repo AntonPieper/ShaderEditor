@@ -68,6 +68,19 @@ public final class GlslCompletion {
 	public static Completions atColumn(LexedLine line, int column,
 			int lineStart, Names names, boolean current,
 			List<String> extraWords) {
+		return atColumn(line, column, lineStart, names, current, extraWords,
+				null);
+	}
+
+	/**
+	 * As {@link #atColumn}, with what is declared outside of the text,
+	 * if not null: behind a "." it then offers what the value before it
+	 * has, the fields of a struct or the components of a vector, when
+	 * its type can be told.
+	 */
+	public static Completions atColumn(LexedLine line, int column,
+			int lineStart, Names names, boolean current,
+			List<String> extraWords, Knowledge.Scope outside) {
 		int state = line.state();
 		boolean continued = (state & (GlslLexer.BLOCK_COMMENT |
 				GlslLexer.LINE_COMMENT)) != 0;
@@ -96,8 +109,95 @@ public final class GlslCompletion {
 			}
 		}
 		String prefix = text.substring(start, column);
+		// Behind a ".", or in a word behind one.
+		int dot = isDot(line, index) ? index : index > 0 &&
+				isDot(line, index - 1) && line.end(index - 1) == start &&
+				line.style(index) != Style.NUMBER ? index - 1 : -1;
+		if (outside != null && dot >= 0 && !line.inDirective(dot)) {
+			List<String> members = members(line, dot, lineStart, names.known,
+					current, outside);
+			if (members != null) {
+				return ofMembers(dot == index ? "" : prefix, members);
+			}
+		}
 		return of(prefix, names.words(prefix, line.inDirective(index),
 				current ? lineStart + start : -1, extraWords));
+	}
+
+	/** The most tokens before a "." that are read for its value. */
+	private static final int MEMBER_TOKENS = 200;
+
+	private static boolean isDot(LexedLine line, int index) {
+		return line.style(index) == Style.OPERATOR &&
+				line.text().charAt(line.start(index)) == '.';
+	}
+
+	// What the value before the "." at token dot has: the names of the
+	// fields of a struct, the components of a vector; null when its type
+	// cannot be told or has none. It reads the tokens of the line before
+	// the ".", no more than MEMBER_TOKENS of them.
+	private static List<String> members(LexedLine line, int dot,
+			int lineStart, GlslKnowledge known, boolean current,
+			Knowledge.Scope outside) {
+		GlslStatement statement = new GlslStatement();
+		String text = line.text();
+		int first = Math.max(0, dot - MEMBER_TOKENS);
+		for (int i = first; i < dot; ++i) {
+			Style style = line.style(i);
+			if (style != Style.COMMENT) {
+				statement.add(text, line.start(i), line.end(i),
+						lineStart + line.start(i), GlslStatement.Token.of(
+								style, text, line.start(i), line.end(i)));
+			}
+		}
+		int size = statement.size();
+		int start = GlslExpression.valueStart(statement, size);
+		if (start >= size || (first > 0 && start == 0)) {
+			// No value; or one that begins before what is read, whose
+			// rest would be told as the type of another value.
+			return null;
+		}
+		GlslExpression.Names names = known.names(place(lineStart,
+				line.start(dot), current), outside);
+		String type = GlslExpression.type(statement, start, size, names);
+		if (type == null) {
+			return null;
+		}
+		Knowledge.Symbol struct = names.struct(type);
+		List<String> members;
+		if (struct != null) {
+			members = new ArrayList<>(struct.parts().size());
+			for (Knowledge.Symbol field : struct.parts()) {
+				members.add(field.name());
+			}
+		} else {
+			members = GlslTypes.swizzles(type);
+		}
+		return members.isEmpty() ? null : members;
+	}
+
+	/**
+	 * Return the offset to ask a knowledge at for what stands at column
+	 * of the line that starts at lineStart. One of the current text is
+	 * asked there. One of the text a moment ago is asked at the start of
+	 * the line: what was typed in the line since moved everything behind
+	 * it, and at the end of a body the place itself would lie behind it.
+	 */
+	static int place(int lineStart, int column, boolean current) {
+		return current ? lineStart + column : lineStart;
+	}
+
+	// The members that start with prefix; the keys when it is one of
+	// them and nothing else starts with it.
+	private static Completions ofMembers(String prefix,
+			List<String> members) {
+		List<String> words = new ArrayList<>();
+		for (String member : members) {
+			if (member.startsWith(prefix) && !words.contains(member)) {
+				words.add(member);
+			}
+		}
+		return of(prefix, words);
 	}
 
 	/** How many lines above the caret's a call may begin. */
