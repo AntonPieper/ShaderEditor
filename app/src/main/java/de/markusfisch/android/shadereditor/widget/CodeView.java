@@ -265,6 +265,8 @@ public class CodeView extends View {
 		@Override
 		public void onChange(Document.Change change, Text before) {
 			accessibility.changed(change, before);
+			// A drag in progress goes on in the new text.
+			touch.map(change);
 			edited = true;
 			markedLines = NO_LINES;
 			invalidate();
@@ -1734,7 +1736,9 @@ public class CodeView extends View {
 	// platform's does, or something else closed it.
 	private void toolbarClosed(boolean dismissed) {
 		if (dismissed && touched != null) {
-			select(touched.end(), touched.end());
+			// The document's end: a change may have moved it since.
+			int end = document.selection().end();
+			select(end, end);
 			touched = null;
 			invalidate();
 		} else {
@@ -2124,14 +2128,19 @@ public class CodeView extends View {
 	// Starts dragging the handle at x, y of the view, if there is one.
 	private void grabHandle(float x, float y) {
 		int which = handles.at(x + getScrollX(), y + getScrollY());
-		if (which < 0 || touched == null) {
+		if (which < 0) {
+			return;
+		}
+		Document.Selection shown = touch.handles(touched,
+				document.selection(), false);
+		if (shown == null) {
 			return;
 		}
 		int head = which == SelectionHandles.START
-				? touched.start()
-				: touched.end();
-		touch.dragHandle(touched.isEmpty() ? head : touched.start() +
-				touched.end() - head, head);
+				? shown.start()
+				: shown.end();
+		touch.dragHandle(shown.isEmpty() ? head : shown.start() +
+				shown.end() - head, head);
 		// The handle points at the bottom of a line; the drag at its
 		// middle.
 		pointDx = handles.x(which) - getScrollX() - x;
@@ -2504,19 +2513,21 @@ public class CodeView extends View {
 		}
 	}
 
-	// Draws the handles of the selection the last touch made, those
-	// whose place is in view.
+	// Draws the handles of the selection the last touch made while it is
+	// the document's, those whose place is in view.
 	private void drawHandles(Canvas canvas) {
 		handles.clear();
-		if (touched == null || (touched.isEmpty() && !caretHandle) ||
-				!isFocused() || !touch.showsHandles(dragging != 0)) {
+		Document.Selection shown = touch.handles(touched,
+				document.selection(), dragging != 0);
+		if (shown == null || (shown.isEmpty() && !caretHandle) ||
+				!isFocused()) {
 			return;
 		}
-		if (touched.isEmpty()) {
-			placeHandle(-1, touched.head());
+		if (shown.isEmpty()) {
+			placeHandle(-1, shown.head());
 		} else {
-			placeHandle(SelectionHandles.START, touched.start());
-			placeHandle(SelectionHandles.END, touched.end());
+			placeHandle(SelectionHandles.START, shown.start());
+			placeHandle(SelectionHandles.END, shown.end());
 		}
 		handles.draw(canvas);
 	}
