@@ -387,12 +387,15 @@ What each event keeps and clears:
 
 `recover()` then ends what was being read at the end of the code before those words and goes on with them as the statement. Besides that rule, two things are no recovery but belong to it: a `{` inside `(` or `[` outside of an initializer means they lost their closing ones (`float f(vec3 p {` is a function), and a declaration that lost its `;` ends where a new line starts another (rule 2). The acceptance table is `GlslRecoveryTest`: 39 rows over an expression, parameters, fields, a body, conditional branches and statements, each context once written over several lines as it may be, where nothing must be left, and once with its delimiter missing, with a comment before the candidate, and at the end of the text; every row is also read cut at every character.
 
-Known gaps of half 1:
+Known gaps of recovery:
 
-- A type and a name alone are never enough to leave a bracket: in `float x = sin(` above `float y = 2.0;` above `void main() {}`, `y` is taken into `x`; `main` and what follows are found.
-- After `#else` the brackets that were open at `#if` are not open again: a parameter list that a conditional cuts in two declares the function with the parameters of the first branch.
 - A function head among fields or in a body must begin its line or statement; behind a stray character on its line it is not seen.
-- A statement keeps 2,048 tokens and 16,384 characters and says nothing when it had more.
+- A declaration that a conditional cuts in two goes on from its last branch: a parameter list with one parameter per branch declares the function with the parameters of the last one. A declaration that a branch began and did not end ends with the branch, and what it says so far is declared, so each branch declares its own.
+- In a body, an `#else` that the first branch closed a brace before cannot open that scope again: what was declared in it is not seen in the second branch.
+- A statement keeps 2,048 tokens and 16,384 characters. A token it does not keep inside brackets declares nothing, so a table of numbers may be as long as it likes; one outside of brackets, among fields or in the declaration of a body, may be a name that is lost, and the knowledge then says that it is not complete: nothing exact is answered from it.
+- The fields of a struct without a name (`struct { float x; } s;`) are kept nowhere; the knowledge says that it is not complete.
+
+Closed with half 2: a type and a name before `=` or `;` at the start of a line leave an open bracket (`float x = sin(` above `float y = 2.0;` declares both), since no parameter and no argument goes on like that; and `struct S` with no brace yet is a type, so `S` is coloured where it is used while its fields are still being written.
 
 #### The caps, and what is shown beyond them
 

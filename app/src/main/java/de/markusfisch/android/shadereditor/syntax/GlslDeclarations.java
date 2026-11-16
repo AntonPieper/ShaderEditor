@@ -17,8 +17,10 @@ import de.markusfisch.android.shadereditor.syntax.Knowledge.Symbol;
  * text line by line, with the tokens {@link GlslLexer#lexLine} gives,
  * for its top-level declarations. A function is read with its parameters,
  * a struct with its fields, a macro with its text and parameters, and
- * each with its range and the comment that belongs to it. Function
- * bodies are not read; only their braces are matched.
+ * each with its range and the comment that belongs to it. Of a function
+ * body its braces are matched and, if locals are asked for, the
+ * statements that declare one are read, see {@link Local}; no other
+ * statement is.
  *
  * Every token is one of three things, and each has its own state:
  *
@@ -68,6 +70,45 @@ final class GlslDeclarations implements Knowledge.Builder {
 		BODY
 	}
 
+	/**
+	 * What the statement of a body is, as far as it was read: only one
+	 * that starts with a type and a name is collected, so that reading
+	 * bodies costs their declarations and not their expressions.
+	 */
+	private enum Local {
+		/** Nothing of it was read. */
+		START,
+		/** Words so far: qualifiers, a type, a name. */
+		WORDS,
+		/** A declaration: it is collected to its ";". */
+		DECLARATION,
+		/** Anything else: passed over to its ";". */
+		OTHER
+	}
+
+	/**
+	 * Where the reader of code was at an "#if": the whole of what it
+	 * goes on from, so that every branch starts from the same place.
+	 */
+	private static final class Checkpoint {
+		int line;
+		Mode mode;
+		int braces;
+		int nesting;
+		boolean initializer;
+		String documentation;
+		Draft function;
+		int statementSize;
+		Local local;
+		int parens;
+		int untracked;
+		int locals;
+		int frames;
+		final int[] frameKind = new int[MAX_NESTING];
+		final int[] frameFirst = new int[MAX_NESTING];
+		final int[] frameParens = new int[MAX_NESTING];
+	}
+
 	/** What the directive being read expects of its next token. */
 	private enum Directive {
 		/** No directive is being read. */
@@ -105,17 +146,43 @@ final class GlslDeclarations implements Knowledge.Builder {
 	private static final int MAX_NESTING = 64;
 	// More words than the head of a declaration has.
 	private static final int MAX_HEAD_WORDS = 8;
+	// What a frame is, and how far its statement was read: see frames.
+	private static final int BLOCK = 0;
+	private static final int FOR = 1;
+	private static final int WHILE = 2;
+	private static final int IF = 3;
+	private static final int SWITCH = 4;
+	private static final int DO = 5;
+	private static final int KEYWORD = 0;
+	private static final int HEADER = 1;
+	private static final int SUBSTATEMENT = 2;
+	private static final int BEFORE_ELSE = 3;
+	private static final int ELSE = 4;
+	private static final int BEFORE_WHILE = 5;
+	private static final int BEFORE_SEMICOLON = 6;
+	private static final int STAGES = 8;
+	// What keyword() answers for "else", which begins no statement.
+	private static final int ELSE_WORD = -2;
 
 	// What was read: never more than maxSymbols symbols with maxChars
 	// characters of text, of which a quarter is for names alone.
 	private final int maxSymbols;
 	private final int maxChars;
+	private final int maxLocals;
 	private final List<Draft> drafts = new ArrayList<>();
 	private final List<Symbol> links = new ArrayList<>();
 	private final Set<String> structs = new HashSet<>();
+	private final GlslLocals locals = new GlslLocals();
 	private int nameChars;
 	private int chars;
 	private boolean full;
+	// Whether a cap cut the locals short; and whether anything else was
+	// dropped or guessed, so that this is not all there is to know: a
+	// statement or a symbol that had more than is kept, statements
+	// nested deeper than is tracked, text the reader had to recover
+	// from.
+	private boolean cut;
+	private boolean unsure;
 
 	private int lineNumber = -1;
 	// The end of the last token of code, and whether that token ended
@@ -137,6 +204,25 @@ final class GlslDeclarations implements Knowledge.Builder {
 	private int braces;
 	private Draft function;
 
+	// In a body, if locals are asked for: the frames, one for each
+	// statement that is not finished, innermost last. A frame is a block
+	// or a statement with a keyword ("for", "while", "if", "switch",
+	// "do") and how far that was read; it has the first local of its
+	// scope, and the parentheses that were open where its header began.
+	// A statement that ends ends every frame it was the last part of.
+	// Beside them what the simple statement being read is, which
+	// collects in the statement above, the parentheses open, braces
+	// that could not get a frame, and the parameters of the function
+	// whose head was declared last.
+	private final int[] frameKind = new int[MAX_NESTING];
+	private final int[] frameFirst = new int[MAX_NESTING];
+	private final int[] frameParens = new int[MAX_NESTING];
+	private int frames;
+	private Local local = Local.START;
+	private int parens;
+	private int untracked;
+	private List<Symbol> parameters = Collections.emptyList();
+
 	// The words read last, from one that began a line or a statement
 	// on: they may be the head of a declaration that what is being read
 	// has to be left for. With them the end of the code before them,
@@ -154,13 +240,11 @@ final class GlslDeclarations implements Knowledge.Builder {
 	private boolean inComment;
 
 	// Conditionals: how many are open, the level "#if 0" disabled code
-	// at or -1, and for each level where the reader was at its "#if".
+	// at or -1, and for each level where the reader was at its "#if":
+	// all it needs to go on from there again.
 	private int level;
 	private int disabled = -1;
-	private final int[] ifLine = new int[MAX_NESTING];
-	private final Mode[] ifMode = new Mode[MAX_NESTING];
-	private final int[] ifBraces = new int[MAX_NESTING];
-	private final Draft[] ifFunction = new Draft[MAX_NESTING];
+	private final Checkpoint[] checkpoints = new Checkpoint[MAX_NESTING];
 
 	// The directive being read, from where to where, and the macro it
 	// defines, if any, with its text so far.
@@ -175,9 +259,15 @@ final class GlslDeclarations implements Knowledge.Builder {
 	private int foldCount;
 	private final int[] braceLines = new int[MAX_NESTING];
 
-	GlslDeclarations(int maxSymbols, int maxChars) {
+	/**
+	 * A reader that keeps at most maxSymbols declarations and maxLocals
+	 * locals with maxChars characters; with no locals asked for, bodies
+	 * are passed over but for their braces.
+	 */
+	GlslDeclarations(int maxSymbols, int maxChars, int maxLocals) {
 		this.maxSymbols = maxSymbols;
 		this.maxChars = maxChars;
+		this.maxLocals = maxLocals;
 	}
 
 	@Override
@@ -233,6 +323,8 @@ final class GlslDeclarations implements Knowledge.Builder {
 	@Override
 	public GlslKnowledge build() {
 		endDirective();
+		// A text that ends inside of something did not say all of it.
+		unsure |= mode != Mode.TOP || !statement.isEmpty() || level > 0;
 		if (mode == Mode.BODY) {
 			leaveBody(lastEnd);
 		}
@@ -247,7 +339,9 @@ final class GlslDeclarations implements Knowledge.Builder {
 		for (Draft draft : drafts) {
 			symbols.add(draft.symbol());
 		}
-		return new GlslKnowledge(symbols, links, sortedFolds());
+		locals.freeze();
+		return new GlslKnowledge(symbols, links, sortedFolds(), locals,
+				!full && !cut && !unsure);
 	}
 
 	// ---- Comments -------------------------------------------------------
@@ -398,10 +492,9 @@ final class GlslDeclarations implements Knowledge.Builder {
 				is(line, start, end, "ifdef") ||
 				is(line, start, end, "ifndef")) {
 			if (level < MAX_NESTING) {
-				ifLine[level] = lineNumber;
-				ifMode[level] = mode;
-				ifBraces[level] = braces;
-				ifFunction[level] = function;
+				keep(level);
+			} else {
+				unsure = true;
 			}
 			++level;
 			return is(line, start, end, "if") ? Directive.IF
@@ -421,7 +514,7 @@ final class GlslDeclarations implements Knowledge.Builder {
 			if (level > 0) {
 				--level;
 				if (level < MAX_NESTING) {
-					fold(ifLine[level], lineNumber);
+					fold(checkpoints[level].line, lineNumber);
 				}
 			}
 		} else if (is(line, start, end, "include")) {
@@ -515,24 +608,69 @@ final class GlslDeclarations implements Knowledge.Builder {
 				directiveFrom, lineStart + end, Collections.emptyList()));
 	}
 
-	// Another branch of a conditional starts: the nesting is what it
-	// was at its "#if", so that a head written once per branch with one
-	// body counts its braces once.
+	// Keeps where the reader of code is, for the conditional of level.
+	private void keep(int level) {
+		Checkpoint c = checkpoints[level];
+		if (c == null) {
+			c = checkpoints[level] = new Checkpoint();
+		}
+		c.line = lineNumber;
+		c.mode = mode;
+		c.braces = braces;
+		c.nesting = nesting;
+		c.initializer = initializer;
+		c.documentation = documentation;
+		c.function = function;
+		c.statementSize = statement.size();
+		c.local = local;
+		c.parens = parens;
+		c.untracked = untracked;
+		c.locals = locals.size();
+		c.frames = frames;
+		System.arraycopy(frameKind, 0, c.frameKind, 0, frames);
+		System.arraycopy(frameFirst, 0, c.frameFirst, 0, frames);
+		System.arraycopy(frameParens, 0, c.frameParens, 0, frames);
+	}
+
+	// Another branch of a conditional starts: the reader goes on from
+	// where it was at its "#if", in every mode alike, so that a head
+	// written once per branch with one body counts its braces once, and
+	// a statement that the branches finish differently is finished by
+	// each. What the branch before declared in scopes that are still
+	// open is seen no further than here.
 	private void branch() {
 		int at = level - 1;
 		if (at < 0 || at >= MAX_NESTING) {
 			return;
 		}
+		Checkpoint c = checkpoints[at];
 		head.clear();
-		if (ifMode[at] == Mode.TOP && mode == Mode.BODY) {
-			leaveBody(lastEnd);
-		} else if (ifMode[at] == Mode.BODY && mode != Mode.FIELDS) {
-			mode = Mode.BODY;
-			function = ifFunction[at];
-			braces = ifBraces[at];
-			statement.clear();
-			nesting = 0;
+		if (c.mode == Mode.TOP && c.statementSize == 0 &&
+				mode != Mode.BODY && !statement.isEmpty()) {
+			// A declaration the branch began and did not end ends with
+			// the branch: what it says so far is declared.
+			unsure = true;
+			declare(statement.size(), lastEnd);
 		}
+		if (function != null && function != c.function) {
+			// A body the branch opened ends with it.
+			function.to = Math.max(function.end, lastEnd);
+		}
+		locals.close(c.locals, lastEnd);
+		mode = c.mode;
+		braces = c.braces;
+		nesting = c.nesting;
+		initializer = c.initializer;
+		documentation = c.documentation;
+		function = c.function;
+		statement.truncate(c.statementSize);
+		local = c.local;
+		parens = c.parens;
+		untracked = c.untracked;
+		frames = c.frames;
+		System.arraycopy(c.frameKind, 0, frameKind, 0, frames);
+		System.arraycopy(c.frameFirst, 0, frameFirst, 0, frames);
+		System.arraycopy(c.frameParens, 0, frameParens, 0, frames);
 	}
 
 	// ---- Code -----------------------------------------------------------
@@ -548,12 +686,16 @@ final class GlslDeclarations implements Knowledge.Builder {
 		if (word) {
 			word(line, lineStart, start, end, kind, lineFirst);
 		} else {
-			if (c == '(' && startsFunction()) {
+			if (c == '(' ? startsFunction()
+					: (c == '=' || c == ';') && startsVariable()) {
 				recover();
 			}
 			head.clear();
 		}
 		if (mode == Mode.BODY) {
+			if (maxLocals > 0) {
+				local(line, lineStart, start, end, kind, c, word);
+			}
 			body(c, lineStart + end);
 		} else {
 			top(line, lineStart, start, end, kind, c, word, lineFirst);
@@ -599,6 +741,18 @@ final class GlslDeclarations implements Knowledge.Builder {
 						structs.contains(head.text(size - 2)));
 	}
 
+	// Whether the words read last, before a "=" or a ";", are a type
+	// and a name that began a line inside the brackets of a declaration
+	// that did not end: no parameter and no argument goes on like that,
+	// so the brackets lost their closing ones.
+	private boolean startsVariable() {
+		int size = head.size();
+		return mode == Mode.TOP && nesting > 0 && size > 1 &&
+				head.name(0, size) == size - 1 &&
+				cannotGoOn(head.kind(size - 2) == Token.TYPE ||
+						structs.contains(head.text(size - 2)));
+	}
+
 	/**
 	 * Tell whether what is being read cannot go on with the declaration
 	 * the words read last start, so that it is left for it. The fields
@@ -636,6 +790,7 @@ final class GlslDeclarations implements Knowledge.Builder {
 	// and they are the statement that follows. The one way out of what
 	// lost its closing brace or bracket.
 	private void recover() {
+		unsure = true;
 		if (mode == Mode.BODY) {
 			fold(braceLines[0], headLine - 1);
 			leaveBody(headEnd);
@@ -671,17 +826,20 @@ final class GlslDeclarations implements Knowledge.Builder {
 				mode = Mode.TOP;
 				fold(braceLines[0], lineNumber);
 			}
-			statement.add(line, start, end, offset, kind);
+			unsure |= !statement.add(line, start, end, offset, kind);
 			return;
 		}
 		if (!statement.isEmpty() && nesting == 0 && lineFirst &&
 				statement.endsBefore(kind)) {
 			// It lost its ";".
+			unsure = true;
 			declare(statement.size(), lastEnd);
 		}
 		if (statement.isEmpty()) {
 			if (!word && c != '{') {
-				// A statement starts with a word.
+				// A statement starts with a word; a ";" alone is an
+				// empty one, anything else is astray.
+				unsure |= c != ';';
 				return;
 			}
 			documentation = commentAbove();
@@ -690,13 +848,16 @@ final class GlslDeclarations implements Knowledge.Builder {
 		if (c == '{' && (nesting == 0 || !initializer)) {
 			// No "{" stands in brackets but in an initializer: they
 			// lost their closing ones.
+			unsure |= nesting > 0;
 			nesting = 0;
 			openBrace(line, start, end, offset);
 			return;
 		}
 		boolean ends = nesting == 0 && (c == ';' || c == '}');
-		if (!ends) {
-			statement.add(line, start, end, offset, kind);
+		if (!ends && !statement.add(line, start, end, offset, kind)) {
+			// Inside brackets a token that is not kept declares
+			// nothing: a table of numbers may be as long as it likes.
+			unsure |= nesting == 0;
 		}
 		if (c == '(' || c == '[' || c == '{') {
 			++nesting;
@@ -712,6 +873,8 @@ final class GlslDeclarations implements Knowledge.Builder {
 		} else if (c == ';') {
 			declare(statement.size(), lineStart + end);
 		} else if (c == '}') {
+			// A "}" that nothing opened ends what stood before it.
+			unsure = true;
 			declare(statement.size(), offset);
 		}
 	}
@@ -737,11 +900,32 @@ final class GlslDeclarations implements Knowledge.Builder {
 			braces = 1;
 			return;
 		} else {
+			// A block that belongs to nothing.
+			unsure = true;
 			function = null;
+			parameters = Collections.emptyList();
 			statement.clear();
 		}
 		mode = Mode.BODY;
 		braces = 1;
+		if (maxLocals > 0) {
+			// The body is a block, and the parameters are its first
+			// locals: as the head declared them, whatever the budget
+			// left of them in the symbol.
+			frames = 0;
+			untracked = 0;
+			parens = 0;
+			local = Local.START;
+			push(BLOCK, SUBSTATEMENT);
+			for (int i = 0, n = parameters.size(); i < n; ++i) {
+				Symbol parameter = parameters.get(i);
+				if (!parameter.name().isEmpty()) {
+					addLocal(parameter.name(), Kind.PARAMETER,
+							parameter.type(), parameter.start(),
+							parameter.end(), offset);
+				}
+			}
+		}
 	}
 
 	// Declares what the first size tokens of the statement say, a
@@ -750,8 +934,17 @@ final class GlslDeclarations implements Knowledge.Builder {
 	private Draft declare(int size, int end) {
 		List<Draft> declared = new ArrayList<>();
 		GlslSymbols.of(statement, size, end, documentation, declared);
+		// Code outside of functions that declares nothing is astray,
+		// unless it only sets a precision or a layout.
+		unsure |= declared.isEmpty() && size > 0 &&
+				!statement.isOnlyQualifiers(Math.min(size, statement.size()));
+		parameters = declared.isEmpty() ||
+				declared.get(0).kind != Kind.FUNCTION
+				? Collections.emptyList() : declared.get(0).parts;
 		for (int i = 0, n = declared.size(); i < n; ++i) {
 			Draft draft = declared.get(i);
+			// More parameters or fields than a symbol keeps.
+			unsure |= draft.cut;
 			if (add(draft) && draft.kind == Kind.TYPE) {
 				structs.add(draft.name);
 			}
@@ -764,6 +957,277 @@ final class GlslDeclarations implements Knowledge.Builder {
 	}
 
 	// ---- Bodies ---------------------------------------------------------
+
+	// A token of a body, for its locals: braces and statements with a
+	// keyword are frames, and a simple statement that starts as a
+	// declaration does is collected and declares its locals when it
+	// ends.
+	private void local(CharSequence line, int lineStart, int start, int end,
+			Token kind, char c, boolean word) {
+		int offset = lineStart + start;
+		int keyword = kind != Token.OTHER ? -1 : keyword(line, start, end);
+		// An "if" whose statement ended is over unless "else" follows;
+		// a "do" whose statement ended goes on with "while".
+		while (frames > 0 && stage() == BEFORE_ELSE &&
+				keyword != ELSE_WORD) {
+			pop(lastEnd);
+			finish(lastEnd);
+		}
+		if (frames > 0 && stage() == BEFORE_WHILE) {
+			if (keyword == WHILE) {
+				stage(KEYWORD);
+				return;
+			}
+			unsure = true;
+			pop(lastEnd);
+			finish(lastEnd);
+		}
+		if (keyword == ELSE_WORD) {
+			if (frames > 0 && stage() == BEFORE_ELSE) {
+				stage(ELSE);
+				frameFirst[frames - 1] = locals.size();
+			} else {
+				unsure = true;
+			}
+			return;
+		} else if (keyword > 0) {
+			// A statement with a keyword; what a "do" repeats follows
+			// at once.
+			endLocal(offset, false);
+			push(keyword, keyword == DO ? SUBSTATEMENT : KEYWORD);
+			return;
+		}
+		boolean header = frames > 0 && stage() == HEADER;
+		if (c == '(') {
+			if (frames > 0 && stage() == KEYWORD) {
+				// The header: what it declares is seen to the end of
+				// the whole statement.
+				frameParens[frames - 1] = parens++;
+				frameFirst[frames - 1] = locals.size();
+				stage(HEADER);
+				local = Local.START;
+				return;
+			}
+			++parens;
+		} else if (c == ')') {
+			parens = Math.max(0, parens - 1);
+			if (header && parens == frameParens[frames - 1]) {
+				endLocal(offset, true);
+				if (kind() == DO) {
+					stage(BEFORE_SEMICOLON);
+				} else {
+					stage(SUBSTATEMENT);
+					if (kind() == IF || kind() == SWITCH) {
+						frameFirst[frames - 1] = locals.size();
+					}
+				}
+				return;
+			}
+		} else if (c == '{' && !(local == Local.DECLARATION &&
+				(nesting > 0 || statement.is(statement.size() - 1, '=')))) {
+			// A block. (In a declaration, behind "=" or inside one, it
+			// is the brace of an initializer.)
+			unsure |= parens > 0 || (frames > 0 && stage() == KEYWORD);
+			endLocal(offset, false);
+			push(BLOCK, SUBSTATEMENT);
+			parens = 0;
+			return;
+		} else if (c == '}' && !(local == Local.DECLARATION &&
+				nesting > 0)) {
+			endLocal(offset, false);
+			if (untracked > 0) {
+				--untracked;
+				return;
+			}
+			// Statements that did not end before it end with it.
+			while (frames > 0 && kind() != BLOCK) {
+				unsure = true;
+				pop(offset);
+			}
+			if (frames > 0) {
+				parens = frameParens[frames - 1];
+				pop(lineStart + end);
+				finish(lineStart + end);
+			}
+			return;
+		} else if (c == ';') {
+			if (header && kind() == FOR &&
+					parens == frameParens[frames - 1] + 1) {
+				// Between the parts of the header of a "for".
+				endLocal(lineStart + end, true);
+				return;
+			}
+			// No ";" stands inside parentheses but there.
+			unsure |= parens > 0;
+			endLocal(lineStart + end, true);
+			if (frames > 0 && stage() == BEFORE_SEMICOLON) {
+				pop(lineStart + end);
+			}
+			finish(lineStart + end);
+			return;
+		}
+		switch (local) {
+			case START:
+				if (word) {
+					// A struct declared in a function is not read.
+					unsure |= kind == Token.STRUCT;
+					unsure |= !statement.add(line, start, end, offset,
+							kind);
+					local = Local.WORDS;
+					nesting = 0;
+				} else {
+					local = Local.OTHER;
+				}
+				break;
+			case WORDS:
+				if (c == '[') {
+					++nesting;
+				} else if (c == ']' && nesting > 0) {
+					--nesting;
+				} else if (!word && nesting == 0) {
+					// What stands behind the words tells.
+					if ((c == '=' || c == ',') && statement.name(0,
+							statement.size()) >= 0) {
+						local = Local.DECLARATION;
+					} else {
+						local = Local.OTHER;
+						statement.clear();
+						break;
+					}
+				}
+				unsure |= !statement.add(line, start, end, offset, kind);
+				break;
+			case DECLARATION:
+				if (!statement.add(line, start, end, offset, kind)) {
+					unsure |= nesting == 0;
+				}
+				if (c == '(' || c == '[' || c == '{') {
+					++nesting;
+				} else if (c == ')' || c == ']' || c == '}') {
+					nesting = Math.max(0, nesting - 1);
+				}
+				break;
+			default:
+				if (c == ':') {
+					// Behind a label a statement starts.
+					local = Local.START;
+				}
+				break;
+		}
+	}
+
+	// Which statement the word from start to end of line begins, as
+	// the kind of its frame; ELSE_WORD for "else"; -1 for any other.
+	private static int keyword(CharSequence line, int start, int end) {
+		switch (end - start) {
+			case 2:
+				return is(line, start, end, "if") ? IF
+						: is(line, start, end, "do") ? DO : -1;
+			case 3:
+				return is(line, start, end, "for") ? FOR : -1;
+			case 4:
+				return is(line, start, end, "else") ? ELSE_WORD : -1;
+			case 5:
+				return is(line, start, end, "while") ? WHILE : -1;
+			case 6:
+				return is(line, start, end, "switch") ? SWITCH : -1;
+			default:
+				return -1;
+		}
+	}
+
+	private int kind() {
+		return frameKind[frames - 1] / STAGES;
+	}
+
+	private int stage() {
+		return frameKind[frames - 1] % STAGES;
+	}
+
+	private void stage(int stage) {
+		frameKind[frames - 1] = kind() * STAGES + stage;
+	}
+
+	// A statement begins that is not finished at once. One nested
+	// deeper than is tracked gets no frame, and its braces are counted.
+	private void push(int kind, int stage) {
+		if (frames == MAX_NESTING) {
+			unsure = true;
+			untracked += kind == BLOCK ? 1 : 0;
+			return;
+		}
+		frameKind[frames] = kind * STAGES + stage;
+		frameFirst[frames] = locals.size();
+		frameParens[frames] = parens;
+		++frames;
+	}
+
+	// The innermost frame ends at offset, and with it what was
+	// declared in its scope.
+	private void pop(int offset) {
+		--frames;
+		locals.close(frameFirst[frames], offset);
+	}
+
+	// A statement ended at offset: it ends every statement it was the
+	// last part of. An "if" waits for an "else", a "do" for its
+	// "while".
+	private void finish(int offset) {
+		while (frames > 0) {
+			int stage = stage();
+			if (stage != SUBSTATEMENT && stage != ELSE) {
+				return;
+			} else if (kind() == BLOCK) {
+				return;
+			} else if (kind() == IF && stage == SUBSTATEMENT) {
+				locals.close(frameFirst[frames - 1], offset);
+				stage(BEFORE_ELSE);
+				return;
+			} else if (kind() == DO) {
+				locals.close(frameFirst[frames - 1], offset);
+				stage(BEFORE_WHILE);
+				return;
+			}
+			pop(offset);
+		}
+	}
+
+	// The simple statement of a body ends at offset end, by right or
+	// because something else begins: it declares what it says, if it
+	// is a declaration.
+	private void endLocal(int end, boolean byRight) {
+		boolean declares = local == Local.DECLARATION ||
+				(local == Local.WORDS && statement.name(0,
+						statement.size()) >= 0);
+		unsure |= !byRight && (declares || local == Local.WORDS);
+		if (declares) {
+			List<Draft> declared = new ArrayList<>();
+			GlslSymbols.of(statement, statement.size(), end, null, false,
+					declared);
+			for (int i = 0, n = declared.size(); i < n; ++i) {
+				Draft draft = declared.get(i);
+				if (draft.kind != Kind.TYPE) {
+					addLocal(draft.name, draft.kind, draft.type, draft.start,
+							draft.end, draft.to);
+				}
+			}
+		}
+		statement.clear();
+		local = Local.START;
+		nesting = 0;
+	}
+
+	// Adds a local while there is room; names of declarations come
+	// before it, so it takes of what they leave.
+	private void addLocal(String name, Kind kind, String type, int start,
+			int end, int from) {
+		if (cut || locals.size() >= maxLocals || name.length() > room()) {
+			cut = true;
+			return;
+		}
+		chars += name.length();
+		locals.add(name, kind, type, start, end, from);
+	}
 
 	// A token inside the body of a function, which ends at end: only
 	// its braces count.
@@ -793,6 +1257,17 @@ final class GlslDeclarations implements Knowledge.Builder {
 		function = null;
 		mode = Mode.TOP;
 		braces = 0;
+		if (maxLocals > 0) {
+			// Statements that did not end end with the body.
+			unsure |= frames > 1 || local == Local.WORDS ||
+					local == Local.DECLARATION;
+			locals.close(frames > 0 ? frameFirst[0] : locals.size(), offset);
+			frames = 0;
+			untracked = 0;
+			statement.clear();
+			local = Local.START;
+			nesting = 0;
+		}
 	}
 
 	// ---- What was read --------------------------------------------------
@@ -814,6 +1289,9 @@ final class GlslDeclarations implements Knowledge.Builder {
 			length += part.name().length() + part.detail().length();
 		}
 		if (length < 0 || length > room()) {
+			// What it is made of goes with what is shown of it: this is
+			// no longer all there is to know.
+			unsure = true;
 			draft.detail = draft.name;
 			draft.documentation = null;
 			draft.parts = Collections.emptyList();

@@ -154,8 +154,10 @@ public interface Knowledge {
 	/**
 	 * Return what word, which stands at offset, refers to: a function
 	 * with every form it is declared in, else one symbol, or nothing.
-	 * The word says what is asked for, the offset from where; an offset
-	 * of -1 asks from outside of the text.
+	 * The word says what is asked for, the offset from where, so that a
+	 * local or a parameter is found where it can be seen and hides what
+	 * is declared outside; an offset of -1 asks from outside of the
+	 * text, by the name alone.
 	 */
 	List<Symbol> at(int offset, CharSequence word);
 
@@ -164,6 +166,16 @@ public interface Knowledge {
 	 * as written for a name and where the path stands.
 	 */
 	List<Symbol> links();
+
+	/**
+	 * Return whether this is all there is to know of the text: false
+	 * when a limit cut it short. What is not complete still answers
+	 * what it knows, but nothing that has to be certain may be built on
+	 * it.
+	 */
+	default boolean complete() {
+		return true;
+	}
 
 	/**
 	 * Return the regions that fold, as pairs of the first and the last

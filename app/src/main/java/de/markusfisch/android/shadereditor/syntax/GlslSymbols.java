@@ -30,6 +30,9 @@ final class GlslSymbols {
 		int to;
 		List<Symbol> parts = Collections.emptyList();
 		String type;
+		// Whether it has more parts than are kept: more than a symbol
+		// holds, or the fields of a struct without a name.
+		boolean cut;
 
 		Symbol symbol() {
 			return new Symbol(name, kind, detail, documentation, null, start,
@@ -52,6 +55,15 @@ final class GlslSymbols {
 	 */
 	static void of(GlslStatement statement, int size, int end,
 			String documentation, List<Draft> out) {
+		of(statement, size, end, documentation, true, out);
+	}
+
+	/**
+	 * As {@link #of}; without texts a variable has no text of how it is
+	 * written, for who keeps only its name and its type.
+	 */
+	static void of(GlslStatement statement, int size, int end,
+			String documentation, boolean texts, List<Draft> out) {
 		size = Math.min(size, statement.size());
 		if (size < 1) {
 			return;
@@ -60,8 +72,13 @@ final class GlslSymbols {
 		if (name >= 0) {
 			out.add(function(statement, name, size, end, documentation));
 		} else {
-			variables(statement, size, end, documentation, out);
+			variables(statement, size, end, documentation, texts, out);
 		}
+	}
+
+	// The type as the statement tells it, shared where it can be.
+	private static String type(GlslStatement s, int from, int name, int to) {
+		return GlslTypes.shared(s.type(from, name, to));
 	}
 
 	static String limit(String text) {
@@ -85,7 +102,7 @@ final class GlslSymbols {
 		draft.from = s.start(0);
 		draft.to = end;
 		draft.documentation = documentation;
-		draft.type = s.type(0, name, name);
+		draft.type = type(s, 0, name, name);
 		int close = s.afterClosing(name + 1, size);
 		draft.detail = detail(s, 0, close);
 		// Parameters: what stands between the commas.
@@ -105,6 +122,7 @@ final class GlslSymbols {
 			}
 		}
 		draft.parts = Collections.unmodifiableList(parameters);
+		draft.cut = parameters.size() >= MAX_PARTS;
 		return draft;
 	}
 
@@ -121,11 +139,11 @@ final class GlslSymbols {
 			parameters.add(new Symbol(s.text(name), Kind.PARAMETER,
 					detail(s, from, to), null, null, s.start(name),
 					s.end(name), s.start(from), s.end(to - 1),
-					Collections.emptyList(), s.type(from, name, to)));
+					Collections.emptyList(), type(s, from, name, to)));
 			return;
 		}
 		int words = s.afterWords(from, to);
-		String type = s.type(from, words, words);
+		String type = type(s, from, words, words);
 		if (type != null && !(type.equals("void") && to - from == 1)) {
 			int end = s.end(to - 1);
 			parameters.add(new Symbol("", Kind.PARAMETER,
@@ -137,7 +155,7 @@ final class GlslSymbols {
 	// The variables, the struct or the block the first size tokens
 	// declare, if any.
 	private static void variables(GlslStatement s, int size, int end,
-			String documentation, List<Draft> out) {
+			String documentation, boolean texts, List<Draft> out) {
 		int i = s.afterQualifiers(size);
 		if (i >= size || s.kind(i) == Token.PRECISION) {
 			return;
@@ -146,6 +164,8 @@ final class GlslSymbols {
 		// Where the type ends, and where the names follow it.
 		int typeTo;
 		int names;
+		// A struct without a name: its fields are kept nowhere.
+		boolean anonymous = false;
 		if (s.kind(i) == Token.STRUCT) {
 			int name = i + 1 < size && s.kind(i + 1) == Token.NAME
 					? i + 1 : -1;
@@ -157,6 +177,7 @@ final class GlslSymbols {
 					out.add(struct(s, name, typeTo, names, size, end,
 							documentation));
 				}
+				anonymous = name < 0;
 			} else if (name < 0) {
 				return;
 			} else if (typeTo >= size) {
@@ -180,16 +201,17 @@ final class GlslSymbols {
 		// Declarators: a name, brackets, an initializer, and a comma
 		// before the next.
 		Kind kind = kind(s, typeTo);
-		String type = detail(s, 0, typeTo);
+		String type = texts ? detail(s, 0, typeTo) : null;
 		boolean first = true;
 		for (i = names; i < size && s.kind(i) == Token.NAME; ) {
 			int next = s.afterDeclarator(i, size);
-			Draft draft = variable(s, kind, i, type + " " +
-					detail(s, i, next), first ? from : s.start(i),
+			Draft draft = variable(s, kind, i, texts ? type + " " +
+					detail(s, i, next) : null, first ? from : s.start(i),
 					next >= size ? end : s.end(next - 1), documentation);
 			// The type stands before the first name: the brackets of
 			// each name are its own.
-			draft.type = arrayOf(s, s.type(0, typeTo, typeTo), i, next);
+			draft.type = arrayOf(s, type(s, 0, typeTo, typeTo), i, next);
+			draft.cut = anonymous;
 			out.add(draft);
 			first = false;
 			i = next + 1;
@@ -249,7 +271,7 @@ final class GlslSymbols {
 		Draft draft = new Draft();
 		draft.name = s.text(name);
 		draft.kind = kind;
-		draft.detail = limit(detail);
+		draft.detail = detail == null ? null : limit(detail);
 		draft.start = s.start(name);
 		draft.end = s.end(name);
 		draft.from = from;
@@ -275,6 +297,7 @@ final class GlslSymbols {
 		draft.to = close >= size ? end : s.end(close - 1);
 		draft.documentation = documentation;
 		draft.parts = fields(s, open + 1, closed ? close - 1 : close);
+		draft.cut = draft.parts.size() >= MAX_PARTS;
 		return draft;
 	}
 
@@ -296,7 +319,7 @@ final class GlslSymbols {
 			}
 			int name = s.name(i, stop);
 			String type = name < 0 ? null : detail(s, i, name);
-			String whole = name < 0 ? null : s.type(i, name, name);
+			String whole = name < 0 ? null : type(s, i, name, name);
 			for (int at = name; at >= 0 && at < stop &&
 					fields.size() < MAX_PARTS; ) {
 				int next = s.afterDeclarator(at, stop);
