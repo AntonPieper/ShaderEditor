@@ -764,7 +764,16 @@ final class CodeViewSourceEditor implements SourceEditor {
 			Syntax.Call call = styles.syntax().call(
 					n -> styles.runs(n).line(), line, column);
 			if (call != null) {
-				found = docs.signature(call.name(), call.argument());
+				// The form by the types of the arguments before the
+				// caret: read from the tokens the call was found in.
+				Analysis analysis = view.getAnalysis();
+				found = docs.signature(call.name(), call.argument(),
+						styles.syntax().argumentTypes(
+								n -> styles.runs(n).line(), call, line,
+								column, document.text().lineStart(
+										call.line()),
+								analysis.knowledge(), analysis.revision() ==
+										document.revision(), scope));
 			}
 		}
 		if (!Objects.equals(found, signature)) {

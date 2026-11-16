@@ -50,6 +50,15 @@ public final class GlslSyntax implements Syntax {
 	}
 
 	@Override
+	public List<String> argumentTypes(Lines lines, Call call, int line,
+			int column, int lineStart, Knowledge known, boolean current,
+			Knowledge.Scope outside) {
+		return GlslCompletion.argumentTypes(lines, call, line, column,
+				lineStart, known instanceof GlslKnowledge glsl ? glsl
+						: GlslKnowledge.NONE, current, outside);
+	}
+
+	@Override
 	public Indentation indentation() {
 		return Indentation.C;
 	}

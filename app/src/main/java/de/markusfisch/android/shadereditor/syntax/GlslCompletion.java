@@ -124,6 +124,68 @@ public final class GlslCompletion {
 				current ? lineStart + start : -1, extraWords));
 	}
 
+	/**
+	 * The types of the arguments of call that stand before the caret at
+	 * column of line, see {@link Syntax#argumentTypes}: read from the
+	 * tokens between the name called and the caret, which {@link #call}
+	 * bounded, with what names mean where the caret is.
+	 */
+	public static List<String> argumentTypes(Syntax.Lines lines,
+			Syntax.Call call, int line, int column, int lineStart,
+			GlslKnowledge known, boolean current, Knowledge.Scope outside) {
+		GlslStatement statement = new GlslStatement();
+		int budget = CALL_TOKENS;
+		// Where a line starts only has to grow from line to line.
+		int offset = 0;
+		for (int n = call.line(); n <= line && budget > 0; ++n) {
+			LexedLine tokens = lines.line(n);
+			String text = tokens.text();
+			// From the name called on: what stands before it in its
+			// line is not looked at, however much that is.
+			int i = n == call.line() ? tokens.indexAt(call.start()) : 0;
+			if (i < 0) {
+				return Collections.emptyList();
+			}
+			for (int size = tokens.size(); i < size && budget > 0; ++i) {
+				int start = tokens.start(i);
+				if (n == line && start >= column) {
+					break;
+				}
+				// Every token looked at counts, whatever it is.
+				--budget;
+				if (tokens.style(i) == Style.COMMENT) {
+					continue;
+				}
+				// A word the caret is in ends at the caret.
+				int end = n == line ? Math.min(column, tokens.end(i))
+						: tokens.end(i);
+				statement.add(text, start, end, offset + start,
+						GlslStatement.Token.of(tokens.style(i), text, start,
+								tokens.end(i)));
+			}
+			offset += text.length() + 1;
+		}
+		// The name, the "(", and the arguments. Of more than is read
+		// no type is told: half an argument has another one.
+		return budget <= 0 || statement.size() < 2
+				? Collections.emptyList()
+				: GlslExpression.arguments(statement, 2, statement.size(),
+						known.names(place(lineStart, call.start(), current),
+								outside));
+	}
+
+	/**
+	 * Tell whether a function with parameters of these types takes
+	 * arguments of these types as its first ones; a type that is null
+	 * is not known and fits. A parameter type of one capital letter, as
+	 * the documentation writes a function for many types, stands for
+	 * one type throughout.
+	 */
+	public static boolean takes(List<String> parameters,
+			List<String> arguments) {
+		return GlslTypes.accepts(parameters, arguments);
+	}
+
 	/** The most tokens before a "." that are read for its value. */
 	private static final int MEMBER_TOKENS = 200;
 

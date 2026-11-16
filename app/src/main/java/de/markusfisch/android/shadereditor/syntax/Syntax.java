@@ -96,4 +96,22 @@ public interface Syntax {
 	default Call call(Lines lines, int line, int column) {
 		return null;
 	}
+
+	/**
+	 * Return the types of the arguments of call that are written before
+	 * the caret at column of line, in their order and as the language
+	 * names types; null for one whose type cannot be told. A language
+	 * without types has none. It reads no more than {@link #call} did.
+	 *
+	 * @param lineStart the offset in the text of the line the name
+	 *                  called stands in
+	 * @param known     what the last analysis knows of the text
+	 * @param current   whether known is of the current text
+	 * @param outside   what is declared outside of the text for it
+	 */
+	default List<String> argumentTypes(Lines lines, Call call, int line,
+			int column, int lineStart, Knowledge known, boolean current,
+			Knowledge.Scope outside) {
+		return java.util.Collections.emptyList();
+	}
 }

@@ -99,6 +99,29 @@ public final class GlslDocs {
 		return names;
 	}
 
+	/**
+	 * Return the types of the parameters of a form, in their order: the
+	 * word before each name, without what qualifies it, or the type
+	 * alone where a parameter has no name.
+	 */
+	@NonNull
+	public static List<String> parameterTypes(@NonNull String form) {
+		List<String> types = new ArrayList<>();
+		int open = form.indexOf('(');
+		int close = form.lastIndexOf(')');
+		if (open < 0 || close < open) {
+			return types;
+		}
+		for (String parameter : form.substring(open + 1, close).split(",")) {
+			String[] words = parameter.trim().split("\\s+");
+			String type = words[words.length > 1 ? words.length - 2 : 0];
+			if (!type.isEmpty()) {
+				types.add(type);
+			}
+		}
+		return types;
+	}
+
 	@NonNull
 	public Collection<Entry> entries() {
 		return Collections.unmodifiableCollection(entries.values());
