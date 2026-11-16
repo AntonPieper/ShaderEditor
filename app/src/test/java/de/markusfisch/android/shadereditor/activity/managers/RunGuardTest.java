@@ -52,8 +52,7 @@ public class RunGuardTest {
 		assertEquals("", kept.pending);
 	}
 
-	// A file that drew a frame, or whose screen left the front, is
-	// not pending anymore.
+	// A file that drew a frame is not pending anymore.
 	@Test
 	public void aFileThatRanIsNotHeld() {
 		RunGuard guard = new RunGuard(kept);
@@ -61,6 +60,33 @@ public class RunGuardTest {
 		guard.ran();
 
 		assertFalse(new RunGuard(kept).holds("lib", "Fine.frag"));
+	}
+
+	// A file that drew a frame is handed to the engine again, as on
+	// every edit: the app ended after that, as by an update, ended on
+	// no file that was starting.
+	@Test
+	public void aFileThatDrewIsNotPendingAgainInThatRun() {
+		RunGuard guard = new RunGuard(kept);
+		guard.running("lib", "Fine.frag");
+		guard.ran();
+		guard.running("lib", "Fine.frag");
+
+		assertEquals("", kept.pending);
+		assertFalse(new RunGuard(kept).holds("lib", "Fine.frag"));
+	}
+
+	// A screen that left the front drew nothing: the file is pending
+	// again when it is handed over again.
+	@Test
+	public void aFileThatOnlyLeftTheFrontIsPendingAgain() {
+		RunGuard guard = new RunGuard(kept);
+		guard.running("lib", "New.frag");
+		guard.left();
+		assertEquals("", kept.pending);
+		guard.running("lib", "New.frag");
+
+		assertTrue(new RunGuard(kept).holds("lib", "New.frag"));
 	}
 
 	// The hold lasts over starts, and while other files run, until
