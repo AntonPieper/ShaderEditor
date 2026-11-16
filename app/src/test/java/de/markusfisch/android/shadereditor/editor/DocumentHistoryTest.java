@@ -472,6 +472,67 @@ public class DocumentHistoryTest {
 		assertFalse(document.isModified());
 	}
 
+	// The lines a rename changed are a step of the rename: Undo asks it
+	// and changes nothing by itself.
+	@Test
+	public void undoOfALinkedStepAsksItsAction() {
+		Document document = document("input \"wide.frag\"\n");
+		document.type(0, 0, Text.of("x"));
+		int[] asked = {0};
+		Document.Link link = d -> ++asked[0];
+		document.beginBatch();
+		document.replace(8, 12, Text.of("range"));
+		document.link(link);
+		document.endBatch();
+
+		document.undo();
+
+		assertEquals(1, asked[0]);
+		assertEquals("xinput \"range.frag\"\n", document.text().toString());
+		assertTrue(document.endsWith(link));
+	}
+
+	// The rename taken back takes its step back; Redo cannot make the
+	// lines again without the rename, and earlier steps stay.
+	@Test
+	public void aLinkedStepTakenBackCannotBeRedone() {
+		Document document = document("input \"wide.frag\"\n");
+		document.type(0, 0, Text.of("x"));
+		Document.Link link = d -> d.undoLinked(null);
+		document.beginBatch();
+		document.replace(8, 12, Text.of("range"));
+		document.link(link);
+		document.endBatch();
+
+		document.undoLinked(link);
+
+		assertEquals("xinput \"wide.frag\"\n", document.text().toString());
+		assertFalse(document.canRedo());
+		document.undo();
+		assertEquals("input \"wide.frag\"\n", document.text().toString());
+	}
+
+	// What is kept over a restart begins behind the rename: Undo stops
+	// there instead of taking back its lines alone.
+	@Test
+	public void theHistoryKeptBeginsBehindALinkedStep() {
+		Document document = document("input \"wide.frag\"\n");
+		document.type(0, 0, Text.of("x"));
+		document.beginBatch();
+		document.replace(8, 12, Text.of("range"));
+		document.link(d -> {
+		});
+		document.endBatch();
+		now[0] += 2000;
+		document.type(0, 0, Text.of("y"));
+
+		Document restored = document(document.text().toString());
+		assertTrue(restored.restore(document.history()));
+		restored.undo();
+		assertEquals("xinput \"range.frag\"\n", restored.text().toString());
+		assertFalse(restored.canUndo());
+	}
+
 	private Document document(String text) {
 		return new Document(Text.of(text), () -> now[0]);
 	}

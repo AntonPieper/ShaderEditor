@@ -21,7 +21,7 @@ public class RenameReferencesTest {
 	public void changesTheListedLinesThatNameTheFileAsOneStep() {
 		Document document = new Document(Text.of(MAIN));
 		assertEquals(2, RenameReferences.change(document, path("main.frag"),
-				List.of(1, 4, 5), path("blur.frag"), path("soft.frag")));
+				List.of(1, 4, 5), path("blur.frag"), path("soft.frag"), null));
 		assertEquals("#pragma se input \"soft.frag\" filter=linear\n" +
 						"uniform sampler2D blur;\n" +
 						"#pragma se input \"fx/blur.frag\"\n" +
@@ -36,7 +36,7 @@ public class RenameReferencesTest {
 	public void leavesALineThatMovedAway() {
 		Document document = new Document(Text.of(MAIN));
 		assertEquals(0, RenameReferences.change(document, path("main.frag"),
-				List.of(2, 9), path("blur.frag"), path("soft.frag")));
+				List.of(2, 9), path("blur.frag"), path("soft.frag"), null));
 		assertEquals(MAIN, document.text().toString());
 	}
 

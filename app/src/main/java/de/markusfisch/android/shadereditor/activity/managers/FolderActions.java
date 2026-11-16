@@ -8,8 +8,10 @@ import androidx.annotation.Nullable;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.List;
+import java.util.Map;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.navigation.Level;
 import de.markusfisch.android.shadereditor.navigation.Moves;
 import de.markusfisch.android.shadereditor.navigation.Row;
@@ -151,24 +153,75 @@ final class FolderActions {
 						}
 						shown[0].dismiss();
 						if (moved instanceof OpenProject.Renamed && follow) {
-							RenameReferences.change(project, named, path, to);
+							RenameReferences.change(project, named, path, to,
+									undoable(key, project, path, to));
 						}
-						// What ran by the rule, as main.frag, keeps running
-						// under its new name.
-						if (moved instanceof OpenProject.Renamed &&
-								running != null && Moves.within(
-								running.toString(), path.toString())) {
-							ProjectPath runs = ProjectPath.parse(
-									Moves.renamed(running.toString(),
-											path.toString(), to.toString()))
-									.value();
-							if (!runs.equals(project.running())) {
-								project.runThisFile(runs);
-							}
+						if (moved instanceof OpenProject.Renamed) {
+							follow(project, running, path, to);
 						}
 						answered(key, path, moved, R.string.nav_cannot_rename);
 					});
 				});
+	}
+
+	// One Undo in a file whose lines the rename changed renames the file
+	// back and takes back those lines in every file, or does nothing and
+	// says why: a file changed since, or the old name is taken.
+	@NonNull
+	private RenameReferences.Rename undoable(@NonNull String key,
+			@NonNull OpenProject project, @NonNull ProjectPath from,
+			@NonNull ProjectPath to) {
+		return new RenameReferences.Rename() {
+			private boolean taking;
+
+			@Override
+			public void undo(Document document) {
+				if (taking) {
+					return;
+				}
+				for (Map.Entry<Document, ProjectPath> entry :
+						changed.entrySet()) {
+					Document changedOne = entry.getKey();
+					ProjectPath file = entry.getValue();
+					if (project.document(file) != changedOne ||
+							!changedOne.endsWith(this)) {
+						host.tell(activity.getString(R.string.rename_not_undone,
+								from.getFileName(), file.getFileName()));
+						return;
+					}
+				}
+				taking = true;
+				ProjectPath running = project.running();
+				project.rename(to, from, moved -> {
+					taking = false;
+					if (moved instanceof OpenProject.Renamed) {
+						for (Document changedOne : changed.keySet()) {
+							changedOne.undoLinked(this);
+						}
+						follow(project, running, to, from);
+						host.tell(activity.getString(R.string.rename_undone,
+								from.getFileName()));
+					}
+					answered(key, to, moved, R.string.nav_cannot_rename);
+				});
+			}
+		};
+	}
+
+	// What ran by the rule, as main.frag, keeps running under its new
+	// name.
+	private static void follow(@NonNull OpenProject project,
+			@Nullable ProjectPath running, @NonNull ProjectPath from,
+			@NonNull ProjectPath to) {
+		if (running == null ||
+				!Moves.within(running.toString(), from.toString())) {
+			return;
+		}
+		ProjectPath runs = ProjectPath.parse(Moves.renamed(
+				running.toString(), from.toString(), to.toString())).value();
+		if (!runs.equals(project.running())) {
+			project.runThisFile(runs);
+		}
 	}
 
 	// What a rename or deletion did, told and shown in the list.
