@@ -67,6 +67,8 @@ public class LifecycleSequencesTest {
 		KEEP,
 		/** The user saves. */
 		SAVE,
+		/** The app saves by itself, as on leaving or switching files. */
+		AUTOSAVE,
 		/** The app goes to the background: flush(done). */
 		BACKGROUND,
 		/** The project is closed. */
@@ -138,7 +140,14 @@ public class LifecycleSequencesTest {
 		 * stored file and a refresh saw it; FAIL fails journal and
 		 * history.
 		 */
-		CHANGED(4, 3469);
+		CHANGED(4, 3469),
+		/**
+		 * The same, where the user chose to keep their edits, the
+		 * process died, and the other app wrote again before anything
+		 * was saved. With AUTOSAVE, the save nobody asked for: it never
+		 * uses the consent, and no save writes over the second text.
+		 */
+		KEPT_THEN_CHANGED(4, 3989);
 
 		private final int length;
 		private final int sequences;
@@ -221,6 +230,67 @@ public class LifecycleSequencesTest {
 		world.steps.settle();
 		assertEquals("typed 1", journaled());
 		assertTrue(putAside().isEmpty());
+	}
+
+	@Test
+	public void tellsWhatAnotherAppDidToEachFile() {
+		MemoryProjectFiles store = new MemoryProjectFiles();
+		store.writable = true;
+		for (String name : List.of("clean", "mine", "gone", "lost")) {
+			store.put(name + ".glsl", "stored");
+		}
+		Steps steps = new Steps();
+		OpenProject project = OpenProject.open(id, store, null, null,
+				new ProjectSessions(sessionsDir), steps.worker, steps.main,
+				steps.timers, OpenProject.MAX_BUDGET);
+		for (String name : List.of("clean", "mine", "gone", "lost")) {
+			project.load(path(name), ProjectFiles.UNKNOWN, problem -> {
+			});
+		}
+		steps.settle();
+		for (String name : List.of("mine", "gone")) {
+			project.document(path(name)).replace(0, 6, Text.of("typed"));
+		}
+		store.put("clean.glsl", "theirs");
+		store.put("mine.glsl", "theirs");
+		store.delete(path("gone"));
+		store.delete(path("lost"));
+		project.refresh(reread -> {
+		});
+		steps.settle();
+
+		// Without unsaved text the stored text is taken, as one undo step.
+		Document clean = project.document(path("clean"));
+		assertEquals("theirs", clean.text().toString());
+		assertNull(project.conflict(path("clean")));
+		clean.undo();
+		assertEquals("stored", clean.text().toString());
+		// Changed, with unsaved text: a conflict over what was seen.
+		assertNotNull(project.conflict(path("mine")));
+		assertEquals(FileTexts.Found.CHANGED, project.found(path("mine")));
+		assertNotNull(project.seen(path("mine")));
+		// Deleted, with unsaved text: a conflict over no file.
+		assertNotNull(project.conflict(path("gone")));
+		assertEquals(FileTexts.Found.MISSING, project.found(path("gone")));
+		assertNull(project.seen(path("gone")));
+		// Deleted without unsaved text and not shown: no file of the
+		// folder anymore.
+		assertNull(project.conflict(path("lost")));
+		assertNull(project.document(path("lost")));
+
+		// Nothing can be read: no conflict, and the text stays unsaved.
+		store.unreadable = "it cannot be read";
+		project.refresh(reread -> {
+		});
+		steps.settle();
+		assertNull(project.conflict(path("mine")));
+		assertEquals(FileTexts.Found.UNAVAILABLE,
+				project.found(path("mine")));
+		assertTrue(project.unsaved().contains(path("mine")));
+	}
+
+	private static ProjectPath path(String name) {
+		return ProjectPath.parse(name + ".glsl").value();
 	}
 
 	private void explore(Start start, List<Step> prefix) {
@@ -351,10 +421,12 @@ public class LifecycleSequencesTest {
 		// How many texts the file had had when its deletion was asked
 		// for, -1 when it was not.
 		private int deleteAt = -1;
-		// Whether another app wrote the file, and whether the user chose
-		// to keep their edits over what it wrote.
-		private boolean theirs;
-		private boolean kept;
+		// What another app wrote last, null when it wrote nothing; each
+		// text it wrote by the revision it has; and those of them the
+		// user chose to keep their edits over, as they saw them.
+		private String theirs;
+		private final Map<String, String> written = new java.util.HashMap<>();
+		private final Set<String> kept = new HashSet<>();
 		private final Start start;
 		private final File[] failing;
 		// Whether everything close asked for could be written so far.
@@ -416,14 +488,30 @@ public class LifecycleSequencesTest {
 			if (start == Start.GONE) {
 				store.delete(A);
 			}
-			if (start == Start.CHANGED) {
-				store.put("a.glsl", "theirs");
-				theirs = true;
+			if (start == Start.CHANGED || start == Start.KEPT_THEN_CHANGED) {
+				outside("theirs");
 				project.refresh(reread -> {
 				});
 				steps.settle();
 				assertEquals(Set.of(A), project.conflicts().keySet());
 			}
+			if (start == Start.KEPT_THEN_CHANGED) {
+				take(Step.KEEP, "kept");
+				project.persist();
+				steps.settle();
+				see(Step.MAIN, "kept");
+				assertEquals(Set.of("theirs"), kept);
+				die("kept");
+				assertTrue(project.conflicts().isEmpty());
+				outside("theirs 2");
+			}
+		}
+
+		// Another app writes text to the file.
+		private void outside(String text) {
+			store.put("a.glsl", text);
+			theirs = text;
+			written.put(store.read(A).revision(), text);
 		}
 
 		private void open() {
@@ -476,7 +564,10 @@ public class LifecycleSequencesTest {
 							start != Start.SAVED && start != Start.MOVED &&
 							start != Start.LARGE && start != Start.GONE;
 					case KEEP -> !closed && step != last &&
-							start == Start.CHANGED;
+							(start == Start.CHANGED ||
+									start == Start.KEPT_THEN_CHANGED);
+					case AUTOSAVE -> !closed && step != last &&
+							start == Start.KEPT_THEN_CHANGED;
 					case RENAME, DELETE -> !closed && step != last &&
 							start == Start.MOVED && at() != null;
 					case CLOSE -> !closed && start != Start.LARGE;
@@ -535,10 +626,16 @@ public class LifecycleSequencesTest {
 					}
 				}
 				case KEEP -> {
-					kept |= project.conflicts().containsKey(A);
-					project.resolve(A, OpenProject.Choice.KEEP,
-							project.seen(A));
+					// Consent is for the text as it was seen then.
+					String seen = project.seen(A);
+					if (project.conflicts().containsKey(A) &&
+							written.containsKey(seen)) {
+						kept.add(written.get(seen));
+					}
+					project.resolve(A, OpenProject.Choice.KEEP, seen);
 				}
+				case AUTOSAVE -> project.save(false, outcomes -> {
+				});
 				case SAVE -> project.save(true, outcomes -> {
 					OpenProject.Outcome outcome = outcomes.get(A);
 					if (start == Start.GONE && at() == A &&
@@ -704,8 +801,9 @@ public class LifecycleSequencesTest {
 			theirsKept(sequence);
 			// Unsaved text over what another app wrote is in conflict
 			// again until the user chose to keep it.
-			if (theirs && !kept && document.isModified() &&
-					"theirs".equals(store.text("a.glsl"))) {
+			if (theirs != null && !kept.contains(theirs) &&
+					document.isModified() &&
+					theirs.equals(store.text("a.glsl"))) {
 				assertTrue(sequence + ": unsaved text over theirs without" +
 						" a conflict", project.conflicts().containsKey(A));
 			}
@@ -741,8 +839,9 @@ public class LifecycleSequencesTest {
 		// What another app wrote is written over only after the user saw
 		// it in their document, or chose to keep their edits over it.
 		private void theirsKept(String sequence) {
-			if (theirs && !kept && !texts.contains("theirs")) {
-				assertEquals(sequence + ": wrote over their text", "theirs",
+			if (theirs != null && !kept.contains(theirs) &&
+					!texts.contains(theirs)) {
+				assertEquals(sequence + ": wrote over their text", theirs,
 						store.text("a.glsl"));
 			}
 		}

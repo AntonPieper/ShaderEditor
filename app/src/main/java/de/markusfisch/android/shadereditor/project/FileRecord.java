@@ -286,10 +286,24 @@ final class FileRecord {
 		return switch (found) {
 			case SAME, UNAVAILABLE -> null;
 			case MISSING -> base != null ? "the file was deleted" : null;
+			case NOT_TEXT -> "the file is not text anymore";
+			case TOO_LARGE -> "the file is too large now";
 			default -> base == null
 					? "the file exists"
 					: "the file has changed";
 		};
+	}
+
+	/**
+	 * Return whether the user can decide the conflict: storage holds a
+	 * text to reload, at a revision keeping can consent to, or holds no
+	 * file. What is there instead of text, a picture or a file too
+	 * large, is in conflict too, so no save writes over it, but nothing
+	 * of it can be reloaded and nothing consents to writing over it.
+	 */
+	boolean decides() {
+		return conflict() != null && (found == FileTexts.Found.CHANGED ||
+				found == FileTexts.Found.MISSING);
 	}
 
 	/**

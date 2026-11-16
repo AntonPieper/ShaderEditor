@@ -479,8 +479,12 @@ public final class FileTexts {
 		} else if (content.bytes().length > Document.MAX_BYTES) {
 			return new Checked(Found.TOO_LARGE, null, revision, false);
 		} else if (unsaved) {
-			return new Checked(Found.CHANGED, null, revision,
-					holds(content.bytes(), path, mine));
+			// What is there now may be no text at all: then nothing of
+			// it can be reloaded, and it is told as that.
+			return decode(content.bytes()) == null
+					? new Checked(Found.NOT_TEXT, null, revision, false)
+					: new Checked(Found.CHANGED, null, revision,
+							holds(content.bytes(), path, mine));
 		}
 		Text text = decode(content.bytes());
 		return text != null

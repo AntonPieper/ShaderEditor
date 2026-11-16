@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.project;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -197,6 +198,30 @@ public class FileRecordTest {
 		assertFalse(record.observe(check, FileTexts.Found.SAME, "r2"));
 		assertEquals("the file was deleted", record.conflict());
 		assertNull(record.seen);
+	}
+
+	@Test
+	public void whatIsNoTextAnymoreIsInConflictButNothingToDecide() {
+		open("stored", "r1");
+		record.document().replace(0, 6, Text.of("mine"));
+		for (FileTexts.Found found : List.of(FileTexts.Found.NOT_TEXT,
+				FileTexts.Found.TOO_LARGE)) {
+			Request check = record.start(Kind.CHECK);
+			record.observe(check, found, "r2");
+			record.end(check);
+			// No save writes over it, and neither reload nor keep is
+			// offered for it.
+			assertNotNull(record.conflict());
+			assertFalse(record.decides());
+		}
+		Request check = record.start(Kind.CHECK);
+		record.observe(check, FileTexts.Found.CHANGED, "r3");
+		record.end(check);
+		assertTrue(record.decides());
+		check = record.start(Kind.CHECK);
+		record.observe(check, FileTexts.Found.MISSING, null);
+		record.end(check);
+		assertTrue(record.decides());
 	}
 
 	@Test
