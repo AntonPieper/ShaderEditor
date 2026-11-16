@@ -72,6 +72,9 @@ interface SourceEditor {
 	@NonNull
 	View getView();
 
+	/** Return the height of one line of the text, in pixels. */
+	int getLineHeight();
+
 	void setListener(@NonNull Listener listener);
 
 	/** Return the text as it is. */

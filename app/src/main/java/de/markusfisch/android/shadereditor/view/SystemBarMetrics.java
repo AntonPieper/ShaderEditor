@@ -44,6 +44,7 @@ public class SystemBarMetrics {
 		if (mainLayout != null) {
 			setWindowInsets(mainLayout,
 					activity.findViewById(R.id.toolbar),
+					activity.findViewById(R.id.statusbar),
 					activity.findViewById(R.id.navbar),
 					insets);
 		}
@@ -52,6 +53,7 @@ public class SystemBarMetrics {
 	private static void setWindowInsets(
 			final View mainLayout,
 			@Nullable final View toolbar,
+			@Nullable final View statusbar,
 			@Nullable final View navbar,
 			@Nullable final Rect windowInsets) {
 		ViewCompat.setOnApplyWindowInsetsListener(mainLayout, (v, insets) -> {
@@ -76,6 +78,11 @@ public class SystemBarMetrics {
 			if (find != null) {
 				find.setPadding(find.getPaddingLeft(), bars.top,
 						find.getPaddingRight(), find.getPaddingBottom());
+			}
+			// Behind the status bar while the toolbar is not there.
+			if (statusbar != null) {
+				statusbar.getLayoutParams().height = bars.top;
+				statusbar.requestLayout();
 			}
 
 			if (navbar != null) {

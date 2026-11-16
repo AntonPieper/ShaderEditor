@@ -16,4 +16,19 @@ public class ToolbarSpaceTest {
 		assertTrue(ToolbarSpace.frameRateFits(220, 110, 300, 108));
 		assertFalse(ToolbarSpace.frameRateFits(210, 110, 300, 108));
 	}
+
+	@Test
+	public void theToolbarStepsAsideOnlyForTooLittleCode() {
+		// Landscape, docked keyboard: 8 px of code where a line is 37.
+		assertTrue(ToolbarSpace.stepsAside(true, 8, 37));
+		// Three whole lines are enough: the toolbar stays.
+		assertTrue(ToolbarSpace.stepsAside(true, 110, 37));
+		assertFalse(ToolbarSpace.stepsAside(true, 111, 37));
+		// A floating keyboard leaves the room: the toolbar stays.
+		assertFalse(ToolbarSpace.stepsAside(true, 700, 37));
+		// No on-screen keyboard, or no code shown: never.
+		assertFalse(ToolbarSpace.stepsAside(false, 8, 37));
+		// Less room than nothing, as in a split screen: aside.
+		assertTrue(ToolbarSpace.stepsAside(true, -40, 37));
+	}
 }

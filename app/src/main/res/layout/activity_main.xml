@@ -12,29 +12,49 @@
 		android:layout_height="match_parent">
 
 		<!-- LinearLayout to manage vertical space -->
-		<LinearLayout
+		<de.markusfisch.android.shadereditor.widget.FittingLinearLayout
 			android:id="@+id/main_layout"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:orientation="vertical">
 
-			<include layout="@layout/toolbar_main" />
+			<!-- The strip behind the status bar while the top bars step
+				aside for the code; the toolbar covers it otherwise. -->
+			<View
+				android:id="@+id/statusbar"
+				android:layout_width="match_parent"
+				android:layout_height="0dp"
+				android:background="@color/se_level_bar"
+				android:visibility="gone" />
 
 			<!-- Find, in the toolbar's place while it is open; made only
-				where the new editor finds. -->
+				where the new editor finds. Outside the top bars: it stays
+				while they step aside, as what is typed into it. -->
 			<ViewStub
 				android:id="@+id/find_bar_stub"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:layout="@layout/find_bar" />
 
-			<!-- What changed outside the app, for the file in the editor;
-				made only where shaders are files. -->
-			<ViewStub
-				android:id="@+id/conflict_bar_stub"
+			<!-- The toolbar and what hangs from it: they step aside
+				together while a keyboard leaves the code too little
+				room (UIManager). -->
+			<LinearLayout
+				android:id="@+id/top_bars"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
-				android:layout="@layout/conflict_bar" />
+				android:orientation="vertical">
+
+				<include layout="@layout/toolbar_main" />
+
+				<!-- What changed outside the app, for the file in the
+					editor; made only where shaders are files. -->
+				<ViewStub
+					android:id="@+id/conflict_bar_stub"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:layout="@layout/conflict_bar" />
+			</LinearLayout>
 
 			<!-- DrawerLayout with main content -->
 			<de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout
@@ -79,7 +99,7 @@
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content" />
 
-		</LinearLayout>
+		</de.markusfisch.android.shadereditor.widget.FittingLinearLayout>
 
 		<!-- Tunes one number of the code while the picture shows -->
 		<include layout="@layout/tuning_bar" />
