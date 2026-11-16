@@ -10,6 +10,7 @@ import org.junit.Test;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
+import de.markusfisch.android.shadereditor.syntax.GlslDocs;
 import de.markusfisch.android.shadereditor.syntax.GlslKnowledge;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 
@@ -95,14 +96,62 @@ public class WordDocsTest {
 	// in: the first with that many parameters.
 	@Test
 	public void choosesAFormByTheArgumentCount() {
-		List<List<String>> forms = List.of(List.of("y_over_x"),
-				List.of("y", "x"), List.of("a", "b", "c"));
-		assertEquals(List.of("y_over_x"), WordDocs.form(forms, 0));
-		assertEquals(List.of("y", "x"), WordDocs.form(forms, 1));
-		assertEquals(List.of("a", "b", "c"), WordDocs.form(forms, 2));
+		List<WordDocs.Form> forms = List.of(
+				form("T atan(T y_over_x)"), form("T atan(T y, T x)"),
+				form("float f(float a, float b, float c)"));
+		List<String> none = List.of();
+		assertEquals(List.of("y_over_x"), WordDocs.form(forms, 0, none));
+		assertEquals(List.of("y", "x"), WordDocs.form(forms, 1, none));
+		assertEquals(List.of("a", "b", "c"), WordDocs.form(forms, 2, none));
 		// More arguments than any form takes: the longest.
-		assertEquals(List.of("a", "b", "c"), WordDocs.form(forms, 5));
-		assertNull(WordDocs.form(List.of(), 0));
+		assertEquals(List.of("a", "b", "c"), WordDocs.form(forms, 5, none));
+		assertNull(WordDocs.form(List.of(), 0, none));
+	}
+
+	// Among the forms with that many parameters, the first that takes
+	// the arguments written so far.
+	@Test
+	public void choosesAFormByTheArgumentTypes() {
+		List<WordDocs.Form> mix = List.of(form("T mix(T x, T y, T a)"),
+				form("T mix(T x, T y, float a)"),
+				form("T mix(T x, T y, B a)"));
+		assertEquals("T T T", types(mix, 2, "vec3", "vec3"));
+		assertEquals("T T float", types(mix, 2, "vec3", "vec3", "float"));
+		assertEquals("T T T", types(mix, 2, "float", "float", "float"));
+		assertEquals("T T B", types(mix, 2, "vec3", "vec3", "bvec3"));
+		// What is not known fits, and what no form takes shows the
+		// first with that many parameters.
+		assertEquals("T T T", types(mix, 2, null, "vec3", null));
+		assertEquals("T T T", types(mix, 1, "vec3", "vec2"));
+		List<WordDocs.Form> own = List.of(form("float sd(vec2 p, float r)"),
+				form("float sd(vec3 p, float r)"),
+				form("float sd(vec3 p, vec3 size, float round)"));
+		assertEquals("vec2 float", types(own, 0));
+		assertEquals("vec2 float", types(own, 0, "vec2"));
+		assertEquals("vec3 float", types(own, 1, "vec3"));
+		assertEquals("vec3 vec3 float", types(own, 1, "vec3", "vec3"));
+		assertEquals("vec3 vec3 float", types(own, 2, null, null));
+		assertEquals(List.of("float", "vec3"), GlslDocs.parameterTypes(
+				"float f(in float a, const highp vec3 b)"));
+	}
+
+	private static WordDocs.Form form(String declaration) {
+		return new WordDocs.Form(GlslDocs.parameterNames(declaration),
+				GlslDocs.parameterTypes(declaration));
+	}
+
+	// The types of the form chosen, to tell forms of the same names
+	// apart.
+	private static String types(List<WordDocs.Form> forms, int argument,
+			String... types) {
+		List<String> names = WordDocs.form(forms, argument,
+				java.util.Arrays.asList(types));
+		for (WordDocs.Form form : forms) {
+			if (form.names() == names) {
+				return String.join(" ", form.types());
+			}
+		}
+		return null;
 	}
 
 	@Test

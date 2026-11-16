@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
+import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.syntax.GlslDocs;
 import de.markusfisch.android.shadereditor.syntax.GlslWords;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
@@ -405,7 +406,11 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	@Nullable
 	private Knowledge formsKnown;
 	@NonNull
-	private List<List<String>> forms = new ArrayList<>();
+	private List<Form> forms = new ArrayList<>();
+
+	/** A form of a function: its parameters' names and their types. */
+	record Form(@NonNull List<String> names, @NonNull List<String> types) {
+	}
 
 	/**
 	 * The call of name the strip shows while the caret is in argument,
@@ -416,11 +421,12 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	 * and answer from the next key on.
 	 */
 	@Nullable
-	SignatureView.Signature signature(@NonNull String name, int argument) {
+	SignatureView.Signature signature(@NonNull String name, int argument,
+			@NonNull List<String> types) {
 		// What the file declares may have changed with its text.
 		Knowledge known = host.declared();
 		if (!name.equals(formsOf) || known != formsKnown) {
-			List<List<String>> read = forms(name);
+			List<Form> read = forms(name);
 			if (read == null) {
 				return null;
 			}
@@ -428,45 +434,55 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 			formsKnown = known;
 			forms = read;
 		}
-		List<String> names = form(forms, argument);
+		List<String> names = form(forms, argument, types);
 		return names == null ? null
 				: new SignatureView.Signature(name, names, argument);
 	}
 
 	/**
-	 * The form the strip shows for the caret in argument: the first
-	 * that has that many parameters, else the one with the most; null
-	 * when there is none.
+	 * The form the strip shows for the caret in argument, the arguments
+	 * before it having these types as far as they can be told: the
+	 * first that has that many parameters and takes them; else the
+	 * first that has that many, else the one with the most. Null when
+	 * there is none.
 	 */
 	@Nullable
-	static List<String> form(@NonNull List<List<String>> forms,
-			int argument) {
+	static List<String> form(@NonNull List<Form> forms, int argument,
+			@NonNull List<String> types) {
+		List<String> first = null;
 		List<String> longest = null;
-		for (List<String> form : forms) {
-			if (form.size() > argument) {
-				return form;
-			} else if (longest == null || form.size() > longest.size()) {
-				longest = form;
+		for (Form form : forms) {
+			List<String> names = form.names();
+			if (names.size() > argument) {
+				if (GlslCompletion.takes(form.types(), types)) {
+					return names;
+				} else if (first == null) {
+					first = names;
+				}
+			} else if (longest == null || names.size() > longest.size()) {
+				longest = names;
 			}
 		}
-		return longest;
+		return first != null ? first : longest;
 	}
 
 	// The parameter names of every form of name; null while the docs
 	// are still being read.
 	@Nullable
-	private List<List<String>> forms(@NonNull String name) {
-		List<List<String>> found = new ArrayList<>();
+	private List<Form> forms(@NonNull String name) {
+		List<Form> found = new ArrayList<>();
 		if (GlslWords.style(name, 0, name.length()) == Style.IDENTIFIER) {
 			for (Knowledge.Symbol form : declared(name)) {
 				List<String> names = new ArrayList<>();
+				List<String> types = new ArrayList<>();
 				for (Knowledge.Symbol part : form.parts()) {
 					// A parameter without a name shows its type.
 					names.add(part.name().isEmpty() && part.type() != null
 							? part.type() : part.name());
+					types.add(part.type());
 				}
 				if (!names.isEmpty()) {
-					found.add(names);
+					found.add(new Form(names, types));
 				}
 			}
 			return found;
@@ -480,7 +496,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 			for (String form : entry.forms()) {
 				List<String> names = GlslDocs.parameterNames(form);
 				if (!names.isEmpty()) {
-					found.add(names);
+					found.add(new Form(names,
+							GlslDocs.parameterTypes(form)));
 				}
 			}
 		}

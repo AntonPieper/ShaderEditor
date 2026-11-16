@@ -401,6 +401,63 @@ public class GlslCompletionTest {
 	}
 
 	@Test
+	public void theTypesOfTheArgumentsBeforeTheCaret() {
+		String text = "struct Ray { vec3 origin; vec3 dir; };\n" +
+				"float sd(vec3 p, float r);\n" +
+				"void main() {\n" +
+				"\tRay ray;\n" +
+				"\tvec2 uv = gl_FragCoord.xy;\n" +
+				"\tfloat t = 1.0;\n" +
+				"\t|\n" +
+				"}\n";
+		assertEquals("[]", argumentTypes(text, "mix("));
+		assertEquals("[vec2]", argumentTypes(text, "mix(uv, "));
+		assertEquals("[vec2, vec3]", argumentTypes(text,
+				"mix(uv, ray.origin * t, "));
+		// The one being written counts as far as it is written.
+		assertEquals("[vec2, vec3]", argumentTypes(text,
+				"mix(uv, ray.origin"));
+		assertEquals("[vec2, vec3, null]", argumentTypes(text,
+				"mix(uv, ray.dir, unk"));
+		assertEquals("[vec2, float]", argumentTypes(text, "mix(uv, 0.5 + "));
+		// Calls inside, and over lines.
+		assertEquals("[float, vec3]", argumentTypes(text,
+				"x = max(sd(ray.origin, t), normalize(ray.dir), "));
+		assertEquals("[vec3]", argumentTypes(text,
+				"mix(a, sd(ray.origin +\n\t\tray.dir * t, "));
+		assertEquals("[null, vec4]", argumentTypes(text,
+				"f(unknown,\n\t\tvec4(uv, 0.0, 1.0),\n\t\t"));
+	}
+
+	private static String argumentTypes(String text, String typed) {
+		int at = text.indexOf('|');
+		String[] lines = (text.substring(0, at) + typed +
+				text.substring(at + 1)).split("\n", -1);
+		int caret = at + typed.length();
+		LexedLine[] lexed = new LexedLine[lines.length];
+		int state = GlslLexer.TEXT_START;
+		int[] starts = new int[lines.length];
+		int line = 0;
+		for (int n = 0, start = 0; n < lines.length; ++n) {
+			lexed[n] = LexedLine.of(GlslSyntax.INSTANCE, lines[n],
+					n < lines.length - 1, state, new LineTokens());
+			state = lexed[n].endState();
+			starts[n] = start;
+			if (start <= caret) {
+				line = n;
+			}
+			start += lines[n].length() + 1;
+		}
+		Syntax.Call call = GlslCompletion.call(n -> lexed[n], line,
+				caret - starts[line]);
+		// The knowledge is of the text before this was typed.
+		return String.valueOf(GlslCompletion.argumentTypes(n -> lexed[n],
+				call, line, caret - starts[line], starts[call.line()],
+				GlslKnowledge.of(text.replace("|", "")), false,
+				Knowledge.Scope.NONE));
+	}
+
+	@Test
 	public void theCallAroundTheCaretOfALongLine() {
 		// The caret is at the start of a line with a hundred thousand
 		// tokens behind it: they are not walked over.
@@ -434,5 +491,31 @@ public class GlslCompletionTest {
 		Syntax.Call call = GlslSyntax.INSTANCE.call(n -> lexed[n], line,
 				column);
 		return call == null ? null : call.name() + " " + call.argument();
+	}
+
+	// The tokens before the name called are not looked at: every token
+	// looked at takes of a budget of 400, so a call behind 60,000
+	// tokens would have no types if they were.
+	@Test
+	public void argumentTypesStartAtTheCall() {
+		for (int count : new int[]{0, 10000, 30000}) {
+			String text = "x;".repeat(count) + "mix(1., vec2(0.), ";
+			LexedLine line = LexedLine.of(GlslSyntax.INSTANCE, text, false,
+					Syntax.TEXT_START, new LineTokens());
+			Syntax.Call call = GlslCompletion.call(n -> line, 0,
+					text.length());
+			assertEquals(List.of("float", "vec2"),
+					GlslCompletion.argumentTypes(n -> line, call, 0,
+							text.length(), 0, GlslKnowledge.NONE, true,
+							Knowledge.Scope.NONE));
+		}
+		// Arguments of more tokens than are read tell no type at all.
+		String text = "mix(" + "1.+".repeat(300) + "1., vec2(0.), ";
+		LexedLine line = LexedLine.of(GlslSyntax.INSTANCE, text, false,
+				Syntax.TEXT_START, new LineTokens());
+		Syntax.Call call = new Syntax.Call("mix", 0, 0, 1);
+		assertEquals(List.of(), GlslCompletion.argumentTypes(n -> line,
+				call, 0, text.length(), 0, GlslKnowledge.NONE, true,
+				Knowledge.Scope.NONE));
 	}
 }
