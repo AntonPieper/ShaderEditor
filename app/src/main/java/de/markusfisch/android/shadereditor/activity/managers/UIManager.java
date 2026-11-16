@@ -6,6 +6,7 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
@@ -29,6 +30,7 @@ import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.opengl.PictureLimit;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.FileNameView;
+import de.markusfisch.android.shadereditor.widget.FindBar;
 import de.markusfisch.android.shadereditor.widget.FittingLinearLayout;
 import de.markusfisch.android.shadereditor.widget.PassesSheet;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
@@ -105,7 +107,7 @@ public class UIManager implements PassesSheet.Line {
 		// closing, Find closing, the conflict bar, the code shown.
 		FittingLinearLayout mainLayout = activity.findViewById(
 				R.id.main_layout);
-		mainLayout.setFit(this::fitTopBars);
+		mainLayout.setFit(layout -> fitTopBars(layout) | fitFind(layout));
 		// The one place that limits the picture for the code over it, for
 		// every way the code comes to be shown or not: the start, a
 		// restore, the code button, nothing open and something opened.
@@ -219,6 +221,31 @@ public class UIManager implements PassesSheet.Line {
 		topBars.setVisibility(aside ? View.GONE : View.VISIBLE);
 		statusbar.setVisibility(aside ? View.VISIBLE : View.GONE);
 		return true;
+	}
+
+	// Put Find's row that replaces beside the find row while the rows one
+	// under the other leave the code too little room, as with a docked
+	// keyboard in landscape. Returns whether that changed.
+	private boolean fitFind(@NonNull FittingLinearLayout layout) {
+		FindBar find = layout.findViewById(R.id.find_bar);
+		if (find == null) {
+			return false;
+		}
+		// What the bars leave of the layout, which a keyboard pads, to
+		// the code, the child that takes the rest.
+		int room = layout.getMeasuredHeight() - layout.getPaddingTop() -
+				layout.getPaddingBottom();
+		for (int i = layout.getChildCount(); i-- > 0; ) {
+			View child = layout.getChildAt(i);
+			if (child != find && child.getVisibility() != View.GONE &&
+					((LinearLayout.LayoutParams) child.getLayoutParams())
+							.weight == 0) {
+				room -= child.getMeasuredHeight();
+			}
+		}
+		return find.setOneRow(ToolbarSpace.findInOneRow(find.isReplacing(),
+				room - find.stackedHeight(),
+				editorFragment.getLineHeight()));
 	}
 
 	// The height of the top bars, measured on their own while they are

@@ -3,7 +3,8 @@ package de.markusfisch.android.shadereditor.activity.managers;
 /**
  * How the editor's toolbar shares the room: across, between its title
  * and the quality chip, where the title comes first; down, with the code
- * while a keyboard is open, where the code comes first.
+ * while a keyboard is open, where the code comes first. Find, in the
+ * toolbar's place, gives the code the same room.
  */
 final class ToolbarSpace {
 	/** Fewer lines of code than this make the toolbar step aside. */
@@ -23,7 +24,27 @@ final class ToolbarSpace {
 	 * @param lineHeight height of one line of code
 	 */
 	static boolean stepsAside(boolean typing, int room, int lineHeight) {
-		return typing && room < MIN_LINES * lineHeight;
+		return typing && isShort(room, lineHeight);
+	}
+
+	/**
+	 * Return whether Find puts its row that replaces beside the find row
+	 * instead of under it: only while it replaces, and the code would
+	 * show fewer than {@link #MIN_LINES} lines with the rows one under
+	 * the other.
+	 *
+	 * @param replacing  the row that replaces shows
+	 * @param room       height of the code with the rows one under the
+	 *                   other
+	 * @param lineHeight height of one line of code
+	 */
+	static boolean findInOneRow(boolean replacing, int room,
+			int lineHeight) {
+		return replacing && isShort(room, lineHeight);
+	}
+
+	private static boolean isShort(int room, int lineHeight) {
+		return room < MIN_LINES * lineHeight;
 	}
 
 	/**

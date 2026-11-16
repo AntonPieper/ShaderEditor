@@ -91,6 +91,9 @@ public class FindBar extends LinearLayout {
 	private EditText field;
 	private EditText replacement;
 	private View replaceRow;
+	// Where the row that replaces starts under the find row: under the
+	// field.
+	private int replaceIndent;
 	private TextView count;
 	private View previous;
 	private View next;
@@ -127,6 +130,7 @@ public class FindBar extends LinearLayout {
 		row = findViewById(R.id.find_row);
 		field = findViewById(R.id.find_field);
 		replaceRow = findViewById(R.id.replace_row);
+		replaceIndent = replaceRow.getPaddingStart();
 		replacement = findViewById(R.id.replace_field);
 		findViewById(R.id.replace_one).setOnClickListener(v -> replace());
 		findViewById(R.id.replace_all).setOnClickListener(v ->
@@ -183,6 +187,44 @@ public class FindBar extends LinearLayout {
 	/** Return whether Find is open. */
 	public boolean isOpen() {
 		return state.open();
+	}
+
+	/** Return whether the row that replaces shows. */
+	public boolean isReplacing() {
+		return state.replacing();
+	}
+
+	/**
+	 * Return the measured height with the rows one under the other,
+	 * whether they are or not.
+	 */
+	public int stackedHeight() {
+		return getPaddingTop() + getPaddingBottom() +
+				row.getMeasuredHeight() + (replaceRow.getVisibility() == GONE
+				? 0
+				: replaceRow.getMeasuredHeight());
+	}
+
+	/**
+	 * Put the row that replaces beside the find row, where it takes
+	 * half the width and no indent, or under it, aligned with the field;
+	 * return whether that changed.
+	 */
+	public boolean setOneRow(boolean oneRow) {
+		if (oneRow == (getOrientation() == HORIZONTAL)) {
+			return false;
+		}
+		setOrientation(oneRow ? HORIZONTAL : VERTICAL);
+		for (View child : new View[]{row, replaceRow}) {
+			LayoutParams params = (LayoutParams) child.getLayoutParams();
+			params.width = oneRow ? 0 : LayoutParams.MATCH_PARENT;
+			params.weight = oneRow ? 1 : 0;
+			child.setLayoutParams(params);
+		}
+		replaceRow.setPaddingRelative(oneRow ? 0 : replaceIndent,
+				replaceRow.getPaddingTop(), replaceRow.getPaddingEnd(),
+				replaceRow.getPaddingBottom());
+		return true;
 	}
 
 	/** Run changed whenever Find opens or closes; none for null. */
