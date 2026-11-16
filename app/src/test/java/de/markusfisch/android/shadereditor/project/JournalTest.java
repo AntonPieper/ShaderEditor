@@ -404,11 +404,11 @@ public class JournalTest {
 		assertTrue(journal.snapshot(HEADER, 1, Text.of("mine")));
 		assertEquals(1, journal.putAside(A, 1));
 
-		assertTrue(journal.follow(new Move(A, b)));
+		assertTrue(journal.follow(journal.noted(new Move(A, b))).files().isEmpty());
 
 		assertTrue(journal.replaced(A).isEmpty());
 		assertEquals("mine", journal.replaced(b).get(0).text().toString());
-		assertTrue(journal.follow(new Move(b, null)));
+		assertTrue(journal.follow(journal.noted(new Move(b, null))).files().isEmpty());
 		assertTrue(journal.replaced(b).isEmpty());
 		assertEquals(0, dir.list().length);
 	}
@@ -426,9 +426,10 @@ public class JournalTest {
 			assertEquals(1, faulty.putAside(A, 1));
 			assertTrue(faulty.snapshot(HEADER, 2, Text.of("typed")));
 
+			Journal.Note note = faulty.noted(new Move(A, b));
 			disk.arm(at > 0 ? FaultyDisk.Fault.FAIL
 					: FaultyDisk.Fault.NONE, at);
-			boolean followed = faulty.follow(new Move(A, b));
+			boolean followed = faulty.follow(note).files().isEmpty();
 			operations = Math.max(operations, disk.disarm());
 
 			// Each text is there, under the old name or the new, or
@@ -453,7 +454,7 @@ public class JournalTest {
 				assertTrue(reader.replaced(A).isEmpty());
 			}
 			// Asked again, they follow.
-			assertTrue(faulty.follow(new Move(A, b)));
+			assertTrue(faulty.follow(faulty.noted(new Move(A, b))).files().isEmpty());
 			assertEquals("typed", reader.read(b).text().toString());
 			assertEquals("kept", reader.replaced(b).get(0).text()
 					.toString());
@@ -492,7 +493,7 @@ public class JournalTest {
 		}
 		journal.forget(A, 1);
 
-		assertTrue(journal.follow(new Move(A, b)));
+		assertTrue(journal.follow(journal.noted(new Move(A, b))).files().isEmpty());
 
 		// Not counted again from one: who knows it by 2 means this text.
 		assertEquals(2, journal.replaced(b).get(0).number());
@@ -548,6 +549,91 @@ public class JournalTest {
 	}
 
 	@Test
+	public void aNoteTouchesOnlyTheJournalItWasMadeFor() {
+		ProjectPath b = ProjectPath.parse("b.glsl").value();
+		Header first = new Header(A, null, false, null, false, 11);
+		assertTrue(journal.snapshot(first, 1, Text.of("given up")));
+		Journal.Note deletion = journal.noted(new Move(A, null));
+		assertEquals(List.of(new Journal.Noted(journal.file(A).getName(),
+				11)), deletion.files());
+		assertTrue(journal.setNote(deletion));
+		assertEquals(deletion, new Journal(dir).note());
+
+		// Text typed afterwards is another journal under the same
+		// name. The one that is there is not its earlier state: it is
+		// put aside, not written over.
+		assertTrue(journal.snapshot(new Header(A, null, false, null, false,
+				12), 1, Text.of("typed since")));
+		assertEquals("given up", journal.replaced(A).get(0).text()
+				.toString());
+
+		// Replayed, the note takes the journal it was made for, where
+		// that was put, and not the one that has its name now.
+		assertTrue(journal.follow(new Journal(dir).note()).files().isEmpty());
+		assertEquals("typed since", journal.read(A).text().toString());
+		assertTrue(journal.replaced(A).isEmpty());
+
+		// A rename is for the journals that were there as well.
+		assertEquals(1, journal.putAside(A, 1));
+		assertTrue(journal.snapshot(new Header(A, null, false, null, false,
+				14), 1, Text.of("typed on")));
+		Journal.Note rename = journal.noted(new Move(A, b));
+		assertTrue(journal.remove(A));
+		assertTrue(journal.snapshot(new Header(A, null, false, null, false,
+				13), 1, Text.of("of a new file")));
+		assertTrue(journal.follow(rename).files().isEmpty());
+		assertEquals("of a new file", journal.read(A).text().toString());
+		assertNull(journal.read(b));
+		// The text kept was noted, and follows.
+		assertEquals("typed since", journal.replaced(b).get(0).text()
+				.toString());
+	}
+
+	@Test
+	public void aNoteWithoutNamesFromBeforeTouchesNothing()
+			throws IOException {
+		assertTrue(journal.snapshot(HEADER, 1, Text.of("kept")));
+		java.io.ByteArrayOutputStream bytes =
+				new java.io.ByteArrayOutputStream();
+		java.io.DataOutputStream out = new java.io.DataOutputStream(bytes);
+		out.writeInt(0x53454a31);
+		out.writeUTF(A.toString());
+		out.writeBoolean(false);
+		out.writeUTF("");
+		Files.write(new File(dir, "moving").toPath(), bytes.toByteArray());
+
+		Journal.Note note = journal.note();
+		assertEquals(new Move(A, null), note.move());
+		assertTrue(journal.follow(note).files().isEmpty());
+		assertEquals("kept", journal.read(A).text().toString());
+	}
+
+	@Test
+	public void aJournalThatCouldNotBeReadIsPutAsideNotWrittenOver() {
+		FaultyDisk disk = new FaultyDisk();
+		Journal faulty = new Journal(dir, disk).own();
+		Header first = new Header(A, null, false, null, false, 21);
+		assertTrue(faulty.snapshot(first, 1, Text.of("hidden")));
+
+		// Another journal instance, which has not read it, cannot read
+		// it now, and is to write text of another identity there.
+		disk.denied = true;
+		Journal other = new Journal(dir, disk).own();
+		assertFalse("read back fails too", other.snapshot(new Header(A,
+				null, false, null, false, 22), 1, Text.of("typed")));
+		disk.denied = false;
+		assertNull(other.read(A));
+		assertEquals("hidden", other.replaced(A).get(0).text().toString());
+		assertTrue(other.snapshot(new Header(A, null, false, null, false,
+				22), 1, Text.of("typed")));
+		assertEquals("typed", other.read(A).text().toString());
+		// Its own earlier state is written over, as ever.
+		assertTrue(other.snapshot(new Header(A, null, false, null, false,
+				22), 2, Text.of("typed on")));
+		assertEquals(1, other.replaced(A).size());
+	}
+
+	@Test
 	public void aReadThatCameShortIsNoReadAndCutsNothing() {
 		FaultyDisk disk = new FaultyDisk();
 		Journal faulty = new Journal(dir, disk).own();
@@ -575,7 +661,6 @@ public class JournalTest {
 				new Journal(dir).read(A).text().toString());
 	}
 
-
 	@Test
 	public void bytesAfterTheLastWholeRecordAreNotCutButWrittenOver()
 			throws IOException {
@@ -591,7 +676,6 @@ public class JournalTest {
 				List.of(new Change(5, 0, "!"))));
 		assertEquals(torn, file.length());
 	}
-
 
 	@Test
 	public void aJournalNoMemoryCouldReadIsNotDamagedAndIsNotDismissed() {
@@ -621,10 +705,10 @@ public class JournalTest {
 		Journal.Move move = new Journal.Move(
 				ProjectPath.parse("lib").value(),
 				ProjectPath.parse("shaders").value());
-		assertTrue(journal.setMove(move));
-		assertEquals(move, new Journal(dir).move());
+		assertTrue(journal.setNote(journal.noted(move)));
+		assertEquals(move, new Journal(dir).note().move());
 
-		assertTrue(journal.follow(move));
+		assertTrue(journal.follow(journal.noted(move)).files().isEmpty());
 
 		Recovered followed = new Journal(dir).read(moved);
 		assertEquals(new Header(moved, "sha256:2", true, "sha256:2", true),
@@ -634,12 +718,20 @@ public class JournalTest {
 		assertNull(journal.read(inner));
 		assertEquals("beside", journal.read(beside).text().toString());
 
-		// One written under the new path since is not written over by
-		// one left behind; one that cannot be read moves as it is.
-		assertTrue(journal.snapshot(kept, 7, Text.of("left behind")));
-		assertTrue(journal.follow(move));
+		// One left behind goes when the new path holds exactly its
+		// text: that one is its successor, read back now.
+		assertTrue(journal.snapshot(kept, 7, Text.of("inner")));
+		assertTrue(journal.follow(journal.noted(move)).files().isEmpty());
 		assertEquals("inner", journal.read(moved).text().toString());
 		assertNull(journal.read(inner));
+		// That a journal is there under the new path proves nothing:
+		// one that holds another text is another text, and both stay.
+		assertTrue(journal.snapshot(kept, 7, Text.of("left behind")));
+		assertTrue(journal.follow(journal.noted(move)).files().isEmpty());
+		assertEquals("inner", journal.read(moved).text().toString());
+		assertEquals("left behind", journal.read(inner).text().toString());
+		assertTrue(journal.remove(inner));
+		// One that cannot be read moves as it is.
 		assertTrue(journal.snapshot(new Header(A, null, false, null), 1,
 				Text.of("damaged")));
 		File file = journal.file(A);
@@ -647,15 +739,15 @@ public class JournalTest {
 		bytes[bytes.length - 1] ^= 1;
 		Files.write(file.toPath(), bytes);
 		ProjectPath b = ProjectPath.parse("b.glsl").value();
-		assertTrue(journal.follow(new Journal.Move(A, b)));
+		assertTrue(journal.follow(journal.noted(new Journal.Move(A, b))).files().isEmpty());
 		assertFalse(file.exists());
 		assertNull(journal.read(b).text());
 
 		// A deletion takes them.
-		assertTrue(journal.follow(new Journal.Move(
-				ProjectPath.parse("shaders").value(), null)));
+		assertTrue(journal.follow(journal.noted(new Journal.Move(
+				ProjectPath.parse("shaders").value(), null))).files().isEmpty());
 		assertNull(journal.read(moved));
-		assertTrue(journal.setMove(null));
-		assertNull(journal.move());
+		assertTrue(journal.setNote(null));
+		assertNull(journal.note());
 	}
 }

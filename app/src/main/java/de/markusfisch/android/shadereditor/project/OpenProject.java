@@ -311,6 +311,9 @@ public final class OpenProject {
 	private Runnable release;
 	// Why the journal could not be made durable, or null.
 	private String unsynced;
+	// Whether the journals could not all be read when they were looked
+	// at, so a file may have unsaved text that no record tells of.
+	private boolean unscanned;
 	private List<ProjectDiagnostic> diagnostics = List.of();
 	private List<Used> used = List.of();
 	// What the files of the last build know of each other.
@@ -458,47 +461,25 @@ public final class OpenProject {
 		// dropped before the journals are looked at.
 		follow(sessions, id, project.texts.recover());
 		project.histories.trim();
-		Journal.Scan journals = journal.scan();
-		project.damaged = journals.damaged();
-		for (Journal.Header header : journals.headers().values()) {
-			FileTexts.Checked checked = project.texts.check(header.path(),
-					header.base(), null, true);
-			boolean stored = checked.found() == FileTexts.Found.SAME ||
-					checked.found() == FileTexts.Found.CHANGED;
-			if (checked.equal()) {
-				// Storage holds the text: saved before the process died,
-				// or written elsewhere.
-				journal.remove(header.path());
-			} else if (header.replaced() && stored &&
-					journal.putAside(header.path(), -1) >= 0) {
-				// A journal of the form before this one that held text
-				// a reload replaced: the file opens as stored, as the
-				// user asked, and undo leads to the text.
-			} else {
-				project.record(header.path()).recover(header,
-						checked.found(), checked.revision());
-			}
-		}
-		// Text a reload replaced, of a file that is gone and has no
-		// journal: there is no stored text for undo to lead back from,
-		// so the newest of it is the unsaved text of a file that is
-		// not there, to be found where such text is listed.
-		for (ProjectPath path : journal.replacedPaths()) {
-			if (!journals.headers().containsKey(path) &&
-					project.texts.check(path, null, null, false).found() ==
-							FileTexts.Found.MISSING &&
-					journal.promote(path)) {
-				Journal.Header header = journal.header(path);
-				if (header != null) {
-					project.record(path).recover(header,
-							FileTexts.Found.MISSING, null);
-				}
-			}
-		}
+		project.take(project.texts.journals(Set.of()));
 		project.shown = project.keptShown = sessions.shown(id);
 		project.running = project.findRunning(Map.of(),
 				project.journaled());
 		return project;
+	}
+
+	// Take what a look at the journals found: a record for each file
+	// with unsaved text that has none, and whether the look was whole.
+	private void take(FileTexts.Journals journals) {
+		damaged = journals.damaged();
+		unscanned = !journals.complete();
+		for (FileTexts.Unsaved unsaved : journals.unsaved()) {
+			ProjectPath path = unsaved.header().path();
+			if (!records.containsKey(path)) {
+				record(path).recover(unsaved.header(), unsaved.found(),
+						unsaved.revision());
+			}
+		}
 	}
 
 	// Let the file shown and the file chosen to run of session id
@@ -961,7 +942,10 @@ public final class OpenProject {
 
 	/**
 	 * Return why unsaved text is not kept in the journal, or null when
-	 * all of it that was written is.
+	 * all of it that was written is. Also when the journals could not
+	 * all be read when they were looked at: then a file may have
+	 * unsaved text that nothing shows, until {@link #refresh} could
+	 * read them.
 	 */
 	public String unprotected() {
 		for (FileRecord record : records.values()) {
@@ -970,7 +954,10 @@ public final class OpenProject {
 						" is not protected: " + record.failure();
 			}
 		}
-		return unsynced;
+		return unsynced != null ? unsynced : unscanned
+				? "unsaved text may be missing: the journal cannot be " +
+						"read now"
+				: null;
 	}
 
 	/**
@@ -1104,6 +1091,16 @@ public final class OpenProject {
 			++left[0];
 			record.whenIdle(() -> check(record, reread, checked));
 		}
+		if (unscanned) {
+			// The journals could not all be read before: looked at
+			// again, for the files nothing is known of yet.
+			++left[0];
+			texts.journals(new HashSet<>(records.keySet()), journals -> {
+				take(journals);
+				changed();
+				checked.run();
+			});
+		}
 		afterWorker(checked);
 	}
 
@@ -1202,8 +1199,10 @@ public final class OpenProject {
 	 * Return why the unsaved text of path could not be read when it was
 	 * opened, or null. The file then counts among those with unsaved
 	 * text, its document has the stored text, and the journal that
-	 * could not be read stays until {@link #dismiss} or until the text
-	 * is edited and kept again.
+	 * could not be read stays until {@link #dismiss}. When the text is
+	 * edited, that journal is put aside as it is before the text typed
+	 * is kept under its name: undo leads to it once the file is opened
+	 * again and it can be read.
 	 */
 	public String unreadable(ProjectPath path) {
 		FileRecord record = records.get(path);
@@ -1244,9 +1243,9 @@ public final class OpenProject {
 
 	/**
 	 * Give up the unsaved text of path that could not be read: its
-	 * journal is deleted when it is damaged, unless text typed since
-	 * took its place, and the file no longer counts as unsaved for it.
-	 * One the device only had no memory to read stays.
+	 * journal is deleted when it is damaged, and the file no longer
+	 * counts as unsaved for it. One that only could not be read stays,
+	 * and so does one that was put aside by text typed since.
 	 */
 	public void dismiss(ProjectPath path) {
 		FileRecord record = records.get(path);
@@ -2047,7 +2046,7 @@ public final class OpenProject {
 		Document document = opened.document();
 		if (records.get(record.path) != record ||
 				!record.adoptOpened(request, document, opened.revision(),
-						opened.journal(), opened.replaced())) {
+						opened.journal(), opened.id(), opened.replaced())) {
 			return false;
 		}
 		record.historyAt = document.revision();

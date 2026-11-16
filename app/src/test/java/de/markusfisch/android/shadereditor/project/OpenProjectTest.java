@@ -2035,6 +2035,115 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void typingWhereAJournalCouldNotBeReadKeepsWhatItHolds()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, shown(project, "a.glsl", "stored"), "hidden work");
+		flush(project);
+		// The process dies; the journal cannot be read when the file is
+		// opened again, so the stored text is shown.
+		disk.denied = true;
+		OpenProject unread = open();
+		Document fallback = shown(unread, "a.glsl");
+		assertEquals("stored", fallback.text().toString());
+		assertNotNull(unread.unreadable(a));
+		assertFalse(unread.damaged(a));
+		disk.denied = false;
+
+		// Typed into, without Discard and without Try again.
+		edit(unread, fallback, "typed in its place");
+		flush(unread);
+		assertEquals("typed in its place", journaled("a.glsl"));
+
+		// What the journal held was never shown, saved or given up: it
+		// is kept, and undo leads to it once it can be read.
+		Document reopened = document(open(), "a.glsl");
+		assertEquals("typed in its place", reopened.text().toString());
+		reopened.undo();
+		assertEquals("hidden work", reopened.text().toString());
+	}
+
+	@Test
+	public void aRenameThatCouldNotBeFollowedNeverCostsEitherText()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		ProjectPath b = path("b.glsl");
+		edit(project, shown(project, "a.glsl", "stored"), "before rename");
+		flush(project);
+		// Storage renamed the file and the process died before the
+		// journal followed; when it opens again nothing can be written.
+		Journal journal = new ProjectSessions(sessionsDir).journal(id).own();
+		assertTrue(journal.setNote(journal.noted(new Journal.Move(a, b))));
+		assertTrue(new File(root, "a.glsl").renameTo(
+				new File(root, "b.glsl")));
+		disk.full = true;
+		OpenProject failed = open();
+		disk.full = false;
+		// The text is still that of a.glsl, which is gone, and is
+		// edited on; b.glsl is opened and edited by itself.
+		edit(failed, document(failed, "a.glsl"), "after failed recovery");
+		edit(failed, document(failed, "b.glsl"), "new b");
+		flush(failed);
+
+		OpenProject next = open();
+
+		// Two texts, neither a successor of the other: both are there.
+		assertEquals(Set.of(a, b), next.unsaved());
+		assertEquals("after failed recovery", text(next, "a.glsl"));
+		assertEquals("new b", text(next, "b.glsl"));
+	}
+
+	@Test
+	public void aDeletionReplayedNeverTakesTextTypedAfterIt()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = shown(project, "a.glsl", "stored");
+		edit(project, document, "delete this");
+		flush(project);
+		// The stored file goes, its journal cannot be removed.
+		disk.undeleted = true;
+		List<OpenProject.Moved> outcomes = new ArrayList<>();
+		project.delete(a, Map.of(a, document.revision()), outcomes::add);
+		edit(project, document, "typed after the deletion");
+		settle();
+		assertTrue(outcomes.get(0) instanceof OpenProject.Deleted);
+		flush(project);
+		assertEquals("typed after the deletion", journaled("a.glsl"));
+		disk.undeleted = false;
+
+		OpenProject next = open();
+
+		// The deletion was for the text it was asked for, not this one.
+		assertEquals(Set.of(a), next.unsaved());
+		assertEquals("typed after the deletion", text(next, "a.glsl"));
+	}
+
+	@Test
+	public void unsavedTextMissedWhileItsFolderCouldNotBeListedIsFoundLater()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, shown(project, "a.glsl", "stored"), "hidden");
+		flush(project);
+		assertTrue(new File(root, "a.glsl").delete());
+		disk.unlisted = true;
+
+		OpenProject unlisted = open();
+
+		// Not known, and said so: it is not told that all is held.
+		assertTrue(unlisted.unsaved().isEmpty());
+		assertNotNull(unlisted.unprotected());
+		disk.unlisted = false;
+		refresh(unlisted);
+		assertEquals(Set.of(a), unlisted.unsaved());
+		assertNull(unlisted.unprotected());
+		assertEquals("hidden", text(unlisted, "a.glsl"));
+	}
+
+	@Test
 	public void reloadOfTextNotInMemoryKeepsWhatAnEarlierCallerTypes()
 			throws IOException {
 		budget = 0;
@@ -3065,7 +3174,7 @@ public class OpenProjectTest {
 					at.toString()));
 			assertEquals(name, "stored", read(at.toString()));
 			assertNull(name, new ProjectSessions(sessionsDir).journal(id)
-					.move());
+					.note());
 			assertTrue(save(restarted, true).get(at) instanceof Saved);
 		}
 	}
@@ -3256,7 +3365,7 @@ public class OpenProjectTest {
 		edit(project, document, "mine still");
 		flush(project);
 		assertEquals("mine still", journaled("a.glsl"));
-		assertNull(new ProjectSessions(sessionsDir).journal(id).move());
+		assertNull(new ProjectSessions(sessionsDir).journal(id).note());
 	}
 
 	@Test
@@ -3273,7 +3382,7 @@ public class OpenProjectTest {
 		// The rename was noted and storage made it; then the process
 		// died.
 		Journal journal = new ProjectSessions(sessionsDir).journal(id).own();
-		assertTrue(journal.setMove(new Journal.Move(a, b)));
+		assertTrue(journal.setNote(journal.noted(new Journal.Move(a, b))));
 		assertTrue(new File(root, "a.glsl").renameTo(
 				new File(root, "b.glsl")));
 
@@ -3289,7 +3398,7 @@ public class OpenProjectTest {
 		assertEquals(new Document.Selection(1, 2), reopened.selection());
 		reopened.undo();
 		assertEquals("stored", reopened.text().toString());
-		assertNull(new ProjectSessions(sessionsDir).journal(id).move());
+		assertNull(new ProjectSessions(sessionsDir).journal(id).note());
 	}
 
 	@Test
@@ -3301,22 +3410,22 @@ public class OpenProjectTest {
 		flush(project);
 		// The process died after noting the rename, before storage.
 		Journal journal = new ProjectSessions(sessionsDir).journal(id).own();
-		assertTrue(journal.setMove(new Journal.Move(a, path("b.glsl"))));
+		assertTrue(journal.setNote(journal.noted(new Journal.Move(a, path("b.glsl")))));
 
 		OpenProject restarted = open();
 
 		assertEquals(Set.of(a), restarted.unsaved());
 		assertEquals("mine", text(restarted, "a.glsl"));
-		assertNull(new ProjectSessions(sessionsDir).journal(id).move());
+		assertNull(new ProjectSessions(sessionsDir).journal(id).note());
 
 		// A deletion that storage made takes the journal with it.
 		journal = new ProjectSessions(sessionsDir).journal(id).own();
-		assertTrue(journal.setMove(new Journal.Move(a, null)));
+		assertTrue(journal.setNote(journal.noted(new Journal.Move(a, null))));
 		assertTrue(new File(root, "a.glsl").delete());
 		OpenProject after = open();
 		assertTrue(after.unsaved().isEmpty());
 		assertTrue(kept().isEmpty());
-		assertNull(new ProjectSessions(sessionsDir).journal(id).move());
+		assertNull(new ProjectSessions(sessionsDir).journal(id).note());
 	}
 
 	@Test
@@ -3841,10 +3950,14 @@ public class OpenProjectTest {
 	}
 
 	private OpenProject open(ProjectFiles store) {
-		return OpenProject.open(id, store, null, null,
-				new ProjectSessions(sessionsDir), worker, main, steps.timers,
-				budget);
+		ProjectSessions sessions = new ProjectSessions(sessionsDir);
+		sessions.disk = disk;
+		return OpenProject.open(id, store, null, null, sessions, worker,
+				main, steps.timers, budget);
 	}
+
+	// The files of the journals, which a test makes fail.
+	private final FaultyDisk disk = new FaultyDisk();
 
 	private LiveProjects live() {
 		return new LiveProjects(new ProjectSessions(sessionsDir), worker,
