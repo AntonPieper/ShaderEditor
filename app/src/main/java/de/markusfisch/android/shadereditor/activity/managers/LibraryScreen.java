@@ -80,8 +80,10 @@ public final class LibraryScreen implements ShaderScreen {
 	private final DataSource dataSource;
 	private final Host host;
 	private ShaderManager shaderManager;
-	// What the editor has open. shaderManager is only used directly to
-	// open and create database shaders.
+	// What the editor has open: a file, shaderManager for a shader of
+	// the database that was not moved, or a NothingOpen that says why
+	// nothing is. shaderManager is only used directly to open and
+	// create database shaders.
 	private OpenItem open;
 	private ShaderList shaderListManager;
 	// Where the shaders are files, the list is the drawer of folders.
@@ -99,16 +101,6 @@ public final class LibraryScreen implements ShaderScreen {
 	private LibraryAdd libraryAdd;
 	// What the running shader is made of, from the frame-rate chip.
 	private final PassesSheet passes;
-	// The editor was given back the text of a file of a folder that the
-	// old editor cannot show; it is not a shader to run.
-	private boolean holdsUnshownFile = false;
-	// Where the shaders are files: what is open while no file and no
-	// shader of the database is.
-	private NothingOpen nothing;
-	// The start has not shown a file yet, and whether the screen says
-	// that the shaders are being moved.
-	private boolean moving;
-	private boolean movingTold;
 	// The shaders of the database that could not be moved.
 	private List<LibraryMove.Failed> notMoved = List.of();
 	// The code was hidden when the screen was made again with nothing
@@ -235,7 +227,7 @@ public final class LibraryScreen implements ShaderScreen {
 						Message.show(activity, message);
 						// The start left the screen to what was
 						// to be added: the library's file, then.
-						if (!open.hasText() && moving) {
+						if (waits()) {
 							libraryStart.show();
 						}
 					}
@@ -372,15 +364,13 @@ public final class LibraryScreen implements ShaderScreen {
 				this::showOpenTitle,
 				() -> uiManager.showNotice(activity.getText(R.string.shader_saved),
 						ShaderScreen.SAVED_NOTICE_MILLIS));
-		nothing = new NothingOpen(activity.getString(R.string.nav_shaders));
 		// Where the shaders are files, nothing is open until the start
 		// shows a file: no shader of the database stands in for it.
-		open = nothing;
+		open = nothing(OpenState.Kind.STARTING);
 		// A shader that was not moved is shown.
 		shaderManager.setOnShownListener(() -> {
 			files.leave();
 			open = shaderManager;
-			moving = false;
 			forgetHeldMessage();
 			showOpen();
 		});
@@ -396,9 +386,6 @@ public final class LibraryScreen implements ShaderScreen {
 				? OpenState.decode(state.getString(OPEN))
 				: null;
 		asksImportAgain = state != null && state.getBoolean(ASKS_IMPORT);
-		holdsUnshownFile = restored != null &&
-				restored.kind() == OpenState.Kind.FILE &&
-				!ShaderEditorApp.preferences.useNewEditor();
 		// A screen that had a file, a shader or nothing open comes
 		// back to that; one that had not come that far shows what
 		// the library shows, as a cold start does, unless text
@@ -408,9 +395,10 @@ public final class LibraryScreen implements ShaderScreen {
 				(restored == null || restored.showsLibrary());
 		// Nothing stands where the code is until what was open is
 		// back, or the start has shown a file.
-		moving = true;
-		movingTold = restored != null &&
-				restored.kind() == OpenState.Kind.MOVING;
+		open = nothing(restored != null &&
+				restored.kind() == OpenState.Kind.MOVING
+				? OpenState.Kind.MOVING
+				: OpenState.Kind.STARTING);
 		showOpen();
 		startLibrary(show);
 		libraryAdd.resume();
@@ -430,12 +418,10 @@ public final class LibraryScreen implements ShaderScreen {
 					restored.title() != null ? restored.title() : "",
 					restored.quality(), restored.modified());
 			open = shaderManager;
-			moving = false;
 			showOpen();
 		} else if (restored != null &&
 				restored.kind() == OpenState.Kind.NOTHING) {
-			moving = false;
-			showOpen();
+			settle();
 		}
 		// Not that far yet: the start shows what the library shows.
 		if (!state.getBoolean(ShaderScreen.CODE_VISIBLE, true)) {
@@ -532,8 +518,8 @@ public final class LibraryScreen implements ShaderScreen {
 						? null
 						: ProjectPath.parse(root.get(0).name());
 				handler.post(() -> {
-					if (!destroyed && open == nothing && path != null &&
-							path.isSuccess()) {
+					if (!destroyed && open instanceof NothingOpen &&
+							path != null && path.isSuccess()) {
 						// As tapped: it runs, and if it cannot be opened
 						// that is said, and nothing more follows.
 						files.open(key, path.value(), false);
@@ -767,7 +753,7 @@ public final class LibraryScreen implements ShaderScreen {
 			editorFragment.runningEdit();
 			files.run();
 		} else if (ShaderEditorApp.preferences.doesRunOnChange() &&
-				!holdsUnshownFile && open.hasText()) {
+				open.hasText()) {
 			editorFragment.runningEdit();
 			shaderViewManager.setShader(text, open.getQuality());
 		}
@@ -861,8 +847,10 @@ public final class LibraryScreen implements ShaderScreen {
 				new LibraryStart.Listener() {
 					@Override
 					public void onMoving() {
-						movingTold = true;
-						showOpenTitle();
+						if (waits()) {
+							open = nothing(OpenState.Kind.MOVING);
+							showOpenTitle();
+						}
 					}
 
 					@Override
@@ -895,8 +883,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 					@Override
 					public void onEmpty(@NonNull String key) {
-						moving = false;
-						showOpen();
+						settle();
 					}
 
 					// Said, and then there is a screen to act on: the
@@ -904,8 +891,7 @@ public final class LibraryScreen implements ShaderScreen {
 					@Override
 					public void onFailed(@NonNull String message) {
 						Message.show(activity, message);
-						moving = false;
-						showOpen();
+						settle();
 					}
 
 					@Override
@@ -968,9 +954,7 @@ public final class LibraryScreen implements ShaderScreen {
 						shaderManager.deselect();
 					}
 					files.leave();
-					open = nothing;
-					moving = true;
-					movingTold = true;
+					open = nothing(OpenState.Kind.MOVING);
 					showOpen();
 					drawer.closeLibrary();
 					libraryStart.redo(dataSource);
@@ -1088,7 +1072,6 @@ public final class LibraryScreen implements ShaderScreen {
 				}
 				open = file;
 				file.setDrawing(drawing);
-				moving = false;
 				showOpen();
 				// The last build's, until the next one reports; that
 				// runs where the picture runs behind the code.
@@ -1109,15 +1092,9 @@ public final class LibraryScreen implements ShaderScreen {
 				String gone = open instanceof ProjectFile file
 						? file.getProject().id()
 						: null;
-				if (holdsUnshownFile) {
-					// Its text is not a shader of the library to save.
-					holdsUnshownFile = false;
-					shaderManager.deselect();
-				}
 				// No shader of the database stands in for a file.
 				shaderManager.deselect();
-				open = nothing;
-				moving = false;
+				open = nothing(OpenState.Kind.NOTHING);
 				forgetHeldMessage();
 				showOpen();
 				if (gone != null && holds.projects().isLibrary(gone)) {
@@ -1211,9 +1188,11 @@ public final class LibraryScreen implements ShaderScreen {
 
 	private void showOpenTitle() {
 		if (!open.hasText()) {
-			uiManager.setToolbarTitle(open.getTitle(), moving && movingTold
-					? activity.getString(R.string.library_moving)
-					: null, false);
+			uiManager.setToolbarTitle(open.getTitle(),
+					open instanceof NothingOpen none &&
+							none.state() == OpenState.MOVING
+							? activity.getString(R.string.library_moving)
+							: null, false);
 			return;
 		}
 		// Where the shaders are files, one of the database was not moved.
@@ -1269,7 +1248,9 @@ public final class LibraryScreen implements ShaderScreen {
 		}
 		TextView cover = activity.findViewById(R.id.no_file);
 		boolean covered = cover.getVisibility() == View.VISIBLE;
-		cover.setText(moving ? "" : activity.getString(R.string.no_file_open));
+		cover.setText(waits()
+				? ""
+				: activity.getString(R.string.no_file_open));
 		cover.setVisibility(text ? View.GONE : View.VISIBLE);
 		// A quality is chosen for what runs, a key inserts into a text.
 		passes.setAvailable(text);
@@ -1312,15 +1293,35 @@ public final class LibraryScreen implements ShaderScreen {
 		}
 		OpenState file = files.state();
 		return file != null ? file
-				: !moving ? OpenState.NOTHING
-				: movingTold ? OpenState.MOVING : OpenState.STARTING;
+				: open instanceof NothingOpen none ? none.state()
+				: OpenState.NOTHING;
+	}
+
+	// Nothing open, for the reason kind.
+	@NonNull
+	private NothingOpen nothing(@NonNull OpenState.Kind kind) {
+		return new NothingOpen(activity.getString(R.string.nav_shaders),
+				kind);
+	}
+
+	// Return whether the start has not shown a file yet.
+	private boolean waits() {
+		return open instanceof NothingOpen none && none.waits();
+	}
+
+	// The start came as far as it goes: if it showed nothing, the
+	// screen says that nothing is open.
+	private void settle() {
+		if (open instanceof NothingOpen) {
+			open = nothing(OpenState.Kind.NOTHING);
+		}
+		showOpen();
 	}
 
 	// The shader of the database that was open is gone: what the
 	// library showed last comes in its place, or nothing.
 	private void showLibraryFile() {
-		open = nothing;
-		moving = true;
+		open = nothing(OpenState.Kind.STARTING);
 		showOpen();
 		libraryStart.show();
 	}
@@ -1342,7 +1343,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 	// A tap that has nothing to act on says so.
 	private void sayNothingIsOpen() {
-		Message.show(activity, moving
+		Message.show(activity, waits()
 				? R.string.library_moving
 				: R.string.no_file_open);
 	}
