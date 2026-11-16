@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.fragment;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -102,5 +103,33 @@ public class WordDocsTest {
 		// More arguments than any form takes: the longest.
 		assertEquals(List.of("a", "b", "c"), WordDocs.form(forms, 5));
 		assertNull(WordDocs.form(List.of(), 0));
+	}
+
+	@Test
+	public void aLocalIsWhatItsFunctionDeclares() {
+		String text = "uniform float time;\nfloat speed;\n" +
+				"float f(float time) {\n\tvec3 speed = vec3(time);\n" +
+				"\treturn speed.x;\n}\n" +
+				"void main() {\n\tgl_FragColor = vec4(time * speed);\n}\n";
+		Knowledge known = GlslKnowledge.of(text);
+		int inF = text.indexOf("return speed") + 7;
+		int inMain = text.indexOf("time * speed");
+		// In f, both names are its own: a parameter named like one of
+		// the app's uniforms, a local named like a global.
+		assertTrue(WordDocs.isLocal(known, text.indexOf("vec3(time)") + 5,
+				"time"));
+		assertTrue(WordDocs.isLocal(known, inF, "speed"));
+		assertEquals("vec3", known.at(inF, "speed").get(0).type());
+		assertEquals("vec3 speed", known.at(inF, "speed").get(0).detail());
+		// Also where they are declared.
+		assertTrue(WordDocs.isLocal(known, text.indexOf("time) {"), "time"));
+		assertTrue(WordDocs.isLocal(known, text.indexOf("speed = vec3"),
+				"speed"));
+		// In main they are what the file declares.
+		assertFalse(WordDocs.isLocal(known, inMain, "time"));
+		assertFalse(WordDocs.isLocal(known, inMain + 7, "speed"));
+		assertEquals("float", known.at(inMain + 7, "speed").get(0).type());
+		assertFalse(WordDocs.isLocal(known, inMain, "missing"));
+		assertFalse(WordDocs.isLocal(Knowledge.NONE, 3, "time"));
 	}
 }
