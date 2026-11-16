@@ -952,6 +952,8 @@ public class NavigationDrawer implements ShaderList {
 		try {
 			executor.execute(() -> {
 				int unsaved = projects.sessions().unsaved(key).size();
+				// Not listed is not none: then the question says so.
+				boolean unread = projects.sessions().unread(key);
 				handler.post(() -> {
 					if (!isActivityAlive()) {
 						return;
@@ -968,6 +970,8 @@ public class NavigationDrawer implements ShaderList {
 						dialog.setMessage(activity.getResources()
 								.getQuantityString(R.plurals.nav_remove_unsaved,
 										unsaved, unsaved));
+					} else if (unread) {
+						dialog.setMessage(R.string.nav_remove_unread);
 					}
 					dialog.show();
 				});

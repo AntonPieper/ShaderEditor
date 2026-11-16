@@ -341,7 +341,7 @@ All of them need the Russian, Ukrainian and both Chinese files (AGENTS 15); unti
 | Rename, Duplicate, Delete | Long press | Delete also in the toolbar menu for the file in the editor, so that it stays three taps as today |
 | Save, Save a copy, Share, Set as wallpaper | Toolbar menu | They act on what is edited and what runs |
 | Insert as texture | The image's sheet; long press on an image | UX 4's "existing project-local file in place" |
-| Remove from list | Long press on a row under Recent | UX 6: only the shortcut. If the folder has unsaved text the question says so |
+| Remove from list | Long press on a row under Recent | UX 6: only the shortcut. If the folder has unsaved text the question says so; when its journal cannot be read at that moment, it says that there may be some |
 | Refresh; sort order | Drawer menu (`r-25`) | Refresh also runs when the app returns to the front |
 
 ### 6.7 Empty states and how it degrades
