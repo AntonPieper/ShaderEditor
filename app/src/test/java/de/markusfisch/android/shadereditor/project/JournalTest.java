@@ -112,7 +112,7 @@ public class JournalTest {
 	}
 
 	@Test
-	public void appendAfterACutTailContinuesFromTheLastGoodRecord()
+	public void afterATornTailTheTextIsWrittenWholeFromTheLastGoodRecord()
 			throws IOException {
 		assertTrue(journal.snapshot(HEADER, 0, Text.of("a")));
 		assertEquals(Appended.DONE, journal.append(A, 0, 1,
@@ -121,9 +121,13 @@ public class JournalTest {
 		Files.write(file.toPath(), new byte[]{0, 0, 1},
 				java.nio.file.StandardOpenOption.APPEND);
 
+		// The text is read up to the last good record; nothing is
+		// appended after the bytes that are no record.
 		Journal reopened = new Journal(dir).own();
-		assertEquals(Appended.DONE, reopened.append(A, 1, 2,
+		assertEquals("ab", reopened.read(A).text().toString());
+		assertEquals(Appended.SNAPSHOT, reopened.append(A, 1, 2,
 				List.of(new Change(2, 0, "c"))));
+		assertTrue(reopened.snapshot(HEADER, 2, Text.of("abc")));
 
 		Recovered recovered = new Journal(dir).read(A);
 		assertEquals("abc", recovered.text().toString());
@@ -542,6 +546,52 @@ public class JournalTest {
 		assertEquals("kept 2", journal.read(A).text().toString());
 		assertEquals(1, journal.replaced(A).size());
 	}
+
+	@Test
+	public void aReadThatCameShortIsNoReadAndCutsNothing() {
+		FaultyDisk disk = new FaultyDisk();
+		Journal faulty = new Journal(dir, disk).own();
+		assertTrue(faulty.snapshot(HEADER, 1, Text.of("first")));
+		int snapshot = (int) faulty.file(A).length();
+		assertEquals(Appended.DONE, faulty.append(A, 1, 2,
+				List.of(new Change(0, 5, "acknowledged latest"))));
+		long whole = faulty.file(A).length();
+
+		// A read gives only the snapshot, which is whole by itself.
+		disk.cut = snapshot;
+		Journal short_ = new Journal(dir, disk).own();
+		Recovered read = short_.read(A);
+		assertNull("fewer bytes than the file has is no text", read.text());
+		assertFalse(read.damaged());
+		// Nothing appends after bytes it did not read, and nothing is
+		// cut, whatever fails next.
+		disk.full = true;
+		assertEquals(Appended.SNAPSHOT, short_.append(A, 1, 3,
+				List.of(new Change(0, 5, "another"))));
+		disk.full = false;
+		disk.cut = -1;
+		assertEquals(whole, short_.file(A).length());
+		assertEquals("acknowledged latest",
+				new Journal(dir).read(A).text().toString());
+	}
+
+
+	@Test
+	public void bytesAfterTheLastWholeRecordAreNotCutButWrittenOver()
+			throws IOException {
+		assertTrue(journal.snapshot(HEADER, 1, Text.of("first")));
+		File file = journal.file(A);
+		Files.write(file.toPath(), new byte[]{1, 2, 3},
+				java.nio.file.StandardOpenOption.APPEND);
+		long torn = file.length();
+
+		// No append after a tail that is no record: the whole text is
+		// to be written again, by a file that is read back first.
+		assertEquals(Appended.SNAPSHOT, new Journal(dir).own().append(A, 1, 2,
+				List.of(new Change(5, 0, "!"))));
+		assertEquals(torn, file.length());
+	}
+
 
 	@Test
 	public void aJournalNoMemoryCouldReadIsNotDamagedAndIsNotDismissed() {
