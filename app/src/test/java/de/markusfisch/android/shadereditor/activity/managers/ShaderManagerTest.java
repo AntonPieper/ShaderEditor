@@ -13,17 +13,25 @@ import de.markusfisch.android.shadereditor.database.DataRecords;
 public class ShaderManagerTest {
 	@Test
 	public void armsCrashGuardForSavedShaderRenderedInBackground() {
-		assertEquals(42, ShaderManager.getPendingCrashShaderId(true, 42));
+		assertEquals(42, ShaderManager.getPendingCrashShaderId(true, 42, 0));
+	}
+
+	// A shader that drew a frame is saved: the app ended after that,
+	// as by an update, did not end on a shader that was starting.
+	@Test
+	public void leavesCrashGuardOffForShaderThatDrew() {
+		assertEquals(0, ShaderManager.getPendingCrashShaderId(true, 42, 42));
+		assertEquals(42, ShaderManager.getPendingCrashShaderId(true, 42, 7));
 	}
 
 	@Test
 	public void leavesCrashGuardOffForUnsavedShader() {
-		assertEquals(0, ShaderManager.getPendingCrashShaderId(true, 0));
+		assertEquals(0, ShaderManager.getPendingCrashShaderId(true, 0, 0));
 	}
 
 	@Test
 	public void leavesCrashGuardOffWithoutBackgroundPreview() {
-		assertEquals(0, ShaderManager.getPendingCrashShaderId(false, 42));
+		assertEquals(0, ShaderManager.getPendingCrashShaderId(false, 42, 0));
 	}
 
 	@Test

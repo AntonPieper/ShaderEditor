@@ -58,6 +58,9 @@ public class ShaderManager implements OpenItem {
 	private final Runnable savedListener;
 
 	private long selectedShaderId = NO_SHADER;
+	// The shader that drew a frame last; a save does not arm the crash
+	// guard for it again, as nothing new starts.
+	private long drewShaderId = NO_SHADER;
 	@NonNull
 	private String title = "";
 	private float quality = 1f;
@@ -611,15 +614,22 @@ public class ShaderManager implements OpenItem {
 		return name.isEmpty() ? DEFAULT_TITLE : name;
 	}
 
+	/** The shader selected drew a frame. */
+	public void drew() {
+		drewShaderId = selectedShaderId;
+	}
+
 	static long getPendingCrashShaderId(boolean runInBackground,
-			long shaderId) {
-		return runInBackground && shaderId > 0 ? shaderId : 0;
+			long shaderId, long drewShaderId) {
+		return runInBackground && shaderId > 0 && shaderId != drewShaderId
+				? shaderId
+				: 0;
 	}
 
 	private void updatePendingCrashShaderId() {
 		ShaderEditorApp.preferences.setPendingCrashShaderId(
 				getPendingCrashShaderId(
 						ShaderEditorApp.preferences.doesRunInBackground(),
-						selectedShaderId));
+						selectedShaderId, drewShaderId));
 	}
 }

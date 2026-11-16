@@ -208,6 +208,7 @@ public final class DatabaseScreen implements ShaderScreen {
 
 	@Override
 	public void onFrame() {
+		shaderManager.drew();
 	}
 
 	@Override

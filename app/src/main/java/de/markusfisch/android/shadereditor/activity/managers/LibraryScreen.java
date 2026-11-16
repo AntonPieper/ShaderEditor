@@ -491,7 +491,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void onPause() {
-		guard.ran();
+		guard.left();
 	}
 
 	@Override
