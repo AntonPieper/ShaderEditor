@@ -27,9 +27,11 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
  * each, so it is recovered without the stored files: a header with the
  * base the text came from and the consent to overwrite, a snapshot of
  * the text, and change records appended after it without a sync. Each
- * part has its own checksum; a torn or damaged tail is cut at the last
- * good record, a damaged header or snapshot is reported and the file
- * left as it is. Text a reload replaced is kept beside it, in files of
+ * part has its own checksum; what follows the last good record is not
+ * read as text, and the next write is the whole text in a new file
+ * that takes the name: no file is ever cut. A damaged header or
+ * snapshot is reported and the file left as it is. Text a reload
+ * replaced is kept beside it, in files of
  * the same form: the journal of the file as it was, put aside by one
  * rename, so the file has no journal and every later write of unsaved
  * text is a journal like any other. Only the journal that
@@ -46,7 +48,8 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
  * undo leads to it. A file that cannot be read now is kept as it is
  * and read again later; only bytes that were read and are wrong are
  * told as damaged, and those stay as well until the user gives them
- * up. No rename ever lands on a file that is there.
+ * up. A read that gave fewer bytes than the file has is no read. No
+ * rename ever lands on a file that is there.
  */
 final class Journal {
 	/**
@@ -317,18 +320,15 @@ final class Journal {
 			return Appended.SNAPSHOT;
 		}
 		File file = file(path);
-		// Shorter than written, or gone: it changed under the journal.
-		if (file.length() < tail.length()) {
+		// Not as long as what was read or written whole: shorter, gone,
+		// or with bytes of no record after the last one. Nothing is
+		// appended after those, and nothing is cut: the whole text is
+		// written anew and takes the name.
+		if (file.length() != tail.length()) {
 			tails.remove(path);
 			return Appended.SNAPSHOT;
 		}
 		try {
-			// Cut a torn or damaged tail before appending after it:
-			// what follows the last record that was read back whole,
-			// or was written whole, are bytes of no record.
-			if (file.length() > tail.length()) {
-				disk.truncate(file, tail.length());
-			}
 			disk.write(file, out -> {
 				DataOutputStream data = new DataOutputStream(out);
 				writeBlock(data, record);
@@ -528,7 +528,8 @@ final class Journal {
 	// text that are whole.
 	private boolean whole(File file) {
 		try (DataInputStream in = new DataInputStream(
-				new ByteArrayInputStream(disk.read(file, MAX_FILE)))) {
+				new ByteArrayInputStream(Disk.whole(disk, file,
+						MAX_FILE)))) {
 			return readMagic(in) && readBlock(in, MAX_HEAD) != null &&
 					readBlock(in, MAX_TEXT) != null;
 		} catch (IOException | RuntimeException | OutOfMemoryError e) {
@@ -567,7 +568,8 @@ final class Journal {
 			return null;
 		}
 		try (DataInputStream in = new DataInputStream(
-				new ByteArrayInputStream(disk.read(file, MAX_HEAD)))) {
+				new ByteArrayInputStream(Disk.whole(disk, file,
+						MAX_HEAD)))) {
 			if (in.readInt() != MAGIC) {
 				return null;
 			}
@@ -713,7 +715,7 @@ final class Journal {
 		if (!file.isFile()) {
 			return null;
 		}
-		byte[] bytes = disk.read(file, MAX_HEAD + 16);
+		byte[] bytes = Disk.whole(disk, file, MAX_HEAD + 16);
 		try (DataInputStream in = new DataInputStream(
 				new ByteArrayInputStream(bytes))) {
 			byte[] head = readMagic(in) ? readBlock(in, MAX_HEAD) : null;
@@ -755,9 +757,11 @@ final class Journal {
 	private Parsed parse(ProjectPath path, File file) {
 		byte[] all;
 		try {
-			all = disk.read(file, MAX_FILE);
+			all = Disk.whole(disk, file, MAX_FILE);
 		} catch (IOException e) {
 			// Whatever it holds, it is as it was: to be read again.
+			// Fewer bytes than it has are no read either: what is
+			// missing from them is not missing from the file.
 			return new Parsed(problem(path, "it cannot be read now",
 					false), null);
 		}
