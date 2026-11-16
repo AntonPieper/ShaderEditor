@@ -148,6 +148,9 @@ public final class PassesSheet {
 
 		/** The sheet opens: what would lie in its place makes way. */
 		void opening();
+
+		/** Show the list of errors of the newest build. */
+		void showErrors();
 	}
 
 	// What the frame-rate limit offers, 0 for none.
@@ -182,6 +185,17 @@ public final class PassesSheet {
 
 		boolean runs() {
 			return !passes.rows().isEmpty();
+		}
+
+		// The errors the newest build reported.
+		int errors() {
+			int errors = 0;
+			for (var problem : problems) {
+				if (problem.severity() == ProjectDiagnostic.Severity.ERROR) {
+					++errors;
+				}
+			}
+			return errors;
 		}
 
 		// The row selected: the pass shown, else the output.
@@ -303,6 +317,7 @@ public final class PassesSheet {
 	private final TextView frame;
 	private final Chip[] qualities;
 	private final Chip limit;
+	private final Button notRunning;
 	private final float[] qualityValues;
 	private final View divider;
 	private final View scroll;
@@ -434,6 +449,8 @@ public final class PassesSheet {
 		});
 		ViewCompat.setTooltipText(step, step.getContentDescription());
 		ViewCompat.setTooltipText(restart, restart.getContentDescription());
+		notRunning = sheet.findViewById(R.id.passes_not_running);
+		notRunning.setOnClickListener(v -> files.showErrors());
 		limit = sheet.findViewById(R.id.passes_limit);
 		limit.setOnClickListener(this::chooseLimit);
 		limit.setOnCloseIconClickListener(this::chooseLimit);
@@ -865,6 +882,14 @@ public final class PassesSheet {
 				: activity.getString(R.string.passes_no_limit));
 		for (int i = 0; i < qualities.length; ++i) {
 			qualities[i].setChecked(qualityValues[i] == state.quality);
+		}
+		// Nothing runs because the build failed: say so, with the way
+		// to its errors.
+		int errors = runs ? 0 : state.errors();
+		notRunning.setVisibility(errors > 0 ? View.VISIBLE : View.GONE);
+		if (errors > 0) {
+			notRunning.setText(activity.getResources().getQuantityString(
+					R.plurals.passes_not_running, errors, errors));
 		}
 		if (animates && (state.shown == null) != (was.shown == null)) {
 			// The chip fades through to the other one.

@@ -586,6 +586,10 @@
 	<string name="passes_fit">Fit</string>
 	<string name="passes_name_fit">%1$s · fit</string>
 	<string name="passes_no_limit">No fps limit</string>
+	<plurals name="passes_not_running">
+		<item quantity="one">Does not run: %d error</item>
+		<item quantity="other">Does not run: %d errors</item>
+	</plurals>
 	<string name="passes_limit">At most %1$d fps</string>
 	<string name="passes_limit_none">None</string>
 	<string name="passes_limit_menu">Frame rate limit</string>
