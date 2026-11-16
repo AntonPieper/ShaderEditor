@@ -260,6 +260,13 @@ public final class OpenProject {
 		}
 	}
 
+	// The file shown, the file chosen to run, and when the project was
+	// opened as the one open last, 0 for not at all: what the session
+	// keeps of it.
+	private record Selection(ProjectPath shown, ProjectPath chosen,
+			long opened) {
+	}
+
 	// What the listener hears about.
 	private record State(Set<ProjectPath> unsaved,
 			Map<ProjectPath, String> conflicts,
@@ -324,22 +331,15 @@ public final class OpenProject {
 	private ProjectPath usedFor;
 	private ProjectPath running;
 	private ProjectPath shown;
-	// The file shown as the session keeps it; the file chosen to run
-	// and whether the session is to keep it yet; whether the worker is
-	// keeping them, and why it could not, or null.
-	private ProjectPath keptShown;
+	// The file chosen to run, and when the project was opened as the
+	// one open last: with shown what the session is to keep.
 	private ProjectPath chosen;
-	private boolean choose;
-	private boolean keeping;
-	private String unkept;
-	// Whether the session is to keep yet that the project is the one
-	// open last, opened at this time; what the write on its way holds
-	// besides the file shown; and how many were sent.
-	private boolean last;
 	private long opened;
-	private boolean keepingChoice;
-	private boolean keepingLast;
-	private int selections;
+	// What the session keeps, as the worker said; the write on its way,
+	// or null; and why the last could not keep all, or null.
+	private Selection kept = new Selection(null, null, 0);
+	private Selection sending;
+	private String unkept;
 	private State announced;
 	private Executor executor;
 	private Runnable listener;
@@ -462,7 +462,8 @@ public final class OpenProject {
 		follow(sessions, id, project.texts.recover());
 		project.histories.trim();
 		project.take(project.texts.journals(Set.of()));
-		project.shown = project.keptShown = sessions.shown(id);
+		project.shown = sessions.shown(id);
+		project.kept = new Selection(project.shown, null, 0);
 		project.running = project.findRunning(Map.of(),
 				project.journaled());
 		return project;
@@ -861,7 +862,6 @@ public final class OpenProject {
 	 * {@link #unkept} and sent again by the next {@link #persist}.
 	 */
 	public void remember() {
-		last = true;
 		opened = System.currentTimeMillis();
 		keepSelection(false);
 	}
@@ -876,46 +876,45 @@ public final class OpenProject {
 	}
 
 	// Keep the file shown, the file chosen to run and that the project
-	// is the one open last in the session; each counts as kept once the
-	// worker says it is. One write at a time, except at a fence, which
-	// sends what is on its way again as it is now.
+	// is the one open last in the session: what differs from what it
+	// keeps, each kept once the worker says it is. One write at a time,
+	// except at a fence, which also writes what the write on its way
+	// would make other than it is now.
 	private void keepSelection(boolean fence) {
-		if (keeping && !fence) {
+		if (sending != null && !fence) {
 			return;
 		}
-		ProjectPath show = shown;
-		ProjectPath run = chosen;
-		long time = opened;
-		boolean showing = keeping || !Objects.equals(show, keptShown);
-		boolean choosing = choose || keeping && keepingChoice;
-		boolean lasting = last || keeping && keepingLast;
+		Selection sent = new Selection(shown, chosen, opened);
+		Selection on = sending != null ? sending : kept;
+		boolean showing = !Objects.equals(sent.shown(), kept.shown()) ||
+				!Objects.equals(sent.shown(), on.shown());
+		boolean choosing = !Objects.equals(sent.chosen(), kept.chosen()) ||
+				!Objects.equals(sent.chosen(), on.chosen());
+		boolean lasting = sent.opened() != kept.opened() ||
+				sent.opened() != on.opened();
 		if (!showing && !choosing && !lasting) {
 			return;
 		}
-		keeping = true;
-		keepingChoice = choosing;
-		keepingLast = lasting;
-		choose = last = false;
-		int sent = ++selections;
+		sending = sent;
 		worker.execute(() -> {
-			boolean shownKept = !showing || sessions.setShown(id, show);
+			boolean shownKept = !showing ||
+					sessions.setShown(id, sent.shown());
 			boolean chosenKept = !choosing ||
-					sessions.setRunning(id, run);
+					sessions.setRunning(id, sent.chosen());
 			// A project that is not listed has no time to keep.
 			boolean lastKept = !lasting || sessions.setLast(id) &&
 					(sessions.recent(id) == null ||
-							sessions.touch(id, time));
+							sessions.touch(id, sent.opened()));
 			main.execute(() -> {
 				// The answer to the last one sent tells.
-				if (sent != selections) {
+				if (sending != sent) {
 					return;
 				}
-				keeping = false;
-				if (shownKept) {
-					keptShown = show;
-				}
-				choose |= !chosenKept;
-				last |= !lastKept;
+				sending = null;
+				kept = new Selection(
+						shownKept ? sent.shown() : kept.shown(),
+						chosenKept ? sent.chosen() : kept.chosen(),
+						lastKept ? sent.opened() : kept.opened());
 				unkept = shownKept && chosenKept && lastKept
 						? null
 						: "the session cannot be written";
@@ -1485,12 +1484,13 @@ public final class OpenProject {
 				flush(record);
 			}
 		}
+		// The session forgets them; a document that stayed is shown.
 		if (shown != null && move.touches(shown)) {
-			// The session forgets it; a document that stayed is shown.
-			keptShown = null;
+			kept = new Selection(null, kept.chosen(), kept.opened());
 			shown = loaded(shown) != null ? shown : null;
 		}
 		if (chosen != null && move.touches(chosen)) {
+			kept = new Selection(kept.shown(), null, kept.opened());
 			chosen = null;
 		}
 		++generation;
@@ -1599,7 +1599,13 @@ public final class OpenProject {
 		if (shown != null) {
 			shown = move.moved(shown);
 		}
+		// The session follows; the file shown is sent again all the
+		// same.
 		if (chosen != null) {
+			if (chosen.equals(kept.chosen())) {
+				kept = new Selection(kept.shown(), move.moved(chosen),
+						kept.opened());
+			}
 			chosen = move.moved(chosen);
 		}
 		if (running != null && move.touches(running)) {
@@ -1676,7 +1682,6 @@ public final class OpenProject {
 	 */
 	public void runThisFile(ProjectPath path) {
 		running = chosen = path;
-		choose = true;
 		++choice;
 		++generation;
 		changed();
