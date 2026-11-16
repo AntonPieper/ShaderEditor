@@ -532,6 +532,27 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 		}
 	}
 
+	@NonNull
+	@Override
+	public List<CodeView.Fix> getFixes(@NonNull ProjectDiagnostic error) {
+		return editor != null && isOfTextShown(error)
+				? editor.fixes(error)
+				: List.of();
+	}
+
+	@Override
+	public void applyFix(@NonNull ProjectDiagnostic error, int index) {
+		if (editor != null && isOfTextShown(error)) {
+			editor.applyFix(error, index);
+		}
+	}
+
+	// Whether error is of the text the editor shows, whose lines it
+	// marks.
+	private boolean isOfTextShown(@NonNull ProjectDiagnostic error) {
+		return errorsFile == null || errorsFile.equals(error.file());
+	}
+
 	// The list of errors, if open, shows them as they are now.
 	private void listedErrorsChanged() {
 		if (!isAdded()) {

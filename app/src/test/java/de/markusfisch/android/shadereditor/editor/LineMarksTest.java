@@ -39,6 +39,23 @@ public class LineMarksTest {
 		assertEquals("_ _ E", marked(marks, document));
 	}
 
+	// The list of errors finds the row of an error where its mark is
+	// now, also after lines were put in above it.
+	@Test
+	public void findsTheLineAnErrorIsMarkedOnNow() {
+		Document document = new Document(Text.of(TEXT));
+		LineMarks marks = new LineMarks(document);
+		marks.set(document.revision(), List.of(error(2, "x"),
+				error(4, "y"), error(5, "x"), warning(1)));
+		document.replace(0, 0, Text.of("\n"));
+
+		assertEquals(2, marks.lineOf(1, "x"));
+		assertEquals(5, marks.lineOf(4, "x"));
+		assertEquals(4, marks.lineOf(3, "y"));
+		assertEquals(-1, marks.lineOf(0, "w"));
+		assertEquals(-1, marks.lineOf(1, "z"));
+	}
+
 	@Test
 	public void movesWithLinesInsertedOrRemovedAbove() {
 		Document document = new Document(Text.of(TEXT));

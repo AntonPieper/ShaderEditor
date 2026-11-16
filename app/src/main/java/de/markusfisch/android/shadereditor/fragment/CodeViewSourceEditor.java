@@ -450,6 +450,21 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.marksChanged();
 	}
 
+	@NonNull
+	@Override
+	public List<CodeView.Fix> fixes(@NonNull ProjectDiagnostic error) {
+		int line = marks.lineOf(error.line() - 1, error.message());
+		return line >= 0 ? view.fixesOf(line) : List.of();
+	}
+
+	@Override
+	public void applyFix(@NonNull ProjectDiagnostic error, int index) {
+		int line = marks.lineOf(error.line() - 1, error.message());
+		if (line >= 0) {
+			view.applyFixOf(line, index);
+		}
+	}
+
 	@Override
 	public boolean keepsErrorsUntilResult() {
 		return true;
