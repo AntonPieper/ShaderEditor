@@ -126,6 +126,23 @@ public final class LineMarks {
 		return i < 0 ? Collections.emptyList() : messages[i];
 	}
 
+	/**
+	 * Return the line marked now with the error message that was on
+	 * line, from 0, when the marks were set: of those marked with it,
+	 * the nearest to line, as edits since may have moved it; -1 when
+	 * none is.
+	 */
+	public int lineOf(int line, String message) {
+		int found = -1;
+		for (int i = 0; i < size; ++i) {
+			if (messages[i].contains(message) && (found < 0 ||
+					Math.abs(lines[i] - line) < Math.abs(found - line))) {
+				found = lines[i];
+			}
+		}
+		return found;
+	}
+
 	/** Return the open line, or -1 for none. */
 	public int open() {
 		return open;

@@ -1,22 +1,28 @@
 package de.markusfisch.android.shadereditor.adapter;
 
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.widget.CodeView;
 
 public class ErrorAdapter extends ListAdapter<ProjectDiagnostic, ErrorAdapter.ViewHolder> {
 	@FunctionalInterface
@@ -24,12 +30,24 @@ public class ErrorAdapter extends ListAdapter<ProjectDiagnostic, ErrorAdapter.Vi
 		void onItemClick(@Nullable ProjectPath file, int lineNumber);
 	}
 
+	/** The fixes the row of an error in the code offers. */
+	public interface Fixes {
+		@NonNull
+		List<CodeView.Fix> of(@NonNull ProjectDiagnostic error);
+
+		void apply(@NonNull ProjectDiagnostic error, int index);
+	}
+
 	@NonNull
 	private final OnItemClickListener listener;
+	@NonNull
+	private final Fixes fixes;
 
-	public ErrorAdapter(@NonNull OnItemClickListener listener) {
+	public ErrorAdapter(@NonNull OnItemClickListener listener,
+			@NonNull Fixes fixes) {
 		super(DIFF_CALLBACK);
 		this.listener = listener;
+		this.fixes = fixes;
 	}
 
 	@NonNull
@@ -43,7 +61,7 @@ public class ErrorAdapter extends ListAdapter<ProjectDiagnostic, ErrorAdapter.Vi
 	public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
 		ProjectDiagnostic error = getItem(position);
 		if (error != null) {
-			holder.update(error, listener);
+			holder.update(error, listener, fixes);
 		}
 	}
 
@@ -51,15 +69,25 @@ public class ErrorAdapter extends ListAdapter<ProjectDiagnostic, ErrorAdapter.Vi
 		ImageView errorSeverity;
 		TextView errorLine;
 		TextView errorMessage;
+		View fixRow;
+		Button[] fixButtons;
+		// The accessibility actions of the fixes shown.
+		final List<Integer> actions = new ArrayList<>();
 
 		public ViewHolder(@NonNull View itemView) {
 			super(itemView);
 			errorSeverity = itemView.findViewById(R.id.error_severity);
 			errorLine = itemView.findViewById(R.id.error_line);
 			errorMessage = itemView.findViewById(R.id.error_message);
+			fixRow = itemView.findViewById(R.id.error_fixes);
+			fixButtons = new Button[]{
+					itemView.findViewById(R.id.error_fix_0),
+					itemView.findViewById(R.id.error_fix_1)};
 		}
 
-		public void update(@NonNull ProjectDiagnostic error, ErrorAdapter.OnItemClickListener listener) {
+		public void update(@NonNull ProjectDiagnostic error,
+				ErrorAdapter.OnItemClickListener listener,
+				@NonNull Fixes fixes) {
 			boolean warning = error.severity() == ProjectDiagnostic.Severity.WARNING;
 			errorSeverity.setImageResource(warning
 					? R.drawable.ic_warning
@@ -78,6 +106,47 @@ public class ErrorAdapter extends ListAdapter<ProjectDiagnostic, ErrorAdapter.Vi
 
 			itemView.setOnClickListener(v -> listener.onItemClick(
 					error.file(), error.line()));
+			showFixes(error, fixes);
+		}
+
+		// The fixes as the code's row offers them: its buttons, and for
+		// TalkBack the row's actions, said at the end of the row.
+		private void showFixes(@NonNull ProjectDiagnostic error,
+				@NonNull Fixes fixes) {
+			for (int action : actions) {
+				ViewCompat.removeAccessibilityAction(itemView, action);
+			}
+			actions.clear();
+			List<CodeView.Fix> offered = fixes.of(error);
+			List<String> spoken = new ArrayList<>();
+			for (int i = 0; i < fixButtons.length; ++i) {
+				Button button = fixButtons[i];
+				if (i >= offered.size()) {
+					button.setVisibility(View.GONE);
+					continue;
+				}
+				CodeView.Fix fix = offered.get(i);
+				int index = i;
+				button.setVisibility(View.VISIBLE);
+				button.setText(fix.labels().get(0));
+				button.setOnClickListener(v -> fixes.apply(error, index));
+				spoken.add(fix.spoken());
+				actions.add(ViewCompat.addAccessibilityAction(itemView,
+						fix.spoken(), (v, arguments) -> {
+							fixes.apply(error, index);
+							return true;
+						}));
+			}
+			fixRow.setVisibility(offered.isEmpty() ? View.GONE : View.VISIBLE);
+			itemView.setContentDescription(spoken.isEmpty()
+					? null
+					: TextUtils.concat(errorSeverity.getContentDescription(),
+					" ", errorLine.getVisibility() == View.VISIBLE
+							? errorLine.getText()
+							: "", errorMessage.getText(), " ",
+					itemView.getContext().getString(
+							R.string.a11y_fix_available,
+							TextUtils.join(", ", spoken))));
 		}
 	}
 

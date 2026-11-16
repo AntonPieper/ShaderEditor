@@ -49,6 +49,17 @@ public class ErrorListModal extends BottomSheetDialogFragment {
 		boolean showsLastPicture();
 
 		void onErrorChosen(@Nullable ProjectPath file, int line);
+
+		/** Return the fixes the row of error in the code offers. */
+		@NonNull
+		default List<CodeView.Fix> getFixes(
+				@NonNull ProjectDiagnostic error) {
+			return List.of();
+		}
+
+		/** Apply fix index of getFixes(error). */
+		default void applyFix(@NonNull ProjectDiagnostic error, int index) {
+		}
 	}
 
 	@Nullable
@@ -104,6 +115,22 @@ public class ErrorListModal extends BottomSheetDialogFragment {
 				host.onErrorChosen(file, lineNumber);
 			}
 			dismiss();
+		}, new ErrorAdapter.Fixes() {
+			@NonNull
+			@Override
+			public List<CodeView.Fix> of(@NonNull ProjectDiagnostic error) {
+				Host host = host();
+				return host != null ? host.getFixes(error) : List.of();
+			}
+
+			@Override
+			public void apply(@NonNull ProjectDiagnostic error, int index) {
+				Host host = host();
+				if (host != null) {
+					host.applyFix(error, index);
+				}
+				dismiss();
+			}
 		});
 		errorList.setAdapter(adapter);
 		update();

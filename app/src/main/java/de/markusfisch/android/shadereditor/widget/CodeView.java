@@ -2765,6 +2765,24 @@ public class CodeView extends View {
 		return false;
 	}
 
+	/**
+	 * Return the fixes the row of line offers, at most MAX_FIXES: what
+	 * the list of errors offers for an error of that line.
+	 */
+	@NonNull
+	public List<Fix> fixesOf(int line) {
+		return marks != null
+				? fixes(line, marks.messages(line))
+				: Collections.emptyList();
+	}
+
+	/** Apply fix index of the row of line, as the row does. */
+	public void applyFixOf(int line, int index) {
+		if (index < fixesOf(line).size()) {
+			applyFix(line, marks.messages(line), index);
+		}
+	}
+
 	private void applyRowFix(int index) {
 		if (rowFix != null && row.messages() != null) {
 			applyFix(row.line(), row.messages(), index);

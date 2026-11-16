@@ -13,6 +13,7 @@ import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
+import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 /**
@@ -204,6 +205,19 @@ interface SourceEditor {
 
 	/** Mark the lines of the errors last set, and no others. */
 	void markErrors();
+
+	/**
+	 * Return the fixes the row of the line of error, of those last set,
+	 * offers; none where the editor has no rows.
+	 */
+	@NonNull
+	default List<CodeView.Fix> fixes(@NonNull ProjectDiagnostic error) {
+		return List.of();
+	}
+
+	/** Apply fix index of fixes(error). */
+	default void applyFix(@NonNull ProjectDiagnostic error, int index) {
+	}
 
 	/**
 	 * Return whether the editor keeps showing the errors of the last
