@@ -1046,6 +1046,16 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Return why the unsaved text of path changed elsewhere, as
+	 * {@link #conflicts} has it, or null; what was found in its place
+	 * is {@link #found}.
+	 */
+	public String conflict(ProjectPath path) {
+		FileRecord record = records.get(path);
+		return record != null ? record.conflict() : null;
+	}
+
+	/**
 	 * Look for changes made elsewhere: keep the unsaved text, forget
 	 * what listings told, and see what storage holds of every file in
 	 * memory or with unsaved text: unsaved text storage does not hold
@@ -1128,18 +1138,33 @@ public final class OpenProject {
 	 * Resolve the conflict of path, as the user saw it at revision seen,
 	 * see {@link #seen}: reload the stored text, or keep the unsaved
 	 * text so the next explicit save overwrites that revision. Nothing
-	 * happens when the file is not in conflict at seen anymore.
+	 * happens when the file is not in conflict at seen anymore, or when
+	 * what storage holds in its place is no text: a picture, or a file
+	 * too large, is neither reloaded nor written over by consent.
 	 */
 	public void resolve(ProjectPath path, Choice choice, String seen) {
+		resolve(path, choice, seen, problem -> {
+		});
+	}
+
+	/**
+	 * The same; done gets why a reload changed nothing, else null.
+	 */
+	public void resolve(ProjectPath path, Choice choice, String seen,
+			Callback<String> done) {
 		FileRecord record = records.get(path);
-		if (record == null || record.conflict() == null ||
+		// Only what the user can have seen and can decide: a text at
+		// the revision named, or no file. Never a revision of what is
+		// no text, which nothing showed them.
+		if (record == null || !record.decides() ||
 				!Objects.equals(seen, record.seen)) {
+			done.done(null);
 			return;
 		} else if (choice == Choice.RELOAD) {
-			reload(path, true, seen, problem -> {
-			});
+			reload(path, true, seen, done);
 			return;
 		}
+		done.done(null);
 		record.consent(seen);
 		if (record.document() != null) {
 			flush(record);

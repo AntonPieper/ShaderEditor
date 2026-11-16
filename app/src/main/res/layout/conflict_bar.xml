@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Under the toolbar, while the file in the editor changed outside the
+app or cannot be read: one sentence and what can be done about it. -->
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:id="@+id/conflict_bar"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:background="?attr/colorSurfaceContainerLow"
+	android:orientation="vertical">
+
+	<TextView
+		android:id="@+id/conflict_text"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:accessibilityLiveRegion="polite"
+		android:drawablePadding="@dimen/se_margin_screen"
+		android:paddingStart="@dimen/se_margin_screen"
+		android:paddingTop="12dp"
+		android:paddingEnd="@dimen/se_margin_screen"
+		android:paddingBottom="4dp"
+		android:textAppearance="?attr/textAppearanceBodyMedium"
+		android:textColor="?attr/colorOnSurface"
+		app:drawableStartCompat="@drawable/ic_sync_problem"
+		app:drawableTint="@color/se_warning" />
+
+	<de.markusfisch.android.shadereditor.widget.ButtonRow
+		android:id="@+id/conflict_actions"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:paddingStart="8dp"
+		android:paddingEnd="8dp">
+
+		<Button
+			android:id="@+id/conflict_reload"
+			style="@style/Widget.ShaderEditor.Button.TextButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/conflict_reload" />
+
+		<Button
+			android:id="@+id/conflict_keep"
+			style="@style/Widget.ShaderEditor.Button.TextButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/conflict_keep" />
+
+		<Button
+			android:id="@+id/conflict_copy"
+			style="@style/Widget.ShaderEditor.Button.TextButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/duplicate_shader" />
+
+		<Button
+			android:id="@+id/conflict_discard"
+			style="@style/Widget.ShaderEditor.Button.TextButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/conflict_discard" />
+
+		<Button
+			android:id="@+id/conflict_retry"
+			style="@style/Widget.ShaderEditor.Button.TextButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/nav_try_again" />
+
+		<Button
+			android:id="@+id/conflict_save"
+			style="@style/Widget.ShaderEditor.Button.TextButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/save_shader" />
+	</de.markusfisch.android.shadereditor.widget.ButtonRow>
+
+	<!-- With the text's own 4 dp, as much as above the text when no
+		button is offered. -->
+	<Space
+		android:layout_width="match_parent"
+		android:layout_height="8dp" />
+
+	<View
+		android:layout_width="match_parent"
+		android:layout_height="@dimen/se_hairline"
+		android:background="?attr/colorOutlineVariant" />
+</LinearLayout>

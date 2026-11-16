@@ -1136,6 +1136,12 @@ public final class LibraryScreen implements ShaderScreen {
 				showRunning();
 			}
 
+			// A number being tuned is part of the text that is saved.
+			@Override
+			public void onSaving() {
+				files.endTuning(true);
+			}
+
 			@Override
 			public void onSaved() {
 				uiManager.showNotice(activity.getText(R.string.shader_saved),
@@ -1169,7 +1175,8 @@ public final class LibraryScreen implements ShaderScreen {
 						.show();
 			}
 
-			// What runs and what it reads, else the file alone.
+			// What runs and what it reads, and the file in the editor,
+			// whose unsaved text is what the copy is for.
 			@Override
 			public void onSaveCopy(@NonNull ProjectFile file) {
 				OpenProject project = file.getProject();
@@ -1182,6 +1189,9 @@ public final class LibraryScreen implements ShaderScreen {
 							paths.add(use.path());
 						}
 					}
+				}
+				if (!paths.contains(file.getPath())) {
+					paths.add(file.getPath());
 				}
 				libraryAdd.saveCopy(project, paths.get(0), paths);
 			}

@@ -13,6 +13,8 @@ import java.util.Map;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.navigation.FileActions;
 import de.markusfisch.android.shadereditor.navigation.FileLine;
+import de.markusfisch.android.shadereditor.project.FileTexts;
+import de.markusfisch.android.shadereditor.project.FileTexts.Callback;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 
@@ -28,6 +30,13 @@ public final class ProjectFile implements OpenItem {
 		/** The title, the second line or the unsaved state changed. */
 		void onChanged();
 
+		/**
+		 * An explicit save is about to look at storage and may give the
+		 * file its stored text: whatever else is changing the text, as
+		 * a number being tuned, ends first.
+		 */
+		void onSaving();
+
 		/** An explicit save wrote every file. */
 		void onSaved();
 
@@ -42,6 +51,62 @@ public final class ProjectFile implements OpenItem {
 
 		/** Save a copy of the file, with what it reads, elsewhere. */
 		void onSaveCopy(@NonNull ProjectFile file);
+	}
+
+	/**
+	 * What storage was found to hold in place of the file, as far as the
+	 * user has to know: it changed or was deleted while the file has
+	 * unsaved text here, it was deleted while it has none, or it cannot
+	 * be read anymore; and the revision the user decides about, null when
+	 * there is no file.
+	 */
+	public record Outside(@NonNull Kind kind, @Nullable String seen) {
+		public enum Kind {
+			CHANGED, DELETED, GONE, UNREADABLE,
+			/**
+			 * Its unsaved text could not be read when it was opened,
+			 * and reading it again finds the same: it can be given up.
+			 */
+			JOURNAL,
+			/**
+			 * The same, but the device only had no memory to read it:
+			 * it may be whole, and is read again.
+			 */
+			JOURNAL_UNREAD
+		}
+
+		/**
+		 * Return what is to be said of a file that storage was found
+		 * to hold as found, null when not in memory: journal tells why
+		 * its unsaved text could not be read, else null, and damaged
+		 * whether that journal is; conflict whether its unsaved text is
+		 * on another base than storage has, seen at seen; modified
+		 * whether it has unsaved text. Null when nothing is to be said.
+		 * Of two that hold, the first here is told.
+		 */
+		@Nullable
+		public static Outside of(@Nullable FileTexts.Found found,
+				@Nullable String journal, boolean damaged, boolean conflict,
+				@Nullable String seen, boolean modified) {
+			if (journal != null) {
+				return new Outside(damaged
+						? Kind.JOURNAL
+						: Kind.JOURNAL_UNREAD, null);
+			} else if (found == FileTexts.Found.UNAVAILABLE ||
+					found == FileTexts.Found.NOT_TEXT ||
+					found == FileTexts.Found.TOO_LARGE) {
+				// Also with unsaved text: what is there now is nothing
+				// to reload, and nothing to consent to write over.
+				return new Outside(Kind.UNREADABLE, null);
+			} else if (conflict) {
+				return new Outside(found == FileTexts.Found.MISSING
+						? Kind.DELETED
+						: Kind.CHANGED, seen);
+			} else if (found == FileTexts.Found.MISSING && !modified) {
+				return new Outside(Kind.GONE, null);
+			}
+			return null;
+		}
 	}
 
 	@NonNull
@@ -135,6 +200,39 @@ public final class ProjectFile implements OpenItem {
 		return project.storage().access() == OpenProject.Access.READ_ONLY;
 	}
 
+	/** Return what is to be said of the file's storage, or null. */
+	@Nullable
+	public Outside outside() {
+		return Outside.of(project.found(path), project.unreadable(path),
+				project.damaged(path), project.conflict(path) != null,
+				project.seen(path), isModified());
+	}
+
+	/**
+	 * Resolve the conflict as the user saw it in outside: reload the
+	 * stored text, or keep the unsaved text so that the next explicit
+	 * save overwrites the stored file. Nothing happens when storage was
+	 * seen to change again since.
+	 */
+	public void resolve(@NonNull Outside outside,
+			@NonNull OpenProject.Choice choice) {
+		Callback<String> told = problem -> {
+			if (problem != null) {
+				listener.onFailed(context.getString(R.string.file_problem,
+						path.toString(), problem));
+			}
+		};
+		project.resolve(path, choice, outside.seen(), told);
+	}
+
+	/**
+	 * Give up unsaved text of the file that could not be read, which
+	 * the user confirmed; nothing happens to one that is not damaged.
+	 */
+	public void discard() {
+		project.dismiss(path);
+	}
+
 	@Override
 	public float getQuality() {
 		return quality;
@@ -146,16 +244,26 @@ public final class ProjectFile implements OpenItem {
 		this.quality = quality;
 	}
 
-	// Read-only files are kept with Save a copy instead of Save.
+	// Read-only files are kept with Save a copy instead of Save, and so
+	// is unsaved text that cannot be saved where it is.
 	@Override
 	public boolean can(@NonNull Action action) {
 		boolean readOnly = isReadOnly();
 		return action == Action.SAVE && !readOnly ||
-				action == Action.SAVE_COPY && readOnly ||
+				action == Action.SAVE_COPY && (readOnly || atRisk()) ||
 				action == Action.DELETE && !single && !readOnly ||
 				action == Action.WALLPAPER && project.running() != null ||
 				action == Action.RUN_THIS_FILE && FileActions.offersRun(
 						path.equals(project.running()), project.runs(path));
+	}
+
+	// Whether its unsaved text cannot be saved where it is until the
+	// user decides.
+	private boolean atRisk() {
+		Outside outside = outside();
+		return outside != null && outside.kind() != Outside.Kind.GONE &&
+				outside.kind() != Outside.Kind.JOURNAL &&
+				outside.kind() != Outside.Kind.JOURNAL_UNREAD && isModified();
 	}
 
 	// Run this file only when it can run and does not; the wallpaper
@@ -176,6 +284,9 @@ public final class ProjectFile implements OpenItem {
 				listener.onReadOnly(this);
 			}
 			return;
+		}
+		if (explicit) {
+			listener.onSaving();
 		}
 		project.save(explicit, outcomes -> {
 			// "Saved" only when every write was made and nothing else
@@ -214,8 +325,8 @@ public final class ProjectFile implements OpenItem {
 		return failures;
 	}
 
-	// Conflicts and unreadable unsaved text have no screen of their own
-	// yet; they are told like any failure.
+	// A save that is refused answers the tap like any failure; for the
+	// file in the editor the bar above the code says what can be done.
 	@Nullable
 	private static String reason(@Nullable OpenProject.Outcome outcome) {
 		if (outcome instanceof OpenProject.Conflict conflict) {

@@ -590,4 +590,17 @@
 	<string name="a11y_fix_add_uniforms">Add uniforms %1$s</string>
 	<string name="a11y_added_uniforms">Added %1$s on lines %2$s</string>
 	<string name="a11y_list_and">%1$s and %2$s</string>
+	<string name="conflict_changed">%s was changed outside ShaderEditor and has unsaved text here</string>
+	<string name="conflict_deleted">%s was deleted outside ShaderEditor and has unsaved text here</string>
+	<string name="conflict_gone">%s was deleted outside ShaderEditor</string>
+	<string name="conflict_unreadable">ShaderEditor cannot read %s anymore</string>
+	<string name="conflict_unreadable_unsaved">ShaderEditor cannot read %s anymore; its unsaved text is kept here</string>
+	<string name="conflict_reload">Reload from file</string>
+	<string name="conflict_keep">Keep my edits</string>
+	<string name="conflict_journal">ShaderEditor could not read the unsaved text of %s; the text shown is the file\'s</string>
+	<string name="conflict_discard">Discard</string>
+	<string name="conflict_discard_title">Discard the unsaved text of %s?</string>
+	<string name="conflict_discard_message">ShaderEditor could not read it, and it cannot be brought back once it is discarded. The file itself stays as it is.</string>
+	<string name="nav_delete_changed">Changed outside ShaderEditor and deleted as it is now, with what was written there: %s</string>
+	<string name="conflict_others">Changed outside ShaderEditor, with unsaved text: %s</string>
 </resources>

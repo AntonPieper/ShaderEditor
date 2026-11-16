@@ -1,15 +1,22 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.View;
+import android.view.ViewStub;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.R;
@@ -165,6 +172,9 @@ public final class ProjectFileManager {
 	private boolean retuning;
 	@Nullable
 	private ProjectFile file;
+	// The bar that says what changed outside the app, once made.
+	@Nullable
+	private View bar;
 	// The build of what runs asked for last, of which project and file.
 	@Nullable
 	private OpenProject.Build build;
@@ -359,10 +369,7 @@ public final class ProjectFileManager {
 				holds.projects().isLibrary(key) &&
 						Library.convertsShaderToy(path));
 		listener.onShown(shown);
-		String unreadable = project.unreadable(path);
-		if (unreadable != null) {
-			listener.onFailed(problem(path, unreadable));
-		}
+		showOutside();
 		if (line > 0) {
 			editor.navigateToLine(line);
 			line = 0;
@@ -428,6 +435,7 @@ public final class ProjectFileManager {
 		project.setEditorState(left.getPath(), editor.getDocumentState());
 		project.setListener(null, null);
 		holds.release(project);
+		showOutside();
 	}
 
 	/** Look for changes made elsewhere, when the app is in front again. */
@@ -443,11 +451,19 @@ public final class ProjectFileManager {
 			if (file != checked) {
 				return;
 			}
-			// Conflicts have no screen of their own yet.
-			for (Map.Entry<ProjectPath, String> conflict :
-					project.conflicts().entrySet()) {
-				listener.onFailed(problem(conflict.getKey(),
-						conflict.getValue()));
+			// The file in the editor says so in its bar; the others are
+			// named once.
+			List<String> others = new ArrayList<>();
+			for (ProjectPath conflict : project.conflicts().keySet()) {
+				if (!conflict.equals(checked.getPath())) {
+					others.add(conflict.toString());
+				}
+			}
+			if (!others.isEmpty()) {
+				Collections.sort(others);
+				listener.onFailed(activity.getString(
+						R.string.conflict_others,
+						TextUtils.join(", ", others)));
 			}
 			String unprotected = project.unprotected();
 			if (unprotected != null) {
@@ -887,6 +903,91 @@ public final class ProjectFileManager {
 			run();
 		}
 		listener.onChanged();
+		showOutside();
+	}
+
+	// The bar under the toolbar says what storage holds in place of the
+	// file in the editor, as its project knows it, and offers what can
+	// be done; it is made the first time there is something to say.
+	private void showOutside() {
+		ProjectFile shown = file;
+		ProjectFile.Outside outside = shown != null ? shown.outside() : null;
+		if (bar == null) {
+			if (outside == null) {
+				return;
+			}
+			bar = ((ViewStub) activity.findViewById(
+					R.id.conflict_bar_stub)).inflate();
+		}
+		bar.setVisibility(outside != null ? View.VISIBLE : View.GONE);
+		if (outside == null) {
+			return;
+		}
+		ProjectFile.Outside.Kind kind = outside.kind();
+		boolean unsaved = shown.isModified();
+		TextView text = bar.findViewById(R.id.conflict_text);
+		text.setText(activity.getString(switch (kind) {
+			case CHANGED -> R.string.conflict_changed;
+			case DELETED -> R.string.conflict_deleted;
+			case GONE -> R.string.conflict_gone;
+			case UNREADABLE -> unsaved
+					? R.string.conflict_unreadable_unsaved
+					: R.string.conflict_unreadable;
+			case JOURNAL, JOURNAL_UNREAD -> R.string.conflict_journal;
+		}, shown.getTitle()));
+		boolean decides = kind == ProjectFile.Outside.Kind.CHANGED;
+		offer(R.id.conflict_reload, decides,
+				() -> shown.resolve(outside, OpenProject.Choice.RELOAD));
+		offer(R.id.conflict_keep, decides ||
+						kind == ProjectFile.Outside.Kind.DELETED,
+				() -> shown.resolve(outside, OpenProject.Choice.KEEP));
+		offer(R.id.conflict_discard, kind == ProjectFile.Outside.Kind.JOURNAL,
+				() -> discard(shown));
+		offer(R.id.conflict_retry,
+				kind == ProjectFile.Outside.Kind.JOURNAL_UNREAD,
+				() -> reread(shown));
+		offer(R.id.conflict_copy, unsaved &&
+						shown.can(OpenItem.Action.SAVE_COPY),
+				shown::saveCopy);
+		offer(R.id.conflict_save, kind == ProjectFile.Outside.Kind.GONE &&
+						shown.can(OpenItem.Action.SAVE),
+				() -> shown.save(true));
+	}
+
+	// Unsaved text that is given up is gone for good: only after a yes.
+	private void discard(@NonNull ProjectFile shown) {
+		new MaterialAlertDialogBuilder(activity)
+				.setTitle(activity.getString(R.string.conflict_discard_title,
+						shown.getTitle()))
+				.setMessage(R.string.conflict_discard_message)
+				.setPositiveButton(R.string.conflict_discard,
+						(dialog, which) -> shown.discard())
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
+	}
+
+	// Read unsaved text the device had no memory for once more: the
+	// file is opened again, with that text when it could be read now.
+	private void reread(@NonNull ProjectFile shown) {
+		String key = this.key;
+		ProjectPath path = shown.getPath();
+		shown.getProject().reread(path, problem -> {
+			if (file == shown && !destroyed) {
+				show(key, path, shown.isSingle());
+			}
+		});
+	}
+
+	// Whatever a button of the bar does may give the file another text:
+	// a number being tuned is written first, like any typing, so that
+	// it is part of what the action is for.
+	private void offer(int id, boolean offered, @NonNull Runnable action) {
+		View button = bar.findViewById(id);
+		button.setVisibility(offered ? View.VISIBLE : View.GONE);
+		button.setOnClickListener(v -> {
+			endTuning(true);
+			action.run();
+		});
 	}
 
 	// The file in the editor follows a rename of it or of a folder it
@@ -966,12 +1067,5 @@ public final class ProjectFileManager {
 				: Row.Kind.TEXT, inUse) == Tap.OPEN_AND_RUN) {
 			project.runThisFile(path);
 		}
-	}
-
-	@NonNull
-	private String problem(@NonNull ProjectPath path,
-			@NonNull String problem) {
-		return activity.getString(R.string.file_problem, path.toString(),
-				problem);
 	}
 }

@@ -54,12 +54,27 @@ final class Deleting {
 			}
 			Collections.sort(names);
 			int count = names.size();
+			String message = context.getResources().getQuantityString(
+					R.plurals.nav_delete_unsaved, count, count,
+					TextUtils.join(", ", names));
+			// What another app wrote there goes too, unseen.
+			List<String> changed = new ArrayList<>();
+			for (ProjectPath file : project.conflicts().keySet()) {
+				if (unsaved.texts().containsKey(file) &&
+						project.seen(file) != null) {
+					changed.add(file.toString());
+				}
+			}
+			if (!changed.isEmpty()) {
+				Collections.sort(changed);
+				message += "\n\n" + context.getString(
+						R.string.nav_delete_changed,
+						TextUtils.join(", ", changed));
+			}
 			new MaterialAlertDialogBuilder(context)
 					.setTitle(context.getString(R.string.delete_shader_title,
 							path.getFileName()))
-					.setMessage(context.getResources().getQuantityString(
-							R.plurals.nav_delete_unsaved, count, count,
-							TextUtils.join(", ", names)))
+					.setMessage(message)
 					.setPositiveButton(R.string.nav_delete, (d, which) ->
 							delete(context, project, path, unsaved.texts(),
 									done))

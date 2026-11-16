@@ -292,6 +292,8 @@ public final class PassesSheet {
 	// A bottom sheet, or in landscape a side sheet under the toolbar.
 	@Nullable
 	private final BottomSheetBehavior<View> behavior;
+	// Where the code began when the sheet was placed last.
+	private int placedTop = -1;
 	@Nullable
 	private final SideSheetBehavior<View> side;
 	private final OnBackPressedCallback back;
@@ -406,6 +408,15 @@ public final class PassesSheet {
 			}
 		};
 		activity.getOnBackPressedDispatcher().addCallback(activity, back);
+		// The bar above the code comes and goes with the file shown,
+		// which makes the code's frame another height.
+		activity.findViewById(R.id.content_frame).addOnLayoutChangeListener(
+				(v, left, top, right, bottom, oldLeft, oldTop, oldRight,
+						oldBottom) -> {
+					if (state.open && codeTop() != placedTop) {
+						place();
+					}
+				});
 
 		pause = sheet.findViewById(R.id.passes_pause);
 		pause.setOnClickListener(v -> setPaused(!state.paused));
@@ -545,17 +556,40 @@ public final class PassesSheet {
 
 	private void open() {
 		files.opening();
-		if (behavior != null) {
-			behavior.setMaxHeight(Math.round(
-					((View) sheet.getParent()).getHeight() * .7f));
-		} else {
-			var params = (ViewGroup.MarginLayoutParams) sheet.getLayoutParams();
-			params.topMargin = activity.findViewById(R.id.toolbar).getBottom();
-			sheet.setLayoutParams(params);
-		}
+		place();
 		set(state.withOpen(true).withPasses(view.passes())
 				.withQuality(view.getQuality())
 				.withLimit(view.getFrameRateLimit()));
+	}
+
+	// The sheet lies over the code only, never over the toolbar or the
+	// bar above the code that says a file changed outside: in landscape
+	// from the code's top down, else at most 70 % of the screen and not
+	// above the code's top.
+	private void place() {
+		int top = placedTop = codeTop();
+		if (behavior != null) {
+			int height = ((View) sheet.getParent()).getHeight();
+			behavior.setMaxHeight(Math.min(Math.round(height * .7f),
+					height - top));
+			sheet.requestLayout();
+		} else {
+			var params = (ViewGroup.MarginLayoutParams) sheet.getLayoutParams();
+			params.topMargin = top;
+			sheet.setLayoutParams(params);
+		}
+	}
+
+	// Return where the code begins, from the top of the layout the sheet
+	// is a child of: under the toolbar and, when it shows, the bar.
+	// Measured in the window, so it holds wherever the two are in the
+	// layout; a frame's own top is 0 in its parent, whatever is above.
+	private int codeTop() {
+		int[] code = new int[2];
+		int[] parent = new int[2];
+		activity.findViewById(R.id.content_frame).getLocationInWindow(code);
+		((View) sheet.getParent()).getLocationInWindow(parent);
+		return Math.max(0, code[1] - parent[1]);
 	}
 
 	// The limits, in a menu at the chip.

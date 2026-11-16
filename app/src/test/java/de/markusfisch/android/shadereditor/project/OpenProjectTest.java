@@ -2172,6 +2172,66 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void keepIsNotTakenForAFileThatIsNoTextAnymore()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = shown(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		// Another app puts a picture in its place.
+		byte[] png = {(byte) 0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a, 0,
+				0, 0, 0};
+		Files.write(new File(root, "a.glsl").toPath(), png);
+		refresh(project);
+
+		assertEquals(FileTexts.Found.NOT_TEXT, project.found(a));
+		assertNotNull(project.conflict(a));
+		project.resolve(a, OpenProject.Choice.KEEP, project.seen(a));
+		project.resolve(a, OpenProject.Choice.RELOAD, project.seen(a));
+		settle();
+
+		// Nothing was decided: the text stays, and no save writes over
+		// what is there.
+		assertEquals("mine", document.text().toString());
+		assertNotNull(project.conflict(a));
+		assertTrue(save(project, true).get(a) instanceof Conflict);
+		assertArrayEquals(png, Files.readAllBytes(
+				new File(root, "a.glsl").toPath()));
+	}
+
+	@Test
+	public void keepIsForTheRevisionSeenAlsoAfterARestartAndAnAutoSave()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		edit(project, shown(project, "a.glsl", "stored"), "mine");
+		flush(project);
+		write("a.glsl", "theirs 1");
+		refresh(project);
+		project.resolve(a, OpenProject.Choice.KEEP, project.seen(a));
+		flush(project);
+
+		// The process dies; another app writes again before any save.
+		OpenProject restarted = open();
+		write("a.glsl", "theirs 2");
+		shown(restarted, "a.glsl");
+
+		// An auto-save never uses the consent, and an explicit save
+		// finds a revision nobody consented to.
+		assertTrue(save(restarted, false).get(a) instanceof Conflict);
+		assertEquals("theirs 2", read("a.glsl"));
+		assertTrue(save(restarted, true).get(a) instanceof Conflict);
+		assertEquals("theirs 2", read("a.glsl"));
+		assertNotNull(restarted.conflict(a));
+		// Asked again, for what is there now.
+		restarted.resolve(a, OpenProject.Choice.KEEP, restarted.seen(a));
+		assertTrue(save(restarted, false).get(a) instanceof Conflict);
+		assertEquals("theirs 2", read("a.glsl"));
+		assertTrue(save(restarted, true).get(a) instanceof Saved);
+		assertEquals("mine", read("a.glsl"));
+	}
+
+	@Test
 	public void aSaveIsDecidedWhenItRunsNotWhenItWasAskedFor()
 			throws IOException {
 		OpenProject project = open();
