@@ -2,10 +2,13 @@ package de.markusfisch.android.shadereditor.widget;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Document.Selection;
 import de.markusfisch.android.shadereditor.editor.Motion;
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -134,6 +137,73 @@ public class TouchSelectionTest {
 		assertTrue(touch.showsHandles(true));
 		touch.dragHandle(3, 3);
 		assertTrue(touch.showsHandles(true));
+	}
+
+	@Test
+	public void theHandlesHideOnceTheTextChangesEvenInsideABatch() {
+		// As a keyboard's batch edit that replaces the whole text: a
+		// frame may draw before the batch ends.
+		Document document = new Document(Text.of("float a;\nfloat b;"));
+		document.select(17, 17);
+		Selection touched = document.selection();
+		assertSame(touched, touch.handles(touched, document.selection(),
+				false));
+		document.beginBatch();
+		document.replace(0, 17, Text.EMPTY);
+		assertNull(touch.handles(touched, document.selection(), false));
+		document.replace(0, 0, Text.of("x"));
+		assertNull(touch.handles(touched, document.selection(), false));
+		document.endBatch();
+		assertNull(touch.handles(touched, document.selection(), false));
+	}
+
+	@Test
+	public void theHandlesHideAfterAChangeThatLeavesTheirOffsets() {
+		Document document = new Document(Text.of("float a;"));
+		document.select(0, 5);
+		Selection touched = document.selection();
+		document.replace(8, 8, Text.of(" // a"));
+		assertEquals(touched, document.selection());
+		assertNull(touch.handles(touched, document.selection(), false));
+	}
+
+	@Test
+	public void aDraggedHandleGoesOnInTheTextAChangeLeft() {
+		Document document = new Document(
+				Text.of("vec3 a;\nfloat value = 1.0;"));
+		document.addListener(new Document.Listener() {
+			@Override
+			public void onChange(Document.Change change, Text before) {
+				touch.map(change);
+			}
+		});
+		// The end handle of "value = 1.0;" at the end of the text.
+		touch.dragHandle(14, 26);
+		// The whole text replaced by a shorter one while the finger is
+		// down.
+		document.replace(0, 26, Text.of("float b;"));
+		// Both ends behind the new text, as the document's selection.
+		assertTrue(touch.dragTo(document.text(), 2));
+		assertEquals(8, touch.anchor());
+		assertEquals(0, touch.head());
+	}
+
+	@Test
+	public void aDragByWordKeepsItsWordWhenTextIsInsertedBeforeIt() {
+		Document document = new Document(Text.of("float alpha = beta;"));
+		document.addListener(new Document.Listener() {
+			@Override
+			public void onChange(Document.Change change, Text before) {
+				touch.map(change);
+			}
+		});
+		touch.dragWords(document.text(), 7);
+		document.replace(0, 0, Text.of("vec2 b;\n"));
+		assertEquals(14, touch.anchor());
+		assertEquals(19, touch.head());
+		assertTrue(touch.dragTo(document.text(), 24));
+		assertEquals(14, touch.anchor());
+		assertEquals(26, touch.head());
 	}
 
 	@Test

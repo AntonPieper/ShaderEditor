@@ -1,5 +1,8 @@
 package de.markusfisch.android.shadereditor.widget;
 
+import androidx.annotation.Nullable;
+
+import de.markusfisch.android.shadereditor.editor.Document.Change;
 import de.markusfisch.android.shadereditor.editor.Document.Selection;
 import de.markusfisch.android.shadereditor.editor.Motion;
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -17,8 +20,11 @@ import de.markusfisch.android.shadereditor.editor.Text;
  * is in progress (after a long press or a double tap), the handles do
  * not show, as the platform's do not; whether a drag is in progress is
  * the view's to know. Offsets count into the whole
- * text; the work is that of one line, and a drag allocates only when
- * the selection changes.
+ * text; a change to the text moves them with it, as the document moves
+ * its selection, so a drag goes on in the text the change left. The
+ * handles show for the selection a touch made only while it is the
+ * document's. The work is that of one line, and a drag allocates only
+ * when the selection changes.
  */
 final class TouchSelection {
 	/** Where the offsets of one line are, as its layout knows. */
@@ -183,6 +189,33 @@ final class TouchSelection {
 		int line = text.lineOf(offset);
 		return !Character.isWhitespace(text.line(line).charAt(
 				word.start() - text.lineStart(line)));
+	}
+
+	/**
+	 * Move the offsets of the drag with change, made to the text while
+	 * the drag goes on, as Change.map moves the document's selection.
+	 */
+	void map(Change change) {
+		anchor = change.map(anchor);
+		head = change.map(head);
+		wordStart = change.map(wordStart);
+		wordEnd = change.map(wordEnd);
+		reached = change.map(reached);
+	}
+
+	/**
+	 * Return the selection whose handles show: touched, the one the
+	 * last touch made, while it is current, the document's selection,
+	 * and the handles show at all; else null. Every change to the text
+	 * replaces the document's selection, also before the batch it is
+	 * part of ends, so the handles never show at offsets of a text that
+	 * is gone.
+	 */
+	@Nullable
+	Selection handles(@Nullable Selection touched, Selection current,
+			boolean dragging) {
+		return touched != null && touched == current &&
+				showsHandles(dragging) ? current : null;
 	}
 
 	/**
