@@ -27,7 +27,9 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.opengl.PictureLimit;
+import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.widget.FileNameView;
+import de.markusfisch.android.shadereditor.widget.FittingLinearLayout;
 import de.markusfisch.android.shadereditor.widget.PassesSheet;
 import de.markusfisch.android.shadereditor.widget.TouchThruDrawerLayout;
 
@@ -37,6 +39,11 @@ public class UIManager implements PassesSheet.Line {
 	private final ExtraKeysManager extraKeysManager;
 	private final ShaderViewManager shaderViewManager;
 	private final Toolbar toolbar;
+	// The toolbar and what hangs from it, the strip that stands behind
+	// the status bar while they step aside, and the extra keys.
+	private final View topBars;
+	private final View statusbar;
+	private final View extraKeys;
 	private final FileNameView titleView;
 	private boolean titleIsFileName;
 	private final TextView subtitleView;
@@ -90,15 +97,27 @@ public class UIManager implements PassesSheet.Line {
 				R.dimen.toolbar_title_min);
 		toolbar.addOnLayoutChangeListener((v, left, top, right, bottom,
 				oldLeft, oldTop, oldRight, oldBottom) -> fitFrameRate());
+		topBars = activity.findViewById(R.id.top_bars);
+		statusbar = activity.findViewById(R.id.statusbar);
+		extraKeys = activity.findViewById(R.id.extra_keys);
+		// Whether the top bars step aside is decided where the room is
+		// measured, from what is there then: the keyboard opening or
+		// closing, Find closing, the conflict bar, the code shown.
+		FittingLinearLayout mainLayout = activity.findViewById(
+				R.id.main_layout);
+		mainLayout.setFit(this::fitTopBars);
 		// The one place that limits the picture for the code over it, for
 		// every way the code comes to be shown or not: the start, a
 		// restore, the code button, nothing open and something opened.
 		// Code over a bright picture cannot be read, so the picture is
 		// dimmed at once when the code appears and only fades back.
-		editorFragment.setOnCodeShownListener(shown -> limitPicture(
-				!shown && Settings.Global.getFloat(
-						activity.getContentResolver(),
-						Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f));
+		editorFragment.setOnCodeShownListener(shown -> {
+			limitPicture(!shown && Settings.Global.getFloat(
+					activity.getContentResolver(),
+					Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f);
+			// Code set aside without a layout of its own is measured too.
+			mainLayout.requestLayout();
+		});
 
 		drawerLayout = activity.findViewById(R.id.drawer_layout);
 		drawerToggle = new ActionBarDrawerToggle(
@@ -170,6 +189,52 @@ public class UIManager implements PassesSheet.Line {
 		editorFragment.updateHighlighting();
 		limitPicture(false);
 		activity.invalidateOptionsMenu();
+	}
+
+	/** Whether the toolbar and what hangs from it stepped aside. */
+	public boolean areTopBarsAside() {
+		return topBars.getVisibility() != View.VISIBLE;
+	}
+
+	// Step the top bars aside while an on-screen keyboard leaves the code
+	// shown too little room under them, and bring them back otherwise,
+	// from the sizes layout just measured; never from what was decided
+	// before, so without a keyboard the toolbar is always there. Returns
+	// whether they changed.
+	private boolean fitTopBars(@NonNull FittingLinearLayout layout) {
+		boolean aside = ToolbarSpace.stepsAside(
+				// A bar in the toolbar's place, as Find, keeps it.
+				toolbar.getVisibility() == View.VISIBLE &&
+						editorFragment.isCodeShown() &&
+						SoftKeyboard.isOpen(topBars),
+				layout.getMeasuredHeight() - layout.getPaddingTop() -
+						layout.getPaddingBottom() - topBarsHeight(layout) -
+						(extraKeys.getVisibility() == View.VISIBLE
+								? extraKeys.getMeasuredHeight()
+								: 0),
+				editorFragment.getLineHeight());
+		if (aside == areTopBarsAside()) {
+			return false;
+		}
+		topBars.setVisibility(aside ? View.GONE : View.VISIBLE);
+		statusbar.setVisibility(aside ? View.VISIBLE : View.GONE);
+		return true;
+	}
+
+	// The height of the top bars, measured on their own while they are
+	// aside. While they are there, the layout may have cut them short;
+	// then the code has no room at all, which is too little either way.
+	private int topBarsHeight(@NonNull View layout) {
+		if (!areTopBarsAside()) {
+			return topBars.getMeasuredHeight();
+		}
+		topBars.measure(View.MeasureSpec.makeMeasureSpec(
+						layout.getMeasuredWidth() - layout.getPaddingLeft() -
+								layout.getPaddingRight(),
+						View.MeasureSpec.EXACTLY),
+				View.MeasureSpec.makeMeasureSpec(0,
+						View.MeasureSpec.UNSPECIFIED));
+		return topBars.getMeasuredHeight();
 	}
 
 	public void toggleCodeVisibility() {

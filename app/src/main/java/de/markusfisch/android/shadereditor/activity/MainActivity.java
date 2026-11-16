@@ -381,6 +381,12 @@ public class MainActivity extends AppCompatActivity {
 			}
 
 			private void showError(String error) {
+				// Not over the few lines of code left while the toolbar
+				// steps aside: the code marks the error, and the error
+				// button is back with the toolbar.
+				if (uiManager.areTopBarsAside()) {
+					return;
+				}
 				Snackbar snackbar = Snackbar.make(mainCoordinator,
 								error,
 								Snackbar.LENGTH_LONG)

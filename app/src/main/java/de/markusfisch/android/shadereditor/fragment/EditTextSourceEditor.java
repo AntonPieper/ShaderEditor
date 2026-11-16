@@ -41,6 +41,11 @@ final class EditTextSourceEditor implements SourceEditor {
 	}
 
 	@Override
+	public int getLineHeight() {
+		return shaderEditor.getLineHeight();
+	}
+
+	@Override
 	public void setListener(@NonNull Listener listener) {
 		shaderEditor.setOnEditPausedListener(listener::onEditPaused);
 		shaderEditor.setOnTextModifiedListener(listener::onTextModified);

@@ -225,6 +225,11 @@ final class CodeViewSourceEditor implements SourceEditor {
 	}
 
 	@Override
+	public int getLineHeight() {
+		return view.getLineHeight();
+	}
+
+	@Override
 	public void setListener(@NonNull Listener listener) {
 		this.listener = listener;
 	}

@@ -737,6 +737,11 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 		return codeShown.shown();
 	}
 
+	/** Return the height of one line of code, in pixels; 0 before any. */
+	public int getLineHeight() {
+		return editor != null ? editor.getLineHeight() : 0;
+	}
+
 	/** Tell listener whether code is shown, now and on every change. */
 	public void setOnCodeShownListener(@Nullable CodeShown.Listener listener) {
 		codeShown.listen(listener);

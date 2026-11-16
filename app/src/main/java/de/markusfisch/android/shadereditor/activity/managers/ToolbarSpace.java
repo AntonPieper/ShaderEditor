@@ -1,11 +1,29 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 /**
- * How the editor's toolbar shares the room between its title and the
- * quality chip: the title comes first.
+ * How the editor's toolbar shares the room: across, between its title
+ * and the quality chip, where the title comes first; down, with the code
+ * while a keyboard is open, where the code comes first.
  */
 final class ToolbarSpace {
+	/** Fewer lines of code than this make the toolbar step aside. */
+	static final int MIN_LINES = 3;
+
 	private ToolbarSpace() {
+	}
+
+	/**
+	 * Return whether the toolbar steps aside for the code: only while an
+	 * on-screen keyboard is open over code that is shown, and the code
+	 * would show fewer than {@link #MIN_LINES} lines with the toolbar in
+	 * its place.
+	 *
+	 * @param typing     an on-screen keyboard is open over code shown
+	 * @param room       height of the code with the toolbar in its place
+	 * @param lineHeight height of one line of code
+	 */
+	static boolean stepsAside(boolean typing, int room, int lineHeight) {
+		return typing && room < MIN_LINES * lineHeight;
 	}
 
 	/**
