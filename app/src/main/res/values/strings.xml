@@ -609,7 +609,6 @@
 	<string name="tuning_part">%1$s %2$s</string>
 	<string name="a11y_tuning_value">%1$s, started at %2$s</string>
 	<string name="a11y_tuning_open">Tuning %1$s</string>
-||||||| parent of 8a526830 (style(editor): the error row as one value, polished for every fix)
 	<string name="fix_add_uniform_name">Add uniform %1$s</string>
 	<string name="fix_add_uniform_short">Add uniform</string>
 	<plurals name="fix_add_uniforms">
