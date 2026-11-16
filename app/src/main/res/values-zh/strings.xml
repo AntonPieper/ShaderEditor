@@ -435,6 +435,8 @@
 	</plurals>
 	<string name="copy_failed">无法复制到剪贴板</string>
 	<string name="file_not_saved">%1$s was not saved: %2$s</string>
+	<string name="file_saved_again">%s was not in its folder anymore and was saved again</string>
+	<string name="file_read_again">%s was changed outside ShaderEditor and was read again</string>
 	<string name="file_cannot_open">%1$s cannot be opened: %2$s</string>
 	<string name="showing_last_picture">Showing the last picture that worked</string>
 	<string name="file_read_only">%s is read-only. Save a copy to keep your changes.</string>

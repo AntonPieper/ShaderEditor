@@ -178,13 +178,15 @@ public final class ProjectFile implements OpenItem {
 			return;
 		}
 		project.save(explicit, outcomes -> {
-			List<String> failures = failures(outcomes);
-			if (failures.isEmpty()) {
+			// "Saved" only when every write was made and nothing else
+			// happened; else each file is named with what became of it.
+			List<String> told = failures(outcomes);
+			if (told.isEmpty()) {
 				if (explicit) {
 					listener.onSaved();
 				}
 			} else {
-				listener.onFailed(TextUtils.join("\n", failures));
+				listener.onFailed(TextUtils.join("\n", told));
 			}
 			listener.onChanged();
 		});
@@ -196,10 +198,17 @@ public final class ProjectFile implements OpenItem {
 		List<String> failures = new ArrayList<>();
 		for (Map.Entry<ProjectPath, OpenProject.Outcome> entry :
 				outcomes.entrySet()) {
+			String name = entry.getKey().toString();
 			String reason = reason(entry.getValue());
 			if (reason != null) {
 				failures.add(context.getString(R.string.file_not_saved,
-						entry.getKey().toString(), reason));
+						name, reason));
+			} else if (entry.getValue() instanceof OpenProject.Created) {
+				failures.add(context.getString(R.string.file_saved_again,
+						name));
+			} else if (entry.getValue() instanceof OpenProject.Reread) {
+				failures.add(context.getString(R.string.file_read_again,
+						name));
 			}
 		}
 		return failures;

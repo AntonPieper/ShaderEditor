@@ -1366,7 +1366,7 @@ public class OpenProjectTest {
 			throws IOException {
 		write(OpenProject.MAIN.toString(), SHADER);
 		OpenProject project = open();
-		Document main = document(project, OpenProject.MAIN.toString());
+		Document main = shown(project, OpenProject.MAIN.toString());
 		assertTrue(new File(root, OpenProject.MAIN.toString()).delete());
 
 		refresh(project);
@@ -2083,31 +2083,136 @@ public class OpenProjectTest {
 	}
 
 	@Test
-	public void explicitSaveCreatesACleanFileDeletedElsewhereAgain()
+	public void explicitSaveCreatesTheFileShownAgainAndSaysSo()
 			throws IOException {
 		OpenProject project = open();
 		ProjectPath a = path("a.glsl");
-		Document document = document(project, "a.glsl", "stored");
+		Document document = shown(project, "a.glsl", "stored");
+		// Deleted while the app is in front: no check saw it yet.
 		assertTrue(new File(root, "a.glsl").delete());
-		refresh(project);
-		assertEquals(FileTexts.Found.MISSING, project.found(a));
 
 		assertTrue(save(project, false).isEmpty());
 		assertFalse(new File(root, "a.glsl").exists());
-		assertTrue(save(project, true).get(a) instanceof Saved);
+		assertTrue(save(project, true).get(a) instanceof
+				OpenProject.Created);
 
 		assertEquals("stored", read("a.glsl"));
 		assertEquals(FileTexts.Found.SAME, project.found(a));
 		assertFalse(document.isModified());
+		// As it is in storage, nothing is told and nothing written.
+		assertTrue(save(project, true).isEmpty());
 
-		// A file that is there again is not written over.
+		// A file that is there again is taken, not written over.
 		assertTrue(new File(root, "a.glsl").delete());
 		refresh(project);
 		write("a.glsl", "theirs");
-		assertTrue(save(project, true).get(a) instanceof Conflict);
+		assertTrue(save(project, true).get(a) instanceof
+				OpenProject.Reread);
 		assertEquals("theirs", read("a.glsl"));
-		refresh(project);
 		assertEquals("theirs", document.text().toString());
+		document.undo();
+		assertEquals("stored", document.text().toString());
+	}
+
+	@Test
+	public void saveNeverBringsBackAFileWithoutUnsavedTextThatIsNotShown()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath b = path("b.glsl");
+		write("deleted.glsl", "gone");
+		document(project, "deleted.glsl");
+		document(project, "b.glsl", "bee");
+		Document a = shown(project, "a.glsl", "stored");
+		// Renamed and deleted by another app while the app is in front.
+		assertTrue(new File(root, "b.glsl").renameTo(
+				new File(root, "c.glsl")));
+		assertTrue(new File(root, "deleted.glsl").delete());
+		edit(project, a, "typed");
+
+		Map<ProjectPath, Outcome> outcomes = save(project, true);
+
+		assertEquals(Set.of(path("a.glsl")), outcomes.keySet());
+		assertTrue(outcomes.get(path("a.glsl")) instanceof Saved);
+		assertFalse(new File(root, "b.glsl").exists());
+		assertFalse(new File(root, "deleted.glsl").exists());
+		assertEquals("bee", read("c.glsl"));
+
+		// Seen to be gone, they are no files of the folder anymore, and
+		// a save still writes nothing.
+		refresh(project);
+		assertNull(project.document(b));
+		assertNull(project.document(path("deleted.glsl")));
+		edit(project, a, "typed more");
+		assertEquals(Set.of(path("a.glsl")),
+				save(project, true).keySet());
+		assertFalse(new File(root, "b.glsl").exists());
+		assertFalse(new File(root, "deleted.glsl").exists());
+	}
+
+	@Test
+	public void saveMakesNoFolderThatWasDeletedOrRenamedElsewhere()
+			throws IOException {
+		OpenProject project = open();
+		File notes = new File(root, "notes");
+		File lib = new File(root, "lib");
+		assertTrue(notes.mkdirs() && lib.mkdirs());
+		document(project, "notes/x.glsl", "ex");
+		document(project, "lib/y.glsl", "why");
+		Document a = shown(project, "a.glsl", "stored");
+		assertTrue(delete(notes));
+		assertTrue(lib.renameTo(new File(root, "lib2")));
+		edit(project, a, "typed");
+
+		Map<ProjectPath, Outcome> outcomes = save(project, true);
+
+		assertEquals(Set.of(path("a.glsl")), outcomes.keySet());
+		assertFalse(notes.exists());
+		assertFalse(lib.exists());
+		assertEquals("why", read("lib2/y.glsl"));
+	}
+
+	@Test
+	public void aSaveIsDecidedWhenItRunsNotWhenItWasAskedFor()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = shown(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		flush(project);
+		// A look at storage is under way; the save nobody asked for
+		// waits behind it. Meanwhile the text is undone and another app
+		// deletes the file.
+		project.refresh(reread -> {
+		});
+		List<Map<ProjectPath, Outcome>> saved = new ArrayList<>();
+		project.save(false, saved::add);
+		document.undo();
+		assertFalse(document.isModified());
+		assertTrue(new File(root, "a.glsl").delete());
+		settle();
+
+		// Without unsaved text when it runs, it writes nothing.
+		assertEquals(List.of(Map.of()), saved);
+		assertFalse(new File(root, "a.glsl").exists());
+		assertEquals(FileTexts.Found.MISSING, project.found(a));
+	}
+
+	@Test
+	public void unsavedTextOfAFileDeletedElsewhereIsWrittenOnlyOnceKept()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath b = path("b.glsl");
+		Document document = document(project, "b.glsl", "bee");
+		shown(project, "a.glsl", "stored");
+		edit(project, document, "typed");
+		assertTrue(new File(root, "b.glsl").delete());
+
+		assertTrue(save(project, true).get(b) instanceof Conflict);
+		assertFalse(new File(root, "b.glsl").exists());
+
+		project.resolve(b, OpenProject.Choice.KEEP, project.seen(b));
+		assertTrue(save(project, true).get(b) instanceof Saved);
+		assertEquals("typed", read("b.glsl"));
 	}
 
 	@Test

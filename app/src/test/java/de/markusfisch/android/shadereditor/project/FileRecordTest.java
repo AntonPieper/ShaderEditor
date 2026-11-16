@@ -324,7 +324,7 @@ public class FileRecordTest {
 
 		// Not deleted elsewhere: nothing to consent to, a save makes it.
 		assertNull(record.conflict());
-		assertNull(record.expected());
+		assertNull(record.base());
 		assertEquals("typed stored", record.flush().text().toString());
 	}
 

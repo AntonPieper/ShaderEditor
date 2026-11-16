@@ -150,15 +150,6 @@ final class FileRecord {
 	}
 
 	/**
-	 * Return the revision a save expects storage to hold: the base, or
-	 * none for a file without unsaved text that storage was seen not to
-	 * hold, which a save creates again.
-	 */
-	String expected() {
-		return !edited() && found == FileTexts.Found.MISSING ? null : base;
-	}
-
-	/**
 	 * Return what names the text the file has now for a deletion: the
 	 * revision of its document, -1 when it is not in memory.
 	 */
