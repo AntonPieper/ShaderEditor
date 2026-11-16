@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A place Go to goes to: a name with its parameters and its line, or
+a line with its text. -->
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:background="?attr/selectableItemBackground"
+	android:gravity="center_vertical"
+	android:minHeight="@dimen/se_row_height"
+	android:orientation="horizontal"
+	android:paddingHorizontal="@dimen/se_margin_sheet">
+
+	<TextView
+		android:id="@+id/go_to_label"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginEnd="12dp"
+		android:fontFeatureSettings="tnum"
+		android:maxLines="1"
+		android:textAppearance="?attr/textAppearanceBodyLarge"
+		android:textColor="?attr/colorOnSurface" />
+
+	<TextView
+		android:id="@+id/go_to_name"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_weight="1"
+		android:ellipsize="end"
+		android:singleLine="true"
+		android:textColor="?attr/colorOnSurface"
+		android:textSize="14sp" />
+
+	<TextView
+		android:id="@+id/go_to_line"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="16dp"
+		android:fontFeatureSettings="tnum"
+		android:maxLines="1"
+		android:textAppearance="?attr/textAppearanceBodyMedium"
+		android:textColor="?attr/colorOnSurfaceVariant" />
+</LinearLayout>

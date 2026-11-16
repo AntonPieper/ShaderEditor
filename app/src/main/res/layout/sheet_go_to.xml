@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Go to: one field, a name or a line, over the declarations of the
+file and of the files it includes. -->
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical">
+
+	<com.google.android.material.bottomsheet.BottomSheetDragHandleView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content" />
+
+	<com.google.android.material.textfield.TextInputLayout
+		style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="@dimen/se_margin_sheet"
+		app:hintEnabled="false"
+		app:startIconContentDescription="@null"
+		app:startIconDrawable="@drawable/ic_search">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:id="@+id/go_to_field"
+			android:layout_width="match_parent"
+			android:layout_height="48dp"
+			android:hint="@string/go_to_hint"
+			android:imeOptions="actionGo|flagNoExtractUi"
+			android:importantForAutofill="no"
+			android:inputType="text|textNoSuggestions"
+			android:paddingVertical="0dp"
+			android:singleLine="true"
+			android:textAppearance="?attr/textAppearanceBodyLarge" />
+	</com.google.android.material.textfield.TextInputLayout>
+
+	<androidx.recyclerview.widget.RecyclerView
+		android:id="@+id/go_to_list"
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		android:layout_marginTop="8dp"
+		android:layout_weight="1"
+		android:clipToPadding="false"
+		android:paddingBottom="8dp" />
+</LinearLayout>

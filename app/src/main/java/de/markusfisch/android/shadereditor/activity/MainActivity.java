@@ -401,16 +401,25 @@ public class MainActivity extends AppCompatActivity {
 			public void onFind() {
 				find();
 			}
+
+			@Override
+			public boolean canGoTo() {
+				return screen.open().hasText() &&
+						editorFragment.findableCode() != null &&
+						editorFragment.canGoTo();
+			}
+
+			@Override
+			public void onGoTo() {
+				showCode();
+				editorFragment.goTo();
+			}
 		};
 	}
 
-	// Opens Find over the code: tuning ends as Done ends it, and code
-	// the code button hid comes back.
-	private void find() {
-		CodeView code = editorFragment.findableCode();
-		if (code == null) {
-			return;
-		}
+	// Brings the code back for Find and Go to: tuning ends as Done ends
+	// it, and code the code button hid shows again.
+	private void showCode() {
 		TuningBar tuning = findViewById(R.id.tuning_bar);
 		if (tuning.isOpen()) {
 			tuning.done();
@@ -418,6 +427,15 @@ public class MainActivity extends AppCompatActivity {
 		if (!editorFragment.isCodeVisible()) {
 			screen.toggleCode();
 		}
+	}
+
+	// Opens Find over the code.
+	private void find() {
+		CodeView code = editorFragment.findableCode();
+		if (code == null) {
+			return;
+		}
+		showCode();
 		if (findBar == null) {
 			findBar = (FindBar) ((ViewStub) findViewById(
 					R.id.find_bar_stub)).inflate();

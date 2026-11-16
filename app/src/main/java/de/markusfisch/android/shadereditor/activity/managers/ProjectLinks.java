@@ -64,10 +64,11 @@ final class ProjectLinks implements FileLinks {
 		void open(@NonNull ProjectPath path, int line);
 
 		/**
-		 * Show the key back to the file named name at line, from 1,
-		 * doing back; none when back is null.
+		 * Show the key back to the file named name at line, from 1, or
+		 * to line of the file shown when name is null, doing back; none
+		 * when back is null.
 		 */
-		void showBack(@NonNull String name, int line,
+		void showBack(@Nullable String name, int line,
 				@Nullable Runnable back);
 
 		/**
@@ -409,10 +410,19 @@ final class ProjectLinks implements FileLinks {
 				: null;
 		if (document == null) {
 			return;
-		} else if (!path.equals(from)) {
-			Text text = document.text();
-			back = new Back(open, from,
-					text.lineOf(document.selection().head()) + 1, path);
+		}
+		Text text = document.text();
+		int left = text.lineOf(document.selection().head()) + 1;
+		if (!path.equals(from)) {
+			back = new Back(open, from, left, path);
+		} else if (line != left) {
+			// A jump inside the file: the key leads back to the line it
+			// left, once, in place of a way back to another file.
+			back = null;
+			host.showBack(null, left, () -> {
+				host.showBack("", 0, null);
+				host.open(from, left);
+			});
 		}
 		host.open(path, line);
 	}

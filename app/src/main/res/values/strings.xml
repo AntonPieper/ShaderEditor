@@ -655,4 +655,9 @@
 	<string name="replace_with">Replace with</string>
 	<string name="replace_all_short">All</string>
 	<string name="a11y_replace_all">Replace all</string>
+	<string name="go_to">Go to</string>
+	<string name="go_to_hint">Name or line</string>
+	<string name="go_to_line_row">Line %1$d</string>
+	<string name="back_to_line">Line %1$d</string>
+	<string name="a11y_back_to_line">Back to line %1$d</string>
 </resources>

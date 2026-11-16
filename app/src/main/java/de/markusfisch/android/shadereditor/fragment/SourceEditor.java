@@ -197,6 +197,18 @@ interface SourceEditor {
 	/** Put the caret at the start of line, from 1, unless it is in it. */
 	void navigateToLine(int line);
 
+	/** Return whether goTo can list where to go; none can by default. */
+	default boolean canGoTo() {
+		return false;
+	}
+
+	/**
+	 * List the declarations of the file and of the files it includes,
+	 * and go to the one chosen, or to a line.
+	 */
+	default void goTo() {
+	}
+
 	@NonNull
 	List<ProjectDiagnostic> getErrors();
 

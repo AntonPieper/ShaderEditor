@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.view.View;
 import android.view.ViewGroup;
@@ -202,16 +203,21 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	}
 
 	/**
-	 * Show the key back to the file named name at line, from 1, in
-	 * front of the keys, doing back; none when back is null.
+	 * Show the key back to the file named name at line, from 1, or to
+	 * line of the file shown when name is null, in front of the keys,
+	 * doing back; none when back is null.
 	 */
-	public void showBack(@NonNull String name, int line,
+	public void showBack(@Nullable String name, int line,
 			@Nullable Runnable back) {
+		Context context = backView.getContext();
 		backView.setVisibility(getVisibility(back != null));
-		backView.setText(name);
+		backView.setText(name != null
+				? name
+				: context.getString(R.string.back_to_line, line));
 		backView.setOnClickListener(back != null ? v -> back.run() : null);
-		backView.setContentDescription(backView.getContext().getString(
-				R.string.a11y_back_to_file, name, line));
+		backView.setContentDescription(name != null
+				? context.getString(R.string.a11y_back_to_file, name, line)
+				: context.getString(R.string.a11y_back_to_line, line));
 	}
 
 	private static void bind(@NonNull View button, @Nullable Runnable action,

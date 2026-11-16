@@ -56,6 +56,15 @@
 			app:icon="@drawable/ic_search" />
 
 		<Button
+			android:id="@+id/go_to"
+			style="@style/MenuItem"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/menu_item_height"
+			android:text="@string/go_to"
+			android:visibility="gone"
+			app:icon="@drawable/ic_list" />
+
+		<Button
 			android:id="@+id/add_shader"
 			style="@style/MenuItem"
 			android:layout_width="match_parent"
