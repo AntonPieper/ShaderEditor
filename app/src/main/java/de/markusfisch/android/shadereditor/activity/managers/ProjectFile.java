@@ -291,7 +291,7 @@ public final class ProjectFile implements OpenItem {
 		project.save(explicit, outcomes -> {
 			// "Saved" only when every write was made and nothing else
 			// happened; else each file is named with what became of it.
-			List<String> told = failures(outcomes);
+			List<String> told = failures(outcomes, explicit);
 			if (told.isEmpty()) {
 				if (explicit) {
 					listener.onSaved();
@@ -303,12 +303,19 @@ public final class ProjectFile implements OpenItem {
 		});
 	}
 
+	// A file changed outside is said by its bar and its mark in the
+	// drawer; a save the user did not ask for does not say it again.
 	@NonNull
 	private List<String> failures(
-			@NonNull Map<ProjectPath, OpenProject.Outcome> outcomes) {
+			@NonNull Map<ProjectPath, OpenProject.Outcome> outcomes,
+			boolean explicit) {
 		List<String> failures = new ArrayList<>();
 		for (Map.Entry<ProjectPath, OpenProject.Outcome> entry :
 				outcomes.entrySet()) {
+			if (!explicit &&
+					entry.getValue() instanceof OpenProject.Conflict) {
+				continue;
+			}
 			String name = entry.getKey().toString();
 			String reason = reason(entry.getValue());
 			if (reason != null) {

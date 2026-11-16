@@ -82,6 +82,11 @@ public class FolderListingTest {
 				}
 
 				@Override
+				public String notInFolder() {
+					return "Not in this folder";
+				}
+
+				@Override
 				public String changed(long time) {
 					return "date";
 				}
@@ -248,7 +253,7 @@ public class FolderListingTest {
 				ROOT, Order.BY_NAME, Reading.started().listed(entries(
 						"main.frag", "pass.frag")), Map.of(), null, null,
 				null, List.of(), used, false, "main.frag", (key, name) -> null,
-				true, Set.of(""), Set.of()), WORDS).get(0).rows();
+				true, Set.of(""), Set.of(), Set.of(), Set.of()), WORDS).get(0).rows();
 		assertEquals(Set.of(Row.Action.RENAME, Row.Action.DUPLICATE,
 				Row.Action.DELETE), running.get(0).actions());
 		assertEquals(Set.of(Row.Action.RUN, Row.Action.RENAME,
@@ -268,7 +273,7 @@ public class FolderListingTest {
 								"main.frag", "shader-project.json")),
 						Map.of(), null, "Not valid: entry is missing",
 						"main.frag", List.of(), List.of(), false, "main.frag",
-						(key, name) -> null, true, Set.of(""), Set.of()),
+						(key, name) -> null, true, Set.of(""), Set.of(), Set.of(), Set.of()),
 				WORDS);
 		assertEquals("Default shader", sections.get(0).heading());
 		assertEquals("main.frag", sections.get(0).rows().get(0).name());
@@ -284,7 +289,7 @@ public class FolderListingTest {
 								"main.frag")),
 						Map.of("main.frag", new byte[]{1}), null, null,
 						"main.frag", List.of(), List.of(), false, "main.frag",
-						(key, name) -> null, true, Set.of(""), Set.of()),
+						(key, name) -> null, true, Set.of(""), Set.of(), Set.of(), Set.of()),
 				WORDS).get(0).heading());
 	}
 
@@ -377,7 +382,63 @@ public class FolderListingTest {
 		return FolderListing.sections(new FolderListing.Facts(ROOT,
 				Order.BY_NAME, Reading.started().listed(entries), Map.of(),
 				null, null, null, Readme.sections(readme, names), used, false,
-				null, (key, name) -> null, true, Set.of(""), Set.of()), WORDS);
+				null, (key, name) -> null, true, Set.of(""), Set.of(), Set.of(), Set.of()), WORDS);
+	}
+
+	// Unsaved text whose file is gone, also with its folder, is listed
+	// at the root, marked, whatever the root's listing holds; a folder
+	// holding a file in conflict is marked.
+	@Test
+	public void unsavedTextWhoseFileIsGoneIsListedAtTheRoot() {
+		Set<String> unsaved = Set.of("gone.glsl", "notes/scratch.glsl",
+				"lib/noise.glsl", "main.frag");
+		Set<String> outside = Set.of("gone.glsl", "lib/noise.glsl");
+		Set<String> gone = Set.of("gone.glsl", "notes/scratch.glsl");
+		List<Reading.Entry> listed = List.of(
+				new Reading.Entry("main.frag", false, 1),
+				new Reading.Entry("lib", true, 1));
+
+		List<Listing.Section> sections = FolderListing.sections(
+				facts(ROOT, Reading.started().listed(listed), unsaved,
+						outside, gone), WORDS);
+
+		assertEquals("Not in this folder", sections.get(0).heading());
+		List<Row> rows = sections.get(0).rows();
+		assertEquals(List.of("gone.glsl", "notes/scratch.glsl"),
+				List.of(rows.get(0).name(), rows.get(1).name()));
+		assertEquals(Set.of(Row.Mark.UNSAVED, Row.Mark.CHANGED_OUTSIDE),
+				rows.get(0).marks());
+		assertEquals(Set.of(Row.Mark.UNSAVED), rows.get(1).marks());
+		List<Row> all = sections.get(1).rows();
+		assertEquals(List.of("lib", "main.frag"),
+				List.of(all.get(0).name(), all.get(1).name()));
+		assertEquals(Set.of(Row.Mark.UNSAVED, Row.Mark.CHANGED_OUTSIDE),
+				all.get(0).marks());
+		// Also where the root cannot be listed.
+		assertEquals("Not in this folder", FolderListing.sections(
+				facts(ROOT, Reading.started().failed("gone"), unsaved,
+						outside, gone), WORDS).get(0).heading());
+	}
+
+	// Unsaved files whose paths are shorter than the folder shown do not
+	// break its listing (from a review's probe).
+	@Test
+	public void aFolderListsBesideShorterUnsavedPaths() {
+		Level folder = ROOT.enter("long-folder");
+		List<Listing.Section> sections = FolderListing.sections(
+				facts(folder, Reading.started().listed(List.of(
+								new Reading.Entry("x.glsl", false, 1))),
+						Set.of("a.glsl"), Set.of("a.glsl"), Set.of("a.glsl")),
+				WORDS);
+		assertEquals(1, sections.size());
+		assertEquals("x.glsl", sections.get(0).rows().get(0).name());
+	}
+
+	private static FolderListing.Facts facts(Level level, Reading reading,
+			Set<String> unsaved, Set<String> outside, Set<String> gone) {
+		return new FolderListing.Facts(level, Order.BY_NAME, reading,
+				Map.of(), null, null, null, List.of(), List.of(), false, null,
+				(key, name) -> null, true, Set.of(""), unsaved, outside, gone);
 	}
 
 	private static List<Reading.Entry> entries(String... names) {
@@ -411,7 +472,7 @@ public class FolderListingTest {
 								"b.frag")), Map.of(), null, null, "main.frag",
 						Readme.sections("- [B](b.frag)", Set.of("b.frag")),
 						List.of(), false, null, (key, name) -> null, true,
-						Set.of(""), Set.of()), WORDS);
+						Set.of(""), Set.of(), Set.of(), Set.of()), WORDS);
 		assertEquals("Default shader", sections.get(0).heading());
 		assertEquals(List.of("main.frag"), names(sections.get(0)));
 		assertEquals("Other files", sections.get(1).heading());
@@ -428,7 +489,7 @@ public class FolderListingTest {
 								new Reading.Entry("passes", true))),
 						Map.of(), null, null, "passes/main.frag", List.of(),
 						List.of(), false, null, (key, name) -> null, true,
-						Set.of(""), Set.of()), WORDS);
+						Set.of(""), Set.of(), Set.of(), Set.of()), WORDS);
 		assertEquals("Default shader", sections.get(0).heading());
 		Row row = sections.get(0).rows().get(0);
 		assertEquals("passes/main.frag", row.key());

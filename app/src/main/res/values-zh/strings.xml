@@ -603,4 +603,5 @@
 	<string name="conflict_discard_message">ShaderEditor could not read it, and it cannot be brought back once it is discarded. The file itself stays as it is.</string>
 	<string name="nav_delete_changed">Changed outside ShaderEditor and deleted as it is now, with what was written there: %s</string>
 	<string name="conflict_others">Changed outside ShaderEditor, with unsaved text: %s</string>
+	<string name="nav_changed_outside">changed outside</string>
 </resources>
