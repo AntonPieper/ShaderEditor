@@ -7,7 +7,7 @@ Status: design for the offline import decided on 2026-11-15. Nothing here uses t
 - **What you can do.** Get a shader out of ShaderToy yourself, as JSON, and hand it to the app: share it, open the file with the app, or paste it. The app makes a folder in the library with one file per tab, wired as passes, and opens it.
 - **What it becomes.** Image is `main.frag`. Buffer A to D are `bufferA.frag` to `bufferD.frag`. Common is `common.glsl`, included by every pass. The author's code is not edited: the import puts its lines above it, as ShaderToy does.
 - **What it is honest about.** Whatever cannot be carried over is named three times: in a dialog right after the import, in the folder's `README.md`, and in a comment at the line. Nothing is replaced by a guess. A missing texture reads black and says so.
-- **What is not supported.** ShaderToy's own pictures, cubemaps, volumes, music and videos (the app does not ship or fetch them), the keyboard, the webcam, the microphone, sound output, cubemap passes, mipmaps of buffers.
+- **What is not supported.** ShaderToy's own pictures, cubemaps, volumes, music and videos (the app does not ship or fetch them), the keyboard, the webcam, the microphone, sound output, cubemap passes.
 - **Pasting a single tab** works as it does today.
 - **Frame time.** `iTimeDelta` and `iFrameRate` are two builtins of the app, `timeDelta` and `frameRate`, with ShaderToy's rules; every shader may use them.
 - **Checked against the site itself.** The mapping was read in the script ShaderToy's own pages run, in a browser, without a login or a key (2026-11-15). Section 7 says what that covered and what is still unverified.
@@ -106,7 +106,7 @@ The app orders the passes of a frame from these lines (SPEC 6), so it draws them
 | ShaderToy | The input line | Note |
 | --- | --- | --- |
 | `filter` linear | `filter=linear` | |
-| `filter` mipmap | `filter=linear`, and a warning | passes have no mipmaps (SPEC 4) |
+| `filter` mipmap | `filter=linear mipmap=linear` | the buffer's mipmaps are made after every frame, as on the site (SPEC 4) |
 | any other `filter` | nothing (nearest, the app's default for a pass) | **site:** what is neither linear nor mipmap is nearest |
 | `wrap` clamp | nothing (the default) | |
 | any other `wrap` | `wrap=repeat` | **site:** it has two ways to wrap; what is not clamp repeats |
@@ -229,7 +229,6 @@ A texture's settings go into the prepared line: `mipmap` becomes `mipmap=linear`
 
 The other warnings, word for word:
 
-- "main.frag: iChannel3 read Buffer B with mipmaps, which passes do not have here. It is read with filter=linear."
 - "The Sound tab makes sound, which the app does not do. Its code is kept in sound.glsl and is not run."
 - "The Cube A tab draws a cubemap, which the app cannot do. Its code is kept in cubeA.glsl and is not run."
 - "The Volume A tab draws a volume texture, which the app cannot do. Its code is kept in volumeA.glsl and is not run."

@@ -157,6 +157,37 @@ public class PreparationTest {
 				"read with wrap=clamp, remove wrap="), messages(preparation));
 	}
 
+	// A pass and the backbuffer are read with mipmaps as asked; the
+	// engine makes them after every draw.
+	@Test
+	public void passesAndTheBackbufferKeepTheirMipmapFilter() {
+		RenderPlan plan = prepare(new MemoryProjectFiles()
+				.put("main.frag", lines(
+						"#pragma se input \"a.frag\" mipmap=linear",
+						"uniform sampler2D a;",
+						"#pragma se input filter=linear mipmap=nearest",
+						"uniform sampler2D backbuffer;",
+						MAIN))
+				.put("a.frag", MAIN + "\n")).plan();
+		var inputs = plan.passes().get(plan.output()).inputs();
+		assertEquals(Mipmap.LINEAR, inputs.get(0).sampling().mipmap());
+		assertEquals(new Sampling(Filter.LINEAR, Filter.LINEAR,
+				Mipmap.NEAREST, Wrap.CLAMP, Wrap.CLAMP),
+				inputs.get(1).sampling());
+	}
+
+	@Test
+	public void cameraMipmapIsAnError() {
+		Preparation preparation = prepare(new MemoryProjectFiles()
+				.put("main.frag", lines(
+						"#pragma se input mipmap=linear",
+						"uniform samplerExternalOES cameraFront;",
+						MAIN)));
+		assertNull(preparation.plan());
+		assertEquals(List.of("ERROR main.frag:1 Camera images have no " +
+				"mipmaps, remove mipmap="), messages(preparation));
+	}
+
 	@Test
 	public void plansInitialSourcesInResetOrder() {
 		RenderPlan plan = prepare(new MemoryProjectFiles()
@@ -553,8 +584,6 @@ public class PreparationTest {
 		assertEquals(List.of(
 				"ERROR main.frag:1 frame= applies only to a pass, " +
 						"picture.frag is a picture; remove it",
-				"ERROR main.frag:3 mipmap= applies only to a picture, " +
-						"pass.png is a pass and has no mipmaps",
 				"ERROR main.frag:5 A pass is read as uniform sampler2D c, " +
 						"not samplerCube"), messages(preparation));
 	}

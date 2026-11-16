@@ -252,7 +252,8 @@ class FakeGlDevice extends GlDevice {
 	@Nullable
 	@Override
 	String generateMipmap(@NonNull GlTexture texture) {
-		return null;
+		calls.add("mipmap " + texture.getId());
+		return fails("generateMipmap") ? "glGenerateMipmap failed" : null;
 	}
 
 	@Override
@@ -273,6 +274,7 @@ class FakeGlDevice extends GlDevice {
 			uniforms.putAll(written);
 		}
 		draws.add(new Draw(target(), program, new HashMap<>(units), uniforms));
+		calls.add("draw " + target());
 		var drawn = programs.get(program);
 		int unit = drawn != null ? drawn.getTextureUnit("frame") : -1;
 		Integer texture = unit > -1 ? units.get(unit) : null;

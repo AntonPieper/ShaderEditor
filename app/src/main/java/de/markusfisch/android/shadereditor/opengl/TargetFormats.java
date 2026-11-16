@@ -25,7 +25,10 @@ record TargetFormats(
 		// null.
 		@Nullable String drawingExtension,
 		// Whether drawing into a half-float texture failed all the same.
-		boolean drawingFailed) {
+		boolean drawingFailed,
+		// Whether OpenGL ES 2.0 makes mipmaps of a size that is not a
+		// power of two (OES_texture_npot).
+		boolean npotMipmaps) {
 	// OES_texture_half_float.
 	private static final int GL_HALF_FLOAT_OES = 0x8D61;
 
@@ -43,14 +46,14 @@ record TargetFormats(
 		return new TargetFormats(glesVersion, textures,
 				textures && (es3 ||
 						names.contains("GL_OES_texture_half_float_linear")),
-				drawing, false);
+				drawing, false, names.contains("GL_OES_texture_npot"));
 	}
 
 	// The same context, after drawing into a half-float texture failed.
 	@NonNull
 	TargetFormats withoutHalfFloatDrawing() {
 		return new TargetFormats(glesVersion, halfFloatTextures,
-				halfFloatFiltering, drawingExtension, true);
+				halfFloatFiltering, drawingExtension, true, npotMipmaps);
 	}
 
 	// Whether the context names drawing into half-float textures and did
@@ -83,6 +86,34 @@ record TargetFormats(
 	// Whether a target of this format can be read with a linear filter.
 	boolean filters(@NonNull Format format) {
 		return format == Format.RGBA8 || halfFloatFiltering;
+	}
+
+	// Why a target of this format and size has no mipmaps made after
+	// each frame where an input reads it with them, or null when it has
+	// them. OpenGL ES 3.0 makes them of every target: a target is drawn
+	// into, and both formats filter there. 2.0 makes them only of a size
+	// that is a power of two, unless the device names OES_texture_npot,
+	// and of a half-float target only where half floats filter.
+	@Nullable
+	String noMipmaps(@NonNull Format format, int width, int height) {
+		if (glesVersion >= 3) {
+			return null;
+		} else if (!filters(format)) {
+			return "OpenGL ES 2.0 makes mipmaps of format=" +
+					name(format) + " only where half floats filter " +
+					"(OES_texture_half_float_linear), which this device " +
+					"does not";
+		} else if (!npotMipmaps &&
+				!(isPowerOfTwo(width) && isPowerOfTwo(height))) {
+			return "OpenGL ES 2.0 makes mipmaps only of a size that is a " +
+					"power of two, and the target is " + width + "x" +
+					height;
+		}
+		return null;
+	}
+
+	private static boolean isPowerOfTwo(int n) {
+		return n > 0 && (n & (n - 1)) == 0;
 	}
 
 	// What a target of this format is allocated as.

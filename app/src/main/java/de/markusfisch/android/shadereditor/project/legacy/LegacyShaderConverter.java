@@ -16,7 +16,6 @@ import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.project.HostDirective.Filter;
-import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.PreprocessorScan;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
@@ -502,14 +501,6 @@ public final class LegacyShaderConverter {
 			}
 		}
 		int at = first != null ? first.line : 0;
-		if (settings.mipmap() != Mipmap.NONE) {
-			settings = settings.withoutMipmap();
-			warn(at,
-					"backbuffer reads with min=" + name(settings.min()) +
-							" instead of a mipmap filter, because pass " +
-							"outputs have no mipmaps; the old mipmaps " +
-							"were made once and never updated");
-		}
 		if (settings.min() != settings.mag()) {
 			warn(at, "The output is scaled to the screen with " +
 					name(settings.mag()) + " filtering also when the " +

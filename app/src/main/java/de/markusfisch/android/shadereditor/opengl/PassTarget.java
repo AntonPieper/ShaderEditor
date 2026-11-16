@@ -13,7 +13,8 @@ import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 
 // What a pass draws into: one texture, or two when its previous frame is
-// read, which change roles at swap().
+// read, which change roles at swap(). When an input reads it with a
+// mipmap filter, its textures have mipmaps, made again after every draw.
 final class PassTarget {
 	@NonNull
 	private final GlDevice device;
@@ -25,6 +26,7 @@ final class PassTarget {
 	private final GlFramebuffer[] framebuffers;
 	@NonNull
 	private final HostDirective.Format format;
+	private boolean mipmaps;
 	private int current;
 	// The builds that draw into it: the one it was made for, and the
 	// build that goes on from that one, until either is released.
@@ -42,17 +44,21 @@ final class PassTarget {
 		framebuffers = new GlFramebuffer[count];
 	}
 
-	// Returns null and adds why when it cannot be drawn into.
+	// Returns null and adds why when it cannot be drawn into. With
+	// mipmaps, its textures have them; where the device cannot make
+	// them, it adds why as a warning and has none.
 	@Nullable
 	static PassTarget create(
 			@NonNull GlDevice device,
 			@NonNull RenderPlan.Target target,
 			@NonNull RenderPlan.Size size,
 			boolean history,
+			boolean mipmaps,
 			@NonNull TargetFormats formats,
 			@NonNull List<ProjectDiagnostic> errors) {
 		var format = target.format();
 		var pass = new PassTarget(device, size, format, history ? 2 : 1);
+		pass.mipmaps = mipmaps;
 		for (int i = 0; i < pass.textures.length; ++i) {
 			var texture = pass.textures[i] = device.createTexture2D();
 			var message = device.allocateTexture2D(texture, size.width(),
@@ -80,6 +86,22 @@ final class PassTarget {
 			}
 		}
 		device.bindFramebuffer(null);
+		for (int i = 0; pass.mipmaps && i < pass.textures.length; ++i) {
+			var message = device.generateMipmap(pass.textures[i]);
+			if (message != null) {
+				pass.mipmaps = false;
+				errors.add(new ProjectDiagnostic(
+						ProjectDiagnostic.Severity.WARNING,
+						"Cannot make mipmaps of a target of " + size.width() +
+								"x" + size.height() + " in format=" +
+								TargetFormats.name(format) + ", " + message +
+								"; it is read with its base filter",
+						target.file(), target.line()));
+			}
+		}
+		for (var texture : pass.textures) {
+			texture.setMipmaps(pass.mipmaps);
+		}
 		return pass;
 	}
 
@@ -94,11 +116,11 @@ final class PassTarget {
 	}
 
 	// Whether it is what create() makes for target at size with or
-	// without history.
+	// without history and mipmaps.
 	boolean fits(@NonNull RenderPlan.Target target,
-			@NonNull RenderPlan.Size size, boolean history) {
+			@NonNull RenderPlan.Size size, boolean history, boolean mipmaps) {
 		return this.size.equals(size) && format == target.format() &&
-				(textures.length == 2) == history;
+				(textures.length == 2) == history && this.mipmaps == mipmaps;
 	}
 
 	// One more build draws into it, as the one that has it did, and
@@ -133,6 +155,21 @@ final class PassTarget {
 
 	void clear() {
 		bind(framebuffers[current]);
+	}
+
+	// After the pass drew into drawn(): its mipmaps again, when it has
+	// them.
+	void updateMipmaps() {
+		if (mipmaps) {
+			device.generateMipmap(drawn());
+		}
+	}
+
+	// After a reset cleared the history or drew into it.
+	void updateHistoryMipmaps() {
+		if (mipmaps) {
+			device.generateMipmap(completed());
+		}
 	}
 
 	void swap() {

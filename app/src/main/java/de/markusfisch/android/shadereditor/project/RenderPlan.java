@@ -149,6 +149,11 @@ public record RenderPlan(
 		/** Pass outputs, including the backbuffer. */
 		public static final Sampling PASS = new Sampling(Filter.NEAREST,
 				Filter.NEAREST, Mipmap.NONE, Wrap.CLAMP, Wrap.CLAMP);
+		/** The same with its base filter for the mipmap filter. */
+		public Sampling withoutMipmap() {
+			return new Sampling(min, mag, Mipmap.NONE, wrapS, wrapT);
+		}
+
 		/** The camera samplers' existing default. */
 		public static final Sampling CAMERA = new Sampling(Filter.NEAREST,
 				Filter.LINEAR, Mipmap.NONE, Wrap.CLAMP, Wrap.CLAMP);
@@ -167,6 +172,11 @@ public record RenderPlan(
 				defaults = PASS;
 			} else {
 				defaults = CAMERA;
+				if (input.mipmap() != null) {
+					return ProjectParseResult.error("Camera images have " +
+									"no mipmaps, remove mipmap=",
+							input.file(), input.line());
+				}
 				if ((input.wrapS() != null && input.wrapS() != Wrap.CLAMP) ||
 						(input.wrapT() != null && input.wrapT() != Wrap.CLAMP)) {
 					return ProjectParseResult.error("Camera images can only " +

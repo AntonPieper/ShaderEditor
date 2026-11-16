@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import de.markusfisch.android.shadereditor.project.HostDirective.Frame;
+import de.markusfisch.android.shadereditor.project.HostDirective.Mipmap;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 
@@ -197,13 +198,20 @@ final class PlanPass {
 			var binding = passes.get(i);
 			var texture = outputs.get(binding.pass(), binding.frame());
 			int unit = binding.sampler().unit();
+			var sampling = binding.sampling();
+			// A target without the mipmaps it is read with, where the
+			// device cannot make them: its base filter, not black.
+			boolean base = sampling.mipmap() != Mipmap.NONE &&
+					texture != null && !texture.hasMipmaps();
 			if (texture == null) {
 				continue;
-			} else if (passSamplers != null) {
+			} else if (passSamplers != null && !base) {
 				device.bindTexture(unit, texture);
 				device.bindSampler(unit, passSamplers[i]);
 			} else {
-				device.applySampling(unit, texture, binding.sampling());
+				device.applySampling(unit, texture, base
+						? sampling.withoutMipmap()
+						: sampling);
 			}
 		}
 		// Another program may read the camera with other settings.
