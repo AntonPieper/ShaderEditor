@@ -40,11 +40,15 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
  * journal holds the text, unless a write failed.
  *
  * The files of the journal are those of a {@link FaultyDisk}: in the
- * sequences that say so every single operation on them fails once, and
- * the process dies after every one; in the others one of them does, by
- * a fixed seed; and at every end the files cannot be read for one
+ * sequences that say so every single operation on them fails once,
+ * goes on failing for a step, for the steps that follow or through the
+ * next opening, in which the user then goes on, and the process dies
+ * after every one; in the others one of them does one of these, by a
+ * fixed seed; and at every end without a fault the files fail for one
  * opening. Whatever fails, the same holds: what cannot be written or
- * read now is kept, told and tried again, and nothing is deleted for it.
+ * read now is kept, told and tried again, and nothing is deleted for
+ * it. More than one file, and files leaving memory, are in
+ * {@link SeveralFilesTest}, without faults.
  */
 public class LifecycleSequencesTest {
 	private enum Step {
@@ -92,7 +96,12 @@ public class LifecycleSequencesTest {
 		/** The app looks at storage, as when it returns to the front. */
 		REFRESH,
 		/** Another app deletes the file. */
-		GONE_OUTSIDE
+		GONE_OUTSIDE,
+		/**
+		 * The user makes a new file under the name of the one they
+		 * deleted, once that deletion is over, and opens it.
+		 */
+		NEW
 	}
 
 	// Where the sequences start, how many steps one has at most, and how
@@ -142,7 +151,7 @@ public class LifecycleSequencesTest {
 		 * place of reload, save and flush(done); FAIL fails journal and
 		 * history.
 		 */
-		MOVED(4, 926),
+		MOVED(4, 1003),
 		/**
 		 * A saved file, shown, that another app deleted while the app
 		 * was in front, so no check saw it; FAIL fails journal and
@@ -195,8 +204,8 @@ public class LifecycleSequencesTest {
 		 * storage did and what the journal did, and what is typed
 		 * meanwhile.
 		 */
-		EVERY_FAULT_MOVED(3, 71, Step.TYPE, Step.RENAME, Step.DELETE,
-				Step.WORKER, Step.SETTLE, Step.REOPEN);
+		EVERY_FAULT_MOVED(3, 79, Step.TYPE, Step.RENAME, Step.DELETE,
+				Step.WORKER, Step.SETTLE, Step.REOPEN, Step.NEW);
 
 		private final int length;
 		private final int sequences;
@@ -292,7 +301,7 @@ public class LifecycleSequencesTest {
 		}
 		assertEquals(told(), 0, broken.size());
 		assertEquals(expected, counted);
-		assertEquals(4169, injected);
+		assertEquals(4187, injected);
 	}
 
 	@Test
@@ -310,7 +319,7 @@ public class LifecycleSequencesTest {
 		}
 		assertEquals(told(), 0, broken.size());
 		assertEquals(expected, counted);
-		assertEquals(13761, injected);
+		assertEquals(17275, injected);
 	}
 
 	// Return what did not hold, each kind with how often and where first.
@@ -573,26 +582,31 @@ public class LifecycleSequencesTest {
 		if (start.everyFault()) {
 			for (int at = 1; at <= operations; ++at) {
 				for (FaultyDisk.Fault fault : FAULTS) {
-					inject(start, prefix, fault, at, false);
+					inject(start, prefix, fault, at, Lasting.STEP);
 				}
-				// It goes on failing: until the step is over, and
-				// through the opening after the process died.
-				inject(start, prefix, FaultyDisk.Fault.STUCK, at, false);
-				inject(start, prefix, FaultyDisk.Fault.STUCK, at, true);
+				// It goes on failing: until the step is over; through
+				// the steps that follow, after which it clears and the
+				// app goes on; and through the opening after the
+				// process died, in which the user goes on.
+				for (Lasting lasting : Lasting.values()) {
+					inject(start, prefix, FaultyDisk.Fault.STUCK, at,
+							lasting);
+				}
 				if (kinds.get(at - 1) == FaultyDisk.Kind.READ) {
-					inject(start, prefix, FaultyDisk.Fault.SHORT, at, false);
+					inject(start, prefix, FaultyDisk.Fault.SHORT, at,
+							Lasting.STEP);
 				}
 			}
 		} else if (operations > 0 && sequences % SAMPLED == 0) {
 			java.util.Random random = new java.util.Random(SEED * 31 +
 					start.ordinal() * 1_000_003L + sequences);
-			int kind = random.nextInt(FAULTS.length + 3);
+			int kind = random.nextInt(FAULTS.length + 4);
 			int at = 1 + random.nextInt(operations);
 			if (kind < FAULTS.length) {
-				inject(start, prefix, FAULTS[kind], at, false);
-			} else if (kind < FAULTS.length + 2) {
+				inject(start, prefix, FAULTS[kind], at, Lasting.STEP);
+			} else if (kind < FAULTS.length + 3) {
 				inject(start, prefix, FaultyDisk.Fault.STUCK, at,
-						kind == FAULTS.length);
+						Lasting.values()[kind - FAULTS.length]);
 			} else {
 				// The read at or after it, or the first one.
 				int read = kinds.subList(at - 1, operations).indexOf(
@@ -600,7 +614,8 @@ public class LifecycleSequencesTest {
 				read = read >= 0 ? at + read
 						: 1 + kinds.indexOf(FaultyDisk.Kind.READ);
 				inject(start, prefix, read > 0 ? FaultyDisk.Fault.SHORT
-						: FaultyDisk.Fault.FAIL, Math.max(read, at), false);
+						: FaultyDisk.Fault.FAIL, Math.max(read, at),
+						Lasting.STEP);
 			}
 		}
 		for (Step step : next) {
@@ -614,17 +629,34 @@ public class LifecycleSequencesTest {
 			FaultyDisk.Fault.FAIL, FaultyDisk.Fault.DIE,
 			FaultyDisk.Fault.FAIL_THEN_DIE};
 
+	// How long an operation that goes on failing does.
+	private enum Lasting {
+		/** Until the step it began in is over. */
+		STEP,
+		/**
+		 * Through every step that follows. Then the app keeps what was
+		 * typed, the failure clears, and the app looks at storage,
+		 * which gives the worker something to do.
+		 */
+		STEPS,
+		/**
+		 * Through the steps that follow and the opening after the
+		 * process died; then it clears, and the user goes on in that
+		 * opening: they type, or keep their edits.
+		 */
+		OPENING
+	}
+
 	// Run the steps again while the operation numbered at fails, or
 	// the process dies after it; then the process dies, and what opens
-	// is compared as always. What goes on failing does so until the
-	// step is over, or, with through, until the process died and the
-	// project was opened once more: so what a project does to recover
-	// when it opens fails as well.
+	// is compared as always. What goes on failing does so for as long
+	// as lasting says.
 	private void inject(Start start, List<Step> prefix,
-			FaultyDisk.Fault fault, int at, boolean through) {
+			FaultyDisk.Fault fault, int at, Lasting lasting) {
 		String name = start + " " + prefix + ", " + fault +
-				(through ? " through an opening" : "") +
-				" at operation " + at;
+				(lasting == Lasting.STEPS ? " through the steps"
+						: lasting == Lasting.OPENING ? " through an opening"
+						: "") + " at operation " + at;
 		++injected;
 		try {
 			World world = new World(start);
@@ -632,12 +664,14 @@ public class LifecycleSequencesTest {
 			try {
 				for (Step step : prefix) {
 					world.take(step, name);
-					if (!through) {
+					if (lasting == Lasting.STEP) {
 						disk.heal();
 					}
 				}
-				if (disk.stuck()) {
-					world.opening();
+				if (disk.stuck() && lasting == Lasting.STEPS) {
+					world.goOn(name);
+				} else if (disk.stuck()) {
+					world.goOnAfterOpening(name, at % 2 == 0);
 				}
 			} catch (FaultyDisk.Death e) {
 				// The process died there.
@@ -809,6 +843,14 @@ public class LifecycleSequencesTest {
 		// How many texts the file had had when its deletion was asked
 		// for, -1 when it was not.
 		private int deleteAt = -1;
+		// How many texts it had had when the last deletion was asked
+		// for; where the file was then; and whether a new file was made
+		// under that name since.
+		private int deletedAt = -1;
+		private ProjectPath deleted;
+		private boolean created;
+		// Whether the user went on in an opening whose files failed.
+		private boolean acted;
 		// What another app wrote last, null when it wrote nothing; each
 		// text it wrote by the revision it has; and those of them the
 		// user chose to keep their edits over, as they saw them.
@@ -1032,6 +1074,8 @@ public class LifecycleSequencesTest {
 							step != last;
 					case GONE_OUTSIDE -> start.steps != null &&
 							!deletedOutside;
+					case NEW -> !closed && !created && deleted != null &&
+							(last == Step.DELETE || at() == null);
 				}) {
 					possible.add(step);
 				}
@@ -1042,6 +1086,9 @@ public class LifecycleSequencesTest {
 		private void take(Step step, String sequence) {
 			switch (step) {
 				case TYPE -> {
+					if (document == null) {
+						return;
+					}
 					int length = document.text().length();
 					if (start != Start.LARGE) {
 						document.replace(0, length, Text.of("typed " +
@@ -1121,9 +1168,14 @@ public class LifecycleSequencesTest {
 								flushed.isModified() &&
 								asked.unprotected() == null) {
 							String held = flushed.text().toString();
+							// After a rename the journal could not follow
+							// yet, it is under the name before, noted.
 							assertTrue(sequence + ": flush answered" +
 											" without a reason",
 									held.equals(journaled(where)) ||
+											disk.happened() && held.equals(
+													journaled(where == A
+															? B : A)) ||
 											putAside().contains(held));
 						}
 					});
@@ -1142,6 +1194,8 @@ public class LifecycleSequencesTest {
 					if (deleteAt < 0) {
 						deleteAt = texts.size();
 					}
+					deletedAt = texts.size();
+					deleted = at();
 					project.delete(at(), document.isModified()
 							? Map.of(at(), document.revision())
 							: Map.of(), moved -> {
@@ -1151,8 +1205,93 @@ public class LifecycleSequencesTest {
 					die(sequence);
 					return;
 				}
+				case NEW -> {
+					// By then the deletion is over; when it was refused,
+					// or something was typed since, there is no room.
+					steps.settle();
+					if (at() != null || deleted == null ||
+							store.read(A) != null || store.read(B) != null) {
+						break;
+					}
+					store.put(deleted.toString(), "new file");
+					created = true;
+					texts.add("new file");
+					text = "new file";
+					saved.add(texts.size() - 1);
+					load(deleted);
+					if (document == null) {
+						closed = true;
+						return;
+					}
+					String now = document.text().toString();
+					// It opens as the file is. Where the journal of the
+					// file deleted could not go, that text may be there
+					// again, as unsaved text of the new file.
+					if (!disk.happened()) {
+						assertEquals(sequence + ": a new file", "new file",
+								now);
+						assertFalse(sequence + ": a new file",
+								document.isModified());
+					}
+					if (!now.equals(text)) {
+						texts.add(now);
+						text = now;
+					}
+				}
 			}
 			see(step, sequence);
+		}
+
+		// A failure went on through the steps. The app keeps what was
+		// typed while it still does; then it clears, and the app looks
+		// at storage, so the worker has something to do.
+		private void goOn(String sequence) {
+			if (closed) {
+				disk.heal();
+				return;
+			}
+			project.persist();
+			steps.settle();
+			see(Step.MAIN, sequence);
+			disk.heal();
+			project.refresh(reread -> {
+			});
+			steps.settle();
+			see(Step.REFRESH, sequence);
+		}
+
+		// A failure went on through the steps and goes on through the
+		// opening after the process died. Then it clears, and the user
+		// goes on with what that opening shows: they type, or, with
+		// keep, keep their edits where the file is in conflict.
+		private void goOnAfterOpening(String sequence, boolean keep) {
+			die(sequence);
+			disk.heal();
+			ProjectPath at = at();
+			if (closed || at == null) {
+				return;
+			}
+			acted = true;
+			if (keep && project.conflicts().containsKey(at)) {
+				String seen = project.seen(at);
+				if (written.containsKey(seen)) {
+					kept.add(written.get(seen));
+				}
+				project.resolve(at, OpenProject.Choice.KEEP, seen);
+				// Kept, it is not what a deletion was asked for anymore.
+				int index = texts.indexOf(text);
+				if (deleteAt > index) {
+					deleteAt = index;
+				}
+				if (deletedAt > index) {
+					deletedAt = index;
+				}
+			} else {
+				take(Step.TYPE, sequence);
+			}
+			project.persist();
+			steps.settle();
+			see(Step.MAIN, sequence);
 		}
 
 		// Note what the project tells after a step.
@@ -1199,7 +1338,8 @@ public class LifecycleSequencesTest {
 					// rename it could not follow yet it holds it under
 					// the name before, noted to follow.
 					String held = journaled(at);
-					if (held == null && disk.happened() && !followed()) {
+					if (held == null && document.isModified() &&
+							disk.happened() && !followed()) {
 						held = journaled(at == A ? B : A);
 					}
 					// One that could not be read when the file was
@@ -1326,9 +1466,15 @@ public class LifecycleSequencesTest {
 								reached(document, askedOver).isEmpty());
 			} else if (readable && (store.read(A) != null ||
 					store.read(B) != null)) {
+				// Or, under a new file of the name of one they deleted
+				// while its journal could not go, the text of that one,
+				// as unsaved text of the new file.
+				boolean left = created && disk.happened() &&
+						texts.contains(found) &&
+						texts.indexOf(found) < deletedAt;
 				assertTrue(sequence + ": reopened \"" + brief(found) +
 						"\", but the user had " + brief(may) + " of " +
-						brief(texts), may.contains(found));
+						brief(texts), may.contains(found) || left);
 			}
 			ProjectPath at = at();
 			if (readable) {
@@ -1338,7 +1484,7 @@ public class LifecycleSequencesTest {
 			// Unsaved text over what another app wrote is in conflict
 			// again until the user chose to keep it.
 			if (readable && theirs != null && !kept.contains(theirs) &&
-					document.isModified() &&
+					!texts.contains(theirs) && document.isModified() &&
 					theirs.equals(store.text("a.glsl"))) {
 				assertTrue(sequence + ": unsaved text over theirs without" +
 						" a conflict", project.conflicts().containsKey(A));
@@ -1464,17 +1610,30 @@ public class LifecycleSequencesTest {
 			boolean readable = ending || !disk.happened();
 			assertTrue(state, stored.size() <= 1);
 			if (readable) {
-				assertTrue(state, unsaved.size() <= 1);
+				// One text, under one name; two where the user went on
+				// under the new name while the journal was still under
+				// the old one: then both stay, each as its own.
+				assertTrue(state, unsaved.size() <= (acted ? 2 : 1));
 				assertNull(state, new ProjectSessions(sessionsDir)
 						.journal(id).note());
+				// No conflict of the app's own making; but the text of
+				// a deleted file whose journal could not go is, under a
+				// new file of the name, unsaved text over another file,
+				// and of two texts that both stay the one under the old
+				// name is of a file that is not there.
 				assertTrue(state, project.conflicts().isEmpty() ||
-						stored.isEmpty());
+						stored.isEmpty() || created || acted);
 			}
 			if (stored.isEmpty()) {
 				// Deleted, as asked: only what was typed after that may
 				// be there, as unsaved text of a file that is gone.
 				assertTrue(state, deleteAt >= 0);
 				if (unsaved.isEmpty()) {
+					// And what the project told as held since the last
+					// deletion was asked for is not gone with it.
+					assertTrue(state + ": text held after the file was" +
+							" deleted is gone", !readable ||
+							floor < deletedAt);
 					document = null;
 					closed = true;
 					return false;
@@ -1490,7 +1649,7 @@ public class LifecycleSequencesTest {
 										deleteAt);
 				return true;
 			}
-			assertTrue(state, !readable || unsaved.isEmpty() ||
+			assertTrue(state, !readable || unsaved.isEmpty() || acted ||
 					unsaved.equals(Set.copyOf(stored)));
 			load(stored.get(0));
 			assertNotNull(state, document);

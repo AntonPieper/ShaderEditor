@@ -51,7 +51,21 @@ public class FileSeamTest {
 			new Member("java.io.RandomAccessFile", "setLength"),
 			new Member("java.nio.channels.FileChannel", "truncate"),
 			new Member("java.io.FileOutputStream", "<init>"),
-			new Member("java.io.FileWriter", "<init>"));
+			new Member("java.io.FileWriter", "<init>"),
+			// The same by other ways. A class file names a constructor
+			// without what it is given, so a writer or a file open for
+			// reading and writing counts whatever it is opened on: none
+			// of the classes of a session needs one.
+			new Member("java.nio.file.Files", "write"),
+			new Member("java.nio.file.Files", "writeString"),
+			new Member("java.nio.file.Files", "newOutputStream"),
+			new Member("java.nio.file.Files", "newBufferedWriter"),
+			new Member("java.nio.file.Files", "newByteChannel"),
+			new Member("java.nio.file.Files", "copy"),
+			new Member("java.nio.channels.FileChannel", "open"),
+			new Member("java.io.RandomAccessFile", "<init>"),
+			new Member("java.io.PrintWriter", "<init>"),
+			new Member("java.io.PrintStream", "<init>"));
 
 	// The classes that may, and what each writes: never a file of a
 	// session's journal.

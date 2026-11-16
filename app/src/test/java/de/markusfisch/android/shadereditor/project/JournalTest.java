@@ -590,22 +590,55 @@ public class JournalTest {
 	}
 
 	@Test
-	public void aNoteWithoutNamesFromBeforeTouchesNothing()
+	public void aNoteFromBeforeNotesNamedTheirFilesIsForAllAtItsPath()
 			throws IOException {
+		ProjectPath b = ProjectPath.parse("b.glsl").value();
+		ProjectPath other = ProjectPath.parse("other.glsl").value();
 		assertTrue(journal.snapshot(HEADER, 1, Text.of("kept")));
+		assertTrue(journal.snapshot(new Header(other, null, false, null),
+				1, Text.of("of another file")));
 		java.io.ByteArrayOutputStream bytes =
 				new java.io.ByteArrayOutputStream();
 		java.io.DataOutputStream out = new java.io.DataOutputStream(bytes);
 		out.writeInt(0x53454a31);
 		out.writeUTF(A.toString());
-		out.writeBoolean(false);
-		out.writeUTF("");
+		out.writeBoolean(true);
+		out.writeUTF(b.toString());
 		Files.write(new File(dir, "moving").toPath(), bytes.toByteArray());
 
+		// A rename the build before died in: finished as that build
+		// would have, for the journals under the name.
 		Journal.Note note = journal.note();
-		assertEquals(new Move(A, null), note.move());
+		assertEquals(new Move(A, b), note.move());
+		assertEquals(List.of(new Journal.Noted(journal.file(A).getName(),
+				0)), note.files());
 		assertTrue(journal.follow(note).files().isEmpty());
-		assertEquals("kept", journal.read(A).text().toString());
+		assertNull(journal.read(A));
+		assertEquals("kept", journal.read(b).text().toString());
+		assertEquals("of another file",
+				journal.read(other).text().toString());
+	}
+
+	@Test
+	public void aJournalNotedThatWasPutAsideFollowsAsTheJournal() {
+		ProjectPath b = ProjectPath.parse("b.glsl").value();
+		assertTrue(journal.snapshot(new Header(A, null, false, null, false,
+				31), 1, Text.of("of the file renamed")));
+		Journal.Note rename = journal.noted(new Move(A, b));
+		// A new file of the old name, typed into before the journal
+		// followed: another identity, so the one noted is put aside.
+		assertTrue(journal.snapshot(new Header(A, null, false, null, false,
+				32), 1, Text.of("of the new file")));
+		assertTrue(journal.names(rename, A, 31));
+		assertFalse(journal.names(rename, A, 32));
+
+		assertTrue(journal.follow(rename).files().isEmpty());
+
+		assertEquals("of the new file", journal.read(A).text().toString());
+		assertEquals("of the file renamed",
+				journal.read(b).text().toString());
+		assertTrue(journal.replaced(A).isEmpty());
+		assertTrue(journal.replaced(b).isEmpty());
 	}
 
 	@Test

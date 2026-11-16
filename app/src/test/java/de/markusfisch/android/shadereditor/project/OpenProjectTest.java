@@ -2121,6 +2121,139 @@ public class OpenProjectTest {
 		assertEquals("typed after the deletion", text(next, "a.glsl"));
 	}
 
+	// Delete a.glsl with its unsaved text while nothing of the session
+	// can be deleted, so that its journal stays, noted to go.
+	private OpenProject deletedButForItsJournal() throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = shown(project, "a.glsl", "stored");
+		edit(project, document, "doomed");
+		flush(project);
+		disk.undeleted = true;
+		List<OpenProject.Moved> outcomes = new ArrayList<>();
+		project.delete(a, Map.of(a, document.revision()), outcomes::add);
+		settle();
+		assertTrue(outcomes.get(0) instanceof OpenProject.Deleted);
+		assertFalse(new File(root, "a.glsl").exists());
+		assertEquals("doomed", journaled("a.glsl"));
+		return project;
+	}
+
+	@Test
+	public void textTypedIntoWhatADeletionLeftBehindIsAnotherText()
+			throws IOException {
+		deletedButForItsJournal();
+		ProjectPath a = path("a.glsl");
+		// The process dies, and the opening after it cannot delete
+		// either: the text is listed again, as of a file that is gone.
+		OpenProject opened = open();
+		disk.undeleted = false;
+		assertEquals(Set.of(a), opened.unsaved());
+		Document document = document(opened, "a.glsl");
+		assertEquals("doomed", document.text().toString());
+
+		// The user goes on with it.
+		edit(opened, document, "doomed, and rescued");
+		flush(opened);
+		assertNull(opened.unprotected());
+		assertTrue(opened.settled(a));
+		assertEquals("doomed, and rescued", journaled("a.glsl"));
+
+		// The deletion, finished at the next opening, takes what it
+		// was asked for and not this.
+		OpenProject next = open();
+		assertEquals(Set.of(a), next.unsaved());
+		assertEquals("doomed, and rescued", text(next, "a.glsl"));
+		assertNull(new ProjectSessions(sessionsDir).journal(id).note());
+	}
+
+	@Test
+	public void textKeptOfWhatADeletionLeftBehindIsAnotherText()
+			throws IOException {
+		deletedButForItsJournal();
+		ProjectPath a = path("a.glsl");
+		OpenProject opened = open();
+		disk.undeleted = false;
+		// Kept from its row, without opening it.
+		assertNotNull(opened.conflict(a));
+		opened.resolve(a, OpenProject.Choice.KEEP, opened.seen(a));
+		settle();
+		assertNull(opened.unprotected());
+
+		OpenProject next = open();
+		assertEquals(Set.of(a), next.unsaved());
+		assertEquals("doomed", text(next, "a.glsl"));
+	}
+
+	@Test
+	public void aNewFileOfADeletedNameKeepsWhatIsTypedIntoIt()
+			throws IOException {
+		OpenProject project = deletedButForItsJournal();
+		ProjectPath a = path("a.glsl");
+		// A new file of the name, opened while the journal of the old
+		// one still cannot go.
+		Document document = shown(project, "a.glsl", "new file");
+		edit(project, document, "work in the new a");
+		flush(project);
+		assertTrue(project.settled(a));
+		assertEquals("work in the new a", journaled("a.glsl"));
+
+		// Deleting works again. Whatever the worker does next, the
+		// deletion is over: the name has another file.
+		disk.undeleted = false;
+		refresh(project);
+		assertTrue(project.settled(a));
+		assertEquals("work in the new a", journaled("a.glsl"));
+
+		OpenProject next = open();
+		assertEquals(Set.of(a), next.unsaved());
+		assertEquals("work in the new a", text(next, "a.glsl"));
+	}
+
+	@Test
+	public void aNewFileOfARenamedFilesOldNameKeepsBothTexts()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		ProjectPath b = path("b.glsl");
+		Document renamed = shown(project, "a.glsl", "stored");
+		edit(project, renamed, "renamed text");
+		flush(project);
+		List<OpenProject.Moved> outcomes = new ArrayList<>();
+		project.rename(a, b, outcomes::add);
+		// Storage renames; then nothing of the session can be renamed,
+		// so the journal cannot follow.
+		while (!new File(root, "b.glsl").exists()) {
+			assertTrue(worker.step() || main.step());
+		}
+		disk.unrenamed = true;
+		settle();
+		assertTrue(outcomes.get(0) instanceof OpenProject.Renamed);
+		edit(project, renamed, "renamed text, more at b");
+		flush(project);
+		assertNotNull("told: not where it would be written",
+				project.unprotected());
+
+		// A new file of the old name, typed into.
+		Document document = shown(project, "a.glsl", "new file");
+		edit(project, document, "work in the new a");
+		flush(project);
+
+		// Renaming works again: the journal follows to b.glsl, and
+		// what was typed into the new file is not part of it.
+		disk.unrenamed = false;
+		refresh(project);
+		flush(project);
+		assertNull(project.unprotected());
+		assertEquals("work in the new a", journaled("a.glsl"));
+		assertEquals("renamed text, more at b", journaled("b.glsl"));
+
+		OpenProject next = open();
+		assertEquals(Set.of(a, b), next.unsaved());
+		assertEquals("work in the new a", text(next, "a.glsl"));
+		assertEquals("renamed text, more at b", text(next, "b.glsl"));
+	}
+
 	@Test
 	public void unsavedTextMissedWhileItsFolderCouldNotBeListedIsFoundLater()
 			throws IOException {
