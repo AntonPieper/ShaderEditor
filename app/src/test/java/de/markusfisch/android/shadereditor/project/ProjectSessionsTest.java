@@ -168,14 +168,19 @@ public class ProjectSessionsTest {
 		assertEquals(1, kept.length);
 
 		// It leaves Recent while its folder cannot be listed: that is
-		// not an empty folder.
+		// not an empty folder, and it is told as one that may hold
+		// unsaved text, though no file can be named.
 		disk.unlisted = true;
+		assertTrue(sessions.unread(id));
+		assertTrue(sessions.unsaved(id).isEmpty());
+		assertTrue(sessions.recent(id).unsaved());
 		assertTrue(sessions.remove(id));
 		// Nor is one deleted because nothing was asked first.
 		assertFalse(sessions.discard(id));
 		disk.unlisted = false;
 
 		assertEquals(List.of(kept), List.of(drafts.list()));
+		assertFalse(sessions.unread(id));
 		assertEquals(locator, sessions.locator(id));
 		assertEquals(Set.of(path("lib.glsl")), sessions.unsaved(id));
 		assertEquals(id, sessions.open(locator));

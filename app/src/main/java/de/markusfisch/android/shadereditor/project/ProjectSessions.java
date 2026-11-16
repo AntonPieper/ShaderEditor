@@ -48,7 +48,9 @@ public final class ProjectSessions {
 	 * A session listed among the recent projects: its id, locator, the
 	 * name and place of its files to show, when it was last opened, in
 	 * milliseconds since the epoch, and whether its journal holds the
-	 * unsaved text of a file, also one that cannot be read.
+	 * unsaved text of a file, also one that cannot be read. A journal
+	 * whose folder cannot be read now counts as holding some: that it
+	 * cannot be looked at is not that nothing is there.
 	 */
 	public record Recent(String id, Locator locator, String name,
 			String location, long opened, boolean unsaved) {
@@ -295,7 +297,8 @@ public final class ProjectSessions {
 					.scan();
 			Recent session = new Recent(id, locator, recent.readUTF(),
 					recent.readUTF(), recent.readLong(),
-					!journals.headers().isEmpty() || journals.damaged() > 0);
+					!journals.headers().isEmpty() ||
+							journals.damaged() > 0 || !journals.complete());
 			return recent.read() < 0 ? session : null;
 		} catch (IOException e) {
 			return null;
@@ -344,6 +347,17 @@ public final class ProjectSessions {
 		return journal != null
 				? new LinkedHashSet<>(journal.headers().keySet())
 				: Set.of();
+	}
+
+	/**
+	 * Return whether the journal of session id cannot be read now: its
+	 * folder cannot be listed, or a journal in it cannot be read. Then
+	 * it may hold unsaved text of files that {@link #unsaved} does not
+	 * name.
+	 */
+	public boolean unread(String id) {
+		Journal journal = journal(id);
+		return journal != null && !journal.scan().complete();
 	}
 
 	/**

@@ -200,7 +200,7 @@ What holds through all of these: text the project told as held is what opens, or
 
 - A rename whose journal could not follow before the process died, and not at the next opening either: the text is listed under the old name, as unsaved text of a file that is not in the folder, while the file under its new name shows the stored text. The next opening with files that work moves it. When the user typed under both names in between, both texts stay, under the two names.
 - A journal that could not be read when its file was opened, and that the user typed over: it is kept beside the new journal. Undo leads to it after the file was opened again with files that can be read, not in the session that could not read it. A damaged one stays until the file is deleted.
-- A session whose journal folder holds any file, a damaged one too, is never forgotten when its project leaves Recent. It stays, a few kilobytes, until its text is saved or discarded.
+- A session whose journal folder holds any file, a damaged one too, is never forgotten when its project leaves Recent. It stays, a few kilobytes, until its text is saved or discarded. While that folder cannot be read, the project is listed with the mark of unsaved text, and the question before it leaves the list says that it may have unsaved changes.
 - After a deletion whose journal could not be removed and a death before the retry, the journal is removed at the next opening; until then a new file of that name would open with it as unsaved text.
 
 **Not claimed.** The journal is not proven against these, and the code does not pretend to be:
