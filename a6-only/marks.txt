@@ -1,0 +1,186 @@
+=== 11:55:28 A23-1 start (foreground delete, opened then other shown, drawer closed)
+=== 11:55:42 A23-1 rm Agone (app in front)
+=== 11:56:02 A23-1 saved Akeep
+=== 11:56:15 A23-1 tap stale Agone row
+=== 11:56:32 A23-1 return from Home via launcher intent
+=== 11:57:23 A23-2 start (BACKGROUND delete via Home, opened then other shown, drawer closed, return launcher)
+=== 11:57:42 A23-2 rm Agone (app in background)
+=== 11:58:00 A23-2 saved Akeep
+=== 11:58:40 A23-3 start opened=other drawer=open where=bg return=launcher rot=0
+=== 11:59:04 A23-3 rm (background)
+=== 11:59:24 A23-3 saved shown file
+=== 11:59:55 A23-4 start opened=other drawer=closed where=bg return=recents rot=0
+=== 12:00:16 A23-4 rm (background)
+=== 12:00:38 A23-4 saved shown file
+=== 12:01:03 A23-5 start opened=shown drawer=closed where=bg return=launcher rot=0
+=== 12:01:15 A23-5 rm (background)
+=== 12:01:35 A23-5 saved shown file
+=== 12:01:59 A23-6 start opened=never drawer=closed where=bg return=launcher rot=0
+=== 12:02:04 A23-6 rm (background)
+=== 12:02:23 A23-6 saved shown file
+=== 12:02:48 A23-7 start opened=other drawer=closed where=bg return=launcher rot=1
+=== 12:03:08 A23-7 rm (background)
+=== 12:03:37 A23-7 saved shown file
+=== 12:04:16 A23-8 start opened=other drawer=closed where=fg return=launcher rot=0
+=== 12:04:34 A23-8 rm (foreground)
+=== 12:04:51 A23-8 saved shown file
+=== 12:05:15 A23-9 start opened=never drawer=closed where=fg return=launcher rot=0
+=== 12:05:17 A23-9 rm (foreground)
+=== 12:05:33 A23-9 saved shown file
+=== 12:05:56 A23-9 drawer reopened
+=== 12:06:02 A23-9 Up to folders level
+=== 12:06:19 A23-9 re-entered Shaders
+=== 12:06:50 A23-10 start opened=shown drawer=closed where=fg return=launcher rot=0
+=== 12:07:00 A23-10 rm (foreground)
+=== 12:07:17 A23-10 saved shown file
+=== 12:09:29 B23-1 prep: tap line 7, MOVE_END, input text //mine
+=== 12:09:35 B23-1 outside append '// outside' while app in front
+=== 12:09:40 B23-1 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:12:12 B23-1 prep: tap line 7, MOVE_END, input text //mine
+=== 12:12:19 B23-1 outside append '// outside' while app in front
+=== 12:12:23 B23-1 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:12:33 B23-1 tap Reload from file
+=== 12:12:38 B23-1 tap 600 1400 (caret), MOVE_HOME, MOVE_END, ENTER, input text x_after (key events), wait 5.5 s
+=== 12:12:49 B23-1 one Undo (menu)
+=== 12:15:10 B23-2 prep: tap line 7, MOVE_END, input text //mine
+=== 12:15:16 B23-2 outside append '// outside' while app in front
+=== 12:15:21 B23-2 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:15:30 B23-2 tap Reload from file
+=== 12:15:35 B23-2 tap 600 1400 (caret), MOVE_HOME, MOVE_END, ENTER, input text x_after (key events), wait 5.5 s
+=== 12:15:46 B23-2 one Undo (menu)
+=== 12:16:14 B23-3 prep: tap line 7, MOVE_END, input text //mine
+=== 12:16:21 B23-3 outside append '// outside' while app in front
+=== 12:16:25 B23-3 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:16:34 B23-3 tap Reload from file
+=== 12:16:39 B23-3 tap 600 1400 (caret), MOVE_HOME, MOVE_END, ENTER, input text x_after (key events), wait 5.5 s
+=== 12:16:51 B23-3 one Undo (menu)
+=== 12:17:47 B23-V1 prep: tap line 7, MOVE_END, input text //mine
+=== 12:17:53 B23-V1 outside append '// outside' while app in front
+=== 12:17:58 B23-V1 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:18:07 B23-V1 tap Reload from file
+=== 12:18:09 B23-V1 no tap, typed immediately: MOVE_END, input text abc
+=== 12:18:14 B23-V1 one Undo (menu)
+=== 12:18:41 B23-V2 prep: tap line 7, MOVE_END, input text //mine
+=== 12:18:48 B23-V2 outside append '// outside' while app in front
+=== 12:18:53 B23-V2 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:19:02 B23-V2 tap Reload from file
+=== 12:19:09 B23-V2 pause 5.5 s after Reload, no tap: MOVE_END, input text abc
+=== 12:19:14 B23-V2 one Undo (menu)
+=== 12:19:41 B23-V3 prep: tap line 7, MOVE_END, input text //mine
+=== 12:19:48 B23-V3 outside append '// outside' while app in front
+=== 12:19:53 B23-V3 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:20:02 B23-V3 tap Reload from file
+=== 12:20:06 B23-V3 no typing after Reload
+=== 12:20:08 B23-V3 one Undo (menu)
+=== 12:20:36 B23-V4 prep: tap line 7, MOVE_END, input text //mine
+=== 12:20:42 B23-V4 outside append '// outside' while app in front
+=== 12:20:46 B23-V4 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:21:16 B23-V5 prep: tap line 7, MOVE_END, input text //mine
+=== 12:21:23 B23-V5 outside append '// outside' while app in front
+=== 12:21:28 B23-V5 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:21:37 B23-V5 tap Reload from file
+=== 12:21:41 B23-V5 tap 600 1400, AOSP soft keys x a tapped
+=== 12:21:51 B23-V5 one Undo (menu)
+=== 12:22:52 B23-V3b prep: tap line 7, MOVE_END, input text //mine
+=== 12:22:59 B23-V3b outside append '// outside' while app in front
+=== 12:23:04 B23-V3b no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:23:14 B23-V4b prep after V3b (unsaved //mine left by the Undo), force-stop
+=== 12:23:35 B23-V4b prep: tap line 7, MOVE_END, input text //mine
+=== 12:23:42 B23-V4b outside append '// outside' while app in front
+=== 12:23:47 B23-V4b no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:24:53 B23-V4 prep: tap line 7, MOVE_END, input text //mine
+=== 12:25:00 B23-V4 outside append '// outside' while app in front
+=== 12:25:05 B23-V4 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:25:15 B23-V4 tap Reload from file
+=== 12:25:19 B23-V4 tap 600 1400, ENTER only (key event)
+=== 12:25:25 B23-V4 one Undo (menu)
+=== 12:25:52 B23-V6 prep: leftover unsaved text from the run before -> Reload from file to start clean
+=== 12:26:00 B23-V6 prep: tap line 7, MOVE_END, input text //mine
+=== 12:26:07 B23-V6 outside append '// outside' while app in front
+=== 12:26:12 B23-V6 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:26:22 B23-V6 tap Reload from file
+=== 12:26:26 B23-V6 helper IME (agent-device TestInputMethodService) set, tap 600 1400, agent-device type abc
+=== 12:26:33 B23-V6 one Undo (menu)
+=== 12:27:23 B23-V6 prep: tap line 7, MOVE_END, input text //mine
+=== 12:27:30 B23-V6 outside append '// outside' while app in front
+=== 12:27:36 B23-V6 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:27:45 B23-V6 tap Reload from file
+=== 12:27:51 B23-V6 helper IME (agent-device TestInputMethodService) set, tap 600 1400 with keyboard closed, agent-device type abc
+=== 12:27:57 B23-V6 one Undo (menu), no Back before
+=== 12:28:25 H23 helper IME sanity (no reload): helper IME, tap 600 1400, agent-device type zz
+=== 12:28:53 B23-V7 prep: leftover unsaved text from the run before -> Reload from file to start clean
+=== 12:29:01 B23-V7 prep: tap line 7, MOVE_END, input text //mine
+=== 12:29:08 B23-V7 outside append '// outside' while app in front
+=== 12:29:13 B23-V7 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:29:22 B23-V7 tap Reload from file
+=== 12:29:29 B23-V7 helper IME set, tap 600 1400, adb input text abc (key events)
+=== 12:29:34 B23-V7 one Undo (menu)
+=== 12:30:23 B23-F1 prep: tap line 7, MOVE_END, input text //mine
+=== 12:30:30 B23-F1 outside append '// outside' while app in front
+=== 12:30:36 B23-F1 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:30:45 B23-F1 tap Reload from file
+=== 12:30:51 B23-F1 first-pass sequence: no tap; MOVE_HOME, MOVE_END, ENTER, input text after_reload (key events), wait 5.5 s, am force-stop, relaunch from launcher, one Undo
+=== 12:31:17 B23-F1 one Undo (menu)
+=== 12:31:44 B23-F2 prep: leftover unsaved text from the run before -> Reload from file to start clean
+=== 12:31:52 B23-F2 prep: tap line 7, MOVE_END, input text //mine
+=== 12:31:59 B23-F2 outside append '// outside' while app in front
+=== 12:32:04 B23-F2 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:32:13 B23-F2 tap Reload from file
+=== 12:32:19 B23-F2 first-pass sequence: no tap; MOVE_HOME, MOVE_END, ENTER, input text after_reload (key events), wait 5.5 s, am force-stop, relaunch from launcher, one Undo
+=== 12:32:45 B23-F2 one Undo (menu)
+=== 12:33:12 B23-F3 prep: leftover unsaved text from the run before -> Reload from file to start clean
+=== 12:33:20 B23-F3 prep: tap line 7, MOVE_END, input text //mine
+=== 12:33:27 B23-F3 outside append '// outside' while app in front
+=== 12:33:33 B23-F3 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:33:42 B23-F3 tap Reload from file
+=== 12:33:48 B23-F3 first-pass sequence: no tap; MOVE_HOME, MOVE_END, ENTER, input text after_reload (key events), wait 5.5 s, am force-stop, relaunch from launcher, one Undo
+=== 12:34:14 B23-F3 one Undo (menu)
+=== 12:35:24 B23-V8 prep: leftover unsaved text from the run before -> Reload from file to start clean
+=== 12:35:32 B23-V8 prep: tap line 7, MOVE_END, input text //mine
+=== 12:35:39 B23-V8 outside append '// outside' while app in front
+=== 12:35:44 B23-V8 no bar while in front -> Home, wait 2.5 s, am start MainActivity
+=== 12:35:55 B23-V8 tap Reload from file
+=== 12:36:01 B23-V8 paste: long-press 'outside' on line 8 (193,573), Copy
+=== 12:36:16 B23-V8 tap COPY (398,428); MOVE_END (caret to end of line 8, no edit); long-press empty line 9 (400,573)
+=== 12:36:34 B23-V8 tap PASTE (201,406) on empty line 9
+=== 12:36:39 B23-V8 one Undo (menu)
+=== 12:36:58 C23 cleanup: delete Bfile.frag via menu Delete
+=== 12:37:34 C23 cleanup: delete Akeep.frag via menu Delete
+=== 12:39:55 P37 new_editor was false; tap Turn on
+=== 12:40:31 P37 Settings > New editor on (was off)
+=== 12:41:42 A37-1 start opened=other drawer=closed where=fg return=launcher rot=0
+=== 12:42:08 A37-1 rm files/user-files/Shaders/Agone.frag (app in front)
+=== 12:42:32 A37-1 saved shown file (Akeep.frag)
+=== 12:43:03 A37-2 start opened=never drawer=closed where=fg return=launcher rot=0
+=== 12:43:08 A37-2 rm files/user-files/Shaders/Agone.frag (app in front)
+=== 12:43:32 A37-2 saved shown file (Akeep.frag)
+=== 12:43:51 A37-3 start opened=shown drawer=closed where=fg return=launcher rot=0
+=== 12:44:05 A37-3 rm files/user-files/Shaders/Agone.frag (app in front)
+=== 12:44:30 A37-3 saved shown file (Agone.frag)
+=== 12:45:20 A37 cleanup: put Agone.frag back, Home, return, Reload from file
+=== 12:46:10 A37-4 start opened=other drawer=closed where=bg return=launcher rot=0
+=== 12:46:34 A37-4 rm files/user-files/Shaders/Agone.frag (app in background)
+=== 12:47:01 A37-4 saved shown file (Akeep.frag)
+=== 12:47:20 A37-5 start opened=never drawer=open where=bg return=recents rot=0
+=== 12:47:31 A37-5 rm files/user-files/Shaders/Agone.frag (app in background)
+=== 12:48:02 A37-5 saved shown file (Akeep.frag)
+=== 12:48:21 A37-6 start opened=other drawer=closed where=bg return=launcher rot=1
+=== 12:48:50 A37-6 rm files/user-files/Shaders/Agone.frag (app in background)
+=== 12:49:24 A37-6 saved shown file (Akeep.frag)
+=== 12:49:53 A37-7 start opened=never drawer=closed where=fg return=launcher rot=0
+=== 12:49:58 A37-7 rm files/user-files/Shaders/Agone.frag (app in front)
+=== 12:50:22 A37-7 saved shown file (Akeep.frag)
+=== 12:50:28 A37-7 drawer open: swipe down on the list
+=== 12:50:33 A37-7 Up (to Folders), then back into Shaders
+=== 12:51:16 A37-8 start opened=never drawer=closed where=fg return=launcher rot=0
+=== 12:51:20 A37-8 rm files/user-files/Shaders/Agone.frag (app in front)
+=== 12:51:44 A37-8 saved shown file (Akeep.frag)
+=== 12:51:50 A37-8 tap the stale Agone.frag row
+=== 12:52:28 A37-9 start opened=other drawer=closed where=fg return=launcher rot=0
+=== 12:52:54 A37-9 rm files/user-files/Shaders/Agone.frag (app in front)
+=== 12:53:17 A37-9 saved shown file (Akeep.frag)
+=== 12:53:23 A37-9 tap the stale Agone.frag row
+=== 12:53:37 A37-8 retry (never opened): open drawer, tap stale row
+=== 12:54:18 C37 cleanup: delete Akeep.frag via menu Delete
+=== 12:54:42 C37 cleanup: delete Bfile.frag via menu Delete
+=== 12:55:21 C37 Settings > New editor off (as it was)
