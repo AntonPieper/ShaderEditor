@@ -456,10 +456,8 @@ public class HostDirectivesTest {
 	}
 
 	@Test
-	public void rejectsFrameAndMipmapOnTheBackbuffer() {
+	public void rejectsFrameOnTheBackbuffer() {
 		assertError("frame= applies only", "#pragma se input frame=current",
-				"uniform sampler2D backbuffer;");
-		assertError("mipmap= applies only", "#pragma se input mipmap=none",
 				"uniform sampler2D backbuffer;");
 	}
 

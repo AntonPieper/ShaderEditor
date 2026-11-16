@@ -209,9 +209,6 @@ public class ShaderToyProjectTest {
 						"reads black.",
 				"bufferA.frag: iChannel2 read the microphone, which the " +
 						"app does not turn into a picture. It reads black.",
-				"bufferA.frag: iChannel3 read Buffer B with mipmaps, " +
-						"which passes do not have here. It is read with " +
-						"filter=linear.",
 				"bufferB.frag: iChannel0 read music (/media/a/tune.mp3), " +
 						"which the app does not turn into a picture. It " +
 						"reads black.",
@@ -282,9 +279,9 @@ public class ShaderToyProjectTest {
 						"filter=nearest\n" +
 						"uniform sampler2D iChannel1;\n"));
 		assertTrue(c, c.contains("uniform samplerCube iChannel0;\n"));
-		// With mipmaps there, linear here.
+		// With mipmaps, as there.
 		assertEquals(List.of("#pragma se input \"bufferB.frag\" " +
-				"frame=previous filter=linear"),
+				"frame=previous filter=linear mipmap=linear"),
 				inputs(converted, "bufferA.frag"));
 	}
 

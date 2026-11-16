@@ -457,7 +457,6 @@ public final class HostCompletion {
 			case "filter" -> !tokens.has("min") && !tokens.has("mag");
 			case "min", "mag" -> !tokens.has("filter");
 			case "frame" -> source != null && !picture;
-			case "mipmap" -> picture;
 			default -> true;
 		};
 	}

@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -350,6 +351,30 @@ final class PlanBindings {
 			}
 		}
 		return errors;
+	}
+
+	// Where an input reads a pass with a mipmap filter whose target has
+	// no mipmaps, why[pass] says why (null where it has them): the input
+	// reads it with its base filter instead, and is warned so.
+	@NonNull
+	List<ProjectDiagnostic> checkMipmaps(@NonNull String[] why) {
+		var warnings = new ArrayList<ProjectDiagnostic>();
+		for (var binding : passes) {
+			var input = binding.input();
+			var sampling = binding.sampling();
+			if (input != null && sampling.mipmap() != Mipmap.NONE &&
+					why[binding.pass()] != null) {
+				warnings.add(new ProjectDiagnostic(
+						ProjectDiagnostic.Severity.WARNING,
+						input.uniform() + " reads " + read(binding) +
+								" with min=" + sampling.min().name()
+								.toLowerCase(Locale.ROOT) +
+								" instead of mipmaps: " +
+								why[binding.pass()],
+						input.file(), input.line()));
+			}
+		}
+		return warnings;
 	}
 
 	// A problem with an image, located at the first input that reads it.

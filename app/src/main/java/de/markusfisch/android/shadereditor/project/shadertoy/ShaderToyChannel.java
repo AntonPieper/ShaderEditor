@@ -20,7 +20,6 @@ record ShaderToyChannel(int number, String sampler, String lines,
 	static ShaderToyChannel buffer(int number, Input input, String file,
 			String label, boolean previous) {
 		String name = "iChannel" + number;
-		boolean mipmap = input.filter().equals("mipmap");
 		return new ShaderToyChannel(number, "sampler2D",
 				"// " + name + ": " + label + (previous
 						? ", as it was the frame before.\n"
@@ -28,13 +27,12 @@ record ShaderToyChannel(int number, String sampler, String lines,
 						"#pragma se input \"" + file + "\"" +
 						(previous ? " frame=previous" : "") +
 						(smooth(input) ? " filter=linear" : "") +
+						(input.filter().equals("mipmap")
+								? " mipmap=linear"
+								: "") +
 						wrap(input) + "\n" +
 						"uniform sampler2D " + name + ";\n",
-				mipmap
-						? name + " read " + label + " with mipmaps, which " +
-						"passes do not have here. It is read with " +
-						"filter=linear."
-						: null);
+				null);
 	}
 
 	/** A channel that read something the project does not have. */

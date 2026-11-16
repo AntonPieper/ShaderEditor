@@ -219,11 +219,6 @@ final class PassGraph {
 		if (source == null) {
 			return;
 		} else if (producer != null) {
-			if (input.mipmap() != null) {
-				error(input.file(), input.line(), "mipmap= applies only " +
-						"to a picture, " + source + " is a pass and has " +
-						"no mipmaps");
-			}
 			if (input.texture() != null &&
 					input.texture() != TextureKind.FLAT) {
 				error(input.file(), input.line(), "A pass is read as " +

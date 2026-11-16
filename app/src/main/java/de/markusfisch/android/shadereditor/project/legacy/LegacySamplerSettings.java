@@ -175,12 +175,6 @@ public record LegacySamplerSettings(
 		return String.join(" ", options);
 	}
 
-	/** These settings with the mipmap mode dropped from minification. */
-	public LegacySamplerSettings withoutMipmap() {
-		return new LegacySamplerSettings(min, Mipmap.NONE, mag, wrapS, wrapT,
-				preset);
-	}
-
 	/**
 	 * What a camera image was sampled with: an external texture takes no
 	 * mipmap filter, where the old renderer used linear, and is always

@@ -125,12 +125,13 @@ public class LegacySamplerSettingsTest {
 				.preset());
 	}
 
+	// The backbuffer keeps its mipmap filter: the engine makes its
+	// mipmaps after every frame.
 	@Test
-	public void backbufferMipmapBecomesItsBaseFilter() {
-		assertEquals("filter=linear wrap=repeat",
+	public void backbufferKeepsItsMipmapFilter() {
+		assertEquals("filter=linear mipmap=linear wrap=repeat",
 				LegacySamplerSettings.BACKBUFFER
 						.parse("///min:ll;mag:l;s:r;t:r;", true)
-						.withoutMipmap()
 						.options(Sampling.PASS, true));
 	}
 

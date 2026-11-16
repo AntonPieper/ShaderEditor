@@ -240,10 +240,6 @@ public record HostDirective(
 			if (frame != null && source == null) {
 				error("frame= applies only to a pass, remove it");
 			}
-			if (mipmap != null && source == null) {
-				error("mipmap= applies only to a picture, pass " +
-						"outputs and engine samplers have no mipmaps");
-			}
 			input = new Input(at.file(), at.line(), null, null, source,
 					frame, min, mag, mipmap,
 					wrap != null ? wrap[0] : null,

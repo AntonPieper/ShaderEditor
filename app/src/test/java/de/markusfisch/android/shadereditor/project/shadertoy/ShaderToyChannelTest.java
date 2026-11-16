@@ -28,18 +28,16 @@ public class ShaderToyChannelTest {
 				"#pragma se input \"bufferB.frag\" frame=previous " +
 				"filter=linear wrap=repeat\n" +
 				"uniform sampler2D iChannel3;\n", before.lines());
-		// Passes have no mipmaps: linear, and said. ShaderToy has two
+		// With mipmaps, as the site reads a buffer. ShaderToy has two
 		// ways to wrap: what is not clamp repeats.
 		ShaderToyChannel mipmap = ShaderToyChannel.buffer(1,
 				input("buffer", "", "mipmap", "mirror", true),
 				"bufferA.frag", "Buffer A", false);
 		assertEquals("// iChannel1: Buffer A, as drawn in this frame.\n" +
 				"#pragma se input \"bufferA.frag\" filter=linear " +
-				"wrap=repeat\n" +
+				"mipmap=linear wrap=repeat\n" +
 				"uniform sampler2D iChannel1;\n", mipmap.lines());
-		assertEquals("iChannel1 read Buffer A with mipmaps, which passes " +
-				"do not have here. It is read with filter=linear.",
-				mipmap.warning());
+		assertNull(mipmap.warning());
 	}
 
 	// No input stands for what the project does not have, so it reads

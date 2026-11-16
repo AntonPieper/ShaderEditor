@@ -120,11 +120,12 @@ public class HostCompletionTest {
 
 	@Test
 	public void offersOptionsAfterThePathByWhatItReads() {
-		assertEquals(List.of("frame=", "filter=", "wrap=", "min=", "mag="),
+		assertEquals(List.of("frame=", "filter=", "wrap=", "min=", "mag=",
+						"mipmap="),
 				words("#pragma se input \"blur.frag\" |"));
 		assertEquals(List.of("filter=", "wrap=", "min=", "mag=", "mipmap="),
 				words("#pragma se input \"noise.png\" |"));
-		assertEquals(List.of("frame=", "wrap="),
+		assertEquals(List.of("frame=", "wrap=", "mipmap="),
 				words("#pragma se input \"blur.frag\" filter=linear |"));
 		assertEquals(List.of("format=", "initial=", "present="),
 				words("#pragma se target size=64x64 |"));

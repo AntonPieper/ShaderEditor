@@ -196,9 +196,8 @@ public class HostDirectiveTest {
 	}
 
 	@Test
-	public void rejectsFrameAndMipmapOnAnEngineSampler() {
+	public void rejectsFrameOnAnEngineSampler() {
 		assertError("frame= applies only", "se input frame=current");
-		assertError("mipmap= applies only", "se input mipmap=none");
 	}
 
 	// What a file is, is not read out of its name: whether an option

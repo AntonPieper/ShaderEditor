@@ -507,19 +507,16 @@ public class LegacyShaderConverterTest {
 						"uniform sampler2D backbuffer;")).shader());
 	}
 
+	// As upstream since 66e78e10, the backbuffer's mipmaps are made
+	// after every frame, so its mipmap filter is kept.
 	@Test
-	public void backbufferMipmapConvertsToItsBaseFilter() {
+	public void backbufferKeepsItsMipmapFilter() {
 		Result result = convert(lines("uniform sampler2D backbuffer; " +
 				"///min:ll;mag:l;s:c;t:c;"));
 		assertEquals(lines("#pragma se target present=linear",
-				"#pragma se input filter=linear",
+				"#pragma se input filter=linear mipmap=linear",
 				"uniform sampler2D backbuffer;"), result.shader());
-		assertEquals(List.of(new ProjectDiagnostic(
-				ProjectDiagnostic.Severity.WARNING,
-				"backbuffer reads with min=linear instead of a mipmap " +
-						"filter, because pass outputs have no mipmaps; the " +
-						"old mipmaps were made once and never updated",
-				null, 1)), result.diagnostics());
+		assertEquals(List.of(), result.diagnostics());
 	}
 
 	@Test

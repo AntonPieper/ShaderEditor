@@ -13,6 +13,8 @@ final class GlTexture2D implements GlTexture {
 	// What its parameters were set to sample with last, or null.
 	@Nullable
 	private RenderPlan.Sampling sampling;
+	// Whether its mipmaps are made, so a mipmap filter samples it.
+	private boolean mipmaps;
 
 	GlTexture2D(int id) {
 		this.id = id;
@@ -52,6 +54,14 @@ final class GlTexture2D implements GlTexture {
 		this.sampling = sampling;
 	}
 
+	boolean hasMipmaps() {
+		return mipmaps;
+	}
+
+	void setMipmaps(boolean mipmaps) {
+		this.mipmaps = mipmaps;
+	}
+
 	void setSize(int width, int height) {
 		this.width = width;
 		this.height = height;
@@ -63,5 +73,6 @@ final class GlTexture2D implements GlTexture {
 		width = 0;
 		height = 0;
 		sampling = null;
+		mipmaps = false;
 	}
 }

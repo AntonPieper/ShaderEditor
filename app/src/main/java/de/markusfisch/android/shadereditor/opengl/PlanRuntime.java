@@ -79,6 +79,9 @@ final class PlanRuntime implements ShaderSwap.Build {
 	// unannotated backbuffer.
 	@NonNull
 	private final boolean[] backbuffer;
+	// By pass: whether an input reads its output with a mipmap filter.
+	@NonNull
+	private final boolean[] mipmapped;
 	@Nullable
 	private RunningPasses running;
 	@Nullable
@@ -117,6 +120,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 				? null
 				: targets[pass].completed();
 		var backbuffer = this.backbuffer = new boolean[passes.size()];
+		var mipmapped = this.mipmapped = new boolean[passes.size()];
 		// The running pass first: its camera opens.
 		var bindings = new ArrayList<PlanBindings>();
 		bindings.add(passes.get(plan.output()).bindings);
@@ -124,6 +128,11 @@ final class PlanRuntime implements ShaderSwap.Build {
 		for (int i = 0; i < passes.size(); ++i) {
 			var linked = passes.get(i);
 			backbuffer[i] = linked.bindings.readsBackbuffer();
+			for (var binding : linked.bindings.passes) {
+				if (binding.sampling().mipmap() != Mipmap.NONE) {
+					mipmapped[binding.pass()] = true;
+				}
+			}
 			warnings.addAll(linked.warnings);
 			if (i != plan.output()) {
 				bindings.add(linked.bindings);
@@ -433,12 +442,27 @@ final class PlanRuntime implements ShaderSwap.Build {
 			releaseTargets();
 			errors.addAll(invalid);
 			return ShaderSwap.Allocation.INVALID;
-		} else if (Arrays.equals(sizes, madeSizes)) {
+		}
+		// The targets read with mipmaps that can have them; the inputs
+		// of the others read them with their base filter, and say why.
+		var why = new String[sizes.length];
+		var mipmaps = new boolean[sizes.length];
+		for (int i = 0; i < sizes.length; ++i) {
+			if (mipmapped[i] && sizes[i] != null) {
+				why[i] = formats.noMipmaps(plan.passes().get(i).target()
+						.format(), sizes[i].width(), sizes[i].height());
+				mipmaps[i] = why[i] == null;
+			}
+		}
+		for (var linked : passes) {
+			errors.addAll(linked.bindings.checkMipmaps(why));
+		}
+		if (Arrays.equals(sizes, madeSizes)) {
 			return ShaderSwap.Allocation.KEPT;
 		}
 		releaseTargets();
 		madeSizes = sizes;
-		if (from != null && adopt(from, sizes)) {
+		if (from != null && adopt(from, sizes, mipmaps)) {
 			reset = false;
 			return ShaderSwap.Allocation.MADE;
 		}
@@ -447,7 +471,8 @@ final class PlanRuntime implements ShaderSwap.Build {
 				continue;
 			}
 			targets[i] = PassTarget.create(device, plan.passes().get(i).target(),
-					sizes[i], schedule.keepsHistory(i), formats, errors);
+					sizes[i], schedule.keepsHistory(i), mipmaps[i], formats,
+					errors);
 			if (targets[i] == null) {
 				releaseTargets();
 				return ShaderSwap.Allocation.FAILED;
@@ -458,9 +483,9 @@ final class PlanRuntime implements ShaderSwap.Build {
 	}
 
 	// Shares the targets of from when they are the ones this build needs
-	// at sizes, all of them or none.
+	// at sizes, with mipmaps where it says, all of them or none.
 	private boolean adopt(@NonNull PlanRuntime from,
-			@NonNull RenderPlan.Size[] sizes) {
+			@NonNull RenderPlan.Size[] sizes, @NonNull boolean[] mipmaps) {
 		if (!Arrays.equals(from.madeSizes, sizes)) {
 			return false;
 		}
@@ -469,7 +494,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 			var pass = plan.passes().get(i).target();
 			if ((target == null) != (sizes[i] == null) ||
 					(target != null && (!target.fits(pass, sizes[i],
-							schedule.keepsHistory(i)) ||
+							schedule.keepsHistory(i), mipmaps[i]) ||
 							!pass.file().equals(from.plan.passes().get(i)
 									.target().file())))) {
 				return false;
@@ -779,6 +804,11 @@ final class PlanRuntime implements ShaderSwap.Build {
 				pipeline.stretch(texture, targets[pass].history());
 			}
 		}
+		for (var target : targets) {
+			if (target != null) {
+				target.updateHistoryMipmaps();
+			}
+		}
 	}
 
 	// With resolution and pixel positions in the target's size, and on
@@ -801,6 +831,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 		linked.bind(textures, camera, initializing ? onReset : inFrame);
 		device.draw(quad);
 		linked.unbind();
+		target.updateMipmaps();
 	}
 
 	private boolean needsMipmaps(@NonNull PlanBindings.Texture texture) {

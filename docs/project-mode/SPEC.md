@@ -85,7 +85,7 @@ The signature is looked at first, so a picture is never text. The name plays no 
 
 A pass must have an entry point, which in GLSL is a function `main`: an input that names a text file whose source, with its includes, never mentions `main` is an error on the input line that names the file, `lib/noise.glsl defines no main, so it cannot be an input; include it instead`, because nothing could be drawn and the driver's message would point at no line of the user's. The same holds for the running shader, reported on the file. Text that mentions `main` is left to the compiler, which is the only judge of whether it defines one.
 
-Options are checked against the kind once it is known: `frame=` on a picture, `mipmap=` on a pass, and a sampler type the source cannot be read as (section 3.1) are errors on the input line.
+Options are checked against the kind once it is known: `frame=` on a picture, `mipmap=` on a camera, and a sampler type the source cannot be read as (section 3.1) are errors on the input line.
 
 **Language comes from the name, through one table.** A text file's language is looked up by its name; GLSL is the language of every text file the table does not list. The table has one language that runs today:
 
@@ -189,12 +189,12 @@ Decode to RGBA8 numeric channel values with straight alpha; do not implicitly li
 | Source | filter | mipmap | wrap |
 | --- | --- | --- | --- |
 | Image | linear | none | clamp |
-| Pass output, backbuffer | nearest | not available | clamp |
+| Pass output, backbuffer | nearest | none | clamp |
 | Other engine sampler | existing provider default | not available | existing provider default |
 
-`clamp` means clamp-to-edge. Unsupported combinations (including GLES2 non-power-of-two images with `repeat`, `mirror`, or mipmaps, and external-texture constraints) fail clearly rather than changing sampling silently.
+`clamp` means clamp-to-edge. Unsupported combinations (including GLES2 non-power-of-two images with `repeat`, `mirror`, or mipmaps, and external-texture constraints) fail clearly rather than changing sampling silently. The one exception is a pass output read with mipmaps where GLES2 cannot make them (below): it is read with its base filter and a warning, so the picture does not turn black.
 
-**Mipmaps.** `mipmap=nearest` and `mipmap=linear` select the nearest level or blend between two levels; together with the minification filter they cover the four GL mipmap modes. Mipmaps exist for image inputs only and are generated once at upload, when at least one input of the image asks for them. `mipmap` on a pass output, the backbuffer, or an engine sampler is an error: those change every frame, and regenerating levels per frame is not part of v1.
+**Mipmaps.** `mipmap=nearest` and `mipmap=linear` select the nearest level or blend between two levels; together with the minification filter they cover the four GL mipmap modes. An image's mipmaps are generated once at upload, when at least one input of the image asks for them. A pass output's, the backbuffer's included, are generated again after every draw of the pass, before anything reads it, when at least one input reads it with a mipmap filter; an output nobody reads with mipmaps has none and costs nothing. GLES3 makes them for every target. GLES2 makes them only for a target whose size is a power of two (any size where the device names `OES_texture_npot`), and for an `rgba16f` target only where half floats filter (`OES_texture_half_float_linear`); where it cannot, the input reads with its base filter and the build warns why, for example "a reads a.frag with min=linear instead of mipmaps: OpenGL ES 2.0 makes mipmaps only of a size that is a power of two, and the target is 1080x2424". `mipmap` on a camera is an error: the camera's texture has no mipmaps.
 
 **Cubemaps.** An image input declared as `samplerCube` is a horizontal strip of six square faces, in the order +X, −X, +Y, −Y, +Z, −Z. The image width must be exactly six times its height. Square *i* from the left is face *i*; rows are stored top to bottom, which is the orientation GL expects for cube faces. `wrap` does not apply to cubemaps and is an error there. The import UI assembles the strip from six picked faces or repacks other layouts; the format has this one layout.
 
@@ -289,7 +289,7 @@ Wallpaper application captures the selected dependency closure from the current 
 
 Enforce explicit bounds on expanded source bytes, include depth, include expansions, files per build, passes, and decoded pixels per image. A limit is an admission bound: it is checked before the read, expansion or allocation it guards, in one place per resource, and a limit of zero is a usable policy that yields the same diagnostic, not a crash. GPU limits come from the context's reported texture size and unit counts; do not estimate GPU memory. The defaults are include depth 16, 1 MiB of assembled source per pass, 20,000 include expansions per pass, 64 files per build, 16 passes, and 16,777,216 decoded pixels per image (4096 by 4096). A file counts toward the files of a build once, whether it turns out to be a picture, a pass or an include. They are sized for phones: a build stays within a few megabytes of text and one full-size texture per image, and a small project cannot make preparation run for more than a moment. Keep limits in one documented policy location. Report the exceeded limit and avoid silently truncating input. Limits may be implementation/device-dependent; they are resource admission policy, not alternate format semantics. Choose conservative values from Android memory constraints and record them in HANDOFF plus user-facing diagnostics.
 
-V1 includes file projects, includes, local 2D and cubemap images, mipmaps, engine uniforms, basic multipass, history with initial content, targets, diagnostics, native editing/persistence, sharing, and wallpaper snapshots. It excludes generated declarations, source-name inference, asset sidecars, implicit global resources, arbitrary graph overrides, a graph editor, a script runtime, compute, SSBOs, multiple outputs, mipmaps for pass outputs, input-size uniforms (use `textureSize` with `#version 300 es`), and live cross-project package updates. Unsupported features fail explicitly.
+V1 includes file projects, includes, local 2D and cubemap images, mipmaps, engine uniforms, basic multipass, history with initial content, targets, diagnostics, native editing/persistence, sharing, and wallpaper snapshots. It excludes generated declarations, source-name inference, asset sidecars, implicit global resources, arbitrary graph overrides, a graph editor, a script runtime, compute, SSBOs, multiple outputs, input-size uniforms (use `textureSize` with `#version 300 es`), and live cross-project package updates. Unsupported features fail explicitly.
 
 ## 12. Existing DB shaders
 
@@ -318,7 +318,6 @@ A few old behaviors have no exact form. Each was an accident of the old renderer
 
 | Old behavior | After conversion |
 | --- | --- |
-| A mipmap minification filter on `backbuffer`. The levels were generated once and never refreshed, so it sampled stale data. | The base filter |
 | `discard`. The old renderer never cleared, so a discarded pixel showed what that buffer held two frames earlier. | Opaque black, as section 5 defines for every pass |
 | Different minification and magnification filters on `backbuffer`, at a quality above 1, where the output is scaled down. | `present` uses one filter in both directions |
 | `backbuffer` with `repeat` wrap and linear magnification: edge pixels of the output blended with the opposite edge. Mirrored repeat is unaffected. | Edges are clamped |
