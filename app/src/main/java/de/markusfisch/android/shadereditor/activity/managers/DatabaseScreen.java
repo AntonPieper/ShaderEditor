@@ -73,8 +73,10 @@ public final class DatabaseScreen implements ShaderScreen {
 	@Override
 	public void start(@Nullable Bundle state, @Nullable Intent intent) {
 		// Only load the last shader when no incoming text was opened,
-		// or it would replace that text.
-		boolean openedText = shaderManager.handleSendText(intent);
+		// or it would replace that text. A file still being read comes
+		// back with the state.
+		boolean openedText = state == null &&
+				shaderManager.handleSendText(intent);
 		isInitialLoad = state == null && !openedText;
 	}
 
@@ -254,7 +256,7 @@ public final class DatabaseScreen implements ShaderScreen {
 			@Override
 			public void onAllShadersDeleted() {
 				isInitialLoad = false;
-				shaderManager.selectShader(0);
+				shaderManager.onAllShadersDeleted();
 			}
 
 			@Override

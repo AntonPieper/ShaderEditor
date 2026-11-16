@@ -56,6 +56,7 @@ public class PreferencesFragment
 	private ActivityResultLauncher<Intent> pickFileLauncher;
 	private ActivityResultLauncher<String> requestReadPermissionLauncher;
 	private ActivityResultLauncher<String> requestWritePermissionLauncher;
+	private ActivityResultLauncher<String> requestDatabaseWritePermissionLauncher;
 	private DataSource dataSource;
 	// Where the shaders are files: the library is what is exported.
 	@Nullable
@@ -124,6 +125,17 @@ public class PreferencesFragment
 								R.string.write_access_required);
 					}
 				});
+
+		requestDatabaseWritePermissionLauncher = registerForActivityResult(
+				new ActivityResultContracts.RequestPermission(),
+				isGranted -> {
+					if (isGranted) {
+						exportDatabase();
+					} else {
+						Message.show(requireActivity(),
+								R.string.write_access_required);
+					}
+				});
 	}
 
 	@Override
@@ -179,10 +191,8 @@ public class PreferencesFragment
 			requireActivity().recreate();
 		}
 
-		if (Preferences.SAVE_BATTERY.equals(key) &&
-				ShaderEditorApp.preferences.isBatteryLow()) {
-			BatteryLevelReceiver.setLowPowerMode(
-					ShaderEditorApp.preferences.saveBattery());
+		if (Preferences.SAVE_BATTERY.equals(key)) {
+			BatteryLevelReceiver.updateRenderMode();
 		}
 	}
 
@@ -347,15 +357,27 @@ public class PreferencesFragment
 				return true;
 			});
 			exportDatabase.setOnPreferenceClickListener(preference -> {
-				Context context = getContext();
-				if (context != null) {
-					Context appContext = context.getApplicationContext();
-					runDatabaseOperation(() -> appContext.getString(
-							DatabaseExporter.exportDatabase(appContext)),
-							R.string.n_shaders_export_failed);
+				if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+						ContextCompat.checkSelfPermission(requireContext(),
+								Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+								PackageManager.PERMISSION_GRANTED) {
+					requestDatabaseWritePermissionLauncher.launch(
+							Manifest.permission.WRITE_EXTERNAL_STORAGE);
+				} else {
+					exportDatabase();
 				}
 				return true;
 			});
+		}
+	}
+
+	private void exportDatabase() {
+		Context context = getContext();
+		if (context != null) {
+			Context appContext = context.getApplicationContext();
+			runDatabaseOperation(() -> appContext.getString(
+					DatabaseExporter.exportDatabase(appContext)),
+					R.string.n_shaders_export_failed);
 		}
 	}
 

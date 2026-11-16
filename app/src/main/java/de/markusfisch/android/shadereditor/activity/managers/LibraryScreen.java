@@ -385,13 +385,19 @@ public final class LibraryScreen implements ShaderScreen {
 			showOpen();
 		});
 		shaderManager.setOnGoneListener(this::showLibraryFile);
+		// Where the shaders are files, text another app shares or opens
+		// becomes a file of the library.
+		shaderManager.setOnSharedListener(shared ->
+				libraryAdd.addShared(shared.name(), shared.text()));
 	}
 
 	@Override
 	public void start(@Nullable Bundle state, @Nullable Intent intent) {
 		// Only show the library's file when no incoming text was
-		// opened, or it would replace that text.
-		boolean openedText = addShared(intent);
+		// opened, or it would replace that text. A file still being
+		// read comes back with the state.
+		boolean openedText = state == null &&
+				shaderManager.handleSendText(intent);
 		restored = state != null
 				? OpenState.decode(state.getString(OPEN))
 				: null;
@@ -422,6 +428,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void onRestoreInstanceState(@NonNull Bundle state) {
+		shaderManager.restorePendingImport(state);
 		if (restored != null && restored.isFile()) {
 			files.restore(restored);
 		} else if (restored != null &&
@@ -454,6 +461,7 @@ public final class LibraryScreen implements ShaderScreen {
 		files.endTuning(true);
 		state.putString(OPEN, openState().encode());
 		state.putBoolean(ASKS_IMPORT, importQuestion != null);
+		shaderManager.savePendingImport(state);
 		// With nothing open the editor's view is gone for that reason.
 		state.putBoolean(ShaderScreen.CODE_VISIBLE, open.hasText()
 				? editorFragment.isCodeVisible()
@@ -547,7 +555,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void onNewIntent(@Nullable Intent intent) {
-		addShared(intent);
+		shaderManager.handleSendText(intent);
 	}
 
 	@NonNull
@@ -977,17 +985,6 @@ public final class LibraryScreen implements ShaderScreen {
 				})
 				.setNegativeButton(android.R.string.cancel, null)
 				.show();
-	}
-
-	// Where the shaders are files, text another app shares or opens
-	// becomes a file of the library.
-	private boolean addShared(@Nullable Intent intent) {
-		ShaderManager.Shared shared = shaderManager.readShared(intent);
-		if (shared == null) {
-			return false;
-		}
-		libraryAdd.addShared(shared.name(), shared.text());
-		return true;
 	}
 
 	@NonNull

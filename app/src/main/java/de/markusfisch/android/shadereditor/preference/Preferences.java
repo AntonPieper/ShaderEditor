@@ -401,6 +401,10 @@ public class Preferences {
 	}
 
 
+	public boolean isLowPowerMode() {
+		return saveBattery && batteryLow && !powerConnected;
+	}
+
 	public boolean isBatteryLow() {
 		return batteryLow;
 	}

@@ -16,6 +16,7 @@ import androidx.annotation.RawRes;
 import org.jetbrains.annotations.Contract;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -52,17 +53,9 @@ public class TextureDao {
 	// The image of the texture as stored, not decoded, or null.
 	@Nullable
 	public byte[] getTextureData(long id) {
-		String query =
-				"SELECT " + DatabaseContract.TextureColumns.MATRIX +
-						" FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
-						" WHERE " + DatabaseContract.TextureColumns._ID + " = ?";
-		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		try (var cursor = db.rawQuery(query, new String[]{String.valueOf(id)})) {
-			return cursor.moveToFirst()
-					? CursorHelpers.getBlob(cursor,
-							DatabaseContract.TextureColumns.MATRIX)
-					: null;
-		}
+		return readTextureBlob(dbHelper.getReadableDatabase(),
+				DatabaseContract.TextureColumns._ID, String.valueOf(id),
+				DatabaseContract.TextureColumns.MATRIX);
 	}
 
 	@Nullable
@@ -102,24 +95,56 @@ public class TextureDao {
 
 	@Nullable
 	public Bitmap getTextureBitmap(long id) {
-		String query =
-				"SELECT " + DatabaseContract.TextureColumns.MATRIX +
-						" FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
-						" WHERE " + DatabaseContract.TextureColumns._ID + " = ?";
+		return getTextureBitmap(DatabaseContract.TextureColumns._ID, String.valueOf(id));
+	}
+
+	@Nullable
+	private Bitmap getTextureBitmap(String column, String value) {
 		SQLiteDatabase db = dbHelper.getReadableDatabase();
-		try (var cursor = db.rawQuery(query, new String[]{String.valueOf(id)})) {
-			if (cursor.moveToFirst()) {
-				var data = CursorHelpers.getBlob(cursor, DatabaseContract.TextureColumns.MATRIX);
-				if (data != null) {
-					BitmapFactory.Options options = new BitmapFactory.Options();
-					options.inPremultiplied = false;
-					return BitmapFactory.decodeByteArray(data, 0, data.length, options);
-				}
+		try {
+			byte[] data = readTextureBlob(db, column, value,
+					DatabaseContract.TextureColumns.MATRIX);
+			if (data != null) {
+				BitmapFactory.Options options = new BitmapFactory.Options();
+				options.inPremultiplied = false;
+				return BitmapFactory.decodeByteArray(data, 0, data.length, options);
 			}
 		} catch (OutOfMemoryError e) {
 			// A texture might be too big to be loaded into memory.
 		}
 		return null;
+	}
+
+	@Nullable
+	private static byte[] readTextureBlob(SQLiteDatabase db, String keyColumn,
+			String key, String blobColumn) {
+		String from = " FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
+				" WHERE " + keyColumn + " = ?";
+		int length;
+		try (Cursor cursor = db.rawQuery("SELECT length(" + blobColumn + ")" + from,
+				new String[]{key})) {
+			if (!cursor.moveToFirst() || cursor.isNull(0)) {
+				return null;
+			}
+			length = cursor.getInt(0);
+		}
+		byte[] data = new byte[length];
+		final int chunkSize = 65536;
+		for (int offset = 0; offset < length; ) {
+			try (Cursor cursor = db.rawQuery("SELECT substr(" + blobColumn + ", ?, ?)" + from,
+					new String[]{Integer.toString(offset + 1), Integer.toString(chunkSize), key})) {
+				if (!cursor.moveToFirst() || cursor.isNull(0)) {
+					return null;
+				}
+				byte[] chunk = cursor.getBlob(0);
+				if (chunk.length == 0 || chunk.length > length - offset) {
+					return null;
+				}
+				System.arraycopy(chunk, 0, data, offset, chunk.length);
+				offset += chunk.length;
+			}
+		}
+		return data;
 	}
 
 	public long insertTexture(String name, Bitmap bitmap) {
@@ -235,7 +260,7 @@ public class TextureDao {
 			@Override
 			public boolean onImport(@NonNull SQLiteDatabase intoDb,
 					@NonNull SQLiteDatabase fromDb) {
-				return importTextures(intoDb, fromDb);
+				return importTextures(intoDb, fromDb, context);
 			}
 
 			private void createTexturesTable(@NonNull SQLiteDatabase db) {
@@ -287,15 +312,16 @@ public class TextureDao {
 
 				try (var cursor =
 						db.rawQuery("SELECT " +
-										DatabaseContract.TextureColumns._ID + "," +
-										DatabaseContract.TextureColumns.MATRIX +
+										DatabaseContract.TextureColumns._ID +
 										" FROM " + DatabaseContract.TextureColumns.TABLE_NAME,
 								null)) {
 					if (!cursor.moveToFirst()) {
 						return;
 					}
 					do {
-						var data = CursorHelpers.getBlob(cursor,
+						var data = readTextureBlob(db, DatabaseContract.TextureColumns._ID,
+								Long.toString(CursorHelpers.getLong(cursor,
+										DatabaseContract.TextureColumns._ID)),
 								DatabaseContract.TextureColumns.MATRIX);
 						if (data == null) {
 							continue;
@@ -331,13 +357,25 @@ public class TextureDao {
 					SQLiteDatabase dst,
 					SQLiteDatabase src,
 					long srcId) {
+				String projection = DatabaseContract.TextureColumns.NAME;
+				// Older backups may not contain dimensions yet.
+				try (Cursor columns = src.rawQuery("SELECT * FROM " +
+						DatabaseContract.TextureColumns.TABLE_NAME + " LIMIT 0", null)) {
+					for (String column : new String[]{DatabaseContract.TextureColumns.WIDTH,
+							DatabaseContract.TextureColumns.HEIGHT,
+							DatabaseContract.TextureColumns.RATIO}) {
+						if (columns.getColumnIndex(column) >= 0) {
+							projection += "," + column;
+						}
+					}
+				}
 				try (Cursor cursor = src.rawQuery(
-						"SELECT * " +
+						"SELECT " + projection +
 								" FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
 								" WHERE " + DatabaseContract.TextureColumns._ID + " = ?",
 						new String[]{String.valueOf(srcId)})) {
-					boolean success = true;
-					if (moveToFirstAndCatchOutOfMemory(cursor)) {
+					boolean success = false;
+					if (cursor.moveToFirst()) {
 						long textureId = TextureDao.insertTexture(dst,
 								CursorHelpers.getString(cursor,
 										DatabaseContract.TextureColumns.NAME),
@@ -347,23 +385,15 @@ public class TextureDao {
 										DatabaseContract.TextureColumns.HEIGHT),
 								CursorHelpers.getFloat(cursor,
 										DatabaseContract.TextureColumns.RATIO),
-								Objects.requireNonNull(CursorHelpers.getBlob(cursor,
+								Objects.requireNonNull(readTextureBlob(src,
+										DatabaseContract.TextureColumns._ID, String.valueOf(srcId),
 										DatabaseContract.TextureColumns.THUMB)),
-								Objects.requireNonNull(CursorHelpers.getBlob(cursor,
+								Objects.requireNonNull(readTextureBlob(src,
+										DatabaseContract.TextureColumns._ID, String.valueOf(srcId),
 										DatabaseContract.TextureColumns.MATRIX)));
-						if (textureId < 1) {
-							success = false;
-						}
+						success = textureId > 0;
 					}
 					return success;
-				}
-			}
-
-			private static boolean moveToFirstAndCatchOutOfMemory(@NonNull Cursor cursor) {
-				try {
-					return cursor.moveToFirst();
-				} catch (SQLException e) {
-					return false;
 				}
 			}
 
@@ -377,9 +407,47 @@ public class TextureDao {
 				}
 			}
 
+			private static boolean texturesMatch(SQLiteDatabase dst,
+					SQLiteDatabase src, String name) {
+				String where = " FROM " + DatabaseContract.TextureColumns.TABLE_NAME +
+						" WHERE " + DatabaseContract.TextureColumns.NAME + " = ?";
+				String lengthQuery = "SELECT length(" +
+						DatabaseContract.TextureColumns.MATRIX + ")" + where;
+				String[] args = {name};
+				try (Cursor existing = dst.rawQuery(lengthQuery, args);
+						Cursor incoming = src.rawQuery(lengthQuery, args)) {
+					if (!existing.moveToFirst() || !incoming.moveToFirst() ||
+							existing.isNull(0) || incoming.isNull(0)) {
+						return false;
+					}
+					long length = existing.getLong(0);
+					if (length != incoming.getLong(0)) {
+						return false;
+					}
+
+					// Keep large PNGs out of the limited CursorWindow.
+					final int chunkSize = 65536;
+					String chunkQuery = "SELECT substr(" +
+							DatabaseContract.TextureColumns.MATRIX + ", ?, ?)" + where;
+					for (long offset = 1; offset <= length; offset += chunkSize) {
+						String[] chunkArgs = {Long.toString(offset),
+								Integer.toString(chunkSize), name};
+						try (Cursor existingChunk = dst.rawQuery(chunkQuery, chunkArgs);
+								Cursor incomingChunk = src.rawQuery(chunkQuery, chunkArgs)) {
+							if (!existingChunk.moveToFirst() || !incomingChunk.moveToFirst() ||
+									!Arrays.equals(existingChunk.getBlob(0), incomingChunk.getBlob(0))) {
+								return false;
+							}
+						}
+					}
+					return true;
+				}
+			}
+
 			private static boolean importTextures(
 					SQLiteDatabase dst,
-					SQLiteDatabase src) {
+					SQLiteDatabase src,
+					Context context) {
 				try (Cursor cursor = src.rawQuery(
 						"SELECT " +
 								DatabaseContract.TextureColumns._ID + ", " +
@@ -392,7 +460,14 @@ public class TextureDao {
 						do {
 							String name = CursorHelpers.getString(cursor,
 									DatabaseContract.TextureColumns.NAME);
-							if (name == null || textureExists(dst, name)) {
+							if (name == null) {
+								continue;
+							}
+							if (textureExists(dst, name)) {
+								if (!texturesMatch(dst, src, name)) {
+									throw new SQLException(context.getString(
+											R.string.name_already_taken) + ": " + name);
+								}
 								continue;
 							}
 							if (!importTexture(dst, src, CursorHelpers.getLong(cursor,

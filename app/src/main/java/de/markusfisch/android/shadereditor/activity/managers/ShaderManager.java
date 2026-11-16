@@ -13,6 +13,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.IntentCompat;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -29,6 +32,7 @@ import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataRecords;
 import de.markusfisch.android.shadereditor.database.DataSource;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
+import de.markusfisch.android.shadereditor.io.ShaderSourceReader;
 import de.markusfisch.android.shadereditor.widget.Message;
 
 // A database shader open in the editor, or text that becomes one when
@@ -43,6 +47,7 @@ public class ShaderManager implements OpenItem {
 	private static final String DEFAULT_TITLE = "main.glsl";
 	private static final String QUALITY = "quality";
 	private static final String MODIFIED = "modified";
+	private static final String PENDING_SHADER_URI = "pending_shader_uri";
 	private static final long NO_SHADER = 0;
 
 	private final AppCompatActivity activity;
@@ -62,6 +67,14 @@ public class ShaderManager implements OpenItem {
 	private String title = "";
 	private float quality = 1f;
 	private boolean isModified = false;
+	private long importRequest;
+	@Nullable
+	private Uri pendingShaderUri;
+	@Nullable
+	private Runnable pendingImportResult;
+	private final SharedListener openInEditor = this::openShared;
+	@NonNull
+	private SharedListener sharedListener = openInEditor;
 	@Nullable
 	private Runnable shownListener;
 	@Nullable
@@ -86,6 +99,16 @@ public class ShaderManager implements OpenItem {
 		inserts = new ShaderInserts(dataSource.shader, files);
 		this.titleListener = titleListener;
 		this.savedListener = savedListener;
+		activity.getLifecycle().addObserver(new DefaultLifecycleObserver() {
+			@Override
+			public void onResume(@NonNull LifecycleOwner owner) {
+				Runnable result = pendingImportResult;
+				pendingImportResult = null;
+				if (result != null) {
+					result.run();
+				}
+			}
+		});
 
 		addUniformLauncher = activity.registerForActivityResult(
 				new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -101,8 +124,8 @@ public class ShaderManager implements OpenItem {
 				new ActivityResultContracts.StartActivityForResult(), result -> {
 					if (result.getResultCode() == Activity.RESULT_OK &&
 							result.getData() != null) {
-						if (isModified()) {
-							saveShader();
+						if (isModified() && !saveShader()) {
+							return;
 						}
 						createShaderFromResource(
 								Objects.requireNonNull(result.getData().getStringExtra(
@@ -145,6 +168,14 @@ public class ShaderManager implements OpenItem {
 	}
 
 	/**
+	 * Give text another app shares or opens to listener instead of
+	 * opening it in the editor as a new shader.
+	 */
+	public void setOnSharedListener(@NonNull SharedListener listener) {
+		sharedListener = listener;
+	}
+
+	/**
 	 * Call listener when the shader in the editor is gone and no other
 	 * shader of the database comes in its place: where the shaders are
 	 * files, after it was deleted, or when one asked for is not there.
@@ -167,6 +198,7 @@ public class ShaderManager implements OpenItem {
 	}
 
 	public void destroy() {
+		cancelShaderImport();
 		executor.shutdownNow();
 		handler.removeCallbacksAndMessages(null);
 	}
@@ -176,6 +208,8 @@ public class ShaderManager implements OpenItem {
 		if (!inserts.possible()) {
 			return;
 		}
+		cancelImportIntoEditor();
+		long request = importRequest;
 		executor.execute(() -> {
 			long newId = inserts.insertFromResource(
 					activity.getApplicationContext(), name, sourceId, thumbId, quality);
@@ -183,7 +217,9 @@ public class ShaderManager implements OpenItem {
 				if (activity.isFinishing() || activity.isDestroyed()) {
 					return;
 				}
-				selectShader(newId);
+				if (request == importRequest) {
+					selectShader(newId);
+				}
 				shaderListManager.loadShadersAsync();
 			});
 		});
@@ -240,6 +276,12 @@ public class ShaderManager implements OpenItem {
 		outState.putString(SELECTED_SHADER_TITLE, title);
 		outState.putFloat(QUALITY, quality);
 		outState.putBoolean(MODIFIED, isModified);
+		savePendingImport(outState);
+	}
+
+	// A file that is still being read is read again after a recreate.
+	public void savePendingImport(@NonNull Bundle outState) {
+		outState.putParcelable(PENDING_SHADER_URI, pendingShaderUri);
 	}
 
 	// The editor restores its text itself, keeping the undo history.
@@ -248,12 +290,22 @@ public class ShaderManager implements OpenItem {
 		if (!editorFragment.isTextRestored()) {
 			// The text is lost, so is any change.
 			selectShader(id);
+			restorePendingImport(savedInstanceState);
 			return;
 		}
 		restore(id,
 				savedInstanceState.getString(SELECTED_SHADER_TITLE, ""),
 				savedInstanceState.getFloat(QUALITY, 1f),
 				savedInstanceState.getBoolean(MODIFIED));
+		restorePendingImport(savedInstanceState);
+	}
+
+	@SuppressWarnings("deprecation")
+	public void restorePendingImport(@NonNull Bundle state) {
+		Uri uri = state.getParcelable(PENDING_SHADER_URI);
+		if (uri != null) {
+			handleSendText(new Intent(Intent.ACTION_VIEW, uri));
+		}
 	}
 
 	/**
@@ -273,9 +325,10 @@ public class ShaderManager implements OpenItem {
 	}
 
 	public void selectShader(long id) {
-		if (isModified()) {
-			saveShader();
+		if (isModified() && !saveShader()) {
+			return;
 		}
+		cancelImportIntoEditor();
 
 		PreviewActivity.renderStatus.reset();
 		var shader = dataSource.shader.getShader(id);
@@ -380,81 +433,138 @@ public class ShaderManager implements OpenItem {
 		});
 	}
 
-	public boolean handleSendText(@Nullable Intent intent) {
-		Shared shared = readShared(intent);
-		if (shared == null) {
-			return false;
-		}
-		if (isModified() && !saveShader()) {
-			return false;
-		}
-
-		PreviewActivity.renderStatus.reset();
-		applyShader(NO_SHADER, shared.text(), 1f,
-				shared.name() != null ? shared.name() : DEFAULT_TITLE);
-		setModified(true);
-		return true;
-	}
-
-	/** Text another app shared or opened, and its name, or null. */
-	public record Shared(@NonNull String text, @Nullable String name) {
-	}
-
 	/**
-	 * Return the text of intent when another app shared or opened text
-	 * with it, and mark the intent as handled; else return null.
+	 * Take the text another app shared or opened with intent, a file
+	 * read off the UI thread, to the shared listener once the activity
+	 * is resumed, and mark the intent as handled. Return whether such
+	 * text comes.
 	 */
-	@Nullable
-	public Shared readShared(@Nullable Intent intent) {
+	public boolean handleSendText(@Nullable Intent intent) {
 		if (intent == null || intent.getAction() == null) {
-			return null;
+			return false;
 		}
 		if (!Intent.ACTION_SEND.equals(intent.getAction()) &&
 				!Intent.ACTION_VIEW.equals(intent.getAction())) {
-			return null;
+			return false;
 		}
 
 		Uri uri = intent.getData();
 		if (uri == null && Intent.ACTION_SEND.equals(intent.getAction())) {
 			uri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri.class);
 		}
-		String text;
+
+		cancelShaderImport();
 		if (uri != null) {
-			text = readText(uri);
+			pendingShaderUri = uri;
+			long request = importRequest;
+			Uri sourceUri = uri;
+			intent.setAction(null);
+			executor.execute(() -> {
+				try {
+					String source = readShaderSource(sourceUri);
+					handler.post(() -> deliverImportResult(request, () -> {
+						pendingShaderUri = null;
+						if (source != null) {
+							sharedListener.onShared(new Shared(source,
+									getDisplayName(sourceUri)));
+						} else {
+							showImportError();
+						}
+					}));
+				} catch (IOException | SecurityException e) {
+					handler.post(() -> deliverImportResult(request, () -> {
+						pendingShaderUri = null;
+						showImportError();
+					}));
+				}
+			});
+			return true;
 		} else if (Intent.ACTION_SEND.equals(intent.getAction())) {
 			// Text shared from another app comes as an extra.
-			CharSequence extra = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-			text = extra != null ? extra.toString() : null;
+			CharSequence text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+			if (text != null) {
+				if (text.length() > ShaderSourceReader.MAX_SOURCE_LENGTH) {
+					showImportError();
+					return false;
+				}
+				intent.setAction(null);
+				// Text without a file has no name.
+				sharedListener.onShared(new Shared(text.toString(), null));
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Text another app shared or opened, and its name, or null. */
+	public record Shared(@NonNull String text, @Nullable String name) {
+	}
+
+	/** Takes text another app shared or opened. */
+	public interface SharedListener {
+		void onShared(@NonNull Shared shared);
+	}
+
+	private void cancelShaderImport() {
+		++importRequest;
+		pendingShaderUri = null;
+		pendingImportResult = null;
+	}
+
+	// A shader chosen for the editor replaces the text read for it.
+	private void cancelImportIntoEditor() {
+		if (sharedListener == openInEditor) {
+			cancelShaderImport();
+		}
+	}
+
+	public void onAllShadersDeleted() {
+		// Empty-list refreshes must not cancel an incoming shader.
+		if (pendingShaderUri == null) {
+			selectShader(NO_SHADER);
+		}
+	}
+
+	private void deliverImportResult(long request, @NonNull Runnable result) {
+		if (!isCurrentImport(request)) {
+			return;
+		}
+		if (activity.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+			result.run();
 		} else {
-			text = null;
+			pendingImportResult = () -> deliverImportResult(request, result);
 		}
-		if (text == null) {
-			return null;
+	}
+
+	private boolean isCurrentImport(long request) {
+		return request == importRequest &&
+				!activity.isFinishing() && !activity.isDestroyed();
+	}
+
+	private void openShared(@NonNull Shared shared) {
+		if (isModified() && !saveShader()) {
+			return;
 		}
-		intent.setAction(null);
-		// Text without a file has no name.
-		return new Shared(text, uri != null ? getDisplayName(uri) : null);
+		PreviewActivity.renderStatus.reset();
+		applyShader(NO_SHADER, shared.text(), 1f,
+				shared.name() != null ? shared.name() : DEFAULT_TITLE);
+		setModified(true);
+	}
+
+	private void showImportError() {
+		Message.show(activity, R.string.unsuitable_text);
 	}
 
 	@Nullable
-	private String readText(@NonNull Uri uri) {
+	private String readShaderSource(@NonNull Uri uri) throws IOException {
 		try (var in = activity.getContentResolver().openInputStream(uri)) {
 			if (in == null) {
 				return null;
 			}
 			// A reader keeps characters that span two buffers intact.
 			try (var reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-				char[] buffer = new char[4096];
-				int len;
-				var sb = new StringBuilder();
-				while ((len = reader.read(buffer)) != -1) {
-					sb.append(buffer, 0, len);
-				}
-				return sb.toString();
+				return ShaderSourceReader.read(reader);
 			}
-		} catch (IOException | SecurityException e) {
-			Message.show(activity, R.string.unsuitable_text);
-			return null;
 		}
 	}
 
@@ -494,6 +604,7 @@ public class ShaderManager implements OpenItem {
 	public void deleteShader(long shaderId) {
 		dataSource.shader.removeShader(shaderId);
 		if (shaderId == selectedShaderId) {
+			cancelImportIntoEditor();
 			selectedShaderId = NO_SHADER;
 			setModified(false);
 			updatePendingCrashShaderId();
