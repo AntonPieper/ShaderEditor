@@ -1324,6 +1324,25 @@ public class OpenProjectTest {
 		assertEquals(path("main.frag"), sessions.running(id));
 	}
 
+	// The session ends with what is shown now, also when the file shown
+	// goes back to what it keeps while a write of another is on its way.
+	@Test
+	public void aFenceKeepsTheFileShownNowOverTheWriteOnItsWay()
+			throws IOException {
+		write("main.frag", SHADER);
+		OpenProject project = open();
+		ProjectSessions sessions = new ProjectSessions(sessionsDir);
+		project.show(path("main.frag"));
+		settle();
+
+		project.show(path("a.glsl"));
+		project.show(path("main.frag"));
+		flush(project);
+
+		assertEquals(path("main.frag"), sessions.shown(id));
+		assertNull(project.unkept());
+	}
+
 	@Test
 	public void failedJournalWriteIsReportedAndRetriedOnTheNextFlush()
 			throws IOException {
