@@ -231,10 +231,23 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		return found.isEmpty() ? host.scope().find(word) : found;
 	}
 
+	/**
+	 * Whether word at offset means a local or a parameter: something
+	 * else than the name alone means in the file. Such a word is what
+	 * its function declares, also when it is named like one of the
+	 * app's uniforms.
+	 */
+	static boolean isLocal(@NonNull Knowledge known, int offset,
+			@NonNull String word) {
+		List<Knowledge.Symbol> here = known.at(offset, word);
+		return !here.isEmpty() && !here.equals(known.at(-1, word));
+	}
+
 	@Override
 	public void lookUp(@NonNull String word) {
 		UniformDef uniform = UNIFORMS.get(word);
-		if (uniform != null) {
+		if (uniform != null && !isLocal(host.declared(), host.offset(),
+				word)) {
 			showUniform(uniform);
 		} else if (GlslWords.style(word, 0, word.length()) ==
 				Style.IDENTIFIER) {
