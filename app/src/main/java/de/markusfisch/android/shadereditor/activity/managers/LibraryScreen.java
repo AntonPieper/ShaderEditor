@@ -761,7 +761,7 @@ public final class LibraryScreen implements ShaderScreen {
 	}
 
 	@Override
-	public void onEditPaused(@NonNull String text) {
+	public void onEditPaused(@NonNull CharSequence text) {
 		if (ShaderEditorApp.preferences.doesRunOnChange() &&
 				open instanceof ProjectFile) {
 			editorFragment.runningEdit();
@@ -769,7 +769,7 @@ public final class LibraryScreen implements ShaderScreen {
 		} else if (ShaderEditorApp.preferences.doesRunOnChange() &&
 				open.hasText()) {
 			editorFragment.runningEdit();
-			shaderViewManager.setShader(text, open.getQuality());
+			shaderViewManager.setShader(text.toString(), open.getQuality());
 		} else if (open instanceof ProjectFile &&
 				!ShaderEditorApp.preferences.doesRunInBackground() &&
 				editorFragment.getListedState() !=

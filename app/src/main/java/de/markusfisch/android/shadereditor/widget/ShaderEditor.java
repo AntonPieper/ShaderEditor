@@ -845,7 +845,7 @@ public class ShaderEditor extends LineNumberEditText {
 
 	@FunctionalInterface
 	public interface OnEditPausedListener {
-		void onEditPaused(@NonNull String text);
+		void onEditPaused(@NonNull CharSequence text);
 	}
 
 	@FunctionalInterface

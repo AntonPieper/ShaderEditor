@@ -19,6 +19,8 @@ import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.R;
@@ -49,6 +51,10 @@ public class UIManager implements PassesSheet.Line {
 	// The toolbar's title without the unsaved mark.
 	@NonNull
 	private CharSequence title = "";
+	// What setToolbarTitle showed last: the same again, as on every
+	// key, changes nothing.
+	@Nullable
+	private List<Object> shownTitle;
 	private final SecondLine secondLine = new SecondLine();
 
 	public final ActionBarDrawerToggle drawerToggle;
@@ -188,6 +194,13 @@ public class UIManager implements PassesSheet.Line {
 		if (title == null) {
 			title = "";
 		}
+		List<Object> shown = Arrays.asList(title.toString(),
+				subtitle != null ? subtitle.toString() : null, unsaved,
+				titleIsFileName);
+		if (shown.equals(shownTitle)) {
+			return;
+		}
+		shownTitle = shown;
 		if (!TextUtils.equals(title, this.title)) {
 			secondLine.setFrameRate(null);
 		}

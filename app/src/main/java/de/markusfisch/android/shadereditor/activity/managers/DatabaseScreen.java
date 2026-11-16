@@ -196,10 +196,10 @@ public final class DatabaseScreen implements ShaderScreen {
 	}
 
 	@Override
-	public void onEditPaused(@NonNull String text) {
+	public void onEditPaused(@NonNull CharSequence text) {
 		if (ShaderEditorApp.preferences.doesRunOnChange()) {
 			editorFragment.runningEdit();
-			shaderViewManager.setShader(text, open.getQuality());
+			shaderViewManager.setShader(text.toString(), open.getQuality());
 		}
 	}
 

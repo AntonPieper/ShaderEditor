@@ -116,7 +116,7 @@ public interface ShaderScreen {
 	void addUniform();
 
 	/** The user stopped typing; text is what the editor holds. */
-	void onEditPaused(@NonNull String text);
+	void onEditPaused(@NonNull CharSequence text);
 
 	/** The user chose quality. */
 	void onQualityChanged(float quality);
