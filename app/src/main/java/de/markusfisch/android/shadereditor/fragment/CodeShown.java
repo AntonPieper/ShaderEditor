@@ -41,6 +41,10 @@ public final class CodeShown {
 		return aside;
 	}
 
+	public boolean covered() {
+		return covered;
+	}
+
 	/** The code button hid the code, or showed it again. */
 	public void setHidden(boolean hidden) {
 		this.hidden = hidden;

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- In the toolbar's place while Find is open: close, the field with
+the count, previous, next and the menu, in the order TalkBack reads. -->
+<de.markusfisch.android.shadereditor.widget.FindBar
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:id="@+id/find_bar"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:background="@color/se_level_bar"
+	android:gravity="center_vertical"
+	android:minHeight="?attr/actionBarSize"
+	android:orientation="horizontal"
+	android:paddingStart="4dp"
+	android:paddingEnd="4dp"
+	android:visibility="gone">
+
+	<Button
+		android:id="@+id/find_close"
+		style="@style/IconButton"
+		android:layout_width="48dp"
+		android:layout_height="48dp"
+		android:contentDescription="@string/find_close"
+		app:icon="@drawable/ic_arrow_back"
+		app:iconSize="24dp" />
+
+	<EditText
+		android:id="@+id/find_field"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="12dp"
+		android:layout_weight="1"
+		android:background="@null"
+		android:hint="@string/find_hint"
+		android:imeOptions="actionSearch|flagNoExtractUi"
+		android:importantForAutofill="no"
+		android:inputType="text|textNoSuggestions"
+		android:minHeight="48dp"
+		android:paddingVertical="8dp"
+		android:singleLine="true"
+		android:textAppearance="?attr/textAppearanceBodyLarge"
+		android:textColor="?attr/colorOnSurface"
+		android:textColorHint="?attr/colorOnSurfaceVariant" />
+
+	<TextView
+		android:id="@+id/find_count"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="8dp"
+		android:layout_marginEnd="4dp"
+		android:fontFeatureSettings="tnum"
+		android:importantForAccessibility="no"
+		android:maxLines="1"
+		android:textAppearance="?attr/textAppearanceBodyMedium"
+		android:textColor="?attr/colorOnSurfaceVariant" />
+
+	<Button
+		android:id="@+id/find_previous"
+		style="@style/IconButton"
+		android:layout_width="48dp"
+		android:layout_height="48dp"
+		android:contentDescription="@string/find_previous"
+		app:icon="@drawable/ic_keyboard_arrow_up"
+		app:iconSize="24dp" />
+
+	<Button
+		android:id="@+id/find_next"
+		style="@style/IconButton"
+		android:layout_width="48dp"
+		android:layout_height="48dp"
+		android:contentDescription="@string/find_next"
+		app:icon="@drawable/ic_keyboard_arrow_down"
+		app:iconSize="24dp" />
+
+	<Button
+		android:id="@+id/find_menu"
+		style="@style/IconButton"
+		android:layout_width="48dp"
+		android:layout_height="48dp"
+		android:contentDescription="@string/menu_btn"
+		app:icon="@drawable/ic_more_vert"
+		app:iconSize="24dp" />
+</de.markusfisch.android.shadereditor.widget.FindBar>

@@ -655,4 +655,13 @@
 	<string name="nav_delete_changed">Changed outside ShaderEditor and deleted as it is now, with what was written there: %s</string>
 	<string name="conflict_others">Changed outside ShaderEditor, with unsaved text: %s</string>
 	<string name="nav_changed_outside">changed outside</string>
+	<string name="find">Find</string>
+	<string name="find_hint">Find</string>
+	<string name="find_close">Close find</string>
+	<string name="find_previous">Previous match</string>
+	<string name="find_next">Next match</string>
+	<string name="find_count">%1$d/%2$s</string>
+	<string name="find_many">9999+</string>
+	<string name="match_case">Match case</string>
+	<string name="whole_word">Whole word</string>
 </resources>

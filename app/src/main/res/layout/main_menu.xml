@@ -45,6 +45,16 @@
 				app:iconPadding="0dp" />
 		</LinearLayout>
 
+		<!-- Only the new editor, where shaders are files. -->
+		<Button
+			android:id="@+id/find"
+			style="@style/MenuItem"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/menu_item_height"
+			android:text="@string/find"
+			android:visibility="gone"
+			app:icon="@drawable/ic_search" />
+
 		<Button
 			android:id="@+id/add_shader"
 			style="@style/MenuItem"
