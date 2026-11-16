@@ -31,6 +31,10 @@ public final class Search {
 		}
 	}
 
+	/** Put text in the place of the range from from to to. */
+	public record Replace(int from, int to, Text text) {
+	}
+
 	/** Tells a search that its result is not wanted any more. */
 	public interface Cancel {
 		boolean cancelled();
@@ -107,6 +111,12 @@ public final class Search {
 	 * when cancel told to stop before it was done.
 	 */
 	public static Matches all(Text text, Query query, Cancel cancel) {
+		return all(text, query, MAX, cancel);
+	}
+
+	/** Return every match of query in text, as all does, at most max. */
+	public static Matches all(Text text, Query query, int max,
+			Cancel cancel) {
 		if (query.isEmpty()) {
 			return new Matches(text, query, new int[0], false);
 		}
@@ -121,16 +131,42 @@ public final class Search {
 			String line = text.line(n);
 			for (int at = inLine(line, 0, query); at > -1;
 					at = inLine(line, at + length, query)) {
-				if (count == MAX) {
+				if (count == max) {
 					return new Matches(text, query, starts, true);
 				} else if (count == starts.length) {
-					starts = Arrays.copyOf(starts, Math.min(MAX, count * 2));
+					starts = Arrays.copyOf(starts,
+							(int) Math.min(max, count * 2L));
 				}
 				starts[count++] = offset + at;
 			}
 			offset += line.length() + 1;
 		}
 		return new Matches(text, query, Arrays.copyOf(starts, count), false);
+	}
+
+	/**
+	 * Return the one replace that puts with in the place of every match
+	 * of matches: from the first match to the end of the last, the text
+	 * between them kept, so that it is one change and one step of undo;
+	 * null when there is no match.
+	 */
+	public static Replace replaceAll(Matches matches, CharSequence with) {
+		int n = matches.count();
+		if (n == 0) {
+			return null;
+		}
+		Text text = matches.text();
+		int length = matches.query().text().length();
+		String replacement = Text.of(with).toString();
+		int first = matches.start(0);
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0, at = first; i < n; ++i) {
+			int start = matches.start(i);
+			sb.append(text.substring(at, start)).append(replacement);
+			at = start + length;
+		}
+		return new Replace(first, matches.start(n - 1) + length,
+				Text.of(sb));
 	}
 
 	/**

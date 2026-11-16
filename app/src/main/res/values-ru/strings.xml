@@ -664,4 +664,8 @@
 	<string name="find_many">9999+</string>
 	<string name="match_case">Match case</string>
 	<string name="whole_word">Whole word</string>
+	<string name="replace">Replace</string>
+	<string name="replace_with">Replace with</string>
+	<string name="replace_all_short">All</string>
+	<string name="a11y_replace_all">Replace all</string>
 </resources>

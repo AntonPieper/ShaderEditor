@@ -44,15 +44,21 @@ import de.markusfisch.android.shadereditor.view.SoftKeyboard;
  */
 public class FindBar extends LinearLayout {
 	/**
-	 * What Find is: whether it is open, the query with its options, the
-	 * matches counted in the text shown, or null while they are counted,
-	 * and where the current match starts: -1 for none, and
-	 * {@link Search#UNKNOWN} while it is looked for with the count.
+	 * What Find is: whether it is open, whether the row that replaces
+	 * shows, the query with its options, the matches counted in the text
+	 * shown, or null while they are counted, and where the current match
+	 * starts: -1 for none, and {@link Search#UNKNOWN} while it is looked
+	 * for with the count.
 	 */
-	record State(boolean open, @NonNull Search.Query query,
-			@Nullable Search.Matches matches, int current) {
-		static final State CLOSED = new State(false, Search.Query.NONE, null,
-				-1);
+	record State(boolean open, boolean replacing,
+			@NonNull Search.Query query, @Nullable Search.Matches matches,
+			int current) {
+		static final State CLOSED = new State(false, false,
+				Search.Query.NONE, null, -1);
+
+		State with(@Nullable Search.Matches matches, int current) {
+			return new State(open, replacing, query, matches, current);
+		}
 	}
 
 	// The lines the main thread reads per keystroke for the match to
@@ -84,7 +90,10 @@ public class FindBar extends LinearLayout {
 					close();
 				}
 			};
+	private View row;
 	private EditText field;
+	private EditText replacement;
+	private View replaceRow;
 	private TextView count;
 	private View previous;
 	private View next;
@@ -116,7 +125,13 @@ public class FindBar extends LinearLayout {
 	@Override
 	protected void onFinishInflate() {
 		super.onFinishInflate();
+		row = findViewById(R.id.find_row);
 		field = findViewById(R.id.find_field);
+		replaceRow = findViewById(R.id.replace_row);
+		replacement = findViewById(R.id.replace_field);
+		findViewById(R.id.replace_one).setOnClickListener(v -> replace());
+		findViewById(R.id.replace_all).setOnClickListener(v ->
+				replaceAll());
 		count = findViewById(R.id.find_count);
 		previous = findViewById(R.id.find_previous);
 		next = findViewById(R.id.find_next);
@@ -187,7 +202,7 @@ public class FindBar extends LinearLayout {
 				? null
 				: document.text().substring(selection.start(),
 						selection.end());
-		state = new State(true, Search.Query.NONE, null, -1);
+		state = new State(true, false, Search.Query.NONE, null, -1);
 		if (selected != null && selected.indexOf('\n') < 0) {
 			wholeWord = isName(selected);
 			field.setText(selected);
@@ -197,7 +212,7 @@ public class FindBar extends LinearLayout {
 		field.selectAll();
 		setPadding(getPaddingLeft(), toolbar.getPaddingTop(),
 				getPaddingRight(), getPaddingBottom());
-		setMinimumHeight(toolbar.getHeight());
+		row.setMinimumHeight(toolbar.getHeight() - toolbar.getPaddingTop());
 		fadeThrough(toolbar, this, () -> SoftKeyboard.show(getContext(),
 				field));
 		back.setEnabled(true);
@@ -248,6 +263,7 @@ public class FindBar extends LinearLayout {
 		previous.setEnabled(!none);
 		next.setEnabled(!none);
 		count.setText(countText());
+		replaceRow.setVisibility(state.replacing() ? VISIBLE : GONE);
 	}
 
 	@NonNull
@@ -282,7 +298,7 @@ public class FindBar extends LinearLayout {
 		if (at >= 0) {
 			select(at, query);
 		}
-		set(new State(true, query, null, at));
+		set(new State(true, state.replacing(), query, null, at));
 		count();
 	}
 
@@ -316,7 +332,7 @@ public class FindBar extends LinearLayout {
 				select(current, matches.query());
 			}
 		}
-		set(new State(true, state.query(), matches, current));
+		set(state.with(matches, current));
 	}
 
 	// Goes to the next match after the selection, or the one before it.
@@ -349,7 +365,38 @@ public class FindBar extends LinearLayout {
 		}
 		select(at, query);
 		origin = at;
-		set(new State(true, query, state.matches(), at));
+		set(state.with(state.matches(), at));
+	}
+
+	// Replaces the current match, as one step of undo, and goes to the
+	// next; without a current match, it goes to the next first.
+	private void replace() {
+		if (document == null || state.query().isEmpty()) {
+			return;
+		}
+		Document.Selection selection = document.selection();
+		int current = state.current();
+		if (current >= 0 && selection.start() == current &&
+				selection.end() == current + state.query().text().length()) {
+			document.replace(selection.start(), selection.end(),
+					Text.of(replacement.getText()));
+		}
+		step(true);
+	}
+
+	// Replaces every match as one change, one step of undo: from the
+	// first match to the end of the last, the text between them kept.
+	private void replaceAll() {
+		if (document == null || state.query().isEmpty()) {
+			return;
+		}
+		Search.Replace all = Search.replaceAll(Search.all(document.text(),
+				state.query(), Integer.MAX_VALUE, () -> false),
+				replacement.getText());
+		if (all != null && code != null) {
+			document.replace(all.from(), all.to(), all.text());
+			code.showFound();
+		}
 	}
 
 	// Returns the first match at or after offset, round the end.
@@ -390,10 +437,10 @@ public class FindBar extends LinearLayout {
 		if (document.revision() != revision) {
 			revision = document.revision();
 			// The count shown stays until the new one replaces it.
-			set(new State(true, state.query(), state.matches(), current));
+			set(state.with(state.matches(), current));
 			count();
 		} else if (current != state.current()) {
-			set(new State(true, state.query(), state.matches(), current));
+			set(state.with(state.matches(), current));
 		}
 	}
 
@@ -405,7 +452,7 @@ public class FindBar extends LinearLayout {
 		}
 		listen(code.getDocument());
 		origin = document.selection().start();
-		set(new State(true, state.query(), null, -1));
+		set(state.with(null, -1));
 		count();
 	}
 
@@ -426,8 +473,21 @@ public class FindBar extends LinearLayout {
 				.setCheckable(true).setChecked(matchCase);
 		popup.getMenu().add(0, R.string.whole_word, 0, R.string.whole_word)
 				.setCheckable(true).setChecked(wholeWord);
+		popup.getMenu().add(0, R.string.replace, 0, R.string.replace)
+				.setCheckable(true).setChecked(state.replacing());
 		popup.setOnMenuItemClickListener(item -> {
-			if (item.getItemId() == R.string.match_case) {
+			int id = item.getItemId();
+			if (id == R.string.replace) {
+				boolean replacing = !state.replacing();
+				set(new State(true, replacing, state.query(),
+						state.matches(), state.current()));
+				if (replacing) {
+					SoftKeyboard.show(getContext(), replacement);
+				} else if (replacement.hasFocus()) {
+					field.requestFocus();
+				}
+				return true;
+			} else if (id == R.string.match_case) {
 				matchCase = !matchCase;
 			} else {
 				wholeWord = !wholeWord;
