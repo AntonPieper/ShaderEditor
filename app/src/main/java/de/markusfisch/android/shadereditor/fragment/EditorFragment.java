@@ -45,6 +45,9 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 	private SourceEditor editor;
 	// Which editor the view was made with.
 	private boolean newEditor;
+	// What runs once Find can find in the code, or null.
+	@Nullable
+	private FindableCode whenFindable;
 	// Text set before the view exists, for example from an intent
 	// that started the activity.
 	@Nullable
@@ -324,6 +327,25 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 				!codeShown.covered() && !codeShown.aside()
 				? (CodeView) editor.getView()
 				: null;
+	}
+
+	/**
+	 * Run found with the code Find finds in once there is one, now or
+	 * when what covers the code goes, as after the screen was made
+	 * again; in place of what was to run before.
+	 */
+	public void whenFindable(@NonNull FindableCode found) {
+		CodeView code = findableCode();
+		if (code != null) {
+			found.found(code);
+		} else {
+			whenFindable = found;
+		}
+	}
+
+	/** Takes the code Find finds in. */
+	public interface FindableCode {
+		void found(@NonNull CodeView code);
 	}
 
 	/** Return whether goTo can list where to go. */
@@ -735,6 +757,12 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 					: codeShown.aside() ? View.INVISIBLE : View.VISIBLE);
 		}
 		codeShown.setCovered(covered);
+		FindableCode found = whenFindable;
+		CodeView code = findableCode();
+		if (found != null && code != null) {
+			whenFindable = null;
+			found.found(code);
+		}
 	}
 
 	/**

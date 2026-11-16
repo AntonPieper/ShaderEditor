@@ -71,6 +71,12 @@ public class SystemBarMetrics {
 				toolbar.setPadding(toolbar.getPaddingLeft(), bars.top,
 						toolbar.getPaddingRight(), toolbar.getPaddingBottom());
 			}
+			// Find, in the toolbar's place, once it was made.
+			View find = mainLayout.findViewById(R.id.find_bar);
+			if (find != null) {
+				find.setPadding(find.getPaddingLeft(), bars.top,
+						find.getPaddingRight(), find.getPaddingBottom());
+			}
 
 			if (navbar != null) {
 				navbar.getLayoutParams().height = bottom;

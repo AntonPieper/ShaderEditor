@@ -5,10 +5,12 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -65,6 +67,15 @@ public class MainActivity extends AppCompatActivity {
 	// Find in the toolbar's place, made the first time it opens.
 	@Nullable
 	private FindBar findBar;
+	private final OnBackPressedCallback findBack =
+			new OnBackPressedCallback(false) {
+				@Override
+				public void handleOnBackPressed() {
+					if (findBar != null) {
+						findBar.close();
+					}
+				}
+			};
 	private DataSource dataSource;
 
 	@Override
@@ -75,6 +86,10 @@ public class MainActivity extends AppCompatActivity {
 
 		dataSource = Database.getInstance(this).getDataSource();
 		recoverFromCrashIfNeeded();
+
+		// Before the drawer's and the sheets' own, so that whatever stands
+		// over Find goes first on Back.
+		getOnBackPressedDispatcher().addCallback(this, findBack);
 
 		editorFragment = state == null ? new EditorFragment() : (EditorFragment)
 				getSupportFragmentManager().findFragmentByTag(EditorFragment.TAG);
@@ -163,6 +178,37 @@ public class MainActivity extends AppCompatActivity {
 				}));
 	}
 
+	// Ctrl+F finds, Ctrl+H replaces, Ctrl+G goes to, as the menu does.
+	@Override
+	public boolean onKeyShortcut(int keyCode, KeyEvent event) {
+		if (event.isCtrlPressed() && !event.isAltPressed()) {
+			MainMenuManager.EditorActions actions = createEditorActions();
+			if ((keyCode == KeyEvent.KEYCODE_F ||
+					keyCode == KeyEvent.KEYCODE_H) && actions.canFind()) {
+				find();
+				if (keyCode == KeyEvent.KEYCODE_H && findBar != null) {
+					findBar.showReplace();
+				}
+				return true;
+			} else if (keyCode == KeyEvent.KEYCODE_G && actions.canGoTo()) {
+				actions.onGoTo();
+				return true;
+			}
+		}
+		return super.onKeyShortcut(keyCode, event);
+	}
+
+	// Escape closes Find from the code too.
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event) {
+		if (keyCode == KeyEvent.KEYCODE_ESCAPE && findBar != null &&
+				findBar.isOpen()) {
+			findBar.close();
+			return true;
+		}
+		return super.onKeyUp(keyCode, event);
+	}
+
 	@Override
 	protected void onRestoreInstanceState(@NonNull Bundle state) {
 		super.onRestoreInstanceState(state);
@@ -173,6 +219,9 @@ public class MainActivity extends AppCompatActivity {
 	protected void onSaveInstanceState(@NonNull Bundle state) {
 		screen.onSaveInstanceState(state);
 		state.putCharSequence(TOOLBAR_TITLE, uiManager.getToolbarTitle());
+		if (findBar != null) {
+			findBar.save(state);
+		}
 		super.onSaveInstanceState(state);
 	}
 
@@ -238,6 +287,12 @@ public class MainActivity extends AppCompatActivity {
 		screen.onPostCreate();
 		if (uiManager.drawerToggle != null) {
 			uiManager.drawerToggle.syncState();
+		}
+		// What was typed into Find stays over a recreation, once the
+		// file is open again.
+		if (FindBar.wasOpen(state)) {
+			editorFragment.whenFindable(code -> findBar().restore(state,
+					code, findViewById(R.id.toolbar)));
 		}
 	}
 
@@ -436,11 +491,18 @@ public class MainActivity extends AppCompatActivity {
 			return;
 		}
 		showCode();
+		findBar().open(code, findViewById(R.id.toolbar));
+	}
+
+	@NonNull
+	private FindBar findBar() {
 		if (findBar == null) {
 			findBar = (FindBar) ((ViewStub) findViewById(
 					R.id.find_bar_stub)).inflate();
+			findBar.setOnOpenChanged(() ->
+					findBack.setEnabled(findBar.isOpen()));
 		}
-		findBar.open(code, findViewById(R.id.toolbar));
+		return findBar;
 	}
 
 	@NonNull

@@ -1,7 +1,7 @@
 package de.markusfisch.android.shadereditor.widget;
 
 import android.content.Context;
-import android.content.ContextWrapper;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -16,11 +16,10 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import androidx.activity.ComponentActivity;
-import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.view.ViewCompat;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -61,6 +60,11 @@ public class FindBar extends LinearLayout {
 		}
 	}
 
+	private static final String QUERY = "find_query";
+	private static final String MATCH_CASE = "find_match_case";
+	private static final String WHOLE_WORD = "find_whole_word";
+	private static final String REPLACING = "find_replacing";
+	private static final String REPLACEMENT = "find_replacement";
 	// The lines the main thread reads per keystroke for the match to
 	// show at once: about a few screens. Further on, the count finds it.
 	private static final int MAIN_LINES = 200;
@@ -81,13 +85,6 @@ public class FindBar extends LinearLayout {
 				@Override
 				public void onUpdate() {
 					updated();
-				}
-			};
-	private final OnBackPressedCallback back =
-			new OnBackPressedCallback(false) {
-				@Override
-				public void handleOnBackPressed() {
-					close();
 				}
 			};
 	private View row;
@@ -113,6 +110,8 @@ public class FindBar extends LinearLayout {
 	private int counts;
 	private boolean matchCase;
 	private boolean wholeWord;
+	@Nullable
+	private Runnable openChanged;
 
 	public FindBar(Context context) {
 		super(context);
@@ -155,21 +154,80 @@ public class FindBar extends LinearLayout {
 				search();
 			}
 		});
-		// The keyboard's action goes to the next match.
+		// The keyboard's action goes to the next match, Shift+Enter on a
+		// keyboard to the one before.
 		field.setOnEditorActionListener((v, action, event) -> {
 			if (action == EditorInfo.IME_ACTION_SEARCH ||
 					(event != null &&
 							event.getKeyCode() == KeyEvent.KEYCODE_ENTER &&
 							event.getAction() == KeyEvent.ACTION_DOWN)) {
-				step(true);
+				step(event == null || !event.isShiftPressed());
 				return true;
 			}
 			return false;
 		});
-		ComponentActivity activity = activityOf(getContext());
-		if (activity != null) {
-			activity.getOnBackPressedDispatcher().addCallback(activity, back);
+	}
+
+	// Escape closes, from either field.
+	@Override
+	public boolean dispatchKeyEvent(KeyEvent event) {
+		if (event.getKeyCode() == KeyEvent.KEYCODE_ESCAPE && state.open()) {
+			if (event.getAction() == KeyEvent.ACTION_UP) {
+				close();
+			}
+			return true;
 		}
+		return super.dispatchKeyEvent(event);
+	}
+
+	/** Return whether Find is open. */
+	public boolean isOpen() {
+		return state.open();
+	}
+
+	/** Run changed whenever Find opens or closes; none for null. */
+	public void setOnOpenChanged(@Nullable Runnable changed) {
+		openChanged = changed;
+	}
+
+	/**
+	 * Put what is typed into state while Find is open, so that a screen
+	 * made again opens it as it was; see {@link #restore}.
+	 */
+	public void save(@NonNull Bundle state) {
+		if (this.state.open()) {
+			state.putString(QUERY, field.getText().toString());
+			state.putBoolean(MATCH_CASE, matchCase);
+			state.putBoolean(WHOLE_WORD, wholeWord);
+			state.putBoolean(REPLACING, this.state.replacing());
+			state.putString(REPLACEMENT, replacement.getText().toString());
+		}
+	}
+
+	/** Return whether state was saved while Find was open. */
+	public static boolean wasOpen(@Nullable Bundle state) {
+		return state != null && state.containsKey(QUERY);
+	}
+
+	/** Open as save left Find, in place of toolbar over code. */
+	public void restore(@NonNull Bundle state, @NonNull CodeView code,
+			@NonNull View toolbar) {
+		matchCase = state.getBoolean(MATCH_CASE);
+		wholeWord = state.getBoolean(WHOLE_WORD);
+		replacement.setText(state.getString(REPLACEMENT));
+		open(code, toolbar, state.getString(QUERY, ""));
+		if (state.getBoolean(REPLACING)) {
+			showReplace();
+		}
+	}
+
+	/** Show the row that replaces, and give its field the focus. */
+	public void showReplace() {
+		if (state.open() && !state.replacing()) {
+			set(new State(true, true, state.query(), state.matches(),
+					state.current()));
+		}
+		post(() -> SoftKeyboard.show(getContext(), replacement));
 	}
 
 	@Override
@@ -186,6 +244,12 @@ public class FindBar extends LinearLayout {
 	 * word, else with the query of the last time. Open, take the focus.
 	 */
 	public void open(@NonNull CodeView code, @NonNull View toolbar) {
+		open(code, toolbar, null);
+	}
+
+	// Opens with query, or as open says when it is null.
+	private void open(@NonNull CodeView code, @NonNull View toolbar,
+			@Nullable String query) {
 		if (state.open()) {
 			field.requestFocus();
 			field.selectAll();
@@ -203,7 +267,9 @@ public class FindBar extends LinearLayout {
 				: document.text().substring(selection.start(),
 						selection.end());
 		state = new State(true, false, Search.Query.NONE, null, -1);
-		if (selected != null && selected.indexOf('\n') < 0) {
+		if (query != null) {
+			field.setText(query);
+		} else if (selected != null && selected.indexOf('\n') < 0) {
 			wholeWord = isName(selected);
 			field.setText(selected);
 		} else {
@@ -212,10 +278,16 @@ public class FindBar extends LinearLayout {
 		field.selectAll();
 		setPadding(getPaddingLeft(), toolbar.getPaddingTop(),
 				getPaddingRight(), getPaddingBottom());
-		row.setMinimumHeight(toolbar.getHeight() - toolbar.getPaddingTop());
+		// Not laid out yet when the screen was made again.
+		if (toolbar.getHeight() > 0) {
+			row.setMinimumHeight(toolbar.getHeight() -
+					toolbar.getPaddingTop());
+		}
 		fadeThrough(toolbar, this, () -> SoftKeyboard.show(getContext(),
 				field));
-		back.setEnabled(true);
+		if (openChanged != null) {
+			openChanged.run();
+		}
 	}
 
 	/**
@@ -229,7 +301,9 @@ public class FindBar extends LinearLayout {
 		++counts;
 		boolean typing = field.hasFocus() && SoftKeyboard.isOpen(this);
 		set(State.CLOSED);
-		back.setEnabled(false);
+		if (openChanged != null) {
+			openChanged.run();
+		}
 		CodeView shown = code;
 		listen(null);
 		code = null;
@@ -263,6 +337,8 @@ public class FindBar extends LinearLayout {
 		previous.setEnabled(!none);
 		next.setEnabled(!none);
 		count.setText(countText());
+		// TalkBack hears the count with the field.
+		ViewCompat.setStateDescription(field, spoken());
 		replaceRow.setVisibility(state.replacing() ? VISIBLE : GONE);
 	}
 
@@ -284,6 +360,26 @@ public class FindBar extends LinearLayout {
 				? getContext().getString(R.string.find_count, index + 1,
 				total)
 				: total;
+	}
+
+	// What TalkBack says of the current match, or of none; null while
+	// that is not known.
+	@Nullable
+	private String spoken() {
+		Search.Matches matches = state.matches();
+		if (state.query().isEmpty() || matches == null) {
+			return null;
+		} else if (matches.count() == 0) {
+			return getContext().getString(R.string.a11y_find_none);
+		}
+		int index = state.current() >= 0
+				? matches.indexOf(state.current())
+				: -1;
+		return index < 0 || document == null
+				? null
+				: getContext().getString(R.string.a11y_find_match, index + 1,
+				matches.count(), document.text().lineOf(
+						state.current()) + 1);
 	}
 
 	// The query changed: the match from origin on is shown at once when
@@ -332,7 +428,12 @@ public class FindBar extends LinearLayout {
 				select(current, matches.query());
 			}
 		}
+		boolean none = matches.count() == 0 && (state.matches() == null ||
+				state.matches().count() > 0);
 		set(state.with(matches, current));
+		if (none) {
+			announceForAccessibility(spoken());
+		}
 	}
 
 	// Goes to the next match after the selection, or the one before it.
@@ -366,6 +467,10 @@ public class FindBar extends LinearLayout {
 		select(at, query);
 		origin = at;
 		set(state.with(state.matches(), at));
+		String spoken = spoken();
+		if (spoken != null) {
+			announceForAccessibility(spoken);
+		}
 	}
 
 	// Replaces the current match, as one step of undo, and goes to the
@@ -475,9 +580,21 @@ public class FindBar extends LinearLayout {
 				.setCheckable(true).setChecked(wholeWord);
 		popup.getMenu().add(0, R.string.replace, 0, R.string.replace)
 				.setCheckable(true).setChecked(state.replacing());
+		// The toolbar's error button stands in its place, so the list of
+		// errors stays one tap away while Find is open.
+		View errors = toolbar != null
+				? toolbar.findViewById(R.id.show_errors)
+				: null;
+		if (errors != null && errors.getVisibility() == VISIBLE) {
+			popup.getMenu().add(1, R.string.show_errors, 1,
+					R.string.show_errors);
+		}
 		popup.setOnMenuItemClickListener(item -> {
 			int id = item.getItemId();
-			if (id == R.string.replace) {
+			if (id == R.string.show_errors) {
+				errors.performClick();
+				return true;
+			} else if (id == R.string.replace) {
 				boolean replacing = !state.replacing();
 				set(new State(true, replacing, state.query(),
 						state.matches(), state.current()));
@@ -542,16 +659,5 @@ public class FindBar extends LinearLayout {
 			}
 		}
 		return !s.isEmpty();
-	}
-
-	@Nullable
-	private static ComponentActivity activityOf(@NonNull Context context) {
-		while (context instanceof ContextWrapper) {
-			if (context instanceof ComponentActivity activity) {
-				return activity;
-			}
-			context = ((ContextWrapper) context).getBaseContext();
-		}
-		return null;
 	}
 }

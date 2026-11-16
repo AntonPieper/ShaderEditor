@@ -863,6 +863,15 @@ public class CodeView extends View {
 		scroller.forceFinished(true);
 		scrollInside(getScrollX(), scrollY);
 		bringCaretIntoView();
+		// Its start too, which a long line can leave beside the screen.
+		Text text = document.text();
+		int start = document.selection().start();
+		float left = textLeft(text.lineCount());
+		float x = left + layoutOf(n).xOf(start - text.lineStart(n)) -
+				appearance.charWidth * 4;
+		if (x < getScrollX() + left) {
+			scrollInside((int) Math.floor(x - left), getScrollY());
+		}
 	}
 
 	/** Fling with the given velocity in pixels per second. */
@@ -883,7 +892,11 @@ public class CodeView extends View {
 	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
 		placeRow();
-		if (caretIntoViewWhenLaidOut || (h < oldh && isFocused())) {
+		if (h < oldh && !isFocused() && !found.isEmpty()) {
+			// The keyboard came up for Find's field after the jump: the
+			// match goes where Find puts one.
+			showFound();
+		} else if (caretIntoViewWhenLaidOut || (h < oldh && isFocused())) {
 			bringCaretIntoView();
 		} else {
 			int scrollY = getScrollY();

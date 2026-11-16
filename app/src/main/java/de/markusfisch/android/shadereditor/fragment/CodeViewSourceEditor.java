@@ -425,8 +425,10 @@ final class CodeViewSourceEditor implements SourceEditor {
 			return;
 		}
 		Text text = document.text();
+		String file = links.file().toString();
 		new GoToSheet(view.getContext(), GoToSheet.outline(
-				view.getAnalysis().knowledge(), text, scope), text,
+				view.getAnalysis().knowledge(), text, scope,
+				file.substring(0, file.lastIndexOf('/') + 1)), text,
 				ShaderEditorApp.preferences.getFont(),
 				row -> jump(row.file(), row.line() + 1)).show();
 	}
