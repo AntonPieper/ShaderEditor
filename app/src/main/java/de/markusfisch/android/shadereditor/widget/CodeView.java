@@ -3005,6 +3005,8 @@ public class CodeView extends View {
 		appearance.measure();
 		lines.setLineHeight(appearance.lineHeight);
 		forgetLines();
+		// The row's text follows the code's size: lay it out again.
+		row = Row.NONE;
 		placeRow();
 		gutterLast = -1;
 		invalidate();

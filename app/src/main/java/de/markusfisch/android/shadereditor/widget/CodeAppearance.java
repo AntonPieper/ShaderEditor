@@ -54,9 +54,9 @@ final class CodeAppearance {
 	// between it and the text above, and the space beside its label.
 	final TextPaint fixPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 	final int fixPressedColor;
-	final float fixPressedHeight;
-	final int fixHeight;
-	final float fixBaseline;
+	float fixPressedHeight;
+	int fixHeight;
+	float fixBaseline;
 	final int fixInset;
 	final float fixPadding;
 	// Between two fixes side by side, and between two lines of fixes
@@ -70,8 +70,8 @@ final class CodeAppearance {
 	final float hairline;
 	final float rowPadding;
 	final int rowPaddingVertical;
-	final int rowLineHeight;
-	final int rowBaseline;
+	int rowLineHeight;
+	int rowBaseline;
 	// The widest a row is, from where the text of the code starts.
 	final float rowMaxWidth;
 	final float corner;
@@ -89,6 +89,14 @@ final class CodeAppearance {
 	float digitWidth;
 	int lineHeight;
 	int baseline;
+	// The sizes of the row's text and the label of its fix, and the
+	// heights of their lines and of a pressed fix, at the code's
+	// default size; measureRow scales them with the code's.
+	private final float rowTextSize;
+	private final float rowLine;
+	private final float fixTextSize;
+	private final float fixLine;
+	private final float fixPressed;
 	// Whether every printable ASCII character has the same width.
 	boolean monospace;
 	// MonoGlyphs from Android 12 on, if the font allows; null else.
@@ -123,13 +131,8 @@ final class CodeAppearance {
 					.updateMeasureState(rowPaint);
 		}
 		rowPaint.setColor(markColor);
-		// Lines of 20 sp, as BodyMedium's, each baseline in the middle of
-		// its line; more if the font needs more.
-		Paint.FontMetricsInt rowMetrics = rowPaint.getFontMetricsInt();
-		int rowText = rowMetrics.descent - rowMetrics.ascent;
-		rowLineHeight = Math.max(rowText, res.getDimensionPixelSize(
-				R.dimen.editor_row_line_height));
-		rowBaseline = (rowLineHeight - rowText) / 2 - rowMetrics.ascent;
+		rowTextSize = rowPaint.getTextSize();
+		rowLine = res.getDimension(R.dimen.editor_row_line_height);
 		rowPadding = res.getDimension(R.dimen.editor_padding);
 		rowPaddingVertical = res.getDimensionPixelSize(
 				R.dimen.editor_row_padding_vertical);
@@ -156,17 +159,9 @@ final class CodeAppearance {
 		fixPaint.setColor(handleColor);
 		// 12 % of the accent, as the library's text button when pressed.
 		fixPressedColor = (handleColor & 0xffffff) | 0x1f000000;
-		// LabelLarge's line of 20 sp, as the row's lines.
-		Paint.FontMetricsInt fixMetrics = fixPaint.getFontMetricsInt();
-		int fixText = fixMetrics.descent - fixMetrics.ascent;
-		fixHeight = Math.max(fixText, res.getDimensionPixelSize(
-				R.dimen.editor_fix_height));
-		fixBaseline = (fixHeight - fixText) / 2f - fixMetrics.ascent;
-		// 32 dp, centred on the label's line: as far below it as the
-		// row's padding; more where large text makes the line higher.
-		fixPressedHeight = Math.max(res.getDimension(
-						R.dimen.editor_fix_pressed_height),
-				fixHeight + 2 * rowPaddingVertical);
+		fixTextSize = fixPaint.getTextSize();
+		fixLine = res.getDimension(R.dimen.editor_fix_height);
+		fixPressed = res.getDimension(R.dimen.editor_fix_pressed_height);
 		fixInset = res.getDimensionPixelSize(R.dimen.editor_fix_inset);
 		fixPadding = res.getDimension(R.dimen.editor_fix_padding);
 		fixGap = res.getDimension(R.dimen.editor_fix_gap);
@@ -179,6 +174,30 @@ final class CodeAppearance {
 		measure();
 	}
 
+	// The row's text, and the label of its fix, is as large as the code
+	// when the code is larger than their text appearances, so that the
+	// message under a line reads at the size the line does.
+	private void measureRow() {
+		float scale = Math.max(1, paint.getTextSize() / rowTextSize);
+		rowPaint.setTextSize(rowTextSize * scale);
+		// Lines of 20 sp, as BodyMedium's, each baseline in the middle of
+		// its line; more if the font needs more.
+		Paint.FontMetricsInt rowMetrics = rowPaint.getFontMetricsInt();
+		int rowText = rowMetrics.descent - rowMetrics.ascent;
+		rowLineHeight = Math.max(rowText, Math.round(rowLine * scale));
+		rowBaseline = (rowLineHeight - rowText) / 2 - rowMetrics.ascent;
+		fixPaint.setTextSize(fixTextSize * scale);
+		// LabelLarge's line of 20 sp, as the row's lines.
+		Paint.FontMetricsInt fixMetrics = fixPaint.getFontMetricsInt();
+		int fixText = fixMetrics.descent - fixMetrics.ascent;
+		fixHeight = Math.max(fixText, Math.round(fixLine * scale));
+		fixBaseline = (fixHeight - fixText) / 2f - fixMetrics.ascent;
+		// 32 dp, centred on the label's line: as far below it as the
+		// row's padding; more where large text makes the line higher.
+		fixPressedHeight = Math.max(fixPressed,
+				fixHeight + 2 * rowPaddingVertical);
+	}
+
 	/** Lay out a line; runs may be null for no colours. */
 	LineLayout layout(String text, LineStyles.Runs runs) {
 		return text.length() > LineLayout.LONG ||
@@ -188,6 +207,7 @@ final class CodeAppearance {
 	}
 
 	void measure() {
+		measureRow();
 		Paint.FontMetricsInt fm = paint.getFontMetricsInt();
 		lineHeight = fm.descent - fm.ascent;
 		baseline = -fm.ascent;
