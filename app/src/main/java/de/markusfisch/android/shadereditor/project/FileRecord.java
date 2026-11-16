@@ -10,13 +10,13 @@ import de.markusfisch.android.shadereditor.editor.Text;
 /**
  * What the project knows of one file, on the main thread: its document
  * while it is in memory, the stored revision its text was last equal
- * to, the one operation on storage in flight for it, and how far its
- * journal holds the unsaved text. It does no I/O: an operation starts
- * as a {@link Request}, a write of the journal as a {@link Flush} the
- * worker completes by itself, and
- * what storage gave is adopted only for the request still current, so
- * text and base change together, before the listeners of the document
- * hear.
+ * to, the one operation on storage in flight for it, and what its
+ * journal is. It does no I/O: an operation starts as a {@link Request},
+ * a write of the journal as a {@link Flush} the worker completes by
+ * itself, and what storage gave is adopted only for the request still
+ * current, so text and base change together, before the listeners of
+ * the document hear. Nobody else writes what it knows of the journal:
+ * each change of it is a method here.
  */
 final class FileRecord {
 	enum Kind {
@@ -36,26 +36,50 @@ final class FileRecord {
 	 * What the journal of the file is to do, in one task of the worker:
 	 * hold text at revision to, by appending changes when it is at
 	 * revision from and by a snapshot with header otherwise, or, when
-	 * header is null, go; to also tells the writes apart. A journal
-	 * that goes with a history goes only once that history, of text,
-	 * is written: it holds what a reload replaced, and the history is
-	 * what brings that back from then on.
+	 * header is null, go; to also tells the writes apart.
 	 */
 	record Flush(Journal.Header header, Text text, int from, int to,
-			List<Document.Change> changes, Document.History history) {
+			List<Document.Change> changes) {
 		boolean removes() {
 			return header == null;
 		}
 	}
 
+	/**
+	 * What the journal file of the path is, as the last write sent
+	 * leaves it; {@link #settled} tells whether the worker said so too.
+	 */
+	enum Journaled {
+		/** There is none. */
+		NONE,
+		/** It holds the unsaved text of the file. */
+		TEXT,
+		/**
+		 * One is there that could not be read. It stays as it is until
+		 * the user gives it up or types, which writes a new one over it.
+		 */
+		UNREADABLE,
+		/**
+		 * It holds text that storage holds too, of a file not in memory,
+		 * and goes by the next write.
+		 */
+		SAVED
+	}
+
+	/**
+	 * Text a reload replaced, kept beside the journal under number, and
+	 * the state of the document that was this text: while undo or redo
+	 * lead there, it is kept.
+	 */
+	record Replaced(int number, int state) {
+	}
+
 	// Where the file is; a rename gives it another path.
 	ProjectPath path;
-	// What the view keeps for the document; why the last write of the
-	// journal failed, or null; and the tickets of the timers that flush
-	// it.
+	// What the view keeps for the document, and the tickets of the
+	// timers that flush it.
 	Object state;
 	Document.Listener listener;
-	String failure;
 	int timer;
 	int limit;
 	// What storage was last seen to hold, compared with the base, and
@@ -70,44 +94,42 @@ final class FileRecord {
 	OpenProject.Runs runs = OpenProject.Runs.UNKNOWN;
 	int runsRevision = -1;
 	int runsAsked = -1;
-	// Whether the user chose to keep the unsaved text over the base,
-	// so only an explicit save writes it.
-	boolean kept;
 	// The revision and the selection of the document its history was
 	// kept at.
 	int historyAt;
 	Document.Selection historySelection;
-	// Whether the file has a journal, as the writes sent tell; why the
-	// journal it has could not be read, else null.
-	boolean journaled;
-	String unreadable;
 
 	private final List<Runnable> waiting = new ArrayList<>();
 	private Document document;
 	private String base;
 	private Request op;
 	private int tickets;
-	// The revision the journal continues from, -1 when it starts again
+	// Whether the user chose to keep the unsaved text over the base,
+	// so only an explicit save writes it.
+	private boolean kept;
+	// What the journal file is; why it could not be read, and whether
+	// reading it again would find the same, while UNREADABLE.
+	private Journaled journal = Journaled.NONE;
+	private String unreadable;
+	private boolean damaged;
+	// Why the last write of the journal failed, or null.
+	private String failure;
+	// The write the journal continues from, -1 when it starts again
 	// with a snapshot; the last write sent and the last acknowledged;
 	// the revision of the document as last sent; and its changes since.
-	private int journal = -1;
+	private int at = -1;
 	private int writes;
 	private int acked;
 	private int flushed;
 	private List<Document.Change> changes = new ArrayList<>();
-	// Whether the journal of the file, not in memory, is to go.
-	private boolean retire;
 	// While the file is being deleted, the revision of the document
 	// whose text goes with it, -1 without a document; else KEPT.
 	private static final int KEPT = Integer.MIN_VALUE;
 	private int discarding = KEPT;
-	// Whether the journal holds text a reload replaced, as its header
-	// says; the state of the document that text was, which a history
-	// must lead back to before the journal may go, -1 when the text is
-	// the document's again after a restart; and the revision the
-	// document was opened at.
-	private boolean replaced;
-	private int replacedState = -1;
+	// The texts reloads replaced that undo or redo of the document
+	// still lead to, oldest first; and the revision the document was
+	// opened at.
+	private final List<Replaced> replaced = new ArrayList<>();
 	private int opened;
 
 	FileRecord(ProjectPath path) {
@@ -168,11 +190,25 @@ final class FileRecord {
 	 */
 	void orphan() {
 		discarding = KEPT;
-		journaled = false;
-		journal = -1;
-		retire = false;
-		replaced = false;
+		journal = Journaled.NONE;
+		unreadable = null;
+		at = -1;
+		replaced.clear();
+		// Deleted here, not elsewhere: the text is of no file.
+		base = null;
+		kept = false;
 		see(FileTexts.Found.MISSING, null);
+	}
+
+	/**
+	 * The stored file and the journal are gone with the text the
+	 * deletion was for: nothing is left to keep.
+	 */
+	void deleted() {
+		discarding = KEPT;
+		journal = Journaled.NONE;
+		unreadable = null;
+		replaced.clear();
 	}
 
 	/** Return the operation in flight, or null. */
@@ -185,7 +221,48 @@ final class FileRecord {
 	 * modified, or, when not in memory, it has a journal.
 	 */
 	boolean edited() {
-		return document != null ? document.isModified() : journaled;
+		return document != null
+				? document.isModified()
+				: journal == Journaled.TEXT;
+	}
+
+	/**
+	 * Return whether the file is not in memory and has a journal,
+	 * also one that cannot be read: what is built reads it there.
+	 */
+	boolean journaled() {
+		return document == null && (journal == Journaled.TEXT ||
+				journal == Journaled.UNREADABLE);
+	}
+
+	/**
+	 * Return why the journal of the file could not be read, else null;
+	 * {@link #damaged} tells whether it can be given up.
+	 */
+	String unreadable() {
+		return journal == Journaled.UNREADABLE ? unreadable : null;
+	}
+
+	/**
+	 * Return whether the journal that could not be read is damaged, so
+	 * that reading it again finds the same; else the device had no
+	 * memory for it, and it may be whole.
+	 */
+	boolean damaged() {
+		return journal == Journaled.UNREADABLE && damaged;
+	}
+
+	/** Return why the last write of the journal failed, or null. */
+	String failure() {
+		return failure;
+	}
+
+	/**
+	 * Return whether the user chose to keep the unsaved text over the
+	 * base, so only an explicit save writes it.
+	 */
+	boolean kept() {
+		return kept;
 	}
 
 	/**
@@ -193,7 +270,7 @@ final class FileRecord {
 	 * unsaved text that could not be read.
 	 */
 	boolean unsaved() {
-		return unreadable != null || edited();
+		return journal == Journaled.UNREADABLE || edited();
 	}
 
 	/**
@@ -202,8 +279,8 @@ final class FileRecord {
 	 * not be read.
 	 */
 	boolean needed() {
-		return document != null || op != null || journaled ||
-				unreadable != null || retire || acked != writes;
+		return document != null || op != null ||
+				journal != Journaled.NONE || acked != writes;
 	}
 
 	/**
@@ -233,8 +310,9 @@ final class FileRecord {
 			return acked == writes && failure == null;
 		}
 		return document.isModified()
-				? journal >= 0 && document.revision() == flushed
-				: !journaled;
+				? at >= 0 && document.revision() == flushed
+				: journal == Journaled.NONE ||
+						journal == Journaled.UNREADABLE;
 	}
 
 	/**
@@ -246,27 +324,38 @@ final class FileRecord {
 			String revision) {
 		base = header.base();
 		kept = header.kept();
-		journaled = true;
-		replaced = header.replaced();
+		journal = Journaled.TEXT;
 		see(found, revision);
 	}
 
 	/**
-	 * Return whether the journal holds text a reload replaced. While
-	 * the file has unsaved text, that is this text: it came back.
+	 * The journal of the file could not be read, for reason: it is left
+	 * as it is. damaged tells that reading it again finds the same.
 	 */
-	boolean replaced() {
-		return replaced;
+	void unread(String reason, boolean damaged) {
+		journal = Journaled.UNREADABLE;
+		unreadable = reason;
+		this.damaged = damaged;
+		at = -1;
 	}
 
 	/**
-	 * Take the text a reload replaced as unsaved text like any other,
-	 * as the user decided; the journal says so by its next write.
+	 * The user gave up the journal that could not be read, and it is
+	 * gone.
 	 */
-	void keepReplaced() {
-		replaced = false;
-		replacedState = -1;
-		journal = -1;
+	void dismissed() {
+		if (journal == Journaled.UNREADABLE) {
+			journal = Journaled.NONE;
+			unreadable = null;
+		}
+	}
+
+	/**
+	 * Take whether the journal of the file, not in memory, kept the
+	 * header that names the base and the consent as they are now.
+	 */
+	void headerKept(boolean kept) {
+		failure = kept ? null : "the journal cannot be written";
 	}
 
 	/**
@@ -309,12 +398,13 @@ final class FileRecord {
 
 	/**
 	 * Take document, opened from storage at revision, or from the
-	 * journal at revision journal based on it, -1 for none, whose text
-	 * a reload replaced when replaced, for request; return whether it
-	 * was taken.
+	 * journal at write journal based on it, -1 for none, for request;
+	 * replaced are the texts reloads replaced that its history leads
+	 * to. Return whether it was taken. Opened from storage, the file
+	 * has no journal, unless {@link #unread} tells of one.
 	 */
 	boolean adoptOpened(Request request, Document document,
-			String revision, int journal, boolean replaced) {
+			String revision, int journal, List<Replaced> replaced) {
 		if (request != op || this.document != null) {
 			return false;
 		}
@@ -323,14 +413,26 @@ final class FileRecord {
 		if (journal < 0) {
 			see(FileTexts.Found.SAME, revision);
 		}
-		journaled |= journal >= 0;
-		this.journal = journal;
+		this.journal = journal >= 0 ? Journaled.TEXT : Journaled.NONE;
+		unreadable = null;
+		at = journal;
 		writes = acked = Math.max(journal, 0);
 		flushed = opened = document.revision();
 		changes = new ArrayList<>();
-		this.replaced = replaced;
-		replacedState = -1;
+		this.replaced.clear();
+		this.replaced.addAll(replaced);
 		return true;
+	}
+
+	/**
+	 * Return the journal write that holds the unsaved text of the
+	 * document as it is now, as sent, else -1.
+	 */
+	int holding() {
+		return document != null && document.isModified() &&
+				flushed == document.revision()
+				? at
+				: -1;
 	}
 
 	/**
@@ -345,22 +447,27 @@ final class FileRecord {
 	 * Give the document text, stored at revision, as one change that
 	 * can be undone, keeping the selection where it can; only when the
 	 * document is still asked, at revision at: as it was when the user
-	 * asked for the stored text, or when a check started. Return
-	 * whether it took the text.
+	 * asked for the stored text, or when a check started. Unsaved text
+	 * goes from the screen only when its journal, as the write held
+	 * left it, was put aside before, under the number aside; -1 for a
+	 * document without unsaved text. Return whether it took the text.
 	 */
 	boolean adoptStored(Request request, Document asked, int at, Text text,
-			String revision) {
+			String revision, int aside, int held) {
 		if (request != op || document == null || document != asked ||
-				document.revision() != at) {
+				document.revision() != at ||
+				document.isModified() != aside >= 0) {
 			return false;
 		}
 		Document.Selection selection = document.selection();
-		// Unsaved text goes from the screen; its journal stays until a
-		// history holds it. One that waits for that already goes on
-		// waiting, whatever is taken from storage meanwhile.
-		if (document.isModified() && journaled) {
-			replaced = true;
-			replacedState = document.state();
+		if (aside >= 0) {
+			replaced.add(new Replaced(aside, document.state()));
+			// The file has no journal now, unless one was sent since,
+			// as a fence does: that one goes by the next write.
+			if (this.at == held) {
+				journal = Journaled.NONE;
+			}
+			this.at = -1;
 		}
 		document.beginBatch();
 		document.replace(0, document.text().length(), text);
@@ -414,7 +521,7 @@ final class FileRecord {
 		see(revision != null
 				? FileTexts.Found.SAME
 				: FileTexts.Found.MISSING, revision);
-		journal = -1;
+		at = -1;
 	}
 
 	/**
@@ -430,19 +537,12 @@ final class FileRecord {
 		see(FileTexts.Found.SAME, revision);
 		kept = false;
 		// The journal header names the new base.
-		journal = -1;
+		at = -1;
 		if (document != null) {
-			// Unsaved text that is stored now needs no history; a
-			// journal that waits for one beside a saved document does.
-			if (document.isModified()) {
-				replaced = false;
-			}
 			document.markSaved(request.state());
-		} else if (journaled) {
-			replaced = false;
+		} else if (journal == Journaled.TEXT) {
 			// Its journal is the text stored, and goes by the next flush.
-			journaled = false;
-			retire = true;
+			journal = Journaled.SAVED;
 		}
 		return true;
 	}
@@ -474,43 +574,46 @@ final class FileRecord {
 		}
 		boolean unsure = fence && acked != writes;
 		if (document == null) {
-			// The last write of a file not in memory is its removal.
-			if (!retire && !unsure) {
+			// The last write of a file not in memory is the removal of
+			// a journal whose text storage holds.
+			if (journal != Journaled.SAVED &&
+					!(unsure && journal == Journaled.NONE)) {
 				return null;
 			}
-			retire = false;
-			return new Flush(null, null, -1, ++writes, List.of(), null);
+			journal = Journaled.NONE;
+			return new Flush(null, null, -1, ++writes, List.of());
 		}
 		int revision = document.revision();
 		List<Document.Change> changed = changes;
-		if (!document.isModified()) {
+		// Undone to the text saved before while a save of another text
+		// is on its way, the document has what storage is about to
+		// lose: it is unsaved text until main hears of that save.
+		boolean saving = op != null && op.kind() == Kind.SAVE &&
+				op.state() != document.state();
+		if (!document.isModified() && !saving) {
 			changes = new ArrayList<>();
 			flushed = revision;
-			if (!journaled && !unsure) {
-				return null;
-			} else if (replaced && !undoable()) {
-				// No history can hold what the journal holds.
+			// One that cannot be read is not this record's to remove.
+			if (journal == Journaled.UNREADABLE ||
+					journal == Journaled.NONE && !unsure) {
 				return null;
 			}
-			journaled = false;
-			journal = -1;
-			return new Flush(null, document.text(), -1, ++writes,
-					List.of(), replaced ? document.history() : null);
-		} else if (journal >= 0 && revision == flushed && !unsure) {
+			journal = Journaled.NONE;
+			at = -1;
+			return new Flush(null, null, -1, ++writes, List.of());
+		} else if (at >= 0 && revision == flushed && !unsure) {
 			return null;
 		}
 		changes = new ArrayList<>();
 		flushed = revision;
-		journaled = true;
-		// The journal holds the text typed now: whole, so that its
-		// header does not go on saying a reload replaced it.
-		int from = unsure || replaced ? -1 : journal;
-		replaced = false;
-		replacedState = -1;
-		journal = ++writes;
+		// Typed over one that could not be read: the snapshot takes its
+		// place.
+		journal = Journaled.TEXT;
+		unreadable = null;
+		int from = unsure ? -1 : at;
+		at = ++writes;
 		return new Flush(new Journal.Header(path, base, kept,
-				kept ? base : null), document.text(), from, writes, changed,
-				null);
+				kept ? base : null), document.text(), from, writes, changed);
 	}
 
 	/**
@@ -523,48 +626,67 @@ final class FileRecord {
 		if (flush.to() != writes) {
 			// Until the last one sent is answered, one that failed is
 			// not forgotten: nobody is told the text is held meanwhile.
-			if (!done && flush.history() == null) {
+			if (!done) {
 				failure = "the journal cannot be written";
 			}
 			return;
 		} else if (done) {
 			acked = writes;
 			failure = null;
-			// A new snapshot took the place of one that was damaged.
-			if (!flush.removes()) {
-				unreadable = null;
-			} else if (document != null && !document.isModified()) {
-				replaced = false;
-			}
 			return;
 		}
-		journal = -1;
-		if (flush.removes()) {
-			journaled = true;
+		at = -1;
+		if (flush.removes() && journal == Journaled.NONE) {
+			// It is still there, with the text it had.
+			journal = Journaled.TEXT;
 		}
-		// Unsaved text is at stake only where the document has some.
-		if (flush.history() == null) {
-			failure = "the journal cannot be written";
-		}
+		failure = "the journal cannot be written";
 	}
 
-	// Return whether a history of the document, kept now, leads back
-	// to the text the reload replaced.
-	private boolean undoable() {
-		if (document.historyChars() <= Histories.MAX_CHARS) {
-			for (Document.History.Step step : document.history().undo()) {
-				if (step.stateBefore() == replacedState) {
-					return true;
-				}
+	/**
+	 * The journal was put aside for a reload that did not take the
+	 * stored text after all, and is put back: it holds what was sent
+	 * before, so whatever was typed since is written whole.
+	 */
+	void putBack() {
+		at = -1;
+	}
+
+	/**
+	 * Return the numbers of the texts reloads replaced that neither
+	 * undo nor redo of the document lead to anymore, and forget them:
+	 * nothing is left to keep them for.
+	 */
+	List<Integer> unreachable() {
+		if (replaced.isEmpty() || document == null) {
+			return List.of();
+		}
+		Document.History history = document.history();
+		List<Integer> gone = new ArrayList<>();
+		for (int i = replaced.size(); i-- > 0; ) {
+			int state = replaced.get(i).state();
+			boolean reached = document.state() == state;
+			for (Document.History.Step step : history.undo()) {
+				reached |= step.stateBefore() == state;
+			}
+			for (Document.History.Step step : history.redo()) {
+				reached |= step.stateAfter() == state;
+			}
+			if (!reached) {
+				gone.add(replaced.remove(i).number());
 			}
 		}
-		return false;
+		return gone;
 	}
 
-	/** Forget the document and return it. */
+	/**
+	 * Forget the document and return it. What reloads replaced stays
+	 * where it is kept, for the history the file is opened with next.
+	 */
 	Document drop() {
 		Document dropped = document;
 		document = null;
+		replaced.clear();
 		return dropped;
 	}
 }

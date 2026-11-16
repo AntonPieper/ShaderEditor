@@ -29,10 +29,10 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
  * the text, and change records appended after it without a sync. Each
  * part has its own checksum; a torn or damaged tail is cut at the last
  * good record, a damaged header or snapshot is reported and the file
- * left as it is. Text a reload replaces can be kept beside it, in files
- * of the same form: the journal of the file as it was, put aside by
- * one rename, so the file has no journal and every later write of
- * unsaved text is a journal like any other. Only the journal that
+ * left as it is. Text a reload replaced is kept beside it, in files of
+ * the same form: the journal of the file as it was, put aside by one
+ * rename, so the file has no journal and every later write of unsaved
+ * text is a journal like any other. Only the journal that
  * {@link #own owns} the folder writes and deletes there, so what a
  * project that is closed, or replaced by a later one, still asks for
  * changes nothing; any journal reads. Worker only, one call at a time.
@@ -53,9 +53,9 @@ final class Journal {
 	 * Where a file's text came from: the stored revision it was last
 	 * equal to, null for none, and whether the user chose to overwrite
 	 * the stored revision keptOver, null for a file that was absent.
-	 * replaced tells that a reload replaced the text with the stored
-	 * one: the journal is kept until a history holds the text, and the
-	 * text comes back with this mark when the app ends before.
+	 * replaced is read from journals written before text a reload
+	 * replaced was put aside: such a journal held that text, marked so,
+	 * in the place of the journal; none is written so anymore.
 	 */
 	record Header(ProjectPath path, String base, boolean kept,
 			String keptOver, boolean replaced) {
@@ -351,22 +351,6 @@ final class Journal {
 		Recovered recovered = read(header.path());
 		return recovered != null && recovered.text() != null &&
 				snapshot(header, recovered.revision(), recovered.text());
-	}
-
-	/**
-	 * Mark the journal of path as holding text a reload replaced, see
-	 * {@link Header#replaced}. Return whether there is one that says so
-	 * now.
-	 */
-	boolean markReplaced(ProjectPath path) {
-		Recovered recovered = read(path);
-		if (recovered == null || recovered.text() == null) {
-			return false;
-		}
-		Header header = recovered.header();
-		return header.replaced() || snapshot(new Header(path,
-				header.base(), header.kept(), header.keptOver(), true),
-				recovered.revision(), recovered.text());
 	}
 
 	/**

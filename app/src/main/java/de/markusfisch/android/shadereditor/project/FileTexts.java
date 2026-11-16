@@ -30,10 +30,13 @@ public final class FileTexts {
 	/**
 	 * What opening a file found: {@link Opened} or {@link Unopened};
 	 * either tells why the journal of the file could not be read, else
-	 * null.
+	 * null, and whether it is damaged, so that reading it again finds
+	 * the same.
 	 */
 	public interface Opening {
 		String unreadable();
+
+		boolean damaged();
 	}
 
 	/**
@@ -43,14 +46,15 @@ public final class FileTexts {
 	 * it is based on, null for none; the revision of the journal it came
 	 * from, -1 for none; and why its journal could not be read, so the
 	 * stored text was opened instead, else null. A document of unsaved
-	 * text starts modified, whatever its history; replaced tells that
-	 * it is text a reload replaced, see {@link Journal.Header}. It is
-	 * made on the worker, so a device without the memory for it is told
-	 * there.
+	 * text starts modified, whatever its history; replaced are the
+	 * texts reloads replaced that are kept for the file, each with the
+	 * state of the document undo or redo find it at. It is made on the
+	 * worker, so a device without the memory for it is told there.
 	 */
 	public record Opened(Document document, boolean unsaved,
 			String revision, int journal, String unreadable,
-			boolean replaced) implements Opening {
+			boolean damaged, List<FileRecord.Replaced> replaced)
+			implements Opening {
 		public Text text() {
 			return document.text();
 		}
@@ -61,8 +65,9 @@ public final class FileTexts {
 	 * found, never SAME or CHANGED, what storage holds in its place,
 	 * at revision when one is known.
 	 */
-	public record Unopened(String reason, String unreadable, Found found,
-			String revision) implements Opening {
+	public record Unopened(String reason, String unreadable,
+			boolean damaged, Found found, String revision)
+			implements Opening {
 	}
 
 	/**
@@ -109,6 +114,9 @@ public final class FileTexts {
 
 	// Set before anything is asked of this; null for none.
 	Kept kept;
+	// A rename storage made that the journals could not follow yet,
+	// or null; worker only.
+	private Journal.Move unfollowed;
 
 	FileTexts(ProjectFiles store, Journal journal, Histories histories,
 			Executor worker, Executor main) {
@@ -127,19 +135,19 @@ public final class FileTexts {
 	 * size is known, after it is read otherwise.
 	 */
 	public void open(ProjectPath path, long size, Callback<Opening> done) {
-		worker.execute(() -> {
+		run(() -> {
 			Journal.Recovered recovered = journal.read(path);
-			String unreadable = recovered != null && recovered.text() == null
-					? recovered.problem()
+			Unread unread = recovered != null && recovered.text() == null
+					? new Unread(recovered.problem(), recovered.damaged())
 					: null;
 			Opening opening;
 			try {
-				opening = withHistory(path, unreadable == null &&
+				opening = withHistory(path, unread == null &&
 						recovered != null
 						? recovered(path, recovered)
-						: read(path, size, unreadable));
+						: read(path, size, unread));
 			} catch (OutOfMemoryError e) {
-				opening = tooLargeHere(path, unreadable);
+				opening = tooLargeHere(path, unread);
 			}
 			Opening opened = opening;
 			main.execute(() -> done.done(opened));
@@ -147,34 +155,54 @@ public final class FileTexts {
 	}
 
 	/**
-	 * What a reload read, and whether the journal of the file says now
-	 * that a reload replaced its text.
+	 * What a reload read, and the number the journal of the file was
+	 * put aside under before, as text the reload replaces, else -1.
 	 */
-	public record Reloaded(Opening opening, boolean marked) {
+	public record Reloaded(Opening opening, int aside) {
 	}
 
 	/**
-	 * Open path for the editor as storage has it, to take the place of
-	 * its unsaved text when mark; when expect, only if storage is at
-	 * seen. Before main is told, so before it takes the stored text,
-	 * the journal is marked as holding text a reload replaced: from
-	 * then on it goes only into a history, whatever happens to main.
+	 * Open path for the editor as storage has it; when expect, only if
+	 * storage is at seen. With held at 0 or more, the stored text is to
+	 * take the place of unsaved text the journal holds at that write:
+	 * before main is told, so before it takes the stored text, that
+	 * journal is put aside, durable, as text a reload replaced, and
+	 * only if it holds exactly that write. From then on the file has
+	 * no journal, whatever happens to main.
 	 */
-	public void reload(ProjectPath path, boolean mark, boolean expect,
+	public void reload(ProjectPath path, int held, boolean expect,
 			String seen, Callback<Reloaded> done) {
-		worker.execute(() -> {
+		run(() -> {
 			Opening opening;
 			try {
 				opening = read(path, ProjectFiles.UNKNOWN, null);
 			} catch (OutOfMemoryError e) {
 				opening = tooLargeHere(path, null);
 			}
-			Reloaded reloaded = new Reloaded(opening, mark &&
+			Reloaded reloaded = new Reloaded(opening, held >= 0 &&
 					opening instanceof Opened opened && (!expect ||
-					Objects.equals(seen, opened.revision())) &&
-					journal.markReplaced(path));
+					Objects.equals(seen, opened.revision()))
+					? journal.putAside(path, held)
+					: -1);
 			main.execute(() -> done.done(reloaded));
 		});
+	}
+
+	/**
+	 * The reload did not take the stored text after all: the journal
+	 * put aside under number is the journal of path again, unless one
+	 * was written since.
+	 */
+	void putBack(ProjectPath path, int number) {
+		run(() -> journal.putBack(path, number));
+	}
+
+	/**
+	 * Forget the text a reload replaced that is kept for path under
+	 * number: neither undo nor redo lead to it anymore.
+	 */
+	void forget(ProjectPath path, int number) {
+		run(() -> journal.forget(path, number));
 	}
 
 	/**
@@ -187,7 +215,7 @@ public final class FileTexts {
 	 */
 	public void save(ProjectPath path, Text text, int state, String base,
 			Callback<Save> done) {
-		worker.execute(() -> {
+		run(() -> {
 			Save save = save(path, text, base, state);
 			main.execute(() -> done.done(save));
 		});
@@ -199,7 +227,7 @@ public final class FileTexts {
 	 */
 	void journal(ProjectPath path, FileRecord.Flush flush,
 			Callback<Boolean> done) {
-		worker.execute(() -> {
+		run(() -> {
 			boolean written = write(path, flush);
 			main.execute(() -> done.done(written));
 		});
@@ -211,7 +239,7 @@ public final class FileTexts {
 	 */
 	void keepHistory(ProjectPath path, Text text,
 			Document.History history) {
-		worker.execute(() -> {
+		run(() -> {
 			String hash = Histories.hash(text);
 			if (hash != null) {
 				histories.write(path, hash, history);
@@ -221,7 +249,7 @@ public final class FileTexts {
 
 	/** Forget the history of path. */
 	void forgetHistory(ProjectPath path) {
-		worker.execute(() -> histories.remove(path));
+		run(() -> histories.remove(path));
 	}
 
 	/**
@@ -229,7 +257,7 @@ public final class FileTexts {
 	 * whether none that cannot be read is kept now.
 	 */
 	void dismiss(ProjectPath path, Callback<Boolean> done) {
-		worker.execute(() -> {
+		run(() -> {
 			boolean removed = journal.dismiss(path);
 			main.execute(() -> done.done(removed));
 		});
@@ -237,7 +265,7 @@ public final class FileTexts {
 
 	/** Count the journals whose header cannot be read. */
 	void damaged(Callback<Integer> done) {
-		worker.execute(() -> {
+		run(() -> {
 			int damaged = journal.scan().damaged();
 			main.execute(() -> done.done(damaged));
 		});
@@ -252,9 +280,11 @@ public final class FileTexts {
 	 * so what main writes before it knows still lands with them.
 	 */
 	void move(Journal.Move move, Callback<ProjectFiles.Change> done) {
-		worker.execute(() -> {
+		run(() -> {
 			ProjectFiles.Change change;
-			if (!journal.setMove(move)) {
+			// One move is noted at a time: not while the journals have
+			// yet to follow the one before.
+			if (unfollowed != null || !journal.setMove(move)) {
 				change = new ProjectFiles.Refused(
 						ProjectFiles.Refusal.FAILED,
 						"the journal cannot be written");
@@ -290,7 +320,23 @@ public final class FileTexts {
 	 * main knows of it.
 	 */
 	void follow(Journal.Move move) {
-		worker.execute(() -> followed(move));
+		run(() -> {
+			if (!followed(move)) {
+				unfollowed = move;
+			}
+		});
+	}
+
+	// Give the worker task, which first lets the journals follow a
+	// rename they could not follow when it was made: until they did,
+	// what the task is for is not where the task looks for it.
+	private void run(Runnable task) {
+		worker.execute(() -> {
+			if (unfollowed != null && followed(unfollowed)) {
+				unfollowed = null;
+			}
+			task.run();
+		});
 	}
 
 	/**
@@ -308,7 +354,9 @@ public final class FileTexts {
 		Boolean from = exists(move.from());
 		Boolean to = move.to() != null ? exists(move.to()) : Boolean.TRUE;
 		if (Boolean.FALSE.equals(from) && Boolean.TRUE.equals(to)) {
-			return followed(move) ? move : null;
+			// Once more where a file could not be read or written
+			// just then; else it stays noted for the next opening.
+			return followed(move) || followed(move) ? move : null;
 		} else if (Boolean.TRUE.equals(from)) {
 			journal.setMove(null);
 		}
@@ -352,7 +400,7 @@ public final class FileTexts {
 	 * Keep header in the journal of its path, for a file not in memory.
 	 */
 	void header(Journal.Header header, Callback<Boolean> done) {
-		worker.execute(() -> {
+		run(() -> {
 			boolean kept = journal.setHeader(header);
 			main.execute(() -> done.done(kept));
 		});
@@ -363,7 +411,7 @@ public final class FileTexts {
 	 * is written; done gets whether it is.
 	 */
 	void sync(Callback<Boolean> done) {
-		worker.execute(() -> {
+		run(() -> {
 			boolean synced = journal.sync();
 			main.execute(() -> done.done(synced));
 		});
@@ -376,7 +424,7 @@ public final class FileTexts {
 	 */
 	public void reread(ProjectPath path, String base,
 			Callback<Checked> done) {
-		worker.execute(() -> {
+		run(() -> {
 			Checked checked = check(path, base, null, false);
 			main.execute(() -> done.done(checked));
 		});
@@ -389,7 +437,7 @@ public final class FileTexts {
 	 */
 	public void compare(ProjectPath path, String base, Text mine,
 			Callback<Checked> done) {
-		worker.execute(() -> {
+		run(() -> {
 			Checked checked = check(path, base, mine, true);
 			main.execute(() -> done.done(checked));
 		});
@@ -458,16 +506,7 @@ public final class FileTexts {
 	 */
 	static boolean holds(byte[] bytes, Text text) {
 		Text stored = decode(bytes);
-		if (stored == null || stored.length() != text.length() ||
-				stored.lineCount() != text.lineCount()) {
-			return false;
-		}
-		for (int i = text.lineCount(); i-- > 0; ) {
-			if (!stored.line(i).equals(text.line(i))) {
-				return false;
-			}
-		}
-		return true;
+		return stored != null && same(stored, text);
 	}
 
 	/**
@@ -501,7 +540,7 @@ public final class FileTexts {
 			Journal.Recovered recovered = journal.read(path);
 			if (recovered != null && recovered.text() == null) {
 				return new Save(state, new OpenProject.Unreadable(
-						recovered.problem()), null);
+						recovered.problem(), recovered.damaged()), null);
 			}
 			written = recovered != null ? recovered.text() : null;
 		}
@@ -533,19 +572,6 @@ public final class FileTexts {
 	// whole text, so the answer is final and nothing waits for main.
 	private boolean write(ProjectPath path, FileRecord.Flush flush) {
 		if (flush.removes()) {
-			// What a reload replaced is given up to its history only:
-			// here, where the journal goes, whoever asks and whatever
-			// they remember. Without a history it goes only when
-			// storage holds its text.
-			if (flush.history() != null) {
-				String hash = Histories.hash(flush.text());
-				if (hash == null ||
-						!histories.write(path, hash, flush.history())) {
-					return false;
-				}
-			} else if (!removable(path)) {
-				return false;
-			}
 			return journal.remove(path);
 		}
 		if (flush.from() >= 0) {
@@ -563,23 +589,11 @@ public final class FileTexts {
 		return journal.snapshot(flush.header(), flush.to(), flush.text());
 	}
 
-	// Return whether the journal of path may go without a history: it
-	// does not hold text a reload replaced, or storage holds that text.
-	private boolean removable(ProjectPath path) {
-		Journal.Header header = journal.header(path);
-		if (header == null || !header.replaced()) {
-			return true;
-		}
-		Journal.Recovered recovered = journal.read(path);
-		Read read = store.read(path, Document.MAX_BYTES);
-		return recovered == null || recovered.text() != null &&
-				read instanceof Content content &&
-				holds(content.bytes(), recovered.text());
-	}
-
 	// Give the document of opened the history kept for its text, if
 	// there is one. Only where the text came from tells whether it is
-	// saved.
+	// saved. What reloads replaced of the file is always within reach
+	// of undo: by the history kept when that leads to each of the
+	// texts, else by one step for each, the newest first.
 	private Opening withHistory(ProjectPath path, Opening opening) {
 		if (!(opening instanceof Opened opened)) {
 			return opening;
@@ -591,11 +605,99 @@ public final class FileTexts {
 		Document.History kept = hash != null
 				? histories.read(path, hash)
 				: null;
+		List<Journal.Replaced> replaced;
+		try {
+			replaced = journal.replaced(path);
+		} catch (OutOfMemoryError e) {
+			replaced = List.of();
+		}
+		List<FileRecord.Replaced> reached = kept != null
+				? reached(document.text(), kept, replaced)
+				: null;
+		if (reached == null && !replaced.isEmpty()) {
+			reached = new ArrayList<>();
+			kept = leadingTo(document.text(), replaced, reached);
+		}
 		if (kept != null) {
 			document.restore(kept);
 		}
 		document.markSaved(opened.unsaved() ? -1 : document.state());
-		return opened;
+		return reached == null || reached.isEmpty() ? opened : new Opened(
+				document, opened.unsaved(), opened.revision(),
+				opened.journal(), opened.unreadable(), opened.damaged(),
+				reached);
+	}
+
+	// Return, for each of replaced, the state at which undo or redo of
+	// history, kept for text, find exactly its text; null when one of
+	// them is not found.
+	private static List<FileRecord.Replaced> reached(Text text,
+			Document.History history, List<Journal.Replaced> replaced) {
+		List<FileRecord.Replaced> reached = new ArrayList<>();
+		if (replaced.isEmpty()) {
+			return reached;
+		}
+		Document walked = new Document(text);
+		if (!walked.restore(history)) {
+			return null;
+		}
+		List<Journal.Replaced> sought = new ArrayList<>(replaced);
+		int undone = 0;
+		for (find(walked, sought, reached); walked.canUndo(); ++undone) {
+			walked.undo();
+			find(walked, sought, reached);
+		}
+		while (undone-- > 0) {
+			walked.redo();
+		}
+		while (walked.canRedo()) {
+			walked.redo();
+			find(walked, sought, reached);
+		}
+		return sought.isEmpty() ? reached : null;
+	}
+
+	private static void find(Document walked, List<Journal.Replaced> sought,
+			List<FileRecord.Replaced> reached) {
+		for (int i = sought.size(); i-- > 0; ) {
+			if (same(walked.text(), sought.get(i).text())) {
+				reached.add(new FileRecord.Replaced(
+						sought.remove(i).number(), walked.state()));
+			}
+		}
+	}
+
+	// Return a history for a document of text whose undo leads to each
+	// of replaced, the newest first, and add to reached where.
+	private static Document.History leadingTo(Text text,
+			List<Journal.Replaced> replaced,
+			List<FileRecord.Replaced> reached) {
+		List<Document.History.Step> steps = new ArrayList<>();
+		Document.Selection start = new Document.Selection(0, 0);
+		int state = 0;
+		for (int i = 0, n = replaced.size(); i < n; ++i) {
+			Text from = replaced.get(i).text();
+			Text to = i + 1 < n ? replaced.get(i + 1).text() : text;
+			reached.add(new FileRecord.Replaced(replaced.get(i).number(),
+					++state));
+			steps.add(new Document.History.Step(List.of(
+					new Document.Change(0, from, to)), start, start, state,
+					state + 1));
+		}
+		return new Document.History(steps, List.of(), state + 1, state + 1,
+				start);
+	}
+
+	private static boolean same(Text a, Text b) {
+		if (a.length() != b.length() || a.lineCount() != b.lineCount()) {
+			return false;
+		}
+		for (int i = a.lineCount(); i-- > 0; ) {
+			if (!a.line(i).equals(b.line(i))) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	// Return the text recovered from the journal of path.
@@ -607,45 +709,56 @@ public final class FileTexts {
 		Text text = recovered.text();
 		return new Opened(new Document(text, Document.bytes(text)), true,
 				recovered.header().base(), recovered.revision(), null,
-				recovered.header().replaced());
+				false, List.of());
 	}
 
-	// Return the stored text of path, telling unreadable, why its
-	// journal could not be read, or null.
-	private Opening read(ProjectPath path, long size, String unreadable) {
+	// Why the journal of a file could not be read, and whether it is
+	// damaged.
+	private record Unread(String reason, boolean damaged) {
+	}
+
+	private static Unopened unopened(String reason, Unread unread,
+			Found found, String revision) {
+		return new Unopened(reason, unread != null ? unread.reason() : null,
+				unread != null && unread.damaged(), found, revision);
+	}
+
+	// Return the stored text of path, telling unread, why its journal
+	// could not be read, or null.
+	private Opening read(ProjectPath path, long size, Unread unread) {
 		if (size > Document.MAX_BYTES) {
 			// Its first bytes tell a picture without reading it.
 			byte[] head = store.head(path, FileKind.HEAD);
 			return head != null && FileKind.picture(head) != null
-					? picture(path, unreadable, null)
-					: tooLarge(path, unreadable, null);
+					? picture(path, unread, null)
+					: tooLarge(path, unread, null);
 		}
 		Read read = store.read(path, Document.MAX_BYTES);
 		if (read instanceof ProjectFiles.Failed failed &&
 				ProjectFiles.TOO_LARGE.equals(failed.reason())) {
-			return tooLarge(path, unreadable, null);
+			return tooLarge(path, unread, null);
 		}
 		if (!(read instanceof Content content)) {
-			return new Unopened(CapturedFiles.problem(path, read),
-					unreadable, read == null
-							? Found.MISSING
-							: Found.UNAVAILABLE, null);
+			return unopened(CapturedFiles.problem(path, read), unread,
+					read == null ? Found.MISSING : Found.UNAVAILABLE, null);
 		}
 		byte[] bytes = content.bytes();
 		// What the file is, by its bytes; its name says nothing.
 		if (FileKind.picture(bytes) != null) {
-			return picture(path, unreadable, content.revision());
+			return picture(path, unread, content.revision());
 		}
 		if (bytes.length > Document.MAX_BYTES) {
-			return tooLarge(path, unreadable, content.revision());
+			return tooLarge(path, unread, content.revision());
 		}
 		Text text = decode(bytes);
 		if (text == null) {
-			return new Unopened(path + " is not a text file", unreadable,
+			return unopened(path + " is not a text file", unread,
 					Found.NOT_TEXT, content.revision());
 		}
 		return new Opened(new Document(text, Document.bytes(text)), false,
-				content.revision(), -1, unreadable, false);
+				content.revision(), -1,
+				unread != null ? unread.reason() : null,
+				unread != null && unread.damaged(), List.of());
 	}
 
 	// Return the text of bytes, or null when they are not text the
@@ -657,23 +770,22 @@ public final class FileTexts {
 		return text != null && text.indexOf('\0') < 0 ? Text.of(text) : null;
 	}
 
-	private static Unopened picture(ProjectPath path, String unreadable,
+	private static Unopened picture(ProjectPath path, Unread unread,
 			String revision) {
-		return new Unopened(path + " is a picture, not text", unreadable,
+		return unopened(path + " is a picture, not text", unread,
 				Found.NOT_TEXT, revision);
 	}
 
 	// A file within the limit that this device has no memory for.
-	private static Unopened tooLargeHere(ProjectPath path,
-			String unreadable) {
-		return new Unopened(path + " is too large for this device",
-				unreadable, Found.TOO_LARGE, null);
+	private static Unopened tooLargeHere(ProjectPath path, Unread unread) {
+		return unopened(path + " is too large for this device", unread,
+				Found.TOO_LARGE, null);
 	}
 
-	private static Unopened tooLarge(ProjectPath path, String unreadable,
+	private static Unopened tooLarge(ProjectPath path, Unread unread,
 			String revision) {
-		return new Unopened(path + " is larger than " +
-				Document.MAX_BYTES / (1024 * 1024) + " MiB", unreadable,
+		return unopened(path + " is larger than " +
+				Document.MAX_BYTES / (1024 * 1024) + " MiB", unread,
 				Found.TOO_LARGE, revision);
 	}
 }
