@@ -299,10 +299,19 @@ final class Journal {
 	 * none can come to own it.
 	 */
 	static void ifAbandoned(File dir, Runnable abandon) {
+		ifAbandoned(Disk.REAL, dir, abandon);
+	}
+
+	/**
+	 * The same, through disk. A folder that is there and cannot be
+	 * listed now is not an empty one: it is not abandoned.
+	 */
+	static void ifAbandoned(Disk disk, File dir, Runnable abandon) {
 		synchronized (OWNERS) {
-			String[] kept = dir.list();
-			if (!OWNERS.containsKey(key(dir)) &&
-					(kept == null || kept.length == 0)) {
+			File[] kept = disk.list(dir);
+			if (!OWNERS.containsKey(key(dir)) && (kept != null
+					? kept.length == 0
+					: !dir.exists())) {
 				abandon.run();
 			}
 		}
@@ -1184,27 +1193,11 @@ final class Journal {
 	}
 
 	/**
-	 * Replace the file name in dir with bytes in one rename, creating
-	 * dir when it is missing. Return whether it was written.
-	 */
-	static boolean replace(File dir, String name, byte[] bytes) {
-		return replace(dir, name, out -> out.write(bytes));
-	}
-
-	/**
-	 * Replace the file name in dir with what source writes, synced, as
-	 * {@link #replace(File, String, byte[])} does.
-	 */
-	static boolean replace(File dir, String name,
-			ProjectFiles.Source source) {
-		return replace(Disk.REAL, dir, name, source, null);
-	}
-
-	/**
-	 * The same, through disk: written to a file of its own, made
+	 * Replace the file name in dir with what source writes, creating
+	 * dir when it is missing: written to a file of its own, made
 	 * durable, read back by check when there is one, and only then
 	 * given the name, in place of what had it. When any of that fails,
-	 * what had the name has it still.
+	 * what had the name has it still. Return whether it was written.
 	 */
 	static boolean replace(Disk disk, File dir, String name,
 			ProjectFiles.Source source, Check check) {

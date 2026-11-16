@@ -23,7 +23,10 @@ import java.util.regex.Pattern;
  * last and how it is listed among the recent projects, so screens can
  * pass the id instead of project content and tell about a project
  * without opening it. The folder also keeps which session was open last.
- * Removing or discarding a session never touches the project's files.
+ * Removing or discarding a session never touches the project's files,
+ * and never a file of its journal: that folder is only ever removed
+ * empty, so unsaved text is not deleted from here, whatever a listing
+ * told. Every file is written and deleted through {@link Disk}.
  * Use it off the main thread.
  */
 public final class ProjectSessions {
@@ -121,8 +124,9 @@ public final class ProjectSessions {
 		} catch (IOException e) {
 			return null;
 		}
-		return Journal.replace(new File(root, id), LOCATOR,
-				bytes.toByteArray()) ? id : null;
+		return replace(new File(root, id), LOCATOR, bytes.toByteArray())
+				? id
+				: null;
 	}
 
 	/**
@@ -143,8 +147,7 @@ public final class ProjectSessions {
 		} catch (IOException e) {
 			return false;
 		}
-		return Journal.replace(new File(root, id), LOCATOR,
-				bytes.toByteArray());
+		return replace(new File(root, id), LOCATOR, bytes.toByteArray());
 	}
 
 	/** Return the id of the session of locator, or null when none. */
@@ -239,7 +242,7 @@ public final class ProjectSessions {
 		} catch (IOException e) {
 			return false;
 		}
-		return Journal.replace(dir, RECENT, bytes.toByteArray());
+		return replace(dir, RECENT, bytes.toByteArray());
 	}
 
 	/**
@@ -368,7 +371,7 @@ public final class ProjectSessions {
 	public boolean setLast(String id) {
 		File file = new File(root, LAST);
 		if (id == null) {
-			return !file.exists() || file.delete();
+			return disk.delete(file);
 		}
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 		try (DataOutputStream out = new DataOutputStream(bytes)) {
@@ -378,7 +381,7 @@ public final class ProjectSessions {
 			return false;
 		}
 		return locator(id) != null &&
-				Journal.replace(root, LAST, bytes.toByteArray());
+				replace(root, LAST, bytes.toByteArray());
 	}
 
 	/**
@@ -396,21 +399,24 @@ public final class ProjectSessions {
 		if (id.equals(last()) && !setLast(null)) {
 			return false;
 		}
-		File recent = new File(dir, RECENT);
-		if (recent.exists() && !recent.delete()) {
+		if (!disk.delete(new File(dir, RECENT))) {
 			return false;
 		}
 		// Its pictures go with it: they show it among the recent ones.
 		delete(new File(dir, PREVIEWS));
 		delete(new File(dir, FOLLOWING));
 		// A project open on the session may write its journal yet.
-		Journal.ifAbandoned(new File(dir, DRAFTS), () -> discard(id));
+		Journal.ifAbandoned(disk, new File(dir, DRAFTS), () -> discard(id));
 		return true;
 	}
 
 	/**
-	 * Forget session id with its journal; the project's files stay as
-	 * they are. Return whether nothing of it is left.
+	 * Forget session id, which has no unsaved text; the project's files
+	 * stay as they are. The folder of its journal is removed only
+	 * empty, and before anything else of the session: when it holds a
+	 * file, also one no listing shows, it stays, and with it everything
+	 * that opens the session again. Return whether nothing of the
+	 * session is left.
 	 */
 	public synchronized boolean discard(String id) {
 		if (file(id, null) == null) {
@@ -423,7 +429,13 @@ public final class ProjectSessions {
 		} catch (IOException e) {
 			return false;
 		}
-		return !dir.exists() || delete(dir);
+		if (!dir.exists()) {
+			return true;
+		} else if (!isLink(dir) && !disk.delete(new File(dir, DRAFTS))) {
+			// It holds a file: unsaved text, for all that is known.
+			return false;
+		}
+		return delete(dir);
 	}
 
 	private static ProjectPath readPath(File file) {
@@ -454,8 +466,7 @@ public final class ProjectSessions {
 		if (dir == null || locator(id) == null) {
 			return false;
 		} else if (path == null) {
-			File file = new File(dir, name);
-			return !file.exists() || file.delete();
+			return disk.delete(new File(dir, name));
 		}
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 		try (DataOutputStream out = new DataOutputStream(bytes)) {
@@ -464,7 +475,13 @@ public final class ProjectSessions {
 		} catch (IOException e) {
 			return false;
 		}
-		return Journal.replace(dir, name, bytes.toByteArray());
+		return replace(dir, name, bytes.toByteArray());
+	}
+
+	// Replace the file name in dir with bytes in one rename.
+	private boolean replace(File dir, String name, byte[] bytes) {
+		return Journal.replace(disk, dir, name, out -> out.write(bytes),
+				null);
 	}
 
 	// Return the length of file, which holds a few names: anything
@@ -495,14 +512,17 @@ public final class ProjectSessions {
 		return name != null ? new File(dir, name) : dir;
 	}
 
-	private static boolean delete(File file) {
-		File[] children = isLink(file) ? null : file.listFiles();
+	// Delete file and, of a folder, what is in it: what a session
+	// remembers and shows, never its journal, whose folder is gone
+	// before this is asked for the session.
+	private boolean delete(File file) {
+		File[] children = isLink(file) ? null : disk.list(file);
 		if (children != null) {
 			for (File child : children) {
 				delete(child);
 			}
 		}
-		return file.delete();
+		return disk.delete(file);
 	}
 
 	private static boolean isLink(File file) {
