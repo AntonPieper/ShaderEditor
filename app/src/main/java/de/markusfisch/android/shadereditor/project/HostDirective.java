@@ -101,6 +101,15 @@ public record HostDirective(
 	}
 
 	/**
+	 * Whether a pragma argument is read as a host directive, also one
+	 * spelled like {@code se_input}, which is an error.
+	 */
+	public static boolean readsAsHost(String argument) {
+		return isHostPragma(argument) ||
+				MISSPELLED.matcher(argument).matches();
+	}
+
+	/**
 	 * Return the error for a pragma argument spelled like
 	 * {@code se.input}, {@code se::input} or {@code se_input}, or null.
 	 */
