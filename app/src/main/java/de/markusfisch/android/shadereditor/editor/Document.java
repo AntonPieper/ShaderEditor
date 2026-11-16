@@ -78,6 +78,17 @@ public final class Document {
 	}
 
 	/**
+	 * An action beyond the text that a step belongs to, such as the
+	 * rename of a file whose lines changed with it: Undo of that step
+	 * asks the action, which takes back all of itself through
+	 * {@link #undoLinked}, or nothing.
+	 */
+	public interface Link {
+		/** Undo was asked for in document, whose last step is of this. */
+		void undo(Document document);
+	}
+
+	/**
 	 * What a document keeps besides its text, to be taken by a document
 	 * of the same text: the steps undo and redo take, oldest first, the
 	 * revision and state the text is at, and the selection. Which state
@@ -184,7 +195,17 @@ public final class Document {
 	 * costs a list of the steps. Call it outside a batch.
 	 */
 	public History history() {
-		return new History(export(undo), export(redo), revision, state,
+		// A step of an action cannot be taken back without it, which is
+		// not kept: the history begins behind the last such step.
+		ArrayDeque<Step> kept = new ArrayDeque<>();
+		for (Step step : undo) {
+			if (step.link != null) {
+				kept.clear();
+			} else {
+				kept.addLast(step);
+			}
+		}
+		return new History(export(kept), export(redo), revision, state,
 				selection);
 	}
 
@@ -355,9 +376,55 @@ public final class Document {
 		return !redo.isEmpty();
 	}
 
-	/** Undo the last step and select what was selected before it. */
+	/**
+	 * The step of the current batch belongs to link: its Undo asks
+	 * link. Call it inside a batch, after its edits; a batch without
+	 * edits has no step to link.
+	 */
+	public void link(Link link) {
+		if (batchStep != null) {
+			batchStep.link = link;
+		}
+	}
+
+	/** Return whether the last step belongs to link. */
+	public boolean endsWith(Link link) {
+		endStep();
+		Step step = undo.peekLast();
+		return step != null && step.link == link;
+	}
+
+	/**
+	 * Take back the last step, which belongs to link, as link is taken
+	 * back as a whole; Redo cannot make it again, since it would not
+	 * make the rest of link.
+	 */
+	public void undoLinked(Link link) {
+		if (!endsWith(link)) {
+			return;
+		}
+		takeBack();
+		for (Step dropped : redo) {
+			historyChars -= dropped.chars;
+		}
+		redo.clear();
+	}
+
+	/**
+	 * Undo the last step and select what was selected before it; a step
+	 * that belongs to an action asks its {@link Link} instead.
+	 */
 	public void undo() {
 		endStep();
+		Step last = undo.peekLast();
+		if (last != null && last.link != null) {
+			last.link.undo(this);
+			return;
+		}
+		takeBack();
+	}
+
+	private void takeBack() {
 		Step step = undo.pollLast();
 		if (step == null) {
 			return;
@@ -573,6 +640,8 @@ public final class Document {
 		private int stateAfter;
 		// Whether this step is one typed change that typing may continue.
 		private boolean typed = true;
+		// The action it belongs to, or null.
+		private Link link;
 		private long time;
 		private int chars;
 
