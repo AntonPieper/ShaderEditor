@@ -366,8 +366,9 @@ public class CodeView extends View {
 	private final EdgeEffect edgeLeft;
 	private final EdgeEffect edgeRight;
 	private Insets insets = Insets.NONE;
-	// What a touch drags, where it went down, whether it moved since,
-	// and where the finger is.
+	// What a touch, the mouse or a drop drags, 0 while no drag is in
+	// progress; where it went down, whether it moved since, and where
+	// the finger is.
 	private int dragging;
 	private float downX;
 	private float downY;
@@ -1014,13 +1015,11 @@ public class CodeView extends View {
 				return true;
 			case DragEvent.ACTION_DROP:
 				dragging = 0;
-				touch.drop();
 				drop(event);
 				return true;
 			default:
 				if (dragging == DRAG_DROP) {
 					dragging = 0;
-					touch.drop();
 				}
 				return true;
 		}
@@ -1739,7 +1738,8 @@ public class CodeView extends View {
 	// one for a selection, the keyboard, to type over the selection.
 	private void showToolbar() {
 		handler.removeCallbacks(hideCaretHandle);
-		if (!touch.showsToolbar()) {
+		// Not while a drag is in progress.
+		if (dragging != 0) {
 			return;
 		}
 		boolean starting = !toolbar.isShown();
@@ -2101,7 +2101,6 @@ public class CodeView extends View {
 		boolean tapped = dragging == DRAG_HANDLE && !moved;
 		boolean pressed = dragging == DRAG_WORDS;
 		dragging = 0;
-		touch.drop();
 		dismissMagnifier();
 		invalidate();
 		if (touched == null) {
@@ -2221,7 +2220,6 @@ public class CodeView extends View {
 			case MotionEvent.ACTION_UP:
 			case MotionEvent.ACTION_CANCEL:
 				dragging = 0;
-				touch.drop();
 				return true;
 			default:
 				return false;
@@ -2435,7 +2433,7 @@ public class CodeView extends View {
 	private void drawHandles(Canvas canvas) {
 		handles.clear();
 		if (touched == null || (touched.isEmpty() && !caretHandle) ||
-				!isFocused() || !touch.showsHandles()) {
+				!isFocused() || !touch.showsHandles(dragging != 0)) {
 			return;
 		}
 		if (touched.isEmpty()) {

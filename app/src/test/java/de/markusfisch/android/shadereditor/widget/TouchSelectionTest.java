@@ -119,26 +119,21 @@ public class TouchSelectionTest {
 	}
 
 	@Test
-	public void handlesAndToolbarWaitForTheFingerToLiftAfterAWordDrag() {
+	public void handlesWaitForTheFingerToLiftAfterAWordDrag() {
 		Text text = Text.of("float alpha = beta;");
-		assertTrue(touch.showsHandles());
-		assertTrue(touch.showsToolbar());
+		assertTrue(touch.showsHandles(false));
 		touch.dragWords(text, 7);
 		touch.dragTo(text, 16);
-		assertFalse(touch.showsHandles());
-		assertFalse(touch.showsToolbar());
-		touch.drop();
-		assertTrue(touch.showsHandles());
-		assertTrue(touch.showsToolbar());
+		assertFalse(touch.showsHandles(true));
+		assertTrue(touch.showsHandles(false));
 	}
 
 	@Test
-	public void aDraggedHandleShowsButTheToolbarDoesNot() {
+	public void aDraggedHandleShows() {
 		touch.dragHandle(0, 5);
-		assertTrue(touch.showsHandles());
-		assertFalse(touch.showsToolbar());
-		touch.drop();
-		assertTrue(touch.showsToolbar());
+		assertTrue(touch.showsHandles(true));
+		touch.dragHandle(3, 3);
+		assertTrue(touch.showsHandles(true));
 	}
 
 	@Test
