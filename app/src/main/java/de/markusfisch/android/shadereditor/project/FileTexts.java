@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.project;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 import de.markusfisch.android.shadereditor.editor.Document;
@@ -44,7 +45,8 @@ public final class FileTexts {
 	 * journal's text when unsaved, else of the stored text, with the
 	 * undo history kept for that text; the revision of the stored text
 	 * it is based on, null for none; the revision of the journal it came
-	 * from, -1 for none; and why its journal could not be read, so the
+	 * from, -1 for none, and the identity of that journal; and why its
+	 * journal could not be read, so the
 	 * stored text was opened instead, else null. A document of unsaved
 	 * text starts modified, whatever its history; replaced are the
 	 * texts reloads replaced that are kept for the file, each with the
@@ -52,7 +54,7 @@ public final class FileTexts {
 	 * worker, so a device without the memory for it is told there.
 	 */
 	public record Opened(Document document, boolean unsaved,
-			String revision, int journal, String unreadable,
+			String revision, int journal, long id, String unreadable,
 			boolean damaged, List<FileRecord.Replaced> replaced)
 			implements Opening {
 		public Text text() {
@@ -114,9 +116,12 @@ public final class FileTexts {
 
 	// Set before anything is asked of this; null for none.
 	Kept kept;
-	// A rename storage made that the journals could not follow yet,
-	// or null; worker only.
-	private Journal.Move unfollowed;
+	// The rename storage made last, noted with the files it is for,
+	// until main says that it knows of it; and a move storage made
+	// that the journals could not follow yet. Null for none; worker
+	// only.
+	private Journal.Note noted;
+	private Journal.Note unfollowed;
 
 	FileTexts(ProjectFiles store, Journal journal, Histories histories,
 			Executor worker, Executor main) {
@@ -139,7 +144,7 @@ public final class FileTexts {
 			Journal.Recovered recovered = journal.read(path);
 			Unread unread = recovered != null && recovered.text() == null
 					? new Unread(recovered.problem(), recovered.damaged())
-					: null;
+					: astray(path) ? new Unread(ASTRAY, false) : null;
 			Opening opening;
 			try {
 				opening = withHistory(path, unread == null &&
@@ -228,7 +233,9 @@ public final class FileTexts {
 	void journal(ProjectPath path, FileRecord.Flush flush,
 			Callback<Boolean> done) {
 		run(() -> {
-			boolean written = write(path, flush);
+			// Not while the journal of the file may be under the name
+			// it had: then nothing of it is where this would write.
+			boolean written = !astray(path) && write(path, flush);
 			main.execute(() -> done.done(written));
 		});
 	}
@@ -283,8 +290,12 @@ public final class FileTexts {
 		run(() -> {
 			ProjectFiles.Change change;
 			// One move is noted at a time: not while the journals have
-			// yet to follow the one before.
-			if (unfollowed != null || !journal.setMove(move)) {
+			// yet to follow the one before. It is noted with the files
+			// it is for, so not while those cannot be read either.
+			Journal.Note note = unfollowed != null || noted != null
+					? null
+					: journal.noted(move);
+			if (note == null || !journal.setNote(note)) {
 				change = new ProjectFiles.Refused(
 						ProjectFiles.Refusal.FAILED,
 						"the journal cannot be written");
@@ -300,14 +311,16 @@ public final class FileTexts {
 					change = new ProjectFiles.Done(null);
 				}
 				if (change instanceof ProjectFiles.Done) {
-					if (move.to() == null) {
-						followed(move);
+					if (move.to() != null) {
+						noted = note;
+					} else {
+						unfollowed = follow(note);
 					}
 				} else if (((ProjectFiles.Refused) change).refusal() !=
 						ProjectFiles.Refusal.PARTIAL) {
 					// Nothing happened; half of it is looked at when
 					// the project opens again.
-					journal.setMove(null);
+					journal.setNote(null);
 				}
 			}
 			ProjectFiles.Change made = change;
@@ -321,9 +334,17 @@ public final class FileTexts {
 	 */
 	void follow(Journal.Move move) {
 		run(() -> {
-			if (!followed(move)) {
-				unfollowed = move;
+			Journal.Note before = noted;
+			noted = null;
+			// Main knew the files by their old names until now: what it
+			// had written there since the move was noted, a first
+			// journal of one of them, is theirs and follows too.
+			Journal.Note now = journal.noted(move);
+			if (now != null && !now.equals(before)) {
+				journal.setNote(now);
 			}
+			Journal.Note note = now != null ? now : before;
+			unfollowed = note != null ? follow(note) : null;
 		});
 	}
 
@@ -332,45 +353,163 @@ public final class FileTexts {
 	// what the task is for is not where the task looks for it.
 	private void run(Runnable task) {
 		worker.execute(() -> {
-			if (unfollowed != null && followed(unfollowed)) {
-				unfollowed = null;
+			if (unfollowed != null) {
+				unfollowed = follow(unfollowed);
 			}
 			task.run();
 		});
 	}
 
+	private static final String ASTRAY = "the unsaved text cannot be " +
+			"recovered: it cannot be read now";
+
+	// Return whether the journal of path may still be under the name
+	// its file had before a rename that the journals could not follow
+	// yet: then what is under the name of path is not all there is.
+	private boolean astray(ProjectPath path) {
+		Journal.Move move = unfollowed != null ? unfollowed.move() : null;
+		if (move == null || move.to() == null ||
+				!new Journal.Move(move.to(), null).touches(path)) {
+			return false;
+		}
+		for (Journal.Noted noted : unfollowed.files()) {
+			if (!noted.followed()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/**
 	 * Finish or drop a move the process died in: when storage made it,
-	 * the journals and histories follow, when it did not, nothing is to
-	 * do; while storage cannot tell, it stays as it is. Return the move
-	 * that was finished now, else null. On the worker, before the
-	 * journals are looked at.
+	 * the journals and histories follow; when it did not, or has
+	 * neither the old name nor the new anymore, nothing is to do, and
+	 * what is under the old name stays there; while storage cannot
+	 * tell, the note stays as it is. Return the move that was finished
+	 * now, else null. On the worker, before the journals are looked at.
 	 */
 	Journal.Move recover() {
-		Journal.Move move = journal.move();
-		if (move == null) {
+		Journal.Note note = journal.note();
+		if (note == null) {
 			return null;
 		}
+		Journal.Move move = note.move();
 		Boolean from = exists(move.from());
 		Boolean to = move.to() != null ? exists(move.to()) : Boolean.TRUE;
 		if (Boolean.FALSE.equals(from) && Boolean.TRUE.equals(to)) {
 			// Once more where a file could not be read or written
 			// just then; else it stays noted for the next opening.
-			return followed(move) || followed(move) ? move : null;
-		} else if (Boolean.TRUE.equals(from)) {
-			journal.setMove(null);
+			Journal.Note left = follow(note);
+			return left == null || follow(left) == null ? move : null;
+		} else if (Boolean.TRUE.equals(from) ||
+				Boolean.FALSE.equals(from) && Boolean.FALSE.equals(to)) {
+			journal.setNote(null);
 		}
 		return null;
 	}
 
-	private boolean followed(Journal.Move move) {
-		boolean followed = journal.follow(move);
-		histories.follow(move);
-		if (kept != null && !kept.follow(move)) {
-			// Noted still, so that the next opening tries again.
-			followed = false;
+	// Let the journals, the histories and what is kept by path follow
+	// the move of note. Return what is left of it to follow, which
+	// stays noted so that the next task, or the next opening, tries
+	// again; null when nothing is.
+	private Journal.Note follow(Journal.Note note) {
+		Journal.Note left = journal.follow(note);
+		histories.follow(note.move());
+		boolean followed = left.files().isEmpty() &&
+				(kept == null || kept.follow(note.move()));
+		if (followed && journal.setNote(null)) {
+			return null;
+		} else if (!left.equals(note)) {
+			// What is done is noted as done.
+			journal.setNote(left);
 		}
-		return followed && journal.setMove(null);
+		return left;
+	}
+
+	/**
+	 * A file found to have unsaved text when the journals were looked
+	 * at: the header of its journal, and what storage holds of it.
+	 */
+	record Unsaved(Journal.Header header, Found found, String revision) {
+	}
+
+	/**
+	 * What a look at the journals found: the files with unsaved text,
+	 * how many journals have no header that can be read, and whether
+	 * the folder and every journal in it could be read, so that none
+	 * is missing for that alone.
+	 */
+	record Journals(List<Unsaved> unsaved, int damaged, boolean complete) {
+	}
+
+	/**
+	 * Look at the journals of the session, but for those of the files
+	 * known, which main has records of. One whose text storage holds
+	 * exactly is no unsaved text and goes; text a reload replaced of a
+	 * file that is gone and has no journal becomes its journal. On the
+	 * worker.
+	 */
+	Journals journals(Set<ProjectPath> known) {
+		List<Unsaved> unsaved = new ArrayList<>();
+		Journal.Scan scan = journal.scan();
+		Journal.Move pending = unfollowed != null ? unfollowed.move() : null;
+		for (Journal.Header header : scan.headers().values()) {
+			ProjectPath path = header.path();
+			// Not one that is yet to follow its file to another name.
+			if (known.contains(path) ||
+					pending != null && pending.touches(path)) {
+				continue;
+			}
+			Checked checked = check(path, header.base(), null, true);
+			boolean stored = checked.found() == Found.SAME ||
+					checked.found() == Found.CHANGED;
+			if (checked.equal()) {
+				// Storage holds the text: saved before the process died,
+				// or written elsewhere.
+				journal.remove(path);
+			} else if (header.replaced() && stored &&
+					journal.putAside(path, -1) >= 0) {
+				// A journal of the form before this one that held text
+				// a reload replaced: the file opens as stored, as the
+				// user asked, and undo leads to the text.
+			} else {
+				unsaved.add(new Unsaved(header, checked.found(),
+						checked.revision()));
+			}
+		}
+		// Text a reload replaced, of a file that is gone and has no
+		// journal: there is no stored text for undo to lead back from,
+		// so the newest of it is the unsaved text of a file that is
+		// not there, to be found where such text is listed.
+		// Not while a move is noted that such a text may have yet to
+		// follow: then it is of the file under its new name, and stays
+		// what undo leads to there.
+		Journal.Note noted = unfollowed != null ? unfollowed : journal.note();
+		boolean moving = noted == null && journal.moving();
+		Journal.Kept kept = journal.kept();
+		for (ProjectPath path : kept.paths()) {
+			if (!moving && (noted == null ||
+					!noted.move().touches(path)) &&
+					!known.contains(path) &&
+					!scan.headers().containsKey(path) &&
+					check(path, null, null, false).found() ==
+							Found.MISSING && journal.promote(path)) {
+				Journal.Header header = journal.header(path);
+				if (header != null) {
+					unsaved.add(new Unsaved(header, Found.MISSING, null));
+				}
+			}
+		}
+		return new Journals(unsaved, scan.damaged(), scan.complete() &&
+				kept.complete());
+	}
+
+	/** {@link #journals(Set)}, as a task; done gets it. */
+	void journals(Set<ProjectPath> known, Callback<Journals> done) {
+		run(() -> {
+			Journals journals = journals(known);
+			main.execute(() -> done.done(journals));
+		});
 	}
 
 	// Return whether storage has a file or folder at path, or null
@@ -545,6 +684,9 @@ public final class FileTexts {
 			if (recovered != null && recovered.text() == null) {
 				return new Save(state, new OpenProject.Unreadable(
 						recovered.problem(), recovered.damaged()), null);
+			} else if (recovered == null && astray(path)) {
+				return new Save(state, new OpenProject.Unreadable(ASTRAY,
+						false), null);
 			}
 			written = recovered != null ? recovered.text() : null;
 		}
@@ -578,6 +720,8 @@ public final class FileTexts {
 		if (flush.removes()) {
 			return journal.remove(path);
 		}
+		// What is appended to is the journal of this text; any other
+		// one there is put aside by the snapshot.
 		if (flush.from() >= 0) {
 			List<Journal.Change> changes = new ArrayList<>();
 			for (Document.Change change : flush.changes()) {
@@ -628,8 +772,8 @@ public final class FileTexts {
 		document.markSaved(opened.unsaved() ? -1 : document.state());
 		return reached == null || reached.isEmpty() ? opened : new Opened(
 				document, opened.unsaved(), opened.revision(),
-				opened.journal(), opened.unreadable(), opened.damaged(),
-				reached);
+				opened.journal(), opened.id(), opened.unreadable(),
+				opened.damaged(), reached);
 	}
 
 	// Return, for each of replaced, the state at which undo or redo of
@@ -712,8 +856,8 @@ public final class FileTexts {
 		}
 		Text text = recovered.text();
 		return new Opened(new Document(text, Document.bytes(text)), true,
-				recovered.header().base(), recovered.revision(), null,
-				false, List.of());
+				recovered.header().base(), recovered.revision(),
+				recovered.header().id(), null, false, List.of());
 	}
 
 	// Why the journal of a file could not be read, and whether it is
@@ -760,7 +904,7 @@ public final class FileTexts {
 					Found.NOT_TEXT, content.revision());
 		}
 		return new Opened(new Document(text, Document.bytes(text)), false,
-				content.revision(), -1,
+				content.revision(), -1, 0,
 				unread != null ? unread.reason() : null,
 				unread != null && unread.damaged(), List.of());
 	}

@@ -49,7 +49,11 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
  * and read again later; only bytes that were read and are wrong are
  * told as damaged, and those stay as well until the user gives them
  * up. A read that gave fewer bytes than the file has is no read. No
- * rename ever lands on a file that is there.
+ * rename ever lands on a file that is there. A note of a rename or a
+ * deletion names the files it was made for, each by its name and the
+ * identity in its header, and touches no other when it is replayed:
+ * what was written under a name since is another text. The one
+ * noted is still the one noted where such a text put it aside.
  */
 final class Journal {
 	/**
@@ -58,14 +62,29 @@ final class Journal {
 	 * the stored revision keptOver, null for a file that was absent.
 	 * replaced is read from journals written before text a reload
 	 * replaced was put aside: such a journal held that text, marked so,
-	 * in the place of the journal; none is written so anymore.
+	 * in the place of the journal; none is written so anymore. id is
+	 * the identity of the journal, see {@link #identity}: every write
+	 * that continues the same unsaved text keeps it, also under another
+	 * name after a rename, and unsaved text that starts anew has
+	 * another. 0 is no identity: a journal written before there was one.
 	 */
 	record Header(ProjectPath path, String base, boolean kept,
-			String keptOver, boolean replaced) {
+			String keptOver, boolean replaced, long id) {
 		Header(ProjectPath path, String base, boolean kept,
 				String keptOver) {
-			this(path, base, kept, keptOver, false);
+			this(path, base, kept, keptOver, false, 0);
 		}
+
+		Header(ProjectPath path, String base, boolean kept,
+				String keptOver, boolean replaced) {
+			this(path, base, kept, keptOver, replaced, 0);
+		}
+	}
+
+	/** Return an identity for a journal that no other has. */
+	static long identity() {
+		long id = java.util.UUID.randomUUID().getLeastSignificantBits();
+		return id != 0 ? id : 1;
 	}
 
 	/**
@@ -98,6 +117,31 @@ final class Journal {
 					? moved.value()
 					: null;
 		}
+	}
+
+	/**
+	 * A file of the folder that a note of a move was made for: its name
+	 * there and the identity in its header then, 0 when it had none
+	 * that was whole. followed tells that its text was written under
+	 * the new name of a rename, made durable and read back, and that
+	 * only this file is left to go.
+	 */
+	record Noted(String name, long id, boolean followed) {
+		Noted(String name, long id) {
+			this(name, id, false);
+		}
+	}
+
+	/**
+	 * A move the journals have yet to follow, and the files of the
+	 * folder it is for: the journals and the texts reloads replaced of
+	 * the files at and under its source, as they were when it was
+	 * noted. Replaying it touches none but these, and each only while
+	 * it still has the identity noted: text written under one of the
+	 * names since, as text typed after a deletion, is not what the
+	 * user renamed or gave up.
+	 */
+	record Note(Move move, List<Noted> files) {
 	}
 
 	/** A change: length removed at start, and the text inserted. */
@@ -143,6 +187,13 @@ final class Journal {
 		/** Neither undo nor redo of its document lead to it. */
 		UNREACHABLE,
 		/**
+		 * Its text was written under the name its file has since a
+		 * rename, made durable and read back, and the note of the
+		 * rename says so. What became of that one since, saved or
+		 * replaced, is its file's affair.
+		 */
+		FOLLOWED,
+		/**
 		 * It never was a file of the folder: a write that did not
 		 * finish, a note of a move, or a draft of the form before
 		 * journals, which nothing reads.
@@ -187,13 +238,17 @@ final class Journal {
 	// Where a journal ends and at which revision, as last read or
 	// written.
 	private record Tail(int revision, long length, long snapshot,
-			long records) {
+			long records, long id) {
 	}
 
 	// The journal that writes and deletes in each folder.
 	private static final Map<String, Journal> OWNERS = new HashMap<>();
 
 	private final Map<ProjectPath, Tail> tails = new HashMap<>();
+	// The identity of the journal of each path that this one wrote or
+	// read whole: such a journal is known to be the earlier state of
+	// the text of that identity without being read again.
+	private final Map<ProjectPath, Long> ids = new HashMap<>();
 	private final File dir;
 	private final Disk disk;
 	// What the folder is owned by: the folder itself, however its path
@@ -261,7 +316,12 @@ final class Journal {
 
 	/**
 	 * Replace the journal of header's path with text at revision, synced.
-	 * Return whether it was written.
+	 * Only a journal of the same identity is written over: an earlier
+	 * state of this text, which this journal wrote or read itself, or
+	 * reads now. One of another identity, one without a header and one
+	 * that was not read and cannot be read now is another text for all
+	 * that is known, and is put aside first, as it is, like text a
+	 * reload replaced. Return whether it was written.
 	 */
 	boolean snapshot(Header header, int revision, Text text) {
 		if (!owns()) {
@@ -269,11 +329,31 @@ final class Journal {
 		}
 		ProjectPath path = header.path();
 		tails.remove(path);
+		Long known = ids.get(path);
+		if ((known == null || known != header.id()) &&
+				!earlier(path, header.id()) && !setAside(path)) {
+			return false;
+		}
 		Tail tail = write(name(path), header, revision, text);
 		if (tail != null) {
 			tails.put(path, tail);
+			ids.put(path, header.id());
 		}
 		return tail != null;
+	}
+
+	// Return whether path has no journal, or one of identity id.
+	private boolean earlier(ProjectPath path, long id) {
+		File file = file(path);
+		if (!file.exists()) {
+			return true;
+		}
+		try {
+			Header there = head(file);
+			return there != null && there.id() == id;
+		} catch (IOException e) {
+			return false;
+		}
 	}
 
 	// Write a file of header and text at revision as name; return where
@@ -289,7 +369,7 @@ final class Journal {
 			writeBlock(data, bytes);
 			data.flush();
 		}, this::whole) ? new Tail(revision, 12L + head.length + 8 + bytes.length,
-				bytes.length, 0) : null;
+				bytes.length, 0, header.id()) : null;
 	}
 
 	/**
@@ -339,7 +419,7 @@ final class Journal {
 			return Appended.FAILED;
 		}
 		tails.put(path, new Tail(to, tail.length() + record.length + 8,
-				tail.snapshot(), records));
+				tail.snapshot(), records, tail.id()));
 		return Appended.DONE;
 	}
 
@@ -350,7 +430,10 @@ final class Journal {
 	boolean setHeader(Header header) {
 		Recovered recovered = read(header.path());
 		return recovered != null && recovered.text() != null &&
-				snapshot(header, recovered.revision(), recovered.text());
+				snapshot(new Header(header.path(), header.base(),
+						header.kept(), header.keptOver(), false,
+						recovered.header().id()), recovered.revision(),
+						recovered.text());
 	}
 
 	/**
@@ -372,18 +455,51 @@ final class Journal {
 			return -1;
 		}
 		tails.remove(path);
-		// One more than any text kept in the folder has, of any file.
-		int number = 1;
-		for (File kept : all) {
-			number = Math.max(number, number(kept) + 1);
-		}
+		int number = next(all);
 		File file = file(path);
 		try {
 			disk.sync(file);
 		} catch (IOException e) {
 			return -1;
 		}
-		return move(file, replacedFile(path, number)) ? number : -1;
+		if (!move(file, replacedFile(path, number))) {
+			return -1;
+		}
+		ids.remove(path);
+		return number;
+	}
+
+	/**
+	 * Put the journal of path aside as it is, whatever it holds: it
+	 * could not be read when its file was opened, and text typed into
+	 * the stored text is about to be written in its place. It is kept
+	 * like text a reload replaced, so that undo leads to it once it
+	 * can be read. Return whether path has no journal now.
+	 */
+	boolean setAside(ProjectPath path) {
+		if (!owns()) {
+			return false;
+		}
+		tails.remove(path);
+		File file = file(path);
+		if (!file.exists()) {
+			return true;
+		}
+		File[] all = list(name -> name.endsWith(REPLACED));
+		if (all == null || !move(file, replacedFile(path, next(all)))) {
+			return false;
+		}
+		ids.remove(path);
+		return true;
+	}
+
+	// Return one more than any text kept in the folder has, of any file.
+	private static int next(File[] all) {
+		int number = 1;
+		for (File kept : all) {
+			number = Math.max(number, number(kept) + 1);
+		}
+		return number;
 	}
 
 	/**
@@ -399,6 +515,7 @@ final class Journal {
 		File kept = replacedFile(path, number);
 		File file = file(path);
 		tails.remove(path);
+		ids.remove(path);
 		if (!kept.isFile()) {
 			return;
 		} else if (file.exists()) {
@@ -421,6 +538,7 @@ final class Journal {
 			return file.exists();
 		}
 		tails.remove(path);
+		ids.remove(path);
 		return move(kept[kept.length - 1], file);
 	}
 
@@ -447,20 +565,36 @@ final class Journal {
 	}
 
 	/**
+	 * The files that have a text a reload replaced kept, as far as the
+	 * folder can be read now; complete tells that all of it could.
+	 */
+	record Kept(Set<ProjectPath> paths, boolean complete) {
+	}
+
+	/** Return the files that have a text a reload replaced kept. */
+	Kept kept() {
+		Set<ProjectPath> paths = new LinkedHashSet<>();
+		File[] files = list(name -> name.endsWith(REPLACED));
+		boolean complete = files != null;
+		for (File file : files != null ? files : new File[0]) {
+			try {
+				Header header = head(file);
+				if (header != null && named(file, header.path())) {
+					paths.add(header.path());
+				}
+			} catch (IOException e) {
+				complete = false;
+			}
+		}
+		return new Kept(paths, complete);
+	}
+
+	/**
 	 * Return the files that have a text a reload replaced kept, as far
 	 * as the folder can be read now.
 	 */
 	Set<ProjectPath> replacedPaths() {
-		Set<ProjectPath> paths = new LinkedHashSet<>();
-		File[] files = list(name -> name.endsWith(REPLACED));
-		for (File file : files != null ? files : new File[0]) {
-			Header header = header(file);
-			if (header != null && file.getName().startsWith(
-					digest(header.path()) + ".")) {
-				paths.add(header.path());
-			}
-		}
-		return paths;
+		return kept().paths();
 	}
 
 	/**
@@ -538,31 +672,87 @@ final class Journal {
 	}
 
 	/**
-	 * Keep move as under way, or that none is when null. Return whether
-	 * that is kept.
+	 * Return move with the files of the folder it is for, as they are
+	 * now: every journal and every text a reload replaced of a file at
+	 * or under its source, and what has the name of one of the source
+	 * itself and no header to tell. Null when the folder or one of its
+	 * files cannot be read now: then nobody knows what the move is for.
 	 */
-	boolean setMove(Move move) {
+	Note noted(Move move) {
+		File[] files = list(name -> name.endsWith(SUFFIX) ||
+				name.endsWith(REPLACED));
+		if (files == null) {
+			return null;
+		}
+		List<Noted> noted = new ArrayList<>();
+		for (File file : files) {
+			Header header;
+			try {
+				header = head(file);
+			} catch (IOException e) {
+				return null;
+			}
+			if (header != null
+					? move.touches(header.path()) &&
+							named(file, header.path())
+					: named(file, move.from())) {
+				noted.add(new Noted(file.getName(),
+						header != null ? header.id() : 0));
+			}
+		}
+		return new Note(move, noted);
+	}
+
+	// Return whether file has the name of the journal of path, or of a
+	// text a reload replaced of it.
+	private static boolean named(File file, ProjectPath path) {
+		String name = file.getName();
+		return name.equals(name(path)) || name.endsWith(REPLACED) &&
+				number(name) > 0 && name.startsWith(digest(path) + ".");
+	}
+
+	/**
+	 * Keep note as under way, or that no move is when null. Return
+	 * whether that is kept.
+	 */
+	boolean setNote(Note note) {
 		if (!owns()) {
 			return false;
 		}
-		if (move == null) {
+		if (note == null) {
 			return delete(new File(dir, MOVE), Gone.NO_TEXT, null);
 		}
+		Move move = note.move();
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 		try (DataOutputStream out = new DataOutputStream(bytes)) {
 			out.writeInt(MAGIC);
 			out.writeUTF(move.from().toString());
 			out.writeBoolean(move.to() != null);
 			out.writeUTF(move.to() != null ? move.to().toString() : "");
+			out.writeInt(note.files().size());
+			for (Noted noted : note.files()) {
+				out.writeUTF(noted.name());
+				out.writeLong(noted.id());
+				out.writeBoolean(noted.followed());
+			}
 		} catch (IOException e) {
 			return false;
 		}
-		byte[] note = bytes.toByteArray();
-		return replace(disk, dir, MOVE, out -> out.write(note), null);
+		byte[] written = bytes.toByteArray();
+		return replace(disk, dir, MOVE, out -> out.write(written), null);
 	}
 
-	/** Return the move that is under way, or null. */
-	Move move() {
+	/** Return whether a note is there, also one that cannot be read. */
+	boolean moving() {
+		return new File(dir, MOVE).exists();
+	}
+
+	/**
+	 * Return the note of the move that is under way, or null. One of
+	 * the form before notes named their files names none, so replaying
+	 * it touches nothing.
+	 */
+	Note note() {
 		File file = new File(dir, MOVE);
 		if (!file.isFile() || file.length() > MAX_HEAD) {
 			return null;
@@ -575,122 +765,170 @@ final class Journal {
 			}
 			ProjectParseResult<ProjectPath> from = ProjectPath.parse(
 					in.readUTF());
-			ProjectParseResult<ProjectPath> to = in.readBoolean()
-					? ProjectPath.parse(in.readUTF())
-					: null;
-			return from.isSuccess() && (to == null || to.isSuccess())
-					? new Move(from.value(), to != null ? to.value() : null)
-					: null;
+			boolean moved = in.readBoolean();
+			ProjectParseResult<ProjectPath> to = ProjectPath.parse(
+					in.readUTF());
+			if (!from.isSuccess() || moved && !to.isSuccess()) {
+				return null;
+			}
+			List<Noted> files = new ArrayList<>();
+			for (int i = in.available() > 0 ? in.readInt() : 0; i-- > 0; ) {
+				files.add(new Noted(in.readUTF(), in.readLong(),
+						in.readBoolean()));
+			}
+			return new Note(new Move(from.value(),
+					moved ? to.value() : null), files);
 		} catch (IOException | RuntimeException e) {
 			return null;
 		}
 	}
 
 	/**
-	 * Let the journals follow move, which storage made: each one at or
-	 * under its source is kept under the new path, with the text and
-	 * header it has, or deleted with its file. One written under the
-	 * new path since is the newer and stays. Texts reloads replaced
-	 * follow under the numbers they have. Return whether none is left
-	 * behind; one that cannot be read or written now is, and follows
-	 * when this is asked again.
+	 * Let the files note names follow its move, which storage made:
+	 * each journal, and each text a reload replaced, is kept for the
+	 * new path with the text, header and number it has, or deleted
+	 * with its file. Only the files named, and each only while it has
+	 * the identity noted: one written under the name since is another
+	 * text and stays. Where the new path has one already, this one goes
+	 * only when that holds exactly its text; else both stay, as two
+	 * texts. Return what is left of the note: the files that have yet
+	 * to follow, none when all did. One that cannot be read or written
+	 * now is left, and follows when this is asked again; one whose
+	 * text is under the new name and that only could not be deleted is
+	 * left as followed, so it is never written there a second time,
+	 * whatever became of the text under the new name since.
 	 */
-	boolean follow(Move move) {
+	Note follow(Note note) {
 		if (!owns()) {
-			return false;
+			return note;
 		}
-		Scan scan = scan();
-		// One that cannot be read now may be one of those to follow.
-		boolean followed = scan.complete();
-		Set<ProjectPath> paths = new LinkedHashSet<>(
-				scan.headers().keySet());
-		// One whose header cannot be read is known by its name alone.
-		paths.add(move.from());
-		for (ProjectPath path : paths) {
-			if (move.touches(path)) {
-				followed &= follow(path, move.moved(path));
-			}
-		}
-		return followed & followReplaced(move);
-	}
-
-	// Let the texts reloads replaced follow move: kept for the new path
-	// under the numbers they have, or deleted with their file.
-	private boolean followReplaced(Move move) {
-		File[] files = list(name -> name.endsWith(REPLACED));
-		if (files == null) {
-			return false;
-		}
-		boolean followed = true;
-		for (File file : files) {
-			Header header;
+		Move move = note.move();
+		List<Noted> left = new ArrayList<>();
+		for (Noted noted : note.files()) {
 			try {
-				header = head(file);
-			} catch (IOException e) {
-				// It may be one of those to follow: asked again later.
-				followed = false;
-				continue;
-			}
-			if (header == null) {
-				// Of the file itself by its name; of no file that can
-				// be told otherwise, so it stays where it is.
-				if (move.to() == null && file.getName().startsWith(
-						digest(move.from()) + ".")) {
-					followed &= delete(file, Gone.ASKED, null);
+				File file = new File(dir, noted.name());
+				Header header = head(file);
+				if (!file.exists() ||
+						(header != null ? header.id() : 0) != noted.id()) {
+					// Not there, or another text now. The one noted
+					// may have been put aside by the text that took
+					// its name: it is the same one under that name.
+					file = aside(noted);
+					if (file == null) {
+						continue;
+					}
+					header = head(file);
 				}
-				continue;
-			} else if (!move.touches(header.path()) || !file.getName()
-					.startsWith(digest(header.path()) + ".")) {
-				continue;
-			}
-			ProjectPath to = move.moved(header.path());
-			if (to == null) {
-				followed &= delete(file, Gone.ASKED, null);
-				continue;
-			}
-			File target = replacedFile(to, number(file));
-			if (!target.exists()) {
-				Recovered kept = parse(header.path(), file).recovered();
-				if (kept.text() == null || write(target.getName(),
-						new Header(to, header.base(), header.kept(),
-								header.keptOver()), kept.revision(),
-						kept.text()) == null) {
-					followed = false;
-					continue;
+				// One without a header is known by its name alone, which
+				// tells it only for the source itself.
+				ProjectPath path = header != null
+						? header.path()
+						: move.from();
+				if (noted.followed()) {
+					if (!delete(file, Gone.FOLLOWED, null)) {
+						left.add(noted);
+					}
+				} else if (move.touches(path) && named(file, path)) {
+					Followed followed = follow(file, header, path,
+							move.moved(path));
+					if (followed != Followed.DONE) {
+						left.add(new Noted(noted.name(), noted.id(),
+								followed == Followed.WRITTEN));
+					}
 				}
+			} catch (IOException | OutOfMemoryError e) {
+				// It may be one to follow: asked again later.
+				left.add(noted);
 			}
-			followed &= delete(file, Gone.SUCCEEDED, target);
 		}
-		return followed;
+		return new Note(move, left);
 	}
 
-	private boolean follow(ProjectPath from, ProjectPath to) {
-		tails.remove(from);
-		File old = file(from);
-		if (!old.exists()) {
-			return true;
-		} else if (to == null) {
-			return delete(old, Gone.ASKED, null);
+	// Return the file a text put the journal noted aside as, told by
+	// its identity, or null when there is none. It throws when that
+	// cannot be told now.
+	private File aside(Noted noted) throws IOException {
+		int dot = noted.name().indexOf('.');
+		if (noted.id() == 0 || dot < 0) {
+			return null;
+		}
+		String prefix = noted.name().substring(0, dot + 1);
+		File[] files = list(name -> name.startsWith(prefix) &&
+				name.endsWith(REPLACED) && !name.equals(noted.name()));
+		if (files == null) {
+			throw new IOException("the folder cannot be listed");
+		}
+		for (File file : files) {
+			Header header = head(file);
+			if (header != null && header.id() == noted.id()) {
+				return file;
+			}
+		}
+		return null;
+	}
+
+	// What became of a file that was to follow a move.
+	private enum Followed {
+		/** Nothing is left to do for it. */
+		DONE,
+		/** It is as it was, to be asked again. */
+		LEFT,
+		/** Its text is under the new name; it could not be deleted. */
+		WRITTEN
+	}
+
+	// Let file, the journal of path or a text a reload replaced of it,
+	// be that of to, or go with its file when to is null. header is
+	// null for one that has none that is whole.
+	private Followed follow(File file, Header header, ProjectPath path,
+			ProjectPath to) {
+		boolean journal = file.getName().endsWith(SUFFIX);
+		tails.remove(path);
+		if (journal) {
+			ids.remove(path);
+		}
+		if (to == null) {
+			return delete(file, Gone.ASKED, null)
+					? Followed.DONE
+					: Followed.LEFT;
 		}
 		tails.remove(to);
-		File target = file(to);
+		File target = journal ? file(to) : replacedFile(to, number(file));
+		Recovered mine = header != null
+				? parse(path, file).recovered()
+				: null;
+		boolean unread = mine != null && mine.text() == null &&
+				!mine.damaged();
 		if (target.exists()) {
-			// Written there since, or by this before the process died.
-			return delete(old, Gone.SUCCEEDED, target);
+			// That one is there proves nothing: only when it holds this
+			// very text, read now, is it this one's successor. Anything
+			// else is another text, and both stay.
+			if (mine == null || mine.text() == null) {
+				return unread ? Followed.LEFT : Followed.DONE;
+			}
+			Recovered there = parse(to, target).recovered();
+			if (there.text() == null) {
+				return there.damaged() ? Followed.DONE : Followed.LEFT;
+			} else if (!mine.text().toString().equals(
+					there.text().toString())) {
+				return Followed.DONE;
+			}
+		} else if (unread) {
+			// It stays, to follow when it can be read.
+			return Followed.LEFT;
+		} else if (mine == null || mine.text() == null) {
+			// Damaged, it is told under the new name as it is.
+			return move(file, target) ? Followed.DONE : Followed.LEFT;
+		} else if (write(target.getName(), new Header(to, header.base(),
+				header.kept(), header.keptOver(), header.replaced(),
+				header.id()), mine.revision(), mine.text()) == null) {
+			return Followed.LEFT;
+		} else if (journal) {
+			ids.put(to, header.id());
 		}
-		Recovered recovered = read(from);
-		if (recovered == null) {
-			return true;
-		} else if (recovered.text() != null) {
-			Header header = recovered.header();
-			return snapshot(new Header(to, header.base(), header.kept(),
-					header.keptOver(), header.replaced()),
-					recovered.revision(), recovered.text()) &&
-					delete(old, Gone.SUCCEEDED, target);
-		}
-		// Damaged, it is told under the new name as it is; one that
-		// only cannot be read now stays, to follow when it can.
-		return recovered.damaged() && move(old, target);
+		return delete(file, Gone.SUCCEEDED, target)
+				? Followed.DONE
+				: Followed.WRITTEN;
 	}
 
 	/**
@@ -742,6 +980,7 @@ final class Journal {
 		}
 		if (parsed.tail() != null) {
 			tails.put(path, parsed.tail());
+			ids.put(path, parsed.tail().id());
 		} else {
 			tails.remove(path);
 		}
@@ -806,7 +1045,8 @@ final class Journal {
 			}
 			return new Parsed(new Recovered(header, text, revision, null,
 					TextBytes.length(text) > Document.MAX_BYTES, false),
-					new Tail(revision, length, bytes.length, records));
+					new Tail(revision, length, bytes.length, records,
+							header.id()));
 		} catch (IOException | RuntimeException e) {
 			return damaged(path, "it is no journal");
 		}
@@ -864,6 +1104,7 @@ final class Journal {
 			return false;
 		}
 		tails.remove(path);
+		ids.remove(path);
 		return delete(file(path), Gone.SAVED, null);
 	}
 
@@ -878,6 +1119,7 @@ final class Journal {
 		}
 		Recovered recovered = read(path);
 		tails.remove(path);
+		ids.remove(path);
 		return recovered == null || recovered.text() != null ||
 				recovered.damaged() &&
 						delete(file(path), Gone.ASKED, null);
@@ -936,6 +1178,11 @@ final class Journal {
 		return new File(dir, name(path));
 	}
 
+	/** Tells whether a file just written holds what it should. */
+	interface Check {
+		boolean whole(File file);
+	}
+
 	/**
 	 * Replace the file name in dir with bytes in one rename, creating
 	 * dir when it is missing. Return whether it was written.
@@ -951,11 +1198,6 @@ final class Journal {
 	static boolean replace(File dir, String name,
 			ProjectFiles.Source source) {
 		return replace(Disk.REAL, dir, name, source, null);
-	}
-
-	/** Tells whether a file just written holds what it should. */
-	interface Check {
-		boolean whole(File file);
 	}
 
 	/**
@@ -1040,6 +1282,7 @@ final class Journal {
 			writeRevision(out, header.keptOver());
 			out.writeInt(revision);
 			out.writeBoolean(header.replaced());
+			out.writeLong(header.id());
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
@@ -1047,7 +1290,8 @@ final class Journal {
 	}
 
 	// Read the header of a header block; one written before the mark
-	// of a reload was kept ends after the revision.
+	// of a reload was kept ends after the revision, one written before
+	// journals had an identity after the mark.
 	private static Header header(DataInputStream in) throws IOException {
 		ProjectParseResult<ProjectPath> path = ProjectPath.parse(
 				in.readUTF());
@@ -1058,8 +1302,9 @@ final class Journal {
 		boolean kept = in.readBoolean();
 		String keptOver = readRevision(in);
 		in.readInt();
-		return new Header(path.value(), base, kept, keptOver,
-				in.available() > 0 && in.readBoolean());
+		boolean replaced = in.available() > 0 && in.readBoolean();
+		return new Header(path.value(), base, kept, keptOver, replaced,
+				in.available() >= 8 ? in.readLong() : 0);
 	}
 
 	// Return the revision a header block names.

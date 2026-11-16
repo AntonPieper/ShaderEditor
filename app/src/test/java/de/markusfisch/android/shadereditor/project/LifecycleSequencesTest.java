@@ -188,7 +188,15 @@ public class LifecycleSequencesTest {
 				Step.RENAME, Step.BACKGROUND, Step.SETTLE, Step.REOPEN),
 		/** The same, after a reload replaced that text. */
 		EVERY_FAULT_RELOADED(3, 211, Step.TYPE, Step.UNDO, Step.RELOAD,
-				Step.RENAME, Step.BACKGROUND, Step.SETTLE, Step.REOPEN);
+				Step.RENAME, Step.BACKGROUND, Step.SETTLE, Step.REOPEN),
+		/**
+		 * The same as the first, with a rename and a deletion taken
+		 * apart: the worker by itself, so the process dies between what
+		 * storage did and what the journal did, and what is typed
+		 * meanwhile.
+		 */
+		EVERY_FAULT_MOVED(3, 71, Step.TYPE, Step.RENAME, Step.DELETE,
+				Step.WORKER, Step.SETTLE, Step.REOPEN);
 
 		private final int length;
 		private final int sequences;
@@ -212,7 +220,8 @@ public class LifecycleSequencesTest {
 
 		// Whether every operation on a file fails once in each sequence.
 		private boolean everyFault() {
-			return this == EVERY_FAULT_HELD || this == EVERY_FAULT_RELOADED;
+			return this == EVERY_FAULT_HELD ||
+					this == EVERY_FAULT_RELOADED || this == EVERY_FAULT_MOVED;
 		}
 
 		// Whether the file may get another name.
@@ -301,7 +310,7 @@ public class LifecycleSequencesTest {
 		}
 		assertEquals(told(), 0, broken.size());
 		assertEquals(expected, counted);
-		assertEquals(5034, injected);
+		assertEquals(12131, injected);
 	}
 
 	// Return what did not hold, each kind with how often and where first.
@@ -335,6 +344,87 @@ public class LifecycleSequencesTest {
 		world.steps.settle();
 		assertEquals("typed 1", journaled());
 		assertTrue(putAside().isEmpty());
+	}
+
+	@Test
+	public void whatAnOpeningCouldNotReadALookAtStorageFinds() {
+		ProjectPath gone = path("gone");
+		ProjectPath there = path("there");
+		int operations = 1;
+		int runs = 0;
+		for (int at = 0; at <= operations; ++at) {
+			for (FaultyDisk.Fault fault : at == 0
+					? new FaultyDisk.Fault[]{FaultyDisk.Fault.NONE}
+					: new FaultyDisk.Fault[]{FaultyDisk.Fault.FAIL,
+							FaultyDisk.Fault.STUCK, FaultyDisk.Fault.SHORT}) {
+				// Unsaved text of a file that is there and of one another
+				// app deleted, in a session whose process died.
+				disk.reset();
+				for (File dir : new File[]{drafts, history}) {
+					for (File file : dir.listFiles()) {
+						assertTrue(file.delete());
+					}
+				}
+				MemoryProjectFiles store = new MemoryProjectFiles();
+				store.writable = true;
+				ProjectSessions sessions = new ProjectSessions(sessionsDir);
+				sessions.disk = disk;
+				Steps steps = new Steps();
+				OpenProject project = OpenProject.open(id, store, null, null,
+						sessions, steps.worker, steps.main, steps.timers,
+						OpenProject.MAX_BUDGET);
+				for (ProjectPath path : List.of(gone, there)) {
+					store.put(path.toString(), "stored");
+					project.load(path, ProjectFiles.UNKNOWN, problem -> {
+					});
+					steps.settle();
+					project.document(path).replace(0, 6,
+							Text.of("typed in " + path));
+				}
+				project.flush(() -> {
+				});
+				steps.settle();
+				store.delete(gone);
+
+				// It opens while an operation fails, goes on failing
+				// until it is open, or a read comes short.
+				String name = fault + " at operation " + at;
+				steps = new Steps();
+				disk.arm(fault, at);
+				OpenProject opened = OpenProject.open(id, store, null, null,
+						sessions, steps.worker, steps.main, steps.timers,
+						OpenProject.MAX_BUDGET);
+				steps.settle();
+				List<FaultyDisk.Kind> kinds = disk.kinds();
+				operations = Math.max(operations, disk.disarm());
+				if (fault == FaultyDisk.Fault.SHORT &&
+						kinds.get(at - 1) != FaultyDisk.Kind.READ) {
+					continue;
+				}
+				++runs;
+				// What it could not read then it says; and a look at
+				// storage, once the files can be read, finds all of it.
+				if (!opened.unsaved().equals(Set.of(gone, there))) {
+					assertNotNull(name, opened.unprotected());
+				}
+				opened.refresh(reread -> {
+				});
+				steps.settle();
+				assertEquals(name, Set.of(gone, there), opened.unsaved());
+				assertNull(name, opened.unprotected());
+				assertEquals(name, Set.of(gone), opened.missing());
+				for (ProjectPath path : List.of(gone, there)) {
+					opened.load(path, ProjectFiles.UNKNOWN,
+							Assert::assertNull);
+					steps.settle();
+					assertEquals(name, "typed in " + path,
+							opened.document(path).text().toString());
+				}
+				opened.close();
+				steps.settle();
+			}
+		}
+		assertEquals(18, runs);
 	}
 
 	@Test
@@ -479,17 +569,39 @@ public class LifecycleSequencesTest {
 			broke(name, e);
 		}
 		++sequences;
+		List<FaultyDisk.Kind> kinds = disk.kinds();
 		if (start.everyFault()) {
 			for (int at = 1; at <= operations; ++at) {
 				for (FaultyDisk.Fault fault : FAULTS) {
-					inject(start, prefix, fault, at);
+					inject(start, prefix, fault, at, false);
+				}
+				// It goes on failing: until the step is over, and
+				// through the opening after the process died.
+				inject(start, prefix, FaultyDisk.Fault.STUCK, at, false);
+				inject(start, prefix, FaultyDisk.Fault.STUCK, at, true);
+				if (kinds.get(at - 1) == FaultyDisk.Kind.READ) {
+					inject(start, prefix, FaultyDisk.Fault.SHORT, at, false);
 				}
 			}
 		} else if (operations > 0 && sequences % SAMPLED == 0) {
 			java.util.Random random = new java.util.Random(SEED * 31 +
 					start.ordinal() * 1_000_003L + sequences);
-			inject(start, prefix, FAULTS[random.nextInt(FAULTS.length)],
-					1 + random.nextInt(operations));
+			int kind = random.nextInt(FAULTS.length + 3);
+			int at = 1 + random.nextInt(operations);
+			if (kind < FAULTS.length) {
+				inject(start, prefix, FAULTS[kind], at, false);
+			} else if (kind < FAULTS.length + 2) {
+				inject(start, prefix, FaultyDisk.Fault.STUCK, at,
+						kind == FAULTS.length);
+			} else {
+				// The read at or after it, or the first one.
+				int read = kinds.subList(at - 1, operations).indexOf(
+						FaultyDisk.Kind.READ);
+				read = read >= 0 ? at + read
+						: 1 + kinds.indexOf(FaultyDisk.Kind.READ);
+				inject(start, prefix, read > 0 ? FaultyDisk.Fault.SHORT
+						: FaultyDisk.Fault.FAIL, Math.max(read, at), false);
+			}
 		}
 		for (Step step : next) {
 			prefix.add(step);
@@ -504,10 +616,14 @@ public class LifecycleSequencesTest {
 
 	// Run the steps again while the operation numbered at fails, or
 	// the process dies after it; then the process dies, and what opens
-	// is compared as always.
+	// is compared as always. What goes on failing does so until the
+	// step is over, or, with through, until the process died and the
+	// project was opened once more: so what a project does to recover
+	// when it opens fails as well.
 	private void inject(Start start, List<Step> prefix,
-			FaultyDisk.Fault fault, int at) {
+			FaultyDisk.Fault fault, int at, boolean through) {
 		String name = start + " " + prefix + ", " + fault +
+				(through ? " through an opening" : "") +
 				" at operation " + at;
 		++injected;
 		try {
@@ -516,6 +632,12 @@ public class LifecycleSequencesTest {
 			try {
 				for (Step step : prefix) {
 					world.take(step, name);
+					if (!through) {
+						disk.heal();
+					}
+				}
+				if (disk.stuck()) {
+					world.opening();
 				}
 			} catch (FaultyDisk.Death e) {
 				// The process died there.
@@ -663,6 +785,14 @@ public class LifecycleSequencesTest {
 		// given while its files could not be read: it is to be there
 		// once they can.
 		private final Set<String> owed = new HashSet<>();
+		// What the user held when the process died that an opening
+		// with files that could not be read did not show: one of these
+		// is to be found once they can, as the text of the file, by
+		// undo, in a journal or kept beside one.
+		private final Set<String> hidden = new HashSet<>();
+		// What the user held at such an opening: any of it may be what
+		// opens once the files can be read.
+		private final Set<String> later = new HashSet<>();
 		// Whether this is the last opening, with files that can be read.
 		private boolean ending;
 		// Whether another app deleted the file, and the user asked for
@@ -819,24 +949,27 @@ public class LifecycleSequencesTest {
 					document != null);
 		}
 
-		// Unsaved text that could not be read while a file could not
-		// be: tried again, as the user would.
-		private void readAgain(ProjectPath path) {
-			if (document != null && project.unreadable(path) != null &&
-					disk.happened() && !disk.denied) {
-				project.reread(path, problem -> {
-				});
-				steps.settle();
-				document = project.document(path);
-			}
-		}
-
+		// Where a journal could not be read the stored text is shown,
+		// and the steps go on from that, as the user may.
 		private void load(ProjectPath path) {
 			project.load(path, ProjectFiles.UNKNOWN,
 					problem -> project.show(path));
 			steps.settle();
 			document = project.document(path);
-			readAgain(path);
+		}
+
+		// Return whether what is left under the name before a rename
+		// is only left to be deleted: its text is under the new one.
+		private boolean followed() {
+			Journal.Note note = new ProjectSessions(sessionsDir)
+					.journal(id).note();
+			boolean followed = note != null;
+			for (Journal.Noted noted : note != null
+					? note.files()
+					: List.<Journal.Noted>of()) {
+				followed &= noted.followed();
+			}
+			return followed;
 		}
 
 		// Return where the project has the document, or null when it
@@ -883,7 +1016,8 @@ public class LifecycleSequencesTest {
 									start.steps != null);
 					case RENAME, DELETE -> !closed && step != last &&
 							start.moves() && at() != null &&
-							(step == Step.RENAME || start == Start.MOVED);
+							(step == Step.RENAME || start == Start.MOVED ||
+									start == Start.EVERY_FAULT_MOVED);
 					case CLOSE -> !closed && start != Start.LARGE;
 					case TIMER -> !closed && steps.later.size() > 0;
 					case WORKER -> steps.worker.size() > 0;
@@ -1065,11 +1199,15 @@ public class LifecycleSequencesTest {
 					// rename it could not follow yet it holds it under
 					// the name before, noted to follow.
 					String held = journaled(at);
-					if (held == null && disk.happened()) {
+					if (held == null && disk.happened() && !followed()) {
 						held = journaled(at == A ? B : A);
 					}
-					assertEquals(sequence + ": settled, journal",
-							document.isModified() ? now : null, held);
+					// One that could not be read when the file was
+					// opened holds what it held, and is told as that.
+					if (project.unreadable(at) == null) {
+						assertEquals(sequence + ": settled, journal",
+								document.isModified() ? now : null, held);
+					}
 				}
 			} else if (!failed && !disk.happened() && idle &&
 					steps.later.size() == 0) {
@@ -1103,18 +1241,61 @@ public class LifecycleSequencesTest {
 			Set<String> may = new HashSet<>(texts.subList(floor,
 					texts.size()));
 			may.addAll(givenUp);
+			Set<String> held = new HashSet<>(may);
+			// What an opening before could not show may be shown now.
+			may.addAll(later);
+			// What the files hold of it, now that the process is dead.
+			Set<String> onDisk = new HashSet<>(putAside());
+			onDisk.add(String.valueOf(journaled(A)));
+			onDisk.add(String.valueOf(journaled(B)));
+			onDisk.retainAll(held);
+			// Not what the user gave up with the file they deleted.
+			for (int i = 0; i < deleteAt; ++i) {
+				onDisk.remove(texts.get(i));
+			}
 			// What a reload replaced and the history still leads to.
 			if (document != null) {
 				owed.addAll(reached(document, replaced));
 			}
 			Set<String> wanted = new HashSet<>(this.wanted);
 			Set<String> askedOver = new HashSet<>(this.askedOver);
+			boolean opened = !start.moves();
 			if (start.moves()) {
-				if (!moved(sequence, may)) {
-					return;
-				}
+				opened = moved(sequence, may);
 			} else {
 				open();
+			}
+			// What was held and is not shown now, while a file could not
+			// be read, is there all the same; and once every file can
+			// be read, it is found.
+			boolean whole = ending || !disk.happened();
+			String shown = document != null
+					? document.text().toString()
+					: null;
+			if (!whole) {
+				later.addAll(held);
+				if (!held.contains(shown)) {
+					hidden.addAll(onDisk);
+				}
+			} else if (!hidden.isEmpty()) {
+				Set<String> there = new HashSet<>(putAside());
+				there.add(String.valueOf(journaled(A)));
+				there.add(String.valueOf(journaled(B)));
+				if (document != null) {
+					there.add(shown);
+					there.addAll(reached(document, hidden));
+				}
+				there.retainAll(hidden);
+				assertFalse(sequence + ": what an opening could not show" +
+						" is gone for good: " + brief(hidden),
+						there.isEmpty());
+				hidden.clear();
+			}
+			if (whole) {
+				later.clear();
+			}
+			if (!opened) {
+				return;
 			}
 			// Only now: an opening the process died in is none.
 			this.wanted.clear();
@@ -1189,28 +1370,43 @@ public class LifecycleSequencesTest {
 		// then it opens for good, and everything is compared.
 		private void end(String sequence, boolean denied) {
 			if (denied) {
-				if (document != null) {
-					owed.addAll(reached(document, replaced));
-				}
-				disk.denied = true;
+				// One of the ways in which files fail for a while, each
+				// in its turn: none can be read, the folder cannot be
+				// listed, nothing can be written, reads come short,
+				// nothing can be renamed or deleted.
+				int way = sequences % 5;
+				disk.denied = way == 0;
+				disk.unlisted = way == 1;
+				disk.full = way == 2;
+				disk.shortened = way == 3;
+				disk.unrenamed = disk.undeleted = way == 4;
 				try {
-					steps = new Steps();
-					OpenProject unreadable = OpenProject.open(id, store,
-							null, null, sessions(), steps.worker, steps.main,
-							steps.timers, OpenProject.MAX_BUDGET);
-					for (ProjectPath path : List.of(A, B)) {
-						unreadable.load(path, ProjectFiles.UNKNOWN,
-								problem -> {
-								});
-					}
-					steps.settle();
-					// What was open before stays what is compared.
+					opening();
 				} finally {
-					disk.denied = false;
+					disk.denied = disk.unlisted = disk.full = false;
+					disk.shortened = disk.unrenamed = disk.undeleted = false;
 				}
 			}
 			ending = true;
 			die(sequence);
+		}
+
+		// The process dies and the project is opened while files fail,
+		// with both files; nothing is done there, and the process dies
+		// again. What was open before stays what is compared.
+		private void opening() {
+			if (document != null) {
+				owed.addAll(reached(document, replaced));
+			}
+			steps = new Steps();
+			OpenProject failing = OpenProject.open(id, store, null, null,
+					sessions(), steps.worker, steps.main, steps.timers,
+					OpenProject.MAX_BUDGET);
+			for (ProjectPath path : List.of(A, B)) {
+				failing.load(path, ProjectFiles.UNKNOWN, problem -> {
+				});
+			}
+			steps.settle();
 		}
 
 		// A file another app deleted is made again only when the user
@@ -1270,7 +1466,7 @@ public class LifecycleSequencesTest {
 			if (readable) {
 				assertTrue(state, unsaved.size() <= 1);
 				assertNull(state, new ProjectSessions(sessionsDir)
-						.journal(id).move());
+						.journal(id).note());
 				assertTrue(state, project.conflicts().isEmpty() ||
 						stored.isEmpty());
 			}
@@ -1284,9 +1480,14 @@ public class LifecycleSequencesTest {
 					return false;
 				}
 				load(unsaved.iterator().next());
+				// Not what the deletion was asked for; but what an
+				// opening could not show was never given up with it.
 				assertTrue(state + ": text given up with the file is back",
-						texts.indexOf(document.text().toString()) >=
-								deleteAt);
+						!readable || may.contains(
+								document.text().toString()) &&
+								hidden.contains(document.text().toString()) ||
+								texts.indexOf(document.text().toString()) >=
+										deleteAt);
 				return true;
 			}
 			assertTrue(state, !readable || unsaved.isEmpty() ||

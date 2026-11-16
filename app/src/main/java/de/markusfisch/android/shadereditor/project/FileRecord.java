@@ -56,7 +56,8 @@ final class FileRecord {
 		TEXT,
 		/**
 		 * One is there that could not be read. It stays as it is until
-		 * the user gives it up or types, which writes a new one over it.
+		 * the user gives it up; when they type, the journal puts it
+		 * aside before the text typed takes its name.
 		 */
 		UNREADABLE,
 		/**
@@ -112,6 +113,11 @@ final class FileRecord {
 	private Journaled journal = Journaled.NONE;
 	private String unreadable;
 	private boolean damaged;
+	// The identity of the journal that holds the unsaved text, see
+	// Journal.Header: the same for every write of it, another for text
+	// that starts anew, so that what a rename or a deletion was noted
+	// for is never taken for what was typed afterwards.
+	private long lineage;
 	// Why the last write of the journal failed, or null.
 	private String failure;
 	// The write the journal continues from, -1 when it starts again
@@ -164,6 +170,12 @@ final class FileRecord {
 	 */
 	void discard(boolean deleting) {
 		discarding = deleting ? stamp() : KEPT;
+		if (deleting) {
+			// The journal as it is goes with the file. What is typed
+			// from now on is another text, written whole.
+			lineage = Journal.identity();
+			at = -1;
+		}
 	}
 
 	/**
@@ -184,6 +196,7 @@ final class FileRecord {
 		journal = Journaled.NONE;
 		unreadable = null;
 		at = -1;
+		lineage = Journal.identity();
 		replaced.clear();
 		// Deleted here, not elsewhere: the text is of no file.
 		base = null;
@@ -330,6 +343,7 @@ final class FileRecord {
 		base = header.base();
 		kept = header.kept();
 		journal = Journaled.TEXT;
+		lineage = header.id();
 		see(found, revision);
 	}
 
@@ -410,9 +424,18 @@ final class FileRecord {
 	 */
 	boolean adoptOpened(Request request, Document document,
 			String revision, int journal, List<Replaced> replaced) {
+		return adoptOpened(request, document, revision, journal, 0,
+				replaced);
+	}
+
+	/** The same, of a journal of identity id. */
+	boolean adoptOpened(Request request, Document document,
+			String revision, int journal, long id,
+			List<Replaced> replaced) {
 		if (request != op || this.document != null) {
 			return false;
 		}
+		lineage = id;
 		this.document = document;
 		base = revision;
 		if (journal < 0) {
@@ -611,14 +634,19 @@ final class FileRecord {
 		}
 		changes = new ArrayList<>();
 		flushed = revision;
-		// Typed over one that could not be read: the snapshot takes its
-		// place.
+		if (journal != Journaled.TEXT) {
+			// Unsaved text that starts anew: no journal that is there,
+			// one that could not be read least of all, is its earlier
+			// state, and the journal writes over none that is not.
+			lineage = Journal.identity();
+		}
 		journal = Journaled.TEXT;
 		unreadable = null;
 		int from = unsure ? -1 : at;
 		at = ++writes;
 		return new Flush(new Journal.Header(path, base, kept,
-				kept ? base : null), document.text(), from, writes, changed);
+				kept ? base : null, false, lineage), document.text(), from,
+				writes, changed);
 	}
 
 	/**
