@@ -326,6 +326,16 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 				: null;
 	}
 
+	/** Return whether goTo can list where to go. */
+	public boolean canGoTo() {
+		return editor.canGoTo();
+	}
+
+	/** List where to go in the file and the files it includes. */
+	public void goTo() {
+		editor.goTo();
+	}
+
 	/** Give the code the focus and the keyboard. */
 	public void showKeyboard() {
 		SoftKeyboard.show(getActivity(), editor.getView());

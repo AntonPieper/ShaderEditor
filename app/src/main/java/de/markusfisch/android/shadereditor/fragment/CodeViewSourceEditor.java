@@ -38,7 +38,9 @@ import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
+import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.widget.CodeView;
+import de.markusfisch.android.shadereditor.widget.GoToSheet;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
 import de.markusfisch.android.shadereditor.widget.ShaderToySource;
@@ -176,19 +178,13 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 				@Override
 				public void goToLine(int line) {
-					navigateToLine(line + 1);
+					jump(null, line + 1);
 				}
 
 				@Override
 				public void open(@NonNull String file, int line) {
 					// As Open in the strip does, with the way back.
-					ProjectParseResult<ProjectPath> path =
-							ProjectPath.parse(file);
-					if (links != null && path.isSuccess()) {
-						links.open(path.value(), line + 1);
-					} else if (listener != null) {
-						listener.onOpenFile(file, line + 1);
-					}
+					jump(file, line + 1);
 				}
 
 				// The call the caret is in can be shown now.
@@ -414,6 +410,41 @@ final class CodeViewSourceEditor implements SourceEditor {
 	public void lookUp(@NonNull String word) {
 		if (hasDocs(word)) {
 			docs.lookUp(word);
+		}
+	}
+
+	// Go to works where Look up does: in GLSL of a file of a folder.
+	@Override
+	public boolean canGoTo() {
+		return links != null && docs != null && styles.syntax() == DATABASE;
+	}
+
+	@Override
+	public void goTo() {
+		if (!canGoTo()) {
+			return;
+		}
+		Text text = document.text();
+		new GoToSheet(view.getContext(), GoToSheet.outline(
+				view.getAnalysis().knowledge(), text, scope), text,
+				ShaderEditorApp.preferences.getFont(),
+				row -> jump(row.file(), row.line() + 1)).show();
+	}
+
+	// Goes to line, from 1, or where the caret is for 0, of file, a path
+	// of the project, or of the file shown for null, as Open does: the
+	// strip's key leads back.
+	private void jump(@Nullable String file, int line) {
+		ProjectParseResult<ProjectPath> path = file != null
+				? ProjectPath.parse(file)
+				: null;
+		if (links != null && (path == null || path.isSuccess())) {
+			links.open(path != null ? path.value() : links.file(),
+					Math.max(0, line));
+		} else if (file == null) {
+			navigateToLine(line);
+		} else if (listener != null) {
+			listener.onOpenFile(file, line);
 		}
 	}
 
