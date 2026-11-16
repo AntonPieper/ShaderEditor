@@ -15,8 +15,8 @@ import de.markusfisch.android.shadereditor.editor.Text;
  * back into a word, it goes by character, keeping its distance to the
  * finger, until it is at the end of a word again. While a drag by word
  * is in progress (after a long press or a double tap), the handles do
- * not show, as the platform's do not; while any drag is in progress,
- * the floating toolbar does not show. Offsets count into the whole
+ * not show, as the platform's do not; whether a drag is in progress is
+ * the view's to know. Offsets count into the whole
  * text; the work is that of one line, and a drag allocates only when
  * the selection changes.
  */
@@ -46,8 +46,6 @@ final class TouchSelection {
 	private int reached;
 	// From the offset of the finger to the head a handle is at.
 	private int delta;
-	// Whether a drag is in progress, from its start to drop.
-	private boolean dragging;
 
 	TouchSelection(Motion motion) {
 		this.motion = motion;
@@ -91,7 +89,6 @@ final class TouchSelection {
 
 	/** Start a drag by character from anchor, the head at head. */
 	void dragChars(int anchor, int head) {
-		dragging = true;
 		unit = CHARS;
 		this.anchor = anchor;
 		this.head = head;
@@ -101,7 +98,6 @@ final class TouchSelection {
 	/** Start a drag by word from the word at offset, and select it. */
 	void dragWords(Text text, int offset) {
 		Selection word = motion.wordAt(text, offset);
-		dragging = true;
 		unit = WORDS;
 		anchor = wordStart = word.start();
 		head = wordEnd = word.end();
@@ -189,22 +185,13 @@ final class TouchSelection {
 				word.start() - text.lineStart(line)));
 	}
 
-	/** The finger lifted: the drag is over. */
-	void drop() {
-		dragging = false;
-	}
-
 	/**
-	 * Return whether the handles show: not while a drag by word or by
-	 * character is in progress, only the handle being dragged.
+	 * Return whether the handles show: not while the drag started last
+	 * is by word or by character and in progress, only the handle being
+	 * dragged.
 	 */
-	boolean showsHandles() {
+	boolean showsHandles(boolean dragging) {
 		return !dragging || unit == HANDLE || unit == CARET;
-	}
-
-	/** Return whether the toolbar shows: not while a drag is in progress. */
-	boolean showsToolbar() {
-		return !dragging;
 	}
 
 	/**
