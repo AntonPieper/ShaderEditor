@@ -439,10 +439,7 @@ final class Journal {
 	boolean setHeader(Header header) {
 		Recovered recovered = read(header.path());
 		return recovered != null && recovered.text() != null &&
-				snapshot(new Header(header.path(), header.base(),
-						header.kept(), header.keptOver(), false,
-						recovered.header().id()), recovered.revision(),
-						recovered.text());
+				snapshot(header, recovered.revision(), recovered.text());
 	}
 
 	/**
@@ -757,9 +754,24 @@ final class Journal {
 	}
 
 	/**
-	 * Return the note of the move that is under way, or null. One of
-	 * the form before notes named their files names none, so replaying
-	 * it touches nothing.
+	 * Return whether note names the journal of path as one of identity
+	 * id: then that journal is what the rename or the deletion was
+	 * for, whoever finds it under the name.
+	 */
+	boolean names(Note note, ProjectPath path, long id) {
+		String name = name(path);
+		for (Noted noted : note.files()) {
+			if (noted.id() == id && noted.name().equals(name)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Return the note of the move that is under way, or null, also for
+	 * one that cannot be read now. One of the form before notes named
+	 * their files is for every file at and under its path.
 	 */
 	Note note() {
 		File file = new File(dir, MOVE);
@@ -780,13 +792,19 @@ final class Journal {
 			if (!from.isSuccess() || moved && !to.isSuccess()) {
 				return null;
 			}
+			Move move = new Move(from.value(), moved ? to.value() : null);
+			if (in.available() == 0) {
+				// Of a build before notes named their files, which
+				// meant every one at and under the path: those that
+				// are there now. Null while they cannot be told.
+				return noted(move);
+			}
 			List<Noted> files = new ArrayList<>();
-			for (int i = in.available() > 0 ? in.readInt() : 0; i-- > 0; ) {
+			for (int i = in.readInt(); i-- > 0; ) {
 				files.add(new Noted(in.readUTF(), in.readLong(),
 						in.readBoolean()));
 			}
-			return new Note(new Move(from.value(),
-					moved ? to.value() : null), files);
+			return new Note(move, files);
 		} catch (IOException | RuntimeException e) {
 			return null;
 		}
@@ -838,8 +856,11 @@ final class Journal {
 						left.add(noted);
 					}
 				} else if (move.touches(path) && named(file, path)) {
+					// What was noted as a journal is one under the new
+					// name too, also when it was put aside since.
 					Followed followed = follow(file, header, path,
-							move.moved(path));
+							move.moved(path),
+							noted.name().endsWith(SUFFIX));
 					if (followed != Followed.DONE) {
 						left.add(new Noted(noted.name(), noted.id(),
 								followed == Followed.WRITTEN));
@@ -887,13 +908,13 @@ final class Journal {
 	}
 
 	// Let file, the journal of path or a text a reload replaced of it,
-	// be that of to, or go with its file when to is null. header is
-	// null for one that has none that is whole.
+	// be that of to, a journal there when journal, or go with its file
+	// when to is null. header is null for one that has none that is
+	// whole.
 	private Followed follow(File file, Header header, ProjectPath path,
-			ProjectPath to) {
-		boolean journal = file.getName().endsWith(SUFFIX);
+			ProjectPath to, boolean journal) {
 		tails.remove(path);
-		if (journal) {
+		if (file.getName().endsWith(SUFFIX)) {
 			ids.remove(path);
 		}
 		if (to == null) {

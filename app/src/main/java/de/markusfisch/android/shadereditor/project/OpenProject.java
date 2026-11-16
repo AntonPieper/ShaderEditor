@@ -477,7 +477,7 @@ public final class OpenProject {
 			ProjectPath path = unsaved.header().path();
 			if (!records.containsKey(path)) {
 				record(path).recover(unsaved.header(), unsaved.found(),
-						unsaved.revision());
+						unsaved.revision(), unsaved.noted());
 			}
 		}
 	}
@@ -1186,8 +1186,8 @@ public final class OpenProject {
 		if (record.document() != null) {
 			flush(record);
 		} else {
-			texts.header(new Journal.Header(path, seen, true, seen),
-					kept -> {
+			texts.header(new Journal.Header(path, seen, true, seen, false,
+					record.lineage()), kept -> {
 						record.headerKept(kept);
 						changed();
 					});
@@ -2046,7 +2046,8 @@ public final class OpenProject {
 		Document document = opened.document();
 		if (records.get(record.path) != record ||
 				!record.adoptOpened(request, document, opened.revision(),
-						opened.journal(), opened.id(), opened.replaced())) {
+						opened.journal(), opened.id(), opened.noted(),
+						opened.replaced())) {
 			return false;
 		}
 		record.historyAt = document.revision();

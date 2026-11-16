@@ -45,7 +45,9 @@ public final class FileTexts {
 	 * journal's text when unsaved, else of the stored text, with the
 	 * undo history kept for that text; the revision of the stored text
 	 * it is based on, null for none; the revision of the journal it came
-	 * from, -1 for none, and the identity of that journal; and why its
+	 * from, -1 for none, the identity of that journal, and whether a
+	 * note of a rename or a deletion names it, so that it is the text
+	 * of the file that left the name; and why its
 	 * journal could not be read, so the
 	 * stored text was opened instead, else null. A document of unsaved
 	 * text starts modified, whatever its history; replaced are the
@@ -54,8 +56,9 @@ public final class FileTexts {
 	 * worker, so a device without the memory for it is told there.
 	 */
 	public record Opened(Document document, boolean unsaved,
-			String revision, int journal, long id, String unreadable,
-			boolean damaged, List<FileRecord.Replaced> replaced)
+			String revision, int journal, long id, boolean noted,
+			String unreadable, boolean damaged,
+			List<FileRecord.Replaced> replaced)
 			implements Opening {
 		public Text text() {
 			return document.text();
@@ -149,7 +152,8 @@ public final class FileTexts {
 			try {
 				opening = withHistory(path, unread == null &&
 						recovered != null
-						? recovered(path, recovered)
+						? recovered(path, recovered, noted(path,
+								recovered.header().id()))
 						: read(path, size, unread));
 			} catch (OutOfMemoryError e) {
 				opening = tooLargeHere(path, unread);
@@ -408,11 +412,32 @@ public final class FileTexts {
 		return null;
 	}
 
+	// Return whether a note that stands names the journal of path, of
+	// identity id: one that could not be followed yet in this process,
+	// or one a project before left. A note that is there and cannot be
+	// read now may name it.
+	private boolean noted(ProjectPath path, long id) {
+		if (unfollowed != null) {
+			return journal.names(unfollowed, path, id);
+		} else if (!journal.moving()) {
+			return false;
+		}
+		Journal.Note note = journal.note();
+		return note == null || journal.names(note, path, id);
+	}
+
 	// Let the journals, the histories and what is kept by path follow
 	// the move of note. Return what is left of it to follow, which
 	// stays noted so that the next task, or the next opening, tries
 	// again; null when nothing is.
 	private Journal.Note follow(Journal.Note note) {
+		if (note.move().to() == null &&
+				Boolean.TRUE.equals(exists(note.move().from()))) {
+			// Storage has a file there again: the deletion is over,
+			// and what is under the name now is that file's.
+			journal.setNote(null);
+			return null;
+		}
 		Journal.Note left = journal.follow(note);
 		histories.follow(note.move());
 		boolean followed = left.files().isEmpty() &&
@@ -428,9 +453,11 @@ public final class FileTexts {
 
 	/**
 	 * A file found to have unsaved text when the journals were looked
-	 * at: the header of its journal, and what storage holds of it.
+	 * at: the header of its journal, what storage holds of it, and
+	 * whether a note of a rename or a deletion names that journal.
 	 */
-	record Unsaved(Journal.Header header, Found found, String revision) {
+	record Unsaved(Journal.Header header, Found found, String revision,
+			boolean noted) {
 	}
 
 	/**
@@ -474,7 +501,7 @@ public final class FileTexts {
 				// user asked, and undo leads to the text.
 			} else {
 				unsaved.add(new Unsaved(header, checked.found(),
-						checked.revision()));
+						checked.revision(), noted(path, header.id())));
 			}
 		}
 		// Text a reload replaced, of a file that is gone and has no
@@ -496,7 +523,8 @@ public final class FileTexts {
 							Found.MISSING && journal.promote(path)) {
 				Journal.Header header = journal.header(path);
 				if (header != null) {
-					unsaved.add(new Unsaved(header, Found.MISSING, null));
+					unsaved.add(new Unsaved(header, Found.MISSING, null,
+							false));
 				}
 			}
 		}
@@ -772,8 +800,8 @@ public final class FileTexts {
 		document.markSaved(opened.unsaved() ? -1 : document.state());
 		return reached == null || reached.isEmpty() ? opened : new Opened(
 				document, opened.unsaved(), opened.revision(),
-				opened.journal(), opened.id(), opened.unreadable(),
-				opened.damaged(), reached);
+				opened.journal(), opened.id(), opened.noted(),
+				opened.unreadable(), opened.damaged(), reached);
 	}
 
 	// Return, for each of replaced, the state at which undo or redo of
@@ -850,14 +878,14 @@ public final class FileTexts {
 
 	// Return the text recovered from the journal of path.
 	private static Opening recovered(ProjectPath path,
-			Journal.Recovered recovered) {
+			Journal.Recovered recovered, boolean noted) {
 		if (recovered.tooLarge()) {
 			return tooLarge(path, null, null);
 		}
 		Text text = recovered.text();
 		return new Opened(new Document(text, Document.bytes(text)), true,
 				recovered.header().base(), recovered.revision(),
-				recovered.header().id(), null, false, List.of());
+				recovered.header().id(), noted, null, false, List.of());
 	}
 
 	// Why the journal of a file could not be read, and whether it is
@@ -904,7 +932,7 @@ public final class FileTexts {
 					Found.NOT_TEXT, content.revision());
 		}
 		return new Opened(new Document(text, Document.bytes(text)), false,
-				content.revision(), -1, 0,
+				content.revision(), -1, 0, false,
 				unread != null ? unread.reason() : null,
 				unread != null && unread.damaged(), List.of());
 	}

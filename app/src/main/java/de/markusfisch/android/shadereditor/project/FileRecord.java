@@ -114,10 +114,28 @@ final class FileRecord {
 	private String unreadable;
 	private boolean damaged;
 	// The identity of the journal that holds the unsaved text, see
-	// Journal.Header: the same for every write of it, another for text
-	// that starts anew, so that what a rename or a deletion was noted
-	// for is never taken for what was typed afterwards.
+	// Journal.Header. An identity belongs to one continuous text: the
+	// same for every write of it, another for text that starts anew,
+	// so that what a rename or a deletion was noted for is never taken
+	// for what came afterwards. A record therefore continues the
+	// identity of the journal it finds only when no note of a rename
+	// or a deletion names that journal. One that a note names is the
+	// text of the file that was renamed away or deleted, whatever is
+	// under its name now: a new file there, or the same text listed
+	// again because the note could not be finished. As long as the
+	// user only looks at it, nothing is written and it stays what the
+	// note names. What they do with it, typing or keeping it, is
+	// another text with another identity, written whole, and the
+	// journal puts the noted one aside for its note instead of writing
+	// over it. So replaying a note can only ever take what the note
+	// was made for. And a note does not outlast what it is about: the
+	// note of a deletion is dropped the moment storage has a file at
+	// its path again (FileTexts), so that what is under the name then
+	// is that file's alone.
 	private long lineage;
+	// Whether a note names the journal that is there, so that the next
+	// text written is another one's.
+	private boolean another;
 	// Why the last write of the journal failed, or null.
 	private String failure;
 	// The write the journal continues from, -1 when it starts again
@@ -340,11 +358,40 @@ final class FileRecord {
 	 */
 	void recover(Journal.Header header, FileTexts.Found found,
 			String revision) {
+		recover(header, found, revision, false);
+	}
+
+	/**
+	 * The same; noted tells that a note of a rename or a deletion names
+	 * the journal, so its identity is not continued.
+	 */
+	void recover(Journal.Header header, FileTexts.Found found,
+			String revision, boolean noted) {
 		base = header.base();
 		kept = header.kept();
 		journal = Journaled.TEXT;
 		lineage = header.id();
+		another = noted;
 		see(found, revision);
+	}
+
+	// The user goes on with the text. Where a note names the journal
+	// that is there, it is another text from here: written whole, with
+	// an identity of its own.
+	private void goOn() {
+		if (another) {
+			lineage = Journal.identity();
+			another = false;
+			at = -1;
+		}
+	}
+
+	/**
+	 * Return the identity the journal of the file has, or is to have
+	 * with its next write.
+	 */
+	long lineage() {
+		return lineage;
 	}
 
 	/**
@@ -432,10 +479,22 @@ final class FileRecord {
 	boolean adoptOpened(Request request, Document document,
 			String revision, int journal, long id,
 			List<Replaced> replaced) {
+		return adoptOpened(request, document, revision, journal, id, false,
+				replaced);
+	}
+
+	/**
+	 * The same; noted tells that a note of a rename or a deletion names
+	 * the journal, so its identity is not continued.
+	 */
+	boolean adoptOpened(Request request, Document document,
+			String revision, int journal, long id, boolean noted,
+			List<Replaced> replaced) {
 		if (request != op || this.document != null) {
 			return false;
 		}
 		lineage = id;
+		another = journal >= 0 && noted;
 		this.document = document;
 		base = revision;
 		if (journal < 0) {
@@ -540,6 +599,7 @@ final class FileRecord {
 	 * consented to overwrite it at the next explicit save.
 	 */
 	void consent(String revision) {
+		goOn();
 		base = revision;
 		kept = true;
 		// No text the document had is what storage holds there.
@@ -642,6 +702,7 @@ final class FileRecord {
 		}
 		journal = Journaled.TEXT;
 		unreadable = null;
+		goOn();
 		int from = unsure ? -1 : at;
 		at = ++writes;
 		return new Flush(new Journal.Header(path, base, kept,
