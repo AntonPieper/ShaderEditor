@@ -198,11 +198,16 @@ final class FolderSource {
 		return project;
 	}
 
-	/** The names in the folder of level, as far as it was read. */
+	/**
+	 * The names in the folder that holds path, as far as it was read;
+	 * a row of Running may not be in the folder it is listed in.
+	 */
 	@NonNull
-	List<String> names(@NonNull Level level) {
+	List<String> namesBeside(@NonNull ProjectPath path) {
+		String at = path.toString();
+		int slash = at.lastIndexOf('/');
 		List<String> names = new ArrayList<>();
-		Reading reading = readings.get(path(level));
+		Reading reading = readings.get(slash < 0 ? "" : at.substring(0, slash));
 		if (reading != null) {
 			for (Reading.Entry entry : reading.entries()) {
 				names.add(entry.name());

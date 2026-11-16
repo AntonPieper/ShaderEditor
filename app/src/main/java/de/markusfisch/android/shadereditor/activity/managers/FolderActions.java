@@ -73,9 +73,9 @@ final class FolderActions {
 			case NEW_HERE -> host.showNew(key, path,
 					source.title(level) + " / " + row.name());
 			case DUPLICATE -> duplicate(key, project, path,
-					source.names(level));
-			case RENAME -> rename(key, project, path, row,
-					source.names(level));
+					source.namesBeside(path));
+			case RENAME -> rename(key, project, path,
+					source.namesBeside(path));
 			case DELETE -> delete(key, project, path, row);
 			default -> {
 			}
@@ -118,9 +118,10 @@ final class FolderActions {
 	}
 
 	private void rename(@NonNull String key, @NonNull OpenProject project,
-			@NonNull ProjectPath path, @NonNull Row row,
-			@NonNull List<String> names) {
-		names.remove(row.name());
+			@NonNull ProjectPath path, @NonNull List<String> names) {
+		// Its own name, also where a row names it by its path.
+		String old = path.getFileName();
+		names.remove(old);
 		Naming naming = new Naming(names);
 		RenameDialog.Shown[] shown = {null};
 		// The lines of the running shader that name it change with it.
@@ -129,11 +130,11 @@ final class FolderActions {
 				: List.of();
 		CharSequence also = RenameReferences.sentence(activity, named);
 		shown[0] = RenameDialog.show(activity, R.string.nav_rename,
-				row.name(), name ->
+				old, name ->
 						NewSheet.describe(activity, naming.check(name), name),
 				also == null ? uses(project, path) : null, also, name -> {
 					ProjectPath to = sibling(path, name);
-					if (to == null || name.equals(row.name())) {
+					if (to == null || name.equals(old)) {
 						shown[0].dismiss();
 						return;
 					}
