@@ -28,7 +28,7 @@ interface SourceEditor {
 		 * Called with the text the update delay after the last edit,
 		 * and at once after a new text.
 		 */
-		void onEditPaused(@NonNull String text);
+		void onEditPaused(@NonNull CharSequence text);
 
 		/**
 		 * Called with the words to offer at the caret and how many

@@ -252,7 +252,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		convert = true;
 		if (listener != null) {
 			listener.onTextModified();
-			listener.onEditPaused(getText());
+			listener.onEditPaused(pausedText());
 		}
 	}
 
@@ -852,7 +852,37 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	private void editPaused() {
 		if (listener != null) {
-			listener.onEditPaused(getText());
+			listener.onEditPaused(pausedText());
 		}
+	}
+
+	// The text as it is now, copied only when it is read: where files
+	// run, a pause needs no copy of it.
+	@NonNull
+	private CharSequence pausedText() {
+		Text text = document.text();
+		return new CharSequence() {
+			@Override
+			public int length() {
+				return text.length();
+			}
+
+			@Override
+			public char charAt(int index) {
+				return text.substring(index, index + 1).charAt(0);
+			}
+
+			@NonNull
+			@Override
+			public CharSequence subSequence(int start, int end) {
+				return text.substring(start, end);
+			}
+
+			@NonNull
+			@Override
+			public String toString() {
+				return text.toString();
+			}
+		};
 	}
 }

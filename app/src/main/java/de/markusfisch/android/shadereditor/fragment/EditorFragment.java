@@ -136,7 +136,7 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 			}
 
 			@Override
-			public void onEditPaused(@NonNull String text) {
+			public void onEditPaused(@NonNull CharSequence text) {
 				if (editPausedListener != null) {
 					editPausedListener.onEditPaused(text);
 				}
