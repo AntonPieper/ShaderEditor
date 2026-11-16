@@ -19,6 +19,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -119,16 +121,34 @@ public final class GoToSheet {
 		BottomSheetBehavior<?> behavior = dialog.getBehavior();
 		behavior.setSkipCollapsed(true);
 		behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+		// From 8 dp under the status bar down to the keyboard, which the
+		// window makes room for, so that the list is never under either.
+		int gap = Math.round(8 * context.getResources().getDisplayMetrics()
+				.density);
+		int[] top = new int[1];
+		ViewCompat.setOnApplyWindowInsetsListener(view, (v, insets) -> {
+			top[0] = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+					.top;
+			v.setPadding(v.getPaddingLeft(), v.getPaddingTop(),
+					v.getPaddingRight(), insets.isVisible(
+							WindowInsetsCompat.Type.ime())
+							? 0
+							: insets.getInsets(WindowInsetsCompat.Type
+							.navigationBars()).bottom);
+			return insets;
+		});
 		dialog.setOnShowListener(d -> {
-			// From the top to the keyboard, so that the list is never
-			// under it.
-			View sheet = dialog.findViewById(com.google.android.material.R
-					.id.design_bottom_sheet);
-			if (sheet != null) {
-				sheet.getLayoutParams().height =
-						ViewGroup.LayoutParams.MATCH_PARENT;
-				sheet.requestLayout();
-			}
+			View sheet = (View) view.getParent();
+			View parent = (View) sheet.getParent();
+			parent.addOnLayoutChangeListener((p, left, t, right, bottom,
+					oldLeft, oldTop, oldRight, oldBottom) -> {
+				int height = bottom - t - gap - top[0];
+				if (sheet.getLayoutParams().height != height) {
+					sheet.getLayoutParams().height = height;
+					sheet.post(sheet::requestLayout);
+				}
+			});
+			parent.requestLayout();
 			field.requestFocus();
 		});
 		if (dialog.getWindow() != null) {
@@ -145,21 +165,25 @@ public final class GoToSheet {
 	/**
 	 * Return what Go to lists for a file of text that knows known and
 	 * sees scope: its declarations in its order, then each included
-	 * file's under its path, the paths in order, each file's
-	 * declarations by their lines.
+	 * file's under its path, from folder when the file is in it, the
+	 * paths in order, each file's declarations by their lines. A macro
+	 * that stands for nothing, as an include guard, is not listed.
 	 */
 	@NonNull
 	public static List<Row> outline(@NonNull Knowledge known,
-			@NonNull Text text, @NonNull Knowledge.Scope scope) {
+			@NonNull Text text, @NonNull Knowledge.Scope scope,
+			@NonNull String folder) {
 		List<Row> rows = new ArrayList<>();
 		for (Knowledge.Symbol symbol : known.symbols()) {
-			rows.add(row(symbol, text.lineOf(Math.max(0,
-					Math.min(symbol.start(), text.length())))));
+			if (!isFlag(symbol)) {
+				rows.add(row(symbol, text.lineOf(Math.max(0,
+						Math.min(symbol.start(), text.length())))));
+			}
 		}
 		Map<String, List<Row>> files = new TreeMap<>();
 		for (String name : scope.names()) {
 			for (Knowledge.Symbol symbol : scope.find(name)) {
-				if (symbol.file() == null) {
+				if (symbol.file() == null || isFlag(symbol)) {
 					continue;
 				}
 				List<Row> declared = files.get(symbol.file());
@@ -171,8 +195,10 @@ public final class GoToSheet {
 			}
 		}
 		for (Map.Entry<String, List<Row>> file : files.entrySet()) {
-			rows.add(new Row(Row.Kind.HEADING, file.getKey(), file.getKey(),
-					"", -1));
+			String path = file.getKey();
+			rows.add(new Row(Row.Kind.HEADING, path, path.startsWith(folder)
+					? path.substring(folder.length())
+					: path, "", -1));
 			List<Row> declared = file.getValue();
 			Collections.sort(declared, (a, b) -> Integer.compare(a.line(),
 					b.line()));
@@ -246,6 +272,12 @@ public final class GoToSheet {
 		}
 		return new Row(Row.Kind.DECLARATION, symbol.file(), symbol.name(),
 				parameters, line);
+	}
+
+	// Whether symbol is a macro that stands for nothing.
+	private static boolean isFlag(@NonNull Knowledge.Symbol symbol) {
+		return symbol.kind() == Knowledge.Kind.MACRO &&
+				symbol.detail().trim().endsWith(symbol.name());
 	}
 
 	private static boolean isNumber(@NonNull String s) {
@@ -327,6 +359,7 @@ public final class GoToSheet {
 			View view = holder.itemView;
 			if (row.kind() == Row.Kind.HEADING) {
 				((TextView) view).setText(row.name());
+				ViewCompat.setAccessibilityHeading(view, true);
 				return;
 			}
 			TextView label = view.findViewById(R.id.go_to_label);
@@ -346,6 +379,12 @@ public final class GoToSheet {
 				name.setText(spans(row));
 				line.setText(String.valueOf(row.line() + 1));
 			}
+			// The name, then its line in words.
+			view.setContentDescription(isLine || row.line() < 0
+					? null
+					: row.name() + row.parameters() + ", " +
+					context.getString(R.string.go_to_line_row,
+							row.line() + 1));
 			view.setOnClickListener(v -> go.go(row));
 		}
 

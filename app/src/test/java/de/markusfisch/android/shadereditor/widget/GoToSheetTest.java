@@ -19,7 +19,7 @@ public class GoToSheetTest {
 			"void main(void) {\n" +
 			"\tvec3 origin;\n" +
 			"}\n";
-	private static final String SDF = "// Distances.\n" +
+	private static final String SDF = "#define SDF_GLSL\n" +
 			"float sdRoundBox(vec2 p, vec2 b, float r) { return 0.; }\n" +
 			"float sdCircle(vec2 p, float r) { return length(p) - r; }\n";
 
@@ -27,14 +27,14 @@ public class GoToSheetTest {
 	public void theFileComesFirstThenEachIncludedFileUnderItsPath() {
 		assertEquals(List.of("resolution 1", "SAT(x) 2", "Ray 3",
 				"disc(p, radius) 4", "main() 5", "# lib/sdf.glsl",
-				"sdRoundBox(p, b, r) 2 lib/sdf.glsl",
-				"sdCircle(p, r) 3 lib/sdf.glsl"), shown(outline()));
+				"sdRoundBox(p, b, r) 2 shaders/lib/sdf.glsl",
+				"sdCircle(p, r) 3 shaders/lib/sdf.glsl"), shown(outline()));
 	}
 
 	@Test
 	public void aNameNarrowsStartingNamesFirstInEachFile() {
 		assertEquals(List.of("# lib/sdf.glsl",
-				"sdCircle(p, r) 3 lib/sdf.glsl"), shown(narrow(" Ci")));
+				"sdCircle(p, r) 3 shaders/lib/sdf.glsl"), shown(narrow(" Ci")));
 		assertEquals(List.of("resolution 1", "Ray 3"),
 				shown(narrow("r").subList(0, 2)));
 		// A name that starts with the text comes before one that holds
@@ -62,7 +62,7 @@ public class GoToSheetTest {
 		Knowledge.Scope scope = new Knowledge.Scope() {
 			@Override
 			public List<String> names() {
-				return List.of("sdCircle", "sdRoundBox");
+				return List.of("SDF_GLSL", "sdCircle", "sdRoundBox");
 			}
 
 			@Override
@@ -70,7 +70,7 @@ public class GoToSheetTest {
 				List<Knowledge.Symbol> found = new ArrayList<>();
 				for (Knowledge.Symbol symbol : sdf.symbols()) {
 					if (symbol.name().contentEquals(word)) {
-						found.add(symbol.in("lib/sdf.glsl"));
+						found.add(symbol.in("shaders/lib/sdf.glsl"));
 					}
 				}
 				return found;
@@ -82,7 +82,7 @@ public class GoToSheetTest {
 			}
 		};
 		return GoToSheet.outline(GlslKnowledge.of(MAIN), Text.of(MAIN),
-				scope);
+				scope, "shaders/");
 	}
 
 	private static List<String> shown(List<GoToSheet.Row> rows) {

@@ -677,4 +677,6 @@
 	<string name="go_to_line_row">Line %1$d</string>
 	<string name="back_to_line">Line %1$d</string>
 	<string name="a11y_back_to_line">Back to line %1$d</string>
+	<string name="a11y_find_match">Match %1$d of %2$d, line %3$d</string>
+	<string name="a11y_find_none">No matches</string>
 </resources>
