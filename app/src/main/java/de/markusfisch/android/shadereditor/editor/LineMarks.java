@@ -8,24 +8,13 @@ import java.util.List;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic.Severity;
 
-/**
- * The lines of a document that a diagnostic marks, with the severity to
- * show; a line marked twice shows the more severe. Diagnostics are
- * installed only for the revision they were made for: those of an older
- * text are left out, and the build of the newer text brings current
- * ones. Marks follow their lines through edits: a mark moves to the line
- * that holds the start of its line after the change, so lines inserted
- * or removed above it, or a line break typed at its start, move it. A
- * mark is dropped when its line can no longer be told apart: when a
- * change removes all of its line's text, joins its line to text in
- * front of it, or, for an empty line, removes text next to or around the
- * line's start. A missing mark is better than one on the wrong line. A
- * change that replaces several lines by as many, as indenting does,
- * keeps every mark where it is. A line keeps the messages of its errors
- * in the order of the diagnostics, and one line with errors may be
- * open, to show them; it follows its mark and closes when the mark is
- * dropped or a new set has no error on it.
- */
+// The lines of a document that diagnostics mark; a line marked twice shows the
+// more severe. Diagnostics are installed only for the revision they were made
+// for. A mark follows the start of its line through edits and is dropped when
+// its line can no longer be told apart: its text removed, joined to text in
+// front of it, or for an empty line, text removed at its start. A missing mark
+// is better than one on the wrong line. Replacing lines by as many, as
+// indenting does, keeps every mark. One line with errors may be open.
 public final class LineMarks {
 	private static final Severity[] SEVERITIES = Severity.values();
 
@@ -44,23 +33,17 @@ public final class LineMarks {
 	private int changes;
 	private int open = -1;
 
-	/** Keep the marks of document. */
 	public LineMarks(Document document) {
 		this.document = document;
 		document.addListener(listener);
 	}
 
-	/** Stop following the document. */
 	public void close() {
 		document.removeListener(listener);
 	}
 
-	/**
-	 * Mark the lines of diagnostics, which are for this document at
-	 * revision, in place of the marks before. Diagnostics without a line
-	 * or for a line past the end are left out. Return false and keep the
-	 * marks if the document is no longer at revision.
-	 */
+	// Diagnostics without a line or past the end are left out. Returns false
+	// and keeps the marks if the document is no longer at revision.
 	public boolean set(int revision, List<ProjectDiagnostic> diagnostics) {
 		if (revision != document.revision()) {
 			return false;
@@ -99,7 +82,6 @@ public final class LineMarks {
 		return true;
 	}
 
-	/** Return the lines with an error, in order. */
 	public int[] errorLines() {
 		int count = 0;
 		for (int i = 0; i < size; ++i) {
@@ -117,21 +99,15 @@ public final class LineMarks {
 		return errors;
 	}
 
-	/**
-	 * Return the messages of the errors of line, in the order of their
-	 * diagnostics; the same list until the marks are set again.
-	 */
+	// In the order of their diagnostics; the same list until the marks are set
+	// again.
 	public List<String> messages(int line) {
 		int i = Arrays.binarySearch(lines, 0, size, line);
 		return i < 0 ? Collections.emptyList() : messages[i];
 	}
 
-	/**
-	 * Return the line marked now with the error message that was on
-	 * line, from 0, when the marks were set: of those marked with it,
-	 * the nearest to line, as edits since may have moved it; -1 when
-	 * none is.
-	 */
+	// The line now marked with message that was on line when the marks were
+	// set, the nearest if several; -1 if none.
 	public int lineOf(int line, String message) {
 		int found = -1;
 		for (int i = 0; i < size; ++i) {
@@ -143,29 +119,22 @@ public final class LineMarks {
 		return found;
 	}
 
-	/** Return the open line, or -1 for none. */
+	// -1 for none.
 	public int open() {
 		return open;
 	}
 
-	/**
-	 * Open line if it has an error, or close the open one for -1;
-	 * return whether line is open now.
-	 */
+	// Or close the open one for -1. Returns whether line is open now.
 	public boolean open(int line) {
 		open = severity(line) == Severity.ERROR ? line : -1;
 		return open == line;
 	}
 
-	/**
-	 * Return a number that changes whenever a mark is set, moves or is
-	 * dropped.
-	 */
+	// Changes whenever a mark is set, moves or is dropped.
 	public int changes() {
 		return changes;
 	}
 
-	/** Return the severity line is marked with, or null. */
 	public Severity severity(int line) {
 		int i = Arrays.binarySearch(lines, 0, size, line);
 		return i < 0 ? null : severities[i];

@@ -2,48 +2,33 @@ package de.markusfisch.android.shadereditor.editor;
 
 import java.util.Arrays;
 
-/**
- * Where a query stands in a text: literally, with or without regard to
- * case, anywhere or only as a whole word. A query holds no line break,
- * so every match is inside one line. Matches do not overlap: after a
- * match the next one is looked for behind it. Everything here only
- * reads, and a text never changes, so it runs on any thread.
- */
+// A query holds no line break, so every match is inside one line. Matches do
+// not overlap. It only reads immutable texts, so it runs on any thread.
 public final class Search {
-	/**
-	 * The most matches {@link #all} keeps; a text with more is told as
-	 * having more.
-	 */
+	// A text with more is told as having more.
 	public static final int MAX = 10_000;
-	/** What {@link #next} returns when it stopped before it was done. */
+	// next stopped before it was done.
 	public static final int UNKNOWN = -2;
 
 	// The lines all reads between two looks at whether it is cancelled.
 	private static final int SLICE = 512;
 
-	/** What to look for, and how. */
 	public record Query(String text, boolean matchCase, boolean wholeWord) {
 		public static final Query NONE = new Query("", false, false);
 
-		/** Return whether the query matches nothing at all. */
 		public boolean isEmpty() {
 			return text.isEmpty() || text.indexOf('\n') > -1;
 		}
 	}
 
-	/** Put text in the place of the range from from to to. */
 	public record Replace(int from, int to, Text text) {
 	}
 
-	/** Tells a search that its result is not wanted any more. */
 	public interface Cancel {
 		boolean cancelled();
 	}
 
-	/**
-	 * The matches of a query in a text, in order: at most {@link #MAX}
-	 * from the start of the text, and whether there are more.
-	 */
+	// At most MAX from the start of the text, and whether there are more.
 	public static final class Matches {
 		public static final Matches NONE = new Matches(Text.EMPTY,
 				Query.NONE, new int[0], false);
@@ -60,7 +45,6 @@ public final class Search {
 			this.more = more;
 		}
 
-		/** Return the text that was searched. */
 		public Text text() {
 			return text;
 		}
@@ -69,34 +53,25 @@ public final class Search {
 			return query;
 		}
 
-		/** Return how many matches are kept. */
 		public int count() {
 			return starts.length;
 		}
 
-		/** Return whether the text has more matches than are kept. */
 		public boolean more() {
 			return more;
 		}
 
-		/** Return the offset match i starts at. */
 		public int start(int i) {
 			return starts[i];
 		}
 
-		/**
-		 * Return the index of the match that starts at offset, or -1
-		 * when none kept does.
-		 */
+		// -1 when none kept does.
 		public int indexOf(int offset) {
 			int i = Arrays.binarySearch(starts, offset);
 			return i < 0 ? -1 : i;
 		}
 
-		/**
-		 * Return the index of the first match kept that starts at or
-		 * after offset, or count() when none does.
-		 */
+		// The first kept at or after offset, or count() when none is.
 		public int after(int offset) {
 			int i = Arrays.binarySearch(starts, offset);
 			return i < 0 ? -i - 1 : i;
@@ -106,15 +81,11 @@ public final class Search {
 	private Search() {
 	}
 
-	/**
-	 * Return every match of query in text, at most {@link #MAX}, or null
-	 * when cancel told to stop before it was done.
-	 */
+	// At most MAX; null when cancel stopped it.
 	public static Matches all(Text text, Query query, Cancel cancel) {
 		return all(text, query, MAX, cancel);
 	}
 
-	/** Return every match of query in text, as all does, at most max. */
 	public static Matches all(Text text, Query query, int max,
 			Cancel cancel) {
 		if (query.isEmpty()) {
@@ -144,12 +115,8 @@ public final class Search {
 		return new Matches(text, query, Arrays.copyOf(starts, count), false);
 	}
 
-	/**
-	 * Return the one replace that puts with in the place of every match
-	 * of matches: from the first match to the end of the last, the text
-	 * between them kept, so that it is one change and one step of undo;
-	 * null when there is no match.
-	 */
+	// One change from the first match to the end of the last, the text between
+	// them kept, so it is one step of undo; null when there is no match.
 	public static Replace replaceAll(Matches matches, CharSequence with) {
 		int n = matches.count();
 		if (n == 0) {
@@ -169,10 +136,7 @@ public final class Search {
 				Text.of(sb));
 	}
 
-	/**
-	 * Return the column of the first match of query in line at or after
-	 * column from, or -1 when there is none.
-	 */
+	// -1 when there is none.
 	public static int inLine(String line, int from, Query query) {
 		if (query.isEmpty()) {
 			return -1;
@@ -202,11 +166,8 @@ public final class Search {
 		return -1;
 	}
 
-	/**
-	 * Return the offset of the first match of query at or after offset,
-	 * from the start of the text after its end; -1 when the text has
-	 * none, {@link #UNKNOWN} when that is not found in lines lines.
-	 */
+	// From the start after the end; -1 when the text has none, UNKNOWN when
+	// none is found within lines lines.
 	public static int next(Text text, Query query, int offset, int lines) {
 		if (query.isEmpty()) {
 			return -1;
@@ -227,11 +188,7 @@ public final class Search {
 		return -1;
 	}
 
-	/**
-	 * Return the offset of the last match of query that starts before
-	 * offset, from the end of the text before its start; -1 when the
-	 * text has none.
-	 */
+	// From the end before the start; -1 when the text has none.
 	public static int previous(Text text, Query query, int offset) {
 		if (query.isEmpty()) {
 			return -1;
@@ -258,8 +215,7 @@ public final class Search {
 		return -1;
 	}
 
-	// Whether [from, to) of line is a whole word: no letter, digit or _
-	// right before or after it.
+	// No letter, digit or _ right before or after it.
 	private static boolean isWhole(String line, int from, int to) {
 		return (from == 0 || !isWordChar(line.charAt(from - 1))) &&
 				(to == line.length() || !isWordChar(line.charAt(to)));

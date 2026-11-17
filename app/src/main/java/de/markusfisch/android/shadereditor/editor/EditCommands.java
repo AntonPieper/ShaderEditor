@@ -3,17 +3,10 @@ package de.markusfisch.android.shadereditor.editor;
 import de.markusfisch.android.shadereditor.editor.Document.Selection;
 import de.markusfisch.android.shadereditor.syntax.Indentation;
 
-/**
- * The commands that keys and gestures map to, applied to a document.
- * A move with extend keeps the anchor of the selection and moves its
- * head; without, the selection collapses to where the head goes. Moves
- * up and down aim at the column the caret had before the first of
- * them, so the caret returns to it after a shorter line; any other
- * change of the selection or the text, and another tab width, ends the
- * run. A delete
- * removes the selection if there is one. Deleting a character, a line
- * break and an indentation typed at the caret are typing, for undo.
- */
+// The commands keys and gestures map to. Moves up and down aim at the column
+// the first of them started from, until the selection, the text or the tab
+// width changes. Deleting a character, a line break or an indentation at the
+// caret is typing, for undo.
 public final class EditCommands {
 	private final Document document;
 	private final Motion motion;
@@ -35,18 +28,16 @@ public final class EditCommands {
 		this.motion = motion;
 	}
 
-	/** Set the number of columns between two tab stops. */
 	public void setTabWidth(int tabWidth) {
 		this.tabWidth = tabWidth;
 		wantedSelection = null;
 	}
 
-	/** Set how a new line is indented, C's way by default. */
 	public void setIndentation(Indentation indentation) {
 		this.indentation = indentation;
 	}
 
-	/** Move to the previous character, or to the selection's start. */
+	// With a selection, to its start.
 	public void moveBackward(boolean extend) {
 		Selection selection = document.selection();
 		moveTo(extend || selection.isEmpty()
@@ -54,7 +45,7 @@ public final class EditCommands {
 				: selection.start(), extend);
 	}
 
-	/** Move to the next character, or to the selection's end. */
+	// With a selection, to its end.
 	public void moveForward(boolean extend) {
 		Selection selection = document.selection();
 		moveTo(extend || selection.isEmpty()
@@ -70,10 +61,7 @@ public final class EditCommands {
 		moveTo(motion.nextWord(document.text(), head()), extend);
 	}
 
-	/**
-	 * Move count lines down, or up if count is negative; past the first
-	 * line to the start of the text, past the last to its end.
-	 */
+	// Past the first line to the start of the text, past the last to its end.
 	public void moveLines(int count, boolean extend) {
 		Text text = document.text();
 		int head = head();
@@ -150,7 +138,6 @@ public final class EditCommands {
 		}
 	}
 
-	/** Replace the selection by a line break and AutoIndent's indent. */
 	public void enter() {
 		Selection selection = document.selection();
 		int start = selection.start();
@@ -159,11 +146,8 @@ public final class EditCommands {
 				document.text(), start, end, "\t", indentation)));
 	}
 
-	/**
-	 * Replace a selection within a line by a level of indentation, or
-	 * indent each line of a selection over several lines by a level;
-	 * an empty line stays empty.
-	 */
+	// A selection within a line is replaced by a level; one over several lines
+	// indents each line, and an empty line stays empty.
 	public void indent() {
 		Text text = document.text();
 		Selection selection = document.selection();
@@ -175,17 +159,13 @@ public final class EditCommands {
 		shiftLines("\t");
 	}
 
-	/**
-	 * Remove a level of indentation from each line of the selection:
-	 * the white space before the first tab stop.
-	 */
+	// The white space before the first tab stop of each line.
 	public void unindent() {
 		shiftLines(null);
 	}
 
-	// Indents each line of the selection by level, or unindents it if
-	// level is null, in one change. An end of the selection at the start
-	// of a line stays there; one in a line moves with its text.
+	// Unindents if level is null. An end of the selection at the start of a
+	// line stays there; one inside a line moves with its text.
 	private void shiftLines(String level) {
 		Text text = document.text();
 		Selection selection = document.selection();

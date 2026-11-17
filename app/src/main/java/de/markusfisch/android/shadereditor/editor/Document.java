@@ -5,32 +5,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * One file being edited: its text, the selection and the changes made
- * to them. Every edit is a replace of a range by a text, which Text.of
- * has cleaned. Listeners hear of each change as it happens and once
- * more when an edit, or a batch of them, is complete. Positions held
- * elsewhere follow the edits through Change.map. Undo and redo work in
- * steps, and a run of typing is one step. An edit that would grow the
- * text past {@link #MAX_BYTES} is refused. A document is used on one
- * thread; its texts may be read on any.
- */
+// One file being edited: its text, its selection and their undo history.
+// Listeners hear of each change, and once more when an edit or a batch is
+// complete. Used on one thread; its texts may be read on any.
 public final class Document {
-	/**
-	 * The most bytes of UTF-8 a text may grow to by editing, on every
-	 * device; files are opened for editing up to the same size.
-	 */
+	// The most bytes of UTF-8 a text may grow to by editing; files are opened
+	// for editing up to the same size.
 	public static final long MAX_BYTES = 16L * 1024 * 1024;
 
-	/** A replace: inserted took the place of removed at start. */
 	public record Change(int start, Text removed, Text inserted) {
-		/**
-		 * Return where offset of the text before this change is in the
-		 * text after it. An offset before the change stays, one after it
-		 * moves with the text, and one inside or at either end of the
-		 * removed range ends up behind the inserted text, so a caret
-		 * stays behind what was typed.
-		 */
+		// An offset inside or at either end of the removed range ends up behind
+		// the inserted text, so a caret stays behind what was typed.
 		public int map(int offset) {
 			return offset < start
 					? offset
@@ -39,7 +24,6 @@ public final class Document {
 		}
 	}
 
-	/** The selection from anchor to head; when empty, the caret. */
 	public record Selection(int anchor, int head) {
 		public int start() {
 			return Math.min(anchor, head);
@@ -55,45 +39,28 @@ public final class Document {
 	}
 
 	public interface Listener {
-		/**
-		 * Called after every change, also inside a batch; before is the
-		 * text the change was made to. It must not edit the document.
-		 */
+		// Also inside a batch; before is the text the change was made to. It
+		// must not edit the document.
 		default void onChange(Change change, Text before) {
 		}
 
-		/**
-		 * Called once the text or the selection changed, after an edit,
-		 * a selection or the end of the outermost batch.
-		 */
+		// Once per edit or selection, or at the end of the outermost batch.
 		default void onUpdate() {
 		}
 
-		/**
-		 * Called when an edit was refused; reason tells the user why.
-		 * The document is as it was.
-		 */
 		default void onRefused(String reason) {
 		}
 	}
 
-	/**
-	 * An action beyond the text that a step belongs to, such as the
-	 * rename of a file whose lines changed with it: Undo of that step
-	 * asks the action, which takes back all of itself through
-	 * {@link #undoLinked}, or nothing.
-	 */
+	// An action beyond the text that a step belongs to, such as a rename of a
+	// file: Undo of that step asks the action, which takes back all of itself
+	// through undoLinked, or nothing.
 	public interface Link {
-		/** Undo was asked for in document, whose last step is of this. */
 		void undo(Document document);
 	}
 
-	/**
-	 * What a document keeps besides its text, to be taken by a document
-	 * of the same text: the steps undo and redo take, oldest first, the
-	 * revision and state the text is at, and the selection. Which state
-	 * was saved is not part of it.
-	 */
+	// What a document keeps besides its text, for a document of the same text.
+	// Which state was saved is not part of it.
 	public record History(List<Step> undo, List<Step> redo, int revision,
 			int state, Selection selection) {
 		public History {
@@ -101,10 +68,6 @@ public final class Document {
 			redo = List.copyOf(redo);
 		}
 
-		/**
-		 * The changes of one step of the history, in the order they were
-		 * made, and the selection and the state before and after them.
-		 */
 		public record Step(List<Change> changes, Selection selectionBefore,
 				Selection selectionAfter, int stateBefore, int stateAfter) {
 			public Step {
@@ -137,8 +100,7 @@ public final class Document {
 	private Selection selection = new Selection(0, 0);
 	private int batches;
 	private boolean updated;
-	// The changes of this batch, which become a step of the history when
-	// it ends.
+	// Becomes a step of the history when the batch ends.
 	private Step batchStep;
 	// The step batchStep continues if it is typing.
 	private Step continued;
@@ -154,10 +116,7 @@ public final class Document {
 		this(text, bytes(text));
 	}
 
-	/**
-	 * A document of text, which has bytes of UTF-8, as
-	 * {@link #bytes(Text)} counts them, so they need not be counted.
-	 */
+	// bytes is what bytes(Text) counts, so the text need not be counted.
 	public Document(Text text, long bytes) {
 		this(text, bytes, () -> System.nanoTime() / 1_000_000);
 	}
@@ -172,10 +131,7 @@ public final class Document {
 		this.clock = clock;
 	}
 
-	/**
-	 * Return how many bytes of UTF-8 text has, lines joined by '\n'; a
-	 * lone surrogate counts as two.
-	 */
+	// Lines joined by '\n'; a lone surrogate counts as two.
 	public static long bytes(Text text) {
 		long bytes = text.lineCount() - 1;
 		for (int i = text.lineCount(); i-- > 0; ) {
@@ -189,11 +145,8 @@ public final class Document {
 		return bytes;
 	}
 
-	/**
-	 * Return the history of the document, to give a document of the
-	 * same text later; see {@link #restore}. Its texts are shared, so it
-	 * costs a list of the steps. Call it outside a batch.
-	 */
+	// Its texts are shared, so it costs a list of the steps. Call it outside a
+	// batch.
 	public History history() {
 		// A step of an action cannot be taken back without it, which is
 		// not kept: the history begins behind the last such step.
@@ -209,15 +162,9 @@ public final class Document {
 				selection);
 	}
 
-	/**
-	 * Take history, of a document whose text was this one's, so undo and
-	 * redo take the steps they took there, and select as it was. A
-	 * document that has a history of its own, or is in a batch, keeps
-	 * it; so does one whose text cannot be at the selection history has.
-	 * Whether the document is modified stays as it is: unmodified, its
-	 * text is the saved one, else no state the history returns to is.
-	 * Listeners are not told. Return whether it was taken.
-	 */
+	// A document with a history of its own, in a batch, or whose text cannot
+	// hold the history's selection keeps its own and returns false. Whether it
+	// is modified stays as it is; listeners are not told.
 	public boolean restore(History history) {
 		Selection selected = history.selection();
 		int length = text.length();
@@ -247,29 +194,21 @@ public final class Document {
 		return true;
 	}
 
-	/**
-	 * Return how many characters the texts of the steps undo and redo
-	 * keep add up to.
-	 */
 	public int historyChars() {
 		return historyChars;
 	}
 
-	/** Return the current text. */
 	public Text text() {
 		return text;
 	}
 
-	/** Return the number of changes made so far. */
+	// The number of changes made so far.
 	public int revision() {
 		return revision;
 	}
 
-	/**
-	 * Return where the current text is in the history: undo and redo
-	 * return to the state of the text they return to, and every other
-	 * change makes a new one. A save takes it with the text it saves.
-	 */
+	// Undo and redo return to an earlier state; every other change makes a new
+	// one. A save takes it with the text it saves.
 	public int state() {
 		return state;
 	}
@@ -295,15 +234,12 @@ public final class Document {
 		}
 	}
 
-	/**
-	 * Whether the last change was typed and a run of typing goes on
-	 * from it: not after another edit, undo, redo or another place.
-	 */
+	// Not after another edit, undo, redo or a selection elsewhere.
 	public boolean isTyping() {
 		return typing != null;
 	}
 
-	/** Select from anchor to head; another place ends a run of typing. */
+	// Another place ends a run of typing.
 	public void select(int anchor, int head) {
 		int length = text.length();
 		if (anchor < 0 || anchor > length || head < 0 || head > length) {
@@ -320,34 +256,21 @@ public final class Document {
 		}
 	}
 
-	/**
-	 * Replace the range [from, to) by text, as an undo step of its own
-	 * or as part of the step of the current batch. The selection
-	 * follows the change as Change.map moves it. Replacing a range by
-	 * the text it holds only moves the selection so; it is no change.
-	 * Return false when the change would grow the text past
-	 * {@link #MAX_BYTES}: it is refused, and the listeners hear why.
-	 */
+	// Replacing a range by the text it holds only moves the selection. Returns
+	// false, and tells the listeners why, when the text would grow past
+	// MAX_BYTES.
 	public boolean replace(int from, int to, Text text) {
 		return edit(from, to, text, false);
 	}
 
-	/**
-	 * Replace as replace does, as typing: a typed change joins the
-	 * last step if that was typed less than a second ago and the
-	 * change touches the text it changed. Selecting another place,
-	 * any other edit, undo, redo and markSaved end the run.
-	 */
+	// A typed change joins the last step if that was typed less than a second
+	// ago and touches what it changed.
 	public boolean type(int from, int to, Text text) {
 		return edit(from, to, text, true);
 	}
 
-	/**
-	 * Start a batch: until the matching endBatch, the changes are one
-	 * undo step, which continues the run of typing only if they are all
-	 * typing, and listeners hear of each change but are told only once
-	 * that the document updated. Batches nest.
-	 */
+	// Changes until endBatch() are one undo step, typing only if all of them
+	// are typing; listeners hear onUpdate once. Batches nest.
 	public void beginBatch() {
 		++batches;
 	}
@@ -376,29 +299,21 @@ public final class Document {
 		return !redo.isEmpty();
 	}
 
-	/**
-	 * The step of the current batch belongs to link: its Undo asks
-	 * link. Call it inside a batch, after its edits; a batch without
-	 * edits has no step to link.
-	 */
+	// Call it inside a batch, after its edits; a batch without edits has no
+	// step to link.
 	public void link(Link link) {
 		if (batchStep != null) {
 			batchStep.link = link;
 		}
 	}
 
-	/** Return whether the last step belongs to link. */
 	public boolean endsWith(Link link) {
 		endStep();
 		Step step = undo.peekLast();
 		return step != null && step.link == link;
 	}
 
-	/**
-	 * Take back the last step, which belongs to link, as link is taken
-	 * back as a whole; Redo cannot make it again, since it would not
-	 * make the rest of link.
-	 */
+	// Redo cannot make it again, since it would not make the rest of link.
 	public void undoLinked(Link link) {
 		if (!endsWith(link)) {
 			return;
@@ -410,10 +325,7 @@ public final class Document {
 		redo.clear();
 	}
 
-	/**
-	 * Undo the last step and select what was selected before it; a step
-	 * that belongs to an action asks its {@link Link} instead.
-	 */
+	// A step that belongs to a Link asks it instead.
 	public void undo() {
 		endStep();
 		Step last = undo.peekLast();
@@ -442,7 +354,6 @@ public final class Document {
 		endBatch();
 	}
 
-	/** Redo the last undone step and select what it selected. */
 	public void redo() {
 		endStep();
 		Step step = redo.pollLast();
@@ -460,14 +371,9 @@ public final class Document {
 		endBatch();
 	}
 
-	/**
-	 * Remember that the file holds the text of state, as state() was
-	 * when the save took the text. The document is unmodified whenever
-	 * undo and redo return to that state, and now if it is current. A
-	 * state the history cannot return to, as one of a run of typing that
-	 * went on while the save ran, or -1 for a text the document never
-	 * had, leaves it modified until the next markSaved.
-	 */
+	// The file holds the text of state. A state the history cannot return to,
+	// such as one in a run of typing that went on while the save ran, or -1,
+	// leaves the document modified until the next markSaved.
 	public void markSaved(int state) {
 		if (state == this.state) {
 			endStep();
@@ -476,7 +382,6 @@ public final class Document {
 		saved = state;
 	}
 
-	/** Return whether the text differs from the one last saved. */
 	public boolean isModified() {
 		return state != saved;
 	}
@@ -592,7 +497,6 @@ public final class Document {
 		return step;
 	}
 
-	// Returns whether a and b hold the same characters.
 	private static boolean same(Text a, Text b) {
 		if (a.length() != b.length() || a.lineCount() != b.lineCount()) {
 			return false;
@@ -631,7 +535,6 @@ public final class Document {
 		return new Change(Math.min(a.start(), b.start()), removed, inserted);
 	}
 
-	// The changes that undo and redo apply together.
 	private static final class Step {
 		private final List<Change> changes = new ArrayList<>();
 		private final Selection selectionBefore;
@@ -640,7 +543,6 @@ public final class Document {
 		private int stateAfter;
 		// Whether this step is one typed change that typing may continue.
 		private boolean typed = true;
-		// The action it belongs to, or null.
 		private Link link;
 		private long time;
 		private int chars;
@@ -664,7 +566,6 @@ public final class Document {
 			this.typed = typed && last < 0;
 		}
 
-		// Continues this typed step by the typed step next.
 		private void join(Step next) {
 			Change change = compose(changes.get(0), next.changes.get(0));
 			changes.set(0, change);

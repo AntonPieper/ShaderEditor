@@ -10,19 +10,11 @@ import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 
-/**
- * What needs the whole text of a document, made for one revision of it,
- * as the syntax of its language reads it. It is immutable, so it can be
- * made on any thread.
- *
- * It reads the text line by line and keeps neither the text nor its
- * tokens, so its memory does not grow with the text: what the syntax
- * knows of it has at most {@link #MAX_SYMBOLS} symbols whose texts have
- * at most {@link #MAX_CHARS} characters together, the first in the
- * text, and is nothing if a line is longer than
- * {@link #MAX_LINE_LENGTH}, since tokenizing a line takes memory in
- * proportion to its length.
- */
+// What needs the whole text of a document, for one revision. Immutable, so it
+// can be made on any thread. It reads the text line by line and keeps neither
+// the text nor its tokens; what it knows is capped by MAX_SYMBOLS and
+// MAX_CHARS, and is nothing if a line is longer than MAX_LINE_LENGTH, since
+// tokenizing a line takes memory in proportion to its length.
 public final class Analysis {
 	static final int MAX_SYMBOLS = 10000;
 	static final int MAX_CHARS = 1 << 19;
@@ -31,13 +23,11 @@ public final class Analysis {
 			"^([ \t]*uniform.+)$",
 			Pattern.MULTILINE);
 	private static final Pattern ENDIF = Pattern.compile("(#endif)\\b");
-	/** Tells an analysis in progress to give up. */
 	interface Cancel {
-		/** Called between lines, on the thread that analyses. */
+		// Called between lines, on the thread that analyses.
 		boolean cancelled();
 	}
 
-	/** The analysis of the empty text, for no revision. */
 	public static final Analysis NONE = new Analysis(-1, Knowledge.NONE,
 			Collections.emptySet(), -1, -1);
 
@@ -57,20 +47,13 @@ public final class Analysis {
 		this.endifEnd = endifEnd;
 	}
 
-	/**
-	 * Return the analysis of text, which is the document at revision,
-	 * as syntax reads it. It shares the set of type names of previous,
-	 * the analysis before or null, if the names are the same.
-	 */
+	// Shares the type names of previous if they are the same.
 	public static Analysis of(Syntax syntax, Text text, int revision,
 			Analysis previous) {
 		return of(syntax, text, revision, previous, () -> false);
 	}
 
-	/**
-	 * Return the analysis like {@link #of(Syntax, Text, int, Analysis)},
-	 * or null as soon as cancel tells so at the start of a line.
-	 */
+	// Null as soon as cancel says so at the start of a line.
 	static Analysis of(Syntax syntax, Text text, int revision,
 			Analysis previous, Cancel cancel) {
 		Knowledge.Builder builder = syntax.knowledge(MAX_SYMBOLS,
@@ -118,18 +101,14 @@ public final class Analysis {
 				uniformLineEnd, endifEnd);
 	}
 
-	/**
-	 * Return the end of the last line that starts with "uniform" after
-	 * blanks, before its line break, or -1. Add uniform inserts there.
-	 */
+	// The end of the last uniform line, before its line break, or -1. Add
+	// uniform inserts there.
 	public static int uniformLineEnd(CharSequence text) {
 		return lastEnd(UNIFORM_LINE.matcher(text), 0, -1);
 	}
 
-	/**
-	 * Return the offset after the last "#endif", or -1. Add uniform
-	 * inserts behind it when there is no uniform line.
-	 */
+	// Behind the last #endif, or -1. Add uniform inserts there when there is no
+	// uniform line.
 	public static int endifEnd(CharSequence text) {
 		return lastEnd(ENDIF.matcher(text), 0, -1);
 	}
@@ -138,28 +117,20 @@ public final class Analysis {
 		return revision;
 	}
 
-	/**
-	 * Return what the syntax knows of the text; the names of its
-	 * symbols are what completion offers.
-	 */
+	// The names of its symbols are what completion offers.
 	public Knowledge knowledge() {
 		return knowledge;
 	}
 
-	/**
-	 * Return the names of the declared struct types: the same set as the
-	 * analysis before had while the names stay the same.
-	 */
+	// The same set as the analysis before had while the names stay the same.
 	public Set<String> typeNames() {
 		return typeNames;
 	}
 
-	/** Return {@link #uniformLineEnd(CharSequence)} of the text. */
 	public int uniformLineEnd() {
 		return uniformLineEnd;
 	}
 
-	/** Return {@link #endifEnd(CharSequence)} of the text. */
 	public int endifEnd() {
 		return endifEnd;
 	}

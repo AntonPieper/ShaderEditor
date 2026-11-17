@@ -2,11 +2,8 @@ package de.markusfisch.android.shadereditor.syntax;
 
 import java.util.Arrays;
 
-/**
- * The tokens of one line, as {@link Syntax#lexLine} leaves them, with
- * UTF-16 offsets into that line. One instance is meant to be filled again
- * for every line; it grows to the line with the most tokens.
- */
+// The tokens of one line, with UTF-16 offsets into it. One instance is filled
+// again for every line.
 public final class LineTokens {
 	private static final Style[] STYLES = Style.values();
 
@@ -33,28 +30,19 @@ public final class LineTokens {
 		return STYLES[kinds[index] & 0xff];
 	}
 
-	/** True if the token belongs to a preprocessor directive. */
 	public boolean inDirective(int index) {
 		return (kinds[index] & Tokens.IN_DIRECTIVE) != 0;
 	}
 
-	/**
-	 * True if the line ends inside a comment that goes on in the next
-	 * line, as the language that made the tokens saw it.
-	 */
 	public boolean commentGoesOn() {
 		return commentGoesOn;
 	}
 
-	/**
-	 * True if the line ends inside a preprocessor directive that goes on
-	 * in the next line.
-	 */
 	public boolean directiveGoesOn() {
 		return directiveGoesOn;
 	}
 
-	/** Index of the token that contains offset, or -1 if there is none. */
+	// -1 if there is none.
 	public int indexAt(int offset) {
 		int low = 0;
 		int high = size - 1;
@@ -75,7 +63,6 @@ public final class LineTokens {
 		directiveGoesOn = false;
 	}
 
-	/** Set what the line passes on to the next one. */
 	void goOn(boolean comment, boolean directive) {
 		commentGoesOn = comment;
 		directiveGoesOn = directive;
