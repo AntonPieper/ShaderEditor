@@ -22,24 +22,13 @@ import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.Motion;
 import de.markusfisch.android.shadereditor.editor.Text;
 
-/**
- * What a CodeView tells accessibility services, as the platform's
- * EditText does: one node, an editable multi-line text field, whose
- * text is the window AccessibleText gives for the selection's head and
- * whose selection is the document's in that window. The line numbers
- * are not part of the text. Services move the caret by the units of
- * AccessibleText, select, cut, copy, paste, replace the text, press
- * Enter, tap, long press and scroll by a page, through the view's own
- * commands. It sends what TextView sends: text changed, with the text
- * before, in the window AccessibleText.edit gives; selection changed;
- * traversed at movement granularity; and, as a scroll view, scrolled.
- * It gives the bounds of characters on screen. The messages of the
- * errors of the caret's line are the node's error; the first error of
- * a result is announced, once while it stays the same, as the row that
- * shows it is not part of the text. The framework calls it
- * only while a service is enabled, and the view tells it of changes
- * only then.
- */
+// What a CodeView tells accessibility services, as the platform's EditText
+// does: one editable multi-line node whose text is the window AccessibleText
+// gives for the selection's head, without the line numbers. The errors of the
+// caret's line are the node's error, and the first error of a result is
+// announced once, as the row that shows it is not part of the text. The
+// framework calls it only while a service is enabled, and the view tells it of
+// changes only then.
 final class CodeAccessibility extends View.AccessibilityDelegate {
 	private static final int GRANULARITIES =
 			AccessibilityNodeInfo.MOVEMENT_GRANULARITY_CHARACTER |
@@ -138,11 +127,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		}
 	}
 
-	/**
-	 * Add the character bounds a service asks for to info, as
-	 * View.addExtraDataToAccessibilityNodeInfo does; the framework calls
-	 * that of the view, not the delegate's.
-	 */
+	// The framework calls the view's addExtraDataToAccessibilityNodeInfo, not
+	// the delegate's.
 	void addExtraData(AccessibilityNodeInfo info, String key,
 			Bundle arguments) {
 		Document document = view.getDocument();
@@ -217,10 +203,7 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		}
 	}
 
-	/**
-	 * Tell services the document's text and selection are new, as
-	 * TextView does when its text is set.
-	 */
+	// As TextView does when its text is set.
 	void documentChanged() {
 		Document document = view.getDocument();
 		reported = document != null ? document.selection() : null;
@@ -231,10 +214,7 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		}
 	}
 
-	/**
-	 * Tell services of change, made to before, as TextView does while
-	 * it has focus.
-	 */
+	// As TextView does while it has focus.
 	void changed(Document.Change change, Text before) {
 		ViewParent parent = view.getParent();
 		Document document = view.getDocument();
@@ -259,7 +239,6 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		parent.requestSendAccessibilityEvent(view, event);
 	}
 
-	/** Tell services the selection changed, if it did. */
 	void updated() {
 		Document document = view.getDocument();
 		if (document == null || !isEnabled()) {
@@ -436,11 +415,9 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 				view.toolbarAction(id);
 	}
 
-	/**
-	 * Announce the first error of a result, first, or null for none,
-	 * unless it was announced last; and tell services the error of the
-	 * caret's line may have changed, without having it spoken twice.
-	 */
+	// first is null for none. It is not announced twice, and services are told
+	// that the error of the caret's line may have changed without it being
+	// spoken again.
 	void errorsChanged(String first) {
 		if (first == null) {
 			announced = null;
