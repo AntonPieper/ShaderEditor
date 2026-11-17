@@ -170,10 +170,10 @@ public class CodeView extends View {
 
 	/** The input type of today's editor with native suggestions hidden. */
 	public static final int INPUT_TYPE_NO_SUGGESTIONS = InputType.TYPE_NULL;
-	/** The input type of today's editor with native suggestions shown. */
+	// With native suggestions shown: unlike today's editor, which keeps
+	// NO_SUGGESTIONS there, so the AOSP keyboard and Gboard offer none.
 	public static final int INPUT_TYPE_TEXT = InputType.TYPE_CLASS_TEXT |
-			InputType.TYPE_TEXT_FLAG_MULTI_LINE |
-			InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+			InputType.TYPE_TEXT_FLAG_MULTI_LINE;
 
 	private static final long BLINK = 500;
 	// As the platform's insertion handle.

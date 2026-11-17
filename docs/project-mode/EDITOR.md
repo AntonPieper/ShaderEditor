@@ -274,7 +274,7 @@ Everything the user does becomes one of a small set of commands on the `Document
 
 *What the view declares* in `onCreateInputConnection`:
 
-- `inputType`: with "hide native suggestions" on, which is the default, `TYPE_NULL`, exactly as today. Keyboards then keep no composing text and send plain key events or one `commitText` per key. With the setting off, `TYPE_CLASS_TEXT | TYPE_TEXT_FLAG_MULTI_LINE | TYPE_TEXT_FLAG_NO_SUGGESTIONS`, as the layout file says today.
+- `inputType`: with "hide native suggestions" on, which is the default, `TYPE_NULL`, exactly as today. Keyboards then keep no composing text and send plain key events or one `commitText` per key. With the setting off, `TYPE_CLASS_TEXT | TYPE_TEXT_FLAG_MULTI_LINE`, so keyboards suggest, compose and autocorrect as the setting's name says (today's editor keeps `TYPE_TEXT_FLAG_NO_SUGGESTIONS` there, so the AOSP keyboard and Gboard offer nothing; changed 2026-11-18).
 - `imeOptions`: `IME_FLAG_NO_EXTRACT_UI | IME_FLAG_NO_FULLSCREEN | IME_FLAG_NO_ENTER_ACTION`.
 - `initialSelStart` and `initialSelEnd` from the document. Left at their defaults, keyboards assume the caret is at 0 and corrupt their own model of the text.
 - `initialCapsMode = 0`, and from API 30 `setInitialSurroundingText` with a window of text around the caret.
