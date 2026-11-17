@@ -525,7 +525,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public void undo() {
-		document.undo();
+		view.tell(R.string.a11y_undone, document::undo);
 		view.bringCaretIntoView();
 	}
 
@@ -536,7 +536,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public void redo() {
-		document.redo();
+		view.tell(R.string.a11y_redone, document::redo);
 		view.bringCaretIntoView();
 	}
 

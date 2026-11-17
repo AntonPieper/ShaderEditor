@@ -658,6 +658,12 @@ public class CodeView extends View {
 		fixesChanged();
 	}
 
+	// Undo or redo asked for outside the code: done is the string that
+	// tells services of it, with what changed.
+	public void tell(int done, @NonNull Runnable edit) {
+		accessibility.tell(done, edit);
+	}
+
 	public void fixesChanged() {
 		row = Row.NONE;
 		placeRow();
