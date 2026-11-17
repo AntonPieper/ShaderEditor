@@ -70,9 +70,6 @@ public class AnalysisTest {
 			assertEquals(text, declarations,
 					analysis.knowledge().symbols());
 			assertEquals(text, typeNames, analysis.typeNames());
-			assertEquals(text, Analysis.uniformLineEnd(text),
-					analysis.uniformLineEnd());
-			assertEquals(text, Analysis.endifEnd(text), analysis.endifEnd());
 		}
 	}
 
@@ -147,7 +144,6 @@ public class AnalysisTest {
 		assertEquals(List.of(), analysis.knowledge().symbols());
 		assertEquals(List.of(), analysis.knowledge().at(-1, "a"));
 		assertEquals(Set.of(), analysis.typeNames());
-		assertEquals(declarations.indexOf("\n"), analysis.uniformLineEnd());
 	}
 
 	@Test
@@ -166,13 +162,10 @@ public class AnalysisTest {
 	public void findsWhereAddUniformInserts() {
 		String text = "#ifdef GL_ES\n#endif\nuniform float a;\n" +
 				"  uniform vec2 b;\nvoid main() {}\n";
-		Analysis analysis = Analysis.of(GLSL, Text.of(text), 0, Analysis.NONE);
-		assertEquals(text.indexOf(";\nvoid") + 1, analysis.uniformLineEnd());
-		assertEquals(text.indexOf("\nuniform"), analysis.endifEnd());
-		Analysis none = Analysis.of(GLSL, Text.of("void main() {}"), 0,
-				Analysis.NONE);
-		assertEquals(-1, none.uniformLineEnd());
-		assertEquals(-1, none.endifEnd());
+		assertEquals(text.indexOf(";\nvoid") + 1, Analysis.uniformLineEnd(text));
+		assertEquals(text.indexOf("\nuniform"), Analysis.endifEnd(text));
+		assertEquals(-1, Analysis.uniformLineEnd("void main() {}"));
+		assertEquals(-1, Analysis.endifEnd("void main() {}"));
 	}
 
 	@Test

@@ -29,22 +29,17 @@ public final class Analysis {
 	}
 
 	public static final Analysis NONE = new Analysis(-1, Knowledge.NONE,
-			Collections.emptySet(), -1, -1);
+			Collections.emptySet());
 
 	private final int revision;
 	private final Knowledge knowledge;
 	private final Set<String> typeNames;
-	private final int uniformLineEnd;
-	private final int endifEnd;
 
 	private Analysis(int revision, Knowledge knowledge,
-			Set<String> typeNames,
-			int uniformLineEnd, int endifEnd) {
+			Set<String> typeNames) {
 		this.revision = revision;
 		this.knowledge = knowledge;
 		this.typeNames = typeNames;
-		this.uniformLineEnd = uniformLineEnd;
-		this.endifEnd = endifEnd;
 	}
 
 	// Shares the type names of previous if they are the same.
@@ -61,27 +56,15 @@ public final class Analysis {
 		boolean outlined = builder != null &&
 				text.longestLineLength() <= MAX_LINE_LENGTH;
 		LineTokens tokens = new LineTokens();
-		Matcher uniformLine = UNIFORM_LINE.matcher("");
-		Matcher endif = ENDIF.matcher("");
-		int uniformLineEnd = -1;
-		int endifEnd = -1;
 		int state = Syntax.TEXT_START;
 		for (int n = 0, lines = text.lineCount(); n < lines; ++n) {
 			if (cancel.cancelled()) {
 				return null;
 			}
 			String line = text.line(n);
-			int lineStart = text.lineStart(n);
 			if (outlined) {
 				state = syntax.lexLine(line, n < lines - 1, state, tokens);
-				builder.addLine(line, lineStart, tokens);
-			}
-			if (line.contains("uniform")) {
-				uniformLineEnd = lastEnd(uniformLine.reset(line), lineStart,
-						uniformLineEnd);
-			}
-			if (line.contains("#endif")) {
-				endifEnd = lastEnd(endif.reset(line), lineStart, endifEnd);
+				builder.addLine(line, text.lineStart(n), tokens);
 			}
 		}
 		Knowledge knowledge = builder != null
@@ -97,8 +80,7 @@ public final class Analysis {
 				previous.typeNames.equals(typeNames);
 		return new Analysis(revision, knowledge, same
 				? previous.typeNames
-				: Collections.unmodifiableSet(typeNames),
-				uniformLineEnd, endifEnd);
+				: Collections.unmodifiableSet(typeNames));
 	}
 
 	// The end of the last uniform line, before its line break, or -1. Add
@@ -125,14 +107,6 @@ public final class Analysis {
 	// The same set as the analysis before had while the names stay the same.
 	public Set<String> typeNames() {
 		return typeNames;
-	}
-
-	public int uniformLineEnd() {
-		return uniformLineEnd;
-	}
-
-	public int endifEnd() {
-		return endifEnd;
 	}
 
 	// Return offset plus the end of the last match of m, or end if there
