@@ -961,12 +961,7 @@ public final class LibraryScreen implements ShaderScreen {
 					// Nothing may hold the library open, and no text
 					// of it stays in the editor to be typed into and
 					// saved to nowhere while it is put aside.
-					if (open == shaderManager) {
-						if (shaderManager.isModified()) {
-							shaderManager.saveShader();
-						}
-						shaderManager.deselect();
-					}
+					leaveNotMoved();
 					files.leave();
 					open = nothing(OpenState.Kind.MOVING);
 					showOpen();
@@ -1066,13 +1061,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 			@Override
 			public void onShown(@NonNull ProjectFile file) {
-				if (open == shaderManager) {
-					// As when another shader is chosen.
-					if (shaderManager.isModified()) {
-						shaderManager.saveShader();
-					}
-					shaderManager.deselect();
-				}
+				leaveNotMoved();
 				open = file;
 				file.setDrawing(drawing);
 				showOpen();
@@ -1183,10 +1172,26 @@ public final class LibraryScreen implements ShaderScreen {
 				Message.make(activity,
 								activity.getText(R.string.file_needs_new_editor),
 								NEEDS_NEW_EDITOR_MILLIS)
-						.setAction(R.string.turn_on, v -> turnOn.run())
+						.setAction(R.string.turn_on, v -> {
+							// The file asked for takes its place once the
+							// screen is made again, not the shader.
+							leaveNotMoved();
+							turnOn.run();
+						})
 						.show();
 			}
 		};
+	}
+
+	// Leave a shader of the database that was not moved for a file, as
+	// when another shader is chosen: what was typed is saved first.
+	private void leaveNotMoved() {
+		if (open == shaderManager) {
+			if (shaderManager.isModified()) {
+				shaderManager.saveShader();
+			}
+			shaderManager.deselect();
+		}
 	}
 
 	private void showOpenTitle() {
