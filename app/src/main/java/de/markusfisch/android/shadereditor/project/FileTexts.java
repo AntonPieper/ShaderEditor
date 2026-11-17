@@ -779,8 +779,16 @@ public final class FileTexts {
 				? Histories.hash(document.text())
 				: null;
 		Document.History kept = hash != null
-				? histories.read(path, hash)
+				? histories.find(path, hash)
 				: null;
+		// Unsaved text typed after the history was kept for the stored
+		// text, as after a Reload, is one step more on that history.
+		if (kept == null && hash != null && opened.unsaved()) {
+			kept = typedOnStored(path, opened.revision(), document.text());
+		}
+		if (kept == null && hash != null) {
+			histories.remove(path);
+		}
 		List<Journal.Replaced> replaced;
 		try {
 			replaced = journal.replaced(path);
@@ -802,6 +810,32 @@ public final class FileTexts {
 				document, opened.unsaved(), opened.revision(),
 				opened.journal(), opened.id(), opened.noted(),
 				opened.unreadable(), opened.damaged(), reached);
+	}
+
+	// Return the history of typed, unsaved text based on revision of
+	// path, when storage is at that revision and a history is kept for
+	// its text: that history with typed as one more step; else null.
+	private Document.History typedOnStored(ProjectPath path, String revision,
+			Text typed) {
+		if (revision == null) {
+			return null;
+		}
+		Read read = store.read(path, Document.MAX_BYTES);
+		Text stored = read instanceof Content content &&
+				revision.equals(content.revision())
+				? decode(content.bytes())
+				: null;
+		Document.History history = stored != null
+				? histories.find(path, Histories.hash(stored))
+				: null;
+		if (history == null) {
+			return null;
+		}
+		Document document = new Document(stored, Document.bytes(stored));
+		return document.restore(history) &&
+				document.replace(0, stored.length(), typed)
+				? document.history()
+				: null;
 	}
 
 	// Return, for each of replaced, the state at which undo or redo of
