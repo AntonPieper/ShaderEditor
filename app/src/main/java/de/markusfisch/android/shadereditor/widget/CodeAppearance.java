@@ -19,11 +19,9 @@ import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.highlighter.Highlight;
 import de.markusfisch.android.shadereditor.syntax.Style;
 
-/**
- * Every colour, size and stroke of a CodeView, read from resources and
- * the theme in this one place, and the metrics of its font. Changing the
- * font or a size invalidates every LineLayout made before.
- */
+// Every colour, size and stroke of a CodeView, read from resources and the
+// theme in one place, and the metrics of its font. Changing the font or a size
+// invalidates every LineLayout made before.
 final class CodeAppearance {
 	private static final String PRINTABLE;
 
@@ -84,7 +82,6 @@ final class CodeAppearance {
 	final float underline;
 	final float padding;
 	int tabWidth = 4;
-	// Of the font and its size.
 	float charWidth;
 	float digitWidth;
 	int lineHeight;
@@ -198,7 +195,7 @@ final class CodeAppearance {
 				fixHeight + 2 * rowPaddingVertical);
 	}
 
-	/** Lay out a line; runs may be null for no colours. */
+	// runs may be null for no colours.
 	LineLayout layout(String text, LineStyles.Runs runs) {
 		return text.length() > LineLayout.LONG ||
 				(monospace && Columns.isSimple(text))

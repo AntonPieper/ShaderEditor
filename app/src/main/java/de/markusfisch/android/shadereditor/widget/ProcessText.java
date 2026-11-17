@@ -8,12 +8,9 @@ import android.content.pm.ResolveInfo;
 import android.view.Menu;
 import android.view.MenuItem;
 
-/**
- * What other apps offer for selected text, their activities for
- * Intent.ACTION_PROCESS_TEXT, as the platform's text views list them in
- * the floating toolbar: after its own actions, in its overflow, each
- * item with the intent that starts its activity.
- */
+// What other apps offer for selected text, their activities for
+// ACTION_PROCESS_TEXT, as the platform's text views list them: after its own
+// actions, in the overflow.
 final class ProcessText {
 	// As the platform's ACTION_MODE_MENU_ITEM_ORDER_PROCESS_TEXT_...
 	private static final int ORDER = 100;
@@ -21,10 +18,7 @@ final class ProcessText {
 	private ProcessText() {
 	}
 
-	/**
-	 * Add an item for each activity to menu; readOnly tells the
-	 * activities that no text they return will be used.
-	 */
+	// readOnly tells the activities that no text they return will be used.
 	static void addTo(Menu menu, Context context, boolean readOnly) {
 		PackageManager pm = context.getPackageManager();
 		int order = ORDER;

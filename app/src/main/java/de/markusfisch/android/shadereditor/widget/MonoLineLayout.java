@@ -6,13 +6,10 @@ import android.os.Build;
 
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 
-/**
- * A line of printable ASCII and tabs in a font whose characters all have
- * one width: positions are arithmetic, and each run of one colour is one
- * drawText, or from Android 12 on one drawGlyphs where the font allows
- * (see MonoGlyphs). A line longer than LONG is drawn this way whatever it holds,
- * without colours and only where it is visible.
- */
+// A line of printable ASCII and tabs in a font whose characters all have one
+// width: positions are arithmetic, and each run of one colour is one drawText,
+// or from Android 12 on one drawGlyphs where the font allows. A line longer
+// than LONG is drawn this way whatever it holds.
 final class MonoLineLayout implements LineLayout {
 	private final String text;
 	private final CodeAppearance appearance;

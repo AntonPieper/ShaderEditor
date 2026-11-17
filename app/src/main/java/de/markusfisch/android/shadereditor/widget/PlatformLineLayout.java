@@ -12,13 +12,10 @@ import android.text.style.TabStopSpan;
 
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 
-/**
- * A line the platform lays out, as a StaticLayout of that line alone with
- * colour spans: for any character but printable ASCII, and for every
- * line in a font whose characters differ in width. It brings font
- * fallback, emoji, combining marks, right-to-left runs in a left-to-right
- * line, and offsets by grapheme cluster.
- */
+// A StaticLayout of one line with colour spans: for any character but printable
+// ASCII, and for every line in a font whose characters differ in width. It
+// brings font fallback, emoji, combining marks, right-to-left runs and offsets
+// by grapheme cluster.
 final class PlatformLineLayout implements LineLayout {
 	// Wide enough that a line of LONG characters never wraps.
 	private static final int WIDTH = 1 << 24;
