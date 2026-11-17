@@ -8,12 +8,12 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.project.CompiledSource;
 import de.markusfisch.android.shadereditor.project.PreprocessorScan;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.SourceLocation;
 import de.markusfisch.android.shadereditor.project.SourceMap;
-import de.markusfisch.android.shadereditor.project.SourceText;
 
 // What a program of a plan compiles to: its text with the lines the
 // engine generates after #version, and the declaration of a tuned
@@ -25,14 +25,11 @@ record PlanSource(
 		@NonNull SourceMap sourceMap,
 		float fTimeMax) {
 	private static final float DEFAULT_FTIME_MAX = 3f;
-	private static final Pattern VERSION = Pattern.compile("\\d{1,9}");
 	// The macro whose number is the period of ftime.
 	static final String FTIME_PERIOD = "FTIME_PERIOD";
 	private static final Pattern FTIME = Pattern.compile(
 			"^#define[ \\t]+" + FTIME_PERIOD + "[ \\t]+([0-9.]+)[ \\t]*$",
 			Pattern.MULTILINE);
-	private static final Pattern EXTERNAL_SAMPLER = Pattern.compile(
-			"\\bsamplerExternalOES\\b");
 
 	// Returns null and adds why when this context cannot compile it.
 	@Nullable
@@ -53,7 +50,7 @@ record PlanSource(
 		String text = program.text();
 		// What the compiler reads: comments mean nothing.
 		var scan = PreprocessorScan.scan(program.lines(), null);
-		int version = languageVersion(scan);
+		int version = CompiledSource.version(scan);
 		if (version >= 300 && glesVersion < 3) {
 			SourceLocation at = program.sourceMap().locate(program.head());
 			errors.add(new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR,
@@ -68,40 +65,24 @@ record PlanSource(
 			errors.add(fTimeError(program));
 			return null;
 		}
-		var generated = new ArrayList<String>();
-		generated.add("#define SHADER_EDITOR 1");
-		if (EXTERNAL_SAMPLER.matcher(String.join("\n", scan.code())).find()) {
-			generated.add(version >= 300
-					? "#extension GL_OES_EGL_image_external_essl3 : require"
-					: "#extension GL_OES_EGL_image_external : require");
-		}
-		// A line of code that ends behind a backslash in characters
-		// a compiler cannot read goes on in the next line, as it was
-		// written to: they are left out, where a space would end it.
-		var lines = new ArrayList<String>();
-		for (int i = 0; i < program.lines().size(); ++i) {
-			String line = program.lines().get(i);
-			int tail = SourceText.afterContinuation(line,
-					scan.code().get(i));
-			lines.add(tail < 0 ? line : line.substring(0, tail));
-		}
-		var sourceMap = program.sourceMap();
+		// The text itself is made where everybody who has to know what
+		// the compiler reads can make it too.
+		int after = 0;
+		List<String> declaration = List.of();
 		if (tuning != null && uses(scan, tuning.name)) {
 			// After every #extension, which no declaration may precede.
-			int after = declarationLine(scan, program.lines(),
-					program.head());
-			var declaration = tuning.declaration();
-			lines.addAll(after, declaration);
-			sourceMap = sourceMap.insertGenerated(after, declaration.size());
+			after = declarationLine(scan, program.lines(), program.head());
+			declaration = tuning.declaration();
 		}
-		lines.addAll(program.head(), generated);
+		CompiledSource compiled = CompiledSource.of(program.lines(), scan,
+				program.head(), program.sourceMap(), after, declaration);
 		return new PlanSource(
-				removeNonAscii(String.join("\n", lines) + "\n"),
+				compiled.text(),
 				version >= 300
 						? "#version " + version + " es\n" +
 						FullScreenQuad.VERTEX_SHADER_3
 						: FullScreenQuad.VERTEX_SHADER,
-				sourceMap.insertGenerated(program.head(), generated.size()),
+				compiled.sourceMap(),
 				fTimeMax);
 	}
 
@@ -152,18 +133,6 @@ record PlanSource(
 		return after;
 	}
 
-	private static int languageVersion(@NonNull PreprocessorScan scan) {
-		for (var directive : scan.directives()) {
-			if (directive.kind() == PreprocessorScan.Kind.VERSION) {
-				Matcher matcher = VERSION.matcher(directive.argument());
-				return matcher.lookingAt()
-						? Integer.parseInt(matcher.group())
-						: 100;
-			}
-		}
-		return 100;
-	}
-
 	// NaN when the period is not a number, the default without a period
 	// and for one that is zero or too large, which would make ftime NaN.
 	private static float fTimeMax(@NonNull String text) {
@@ -199,14 +168,5 @@ record PlanSource(
 						"is not a number",
 				at != null ? at.file() : program.file(),
 				at != null ? at.line() : 0);
-	}
-
-	// Non-ASCII characters crash some shader compilers, so each becomes
-	// a space here, at the last step before the compiler, and never in
-	// the stored text. In a comment that changes nothing; in code
-	// preparation warned of it. Line breaks stay, so lines still map.
-	@NonNull
-	private static String removeNonAscii(@NonNull String text) {
-		return text.replaceAll("[^\\x0A\\x09\\x20-\\x7E]", " ");
 	}
 }
