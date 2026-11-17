@@ -20,17 +20,12 @@ import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.KeyboardSession;
 import de.markusfisch.android.shadereditor.editor.TextInput;
 
-/**
- * The keyboard's connection to a CodeView: every call goes to one
- * TextInput, except a line break committed on its own while nothing is
- * composing, which is the view's Enter command because keyboards send
- * Enter so; replaceText, which is made of the other calls; and context
- * menu actions, which are the view's. Key events and editor actions
- * reach the view as keys, through BaseInputConnection. A keyboard may
- * use a connection after it was given a newer one, so each connection
- * makes itself the view's current one when the keyboard calls it, and
- * only that one's updates reach the keyboard.
- */
+// Every call goes to one TextInput, except a line break committed on its own
+// while nothing composes, which is the view's Enter command because keyboards
+// send Enter so; replaceText, made of the other calls; and context menu
+// actions, which are the view's. A keyboard may use a connection after it was
+// given a newer one, so each connection makes itself the view's current one
+// when called, and only its updates reach the keyboard.
 final class CodeInputConnection extends BaseInputConnection {
 	private final CodeView view;
 	private final Document document;

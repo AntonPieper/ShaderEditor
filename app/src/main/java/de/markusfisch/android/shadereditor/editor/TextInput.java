@@ -3,50 +3,29 @@ package de.markusfisch.android.shadereditor.editor;
 import de.markusfisch.android.shadereditor.editor.Document.Change;
 import de.markusfisch.android.shadereditor.editor.Document.Selection;
 
-/**
- * What a keyboard does to a document through an InputConnection, and
- * what it must be told back. The Android connection forwards each call
- * to the method of the same name; one TextInput serves one connection
- * and holds the composing region and the keyboard's batch edits.
- * <p>
- * The keyboard is told the selection, as anchor and head, and the
- * composing region whenever either changed: after each of its calls
- * outside a batch edit, at the end of its outermost batch edit, and
- * after each change the app made while no batch edit was open. It is
- * told one update at a time: a call it makes while it is told, from a
- * listener, is told after, so the last update holds the selection. A
- * change is the keyboard's if one of its calls made it. Any other text
- * change (a key the view handled, undo, a completion, an edit from a
- * listener) finishes composing; a selection the app made keeps it, so
- * the keyboard decides. Key events, editor actions and context menu
- * actions are the view's commands and arrive here as such changes.
- * <p>
- * A commit or composing text the document refuses, as one that would
- * make the text too large, changes nothing: text, selection and
- * composing region stay as they were, and the keyboard is told them
- * again, so it does not take its text as entered. The document tells
- * its listeners why.
- * <p>
- * Committed text without line breaks, composing text and the deletion
- * of one character join the document's run of typing; text with line
- * breaks and longer deletions, as an autocorrection makes, are undo
- * steps of their own. A keyboard commits text from its own clipboard
- * as it commits glide typing, so a paste from there joins the run if it
- * is one line. Text the view pastes itself, from its context menu or a
- * key, goes to Document.replace, which ends the run.
- * <p>
- * A read returns at most MAX_READ characters on either side of the
- * selection and of the selection itself, so it costs what it returns,
- * and it never tells a selection that is not there. A selection longer
- * than MAX_READ makes getSelectedText and getSurroundingText decline,
- * with null; getExtractedText then cuts its text after MAX_READ
- * characters of the selection and keeps the real anchor and head, so
- * the keyboard sees that the text is cut and not the selection.
- * <p>
- * Given a KeyboardSession, it writes when it opens and closes, every
- * call with its answer, what the keyboard was told, and every change
- * and selection of the app.
- */
+// What a keyboard does to a document through an InputConnection, and what it
+// must be told back; one TextInput serves one connection.
+//
+// The keyboard is told the selection and the composing region after each of its
+// calls outside a batch edit, at the end of its outermost batch edit, and after
+// each change the app made outside one; one update at a time, so the last holds
+// the selection. A text change that is not the keyboard's finishes composing; a
+// selection the app made keeps it, so the keyboard decides.
+//
+// A commit the document refuses changes nothing, and the keyboard is told the
+// old state again, so it does not take its text as entered.
+//
+// Committed text without line breaks, composing text and one-character deletes
+// join the run of typing; text with line breaks and longer deletes, as
+// autocorrection makes, are steps of their own. A keyboard commits text from
+// its own clipboard as it commits glide typing, so such a paste joins the run
+// if it is one line.
+//
+// A read returns at most MAX_READ characters on either side of the selection
+// and of the selection itself, so it costs what it returns. A longer selection
+// makes getSelectedText and getSurroundingText return null; getExtractedText
+// cuts its text but keeps the real anchor and head, so the keyboard sees that
+// the text is cut, not the selection.
 public final class TextInput {
 	public static final int MAX_READ = 4096;
 
@@ -54,23 +33,16 @@ public final class TextInput {
 	private static final int PIECE = 1024;
 
 	public interface Listener {
-		/**
-		 * Pass on to InputMethodManager.updateSelection; -1 means there
-		 * is no composing region.
-		 */
+		// -1 means there is no composing region.
 		void onUpdateSelection(int selStart, int selEnd,
 				int composingStart, int composingEnd);
 
-		/** Pass on to InputMethodManager.updateExtractedText. */
 		default void onUpdateExtractedText(int token, Window window) {
 		}
 	}
 
-	/**
-	 * Text of the document from offset, and the ends of the selection
-	 * counted from offset: sorted for getSurroundingText, anchor and head
-	 * for getExtractedText, where the head may lie beyond a cut text.
-	 */
+	// Ends counted from offset: sorted for getSurroundingText, anchor and head
+	// for getExtractedText, where the head may lie beyond a cut text.
 	public record Window(int offset, int selectionStart, int selectionEnd,
 			String text) {
 	}
@@ -126,15 +98,11 @@ public final class TextInput {
 	// The selection as the session has it.
 	private Selection recorded;
 
-	/**
-	 * Start a connection to document; the keyboard knows its selection
-	 * from EditorInfo and no composing region.
-	 */
+	// The keyboard knows the selection from EditorInfo and no composing region.
 	public TextInput(Document document, Listener listener) {
 		this(document, listener, null);
 	}
 
-	/** Start a connection as above, and write it to session. */
 	public TextInput(Document document, Listener listener,
 			KeyboardSession session) {
 		this.document = document;
@@ -146,22 +114,16 @@ public final class TextInput {
 		id = this.session.open(document, recorded);
 	}
 
-	/** Return where the composing region starts, -1 if there is none. */
+	// -1 if there is none.
 	public int composingStart() {
 		return composingStart;
 	}
 
-	/** Return where the composing region ends, -1 if there is none. */
+	// -1 if there is none.
 	public int composingEnd() {
 		return composingEnd;
 	}
 
-	/**
-	 * Replace the composing text, or else the selection, by text and
-	 * finish composing. A position above 0 puts the caret position - 1
-	 * characters behind the new text, any other position that many
-	 * characters before its start.
-	 */
 	public boolean commitText(CharSequence text, int position) {
 		if (!begin()) {
 			return false;
@@ -174,7 +136,6 @@ public final class TextInput {
 		return done("commitText", text, position);
 	}
 
-	/** Replace as commitText does, and compose the new text. */
 	public boolean setComposingText(CharSequence text, int position) {
 		if (!begin()) {
 			return false;
@@ -187,10 +148,7 @@ public final class TextInput {
 		return done("setComposingText", text, position);
 	}
 
-	/**
-	 * Compose the text from start to end without changing it. The ends
-	 * may come in either order and are clamped to the text.
-	 */
+	// The ends may come in either order and are clamped to the text.
 	public boolean setComposingRegion(int start, int end) {
 		if (!begin()) {
 			return false;
@@ -201,10 +159,6 @@ public final class TextInput {
 		return done("setComposingRegion", start, end);
 	}
 
-	/**
-	 * Keep the composing text and forget the region. On a closed
-	 * connection, there is nothing to finish.
-	 */
 	public boolean finishComposingText() {
 		if (begin()) {
 			composingStart = composingEnd = -1;
@@ -213,29 +167,19 @@ public final class TextInput {
 		return true;
 	}
 
-	/**
-	 * Delete before characters before and after characters behind the
-	 * selection and the composing region, never half a surrogate pair:
-	 * a range that ends inside a pair takes all of it, and if one would
-	 * start inside a pair, nothing is deleted.
-	 */
+	// Never half a surrogate pair: a range that ends inside a pair takes all of
+	// it, and one that would start inside a pair deletes nothing.
 	public boolean deleteSurroundingText(int before, int after) {
 		return delete("deleteSurroundingText", before, after, false);
 	}
 
-	/**
-	 * Delete as deleteSurroundingText does, counting code points. As on
-	 * Android, nothing is deleted if either range holds half a pair.
-	 */
+	// As on Android, nothing is deleted if either range holds half a pair.
 	public boolean deleteSurroundingTextInCodePoints(int before, int after) {
 		return delete("deleteSurroundingTextInCodePoints", before, after,
 				true);
 	}
 
-	/**
-	 * Select from start, the anchor, to end. A range outside the text is
-	 * ignored; the keyboard will be told the real one.
-	 */
+	// A range outside the text is ignored; the keyboard is told the real one.
 	public boolean setSelection(int start, int end) {
 		if (!begin()) {
 			return false;
@@ -247,7 +191,6 @@ public final class TextInput {
 		return done("setSelection", start, end);
 	}
 
-	/** Return up to n characters before the selection. */
 	public String getTextBeforeCursor(int n) {
 		if (closed) {
 			return null;
@@ -258,7 +201,6 @@ public final class TextInput {
 		return read(before, "getTextBeforeCursor", n);
 	}
 
-	/** Return up to n characters behind the selection. */
 	public String getTextAfterCursor(int n) {
 		if (closed) {
 			return null;
@@ -270,10 +212,7 @@ public final class TextInput {
 		return read(after, "getTextAfterCursor", n);
 	}
 
-	/**
-	 * Return the selected text, null if the selection is empty or longer
-	 * than MAX_READ.
-	 */
+	// Null if the selection is empty or longer than MAX_READ.
 	public String getSelectedText() {
 		if (closed) {
 			return null;
@@ -286,10 +225,7 @@ public final class TextInput {
 		return read(selected, "getSelectedText");
 	}
 
-	/**
-	 * Return the selection with up to before characters before it and
-	 * up to after behind it, null if it is longer than MAX_READ.
-	 */
+	// Null if the selection is longer than MAX_READ.
 	public Window getSurroundingText(int before, int after) {
 		if (closed) {
 			return null;
@@ -300,12 +236,8 @@ public final class TextInput {
 				"getSurroundingText", before, after);
 	}
 
-	/**
-	 * Return a window of MAX_READ characters on either side of the
-	 * selection; its offset is ExtractedText.startOffset. If monitor is
-	 * set, the keyboard is sent a new window with every update from now
-	 * on, under token.
-	 */
+	// MAX_READ characters on either side of the selection. With monitor, the
+	// keyboard gets a new window under token with every update from now on.
 	public Window getExtractedText(int token, boolean monitor) {
 		if (closed) {
 			return null;
@@ -318,11 +250,8 @@ public final class TextInput {
 				token, monitor);
 	}
 
-	/**
-	 * Open a batch edit: until the outermost one ends, the keyboard is
-	 * not told of changes, and they are one undo step unless they are
-	 * typing.
-	 */
+	// Until the outermost one ends, the keyboard is not told of changes, and
+	// they are one undo step unless they are typing.
 	public boolean beginBatchEdit() {
 		if (closed) {
 			return false;
@@ -334,7 +263,6 @@ public final class TextInput {
 		return true;
 	}
 
-	/** Close a batch edit; return whether one is still open. */
 	public boolean endBatchEdit() {
 		if (closed) {
 			return false;
@@ -353,11 +281,8 @@ public final class TextInput {
 		return open;
 	}
 
-	/**
-	 * End open batch edits and finish composing. Every later call is
-	 * ignored and answered with false or null, finishComposingText with
-	 * true.
-	 */
+	// Every later call is answered with false or null, finishComposingText with
+	// true.
 	public void closeConnection() {
 		if (closed) {
 			return;
@@ -557,7 +482,6 @@ public final class TextInput {
 		return i;
 	}
 
-	// Returns whether offset is between the halves of a surrogate pair.
 	private boolean splits(int offset) {
 		Text text = document.text();
 		if (offset <= 0 || offset >= text.length()) {
