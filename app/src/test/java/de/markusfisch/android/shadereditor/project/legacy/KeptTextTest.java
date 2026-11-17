@@ -121,6 +121,20 @@ public class KeptTextTest {
 		assertNull(keep("// a \\\u00e9 b\nvoid main() {}\n").loss());
 	}
 
+	// A host directive the user wrote becomes a comment; the file keeps
+	// what the conversion did not see around it.
+	@Test
+	public void aWrittenHostDirectiveIsKeptAsAComment() {
+		assertEquals("//#pragma se input \"x.png\" // caf\u00e9\n" +
+						"void main() {}\n",
+				keep("#pragma se input \"x.png\" // caf\u00e9\n" +
+						"void main() {}\n").shader());
+		assertEquals("//#pragma se input \"x.png\" \n/* caf\u00e9\n" +
+						"*/ void main() {}\n",
+				keep("#pragma se input \"x.png\" /* caf\u00e9\n" +
+						"*/ void main() {}\n").shader());
+	}
+
 	private record Kept(String shader, String loss) {
 	}
 

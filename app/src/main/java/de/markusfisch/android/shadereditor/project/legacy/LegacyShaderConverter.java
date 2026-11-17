@@ -15,6 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
+import de.markusfisch.android.shadereditor.project.HostDirective;
 import de.markusfisch.android.shadereditor.project.HostDirective.Filter;
 import de.markusfisch.android.shadereditor.project.HostDirective.Wrap;
 import de.markusfisch.android.shadereditor.project.PreprocessorScan;
@@ -246,6 +247,7 @@ public final class LegacyShaderConverter {
 		}
 		convertBackbuffer();
 		warnDiscard();
+		Set<Integer> written = writtenDirectives();
 		List<String> out = new ArrayList<>();
 		for (int line = 1; line <= raw.size() + 1; ++line) {
 			List<Line> lines = new ArrayList<>();
@@ -264,6 +266,8 @@ public final class LegacyShaderConverter {
 				// Nothing follows.
 			} else if (edits.containsKey(line)) {
 				lines.addAll(rewrite(line, from));
+			} else if (written.contains(line)) {
+				lines.addAll(comment(line, from));
 			} else if (from == 0 ||
 					!raw.get(line - 1).substring(from).isBlank()) {
 				lines.add(new Line(raw.get(line - 1).substring(from), line));
@@ -818,6 +822,38 @@ public final class LegacyShaderConverter {
 				? rest.isBlank() ? "" : rest.stripTrailing()
 				: rest, line));
 		return lines;
+	}
+
+	// Lines with a host directive the author wrote. The old conventions
+	// have none: the old renderer left the line to the compiler, which
+	// ignores a pragma it does not know.
+	private Set<Integer> writtenDirectives() {
+		Set<Integer> lines = new HashSet<>();
+		for (PreprocessorScan.Directive d : scan.directives()) {
+			if (d.kind() == PreprocessorScan.Kind.PRAGMA &&
+					HostDirective.readsAsHost(d.argument())) {
+				lines.add(d.line());
+			}
+		}
+		return lines;
+	}
+
+	// Such a line becomes a comment, which the compiler ignores the same
+	// way. A block comment that is still open at its end goes on a line
+	// of its own behind it, a piece of the same original line.
+	private List<Line> comment(int line, int from) {
+		String text = raw.get(line - 1);
+		String code = scan.code().get(line - 1);
+		int hash = code.indexOf('#', from);
+		int open = scan.openComments().get(line - 1)
+				? text.indexOf("/*", code.stripTrailing().length())
+				: -1;
+		String commented = text.substring(from, hash) + "//" +
+				text.substring(hash, open > -1 ? open : text.length());
+		return open > -1
+				? List.of(new Line(commented, line),
+						new Line(text.substring(open), line))
+				: List.of(new Line(commented, line));
 	}
 
 	// A preset naming a missing texture stays where it is written.

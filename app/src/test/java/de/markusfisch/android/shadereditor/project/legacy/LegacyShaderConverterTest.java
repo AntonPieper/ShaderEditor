@@ -880,6 +880,40 @@ public class LegacyShaderConverterTest {
 		assertEquals(1, discard.diagnostics().size());
 	}
 
+	@Test
+	public void writtenHostDirectiveIsLeftToTheCompilerAsAComment() {
+		Result result = convert(lines(
+				"#pragma se input \"x.png\" // a note",
+				"#define K 0.5",
+				"  #pragma se_target present=linear",
+				"#pragma optimize(off)",
+				"uniform sampler2D tex;",
+				"uniform sampler2D noise;"));
+		assertEquals(lines(
+				"//#pragma se input \"x.png\" // a note",
+				"#define K 0.5",
+				"  //#pragma se_target present=linear",
+				"#pragma optimize(off)",
+				"uniform sampler2D tex;",
+				NOISE_DEFAULT,
+				"uniform sampler2D noise;"), result.shader());
+		assertTrue(result.diagnostics().isEmpty());
+		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
+	}
+
+	@Test
+	public void blockCommentOpenAfterAWrittenDirectiveStaysOpen() {
+		Result result = convert(lines(
+				"#pragma se input \"x.png\" /* the comment",
+				"goes on */"));
+		assertEquals(lines(
+				"//#pragma se input \"x.png\" ",
+				"/* the comment",
+				"goes on */"), result.shader());
+		assertEquals(List.of(1, 1, 2), result.lines());
+		assertTrue(errors(prepare(result).diagnostics()).isEmpty());
+	}
+
 	private static Preparation prepare(Result result) {
 		Map<ProjectPath, byte[]> files = new HashMap<>();
 		for (Map.Entry<ProjectPath, String> file : result.files().entrySet()) {
