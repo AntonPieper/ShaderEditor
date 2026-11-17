@@ -64,7 +64,7 @@ public class KeyboardSessionTest {
 
 	@Test
 	public void recordingReplays() {
-		KeyboardSession session = session(KeyboardSession.MAX_SIZE);
+		KeyboardRecorder session = session(KeyboardRecorder.MAX_SIZE);
 		Document document = new Document(Text.of(
 				"a \"q\" \\ é😀\uD800\n\tb\u0001"), () -> now[0]);
 		document.select(3, 1);
@@ -115,7 +115,7 @@ public class KeyboardSessionTest {
 
 	@Test
 	public void replacedConnectionClosingLateLeavesTheNewOne() {
-		KeyboardSession session = session(KeyboardSession.MAX_SIZE);
+		KeyboardRecorder session = session(KeyboardRecorder.MAX_SIZE);
 		Document document = new Document(Text.of("abc"));
 		TextInput replaced = new TextInput(document, (a, b, c, d) -> {
 		}, session);
@@ -146,7 +146,7 @@ public class KeyboardSessionTest {
 
 	@Test
 	public void sessionEndsAtItsSize() {
-		KeyboardSession session = session(40);
+		KeyboardRecorder session = session(40);
 		Document document = new Document(Text.of("abc"));
 		TextInput input = new TextInput(document, (a, b, c, d) -> {
 		}, session);
@@ -159,7 +159,7 @@ public class KeyboardSessionTest {
 
 	@Test
 	public void stringsAreQuotedAndEscaped() {
-		KeyboardSession session = session(KeyboardSession.MAX_SIZE);
+		KeyboardRecorder session = session(KeyboardRecorder.MAX_SIZE);
 		session.note("call", null, "\"\\\n\t\ré", 1);
 		assertEquals("# 0 call \"\\\"\\\\\\n\\t\\u000d\\u00e9\" 1 -> null\n",
 				session.drain());
@@ -177,8 +177,8 @@ public class KeyboardSessionTest {
 		assertTrue(e.getMessage(), e.getMessage().startsWith("wrong:3: "));
 	}
 
-	private KeyboardSession session(int maxSize) {
-		return new KeyboardSession(() -> now[0], maxSize);
+	private KeyboardRecorder session(int maxSize) {
+		return new KeyboardRecorder(() -> now[0], maxSize);
 	}
 
 	// What the view does for the keys and context menu actions the
