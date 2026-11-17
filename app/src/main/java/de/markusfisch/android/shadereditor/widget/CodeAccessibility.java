@@ -36,6 +36,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 					AccessibilityNodeInfo.MOVEMENT_GRANULARITY_LINE |
 					AccessibilityNodeInfo.MOVEMENT_GRANULARITY_PARAGRAPH |
 					AccessibilityNodeInfo.MOVEMENT_GRANULARITY_PAGE;
+	// At most this much of a selection is said.
+	private static final int SAID_CHARS = 200;
 	// The actions of the fixes of the caret's line, in their order.
 	private static final int[] FIXES = {R.id.row_fix, R.id.row_fix_2};
 
@@ -185,6 +187,15 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			default -> {
 			}
 		}
+	}
+
+	@Override
+	public void sendAccessibilityEvent(@NonNull View host, int eventType) {
+		if (eventType ==
+				AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED) {
+			view.forgetExplored();
+		}
+		super.sendAccessibilityEvent(host, eventType);
 	}
 
 	@Override
@@ -437,9 +448,32 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	}
 
 	private boolean isEnabled() {
-		AccessibilityManager manager = (AccessibilityManager) view
-				.getContext().getSystemService(Context.ACCESSIBILITY_SERVICE);
+		AccessibilityManager manager = manager();
 		return manager != null && manager.isEnabled();
+	}
+
+	// A service tells of a selection it made itself, not of one made by its
+	// long press.
+	void selectedByTouch() {
+		Document document = view.getDocument();
+		if (document == null) {
+			return;
+		}
+		Document.Selection selection = document.selection();
+		int end = Math.min(selection.end(), selection.start() + SAID_CHARS);
+		view.announceForAccessibility(view.getContext().getString(
+				R.string.a11y_selected, document.text().substring(
+						selection.start(), end)));
+	}
+
+	boolean exploresByTouch() {
+		AccessibilityManager manager = manager();
+		return manager != null && manager.isTouchExplorationEnabled();
+	}
+
+	private AccessibilityManager manager() {
+		return (AccessibilityManager) view.getContext().getSystemService(
+				Context.ACCESSIBILITY_SERVICE);
 	}
 
 	private static void addScrollActions(View host,

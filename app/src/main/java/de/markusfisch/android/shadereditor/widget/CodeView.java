@@ -322,6 +322,13 @@ public class CodeView extends View {
 	// From the finger to the place a dragged handle points at.
 	private float pointDx;
 	private float pointDy;
+	// Under touch exploration a service sends its long press to the middle
+	// of the view: a touch is moved to where the code was explored last, or
+	// to the caret, by touchDx and touchDy.
+	private float exploredX = Float.NaN;
+	private float exploredY;
+	private float touchDx;
+	private float touchDy;
 	private boolean caretHandle;
 	// A DragMagnifier from Android 9 on, once something was dragged.
 	private Object magnifier;
@@ -834,6 +841,20 @@ public class CodeView extends View {
 		postInvalidateOnAnimation();
 	}
 
+	@Override
+	public boolean onHoverEvent(MotionEvent event) {
+		if (!event.isFromSource(InputDevice.SOURCE_MOUSE) &&
+				accessibility.exploresByTouch()) {
+			exploredX = event.getX();
+			exploredY = event.getY();
+		}
+		return super.onHoverEvent(event);
+	}
+
+	void forgetExplored() {
+		exploredX = Float.NaN;
+	}
+
 	// The gesture detector calls performClick for a tap.
 	@SuppressLint("ClickableViewAccessibility")
 	@Override
@@ -841,6 +862,41 @@ public class CodeView extends View {
 		if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
 			return mouse(event) || super.onTouchEvent(event);
 		}
+		if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+			touchDx = touchDy = 0;
+			if (document != null && accessibility.exploresByTouch()) {
+				placeExploredTouch(event.getX(), event.getY());
+			}
+		}
+		if (touchDx == 0 && touchDy == 0) {
+			return touch(event);
+		}
+		MotionEvent moved = MotionEvent.obtain(event);
+		moved.offsetLocation(touchDx, touchDy);
+		try {
+			return touch(moved);
+		} finally {
+			moved.recycle();
+		}
+	}
+
+	private void placeExploredTouch(float x, float y) {
+		if (Float.isNaN(exploredX)) {
+			Text text = document.text();
+			int head = document.selection().head();
+			int n = text.lineOf(head);
+			touchDx = textLeft(text.lineCount()) +
+					layoutOf(n).xOf(head - text.lineStart(n)) -
+					getScrollX() - x;
+			touchDy = lineTop(n) + appearance.lineHeight / 2f -
+					getScrollY() - y;
+		} else {
+			touchDx = exploredX - x;
+			touchDy = exploredY - y;
+		}
+	}
+
+	private boolean touch(MotionEvent event) {
 		int action = event.getActionMasked();
 		if (dragging == DRAG_DROP && action != MotionEvent.ACTION_DOWN) {
 			// The touch that started a drag of text ends under it.
@@ -2061,6 +2117,9 @@ public class CodeView extends View {
 			toggleToolbar();
 		} else if (!touched.isEmpty() || pressed || toolbar.isShown()) {
 			showToolbar();
+		}
+		if (!touched.isEmpty() && accessibility.exploresByTouch()) {
+			accessibility.selectedByTouch();
 		}
 	}
 
