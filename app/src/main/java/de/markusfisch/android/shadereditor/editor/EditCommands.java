@@ -18,7 +18,6 @@ public final class EditCommands {
 	private final Document document;
 	private final Motion motion;
 	private int tabWidth = 4;
-	private boolean indentWithSpaces;
 	private Indentation indentation = Indentation.C;
 	// The column of a run of vertical moves, while the selection is the
 	// one the last of them made. The document makes a new selection for
@@ -40,14 +39,6 @@ public final class EditCommands {
 	public void setTabWidth(int tabWidth) {
 		this.tabWidth = tabWidth;
 		wantedSelection = null;
-	}
-
-	/**
-	 * Set whether a level of indentation is spaces up to the next tab
-	 * stop or a tab.
-	 */
-	public void setIndentWithSpaces(boolean indentWithSpaces) {
-		this.indentWithSpaces = indentWithSpaces;
 	}
 
 	/** Set how a new line is indented, C's way by default. */
@@ -125,21 +116,6 @@ public final class EditCommands {
 		document.select(0, document.text().length());
 	}
 
-	/** Select the word at offset, as Motion.wordAt finds it. */
-	public void selectWord(int offset) {
-		Selection word = motion.wordAt(document.text(), offset);
-		document.select(word.anchor(), word.head());
-	}
-
-	/** Select the line of offset with its line break. */
-	public void selectLine(int offset) {
-		Text text = document.text();
-		int line = text.lineOf(offset);
-		document.select(text.lineStart(line), line + 1 < text.lineCount()
-				? text.lineStart(line + 1)
-				: text.length());
-	}
-
 	public void deleteBackward() {
 		int head = head();
 		if (!deleteSelection() && head > 0) {
@@ -180,7 +156,7 @@ public final class EditCommands {
 		int start = selection.start();
 		int end = selection.end();
 		document.type(start, end, Text.of("\n" + AutoIndent.indentAfterBreak(
-				document.text(), start, end, level(0), indentation)));
+				document.text(), start, end, "\t", indentation)));
 	}
 
 	/**
@@ -193,11 +169,10 @@ public final class EditCommands {
 		Selection selection = document.selection();
 		int start = selection.start();
 		if (text.lineOf(start) == text.lineOf(selection.end())) {
-			document.type(start, selection.end(), Text.of(level(
-					motion.column(text, start, tabWidth))));
+			document.type(start, selection.end(), Text.of("\t"));
 			return;
 		}
-		shiftLines(level(0));
+		shiftLines("\t");
 	}
 
 	/**
@@ -278,19 +253,6 @@ public final class EditCommands {
 	private static int shift(int column, int added) {
 		return column == 0 ? 0 : Math.max(0, column + added);
 	}
-	// Returns a level of indentation that starts at column.
-	private String level(int column) {
-		if (!indentWithSpaces) {
-			return "\t";
-		}
-		int width = Math.max(1, tabWidth);
-		StringBuilder sb = new StringBuilder();
-		for (int i = width - column % width; i-- > 0; ) {
-			sb.append(' ');
-		}
-		return sb.toString();
-	}
-
 	private boolean deleteSelection() {
 		Selection selection = document.selection();
 		if (selection.isEmpty()) {

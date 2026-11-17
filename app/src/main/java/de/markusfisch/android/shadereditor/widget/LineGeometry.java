@@ -17,10 +17,6 @@ final class LineGeometry {
 		this.lineHeight = Math.max(1, lineHeight);
 	}
 
-	int lineHeight() {
-		return lineHeight;
-	}
-
 	/** Put a row of height under line, or none for line -1. */
 	void setRow(int line, int height) {
 		rowLine = line;

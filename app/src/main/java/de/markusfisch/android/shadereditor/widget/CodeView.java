@@ -127,16 +127,6 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
  * an EditText, through CodeAccessibility.
  */
 public class CodeView extends View {
-	/** Draws behind the text of each line on screen. */
-	public interface LineBackdrop {
-		/**
-		 * Draw behind line, whose text spans left to right and whose
-		 * box spans top to bottom.
-		 */
-		void draw(Canvas canvas, int line, float left, float top,
-				float right, float bottom);
-	}
-
 	/** Explains words, on request. */
 	public interface LookUp {
 		/** Return whether word can be looked up. */
@@ -412,7 +402,6 @@ public class CodeView extends View {
 	private LineStyles styles;
 	private LineMarks marks;
 	private boolean connected;
-	private LineBackdrop backdrop;
 	private LookUp lookUp;
 	private RowFix rowFix;
 	// The lines marked after a fix put them in, until the next edit.
@@ -758,11 +747,6 @@ public class CodeView extends View {
 	 */
 	public void markLines(@NonNull int[] lines) {
 		markedLines = lines.clone();
-		invalidate();
-	}
-
-	public void setLineBackdrop(@Nullable LineBackdrop backdrop) {
-		this.backdrop = backdrop;
 		invalidate();
 	}
 
@@ -1382,10 +1366,6 @@ public class CodeView extends View {
 			LineLayout layout = line.layout();
 			float top = textTop + lines.top(n);
 			int lineEnd = lineStart + s.length();
-			if (backdrop != null && !s.isEmpty()) {
-				backdrop.draw(canvas, n, textLeft, top,
-						textLeft + layout.width(), top + lineHeight);
-			}
 			ProjectDiagnostic.Severity severity =
 					marks != null ? marks.severity(n) : null;
 			if (severity != null) {
