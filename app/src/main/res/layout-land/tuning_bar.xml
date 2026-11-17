@@ -28,6 +28,13 @@
 		app:showDelay="150"
 		app:trackThickness="4dp" />
 
+	<!-- Scrolls when the room under the bars above is short, as in
+		landscape with a keyboard while a value is typed (TuningBar). -->
+	<ScrollView
+		android:id="@+id/tuning_scroll"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content">
+
 	<LinearLayout
 		android:id="@+id/tuning_content"
 		android:layout_width="match_parent"
@@ -191,4 +198,5 @@
 				android:layout_height="0dp" />
 		</LinearLayout>
 	</LinearLayout>
+	</ScrollView>
 </de.markusfisch.android.shadereditor.widget.TuningBar>

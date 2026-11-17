@@ -11,6 +11,7 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -150,6 +151,9 @@ public class TuningBar extends LinearLayout {
 	@NonNull
 	private BigDecimal dragFrom = BigDecimal.ZERO;
 	private int bottomInset;
+	// The view the bar stays below, so the bars above it can be read.
+	@Nullable
+	private View ceiling;
 	// Whether a vec3 or vec4 is shown as a colour, and the views of its
 	// parts in either mode.
 	private boolean colourMode;
@@ -250,8 +254,32 @@ public class TuningBar extends LinearLayout {
 		});
 	}
 
+	/**
+	 * Keep the bar below the top of view, a view inside the bar's
+	 * parent: what is above it, as the toolbar, is never covered. Where
+	 * the room is shorter than the bar, its content scrolls.
+	 */
+	public void setCeiling(@NonNull View view) {
+		ceiling = view;
+		view.addOnLayoutChangeListener((v, left, top, right, bottom,
+				oldLeft, oldTop, oldRight, oldBottom) -> {
+			if (top != oldTop) {
+				requestLayout();
+			}
+		});
+	}
+
 	@Override
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+		// No higher than the room under the bars above, as in landscape
+		// with a keyboard while a value is typed.
+		if (ceiling != null &&
+				MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED) {
+			heightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.max(0,
+							MeasureSpec.getSize(heightMeasureSpec) -
+									ceilingTop()),
+					MeasureSpec.AT_MOST);
+		}
 		// The content at most 600 dp wide, centred, on wide screens; in
 		// landscape the one row takes the width, the ruler what is left.
 		View content = findViewById(R.id.tuning_content);
@@ -260,7 +288,7 @@ public class TuningBar extends LinearLayout {
 		int max = landscape
 				? Integer.MAX_VALUE
 				: Math.round(600 * getResources().getDisplayMetrics().density);
-		LayoutParams params = (LayoutParams) content.getLayoutParams();
+		ViewGroup.LayoutParams params = content.getLayoutParams();
 		int width = MeasureSpec.getSize(widthMeasureSpec) - getPaddingLeft() -
 				getPaddingRight();
 		int wanted = width > max ? max : LayoutParams.MATCH_PARENT;
@@ -302,6 +330,18 @@ public class TuningBar extends LinearLayout {
 			done.setLayoutParams(lp);
 			super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 		}
+	}
+
+	// The top of the ceiling in the bar's parent.
+	private int ceilingTop() {
+		int top = 0;
+		for (View view = ceiling; view != null && view != getParent();
+				view = view.getParent() instanceof View parent
+						? parent
+						: null) {
+			top += view.getTop();
+		}
+		return top;
 	}
 
 	@Override

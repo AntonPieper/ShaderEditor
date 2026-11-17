@@ -301,6 +301,8 @@ public final class LibraryScreen implements ShaderScreen {
 					}
 				}, shaderViewManager);
 		tuningBar = activity.findViewById(R.id.tuning_bar);
+		// Over the code, never over the toolbar or Find above it.
+		tuningBar.setCeiling(activity.findViewById(R.id.content_frame));
 		activity.getOnBackPressedDispatcher().addCallback(activity,
 				backTunes);
 		editorFragment.setOnErrorSelectedListener((file, line) -> {
