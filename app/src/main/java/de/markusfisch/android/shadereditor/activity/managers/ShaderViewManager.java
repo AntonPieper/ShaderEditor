@@ -402,7 +402,10 @@ public class ShaderViewManager implements PassesSheet.Engine,
 					view.setText(activity.getString(R.string.frame_rate_quality,
 							frameRate, getItem(position)));
 				}
-				if (qualitySpinner.opens()) {
+				// The spinner builds every quality to measure the widest;
+				// only the chosen one is what the chip shows.
+				if (qualitySpinner.opens() && position ==
+						qualitySpinner.getSelectedItemPosition()) {
 					qualitySpinner.setContentDescription(spoken(activity,
 							frameRate, getItem(position)));
 				}
