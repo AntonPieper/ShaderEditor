@@ -718,6 +718,12 @@ public class CodeView extends View {
 		return appearance.lineHeight;
 	}
 
+	// The caret was put somewhere else on purpose, by Go to or a link.
+	public void jumped() {
+		bringCaretIntoView();
+		accessibility.jumped();
+	}
+
 	public void bringCaretIntoView() {
 		if (document == null) {
 			return;
@@ -1182,6 +1188,9 @@ public class CodeView extends View {
 	@Override
 	public void onWindowFocusChanged(boolean hasWindowFocus) {
 		super.onWindowFocusChanged(hasWindowFocus);
+		if (hasWindowFocus) {
+			accessibility.windowFocused();
+		}
 		restartBlink();
 		invalidate();
 	}

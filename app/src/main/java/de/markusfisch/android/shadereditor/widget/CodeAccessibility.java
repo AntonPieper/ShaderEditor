@@ -49,6 +49,9 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	private Document.Selection reported;
 	// The error announced last, while results have errors.
 	private String announced;
+	// A jump made while a sheet over the view had focus: it lands when the
+	// view's window has focus again, after the service put its focus back.
+	private boolean landing;
 
 	CodeAccessibility(CodeView view) {
 		this.view = view;
@@ -434,6 +437,43 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			parent.notifySubtreeAccessibilityStateChanged(view, view,
 					AccessibilityEvent.CONTENT_CHANGE_TYPE_UNDEFINED);
 		}
+	}
+
+	// After a jump, a service's focus goes to the code, from where it would
+	// be after the sheet or menu that asked for the jump.
+	void jumped() {
+		if (!isEnabled()) {
+			return;
+		}
+		if (view.hasWindowFocus()) {
+			land();
+		} else {
+			landing = true;
+		}
+	}
+
+	void windowFocused() {
+		if (landing) {
+			landing = false;
+			view.post(this::land);
+		}
+	}
+
+	private void land() {
+		Document document = view.getDocument();
+		if (document == null || !view.isShown()) {
+			return;
+		}
+		view.performAccessibilityAction(
+				AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
+		Text text = document.text();
+		int line = text.lineOf(document.selection().head());
+		String content = text.line(line);
+		view.announceForAccessibility(content.trim().isEmpty()
+				? view.getContext().getString(R.string.a11y_landed_blank,
+				line + 1)
+				: view.getContext().getString(R.string.a11y_landed, line + 1,
+				content));
 	}
 
 	private boolean isEnabled() {
