@@ -631,7 +631,7 @@ public class FindBar extends LinearLayout {
 				: replacement.hasFocus() ? replacement : null;
 		if (typing == null || !SoftKeyboard.isOpen(this) ||
 				menuFits(anchor)) {
-			showMenu(anchor, null);
+			showMenu(anchor, false);
 			return;
 		}
 		SoftKeyboard.hide(getContext(), typing);
@@ -650,7 +650,7 @@ public class FindBar extends LinearLayout {
 				getViewTreeObserver().removeOnGlobalLayoutListener(this);
 				menuWaits = null;
 				if (state.open() && isAttachedToWindow()) {
-					showMenu(anchor, typing);
+					showMenu(anchor, true);
 				}
 			}
 		};
@@ -688,10 +688,10 @@ public class FindBar extends LinearLayout {
 				: null;
 	}
 
-	// Show the menu; typing is the field whose keyboard comes back when
-	// it closes, or null.
-	private void showMenu(@NonNull View anchor, @Nullable View typing) {
-		boolean[] typeOn = {typing != null};
+	// Show the menu; with sentAway, the keyboard comes back when it
+	// closes, for the field that has the focus then.
+	private void showMenu(@NonNull View anchor, boolean sentAway) {
+		boolean[] typeOn = {sentAway};
 		PopupMenu popup = new PopupMenu(getContext(), anchor);
 		popup.getMenu().add(0, R.string.match_case, 0, R.string.match_case)
 				.setCheckable(true).setChecked(matchCase);
@@ -715,13 +715,14 @@ public class FindBar extends LinearLayout {
 				return true;
 			} else if (id == R.string.replace) {
 				boolean replacing = !state.replacing();
+				// Asked before the replace row goes, which drops its focus.
+				boolean leaves = replacement.hasFocus();
 				set(new State(true, replacing, state.query(),
 						state.matches(), state.current()));
 				if (replacing) {
-					typeOn[0] = false;
 					SoftKeyboard.show(getContext(), replacement);
-				} else if (replacement.hasFocus()) {
-					field.requestFocus();
+				} else if (leaves) {
+					SoftKeyboard.show(getContext(), field);
 				}
 				return true;
 			} else if (id == R.string.match_case) {
@@ -734,13 +735,38 @@ public class FindBar extends LinearLayout {
 		});
 		popup.setOnDismissListener(menu -> {
 			if (typeOn[0] && state.open()) {
-				// Replace turned off leaves the find field.
-				SoftKeyboard.show(getContext(), typing.isShown()
-						? typing
+				// For the field that has the focus now: Replace moves
+				// it.
+				showKeyboardWithFocus(replacement.hasFocus()
+						? replacement
 						: field);
 			}
 		});
 		popup.show();
+	}
+
+	// Show the keyboard for view once the window has the focus back from
+	// the menu: before that, a field that took the focus meanwhile is
+	// not yet the one the keyboard serves, and the request is dropped.
+	private void showKeyboardWithFocus(@NonNull View view) {
+		if (hasWindowFocus()) {
+			SoftKeyboard.show(getContext(), view);
+			return;
+		}
+		getViewTreeObserver().addOnWindowFocusChangeListener(
+				new ViewTreeObserver.OnWindowFocusChangeListener() {
+					@Override
+					public void onWindowFocusChanged(boolean hasFocus) {
+						if (!hasFocus) {
+							return;
+						}
+						getViewTreeObserver()
+								.removeOnWindowFocusChangeListener(this);
+						if (state.open() && view.isShown()) {
+							SoftKeyboard.show(getContext(), view);
+						}
+					}
+				});
 	}
 
 	// Fades the content of out away, puts in in its place and fades its
