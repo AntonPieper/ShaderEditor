@@ -16,39 +16,28 @@ import androidx.annotation.RequiresApi;
 
 import de.markusfisch.android.shadereditor.R;
 
-/**
- * The platform's floating toolbar over the selection or the caret of a
- * view, with the actions its host offers under the platform's names
- * and, in its overflow, what other apps offer for the selected text.
- * It hides while the host moves what it points at and comes back a
- * moment after; moving the content rectangle hides it for as long as
- * that moves. Back closes it, as the user's dismissal.
- */
+// The platform's floating toolbar over the selection or the caret, with the
+// host's actions and, in its overflow, what other apps offer for the selected
+// text. It hides while the host moves what it points at and comes back a moment
+// after. Back closes it, as the user's dismissal.
 final class SelectionToolbar extends ActionMode.Callback2 {
 	interface Host {
-		/**
-		 * Put the part of the selection on screen into out, in the
-		 * view's coordinates; a rectangle outside the view hides the
-		 * toolbar.
-		 */
+		// In the view's coordinates; a rectangle outside the view hides the
+		// toolbar.
 		void contentRect(Rect out);
 
-		/** Return the actions to offer now, ids of android.R.id or look_up. */
+		// Ids of android.R.id or look_up.
 		int[] actions();
 
-		/** Do action id; return whether the toolbar is done. */
+		// Returns whether the toolbar is done.
 		boolean act(int id);
 
-		/** Add what other apps offer for the selection to menu. */
 		void addProcessText(Menu menu);
 
-		/**
-		 * Start intent, from addProcessText, with the selected text;
-		 * return whether it started.
-		 */
+		// Returns whether it started.
 		boolean process(Intent intent);
 
-		/** The toolbar closed; dismissed if the user closed it (Back). */
+		// Dismissed if the user closed it (Back).
 		void closed(boolean dismissed);
 	}
 
@@ -67,10 +56,6 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 		this.host = host;
 	}
 
-	/**
-	 * Put the platform's titles of actions into menu, each calling
-	 * listener.
-	 */
 	// As the platform's text views, which offer few enough actions.
 	@SuppressLint("AlwaysShowAction")
 	static void fill(Menu menu, int[] actions,
@@ -111,10 +96,7 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 		return mode != null;
 	}
 
-	/**
-	 * Show the toolbar with the actions offered now, a moment after the
-	 * last touch if it was hidden.
-	 */
+	// A moment after the last touch if it was hidden.
 	void show() {
 		if (mode == null) {
 			mode = view.startActionMode(this, ActionMode.TYPE_FLOATING);
@@ -130,7 +112,7 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 		view.postDelayed(reveal, ViewConfiguration.getDoubleTapTimeout());
 	}
 
-	/** Hide the toolbar for a while, for as long as a drag goes on. */
+	// For as long as a drag goes on.
 	void hide() {
 		if (mode != null) {
 			view.removeCallbacks(reveal);
@@ -138,17 +120,13 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 		}
 	}
 
-	/** What the toolbar points at moved. */
 	void moved() {
 		if (mode != null) {
 			mode.invalidateContentRect();
 		}
 	}
 
-	/**
-	 * Close the toolbar as the user does with Back; return whether it
-	 * showed.
-	 */
+	// As the user does with Back; returns whether it showed.
 	boolean dismiss() {
 		if (mode == null) {
 			return false;

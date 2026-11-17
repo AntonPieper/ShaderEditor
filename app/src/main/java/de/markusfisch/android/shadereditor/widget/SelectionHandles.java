@@ -6,13 +6,9 @@ import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 
-/**
- * The platform's selection handles, as a CodeView shows them: the
- * caret's under the caret, or the left one under the start of a
- * selection and the right one under its end. A handle points at a place
- * at the bottom of a line and hangs below it. Places are in the view's
- * content, scrolling included.
- */
+// The platform's selection handles as a CodeView shows them. A handle points at
+// a place at the bottom of a line and hangs below it; places are in the view's
+// content, scrolling included.
 final class SelectionHandles {
 	static final int START = 0;
 	static final int END = 1;
@@ -41,22 +37,18 @@ final class SelectionHandles {
 		this.minSize = minSize;
 	}
 
-	/** Show no handle. */
 	void clear() {
 		shown[START] = shown[END] = null;
 	}
 
-	/** Show the caret's handle pointing at x, y. */
 	void caret(float x, float y) {
 		place(START, middle, x, y);
 	}
 
-	/** Show the handle of the selection's start or end at x, y. */
 	void end(int which, float x, float y) {
 		place(which, which == START ? left : right, x, y);
 	}
 
-	/** Return how far a handle hangs below the place it points at. */
 	int height() {
 		return middle.getIntrinsicHeight();
 	}
@@ -69,10 +61,7 @@ final class SelectionHandles {
 		return y[which];
 	}
 
-	/**
-	 * Return the handle at x, y, the one nearer of two, at least
-	 * minSize wide and tall; -1 for none.
-	 */
+	// The nearer of two, at least minSize wide and tall; -1 for none.
 	int at(float x, float y) {
 		int found = -1;
 		float nearest = Float.MAX_VALUE;

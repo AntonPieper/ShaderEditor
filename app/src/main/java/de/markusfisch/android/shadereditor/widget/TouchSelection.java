@@ -7,31 +7,19 @@ import de.markusfisch.android.shadereditor.editor.Document.Selection;
 import de.markusfisch.android.shadereditor.editor.Motion;
 import de.markusfisch.android.shadereditor.editor.Text;
 
-/**
- * What a touch or a mouse selects in a CodeView: the offset a point of
- * a line means, and what a drag from where it started selects. A caret
- * goes where it is dragged; a drag by character moves the head and
- * keeps the anchor; a drag by word keeps the word it started on and
- * extends to whole words, as Motion finds them. A handle moves the head
- * as the platform's handles do: while the selection grows, a word joins
- * whole once the finger is past its middle; after the handle was moved
- * back into a word, it goes by character, keeping its distance to the
- * finger, until it is at the end of a word again. While a drag by word
- * is in progress (after a long press or a double tap), the handles do
- * not show, as the platform's do not; whether a drag is in progress is
- * the view's to know. Offsets count into the whole
- * text; a change to the text moves them with it, as the document moves
- * its selection, so a drag goes on in the text the change left. The
- * handles show for the selection a touch made only while it is the
- * document's. The work is that of one line, and a drag allocates only
- * when the selection changes.
- */
+// What a touch or a mouse selects in a CodeView. A drag by word keeps the word
+// it started on and extends by whole words. A handle moves the head as the
+// platform's handles do: while the selection grows, a word joins whole once the
+// finger is past its middle; after the handle was moved back into a word, it
+// goes by character, keeping its distance to the finger, until it is at the end
+// of a word again. While a drag by word is in progress the handles do not show,
+// as the platform's do not. A change to the text moves the offsets as the
+// document moves its selection, so a drag goes on in the text the change left.
+// A drag allocates only when the selection changes.
 final class TouchSelection {
-	/** Where the offsets of one line are, as its layout knows. */
 	interface Line {
 		float xOf(int offset);
 
-		/** Return the offset between two characters nearest x. */
 		int offsetAt(float x);
 	}
 
@@ -57,10 +45,7 @@ final class TouchSelection {
 		this.motion = motion;
 	}
 
-	/**
-	 * Return the offset nearest x in line n of text, as layout places it,
-	 * moved to the nearer end of the character it falls in.
-	 */
+	// Moved to the nearer end of the character x falls in.
 	int offsetAt(Text text, int n, float x, Line layout) {
 		int start = text.lineStart(n);
 		int length = text.line(n).length();
@@ -78,22 +63,17 @@ final class TouchSelection {
 				: after);
 	}
 
-	/** Return the word a double tap or a long press at offset selects. */
 	Selection wordAt(Text text, int offset) {
 		return motion.wordAt(text, offset);
 	}
 
-	/**
-	 * Start a drag of the handle of the end head of the selection from
-	 * anchor, or of the caret's if they are equal.
-	 */
+	// Of the head, or of the caret if anchor and head are equal.
 	void dragHandle(int anchor, int head) {
 		dragChars(anchor, head);
 		unit = anchor == head ? CARET : HANDLE;
 		delta = 0;
 	}
 
-	/** Start a drag by character from anchor, the head at head. */
 	void dragChars(int anchor, int head) {
 		unit = CHARS;
 		this.anchor = anchor;
@@ -101,7 +81,6 @@ final class TouchSelection {
 		reached = head;
 	}
 
-	/** Start a drag by word from the word at offset, and select it. */
 	void dragWords(Text text, int offset) {
 		Selection word = motion.wordAt(text, offset);
 		unit = WORDS;
@@ -110,12 +89,9 @@ final class TouchSelection {
 		reached = offset;
 	}
 
-	/**
-	 * Drag to offset; return whether the selection changed. By
-	 * character, the head goes to offset; a handle never makes the
-	 * selection empty. By word, the selection spans the start word and
-	 * the word at offset.
-	 */
+	// Returns whether the selection changed. A handle never makes the selection
+	// empty; by word, the selection spans the start word and the word at
+	// offset.
 	boolean dragTo(Text text, int offset) {
 		if (offset == reached) {
 			return false;
@@ -140,8 +116,6 @@ final class TouchSelection {
 		return anchor != oldAnchor || head != oldHead;
 	}
 
-	// Moves the head of a handle the finger moved from one offset to
-	// another.
 	private void moveHandle(Text text, int from, int offset) {
 		int direction = head > anchor ? 1 : -1;
 		boolean grows = (offset - from) * direction > 0;
@@ -191,10 +165,7 @@ final class TouchSelection {
 				word.start() - text.lineStart(line)));
 	}
 
-	/**
-	 * Move the offsets of the drag with change, made to the text while
-	 * the drag goes on, as Change.map moves the document's selection.
-	 */
+	// As Change.map moves the document's selection.
 	void map(Change change) {
 		anchor = change.map(anchor);
 		head = change.map(head);
@@ -203,14 +174,10 @@ final class TouchSelection {
 		reached = change.map(reached);
 	}
 
-	/**
-	 * Return the selection whose handles show: touched, the one the
-	 * last touch made, while it is current, the document's selection,
-	 * and the handles show at all; else null. Every change to the text
-	 * replaces the document's selection, also before the batch it is
-	 * part of ends, so the handles never show at offsets of a text that
-	 * is gone.
-	 */
+	// touched while it is the document's selection and the handles show at all,
+	// else null. Every change to the text replaces the document's selection,
+	// also inside a batch, so the handles never show at offsets of a text that
+	// is gone.
 	@Nullable
 	Selection handles(@Nullable Selection touched, Selection current,
 			boolean dragging) {
@@ -218,22 +185,16 @@ final class TouchSelection {
 				showsHandles(dragging) ? current : null;
 	}
 
-	/**
-	 * Return whether the handles show: not while the drag started last
-	 * is by word or by character and in progress, only the handle being
-	 * dragged.
-	 */
+	// Not while the drag started last is by word or by character and in
+	// progress; then only the handle being dragged.
 	boolean showsHandles(boolean dragging) {
 		return !dragging || unit == HANDLE || unit == CARET;
 	}
 
-	/**
-	 * Return where the magnifier shows for a finger at x over a line
-	 * whose text, or its part beyond the other end of the selection,
-	 * spans from left to right: x kept inside, as the platform's text
-	 * views place it, or NaN if the finger is more than half the width
-	 * the magnifier shows away from that part, which hides it.
-	 */
+	// x kept inside the text, or its part beyond the other end of the
+	// selection, as the platform's text views place it; NaN, which hides the
+	// magnifier, if the finger is more than half the magnifier's width away
+	// from it.
 	static float magnifierX(float x, float left, float right,
 			float halfWidth) {
 		if (x < left - halfWidth || x > right + halfWidth) {
@@ -242,11 +203,8 @@ final class TouchSelection {
 		return Math.max(left, Math.min(right, x));
 	}
 
-	/**
-	 * Return where text dragged from [start, end) goes when it is dropped
-	 * at offset, counted after it was taken out, or -1 if the drop is
-	 * inside it, which moves nothing.
-	 */
+	// Counted after the text was taken out; -1 if the drop is inside it, which
+	// moves nothing.
 	static int dropAt(int start, int end, int offset) {
 		if (offset >= start && offset <= end) {
 			return -1;
@@ -254,12 +212,8 @@ final class TouchSelection {
 		return offset > end ? offset - (end - start) : offset;
 	}
 
-	/**
-	 * Return what the shadow of a drag of [start, end) of text shows:
-	 * its first line that is not empty, and of that, as the platform's
-	 * text views, SHADOW_LENGTH characters and the one after them, cut
-	 * without an ellipsis.
-	 */
+	// Its first line that is not empty, cut after SHADOW_LENGTH characters and
+	// the one after them without an ellipsis, as the platform's text views do.
 	Selection shadowOf(Text text, int start, int end) {
 		int from = start;
 		while (from < end && from == motion.lineEnd(text, from)) {
