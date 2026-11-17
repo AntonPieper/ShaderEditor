@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Replays keyboard sessions in the format KeyboardSession writes: opens,
+ * Replays keyboard sessions in the format KeyboardRecorder writes: opens,
  * calls, closes and app actions are made again to new TextInputs and
  * documents, on a clock set to the time of each line, and what that
  * writes must be the session's lines, times aside; it fails at the first
@@ -44,7 +44,7 @@ final class KeyboardReplay {
 	private final List<TextInput> inputs = new ArrayList<>();
 	private final long[] now = {0};
 	private int compared;
-	private final KeyboardSession session = new KeyboardSession(
+	private final KeyboardRecorder session = new KeyboardRecorder(
 			() -> now[0], Integer.MAX_VALUE);
 	private Document document;
 

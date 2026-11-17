@@ -40,7 +40,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.EditCommands;
-import de.markusfisch.android.shadereditor.editor.KeyboardSession;
+import de.markusfisch.android.shadereditor.editor.KeyboardRecorder;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -67,7 +67,7 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
  * example, is plain text with suggestions, on which keyboards
  * compose;</li>
  * <li>"record", true: record what keyboards and the app do to the text
- * as a KeyboardSession, written every second and when the screen pauses
+ * by a KeyboardRecorder, written every second and when the screen pauses
  * to a new file in keyboard-sessions in the app's external files
  * directory; see below.</li>
  * <li>"select", "anchor,head", or "caret", an offset; "line", a line to
@@ -116,7 +116,7 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
  * adb pull /sdcard/Android/data/de.markusfisch.android.shadereditor.debug/files/keyboard-sessions
  * </pre>
  * The log names each file ("recording to"). A session copied to
- * app/src/test/resources/keyboard-sessions is replayed by the unit
+ * app/src/testDebug/resources/keyboard-sessions is replayed by the unit
  * tests. Its first lines say which device, keyboard and input type
  * recorded it.
  */
@@ -133,7 +133,7 @@ public class CodeViewActivity extends Activity {
 	private final List<long[]> edits = new ArrayList<>();
 	private HandlerThread metricsThread;
 	private HandlerThread recordThread;
-	private KeyboardSession session;
+	private KeyboardRecorder session;
 	private File sessionFile;
 	private CodeView view;
 	private EditText editText;
@@ -217,7 +217,7 @@ public class CodeViewActivity extends Activity {
 	private void record() {
 		File dir = new File(getExternalFilesDir(null), "keyboard-sessions");
 		sessionFile = new File(dir, System.currentTimeMillis() + ".txt");
-		session = new KeyboardSession();
+		session = new KeyboardRecorder();
 		view.setKeyboardSession(session);
 		recordThread = new HandlerThread("record");
 		recordThread.start();
