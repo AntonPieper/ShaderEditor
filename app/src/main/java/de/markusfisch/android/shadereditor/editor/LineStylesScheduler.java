@@ -2,17 +2,12 @@ package de.markusfisch.android.shadereditor.editor;
 
 import java.util.concurrent.Executor;
 
-/**
- * Makes the stale lines of a {@link LineStyles} current: whenever the
- * document updates and lines are stale, it runs a continuation on a
- * background executor and hands its result to apply on the main thread,
- * one call per message, so the main thread never stores more than one
- * call's states at a time. It goes on until no line is stale. Everything
- * but the continuation itself runs on the main thread.
- */
+// Runs the continuations of a LineStyles on a background executor and applies
+// each result on the main thread, one apply call per message, so the main
+// thread never stores more than one call's states at a time.
 public final class LineStylesScheduler {
 	public interface Callback {
-		/** Called after each apply; lines may need drawing again. */
+		// Lines may need drawing again.
 		void onApplied();
 	}
 
@@ -34,7 +29,6 @@ public final class LineStylesScheduler {
 	private boolean running;
 	private boolean closed;
 
-	/** Keep the lines of styles, which belongs to document, current. */
 	public LineStylesScheduler(Document document, LineStyles styles,
 			Executor background, AnalysisScheduler.MainThread main,
 			Callback callback) {
@@ -47,7 +41,7 @@ public final class LineStylesScheduler {
 		schedule();
 	}
 
-	/** Stop; results still on their way are dropped. */
+	// Results still on their way are dropped.
 	public void close() {
 		closed = true;
 		document.removeListener(listener);

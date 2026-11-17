@@ -1,8 +1,6 @@
 package de.markusfisch.android.shadereditor.syntax;
 
-/**
- * The colour class of a token. The editor maps each style to a colour.
- */
+// The colour class of a token.
 public enum Style {
 	INVALID,
 	KEYWORD,

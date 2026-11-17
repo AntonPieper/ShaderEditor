@@ -2,11 +2,8 @@ package de.markusfisch.android.shadereditor.syntax;
 
 import java.util.Arrays;
 
-/**
- * The tokens of one text, in order and without overlap. Offsets are
- * UTF-16 offsets into exactly the text that was tokenized. Lines are
- * counted from 0; "\n", "\r\n" and "\r" each end one line.
- */
+// In order, without overlap, with UTF-16 offsets into exactly the text that was
+// tokenized.
 public final class Tokens {
 	static final int IN_DIRECTIVE = 1 << 8;
 
@@ -58,12 +55,11 @@ public final class Tokens {
 		return new Tokens(this, restyled);
 	}
 
-	/** True if the token belongs to a preprocessor directive. */
 	public boolean inDirective(int index) {
 		return (kinds[index] & IN_DIRECTIVE) != 0;
 	}
 
-	/** Index of the token that contains offset, or -1 if there is none. */
+	// -1 if there is none.
 	public int indexAt(int offset) {
 		int i = floor(starts, offset);
 		return i >= 0 && offset < ends[i] ? i : -1;

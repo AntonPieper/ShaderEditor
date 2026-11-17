@@ -1,10 +1,7 @@
 package de.markusfisch.android.shadereditor.syntax;
 
-/**
- * One line as a {@link Syntax} tokenized it: its text, the state
- * it started in and its tokens, with UTF-16 offsets into the line. It is
- * immutable, so it may be handed to any thread.
- */
+// One tokenized line, with UTF-16 offsets into it. Immutable, so it may be
+// handed to any thread.
 public final class LexedLine {
 	private static final Style[] STYLES = Style.values();
 
@@ -21,10 +18,7 @@ public final class LexedLine {
 		this.tokens = tokens;
 	}
 
-	/**
-	 * Tokenize line, which starts in state, as syntax does, with scratch
-	 * as the lexer's working space.
-	 */
+	// scratch is the lexer's working space.
 	public static LexedLine of(Syntax syntax, String line,
 			boolean breakFollows, int state, LineTokens scratch) {
 		int endState = syntax.lexLine(line, breakFollows, state, scratch);
@@ -38,7 +32,6 @@ public final class LexedLine {
 		return new LexedLine(line, state, endState, tokens);
 	}
 
-	/** Return the line, without its line end. */
 	public String text() {
 		return text;
 	}
@@ -69,12 +62,11 @@ public final class LexedLine {
 		return STYLES[tokens[index * 3 + 2] & 0xff];
 	}
 
-	/** True if the token belongs to a preprocessor directive. */
 	public boolean inDirective(int index) {
 		return (tokens[index * 3 + 2] & Tokens.IN_DIRECTIVE) != 0;
 	}
 
-	/** Index of the token that contains offset, or -1 if there is none. */
+	// -1 if there is none.
 	public int indexAt(int offset) {
 		int low = 0;
 		int high = size() - 1;

@@ -4,17 +4,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * An immutable text, kept as a balanced tree of lines: a leaf holds up
- * to 32 lines, a node about 32 children and the length and line count
- * of its subtree. A text has at least one line; n lines are joined by
- * n - 1 line breaks of one character each. An edit returns a new text
- * that shares every part it did not touch with the old one, so a text
- * can be kept for undo or read on another thread as it is. Every
- * operation costs the size of what it changes or returns, the length
- * of the lines it touches and the logarithm of the line count. This is
- * the document tree of CodeMirror 6.
- */
+// An immutable balanced tree of lines, CodeMirror 6's document tree: a leaf
+// holds up to 32 lines. An edit shares every part it did not touch, so a text
+// can be kept for undo or read on another thread as it is.
 public abstract class Text {
 	public static final Text EMPTY = new Leaf(new String[]{""});
 
@@ -35,11 +27,7 @@ public abstract class Text {
 		this.longestLine = longestLine;
 	}
 
-	/**
-	 * Return the text of s. A line ends at "\r\n", at a lone '\r' and
-	 * at '\n', and a no-break space (U+00A0) becomes a space, so no text
-	 * holds a '\r' or a no-break space.
-	 */
+	// Lines end at "\r\n", '\r' or '\n', and a no-break space becomes a space.
 	public static Text of(CharSequence s) {
 		String string = s.toString();
 		if (string.indexOf('\r') > -1) {
@@ -56,43 +44,36 @@ public abstract class Text {
 		return ofLines(lines);
 	}
 
-	/** Return the number of characters, line breaks included. */
 	public final int length() {
 		return length;
 	}
 
-	/** Return the number of lines, at least 1. */
+	// At least 1.
 	public final int lineCount() {
 		return lines;
 	}
 
-	/** Return the length of the longest line, without its line break. */
 	public final int longestLineLength() {
 		return longestLine;
 	}
 
-	/** Return line n, counted from 0, without its line break. */
+	// Without its line break.
 	public final String line(int n) {
 		checkIndex(n, lines - 1);
 		return lineAt(n);
 	}
 
-	/** Return the offset of the first character of line n. */
 	public final int lineStart(int n) {
 		checkIndex(n, lines - 1);
 		return startOf(n);
 	}
 
-	/**
-	 * Return the line that holds offset. A line break belongs to the
-	 * line it ends, and the offset length to the last line.
-	 */
+	// A line break belongs to the line it ends.
 	public final int lineOf(int offset) {
 		checkIndex(offset, length);
 		return indexAt(offset);
 	}
 
-	/** Return this text with the range [from, to) replaced by text. */
 	public final Text replace(int from, int to, Text text) {
 		checkRange(from, to);
 		return from == to && text.length == 0
@@ -100,7 +81,6 @@ public abstract class Text {
 				: splice(from, to, text);
 	}
 
-	/** Return the range [from, to) as a text. */
 	public final Text slice(int from, int to) {
 		checkRange(from, to);
 		if (from == to) {
@@ -111,7 +91,6 @@ public abstract class Text {
 		return join(parts);
 	}
 
-	/** Return the range [from, to) as a string. */
 	public final String substring(int from, int to) {
 		checkRange(from, to);
 		StringBuilder sb = new StringBuilder(to - from);
@@ -130,8 +109,7 @@ public abstract class Text {
 
 	abstract int indexAt(int offset);
 
-	// Adds the parts of the range [from, to] to target; the range may
-	// reach beyond this text.
+	// The range may reach beyond this text.
 	abstract void decompose(int from, int to, List<Text> target, int open);
 
 	abstract void appendTo(StringBuilder sb, int from, int to);
@@ -168,8 +146,6 @@ public abstract class Text {
 		return join(leaves);
 	}
 
-	// Returns the text of parts, each separated from the next by a line
-	// break, as a balanced tree.
 	private static Text join(List<Text> parts) {
 		if (parts.size() == 1) {
 			return parts.get(0);

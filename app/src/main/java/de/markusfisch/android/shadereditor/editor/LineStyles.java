@@ -9,23 +9,12 @@ import de.markusfisch.android.shadereditor.syntax.LineTokens;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 
-/**
- * The colours of the lines of a document, kept current as it changes,
- * as the syntax of its language gives them; the editor asks that
- * syntax through this class for everything else of the language too.
- * The colours of a line follow from its text and the lexer state it
- * starts in, which is the state the line above ends in; that state is
- * kept for every line, one byte each. After an edit the changed lines
- * are tokenized again, and the lines below them for as long as a line
- * ends in another state than before, but no more than budget lines in
- * all, or the shown lines and budget lines when that reaches the shown
- * ones. The lines below that are stale: they keep the states they had
- * until a continuation, which may run on any thread, delivers theirs.
- * The view calls show with the lines it draws, runs for each of them,
- * and, while continuation gives work, runs it off the main thread and
- * hands the result to apply until apply returns false. Made once per
- * document and used on its thread.
- */
+// The colours of a document's lines, kept current as it changes. A line's
+// colours follow from its text and the lexer state it starts in, which is kept
+// for every line in one byte. An edit tokenizes the changed lines and the lines
+// below whose end state changed, up to budget lines, or as far as the shown
+// lines and budget more; the lines below that are stale until a continuation,
+// which may run on any thread, delivers their states.
 public final class LineStyles {
 	// How many changes a continuation may lag behind and still be used.
 	private static final int HISTORY = 64;
@@ -70,11 +59,8 @@ public final class LineStyles {
 	private int shownFrom;
 	private int shownTo;
 
-	/**
-	 * Keep the colours of document as syntax gives them, tokenizing at
-	 * most budget lines per edit: the lines on screen and a margin. The
-	 * first budget lines are tokenized now, the rest by continuations.
-	 */
+	// budget: the lines on screen and a margin. The first budget lines are
+	// tokenized now, the rest by continuations.
 	public LineStyles(Document document, Syntax syntax, int budget) {
 		this.document = document;
 		this.syntax = syntax;
@@ -88,32 +74,23 @@ public final class LineStyles {
 		document.addListener(listener);
 	}
 
-	/** Return the syntax of the document's language. */
 	public Syntax syntax() {
 		return syntax;
 	}
 
-	/** Stop following the document. */
 	public void close() {
 		document.removeListener(listener);
 	}
 
-	/**
-	 * Tell which lines the view shows, [from, to), before it draws them.
-	 * Stale lines among them are tokenized now, from the first stale
-	 * line on, as far as the shown lines and budget lines more reach.
-	 * Return whether a state changed, so lines may need drawing again.
-	 */
+	// Before the view draws [from, to): stale lines among them are tokenized
+	// now. Returns whether a state changed.
 	public boolean show(int from, int to) {
 		shownFrom = from;
 		shownTo = to;
 		return Math.min(to, lines) > staleFrom && walk();
 	}
 
-	/**
-	 * Return the colour runs of line n of the current text. A stale line
-	 * has the colours of its old start state.
-	 */
+	// A stale line has the colours of its old start state.
 	public Runs runs(int n) {
 		String line = document.text().line(n);
 		int key = startState(n) | (n < lines - 1 ? BREAK_FOLLOWS : 0);
@@ -126,12 +103,9 @@ public final class LineStyles {
 		return runs;
 	}
 
-	/**
-	 * Paint every identifier whose text is in names as a type. The set
-	 * must not change afterwards; another set, even an equal one, is
-	 * taken as a change, so pass Analysis.typeNames, which stays the same
-	 * set while the names do. Return whether runs may have changed.
-	 */
+	// names must not change afterwards; another set, even an equal one, is a
+	// change, so pass Analysis.typeNames. Returns whether runs may have
+	// changed.
 	public boolean setTypeNames(Set<String> names) {
 		if (names == typeNames) {
 			return false;
@@ -141,10 +115,7 @@ public final class LineStyles {
 		return true;
 	}
 
-	/**
-	 * Return the work that makes the stale lines current, to be run on
-	 * any thread and handed to apply, or null if no line is stale.
-	 */
+	// To be run on any thread and handed to apply; null if no line is stale.
 	public Continuation continuation() {
 		return staleFrom < lines
 				? new Continuation(syntax, document.text(),
@@ -152,15 +123,9 @@ public final class LineStyles {
 				: null;
 	}
 
-	/**
-	 * Store the states of result, as far as they hold for the current
-	 * text: those of the lines above the first line changed since the
-	 * continuation was made, at most 4096 per call. A result made more
-	 * than 64 changes ago, or from a line that has become stale again, is
-	 * dropped. Lines may need drawing again after a call. Return whether
-	 * more of result remains to be stored by another call; once none
-	 * does, continuation tells whether lines are still stale.
-	 */
+	// Stores the states that still hold for the current text, at most ADOPT per
+	// call; a result more than HISTORY changes old, or from a line that became
+	// stale again, is dropped. Returns whether more of result remains.
 	public boolean apply(Result result) {
 		int revision = document.revision();
 		if (revision - result.revision > HISTORY ||
@@ -310,10 +275,7 @@ public final class LineStyles {
 		}
 	}
 
-	/**
-	 * The colour runs of one line, in order, with offsets into the line.
-	 * What lies between two runs is white space.
-	 */
+	// What lies between two runs is white space.
 	public static final class Runs {
 		private final LexedLine line;
 		private final int key;
@@ -325,7 +287,6 @@ public final class LineStyles {
 			this.runs = runs;
 		}
 
-		/** Return the line and its tokens, as completion needs them. */
 		public LexedLine line() {
 			return line;
 		}
@@ -347,10 +308,7 @@ public final class LineStyles {
 		}
 	}
 
-	/**
-	 * Tokenizing the stale lines of one text, from the first on. It
-	 * holds only immutable values, so it may run on any thread.
-	 */
+	// Holds only immutable values, so it may run on any thread.
 	public static final class Continuation {
 		private final Syntax syntax;
 		private final Text text;
@@ -367,10 +325,7 @@ public final class LineStyles {
 			this.state = state;
 		}
 
-		/**
-		 * Return the states of at most maxLines lines. The thread that
-		 * applies the result does work in proportion to its lines.
-		 */
+		// The thread that applies the result works in proportion to its lines.
 		public Result run(int maxLines) {
 			int lines = text.lineCount();
 			int end = (int) Math.min(lines, (long) from + maxLines);
@@ -385,7 +340,6 @@ public final class LineStyles {
 		}
 	}
 
-	/** The states a continuation computed, for the revision it ran on. */
 	public static final class Result {
 		private final int revision;
 		private final int from;

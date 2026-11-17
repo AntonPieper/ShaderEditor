@@ -2,20 +2,14 @@ package de.markusfisch.android.shadereditor.editor;
 
 import de.markusfisch.android.shadereditor.syntax.Indentation;
 
-/**
- * The indentation of a new line, as the editor has always made it. A
- * line break typed in place of [from, to) is followed by the white
- * space that starts the line of from, up to to; inside a line that
- * starts with the line comment, by that too; and by one more level if
- * the line before from ends in a character that adds one or leaves a
- * level open. For C that is '{' or an operator, and a parenthesis.
- * Only the lines after the first copy their indentation.
- */
+// The indentation of a new line, as the editor has always made it: the white
+// space that starts the line, the line comment inside a commented line, and one
+// more level after a character that opens one, for C '{', an operator or a
+// parenthesis. Only the lines after the first copy their indentation.
 public final class AutoIndent {
 	private AutoIndent() {
 	}
 
-	/** Return what follows a line break typed in place of [from, to). */
 	public static String indentAfterBreak(Text text, int from, int to,
 			String level, Indentation rules) {
 		int line = text.lineOf(from);

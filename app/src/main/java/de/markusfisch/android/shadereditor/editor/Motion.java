@@ -4,26 +4,15 @@ import java.text.BreakIterator;
 
 import de.markusfisch.android.shadereditor.editor.Document.Selection;
 
-/**
- * Where the caret goes, as offsets into a text. A character is what a
- * user sees as one, a cluster as Boundaries finds it; the caret never
- * stops inside one, and an offset inside one counts as the whole of it.
- * A line break is one character. A word is a run of letters, digits and
- * underscores, or a run of other characters that are not white space.
- * A column counts characters, and a tab advances it to the next
- * multiple of the tab width. A motion is used on one thread.
- */
+// Where the caret goes. A character is a cluster as Boundaries finds it; the
+// caret never stops inside one. A word is a run of letters, digits and
+// underscores, or of other characters that are not white space.
 public final class Motion {
-	/**
-	 * Where the characters of a line start. By default the character
-	 * instance of java.text.BreakIterator; which clusters it knows
-	 * depends on the platform's Unicode version.
-	 */
+	// BreakIterator by default; which clusters it knows depends on the
+	// platform's Unicode version.
 	public interface Boundaries {
-		/** Return the first boundary in line after offset. */
 		int after(String line, int offset);
 
-		/** Return the last boundary in line before offset. */
 		int before(String line, int offset);
 	}
 
@@ -33,7 +22,6 @@ public final class Motion {
 
 	private final Boundaries boundaries;
 
-	/** Find characters with java.text.BreakIterator. */
 	public Motion() {
 		this(new Clusters());
 	}
@@ -42,7 +30,6 @@ public final class Motion {
 		this.boundaries = boundaries;
 	}
 
-	/** Return the offset behind the character at offset. */
 	public int nextChar(Text text, int offset) {
 		int line = text.lineOf(offset);
 		int start = text.lineStart(line);
@@ -54,7 +41,6 @@ public final class Motion {
 		return Math.min(offset + 1, text.length());
 	}
 
-	/** Return the offset of the character before offset. */
 	public int previousChar(Text text, int offset) {
 		int line = text.lineOf(offset);
 		int start = text.lineStart(line);
@@ -65,10 +51,8 @@ public final class Motion {
 		return Math.max(offset - 1, 0);
 	}
 
-	/**
-	 * Return the offset behind the next word: white space is skipped,
-	 * then one word. At the end of a line, the start of the next.
-	 */
+	// White space is skipped, then one word. At the end of a line, the start of
+	// the next.
 	public int nextWord(Text text, int offset) {
 		int line = text.lineOf(offset);
 		int start = text.lineStart(line);
@@ -90,10 +74,8 @@ public final class Motion {
 		return start + i;
 	}
 
-	/**
-	 * Return the offset of the previous word: white space is skipped,
-	 * then one word. At the start of a line, the end of the previous.
-	 */
+	// White space is skipped, then one word. At the start of a line, the end of
+	// the previous.
 	public int previousWord(Text text, int offset) {
 		int line = text.lineOf(offset);
 		int start = text.lineStart(line);
@@ -115,21 +97,17 @@ public final class Motion {
 		return start + i;
 	}
 
-	/** Return the offset of the start of the line of offset. */
 	public int lineStart(Text text, int offset) {
 		return text.lineStart(text.lineOf(offset));
 	}
 
-	/** Return the offset of the end of the line of offset. */
 	public int lineEnd(Text text, int offset) {
 		int line = text.lineOf(offset);
 		return text.lineStart(line) + text.line(line).length();
 	}
 
-	/**
-	 * Return the word at offset, or the run of white space if there is
-	 * no word; a word that ends at offset wins over what follows.
-	 */
+	// Or the run of white space if there is no word; a word that ends at offset
+	// wins over what follows.
 	public Selection wordAt(Text text, int offset) {
 		int line = text.lineOf(offset);
 		int start = text.lineStart(line);
@@ -158,7 +136,6 @@ public final class Motion {
 		return new Selection(start + first, start + last);
 	}
 
-	/** Return the column of offset in its line. */
 	public int column(Text text, int offset, int tabWidth) {
 		int line = text.lineOf(offset);
 		String s = text.line(line);
@@ -170,10 +147,7 @@ public final class Motion {
 		return column;
 	}
 
-	/**
-	 * Return the offset in line closest to column, the earlier one of
-	 * two as close, and the end of the line if it is shorter.
-	 */
+	// The earlier of two as close; the end of the line if it is shorter.
 	public int offsetAt(Text text, int line, int column,
 			int tabWidth) {
 		String s = text.line(line);

@@ -4,24 +4,16 @@ import java.util.concurrent.Executor;
 
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 
-/**
- * Keeps the {@link Analysis} of a document: a delay after the last
- * change it analyses the current text on a background executor and
- * hands the result to the main thread, where it is delivered only if the
- * document is still at that revision. Everything but the analysis
- * itself runs on the main thread.
- *
- * One pass runs at a time, and after a pass that took d milliseconds
- * the next one starts no sooner than {@link #SPACING} d after it ended,
- * so analysis keeps the background thread busy for at most a ninth of
- * the time while the user types, however long the text. A pass gives up
- * at the next line once the document changes, since its result would be
- * dropped. Once the changes stop, one more pass runs to the end.
- */
+// Analyses the current text on a background executor a delay after the last
+// change, and delivers the result on the main thread if the document is still
+// at that revision. After a pass of d ms the next starts no sooner than SPACING
+// d after it, so while the user types analysis keeps the background thread busy
+// at most a ninth of the time, however long the text. A pass gives up once the
+// document changes; when changes stop, one more runs to the end.
 public final class AnalysisScheduler {
-	/** The main thread: a Handler on Android. */
+	// A Handler on Android.
 	public interface MainThread {
-		/** Run task on the main thread; may be called on any thread. */
+		// May be called on any thread.
 		void post(Runnable task, long delayMillis);
 
 		void cancel(Runnable task);
@@ -31,7 +23,7 @@ public final class AnalysisScheduler {
 		void onAnalysis(Analysis analysis);
 	}
 
-	/** Makes the analysis; Analysis.of but in tests. */
+	// Analysis.of but in tests.
 	interface Pass {
 		Analysis run(Text text, int revision, Analysis previous,
 				Analysis.Cancel cancel);
@@ -66,10 +58,7 @@ public final class AnalysisScheduler {
 	private boolean closed;
 	private Analysis latest = Analysis.NONE;
 
-	/**
-	 * Start analysing document as syntax reads it, now and again
-	 * delayMillis after each change, until {@link #close()}.
-	 */
+	// Now, and delayMillis after each change, until close().
 	public AnalysisScheduler(Document document, Syntax syntax,
 			long delayMillis, Executor background, MainThread main,
 			Callback callback) {
@@ -94,15 +83,12 @@ public final class AnalysisScheduler {
 		schedule();
 	}
 
-	/**
-	 * Return the last analysis delivered; its revision may be older than
-	 * the document's.
-	 */
+	// Its revision may be older than the document's.
 	public Analysis latest() {
 		return latest;
 	}
 
-	/** Stop analysing; results still on their way are dropped. */
+	// Results still on their way are dropped.
 	public void close() {
 		closed = true;
 		wanted = -1;

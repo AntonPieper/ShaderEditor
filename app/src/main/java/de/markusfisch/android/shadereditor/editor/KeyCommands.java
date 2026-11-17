@@ -4,15 +4,9 @@ import android.view.KeyEvent;
 
 import de.markusfisch.android.shadereditor.editor.Document.Selection;
 
-/**
- * What a key does to a document: the command a key stands for with its
- * meta state, or else the text it types. Shift extends the selection;
- * Ctrl moves and deletes by words, goes to the ends of the text and
- * makes the shortcuts for select all, undo, redo and the clipboard. A
- * key with Ctrl or Meta held types nothing, so other shortcuts still
- * reach the app. Only constants of KeyEvent and android.R are used, so
- * this runs on the JVM.
- */
+// What a key does to a document. A key with Ctrl or Meta held types nothing, so
+// other shortcuts still reach the app. Only constants of KeyEvent and android.R
+// are used, so this runs on the JVM.
 public final class KeyCommands {
 	public enum Command {
 		BACKWARD, FORWARD, WORD_BACKWARD, WORD_FORWARD, LINE_UP, LINE_DOWN,
@@ -22,12 +16,11 @@ public final class KeyCommands {
 		CUT, COPY, PASTE
 	}
 
-	/** The clipboard, as plain text. */
 	public interface Clipboard {
-		/** Return the text on the clipboard, null if there is none. */
+		// Null if there is none.
 		CharSequence get();
 
-		/** Put text on the clipboard; return false if that failed. */
+		// False if that failed.
 		boolean set(String text);
 	}
 
@@ -45,7 +38,7 @@ public final class KeyCommands {
 		this.clipboard = clipboard;
 	}
 
-	/** Return the command of keyCode with meta, null if it has none. */
+	// Null if it has none.
 	public static Command command(int keyCode, int meta) {
 		boolean ctrl = (meta & KeyEvent.META_CTRL_ON) != 0;
 		boolean shift = (meta & KeyEvent.META_SHIFT_ON) != 0;
@@ -103,10 +96,7 @@ public final class KeyCommands {
 		}
 	}
 
-	/**
-	 * Return the command of a context menu action, as keyboards ask for
-	 * one, null if it has none.
-	 */
+	// A context menu action as keyboards ask for one; null if it has none.
 	public static Command contextMenuCommand(int id) {
 		if (id == android.R.id.selectAll) {
 			return Command.SELECT_ALL;
@@ -124,16 +114,12 @@ public final class KeyCommands {
 		return null;
 	}
 
-	/** Return whether a key with meta held may type. */
 	public static boolean types(int meta) {
 		return (meta & SHORTCUT) == 0;
 	}
 
-	/**
-	 * Do what pressing keyCode with meta does: its command, or else type
-	 * typed, the text its character map gives it, if not null. Page Up
-	 * and Down move pageLines lines. Return whether the key did anything.
-	 */
+	// Its command, else typed, if not null. Returns whether the key did
+	// anything.
 	public boolean keyDown(int keyCode, int meta, String typed,
 			int pageLines) {
 		Command command = command(keyCode, meta);
@@ -149,13 +135,8 @@ public final class KeyCommands {
 		return true;
 	}
 
-	/**
-	 * Run command; a move with extend keeps the anchor of the selection.
-	 * Page Up and Down move pageLines lines. Return false if a command
-	 * of the clipboard did nothing: there was no selection to cut or
-	 * copy, the clipboard refused it, it held no text to paste or the
-	 * document refused the paste; the document is then as it was.
-	 */
+	// Returns false if a command of the clipboard did nothing; the document is
+	// then as it was.
 	public boolean run(Command command, boolean extend, int pageLines) {
 		switch (command) {
 			case BACKWARD -> commands.moveBackward(extend);
@@ -202,10 +183,7 @@ public final class KeyCommands {
 				.substring(selection.start(), selection.end()));
 	}
 
-	/**
-	 * Replace the selection by text, as one step, with the caret behind;
-	 * return false if the document refused it.
-	 */
+	// False if the document refused it.
 	public boolean paste(Text text) {
 		Selection selection = document.selection();
 		int start = selection.start();
