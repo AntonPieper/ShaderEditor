@@ -1108,7 +1108,10 @@ public class CodeView extends View {
 	@Override
 	public WindowInsets onApplyWindowInsets(WindowInsets windowInsets) {
 		int bottom = insets.bottom;
-		insets = WindowInsetsCompat.toWindowInsetsCompat(windowInsets, this)
+		// Only the insets given: with the view, AndroidX below Android 11
+		// adds the keyboard read from the window, which a host that made
+		// room for it has already taken off the view's height.
+		insets = WindowInsetsCompat.toWindowInsetsCompat(windowInsets)
 				.getInsets(WindowInsetsCompat.Type.systemBars() |
 						WindowInsetsCompat.Type.displayCutout() |
 						WindowInsetsCompat.Type.ime());
