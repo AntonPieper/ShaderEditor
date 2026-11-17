@@ -679,9 +679,7 @@ public class CodeView extends View {
 		int[] failing = marks.errorLines();
 		if (!Arrays.equals(failing, chosenFor)) {
 			chosenFor = null;
-			marks.open(MessageRow.choose(failing, marks.open(),
-					document.text().lineOf(document.selection().head()),
-					firstShown(), lastShown()));
+			chooseRow();
 		}
 		placeRow();
 		invalidate();
@@ -690,6 +688,12 @@ public class CodeView extends View {
 				marks.messages(failing[0]).get(0)), failing[0],
 				marks.messages(failing[0]))
 				: null);
+	}
+
+	private void chooseRow() {
+		marks.open(MessageRow.choose(marks.errorLines(), marks.open(),
+				document.text().lineOf(document.selection().head()),
+				firstShown(), lastShown()));
 	}
 
 	// With the line, or null if it has none.
@@ -787,6 +791,12 @@ public class CodeView extends View {
 	@Override
 	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
+		// Marks set before the first size, as after a rotation, saw no
+		// line on screen.
+		if (oldh == 0 && document != null && marks != null &&
+				chosenFor == null) {
+			chooseRow();
+		}
 		placeRow();
 		if (h < oldh && !isFocused() && !found.isEmpty()) {
 			// The keyboard came up for Find's field after the jump: the
