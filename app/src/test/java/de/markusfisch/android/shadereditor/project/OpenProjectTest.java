@@ -3055,6 +3055,34 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void typingAfterAReloadIsAStepOfItsOwnAfterARestart()
+			throws IOException {
+		OpenProject project = open();
+		ProjectPath a = path("a.glsl");
+		Document document = document(project, "a.glsl", "stored");
+		edit(project, document, "mine");
+		flush(project);
+		write("a.glsl", "theirs");
+		assertNull(reload(project, a));
+		edit(project, document, "theirs typed");
+		// The journal's timer writes it.
+		steps.later.run();
+		settle();
+		assertEquals("theirs typed", journaled("a.glsl"));
+
+		// The process dies in the foreground.
+		Document restarted = document(open(), "a.glsl");
+		assertEquals("theirs typed", restarted.text().toString());
+		assertTrue(restarted.isModified());
+		restarted.undo();
+		assertEquals("theirs", restarted.text().toString());
+		restarted.undo();
+		assertEquals("mine", restarted.text().toString());
+		restarted.undo();
+		assertEquals("stored", restarted.text().toString());
+	}
+
+	@Test
 	public void dropsTheDocumentsUsedLeastRecentlyFirst() throws IOException {
 		budget = 3 * OpenProject.cost(new Document(Text.of("0")));
 		OpenProject project = open();

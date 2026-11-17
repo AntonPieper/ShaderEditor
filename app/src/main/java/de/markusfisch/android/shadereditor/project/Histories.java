@@ -126,22 +126,27 @@ final class Histories {
 	 * hash, else null; one that is not, or cannot be read, is deleted.
 	 */
 	History read(ProjectPath path, String hash) {
-		File file = file(path);
-		if (!file.isFile()) {
-			return null;
-		}
-		History kept = null;
-		if (file.length() <= Document.MAX_BYTES) {
-			try {
-				kept = parse(path, hash, file);
-			} catch (IOException | RuntimeException e) {
-				kept = null;
-			}
-		}
+		History kept = find(path, hash);
 		if (kept == null) {
-			disk.delete(file);
+			remove(path);
 		}
 		return kept;
+	}
+
+	/**
+	 * Return the history kept for path when it was kept for the text of
+	 * hash, else null, as {@link #read} does, but delete nothing.
+	 */
+	History find(ProjectPath path, String hash) {
+		File file = file(path);
+		if (!file.isFile() || file.length() > Document.MAX_BYTES) {
+			return null;
+		}
+		try {
+			return parse(path, hash, file);
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
 	}
 
 	/** Forget the history of path. */
