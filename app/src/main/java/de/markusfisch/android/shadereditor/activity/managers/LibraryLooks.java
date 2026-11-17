@@ -51,6 +51,9 @@ public final class LibraryLooks {
 	@Nullable
 	private ProjectPath wallpaper;
 	private int runs;
+	// Counts the qualities and limits kept: a read asked before one may
+	// have found the one before it.
+	private int keeps;
 	private boolean destroyed;
 
 	/** Hears a picture kept for a file of a folder. */
@@ -106,6 +109,7 @@ public final class LibraryLooks {
 	 */
 	public void keepFrameRateLimit(@Nullable String key,
 			@Nullable ProjectPath running, int limit) {
+		++keeps;
 		view.setFrameRateLimit(limit);
 		if (inLibrary(key) && running != null) {
 			projects.setFrameRateLimit(running, limit, this::tell);
@@ -119,28 +123,32 @@ public final class LibraryLooks {
 
 	// The quality and the most frames a second the library keeps for
 	// running of the folder key, else fallback and none; every request
-	// is answered, unless destroyed first.
+	// is answered, unless destroyed first. It is read where they are
+	// kept, after every keep asked before; one kept while it was read
+	// has it read again, so a run never brings back what was chosen
+	// before.
 	private void read(@Nullable String key, @Nullable ProjectPath running,
 			float fallback, @NonNull Kept answer) {
 		if (!inLibrary(key) || running == null) {
 			answer.kept(fallback, 0);
 			return;
 		}
-		execute(() -> {
-			var settings = projects.library().settings();
-			float quality = settings.quality(running);
-			int limit = settings.frameRateLimit(running);
-			handler.post(() -> {
-				if (!destroyed) {
-					answer.kept(quality, limit);
-				}
-			});
+		int asked = keeps;
+		projects.looks(running, looks -> {
+			if (destroyed) {
+				return;
+			} else if (asked != keeps) {
+				read(key, running, fallback, answer);
+				return;
+			}
+			answer.kept(looks.quality(), looks.frameRateLimit());
 		});
 	}
 
 	/** Keep quality for running of the folder key, if in the library. */
 	public void keepQuality(@Nullable String key,
 			@Nullable ProjectPath running, float quality) {
+		++keeps;
 		if (inLibrary(key) && running != null) {
 			projects.setQuality(running, quality, this::tell);
 		}

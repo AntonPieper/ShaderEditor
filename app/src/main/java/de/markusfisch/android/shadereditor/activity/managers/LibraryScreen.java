@@ -112,12 +112,6 @@ public final class LibraryScreen implements ShaderScreen {
 	private RunGuard guard;
 	@Nullable
 	private Snackbar heldMessage;
-	// The quality chosen last on this screen, and for which file that
-	// runs, as folder and path: a run right after the choice may come
-	// before the library has kept it.
-	@Nullable
-	private List<Object> chosenFor;
-	private float chosenQuality;
 	// What was open before the screen was made again; null for a new
 	// screen, and where the shaders are rows of the database.
 	@Nullable
@@ -282,11 +276,7 @@ public final class LibraryScreen implements ShaderScreen {
 								? file.getProject().running()
 								: null;
 						looks.quality(files.key(), running, quality,
-								read -> {
-									float kept = Arrays.asList(key, running)
-											.equals(chosenFor)
-											? chosenQuality
-											: read;
+								kept -> {
 									if (file != null) {
 										file.setQuality(kept);
 									}
@@ -790,9 +780,6 @@ public final class LibraryScreen implements ShaderScreen {
 	public void onQualityChanged(float quality) {
 		open.setQuality(quality);
 		if (open instanceof ProjectFile file) {
-			chosenFor = Arrays.asList(files.key(),
-					file.getProject().running());
-			chosenQuality = quality;
 			looks.keepQuality(files.key(),
 					file.getProject().running(), quality);
 		}
