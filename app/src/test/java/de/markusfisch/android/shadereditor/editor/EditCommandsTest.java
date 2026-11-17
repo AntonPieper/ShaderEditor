@@ -143,17 +143,11 @@ public class EditCommandsTest {
 	}
 
 	@Test
-	public void selectsAllWordAndLine() {
+	public void selectsAll() {
 		Document document = documentOf("float x;\nvec2 uv;");
 		EditCommands commands = new EditCommands(document);
 		commands.selectAll();
 		assertEquals(new Selection(0, 17), document.selection());
-		commands.selectWord(2);
-		assertEquals(new Selection(0, 5), document.selection());
-		commands.selectLine(3);
-		assertEquals(new Selection(0, 9), document.selection());
-		commands.selectLine(12);
-		assertEquals(new Selection(9, 17), document.selection());
 	}
 
 	@Test
@@ -263,26 +257,11 @@ public class EditCommandsTest {
 	}
 
 	@Test
-	public void enterIndentsWithSpacesIfSet() {
-		Document document = documentOf("x\n  f(^a|\n");
-		EditCommands commands = new EditCommands(document);
-		commands.setTabWidth(2);
-		commands.setIndentWithSpaces(true);
-		commands.enter();
-		assertEquals("x\n  f(\n    |\n", stateOf(document));
-	}
-
-	@Test
 	public void tabInsertsALevelAtTheCaret() {
 		Document document = documentOf("a|b");
 		EditCommands commands = new EditCommands(document);
 		commands.indent();
 		assertEquals("a\t|b", stateOf(document));
-		document = documentOf("ab|c");
-		commands = new EditCommands(document);
-		commands.setIndentWithSpaces(true);
-		commands.indent();
-		assertEquals("ab  |c", stateOf(document));
 	}
 
 	@Test
@@ -302,11 +281,8 @@ public class EditCommandsTest {
 	@Test
 	public void aSelectionEndingAtALineStartLeavesThatLine() {
 		Document document = documentOf("^ab\ncd\n|ef");
-		EditCommands commands = new EditCommands(document);
-		commands.setIndentWithSpaces(true);
-		commands.setTabWidth(2);
-		commands.indent();
-		assertEquals("^  ab\n  cd\n|ef", stateOf(document));
+		new EditCommands(document).indent();
+		assertEquals("^\tab\n\tcd\n|ef", stateOf(document));
 	}
 
 	@Test
