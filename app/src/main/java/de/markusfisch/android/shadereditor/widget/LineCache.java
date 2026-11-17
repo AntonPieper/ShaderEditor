@@ -9,12 +9,10 @@ import androidx.annotation.RequiresApi;
 
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 
-/**
- * The lines a CodeView laid out, found by the identity of their string,
- * so a line that only moved or came back is not laid out again. From
- * Android 10 on, the drawing of a line is recorded once and replayed
- * until the line's string or colours change.
- */
+// The lines a CodeView laid out, found by the identity of their string, so a
+// line that only moved or came back is not laid out again. From Android 10 on,
+// a line's drawing is recorded once and replayed until its string or colours
+// change.
 final class LineCache {
 	private static final int SIZE = 512;
 
@@ -28,16 +26,13 @@ final class LineCache {
 		this.appearance = appearance;
 	}
 
-	/** Start a frame: lines got for drawing from now on are its. */
+	// Lines got for drawing from now on are this frame's.
 	void nextFrame() {
 		++frame;
 	}
 
-	/**
-	 * Return the line of text in the colours of runs, which may be null.
-	 * A line got for drawing whose place another line of this frame
-	 * took is laid out for once and not kept.
-	 */
+	// runs may be null. A line got for drawing whose place another line of this
+	// frame took is laid out for once and not kept.
 	Line get(String text, LineStyles.Runs runs, boolean drawing) {
 		int slot = (System.identityHashCode(text) * 0x9e3779b9 >>> 16) &
 				(SIZE - 1);
@@ -62,7 +57,7 @@ final class LineCache {
 		return widest;
 	}
 
-	/** Forget every line, as after a change of the font. */
+	// As after a change of the font.
 	void clear() {
 		for (int i = 0; i < SIZE; ++i) {
 			if (lines[i] != null) {
@@ -95,7 +90,6 @@ final class LineCache {
 		return true;
 	}
 
-	/** A line laid out, and its drawing once recorded. */
 	static final class Line {
 		private final boolean kept;
 		private String text;
@@ -114,26 +108,18 @@ final class LineCache {
 			return layout;
 		}
 
-		/** Return whether this is text in the colours of runs. */
 		boolean shows(String text, LineStyles.Runs runs) {
 			return this.text == text && sameRuns(this.runs, runs);
 		}
 
-		/**
-		 * Return whether draw on canvas would record the line before it
-		 * replays it.
-		 */
 		boolean needsRecording(Canvas canvas) {
 			return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
 					recordable(canvas) && (recording == null ||
 					!((Recording) recording).isCurrent());
 		}
 
-		/**
-		 * Draw the text, at least the part from left to right; record it
-		 * first if it needs recording and record is true, or else draw it
-		 * directly.
-		 */
+		// At least the part from left to right; recorded first if it needs
+		// recording and record is true, else drawn directly.
 		void draw(Canvas canvas, float left, float right, int height,
 				boolean record) {
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&

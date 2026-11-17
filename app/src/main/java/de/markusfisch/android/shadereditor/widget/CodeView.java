@@ -79,86 +79,46 @@ import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.editor.TextInput;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
-/**
- * Shows a Document: the lines on screen in the colours of its
- * LineStyles, their numbers in a gutter that stays in place when the
- * text scrolls sideways, the lines its LineMarks mark, the selection,
- * the composing region and a blinking caret. Under the open line of the
- * marks, a row shows the messages of its errors; it moves the lines
- * after it down, and opening, closing or resizing it scrolls so that
- * the caret's line stays where it is. A tap on the mark at a line's
- * number opens its row or closes it. It owns no text. Keys
- * become KeyCommands, and the caret is kept in view after each and
- * above the soft keyboard when that opens. The soft keyboard edits the
- * document through one TextInput per connection; a tap shows it.
- * A tap places the caret; a double tap or a long press selects a word
- * and a drag after it extends the selection by words, scrolling while
- * the finger is near an edge, under the platform's magnifier from
- * Android 9 on and without handles until the finger lifts. A selection
- * made by touch has the platform's handles, which drag its ends, by
- * words while it grows, with the magnifier; a tap shows the caret's
- * handle until a while has passed or the text changes. When the
- * finger lifts, the platform's floating toolbar offers the clipboard
- * for the selection, and the keyboard shows to type over it. A tap
- * inside the selection places the caret, as anywhere else. A tap on
- * the caret's handle, or a long press past the end of a line, shows the
- * toolbar for the caret. Cut, copy and paste of the toolbar, the
- * keyboard's context menu and the keys are the same KeyCommands; a copy
- * the clipboard refuses says so. A long press inside the selection
- * while its toolbar shows drags its text: a drop here moves it, other
- * apps may take a copy, and text dragged from elsewhere is inserted
- * where it is dropped. A mouse click places the caret, a
- * double click selects a word, Shift extends the selection, a drag
- * selects by character or by word, the secondary button opens the
- * context menu and the wheel scrolls; over the text the pointer is the
- * text cursor.
- * Given a KeyboardSession, it records the connections and, as actions,
- * every key event (action, key code, meta state, the text it types),
- * the text on the clipboard before a paste, a tap's selection, the
- * keyboard's context menu actions and the Enter command it runs for a
- * committed line break. It
- * redraws when the document changes, and when a line on screen changes
- * colour because the continuations of the line styles or the document's
- * analysis, which it runs on one background thread, made it current.
- * From Android 10 on, the drawing of a line is recorded once and
- * replayed until the line's string or colours change. A frame records
- * at most a third of the lines on screen, draws the others directly and
- * leaves them to the frames after it. Accessibility services see it as
- * an EditText, through CodeAccessibility.
- */
+// Shows a Document: the lines on screen in the colours of its LineStyles, their
+// numbers in a gutter that stays when the text scrolls sideways, the marks of
+// its LineMarks, the selection, the composing region and a blinking caret. It
+// owns no text. Under the open line of the marks a row shows the messages of
+// its errors; opening, closing or resizing it keeps the caret's line where it
+// is on screen.
+//
+// Keys become KeyCommands, and the soft keyboard edits through one TextInput
+// per connection. Touch, handles, the floating toolbar, drag and drop and the
+// mouse work as in the platform's text views; a tap inside the selection places
+// the caret, as anywhere else, and a long press past the end of a line shows
+// the toolbar for the caret.
+//
+// From Android 10 on, a line's drawing is recorded once and replayed until its
+// string or colours change; a frame records at most a third of the lines on
+// screen and draws the others directly. Accessibility services see it as an
+// EditText, through CodeAccessibility.
 public class CodeView extends View {
-	/** Explains words, on request. */
 	public interface LookUp {
-		/** Return whether word can be looked up. */
 		boolean has(@NonNull String word);
 
-		/** Explain word. */
 		void lookUp(@NonNull String word);
 	}
 
-	/**
-	 * One fix a row offers: what TalkBack says for it, and the labels the
-	 * row may show, longest first; the row shows the first that fits.
-	 * When even the last does not, the characters of it from cutStart to
-	 * cutEnd, a name, are cut in the middle; -1 for a label that is never
-	 * cut.
-	 */
+	// labels come longest first; the row shows the first that fits. When even
+	// the last does not, its name from cutStart to cutEnd is cut in the middle;
+	// -1 for a label that is never cut.
 	public record Fix(@NonNull String spoken, @NonNull List<String> labels,
 			int cutStart, int cutEnd) {
-		/** A fix shown and said as label, never cut. */
 		@NonNull
 		public static Fix of(@NonNull String label) {
 			return new Fix(label, List.of(label), -1, -1);
 		}
 
-		/** A fix said as spoken, shown as the first of labels that fits. */
 		@NonNull
 		public static Fix of(@NonNull String spoken,
 				@NonNull List<String> labels) {
 			return new Fix(spoken, labels, -1, -1);
 		}
 
-		/** A fix shown as label, its name from start to end cut to fit. */
 		@NonNull
 		public static Fix cutting(@NonNull String label, int start,
 				int end) {
@@ -166,35 +126,26 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Offers certain fixes for the messages of a line, at most two. */
+	// At most MAX_FIXES fixes for the messages of a line.
 	public interface RowFix {
-		/**
-		 * Return the fixes for the messages of line, from 0, in their
-		 * order; empty for none.
-		 */
+		// Empty for none.
 		@NonNull
 		List<Fix> fixes(int line, @NonNull List<String> messages);
 
-		/** Apply the fix at index of labels to the messages of line. */
 		void apply(int line, @NonNull List<String> messages, int index);
 
-		/** Return what the row shows of the messages of line. */
 		@NonNull
 		default List<String> shown(int line, @NonNull List<String> messages) {
 			return messages;
 		}
 	}
 
-	/** The most fixes a row offers. */
 	public static final int MAX_FIXES = 2;
 
 	private static final int[] NO_LINES = new int[0];
 
-	/**
-	 * What the open row shows, for messages of line, laid out width
-	 * wide: its lines of text and its fixes on fixLines lines of their
-	 * own under the text. NONE while no row is open.
-	 */
+	// Its fixes are on fixLines lines of their own under the text. NONE while
+	// no row is open.
 	private record Row(int line, @Nullable List<String> messages, int width,
 			@NonNull String[] text, @NonNull List<MessageRow.Placed> fixes,
 			int fixLines) {
@@ -211,7 +162,6 @@ public class CodeView extends View {
 							: 0);
 		}
 
-		// Where line of fixes starts from the row's top.
 		float fixTop(int line, @NonNull CodeAppearance a) {
 			return a.rowPaddingVertical + text.length * a.rowLineHeight +
 					a.fixInset + line * (a.fixHeight + a.fixLineGap);
@@ -408,7 +358,6 @@ public class CodeView extends View {
 	private int[] markedLines = NO_LINES;
 	// What Find marks on the lines on screen; nothing when empty.
 	private Search.Query found = Search.Query.NONE;
-	// Called when another document is shown, or null.
 	private Runnable documentShown;
 	// The fix pressed, or -1.
 	private int fixPressed = -1;
@@ -569,10 +518,7 @@ public class CodeView extends View {
 				});
 	}
 
-	/**
-	 * Show document with its styles and, if not null, its marks, in
-	 * place of the document shown before.
-	 */
+	// marks may be null.
 	public void setDocument(@NonNull Document document,
 			@NonNull LineStyles styles, @Nullable LineMarks marks) {
 		disconnect();
@@ -608,15 +554,13 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Run shown after another document is shown; none when null. */
+	// None when null.
 	public void setOnDocumentShown(@Nullable Runnable shown) {
 		documentShown = shown;
 	}
 
-	/**
-	 * Mark every match of query on the lines on screen, from their own
-	 * text in the frame that draws them; nothing for an empty query.
-	 */
+	// From the lines' own text in the frame that draws them; nothing for an
+	// empty query.
 	public void setFound(@NonNull Search.Query query) {
 		if (!query.equals(found)) {
 			found = query;
@@ -624,20 +568,14 @@ public class CodeView extends View {
 		}
 	}
 
-	/**
-	 * Record keyboard connections from the next one on to session, or
-	 * nothing if it is null.
-	 */
+	// From the next connection on; nothing for null.
 	public void setKeyboardSession(@Nullable KeyboardSession session) {
 		this.session = session;
 		closeInput();
 		restartInput();
 	}
 
-	/**
-	 * Set the input type keyboards are given, INPUT_TYPE_NO_SUGGESTIONS
-	 * by default.
-	 */
+	// INPUT_TYPE_NO_SUGGESTIONS by default.
 	public void setInputType(int inputType) {
 		this.inputType = inputType;
 		restartInput();
@@ -648,15 +586,11 @@ public class CodeView extends View {
 		return document;
 	}
 
-	/** Return the input type keyboards are given. */
 	int inputType() {
 		return inputType;
 	}
 
-	/**
-	 * Underline the range [start, end) as the keyboard's composing text;
-	 * -1 for none.
-	 */
+	// -1 for none.
 	public void setComposingRegion(int start, int end) {
 		composingStart = start;
 		composingEnd = end;
@@ -668,20 +602,19 @@ public class CodeView extends View {
 		appearanceChanged();
 	}
 
-	/** Set the font size, as TextView does. */
+	// As TextView does.
 	public void setTextSize(int unit, float size) {
 		appearance.paint.setTextSize(TypedValue.applyDimension(unit, size,
 				getResources().getDisplayMetrics()));
 		appearanceChanged();
 	}
 
-	/** Set font features, as TextView does; ligatures, for example. */
+	// As TextView does; ligatures, for example.
 	public void setFontFeatureSettings(@Nullable String settings) {
 		appearance.paint.setFontFeatureSettings(settings);
 		appearanceChanged();
 	}
 
-	/** Set the number of columns between two tab stops. */
 	public void setTabWidth(int tabWidth) {
 		appearance.tabWidth = tabWidth;
 		if (commands != null) {
@@ -696,65 +629,49 @@ public class CodeView extends View {
 		invalidate();
 	}
 
-	/** Hear of every analysis of the document shown, on this thread. */
+	// On this thread.
 	public void setAnalysisListener(
 			@Nullable AnalysisScheduler.Callback listener) {
 		analysisListener = listener;
 	}
 
-	/**
-	 * Return the last analysis of the document shown, possibly of an
-	 * older revision of it.
-	 */
+	// Possibly of an older revision.
 	@NonNull
 	public Analysis getAnalysis() {
 		return work.latest();
 	}
 
-	/**
-	 * Let Tab indent, true by default, or leave it to move the focus,
-	 * as the platform does.
-	 */
+	// True by default; false leaves Tab to move the focus, as the platform
+	// does.
 	public void setTabIndents(boolean tabIndents) {
 		this.tabIndents = tabIndents;
 	}
 
-	/**
-	 * Offer Look up for a selected word that lookUp has, or nothing for
-	 * null, the default.
-	 */
+	// For a selected word that lookUp has; none for null, the default.
 	public void setLookUp(@Nullable LookUp lookUp) {
 		this.lookUp = lookUp;
 	}
 
-	/**
-	 * Offer the fix rowFix has for the messages of a line in its row,
-	 * or none for null, the default.
-	 */
+	// None for null, the default.
 	public void setRowFix(@Nullable RowFix rowFix) {
 		this.rowFix = rowFix;
 		fixesChanged();
 	}
 
-	/** What rowFix offers may have changed: ask it again. */
 	public void fixesChanged() {
 		row = Row.NONE;
 		placeRow();
 	}
 
-	/**
-	 * Mark lines, as ones that were just put in, until the next edit.
-	 */
+	// As ones that were just put in, until the next edit.
 	public void markLines(@NonNull int[] lines) {
 		markedLines = lines.clone();
 		invalidate();
 	}
 
-	/**
-	 * Show the marks after they were set from a result, with the row of
-	 * the line MessageRow.choose picks, unless the user opened or closed
-	 * one by tapping a mark while the lines with errors were the same.
-	 */
+	// With the row of the line MessageRow.choose picks, unless the user opened
+	// or closed one by tapping a mark while the lines with errors were the
+	// same.
 	public void marksChanged() {
 		if (document == null || marks == null) {
 			return;
@@ -775,10 +692,7 @@ public class CodeView extends View {
 				: null);
 	}
 
-	/**
-	 * Return the messages of the errors of the caret's line, with the
-	 * line, or null if it has none.
-	 */
+	// With the line, or null if it has none.
 	@Nullable
 	CharSequence caretLineError() {
 		if (document == null || marks == null) {
@@ -800,7 +714,6 @@ public class CodeView extends View {
 		return appearance.lineHeight;
 	}
 
-	/** Scroll as little as it takes to show the selection's head. */
 	public void bringCaretIntoView() {
 		if (document == null) {
 			return;
@@ -830,11 +743,8 @@ public class CodeView extends View {
 		scrollInside(scrollX, scrollY);
 	}
 
-	/**
-	 * Show the selection as Find shows a match: its line stays where it
-	 * is when all of it is on screen, else it jumps to a third of the
-	 * way down.
-	 */
+	// As Find shows a match: its line stays where it is when all of it is on
+	// screen, else it jumps to a third of the way down.
 	public void showFound() {
 		if (document == null || getWidth() == 0 || getHeight() == 0) {
 			bringCaretIntoView();
@@ -860,14 +770,14 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Fling with the given velocity in pixels per second. */
+	// In pixels per second.
 	public void fling(int velocityX, int velocityY) {
 		scroller.fling(getScrollX(), getScrollY(), velocityX, velocityY,
 				0, maxScrollX(), 0, maxScrollY());
 		postInvalidateOnAnimation();
 	}
 
-	/** Scroll to x and y, kept inside the range of the text. */
+	// Kept inside the range of the text.
 	@Override
 	public void scrollTo(int x, int y) {
 		caretIntoViewWhenLaidOut = false;
@@ -1455,27 +1365,25 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Return where line 0 starts. */
 	float textTop() {
 		return getPaddingTop() + insets.top;
 	}
 
-	/** Return where line n starts, without scrolling. */
+	// Without scrolling.
 	float lineTop(int n) {
 		return textTop() + lines.top(n);
 	}
 
-	/** Return the line at y, without scrolling. */
+	// Without scrolling.
 	int lineAt(float y) {
 		return lines.lineAt(y - textTop(), document.text().lineCount());
 	}
 
-	/** Return where the numbers of the lines start. */
 	float gutterLeft() {
 		return getPaddingLeft() + insets.left;
 	}
 
-	/** Return where the text of a line starts, without scrolling. */
+	// Without scrolling.
 	float textLeft(int lineCount) {
 		return gutterLeft() + (showLineNumbers
 				? CodeGeometry.gutterWidth(lineCount, appearance.digitWidth,
@@ -1483,13 +1391,11 @@ public class CodeView extends View {
 				: 0);
 	}
 
-	/** Return the width of the widest line known. */
 	float textWidth() {
 		return Math.max(cache.widest(),
 				document.text().longestLineLength() * appearance.charWidth);
 	}
 
-	/** Return the layout of line n of the current text. */
 	LineLayout layoutOf(int n) {
 		return cache.get(document.text().line(n),
 				styles != null ? styles.runs(n) : null, false).layout();
@@ -1529,7 +1435,7 @@ public class CodeView extends View {
 		postInvalidateOnAnimation();
 	}
 
-	/** Run the Enter command, for a line break the keyboard commits. */
+	// For a line break the keyboard commits.
 	void enter() {
 		if (keys != null) {
 			action("command", "enter");
@@ -1538,7 +1444,7 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Do what the Tab key does, for a Tab key on the screen. */
+	// For a Tab key on the screen.
 	public void tab() {
 		if (keys != null) {
 			action("key", KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_TAB, 0, null);
@@ -1546,7 +1452,7 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Do a context menu action of the keyboard; return if it is known. */
+	// Returns whether it is known.
 	boolean contextMenuAction(int id) {
 		if (id == R.id.look_up) {
 			return lookUpSelection();
@@ -1576,11 +1482,8 @@ public class CodeView extends View {
 		return done;
 	}
 
-	/**
-	 * Do action id of the toolbar; return whether the toolbar is done.
-	 * Select all keeps it, and a copy leaves the caret behind the text,
-	 * as the platform's do; an action that did nothing changes nothing.
-	 */
+	// Returns whether the toolbar is done. Select all keeps it, and a copy
+	// leaves the caret behind the text, as the platform's do.
 	boolean toolbarAction(int id) {
 		if (id == R.id.look_up) {
 			return lookUpSelection();
@@ -1726,7 +1629,6 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Return the ids of the actions the toolbar offers now. */
 	int[] offered() {
 		Document.Selection selection = document.selection();
 		ClipboardManager manager = clipboardManager();
@@ -1771,13 +1673,12 @@ public class CodeView extends View {
 		return lookUp.has(word) ? word : null;
 	}
 
-	/** Return the selected word Look up explains, or null. */
 	@Nullable
 	String lookUpWord() {
 		return document != null ? selectedWord() : null;
 	}
 
-	/** Look up the selected word; return whether it could. */
+	// Returns whether it could.
 	boolean lookUpSelection() {
 		String word = selectedWord();
 		if (word != null) {
@@ -1798,7 +1699,6 @@ public class CodeView extends View {
 	// one for a selection, the keyboard, to type over the selection.
 	private void showToolbar() {
 		handler.removeCallbacks(hideCaretHandle);
-		// Not while a drag is in progress.
 		if (dragging != 0) {
 			return;
 		}
@@ -1848,10 +1748,7 @@ public class CodeView extends View {
 		}
 	}
 
-	/**
-	 * Put the bounds on screen of the characters from offset on into
-	 * out, null for one not on screen.
-	 */
+	// null for a character that is not on screen.
 	void characterBounds(int offset, RectF[] out) {
 		Text text = document.text();
 		int lineCount = text.lineCount();
@@ -1879,17 +1776,12 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Return the lines Page Up and Down move. */
 	int pageLines() {
 		return Math.max(1, (getHeight() - insets.top - insets.bottom) /
 				appearance.lineHeight - 1);
 	}
 
-	/**
-	 * Select from anchor to head for an accessibility service, a
-	 * selection with its handles and toolbar if shown, and scroll the
-	 * head into view.
-	 */
+	// With its handles and toolbar if shown; scrolls the head into view.
 	void selectForAccessibility(int anchor, int head, boolean shown) {
 		toolbar.close();
 		select(anchor, head);
@@ -1900,10 +1792,8 @@ public class CodeView extends View {
 		bringCaretIntoView();
 	}
 
-	/**
-	 * Replace the whole text by text, null for none, as one step with
-	 * the caret behind it; return false if the document refused it.
-	 */
+	// null for none, as one step with the caret behind; false if the document
+	// refused it.
 	boolean replaceAll(@Nullable CharSequence text) {
 		Text replacement = Text.of(text != null ? text : "");
 		action("setText", replacement.toString());
@@ -1920,10 +1810,8 @@ public class CodeView extends View {
 		return true;
 	}
 
-	/**
-	 * Do what an accessibility service's tap does to an EditText: focus
-	 * and show the keyboard; the caret stays.
-	 */
+	// As an accessibility service's tap on an EditText: focus and show the
+	// keyboard; the caret stays.
 	boolean clickForAccessibility() {
 		if (!isFocused()) {
 			requestFocus();
@@ -1936,10 +1824,8 @@ public class CodeView extends View {
 		return true;
 	}
 
-	/**
-	 * Do what an accessibility service's long press does to an EditText:
-	 * show or hide the toolbar for the selection or the caret.
-	 */
+	// As an accessibility service's long press on an EditText: show or hide the
+	// toolbar for the selection or the caret.
 	boolean longClickForAccessibility() {
 		sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_LONG_CLICKED);
 		performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
@@ -1948,10 +1834,7 @@ public class CodeView extends View {
 		return true;
 	}
 
-	/**
-	 * Scroll a page in the direction of dx and dy, each -1, 0 or 1;
-	 * return whether the view scrolled.
-	 */
+	// dx and dy are -1, 0 or 1; returns whether the view scrolled.
 	boolean scrollByPage(int dx, int dy) {
 		int x = getScrollX();
 		int y = getScrollY();
@@ -1963,7 +1846,6 @@ public class CodeView extends View {
 		return x != getScrollX() || y != getScrollY();
 	}
 
-	/** Record a call the connection does not pass on. */
 	void note(String name, Object answer, Object... args) {
 		if (session != null) {
 			session.note(name, answer, args);
@@ -1989,10 +1871,7 @@ public class CodeView extends View {
 		}
 	}
 
-	/**
-	 * Make connection the one whose updates reach the keyboard, and close
-	 * the older ones: the keyboard does not go back to them.
-	 */
+	// The keyboard does not go back to the older ones, so they are closed.
 	void use(CodeInputConnection connection) {
 		if (active != connection) {
 			active = connection;
@@ -2004,7 +1883,7 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Pass an update of connection on, if the keyboard uses it. */
+	// If the keyboard uses connection.
 	void updateSelection(CodeInputConnection connection, int selStart,
 			int selEnd, int composingStart, int composingEnd) {
 		InputMethodManager imm = inputMethodManager();
@@ -2015,7 +1894,6 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Pass extracted text of connection on, if the keyboard uses it. */
 	void updateExtractedText(CodeInputConnection connection, int token,
 			TextInput.Window window) {
 		InputMethodManager imm = inputMethodManager();
@@ -2025,7 +1903,6 @@ public class CodeView extends View {
 		}
 	}
 
-	/** Forget connection, which closed. */
 	void closed(CodeInputConnection connection) {
 		connections.remove(connection);
 		if (connection == active) {
@@ -2090,7 +1967,6 @@ public class CodeView extends View {
 		performClick();
 	}
 
-	// Selects the word at x, y, which a drag extends by words.
 	private void dragWords(float x, float y, boolean pressed) {
 		if (document == null) {
 			return;
@@ -2105,7 +1981,6 @@ public class CodeView extends View {
 		startDrag(DRAG_WORDS, x, y);
 	}
 
-	// Starts dragging the handle at x, y of the view, if there is one.
 	private void grabHandle(float x, float y) {
 		int which = handles.at(x + getScrollX(), y + getScrollY());
 		if (which < 0) {
@@ -2465,7 +2340,6 @@ public class CodeView extends View {
 						layoutOf(n).width();
 	}
 
-	// Returns the offset nearest x and y of the view.
 	private int offsetAt(float x, float y) {
 		Text text = document.text();
 		int n = lineAt(y + getScrollY());
@@ -2830,10 +2704,8 @@ public class CodeView extends View {
 		return false;
 	}
 
-	/**
-	 * Return the fixes the row of line offers, at most MAX_FIXES: what
-	 * the list of errors offers for an error of that line.
-	 */
+	// At most MAX_FIXES: what the list of errors offers for an error of that
+	// line.
 	@NonNull
 	public List<Fix> fixesOf(int line) {
 		return marks != null
@@ -2841,7 +2713,7 @@ public class CodeView extends View {
 				: Collections.emptyList();
 	}
 
-	/** Apply fix index of the row of line, as the row does. */
+	// As the row does.
 	public void applyFixOf(int line, int index) {
 		if (index < fixesOf(line).size()) {
 			applyFix(line, marks.messages(line), index);
@@ -2864,7 +2736,6 @@ public class CodeView extends View {
 		scrollInside(scrollX, getScrollY());
 	}
 
-	// Returns the fixes for the messages of line, at most MAX_FIXES.
 	@NonNull
 	private List<Fix> fixes(int line, List<String> messages) {
 		List<Fix> fixes = rowFix != null
@@ -2875,7 +2746,6 @@ public class CodeView extends View {
 				: fixes;
 	}
 
-	// The spoken labels of fixes.
 	@NonNull
 	private static List<String> spoken(@NonNull List<Fix> fixes) {
 		List<String> spoken = new ArrayList<>(fixes.size());
@@ -2894,7 +2764,6 @@ public class CodeView extends View {
 				: said;
 	}
 
-	/** Return what is said of the fixes for the caret's line. */
 	@NonNull
 	List<String> caretLineFixes() {
 		List<String> messages = caretLineMessages();
@@ -2903,10 +2772,7 @@ public class CodeView extends View {
 				: Collections.emptyList();
 	}
 
-	/**
-	 * Apply fix index for the caret's line; return whether it had
-	 * one.
-	 */
+	// Returns whether it had one.
 	boolean applyCaretLineFix(int index) {
 		List<String> messages = caretLineMessages();
 		if (messages == null ||

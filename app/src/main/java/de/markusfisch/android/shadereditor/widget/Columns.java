@@ -4,16 +4,12 @@ import java.util.Arrays;
 
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 
-/**
- * The arithmetic of a line in a font whose characters all have one
- * width: a character takes one column, a tab reaches the next multiple
- * of the tab width.
- */
+// A line in a font whose characters all have one width: a character takes one
+// column, a tab reaches the next multiple of the tab width.
 final class Columns {
 	private Columns() {
 	}
 
-	/** Return whether line holds only printable ASCII and tabs. */
 	static boolean isSimple(String line) {
 		for (int i = 0, n = line.length(); i < n; ++i) {
 			char c = line.charAt(i);
@@ -24,7 +20,6 @@ final class Columns {
 		return true;
 	}
 
-	/** Return the column the character at offset starts in. */
 	static int columnOf(String line, int offset, int tabWidth) {
 		int column = 0;
 		for (int i = 0, n = Math.min(offset, line.length()); i < n; ++i) {
@@ -33,7 +28,6 @@ final class Columns {
 		return column;
 	}
 
-	/** Return the column the character at offset ends in. */
 	static int next(char c, int column, int tabWidth) {
 		if (c != '\t') {
 			return column + 1;
@@ -42,11 +36,8 @@ final class Columns {
 		return (column / width + 1) * width;
 	}
 
-	/**
-	 * Return the offset between two characters closest to column, which
-	 * may be fractional: the start of the character column falls in,
-	 * or its end if column is in its right half.
-	 */
+	// column may be fractional: the start of the character it falls in, or its
+	// end if column is in its right half.
 	static int offsetAt(String line, float column, int tabWidth) {
 		int at = 0;
 		for (int i = 0, n = line.length(); i < n; ++i) {
@@ -59,12 +50,9 @@ final class Columns {
 		return line.length();
 	}
 
-	/**
-	 * Return the pieces of line that one drawText each draws: start,
-	 * end, column and colour, four ints a piece. A piece holds no tab and
-	 * is not only spaces. Text outside runs has the colour plain; pieces
-	 * of one colour that only spaces separate are one piece.
-	 */
+	// What one drawText each draws: start, end, column and colour, four ints a
+	// piece. A piece holds no tab and is not only spaces; pieces of one colour
+	// that only spaces separate are one piece.
 	static int[] pieces(String line, LineStyles.Runs runs, int[] colors,
 			int plain, int tabWidth) {
 		Pieces pieces = new Pieces(line);

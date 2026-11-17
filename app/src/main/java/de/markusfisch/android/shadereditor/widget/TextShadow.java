@@ -6,15 +6,11 @@ import android.graphics.Point;
 import android.graphics.RectF;
 import android.view.View;
 
-/**
- * The shadow of text dragged out of a CodeView: a small card of the
- * colour of floating surfaces, with a hairline so that it stands out on
- * dark code, and on it the start of the text as the
- * view draws it, in its font, size and colours. It draws the view's own
- * layout of the line, clipped to the part shown, so a selection of any
- * size costs the same. The finger holds its middle, as it holds the
- * platform's text shadow.
- */
+// The shadow of text dragged out of a CodeView: a card with a hairline, so it
+// stands out on dark code, showing the start of the text as the view draws it.
+// It draws the view's own layout of the line, clipped to the part shown, so a
+// selection of any size costs the same. The finger holds its middle, as it
+// holds the platform's text shadow.
 final class TextShadow extends View.DragShadowBuilder {
 	private final LineLayout layout;
 	private final float from;
@@ -27,7 +23,7 @@ final class TextShadow extends View.DragShadowBuilder {
 	private final Paint outline = new Paint(Paint.ANTI_ALIAS_FLAG);
 	private final RectF bounds = new RectF();
 
-	/** Show line layout from x from to x to, of a line lineHeight tall. */
+	// The part of layout from x from to x to.
 	TextShadow(LineLayout layout, float from, float to, int lineHeight,
 			CodeAppearance appearance) {
 		this.layout = layout;

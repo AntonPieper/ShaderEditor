@@ -4,43 +4,32 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * The rules of the row under a line with errors that shows their
- * messages: which line's row opens after a result, which lines of text
- * the row shows, and how its fixes are labelled and placed.
- */
+// The rules of the row under a line with errors: which line's row opens after a
+// result, which lines of text it shows, and how its fixes are labelled and
+// placed.
 final class MessageRow {
 	static final int MAX_LINES = 3;
 
-	/** How wide text is. */
 	interface Measure {
 		float width(String text);
 	}
 
-	/** How the row's text is measured and what it says when cut. */
 	interface Style extends Measure {
 
-		/**
-		 * Return how many characters of text from start fit in width;
-		 * at least one.
-		 */
+		// At least one.
 		int fit(String text, int start, float width);
 
 		String ellipsis();
 
-		/** Return the hint for count errors that are left out. */
+		// The hint for count errors that are left out.
 		String more(int count);
 	}
 
 	private MessageRow() {
 	}
 
-	/**
-	 * Return the line whose row opens after a result with errors on the
-	 * lines failing, in order: the caret's line if it fails; else the
-	 * open line if it still fails; else the first failing line from
-	 * first to last, the lines on screen; else -1.
-	 */
+	// The caret's line if it fails; else the open line if it still fails; else
+	// the first failing line from first to last, the lines on screen; else -1.
 	static int choose(int[] failing, int open, int caret, int first,
 			int last) {
 		if (Arrays.binarySearch(failing, caret) >= 0) {
@@ -57,13 +46,10 @@ final class MessageRow {
 		return -1;
 	}
 
-	/**
-	 * Return the lines that show messages in width: each message from a
-	 * new line without the white space around it, wrapped at spaces, at
-	 * most MAX_LINES. When more does not
-	 * fit, the last line ends in an ellipsis if a message is cut, and in
-	 * the hint for the messages left out entirely.
-	 */
+	// Each message from a new line, without the white space around it, wrapped
+	// at spaces, at most MAX_LINES. When more does not fit, the last line ends
+	// in an ellipsis if a message is cut, and in the hint for the messages left
+	// out.
 	static String[] lines(List<String> messages, float width, Style style) {
 		List<String> lines = new ArrayList<>();
 		// The message and offset the last line starts at.
@@ -93,10 +79,8 @@ final class MessageRow {
 		return lines.toArray(new String[0]);
 	}
 
-	/**
-	 * Return the first of labels, longest first, that fits in width, or
-	 * else the last, the shortest: a label is never cut.
-	 */
+	// labels come longest first; the last, the shortest, if none fits: a label
+	// is never cut.
 	static String label(List<String> labels, float width, Measure measure) {
 		int last = labels.size() - 1;
 		for (int i = 0; i < last; ++i) {
@@ -108,29 +92,20 @@ final class MessageRow {
 		return labels.get(last);
 	}
 
-	/** How the fixes of a row are measured and spaced. */
 	record FixMetrics(float padding, float gap, Measure measure,
 			String ellipsis) {
 	}
 
-	/**
-	 * A fix as the row shows it: the label shown, which fix of the row it
-	 * is, the line of fixes it is on (0, or 1 when two do not fit side by
-	 * side), and where its button starts and ends, from where the code's
-	 * text starts.
-	 */
+	// line is 0, or 1 when two fixes do not fit side by side; start and end are
+	// measured from where the code's text starts.
 	record Placed(String label, int index, int line, float start,
 			float end) {
 	}
 
-	/**
-	 * Return fixes laid out with their buttons ending at end, the last
-	 * fix at the end and the one before it to its left, gap apart. Each
-	 * label is the longest of its labels that lets all fit; when the
-	 * shortest still do not, the second goes on a line under the first.
-	 * A label that still does not fit alone has its name cut in the
-	 * middle (CodeView.Fix), if it has one; any other is never cut.
-	 */
+	// The buttons end at end, gap apart. Each label is the longest of its
+	// labels that lets all fit; when the shortest still do not, the second goes
+	// on a line under the first. A label that still does not fit alone has its
+	// name cut in the middle, if it has one; any other is never cut.
 	static List<Placed> place(List<CodeView.Fix> fixes, float end,
 			FixMetrics metrics) {
 		int count = fixes.size();
@@ -179,12 +154,9 @@ final class MessageRow {
 		return placed;
 	}
 
-	/**
-	 * Return label with the characters from cutStart to cutEnd, a name,
-	 * cut in the middle with ellipsis so that it fits in width, keeping
-	 * what is before and after the name; as short as two characters of
-	 * the name, if nothing fits.
-	 */
+	// The name from cutStart to cutEnd cut in the middle with an ellipsis so
+	// the label fits in width, keeping what is around it; at least two
+	// characters of the name.
 	static String cutMiddle(String label, int cutStart, int cutEnd,
 			float width, Measure measure, String ellipsis) {
 		if (measure.width(label) <= width || cutStart < 0 ||

@@ -9,12 +9,9 @@ import android.graphics.text.TextRunShaper;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
-/**
- * The glyph of each printable ASCII character of a font in which shaping
- * them changes nothing: one glyph each, from one font, one width apart.
- * A run of them is then drawn as glyphs at their columns, without the
- * text shaper.
- */
+// The glyphs of the printable ASCII characters of a font in which shaping them
+// changes nothing (one glyph each, from one font, one width apart), so a run of
+// them is drawn as glyphs at their columns, without the shaper.
 @RequiresApi(31)
 final class MonoGlyphs {
 	private final Font font;
@@ -27,12 +24,9 @@ final class MonoGlyphs {
 		this.ids = ids;
 	}
 
-	/**
-	 * Return the glyphs of the characters from 0x20 in printable, or null
-	 * if a run of them could shape differently: with font features other
-	 * than contextual alternates off (ligatures), variations, or a font
-	 * that does not give one glyph per character at charWidth.
-	 */
+	// Null if a run could shape differently: with font features other than
+	// contextual alternates off (ligatures), variations, or a font that does
+	// not give one glyph per character at charWidth.
 	@Nullable
 	static MonoGlyphs of(Paint paint, String printable, float charWidth) {
 		String features = paint.getFontFeatureSettings();
@@ -59,7 +53,7 @@ final class MonoGlyphs {
 		return new MonoGlyphs(font, ids);
 	}
 
-	/** Draw the characters [start, end) of text from x, one per column. */
+	// One character per column.
 	void draw(Canvas canvas, String text, int start, int end, float x,
 			float y, float charWidth, Paint paint) {
 		int count = end - start;

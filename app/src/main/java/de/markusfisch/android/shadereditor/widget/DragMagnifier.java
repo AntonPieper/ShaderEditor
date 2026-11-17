@@ -8,12 +8,9 @@ import android.widget.Magnifier;
 
 import androidx.annotation.RequiresApi;
 
-/**
- * The platform's magnifier over a dragged end of a selection, as the
- * platform's text views show it: with their defaults, sliding for 100 ms
- * when it jumps to another line, and not at all for text taller than
- * what it shows.
- */
+// The platform's magnifier over a dragged end of a selection, as its text views
+// show it: with their defaults, sliding for 100 ms when it jumps to another
+// line, and not at all for text taller than what it shows.
 @RequiresApi(Build.VERSION_CODES.P)
 final class DragMagnifier {
 	private static final long JUMP = 100;
@@ -56,17 +53,16 @@ final class DragMagnifier {
 		});
 	}
 
-	/** Return half the width of what it shows, in pixels. */
+	// In pixels.
 	float halfWidth() {
 		return sourceWidth / 2;
 	}
 
-	/** Return whether it shows lines of height, in pixels. */
+	// height in pixels.
 	boolean fits(float height) {
 		return height <= sourceHeight;
 	}
 
-	/** Show it centred on x, y of the view. */
 	void show(float x, float y) {
 		boolean jump = showing && y != toY;
 		if (jump) {
