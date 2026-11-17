@@ -29,15 +29,42 @@ public final class GlslKnowledge implements Knowledge {
 	private final int[] outer;
 	private final GlslLocals locals;
 	private final boolean complete;
+	// Where a macro is none: the names "#undef" names, each with
+	// where, in the order of the text. And the arms of conditionals
+	// that are not compiled, each from where to where, in that order:
+	// what one declares means nothing outside of it.
+	private final String[] undefined;
+	private final int[] undefinedAt;
+	private final int[] off;
+	// Where code has the name of a macro with parameters and no "("
+	// behind it, in the order of the text: no macro there.
+	private final int[] bare;
 
 	GlslKnowledge(List<Symbol> symbols, List<Symbol> links, int[] folds) {
-		this(symbols, links, folds, GlslLocals.NONE, true);
+		this(symbols, links, folds, GlslLocals.NONE, true,
+				Collections.emptyList(), Collections.emptyList(),
+				Collections.emptyList(), Collections.emptyList());
 	}
 
 	GlslKnowledge(List<Symbol> symbols, List<Symbol> links, int[] folds,
-			GlslLocals locals, boolean complete) {
+			GlslLocals locals, boolean complete, List<String> undefined,
+			List<Integer> undefinedAt, List<Integer> off,
+			List<Integer> bare) {
+		this.bare = new int[bare.size()];
+		for (int i = 0; i < this.bare.length; ++i) {
+			this.bare[i] = bare.get(i);
+		}
 		this.locals = locals;
 		this.complete = complete;
+		this.undefined = undefined.toArray(new String[0]);
+		this.undefinedAt = new int[undefinedAt.size()];
+		for (int i = 0; i < this.undefinedAt.length; ++i) {
+			this.undefinedAt[i] = undefinedAt.get(i);
+		}
+		this.off = new int[off.size()];
+		for (int i = 0; i < this.off.length; ++i) {
+			this.off[i] = off.get(i);
+		}
 		// Its own copies: whoever made it may go on with theirs.
 		this.symbols = Collections.unmodifiableList(
 				new ArrayList<>(symbols));
@@ -205,17 +232,36 @@ public final class GlslKnowledge implements Knowledge {
 	 */
 	@Override
 	public List<Symbol> at(int offset, CharSequence word) {
+		// A macro knows no scope: where one of that name is defined, a
+		// word is that, whatever is declared under the name. But one
+		// with parameters is a macro only before a "(".
+		boolean bare = offset >= 0 && isBare(offset, word.length());
+		Symbol macro = offset < 0 ? null : macroAt(offset, word);
+		if (macro != null && !(bare && isCalled(macro))) {
+			return Collections.singletonList(macro);
+		}
 		int local = offset < 0 ? -1 : locals.find(word, offset);
 		if (local >= 0) {
 			return Collections.singletonList(locals.symbol(local));
 		}
 		Symbol around = around(offset);
 		if (around != null) {
+			// A parameter in its function or macro, a field where the
+			// struct declares it.
 			for (Symbol part : around.parts()) {
-				if (part.kind() == Kind.PARAMETER &&
+				if ((part.kind() == Kind.PARAMETER ||
+						part.kind() == Kind.FIELD) &&
 						part.name().contentEquals(word)) {
 					return Collections.singletonList(part);
 				}
+			}
+		}
+		if (bare) {
+			// What the name means there as code: no macro that needs a
+			// "(" to be one.
+			List<Symbol> before = before(offset, word.toString(), true);
+			if (!before.isEmpty()) {
+				return before;
 			}
 		}
 		int i = first(word);
@@ -257,6 +303,66 @@ public final class GlslKnowledge implements Knowledge {
 			}
 		}
 		return forms;
+	}
+
+	// Whether what is declared at start is declared in an arm that is
+	// not compiled and offset lies outside of that arm: it means
+	// nothing there.
+	private boolean isOff(int start, int offset) {
+		int low = 0;
+		int high = off.length / 2 - 1;
+		while (low <= high) {
+			int mid = (low + high) >>> 1;
+			if (off[mid * 2] <= start) {
+				low = mid + 1;
+			} else {
+				high = mid - 1;
+			}
+		}
+		return high >= 0 && start < off[high * 2 + 1] &&
+				!(offset >= off[high * 2] && offset < off[high * 2 + 1]);
+	}
+
+	// Whether the word of that length at offset is the name of a
+	// macro with parameters without a "(" behind it.
+	private boolean isBare(int offset, int length) {
+		int low = 0;
+		int high = bare.length - 1;
+		while (low <= high) {
+			int mid = (low + high) >>> 1;
+			if (bare[mid] <= offset) {
+				low = mid + 1;
+			} else {
+				high = mid - 1;
+			}
+		}
+		return high >= 0 && offset < bare[high] + length;
+	}
+
+	// The macro of that name that is defined at offset, or null: the
+	// one defined last before it in a line that is compiled, if no
+	// "#undef" of the name stands between.
+	private Symbol macroAt(int offset, CharSequence word) {
+		Symbol macro = null;
+		for (int i = first(word); i > -1 && i < byName.length &&
+				byName[i].name().contentEquals(word); ++i) {
+			Symbol symbol = byName[i];
+			if (symbol.kind() == Kind.MACRO && symbol.start() <= offset &&
+					!isOff(symbol.start(), offset)) {
+				macro = symbol;
+			}
+		}
+		if (macro == null) {
+			return null;
+		}
+		for (int i = undefined.length; i-- > 0 &&
+				undefinedAt[i] > macro.start(); ) {
+			if (undefinedAt[i] < offset && undefined[i].contentEquals(
+					word)) {
+				return null;
+			}
+		}
+		return macro;
 	}
 
 	@Override
@@ -448,14 +554,30 @@ public final class GlslKnowledge implements Knowledge {
 	 * last one alone; nothing if none is declared before it.
 	 */
 	List<Symbol> before(int offset, String name) {
+		return before(offset, name, false);
+	}
+
+	// Whether a macro is one with parameters, as its text begins.
+	private static boolean isCalled(Symbol macro) {
+		return macro.detail() != null && macro.detail().startsWith("(",
+				8 + macro.name().length());
+	}
+
+	// The same, for a name without a "(" behind it if bare: no macro
+	// with parameters is meant there.
+	private List<Symbol> before(int offset, String name, boolean bare) {
 		List<Symbol> found = new ArrayList<>();
 		for (int i = first(name); i > -1 && i < byName.length &&
 				byName[i].name().equals(name); ++i) {
 			Symbol symbol = byName[i];
+			if (bare && symbol.kind() == Kind.MACRO && isCalled(symbol)) {
+				continue;
+			}
 			// A function is seen from its name on, in its own body
 			// too; anything else behind its declarator.
-			if (symbol.kind() == Kind.FUNCTION ? symbol.start() < offset
-					: symbol.to() <= offset) {
+			if ((symbol.kind() == Kind.FUNCTION ? symbol.start() < offset
+					: symbol.to() <= offset) && !isOff(symbol.start(),
+					offset)) {
 				if (symbol.kind() != Kind.FUNCTION || (!found.isEmpty() &&
 						found.get(0).kind() != Kind.FUNCTION)) {
 					found.clear();

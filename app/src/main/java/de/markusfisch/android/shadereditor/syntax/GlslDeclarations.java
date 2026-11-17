@@ -91,6 +91,9 @@ final class GlslDeclarations implements Knowledge.Builder {
 	 * goes on from, so that every branch starts from the same place.
 	 */
 	private static final class Checkpoint {
+		// For the end of an arm: the locals it declared whose scopes
+		// were open there.
+		int[] open;
 		int line;
 		Mode mode;
 		int braces;
@@ -123,12 +126,10 @@ final class GlslDeclarations implements Knowledge.Builder {
 		PARAMETERS,
 		/** The text of a macro. */
 		TEXT,
-		/** A "0" behind "#if". */
-		IF,
-		/** Nothing behind "#if 0", which then disables code. */
-		IF_ZERO,
 		/** The path, behind "#include". */
 		INCLUDE,
+		/** The name, behind "#undef". */
+		UNDEF,
 		/** "se" behind "#pragma": what the host reads. */
 		PRAGMA,
 		/** "input" behind "#pragma se". */
@@ -239,12 +240,34 @@ final class GlslDeclarations implements Knowledge.Builder {
 	private int commentFrom = -1;
 	private boolean inComment;
 
-	// Conditionals: how many are open, the level "#if 0" disabled code
-	// at or -1, and for each level where the reader was at its "#if":
-	// all it needs to go on from there again.
+	// Conditionals. Which arm is compiled is not decided here: the
+	// preprocessor is executed, the one that an exact reading of a
+	// program asks too, and it says so. Kept here is what a reader of
+	// every arm needs: how many conditionals are open; the level at
+	// which "#if 0" switched code off that is then not read at all, or
+	// -1; for each level where the reader was at its "#if", all it
+	// needs to go on from there again, and where it was at the end of
+	// the last arm that may be compiled, if there was one.
+	private final GlslPreprocessor preprocessor = new GlslPreprocessor();
 	private int level;
 	private int disabled = -1;
 	private final Checkpoint[] checkpoints = new Checkpoint[MAX_NESTING];
+	private final Checkpoint[] ends = new Checkpoint[MAX_NESTING];
+	private final boolean[] ended = new boolean[MAX_NESTING];
+	// The directive being read as one line, if it goes on over lines,
+	// and whether it opened a conditional.
+	private StringBuilder directiveLine;
+	private LineTokens directiveTokens;
+	private boolean opened;
+	// Where a macro stops being one: the names "#undef" names in
+	// compiled lines, each with where it stands. And the arms that
+	// are read and not compiled, from where to where: what they
+	// declare is a name for the outline and means nothing outside of
+	// them.
+	private final List<String> undefined = new ArrayList<>();
+	private final List<Integer> undefinedAt = new ArrayList<>();
+	private final List<Integer> off = new ArrayList<>();
+	private int offFrom = -1;
 
 	// The directive being read, from where to where, and the macro it
 	// defines, if any, with its text so far.
@@ -289,6 +312,9 @@ final class GlslDeclarations implements Knowledge.Builder {
 				}
 				continue;
 			}
+			if (called != null) {
+				bare(line, lineStart, start, end, tokens.inDirective(i));
+			}
 			if (tokens.inDirective(i)) {
 				directive(line, lineStart, start, end, style);
 			} else {
@@ -313,10 +339,98 @@ final class GlslDeclarations implements Knowledge.Builder {
 				commentFrom = lineNumber;
 			}
 		}
+		execute(line, tokens);
 		if (!tokens.directiveGoesOn()) {
 			// A directive ends with its line, before the next line
 			// declares anything.
 			endDirective();
+		}
+	}
+
+	// The names of the macros with parameters this text defines, null
+	// if there is none; and where code has one of those names without
+	// a "(" behind it: there it is no macro, whatever is defined.
+	private List<String> called;
+	private final List<Integer> bare = new ArrayList<>();
+	private int maybeBare = -1;
+
+	private void bare(CharSequence line, int lineStart, int start, int end,
+			boolean inDirective) {
+		if (maybeBare >= 0) {
+			if (inDirective || end - start != 1 ||
+					line.charAt(start) != '(') {
+				bare.add(maybeBare);
+			}
+			maybeBare = -1;
+		}
+		if (inDirective) {
+			return;
+		}
+		for (int i = 0, n = called.size(); i < n; ++i) {
+			if (is(line, start, end, called.get(i))) {
+				maybeBare = lineStart + start;
+				return;
+			}
+		}
+	}
+
+	// Gives a directive to the preprocessor when its last line was
+	// read: as one line, without the backslashes it went on over.
+	private void execute(CharSequence line, LineTokens tokens) {
+		boolean directive = false;
+		for (int i = 0, n = tokens.size(); i < n && !directive; ++i) {
+			directive = tokens.inDirective(i);
+		}
+		if (!directive) {
+			return;
+		}
+		boolean goesOn = tokens.directiveGoesOn();
+		if (directiveLine == null && !goesOn) {
+			executed(line, tokens);
+			return;
+		}
+		if (directiveLine == null) {
+			directiveLine = new StringBuilder();
+			directiveTokens = new LineTokens();
+		}
+		int shift = directiveLine.length();
+		int length = line.length();
+		if (goesOn && length > 0 && line.charAt(length - 1) == '\\') {
+			--length;
+		}
+		directiveLine.append(line, 0, length).append(' ');
+		for (int i = 0, n = tokens.size(); i < n; ++i) {
+			if (tokens.inDirective(i) && tokens.start(i) < length) {
+				directiveTokens.add(shift + tokens.start(i), shift +
+						Math.min(length, tokens.end(i)), tokens.style(i),
+						true);
+			}
+		}
+		if (!goesOn) {
+			executed(directiveLine, directiveTokens);
+			directiveLine = null;
+			directiveTokens = null;
+		}
+	}
+
+	private void executed(CharSequence line, LineTokens tokens) {
+		preprocessor.directive(line, tokens, lineNumber, 0,
+				(token, role, state, macro, maybe) -> {
+				});
+		if (opened && disabled < 0) {
+			// "#if 0" is how code is put away: it is not read at all.
+			GlslPreprocessor.Conditional c = preprocessor.innermost();
+			if (c != null && "#if 0".equals(c.written)) {
+				disabled = level;
+			}
+		}
+		opened = false;
+		if (isOff() && offFrom < 0) {
+			offFrom = directiveTo;
+		} else if (!isOff() && offFrom >= 0) {
+			off.add(offFrom);
+			off.add(directiveFrom);
+			offFrom = -1;
 		}
 	}
 
@@ -340,8 +454,17 @@ final class GlslDeclarations implements Knowledge.Builder {
 			symbols.add(draft.symbol());
 		}
 		locals.freeze();
+		if (offFrom >= 0) {
+			off.add(offFrom);
+			off.add(Integer.MAX_VALUE);
+			offFrom = -1;
+		}
+		if (maybeBare >= 0) {
+			bare.add(maybeBare);
+			maybeBare = -1;
+		}
 		return new GlslKnowledge(symbols, links, sortedFolds(), locals,
-				!full && !cut && !unsure);
+				!full && !cut && !unsure, undefined, undefinedAt, off, bare);
 	}
 
 	// ---- Comments -------------------------------------------------------
@@ -456,9 +579,14 @@ final class GlslDeclarations implements Knowledge.Builder {
 			case PARAMETERS:
 			case TEXT:
 				return macroToken(line, lineStart, start, end, style);
-			case IF:
-				return disabled < 0 && is(line, start, end, "0")
-						? Directive.IF_ZERO : Directive.OTHER;
+			case UNDEF:
+				// From here on no macro has that name, if the line is
+				// compiled.
+				if (disabled < 0 && !isOff()) {
+					undefined.add(line.subSequence(start, end).toString());
+					undefinedAt.add(lineStart + start);
+				}
+				return Directive.OTHER;
 			case INCLUDE:
 				if (style == Style.STRING) {
 					link(Kind.INCLUDE, "#include", line, lineStart, start, end);
@@ -493,16 +621,18 @@ final class GlslDeclarations implements Knowledge.Builder {
 				is(line, start, end, "ifndef")) {
 			if (level < MAX_NESTING) {
 				keep(level);
+				ended[level] = false;
 			} else {
 				unsure = true;
 			}
 			++level;
-			return is(line, start, end, "if") ? Directive.IF
-					: Directive.OTHER;
+			opened = true;
 		} else if (is(line, start, end, "elif") ||
 				is(line, start, end, "else")) {
 			if (disabled == level) {
 				disabled = -1;
+			} else if (disabled < 0) {
+				arm();
 			}
 			if (disabled < 0) {
 				branch();
@@ -510,6 +640,23 @@ final class GlslDeclarations implements Knowledge.Builder {
 		} else if (is(line, start, end, "endif")) {
 			if (disabled == level) {
 				disabled = -1;
+			} else if (disabled < 0) {
+				arm();
+				if (isOff() && level > 0 && level <= MAX_NESTING) {
+					// The last arm is not compiled: the code goes on
+					// from the end of the last one that may be, or
+					// from the "#if" if there is none.
+					Checkpoint first = checkpoints[level - 1];
+					Checkpoint last = ends[level - 1];
+					if (!ended[level - 1]) {
+						branch();
+					} else if (last.statementSize == first.statementSize) {
+						// What that arm declared and left open was
+						// closed where the next one began.
+						locals.reopen(last.open);
+						restore(last);
+					}
+				}
 			}
 			if (level > 0) {
 				--level;
@@ -519,6 +666,8 @@ final class GlslDeclarations implements Knowledge.Builder {
 			}
 		} else if (is(line, start, end, "include")) {
 			return Directive.INCLUDE;
+		} else if (is(line, start, end, "undef")) {
+			return Directive.UNDEF;
 		} else if (is(line, start, end, "pragma")) {
 			return Directive.PRAGMA;
 		}
@@ -554,6 +703,12 @@ final class GlslDeclarations implements Knowledge.Builder {
 			if (c == '(' && offset == macro.end) {
 				macro.parts = new ArrayList<>();
 				next = Directive.PARAMETERS;
+				if (called == null) {
+					called = new ArrayList<>();
+				}
+				if (!called.contains(macro.name)) {
+					called.add(macro.name);
+				}
 			} else {
 				space = true;
 			}
@@ -580,9 +735,6 @@ final class GlslDeclarations implements Knowledge.Builder {
 		if (directive == Directive.NONE) {
 			return;
 		}
-		if (directive == Directive.IF_ZERO) {
-			disabled = level;
-		}
 		directive = Directive.NONE;
 		if (macro != null) {
 			macro.detail = macroText.toString();
@@ -608,12 +760,35 @@ final class GlslDeclarations implements Knowledge.Builder {
 				directiveFrom, lineStart + end, Collections.emptyList()));
 	}
 
+	// Whether the arm being read is one the preprocessor decided off.
+	private boolean isOff() {
+		return preprocessor.state() == GlslPreprocessor.INACTIVE;
+	}
+
+	// An arm ends: if it may be compiled, where the reader is now is
+	// where the code goes on if the arms behind it are not.
+	private void arm() {
+		int at = level - 1;
+		if (at < 0 || at >= MAX_NESTING || isOff()) {
+			return;
+		}
+		if (ends[at] == null) {
+			ends[at] = new Checkpoint();
+		}
+		keep(ends[at]);
+		ends[at].open = locals.open(checkpoints[at].locals);
+		ended[at] = true;
+	}
+
 	// Keeps where the reader of code is, for the conditional of level.
 	private void keep(int level) {
-		Checkpoint c = checkpoints[level];
-		if (c == null) {
-			c = checkpoints[level] = new Checkpoint();
+		if (checkpoints[level] == null) {
+			checkpoints[level] = new Checkpoint();
 		}
+		keep(checkpoints[level]);
+	}
+
+	private void keep(Checkpoint c) {
 		c.line = lineNumber;
 		c.mode = mode;
 		c.braces = braces;
@@ -643,7 +818,11 @@ final class GlslDeclarations implements Knowledge.Builder {
 		if (at < 0 || at >= MAX_NESTING) {
 			return;
 		}
-		Checkpoint c = checkpoints[at];
+		restore(checkpoints[at]);
+	}
+
+	// Puts the reader of code back where it was when c was kept.
+	private void restore(Checkpoint c) {
 		head.clear();
 		if (c.mode == Mode.TOP && c.statementSize == 0 &&
 				mode != Mode.BODY && !statement.isEmpty()) {

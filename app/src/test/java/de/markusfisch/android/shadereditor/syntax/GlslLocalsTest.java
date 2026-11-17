@@ -86,6 +86,20 @@ public class GlslLocalsTest {
 							"\tx|;\n#else\n\tx|;\n#endif\n\tx|;\n}\n",
 					"VARIABLE int x@3", "VARIABLE float x@0",
 					"VARIABLE float x@0"},
+			{"an arm that is decided off ends with it",
+					"float x;\nvoid main() {\n#ifdef MISSING\n" +
+							"\tfloat x = 1.0;\n\tx|;\n#endif\n\tx|;\n" +
+							"#ifdef SHADER_EDITOR\n\tint x;\n#endif\n\tx|;\n}\n",
+					"VARIABLE float x@3", "VARIABLE float x@0",
+					"VARIABLE int x@8"},
+			{"the code goes on from the last arm that may be compiled",
+					"void main() {\n#ifndef MISSING\n\tfloat x = 1.0;\n" +
+							"#else\n\tfloat y;\n#endif\n\tx|; y|;\n}\n",
+					"VARIABLE float x@2", "-"},
+			{"behind an include a name it may define decides nothing",
+					"#include \"lib.glsl\"\nfloat x;\nvoid main() {\n" +
+							"#ifdef MISSING\n\tint x;\n#endif\n\tx|;\n}\n",
+					"VARIABLE int x@4"},
 			{"several of one type, arrays, constants",
 					"void main() {\n\tfloat a = 1.0, b[2], c;\n" +
 							"\tconst highp vec3 up = vec3(0.0);\n" +

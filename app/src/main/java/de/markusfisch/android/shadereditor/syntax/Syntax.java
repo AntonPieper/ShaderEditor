@@ -73,6 +73,76 @@ public interface Syntax {
 		complete(line, column, lineStart, known, current, extraWords, offer);
 	}
 
+	/**
+	 * One program as its compiler gets it: the text its host passes to
+	 * the driver, line by line, and where each line came from. Its
+	 * host makes it with the code its build makes it with; a language
+	 * reads it and no file.
+	 */
+	interface Program {
+		/** Return the version of the language it is written in. */
+		int version();
+
+		/** Return how many lines it has. */
+		int lines();
+
+		/** Return line n, from 0, without its line end. */
+		CharSequence line(int n);
+
+		/**
+		 * Return the file line n came from, as the host names its
+		 * files, or null for a line its host made.
+		 */
+		String file(int n);
+
+		/**
+		 * Return where in its file the character at column of line n
+		 * stands, or -1 if it stands in none.
+		 */
+		int offset(int n, int column);
+	}
+
+	/**
+	 * Return every place where the name of symbol stands and may mean
+	 * it in programs, each with its file and whether it means it for
+	 * certain: what rename changes and what it asks about; and with
+	 * them what a rename needs to check itself, see
+	 * {@link Knowledge.Answer}. Certain means proven, see
+	 * {@link Knowledge.Use}: a language executes what it can of each
+	 * program and lists what it cannot prove. A place that more than
+	 * one program has is certain only if it is in each that compiles
+	 * it. Every program is read once; nothing is kept.
+	 *
+	 * Null when nothing can be proven: a program is not well-formed
+	 * enough to be read without guessing, or no declaration of that
+	 * name stands where symbol says. A language without names has no
+	 * uses.
+	 *
+	 * Comments and what a directive says besides names are no places,
+	 * and a name that the text builds, as GLSL's "##" does in a macro,
+	 * is not found: the text never writes it.
+	 *
+	 * @param programs every program that may compile the file of
+	 *                 symbol
+	 * @param symbol   a declaration of a file, with that file
+	 * @param name     a name the declaration may be given, to tell
+	 *                 where it is taken, or null
+	 */
+	default Knowledge.Answer uses(List<Program> programs,
+			Knowledge.Symbol symbol, String name) {
+		return new Knowledge.Answer(java.util.Collections.emptyList(),
+				java.util.Collections.emptyList(), new int[0][], new boolean[0][],
+				java.util.Collections.emptyList());
+	}
+
+	/**
+	 * Return whether word can name a declaration of the language: it is
+	 * written as a name and is none of the language's own words.
+	 */
+	default boolean isName(String word) {
+		return false;
+	}
+
 	/** Return how a new line is indented. */
 	Indentation indentation();
 

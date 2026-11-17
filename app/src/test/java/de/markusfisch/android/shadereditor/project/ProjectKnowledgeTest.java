@@ -3,6 +3,7 @@ package de.markusfisch.android.shadereditor.project;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Knowledge.Symbol;
 
 public class ProjectKnowledgeTest {
@@ -44,6 +46,36 @@ public class ProjectKnowledgeTest {
 		put(files, "blur.frag", BLUR);
 		put(files, "notes.md", "float notGlsl;\n");
 		return ProjectKnowledge.of(files, ProjectKnowledge.NONE);
+	}
+
+	@Test
+	public void whatCanBeRenamed() {
+		Knowledge known = de.markusfisch.android.shadereditor.syntax
+				.GlslKnowledge.of("#include \"a.glsl\"\n" +
+						"uniform float time;\nuniform float speed;\n" +
+						"float f(float time) { return time; }\n");
+		Set<String> host = Set.of("time", "resolution");
+		// A uniform the engine sets under its name would read 0 under
+		// any other.
+		assertEquals(false, ProjectKnowledge.renameable(
+				known.symbols().get(0), host));
+		assertEquals(true, ProjectKnowledge.renameable(
+				known.symbols().get(1), host));
+		// A parameter of that name is the function's own.
+		assertEquals(true, ProjectKnowledge.renameable(
+				known.symbols().get(2).parts().get(0), host));
+		assertEquals(false, ProjectKnowledge.renameable(
+				known.links().get(0), host));
+		// What a new name may be.
+		de.markusfisch.android.shadereditor.syntax.Syntax glsl =
+				ShaderLanguage.of("a.frag").syntax();
+		for (String name : new String[]{"circle", "_a1", "Ray2"}) {
+			assertEquals(name, true, glsl.isName(name));
+		}
+		for (String name : new String[]{"", "1a", "float", "sin", "vec3",
+				"gl_Mine", "a__b", "a-b", "a b", "return", "uniform"}) {
+			assertEquals(name, false, glsl.isName(name));
+		}
 	}
 
 	@Test

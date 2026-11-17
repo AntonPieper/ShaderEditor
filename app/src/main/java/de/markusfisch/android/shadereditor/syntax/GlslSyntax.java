@@ -59,6 +59,29 @@ public final class GlslSyntax implements Syntax {
 	}
 
 	@Override
+	public Knowledge.Answer uses(List<Program> programs,
+			Knowledge.Symbol symbol, String name) {
+		return GlslUses.of(programs, symbol, name);
+	}
+
+	@Override
+	public boolean isName(String word) {
+		int length = word.length();
+		if (length == 0 || word.startsWith("gl_") || word.contains("__") ||
+				Character.isDigit(word.charAt(0))) {
+			return false;
+		}
+		for (int i = 0; i < length; ++i) {
+			char c = word.charAt(i);
+			if (c != '_' && !(c >= 'a' && c <= 'z') &&
+					!(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9')) {
+				return false;
+			}
+		}
+		return GlslWords.style(word, 0, length) == Style.IDENTIFIER;
+	}
+
+	@Override
 	public Indentation indentation() {
 		return Indentation.C;
 	}

@@ -86,6 +86,25 @@ final class GlslLocals {
 		}
 	}
 
+	/** Return the locals from the one at from on whose scope is open. */
+	int[] open(int from) {
+		int[] open = new int[Math.max(0, size - from)];
+		int count = 0;
+		for (int i = Math.max(0, from); i < size; ++i) {
+			if (tos[i] < 0) {
+				open[count++] = i;
+			}
+		}
+		return Arrays.copyOf(open, count);
+	}
+
+	/** Open again the scopes of these locals: their end is taken back. */
+	void reopen(int[] locals) {
+		for (int local : locals) {
+			tos[local] = -1;
+		}
+	}
+
 	/** Close every scope still open and sort for {@link #find}. */
 	void freeze() {
 		close(0, Integer.MAX_VALUE);
