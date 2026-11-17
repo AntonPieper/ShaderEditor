@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- In the toolbar's place while Find is open: close, the field with
 the count, previous, next and the menu, in the order TalkBack reads;
-under them, when chosen, the row that replaces. -->
+under them, when chosen, the row that replaces, or beside them where
+the code has too little room (UIManager). -->
 <de.markusfisch.android.shadereditor.widget.FindBar
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
