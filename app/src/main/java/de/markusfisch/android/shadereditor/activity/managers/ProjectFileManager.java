@@ -324,6 +324,11 @@ public final class ProjectFileManager {
 				if (document == null) {
 					holds.release(project);
 					failed(ask, tapped, path, problem);
+					// A file tapped that cannot be opened may be gone:
+					// its folder is listed as storage has it now.
+					if (tapped && problem != null) {
+						listener.onMoved(key);
+					}
 					return;
 				}
 				show(key, project, path, document, single, tapped);
