@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.widget;
 
 import android.content.Context;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,9 +9,11 @@ import android.os.Process;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -90,6 +93,9 @@ public class FindBar extends LinearLayout {
 	private View row;
 	private EditText field;
 	private EditText replacement;
+	// Shows the menu once the keyboard made room for it, or null.
+	@Nullable
+	private ViewTreeObserver.OnGlobalLayoutListener menuWaits;
 	private View replaceRow;
 	// Where the row that replaces starts under the find row: under the
 	// field.
@@ -614,7 +620,78 @@ public class FindBar extends LinearLayout {
 		}
 	}
 
+	// The entries are options, not typing: where a keyboard open for a
+	// field of the bar leaves the menu too little room, as a docked one
+	// in landscape does, the keyboard makes room for it first and comes
+	// back for that field when the menu closes. Where the menu fits, as
+	// in portrait, the keyboard stays.
 	private void showMenu(@NonNull View anchor) {
+		View typing = field.hasFocus()
+				? field
+				: replacement.hasFocus() ? replacement : null;
+		if (typing == null || !SoftKeyboard.isOpen(this) ||
+				menuFits(anchor)) {
+			showMenu(anchor, null);
+			return;
+		}
+		SoftKeyboard.hide(getContext(), typing);
+		// Shown once the window has the room, as layout tells; a second
+		// tap meanwhile waits for the same.
+		ViewTreeObserver observer = getViewTreeObserver();
+		if (menuWaits != null) {
+			observer.removeOnGlobalLayoutListener(menuWaits);
+		}
+		menuWaits = new ViewTreeObserver.OnGlobalLayoutListener() {
+			@Override
+			public void onGlobalLayout() {
+				if (SoftKeyboard.isOpen(FindBar.this)) {
+					return;
+				}
+				getViewTreeObserver().removeOnGlobalLayoutListener(this);
+				menuWaits = null;
+				if (state.open() && isAttachedToWindow()) {
+					showMenu(anchor, typing);
+				}
+			}
+		};
+		observer.addOnGlobalLayoutListener(menuWaits);
+	}
+
+	// Return whether the menu fits in the room the popup gets: what the
+	// window shows below anchor, which an open keyboard shortens.
+	private boolean menuFits(@NonNull View anchor) {
+		Rect shown = new Rect();
+		anchor.getWindowVisibleDisplayFrame(shown);
+		int[] at = new int[2];
+		anchor.getLocationOnScreen(at);
+		int room = shown.bottom - at[1] - anchor.getHeight();
+		float dp = getResources().getDisplayMetrics().density;
+		TypedValue value = new TypedValue();
+		float entry = getContext().getTheme().resolveAttribute(
+				androidx.appcompat.R.attr.dropdownListPreferredItemHeight,
+				value, true)
+				? value.getDimension(getResources().getDisplayMetrics())
+				: 48 * dp;
+		// The entries, and the list's padding above and below them.
+		int entries = errorsButton() != null ? 4 : 3;
+		return entries * entry + 16 * dp <= room;
+	}
+
+	// The toolbar's error button while it shows, or null.
+	@Nullable
+	private View errorsButton() {
+		View errors = toolbar != null
+				? toolbar.findViewById(R.id.show_errors)
+				: null;
+		return errors != null && errors.getVisibility() == VISIBLE
+				? errors
+				: null;
+	}
+
+	// Show the menu; typing is the field whose keyboard comes back when
+	// it closes, or null.
+	private void showMenu(@NonNull View anchor, @Nullable View typing) {
+		boolean[] typeOn = {typing != null};
 		PopupMenu popup = new PopupMenu(getContext(), anchor);
 		popup.getMenu().add(0, R.string.match_case, 0, R.string.match_case)
 				.setCheckable(true).setChecked(matchCase);
@@ -624,16 +701,16 @@ public class FindBar extends LinearLayout {
 				.setCheckable(true).setChecked(state.replacing());
 		// The toolbar's error button stands in its place, so the list of
 		// errors stays one tap away while Find is open.
-		View errors = toolbar != null
-				? toolbar.findViewById(R.id.show_errors)
-				: null;
-		if (errors != null && errors.getVisibility() == VISIBLE) {
+		View errors = errorsButton();
+		if (errors != null) {
 			popup.getMenu().add(1, R.string.show_errors, 1,
 					R.string.show_errors);
 		}
 		popup.setOnMenuItemClickListener(item -> {
 			int id = item.getItemId();
 			if (id == R.string.show_errors) {
+				// Their list opens in place of typing.
+				typeOn[0] = false;
 				errors.performClick();
 				return true;
 			} else if (id == R.string.replace) {
@@ -641,6 +718,7 @@ public class FindBar extends LinearLayout {
 				set(new State(true, replacing, state.query(),
 						state.matches(), state.current()));
 				if (replacing) {
+					typeOn[0] = false;
 					SoftKeyboard.show(getContext(), replacement);
 				} else if (replacement.hasFocus()) {
 					field.requestFocus();
@@ -653,6 +731,14 @@ public class FindBar extends LinearLayout {
 			}
 			search();
 			return true;
+		});
+		popup.setOnDismissListener(menu -> {
+			if (typeOn[0] && state.open()) {
+				// Replace turned off leaves the find field.
+				SoftKeyboard.show(getContext(), typing.isShown()
+						? typing
+						: field);
+			}
 		});
 		popup.show();
 	}
