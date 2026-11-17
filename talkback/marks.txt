@@ -1,0 +1,200 @@
+=== 22:50:16 S0 TalkBack Developer settings: Log output level ERROR -> VERBOSE (restore ERROR)
+=== 22:51:57 TB on: enabled_accessibility_services=com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService accessibility_enabled=1
+=== 22:52:40 O1-a-tap-code: tt 300 344
+=== 22:52:42 O1-b-swipe-right: sr
+=== 22:52:44 O1-c-swipe-right: sr
+=== 22:53:11 O1-b-swipe-right: sr
+=== 22:53:14 O1-c-swipe-right: sr
+=== 22:53:16 O1-d-swipe-left: sl
+=== 22:53:36 O1-e-gesture-swipe-right: g1
+=== 22:54:07 O1-f-swipe-right-200ms: sw 300 1500 800 1500 200
+=== 22:54:09 O1-f-swipe-right-350ms: sw 300 1500 800 1500 350
+=== 22:54:11 O1-f-swipe-right-500ms: sw 300 1500 800 1500 500
+=== 22:54:22 SLIP: swipe at y=1500 hit Gboard (TalkBack unbound) -> Gboard settings opened; one Back to leave
+=== 22:54:54 O1-f-swipe-right-100ms: sw 250 1000 850 1000 100
+=== 22:54:56 O1-f-swipe-right-200ms: sw 250 1000 850 1000 200
+=== 22:54:58 O1-f-swipe-right-350ms: sw 250 1000 850 1000 350
+=== 22:55:22 S1 Accessibility Suite notification permission dialog: focus Don't allow, double-tap
+=== 22:55:41 O1-f-swipe-right-100ms: sw 250 1000 850 1000 100
+=== 22:55:43 O1-f-swipe-right-200ms: sw 250 1000 850 1000 200
+=== 22:55:45 O1-f-swipe-right-350ms: sw 250 1000 850 1000 350
+=== 22:57:19 O1-g-real-swipe-right: nx
+=== 22:57:29 O1-g-real-swipe-right: nx
+=== 22:57:48 O1-g-real-swipe-right: nx
+=== 22:58:07 O1-g-real-swipe-right: nx
+=== 22:58:44 O1-h-prev: pv
+=== 22:58:47 O1-i-up-then-down: ud
+=== 22:58:50 O1-j-swipe-down: gdn
+=== 22:58:52 O1-k-swipe-down: gdn
+=== 22:58:55 O1-l-swipe-down: gdn
+=== 22:59:13 O1 reading control -> Lines
+=== 22:59:30 O1-m-line-down-1: gdn
+=== 22:59:33 O1-m-line-down-2: gdn
+=== 22:59:35 O1-m-line-down-3: gdn
+=== 22:59:38 O1-m-line-down-4: gdn
+=== 22:59:40 O1-m-line-down-5: gdn
+=== 22:59:43 O1-m-line-down-6: gdn
+=== 22:59:45 O1-m-line-down-7: gdn
+=== 23:00:18 O2-a-type-a: etap 112 1892
+=== 23:00:20 O2-b-backspace: etap 994 2036
+=== 23:00:23 O2-c-enter: etap 994 2178
+=== 23:00:35 O2-b-delete: kev 67
+=== 23:00:37 O2-c-enter: kev 66
+=== 23:00:40 O2-d-delete-newline: kev 67
+=== 23:00:54 O3-a-focus-code: tt 360 418
+=== 23:00:56 O3-b-double-tap-hold: dth 360 418
+=== 23:01:13 O3-c-back: kev 4
+=== 23:01:23 O3-b-double-tap-hold: dth 360 418
+=== 23:01:33 O3-c-next: nx
+=== 23:01:36 O3-d-next: nx
+=== 23:01:38 O3-e-tap3: tap3
+=== 23:01:52 O3-f-focus-code: tt 540 900
+=== 23:01:54 O3-g-tap3: tap3
+=== 23:02:28 O3-i-focus-code: tt 360 418
+=== 23:02:31 O3 Actions reading control on the code
+=== 23:03:43 SLIP: third Back left the app to the launcher; returned via launcher intent
+=== 23:04:18 O1-n-focus-code: tt 540 600
+=== 23:04:20 O1-o-next: nx
+=== 23:04:36 O2-e-edit: dt 540 600
+=== 23:04:48 O4-e-type-a: etap 112 1892
+=== 23:04:51 O4-f-focus-more: tt 1006 216
+=== 23:04:54 O4-g-open-menu: dt 540 1000
+=== 23:04:57 O4-h-focus-undo: tt 674 216
+=== 23:05:00 O4-i-undo: dt 540 1000
+=== 23:05:30 O5-a-sheet-next-1: nx
+=== 23:05:33 O5-a-sheet-next-2: nx
+=== 23:05:36 O5-a-sheet-next-3: nx
+=== 23:05:40 O5-a-sheet-next-4: nx
+=== 23:05:48 O5-b-activate-entry: dt 540 1000
+=== 23:06:02 O4-f-focus-more: tt 1006 216
+=== 23:06:05 O4-g-open-menu: dt 540 1000
+=== 23:06:08 O4-h-focus-undo: tt 674 216
+=== 23:06:12 O4-i-undo: dt 540 1000
+=== 23:06:15 O4-j-after-undo: tt 1006 216
+=== 23:07:21 TalkBack off to switch release Settings > New editor on
+=== 23:08:17 TalkBack on again (release, new editor)
+=== 23:08:23 N1-a-focus-code: tt 540 600
+=== 23:08:26 N1-b-next: nx
+=== 23:08:29 N1-c-next: nx
+=== 23:08:32 N1-d-next: nx
+=== 23:08:35 N1-e-prev: pv
+=== 23:08:37 N1-f-prev: pv
+=== 23:08:50 S2-a-focus-dont: tt 540 1529
+=== 23:08:53 S2-b-activate: dt 540 1529
+=== 23:09:03 N1-a-focus-code: tt 540 600
+=== 23:09:07 N1-b-next: nx
+=== 23:09:10 N1-c-next: nx
+=== 23:09:13 N1-d-next: nx
+=== 23:09:16 N1-e-prev: pv
+=== 23:09:28 N1-g-focus-code: tt 540 600
+=== 23:09:31 N1 reading controls
+=== 23:10:09 N3 Actions list (new editor)
+=== 23:10:50 N1-h-para-down-1: gdn
+=== 23:10:53 N1-h-para-down-2: gdn
+=== 23:10:56 N1-h-para-down-3: gdn
+=== 23:10:59 N1-h-para-down-4: gdn
+=== 23:11:03 N1-h-para-down-5: gdn
+=== 23:11:06 N1-h-para-down-6: gdn
+=== 23:11:09 N1-h-para-down-7: gdn
+=== 23:11:23 N2-a-edit: dt 540 1000
+=== 23:11:26 N2-b-type-a: etap 112 1892
+=== 23:11:29 N2-c-delete: kev 67
+=== 23:11:32 N2-d-enter: kev 66
+=== 23:11:35 N2-e-delete-newline: kev 67
+=== 23:11:48 N2-f-focus-code: tt 540 600
+=== 23:11:58 N2-g-char-1: gdn
+=== 23:12:02 N2-g-char-2: gdn
+=== 23:12:05 N2-g-char-3: gdn
+=== 23:12:31 N2-h-word-1: gdn
+=== 23:12:35 N2-h-word-2: gdn
+=== 23:12:38 N2-h-word-3: gdn
+=== 23:12:41 N2-i-word-back: gup
+=== 23:12:54 N3-b-double-tap-hold: dth 540 600
+=== 23:13:40 N3-d-focus-code: tt 540 1000
+=== 23:14:29 N1-i-line-1: gdn
+=== 23:14:33 N1-i-line-2: gdn
+=== 23:14:36 N1-i-line-3: gdn
+=== 23:14:39 N1-i-line-4: gdn
+=== 23:14:43 N1-i-line-5: gdn
+=== 23:14:46 N1-i-line-6: gdn
+=== 23:14:49 N1-j-line-up: gup
+=== 23:15:05 N4-a-type-a: etap 112 1892
+=== 23:15:08 N4-b-focus-more: tt 1006 216
+=== 23:15:11 N4-c-open-menu: dt 540 1000
+=== 23:15:15 N4-d-focus-undo: tt 674 216
+=== 23:15:18 N4-e-undo: dt 540 1000
+=== 23:15:23 N4-f-focus-redo: tt 936 216
+=== 23:15:26 N4-g-redo: dt 540 1000
+=== 23:16:11 N5-a-focus-errors: tt 732 216
+=== 23:16:15 N5-b-open-sheet: dt 540 1000
+=== 23:16:18 N5-c-next-1: nx
+=== 23:16:21 N5-c-next-2: nx
+=== 23:16:25 N5-c-next-3: nx
+=== 23:16:34 N5-d-activate: dt 540 1000
+=== 23:17:14 N6-a-focus-abs: tt 204 1376
+=== 23:17:17 N6-b-activate: dt 540 1000
+=== 23:17:41 TalkBack off for debug setup
+=== 23:18:22 TalkBack on (debug, project mode, new editor)
+=== 23:18:52 D1-a-focus-code: tt 540 900
+=== 23:19:18 D1-b-line-1: gdn
+=== 23:19:21 D1-b-line-2: gdn
+=== 23:19:25 D1-b-line-3: gdn
+=== 23:19:28 D1-b-line-4: gdn
+=== 23:19:31 D1-b-line-5: gdn
+=== 23:19:35 D1-b-line-6: gdn
+=== 23:19:38 D1-b-line-7: gdn
+=== 23:20:07 D5-a-edit: dt 540 900
+=== 23:20:12 D5 typed 'vec2 m = mouse;' at end (key events)
+=== 23:20:33 D5-c-focus-code: tt 540 450
+=== 23:21:18 D5-d-do-fix: dt 540 450
+=== 23:21:33 D7-a-focus-drawer: tt 73 216
+=== 23:21:37 D7-b-open: dt 540 1000
+=== 23:22:10 D7-d-focus-row: tt 400 568
+=== 23:23:01 D7-e-row-longpress: dth 400 568
+=== 23:23:35 D7-g-focus-more: tt 1006 216
+=== 23:23:38 D7-h-open-menu: dt 540 1000
+=== 23:23:46 D7-i-find: dt 540 1000
+=== 23:24:00 D7-k-type-uv: kev 49 50
+=== 23:24:31 D7-l-activate-next: dt 540 1000
+=== 23:24:34 D7-m-activate-next-again: dt 540 1000
+=== 23:24:52 D7-p-focus-more: tt 1006 216
+=== 23:24:55 D7-q-open-menu: dt 540 1000
+=== 23:25:05 D7-r-goto: dt 540 1000
+=== 23:25:39 D7-t-focus-result: tt 300 490
+=== 23:25:42 D7-u-activate: dt 540 1000
+=== 23:26:06 D7-w-focus-code: tt 300 450
+=== 23:26:10 D7-x-longpress: dth 300 450
+=== 23:26:24 D7-z-focus-code: tt 300 450
+=== 23:27:30 D6-a-edit: dt 540 1000
+=== 23:27:58 SLIP: double tap with reading control on Actions ran TalkBack selection mode; Enter+si replaced the selected text of TB.frag (fixture, unsaved). Undo with Ctrl+Z
+=== 23:28:17 D6-d-focus-code: tt 300 450
+=== 23:28:46 D6-e-edit: dt 540 1000
+=== 23:29:21 D6-g-lookup: dth 660 1376
+=== 23:29:50 D7-p1-focus-chip: tt 500 216
+=== 23:29:54 D7-p2-open: dt 540 1000
+=== 23:31:18 D7-t1-focus-code: tt 300 450
+=== 23:31:22 D7-t2-edit: dt 540 1000
+=== 23:32:11 D7-t4-tune: dt 540 1000
+=== 23:32:23 D7-t6-up: gup
+=== 23:32:27 D7-t7-up: gup
+=== 23:32:30 D7-t8-down: gdn
+=== 23:33:28 D7-t9-up: gup
+=== 23:33:31 D7-t10-up: gup
+=== 23:33:35 D7-t11-down: gdn
+=== 23:35:34 SLIP: swipes on reading control 'Speech rate' lowered TalkBack speech rate to 62% (4 steps); restoring with 4 swipes up
+=== 23:36:20 speech rate back to 100%
+=== 23:36:33 D7-t12-focus-plus: tt 975 1932
+=== 23:36:37 D7-t13-plus: dt 540 1000
+=== 23:36:40 D7-t14-plus-again: dt 540 1000
+=== 23:36:59 D7-t16-revert: dt 540 1000
+=== 23:37:14 D7 conflict: append '// outside' to files/user-files/Shaders/TB.frag, Home, return
+=== 23:37:44 D7-c2-reload: dt 540 1000
+=== 23:38:00 D8-a-focus-drawer: tt 73 216
+=== 23:38:03 D8-b-open: dt 540 1000
+=== 23:38:10 D8-c-open-big: dt 540 1000
+=== 23:38:37 D8-c-open-big: dt 540 1000
+=== 23:39:12 D8-c-open-big: dt 540 1000
+=== 23:41:40 D8 TalkBack off to open TBbig.frag (touch injection stalled)
+=== 23:42:41 RESTORE: TalkBack off, settings back
+=== 23:44:07 RESTORE: delete TBbig.frag via menu Delete
+=== 23:44:28 RESTORE: delete TB.frag via menu Delete

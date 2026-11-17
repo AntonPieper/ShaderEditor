@@ -1,0 +1,5 @@
+enabled_accessibility_services=null
+accessibility_enabled=0
+talkback_log_level=ERROR display_speech_output=off
+talkback POST_NOTIFICATIONS: unset before; dialog answered Don't allow -> clear USER_SET at end
+talkback POST_NOTIFICATIONS: now USER_SET|USER_FIXED after second Don't allow -> clear both at end
