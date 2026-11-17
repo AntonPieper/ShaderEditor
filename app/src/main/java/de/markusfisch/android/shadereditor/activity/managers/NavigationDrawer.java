@@ -332,6 +332,13 @@ public class NavigationDrawer implements ShaderList {
 						unlisted = false;
 						refresh();
 					}
+					// A listing is what storage has: the folder shown is
+					// read again, keeping its rows until then, as files
+					// may have come or gone elsewhere while the app was
+					// in front.
+					if (folder != null) {
+						folder.forgetBut(level);
+					}
 					scrollToSelected();
 					loadRecent();
 					// Faces let go when it closed are asked for again.

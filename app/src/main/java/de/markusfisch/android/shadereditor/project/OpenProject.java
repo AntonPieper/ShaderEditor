@@ -690,9 +690,25 @@ public final class OpenProject {
 	 * document stays at least until done, and that of everyone else
 	 * who asked for the file meanwhile, returned, whatever they call:
 	 * {@link #show} it there, or it may leave memory again for the
-	 * budget.
+	 * budget. A document in memory is opened as storage holds it now:
+	 * it is looked at first, as when the app returns, so one changed
+	 * elsewhere is read again, and one gone elsewhere without unsaved
+	 * text is opened as any file that is gone, which it cannot be.
 	 */
 	public void load(ProjectPath path, long size, Callback<String> done) {
+		FileRecord kept = loaded(path);
+		if (kept != null) {
+			kept.whenIdle(() -> check(kept, new HashSet<>(), () -> {
+				// What was found gone leaves memory, unless shown.
+				trim();
+				opened(path, size, done);
+			}));
+			return;
+		}
+		opened(path, size, done);
+	}
+
+	private void opened(ProjectPath path, long size, Callback<String> done) {
 		FileRecord present = loaded(path);
 		if (present != null) {
 			recent.remove(path);

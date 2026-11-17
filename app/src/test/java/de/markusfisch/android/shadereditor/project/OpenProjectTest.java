@@ -946,6 +946,33 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void openingADocumentInMemoryLooksAtStorage() throws IOException {
+		OpenProject project = open();
+		document(project, "a.glsl", "stored");
+		document(project, "b.glsl", "kept");
+		shown(project, "c.glsl", "shown");
+		edit(project, "b.glsl", "mine");
+		assertTrue(new File(root, "a.glsl").delete());
+		assertTrue(new File(root, "b.glsl").delete());
+
+		// Gone without unsaved text: opened as a file that is gone, not
+		// with the text it had.
+		assertNotNull(load(project, "a.glsl"));
+		assertNull(project.document(path("a.glsl")));
+		// Gone with unsaved text: the text stays, in conflict.
+		assertNull(load(project, "b.glsl"));
+		assertEquals("mine", project.document(path("b.glsl")).text()
+				.toString());
+		assertEquals(Set.of(path("b.glsl")), project.conflicts().keySet());
+
+		write("c.glsl", "theirs");
+		Document c = document(project, "c.glsl");
+		assertEquals("theirs", c.text().toString());
+		c.undo();
+		assertEquals("shown", c.text().toString());
+	}
+
+	@Test
 	public void openAgainJoinsTheFirstSoAChangeElsewhereConflicts()
 			throws IOException {
 		write("a.glsl", "stored");
