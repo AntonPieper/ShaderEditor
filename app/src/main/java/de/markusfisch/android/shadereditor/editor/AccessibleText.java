@@ -4,12 +4,17 @@ package de.markusfisch.android.shadereditor.editor;
 // never all of a large text, so the work for a service is bounded by the window
 // and not by the text.
 //
-// The window holds the block of BLOCK_LINES lines of the focus, the block
-// before it and the block after it; when those have more than MAX_CHARS
-// characters, it is the MAX_CHARS characters from the quarter of MAX_CHARS
-// before the focus's quarter on. So a window moves only when the focus leaves
-// its block or its quarter, and indices a service holds stay valid while the
-// caret moves inside it.
+// A service reads the node's text out whole each time the view gets focus, so
+// the node holds only the lines of the selection and the line before and after
+// them (reading). TalkBack moves by lines over that text itself and sets the
+// selection, so it needs the line it moves to next; and it tells the text a
+// move passed over from the indices of the node it got last, so a move inside
+// the line, or to the next or previous one, is told in that node's text.
+//
+// A larger window (window) is for a change: the block of BLOCK_LINES lines of
+// its start, the block before it and the block after it; when those have more
+// than MAX_CHARS characters, the MAX_CHARS characters from the quarter of
+// MAX_CHARS before its quarter on.
 //
 // Movement by a unit works as TextView's iterators for accessibility, with
 // Motion's characters and words; white space alone is never a word. A line has
@@ -66,6 +71,16 @@ public final class AccessibleText {
 			end = cut(text, end);
 		}
 		return new Window(start, end);
+	}
+
+	public static Window reading(Text text, int start, int end) {
+		int first = Math.max(0, text.lineOf(start) - 1);
+		int last = Math.min(text.lineCount() - 1, text.lineOf(end) + 1);
+		int from = text.lineStart(first);
+		int to = text.lineStart(last) + text.line(last).length();
+		return to - from > MAX_CHARS
+				? window(text, start, end)
+				: new Window(from, to);
 	}
 
 	public static Edit edit(Text before, Text after, Document.Change change) {

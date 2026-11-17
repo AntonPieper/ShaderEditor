@@ -36,6 +36,37 @@ public class AccessibleTextTest {
 	}
 
 	@Test
+	public void theNodeReadsTheCaretsLineAndTheLinesBesideIt() {
+		Text text = Text.of("a = 1;\nb = 2;\nc = 3;\nd = 4;");
+		Window window = new Window(text.lineStart(0), text.lineStart(3) - 1);
+		// Wherever the caret is in the line.
+		for (int caret = text.lineStart(1); caret < text.lineStart(2);
+				++caret) {
+			assertEquals(window, AccessibleText.reading(text, caret, caret));
+		}
+		// Not past the text's own ends.
+		assertEquals(new Window(0, text.lineStart(2) - 1),
+				AccessibleText.reading(text, 1, 1));
+		assertEquals(new Window(text.lineStart(2), text.length()),
+				AccessibleText.reading(text, text.length(), text.length()));
+	}
+
+	@Test
+	public void theNodeHoldsTheLinesOfASelection() {
+		Text text = lines(10);
+		assertEquals(new Window(text.lineStart(2), text.lineStart(7) - 1),
+				AccessibleText.reading(text, text.lineStart(3) + 1,
+						text.lineStart(5) + 1));
+	}
+
+	@Test
+	public void aLargeSelectionReadsTheWindowOfItsStart() {
+		Text text = lines(5000);
+		assertEquals(AccessibleText.window(text, 3, text.length()),
+				AccessibleText.reading(text, 3, text.length()));
+	}
+
+	@Test
 	public void longLinesAreCutAroundTheFocus() {
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < 20; ++i) {

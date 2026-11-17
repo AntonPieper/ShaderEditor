@@ -12,6 +12,7 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
 
 import androidx.annotation.NonNull;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 
 import java.util.Collections;
 import java.util.List;
@@ -23,10 +24,10 @@ import de.markusfisch.android.shadereditor.editor.Motion;
 import de.markusfisch.android.shadereditor.editor.Text;
 
 // What a CodeView tells accessibility services, as the platform's EditText
-// does: one editable multi-line node whose text is the window AccessibleText
-// gives for the selection's head, without the line numbers. The errors of the
-// caret's line are the node's error, and the first error of a result is
-// announced once, as the row that shows it is not part of the text. The
+// does: one editable multi-line node whose text is the lines AccessibleText
+// reads for the selection, without the line numbers, and whose state is the
+// caret's line. The first error of a result is announced once, as the row that
+// shows it is not part of the text; focus does not read it again. The
 // framework calls it only while a service is enabled, and the view tells it of
 // changes only then.
 final class CodeAccessibility extends View.AccessibilityDelegate {
@@ -45,6 +46,11 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	private Text windowOf;
 	private AccessibleText.Window window;
 	private String windowText;
+	// The window of the last node, in the text it was of. A service takes a
+	// selection event's indices as indices into the text of the node it got
+	// last, so they are into this window while it holds the selection.
+	private Text shownOf;
+	private AccessibleText.Window shown;
 	// The selection the last event reported.
 	private Document.Selection reported;
 	// The error announced last, while results have errors.
@@ -74,7 +80,6 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		CharSequence error = view.caretLineError();
 		if (error != null) {
 			info.setContentInvalid(true);
-			info.setError(error);
 			List<String> fixes = view.caretLineFixes();
 			for (int i = 0; i < fixes.size(); ++i) {
 				info.addAction(new AccessibilityAction(FIXES[i],
@@ -91,10 +96,17 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			info.addAction(AccessibilityAction.ACTION_IME_ENTER);
 		}
 		Document.Selection selection = document.selection();
-		AccessibleText.Window window = window(document.text(),
-				selection.head(), selection.head(), selection.head());
-		String text = text(document.text(), window);
+		Text all = document.text();
+		AccessibleText.Window window = reading(all, selection);
+		shownOf = all;
+		shown = window;
+		String text = text(all, window);
 		info.setText(text.isEmpty() ? null : text);
+		AccessibilityNodeInfoCompat.wrap(info).setStateDescription(
+				host.getContext().getString(error != null
+								? R.string.a11y_code_line_error
+								: R.string.a11y_code_line,
+						all.lineOf(selection.head()) + 1, all.lineCount()));
 		if (!text.isEmpty()) {
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 				info.setAvailableExtraData(Collections.singletonList(
@@ -136,9 +148,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 				.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY.equals(key)) {
 			return;
 		}
-		int head = document.selection().head();
-		AccessibleText.Window window = window(document.text(), head, head,
-				head);
+		AccessibleText.Window window = reading(document.text(),
+				document.selection());
 		int start = arguments.getInt(AccessibilityNodeInfo
 				.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_START_INDEX, -1);
 		int length = arguments.getInt(AccessibilityNodeInfo
@@ -162,8 +173,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		switch (event.getEventType()) {
 			case AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED -> {
 				Document.Selection selection = document.selection();
-				AccessibleText.Window window = window(document.text(),
-						selection.head(), selection.head(), selection.head());
+				AccessibleText.Window window = told(document.text(),
+						selection.start(), selection.end());
 				if (window.length() > 0) {
 					event.setFromIndex(window.index(selection.anchor()));
 					event.setToIndex(window.index(selection.head()));
@@ -195,9 +206,12 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		if (document == null) {
 			return;
 		}
-		int head = document.selection().head();
-		String text = text(document.text(), window(document.text(), head,
-				head, head));
+		Document.Selection selection = document.selection();
+		Text all = document.text();
+		String text = text(all, event.getEventType() ==
+				AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED
+				? told(all, selection.start(), selection.end())
+				: reading(all, selection));
 		if (!text.isEmpty()) {
 			event.getText().add(text);
 		}
@@ -316,14 +330,18 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		return super.performAccessibilityAction(host, action, arguments);
 	}
 
-	// Returns the window for a focus from from to to, the window of head
-	// if that holds it.
-	private static AccessibleText.Window window(Text text, int head,
-			int from, int to) {
-		AccessibleText.Window window = AccessibleText.window(text, head, head);
-		return from >= window.start() && to <= window.end()
-				? window
-				: AccessibleText.window(text, from, to);
+	// The window of the last node if it holds from to to in text, else the
+	// lines read for them.
+	private AccessibleText.Window told(Text text, int from, int to) {
+		return text == shownOf && from >= shown.start() && to <= shown.end()
+				? shown
+				: AccessibleText.reading(text, from, to);
+	}
+
+	private static AccessibleText.Window reading(Text text,
+			Document.Selection selection) {
+		return AccessibleText.reading(text, selection.start(),
+				selection.end());
 	}
 
 	// Returns the text of window of text, kept while they stay the same.
@@ -359,18 +377,20 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		int head = forward ? segment.end() : segment.start();
 		view.selectForAccessibility(extend ? selection.anchor() : head, head,
 				false);
-		sendTraversed(text, head, segment, action, granularity);
+		sendTraversed(text, segment, action, granularity);
 		return true;
 	}
 
-	private void sendTraversed(Text text, int head,
-			AccessibleText.Segment segment, int action, int granularity) {
+	private void sendTraversed(Text text, AccessibleText.Segment segment,
+			int action, int granularity) {
 		ViewParent parent = view.getParent();
 		if (parent == null || !isEnabled()) {
 			return;
 		}
-		AccessibleText.Window window = window(text, head, segment.start(),
-				segment.end());
+		Document.Selection selection = view.getDocument().selection();
+		AccessibleText.Window window = told(text,
+				Math.min(selection.start(), segment.start()),
+				Math.max(selection.end(), segment.end()));
 		AccessibilityEvent event = AccessibilityEvent.obtain(AccessibilityEvent
 				.TYPE_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY);
 		view.onInitializeAccessibilityEvent(event);
@@ -392,8 +412,7 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 				AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT,
 				-1) : -1;
 		Document.Selection selection = document.selection();
-		AccessibleText.Window window = window(document.text(),
-				selection.head(), selection.head(), selection.head());
+		AccessibleText.Window window = reading(document.text(), selection);
 		if (start == window.index(selection.anchor()) &&
 				end == window.index(selection.head())) {
 			return false;
