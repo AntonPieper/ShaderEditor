@@ -592,6 +592,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.setDocument(document, styles, marks);
 		view.setRowFix(syntax == DATABASE ? fixes : null);
 		document.addListener(documentListener);
+		// A file's document keeps its caret: a tap where it already is
+		// moves nothing, so its number is offered now.
+		offerTuning(false);
 		// JSON that is there when a file is opened is not put in.
 		toldJson = beginsAsJson();
 	}
