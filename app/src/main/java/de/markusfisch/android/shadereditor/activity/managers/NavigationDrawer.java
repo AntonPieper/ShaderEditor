@@ -1066,6 +1066,12 @@ public class NavigationDrawer implements ShaderList {
 	// replaces it.
 	private void go(@NonNull Level to) {
 		int direction = to.isBelow(level) ? 1 : level.isBelow(to) ? -1 : 0;
+		if (to.equals(Level.FOLDERS) && !level.equals(to)) {
+			// Its counts are what storage has, as a folder's rows are:
+			// files may have gone, here or elsewhere, since they were
+			// read.
+			loadRecent();
+		}
 		level = to;
 		if (folder != null && !folder.key().equals(to.key())) {
 			folder.close();
