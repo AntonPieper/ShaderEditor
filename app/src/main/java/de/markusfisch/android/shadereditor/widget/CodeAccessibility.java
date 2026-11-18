@@ -324,8 +324,14 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			return;
 		}
 		Document.Selection selection = document.selection();
-		if (!selection.equals(reported)) {
-			reported = selection;
+		if (selection.equals(reported)) {
+			return;
+		}
+		reported = selection;
+		// A service reads the selection of a view with neither focus only
+		// when it gets to the event, and by then a reload may have given
+		// the code the focus: all the text between is read out.
+		if (view.isFocused() || view.isAccessibilityFocused()) {
 			view.sendAccessibilityEvent(
 					AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED);
 		}

@@ -364,6 +364,14 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 		SoftKeyboard.show(getActivity(), editor.getView());
 	}
 
+	/** Give the code the input focus, without the keyboard. */
+	public void focusCode() {
+		View view = editor.getView();
+		if (view != null) {
+			view.requestFocus();
+		}
+	}
+
 	/** The next change of the text starts no run of its own. */
 	public void skipNextRun() {
 		editor.skipNextRun();

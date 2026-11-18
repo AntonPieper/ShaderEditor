@@ -14,7 +14,6 @@ app or cannot be read: one sentence and what can be done about it. -->
 		android:id="@+id/conflict_text"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:accessibilityLiveRegion="polite"
 		android:drawablePadding="@dimen/se_margin_screen"
 		android:paddingStart="@dimen/se_margin_screen"
 		android:paddingTop="12dp"
