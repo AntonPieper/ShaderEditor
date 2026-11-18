@@ -1829,7 +1829,10 @@ public class CodeView extends View {
 		}
 	}
 
-	// null for a character that is not on screen.
+	// null for a character of a line that is not on screen. A character of
+	// a line on screen that runs past its edge has its place beyond the
+	// edge: TalkBack finds lines by the places of characters, and would
+	// cut such a line into pieces at each character it gets no place for.
 	void characterBounds(int offset, RectF[] out) {
 		Text text = document.text();
 		int lineCount = text.lineCount();
@@ -1847,9 +1850,7 @@ public class CodeView extends View {
 					text.line(n).length()));
 			float top = lineTop(n);
 			float bottom = top + appearance.lineHeight;
-			boolean shown = right >= getScrollX() + left &&
-					x <= getScrollX() + getWidth() - insets.right &&
-					bottom > getScrollY() + insets.top &&
+			boolean shown = bottom > getScrollY() + insets.top &&
 					top < getScrollY() + getHeight() - insets.bottom;
 			out[i] = shown
 					? new RectF(x + dx, top + dy, right + dx, bottom + dy)
