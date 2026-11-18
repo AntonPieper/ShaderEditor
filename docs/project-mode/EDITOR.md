@@ -752,6 +752,8 @@ The tuning bar tunes a number of the code while the picture shows (strip `⇆`).
 
 **Off the main thread.** What reads the whole text for a build (whether GLSL needs a constant, the names the files have, which programs read the file) runs on a worker. Finding a number's place reads only the lines around it, lexed from the state their first line starts in, which the editor keeps for its colours. On a 5,000-line file in a debug build on the emulator: opening the bar 0.9 ms, a switch that writes the number left 0.7 to 4.4 ms, one that writes nothing 0.2 to 0.4 ms (the whole-text lex they replace took about 30 ms).
 
+**`#define` lines.** A number of a `#define` is tunable, offered by the strip and reached by ‹ ›; numbers of other directives (`#if`, `#line`, `#pragma se`) are not. The number in a macro's body, also a function-like macro's (`#define SAT(x) clamp(x, 0.0, 0.9)`), is one uniform at its definition, so every use of the macro reads the same value; a use where GLSL needs a constant makes the compiler refuse the uniform, and the number is built as text from then on. A macro the app reads itself (`FTIME_PERIOD`) is always built as text.
+
 **Literals.** An int is its 32-bit pattern read as signed, as the shader has it (`0xffffffff` is -1 on the ruler and in the uniform); the ruler and typed values stop at the ends of the type; formatting never rounds a digit of a value tried away, also when only the step changes.
 
 **Undo and Redo.**
