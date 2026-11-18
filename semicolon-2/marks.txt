@@ -1,0 +1,18 @@
+=== 21:34:26 A setup: delete ';' after mx (line 6)
+=== 21:35:09 A1 caret to end of line 2 (no edit), wait
+=== 21:35:14 A1 type space at end of line 2
+=== 21:35:51 A2 Enter at end of line 2
+=== 21:36:25 A3 Insert
+=== 21:36:33 A3 one Undo
+=== 21:36:57 A4 ';' by hand after mx, then Insert tapped at once
+=== 21:37:41 A5 restore missing ';' on line 7
+=== 21:37:47 A5 space at start of line 7 (MOVE_HOME, space)
+=== 21:38:14 A5 Insert
+=== 21:41:43 B setup: delete ';' after mx (line 6)
+=== 21:42:06 B1 space at end of line 2
+=== 21:42:26 B2 Enter at end of line 2
+=== 21:42:52 B3 Insert
+=== 21:42:57 B3 one Undo
+=== 21:43:11 B4 ';' by hand, Insert tapped at once
+=== 21:43:51 B5 space at start of line 7
+=== 21:44:09 B5 Insert
