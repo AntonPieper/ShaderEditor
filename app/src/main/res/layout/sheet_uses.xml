@@ -17,6 +17,26 @@
 		android:layout_marginHorizontal="@dimen/se_margin_sheet"
 		android:textAppearance="?attr/textAppearanceTitleLarge" />
 
+	<com.google.android.material.textfield.TextInputLayout
+		android:id="@+id/uses_name_box"
+		style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="@dimen/se_margin_sheet"
+		android:hint="@string/uses_new_name"
+		android:visibility="gone">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:id="@+id/uses_name"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:imeOptions="actionDone|flagNoExtractUi"
+			android:importantForAutofill="no"
+			android:inputType="text|textNoSuggestions"
+			android:singleLine="true"
+			android:textSize="16sp" />
+	</com.google.android.material.textfield.TextInputLayout>
+
 	<TextView
 		android:id="@+id/uses_count"
 		android:layout_width="match_parent"
@@ -43,5 +63,39 @@
 		android:layout_marginTop="8dp"
 		android:layout_weight="1"
 		android:clipToPadding="false"
-		android:paddingBottom="@dimen/se_margin_sheet" />
+		android:paddingBottom="8dp" />
+
+	<LinearLayout
+		android:id="@+id/uses_bar"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:background="@drawable/uses_bar"
+		android:gravity="center_vertical|end"
+		android:minHeight="56dp"
+		android:orientation="horizontal"
+		android:paddingHorizontal="@dimen/se_margin_screen"
+		android:visibility="gone">
+
+		<Button
+			android:id="@+id/uses_start"
+			style="?attr/borderlessButtonStyle"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/nav_rename" />
+
+		<Button
+			android:id="@+id/uses_cancel"
+			style="?attr/borderlessButtonStyle"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@android:string/cancel"
+			android:visibility="gone" />
+
+		<Button
+			android:id="@+id/uses_rename"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="8dp"
+			android:visibility="gone" />
+	</LinearLayout>
 </LinearLayout>

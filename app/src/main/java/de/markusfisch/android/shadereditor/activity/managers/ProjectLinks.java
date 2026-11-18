@@ -426,6 +426,38 @@ final class ProjectLinks implements FileLinks {
 	}
 
 	@Override
+	public void load(@NonNull List<ProjectPath> paths,
+			@NonNull FileTexts.Callback<String> done) {
+		OpenProject open = project;
+		if (open == null) {
+			done.done("the folder is not open");
+			return;
+		}
+		int[] waiting = {paths.size()};
+		String[] problem = {null};
+		for (ProjectPath path : paths) {
+			open.load(path, ProjectFiles.UNKNOWN, why -> {
+				if (why != null && problem[0] == null) {
+					problem[0] = context.getString(R.string.file_cannot_open,
+							path.toString(), why);
+				}
+				if (--waiting[0] == 0) {
+					done.done(problem[0]);
+				}
+			});
+		}
+		if (paths.isEmpty()) {
+			done.done(null);
+		}
+	}
+
+	@Nullable
+	@Override
+	public Document document(@NonNull ProjectPath path) {
+		return project != null ? project.document(path) : null;
+	}
+
+	@Override
 	public void open(@NonNull ProjectPath path, int line,
 			@Nullable Runnable then) {
 		OpenProject open = project;

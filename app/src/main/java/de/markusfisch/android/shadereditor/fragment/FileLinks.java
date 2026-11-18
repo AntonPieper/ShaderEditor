@@ -3,6 +3,9 @@ package de.markusfisch.android.shadereditor.fragment;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.List;
+
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.OpenProject;
@@ -68,6 +71,17 @@ public interface FileLinks extends HostCompletion.Listing {
 	 * them, read off the main thread.
 	 */
 	void folderTexts(@NonNull FileTexts.Callback<OpenProject.FolderTexts> done);
+
+	/**
+	 * Bring the documents of paths into memory; done gets null once all
+	 * are, or why one cannot be opened.
+	 */
+	void load(@NonNull List<ProjectPath> paths,
+			@NonNull FileTexts.Callback<String> done);
+
+	/** Return the document of path while it is in memory, else null. */
+	@Nullable
+	Document document(@NonNull ProjectPath path);
 
 	/** Run changed when a folder asked for is listed, none when null. */
 	void setListener(@Nullable Runnable changed);
