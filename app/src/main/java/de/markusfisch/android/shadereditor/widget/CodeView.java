@@ -103,6 +103,14 @@ public class CodeView extends View {
 		void lookUp(@NonNull String word);
 	}
 
+	public interface LineLink {
+		// The name of the file line names, to be opened; null for none.
+		@Nullable
+		String name(int line);
+
+		void open(int line);
+	}
+
 	// labels come longest first; the row shows the first that fits. When even
 	// the last does not, its name from cutStart to cutEnd is cut in the middle;
 	// -1 for a label that is never cut.
@@ -360,6 +368,7 @@ public class CodeView extends View {
 	private LineMarks marks;
 	private boolean connected;
 	private LookUp lookUp;
+	private LineLink lineLink;
 	private RowFix rowFix;
 	// The lines marked after a fix put them in, until the next edit.
 	private int[] markedLines = NO_LINES;
@@ -657,6 +666,11 @@ public class CodeView extends View {
 	// For a selected word that lookUp has; none for null, the default.
 	public void setLookUp(@Nullable LookUp lookUp) {
 		this.lookUp = lookUp;
+	}
+
+	// For a line that names a file; none for null, the default.
+	public void setLineLink(@Nullable LineLink lineLink) {
+		this.lineLink = lineLink;
 	}
 
 	// None for null, the default.
@@ -2864,6 +2878,22 @@ public class CodeView extends View {
 
 	private int caretLine() {
 		return document.text().lineOf(document.selection().head());
+	}
+
+	@Nullable
+	String caretLineLink() {
+		return document != null && lineLink != null
+				? lineLink.name(caretLine())
+				: null;
+	}
+
+	// Returns whether it had one.
+	boolean openCaretLineLink() {
+		if (caretLineLink() == null) {
+			return false;
+		}
+		lineLink.open(caretLine());
+		return true;
 	}
 
 	@Nullable

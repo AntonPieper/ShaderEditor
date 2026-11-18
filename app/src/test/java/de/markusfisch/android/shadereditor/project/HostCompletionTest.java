@@ -220,6 +220,20 @@ public class HostCompletionTest {
 	}
 
 	@Test
+	public void namesTheFileALineNamesWhereverItsCaretIs() {
+		assertEquals(path("fx/Blur.frag"), HostCompletion.namedOn(
+				"#pragma se input \"Blur.frag\" filter=linear", INK,
+				HostCompletionTest::list).path());
+		assertEquals(path("lib/noise.glsl"), HostCompletion.namedOn(
+				"#include \"../lib/noise.glsl\" // \"noise\"", INK,
+				HostCompletionTest::list).path());
+		assertNull(HostCompletion.namedOn("#pragma se input filter=linear",
+				INK, HostCompletionTest::list));
+		assertNull(HostCompletion.namedOn("float x; // \"Blur.frag\"", INK,
+				HostCompletionTest::list));
+	}
+
+	@Test
 	public void offersTheNearestNameOfAMissingFile() {
 		HostCompletion.Missing missing = HostCompletion.missing(
 				"#pragma se input \"blurr.frag\" filter=linear", INK,

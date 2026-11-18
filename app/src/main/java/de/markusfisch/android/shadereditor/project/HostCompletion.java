@@ -198,6 +198,18 @@ public final class HostCompletion {
 	}
 
 	/**
+	 * Return the file the path of line names, as named does for a caret
+	 * in the path; null when it names none.
+	 *
+	 * @param file the file line is in
+	 */
+	public static Named namedOn(String line, ProjectPath file,
+			Listing listing) {
+		int quote = line.indexOf('"');
+		return quote >= 0 ? named(line, quote + 1, file, listing) : null;
+	}
+
+	/**
 	 * A file a line names that is not there: its path, which line names
 	 * it, the name of a file of its folder to use instead, or null, and
 	 * the edit that uses it.

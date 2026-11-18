@@ -99,6 +99,14 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			info.addAction(new AccessibilityAction(R.id.look_up, host
 					.getContext().getString(R.string.a11y_look_up, word)));
 		}
+		// The strip offers it only while the caret is in the path, which
+		// reading by lines or words seldom leaves it in.
+		String link = view.caretLineLink();
+		if (link != null) {
+			info.addAction(new AccessibilityAction(R.id.open_link, host
+					.getContext().getString(R.string.a11y_reference_open,
+							link)));
+		}
 		if (host.isFocused() &&
 				Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 			info.addAction(AccessibilityAction.ACTION_IME_ENTER);
@@ -331,6 +339,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			return super.performAccessibilityAction(host, action, arguments);
 		} else if (action == R.id.look_up) {
 			return view.lookUpSelection();
+		} else if (action == R.id.open_link) {
+			return view.openCaretLineLink();
 		}
 		for (int i = 0; i < FIXES.length; ++i) {
 			if (action == FIXES[i]) {
