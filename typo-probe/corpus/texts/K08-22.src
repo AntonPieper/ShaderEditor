@@ -1,0 +1,28 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+// Bloom in four passes, each a file of this folder that runs as its
+// own shader and draws into a picture of its own:
+// 1. scene.frag  draws the lamps, at full size;
+// 2. bright.frag keeps only what is brighter than a threshold, at 1/4;
+// 3. blur.frag   blurs that, at 1/8, where a few taps spread far;
+// 4. this file   adds the blur to the scene and is what you see.
+// An input names another pass by its file; it reads that pass's
+// picture of this frame.
+#pragma se input "scene.frag"
+uniform sampler2D scene;
+#pragma se input "blur.frag" filter=linear
+uniform sampler2D glow;
+
+uniform vec2 resolution; // size of this pass's picture in pixels
+
+void main(void) {
+	vec2 uv = gl_FragCoord.xy / resolution;
+	// filter=linear on the small blurred picture smooths it as it is
+	// stretched over the screen.
+	vec3 color = texture2D(scene, uv).rgb + 3 * texture2D(glow, uv).rgb;
+	gl_FragColor = vec4(color, 1.0);
+}

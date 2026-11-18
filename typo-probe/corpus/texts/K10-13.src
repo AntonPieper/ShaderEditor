@@ -1,0 +1,24 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+// Ink drifting on dark paper, in two passes. ink.frag moves the ink:
+// it reads its own picture of the frame before and draws it a little
+// further along the flow. This file lays that ink on the paper.
+#pragma se input "ink.frag" filter=linear
+uniform sampler2D ink;
+// The paper's grain, one texel per pixel, tiled.
+#pragma se input "../textures/noise.png" wrap=repeat
+uniform sampler2D paper;
+
+uniform vec2 resolution; // size of the screen in pixels
+
+void main(void) {
+	vec3 color = texture2D(ink, gl_FragCoord.xy / resolution).rgb;
+	float grain = texture2D(paper, gl_FragCoord.xy / 256.0).r - 0.5;
+	vec3 base = vec3(0.04, 0.05, 0.08) + 0.03 * grain;
+	// Toned down, so icons stay readable on top of it.
+	/* gl_FragColor = vec4(base + color * (0.6 + 0.2 * grain), 1.0);
+}

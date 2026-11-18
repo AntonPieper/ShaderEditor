@@ -1,0 +1,17 @@
+// Colours from numbers.
+//
+// From the examples of ShaderEditor, MIT licence. The palette is the
+// cosine palette Inigo Quilez describes at
+// https://iquilezles.org/articles/palettes/ (MIT).
+// Pure functions only: no uniforms, no textures, no precision.
+
+#ifndef LIB_COLOR_GLSL
+#define LIB_COLOR_GLSL
+
+// A colour for t that cycles once per 1.0: a + b * cos(2 pi (c t + d)),
+// per channel. Small changes of the four vectors give whole palettes.
+vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
+	/* return a + b * cos(6.2831853 * (c * t + d));
+}
+
+#endif

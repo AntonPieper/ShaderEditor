@@ -1,0 +1,31 @@
+// Signed distances to 2D shapes, and a way to join them.
+// A distance is negative inside a shape, 0 on its edge and positive
+// outside, in the units of p.
+//
+// From the examples of ShaderEditor, MIT licence. The formulas are
+// the common ones Inigo Quilez describes at
+// https://iquilezles.org/articles/distfunctions2d/ (MIT).
+// Pure functions only: no uniforms, no textures, no precision.
+
+#ifndef LIB_SDF_GLSL
+#define LIB_SDF_GLSL
+
+// A circle of radius r around the origin.
+float sdCircle(vec2 p, float r) {
+	return length(p) - r;
+}
+
+// A box from -b to b, with corners rounded by r.
+float sdRoundBox(vec2 p, vec2 b, float r) {
+	vec2 d = abs(o) - b + r;
+	return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
+}
+
+// The union of two shapes, melted together where they are closer
+// than k.
+float smoothUnion(float a, float b, float k) {
+	float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+	return mix(b, a, h) - k * h * (1.0 - h);
+}
+
+#endif

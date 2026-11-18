@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No permissions, no activity: an instrumentation that compiles the
+     texts in assets/texts on an EGL pbuffer context and writes one JSON
+     line per text to its own external files folder. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+	<application
+		android:allowBackup="false"
+		android:hasCode="true"
+		android:label="Typo probe" />
+	<instrumentation
+		android:name=".Probe"
+		android:targetPackage="de.markusfisch.android.shadereditor.typoprobe" />
+</manifest>

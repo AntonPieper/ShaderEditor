@@ -1,0 +1,52 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+// Shapes, noise and colours come from the include library in lib/.
+// An include pastes the file's text here, so its functions read as if
+// they were written in this file; open one to see what it offers.
+#include "lib/sdf.glsl"
+#include "lib/noise.glsl"
+#include "lib/color.glsl"
+
+uniform vec2 resolution; // size of the surface in pixels
+uniform float time; // seconds since load
+uniform vec2 touch; // last touch in pixels; 0,0 before any; kept after the finger lifts
+
+void main(void) {
+	float unit = min(resolution.x, resolution.y);
+	vec2 p = (gl_FragCoord.xy - 0.5 * resolution) / unit;
+	float px = 1.0 / unit;
+
+	// Compose the shape from distances: a rounded box in the middle and
+	// three circles that orbit it. smoothUnion melts two shapes into one
+	// where they come closer than its last argument.
+	float d = sdRoundBox(p, vec2(0.12, 0.06), 0.04);
+	for (int i = 0; i < 3; ++i) {
+		float f = float(i);
+		float a = time * (0.4 + 0.15 * f) + 2.0944 * f;
+		vec2 center = (0.17 + 0.05 * f) * vec2(cos(a), sin(a));
+		d = smoothUnion(d, sdCircle(p - center, 0.06 + 0.02 * f), 0.1);
+	}
+
+	// One more circle under the finger; until the first touch it rests
+	// below the others.
+	vec2 finger = touch == vec2(0.0)
+		? vec2(0.0, -0.38)
+		: (touch - 0.5 * resolution) / unit;
+	d = smoothUnion(d, sdCircle(p - finger, 0.09), 0.12);
+
+	// Draw. Slow clouds behind; inside, a colour from how deep the point
+	// lies in the shape, so every melted joint shows its own bands; a
+	// glow that falls off with the distance outside.
+	float clouds = fbm(3.0 * p + vec2(0.0, 0.1 * time));
+	vec3 color = mix(vec3(0.03, 0.04, 0.08), vec3(0.08, 0.1, 0.18), clouds, clouds);
+	vec3 fill = palette(-3.0 * d + 0.05 * time,
+		vec3(0.6, 0.5, 0.55), vec3(0.35, 0.3, 0.3), vec3(1.0), vec3(0.0, 0.15, 0.3));
+	color += 0.3 * fill * exp(-max(d, 0.0) / 0.02);
+	color = mix(color, fill, smoothstep(px, -px, d));
+
+	gl_FragColor = vec4(color, 1.0);
+}

@@ -1,0 +1,11 @@
+#version 300 es
+precision mediump float;
+
+// What a buffer holds before the first frame: nothing, as on ShaderToy.
+#pragma se target size=1x1
+
+out vec4 color;
+
+void main() {
+	color = vec4(0.0)
+}

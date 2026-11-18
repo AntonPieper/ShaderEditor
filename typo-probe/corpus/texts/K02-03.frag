@@ -1,0 +1,33 @@
+#define SHADER_EDITOR 1
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+// Conway's Game of Life in two passes. life.frag keeps the board: one
+// pixel per cell, an eighth of the screen each way, and it reads its
+// own picture of the frame before to compute the next generation. This
+// file only draws that board, large and crisp.
+
+uniform sampler2D board;
+
+uniform vec2 resolution; // size of the screen in pixels
+
+void main(void) {
+	// The board's size: life.frag's target is scale=0.125 of this one.
+	vec2 cells = max(floor(resolution * 0.125), 1.0);
+	vec2 cell = gl_FragCoord.xy / resolution * cells;
+
+	// Read the cell this pixel lies in, at the cell's centre.
+	vec4 state = texture2D(board, (floor(cell) + 0.5) / cells);
+
+	// Draw a rounded square per cell: bright while alive, a fading
+	// trail where one has died.
+	vec2 q = abs(fract(cell) - 0.5);
+	float square = smoothstep(0.45, 0.38, length(max(q - 0.2, 0.0)) + 0.2);
+	vec3 color = vec3(0.03, 0.04, 0.06);
+	color += square * mix(0.35 * state.g * vec3(0.2, 0.45, 0.6),
+		vec3(0.75, 0.95, 0.85), state.r);
+	gl_FragColor = vec4(color, 1.0));
+}

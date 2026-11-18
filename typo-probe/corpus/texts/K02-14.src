@@ -1,0 +1,10 @@
+#define TAU 6.2831853
+
+// 1 inside a soft disc of radius r around c.
+float disc(vec2 p, vec2 c, float r) {
+	return smoothstep(r, 0.5 * r, distance(p, c));
+}
+
+vec3 hue(float t) {
+	return 0.5 + 0.5 * cos(TAU * (t + vec3(0.0, 0.33, 0.67));
+}

@@ -1,0 +1,66 @@
+#version 300 es
+#define SHADER_EDITOR 1
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+precision highp sampler3D;
+precision highp samplerCube;
+
+// Buffer A of "Ripples" by the tests, imported from ShaderToy.
+// README.md says what the import did.
+
+
+// iChannel0: Buffer A, as it was the frame before.
+
+uniform sampler2D iChannel0;
+
+// iChannel1: Buffer B, as it was the frame before.
+
+uniform sampler2D iChannel1;
+
+// ShaderToy's inputs, filled from the app's in main().
+uniform vec2 resolution;
+uniform float time;
+uniform int frame;
+uniform vec4 mouse;
+
+vec3 iResolution;
+float iTime;
+int iFrame;
+vec4 iMouse;
+
+void shaderToyInputs() {
+	iResolution = vec3(resolution, 1.0);
+	iTime = time;
+	iFrame = frame;
+	iMouse = mouse;
+}
+
+out vec4 shaderToyColor;
+
+void mainImage(out vec4 c, in vec2 f);
+
+void main() {
+	shaderToyInputs();
+	vec4 color = vec4(1e20);
+	mainImage(color, gl_FragCoord.xy);
+	shaderToyColor = color;
+}}
+
+// The height of a water surface. It reads itself (iChannel0) and the
+// speed in Buffer B (iChannel1), which is drawn after this buffer, so
+// both are of the frame before.
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+	ivec2 p = ivec2(fragCoord);
+	float height = texelFetch(iChannel0, p, 0).x;
+	height += texelFetch(iChannel1, p, 0).x;
+	// A drop every half second, or wherever the finger is.
+	vec2 c = iMouse.z > 0.0
+		? iMouse.xy
+		: iResolution.xy * (0.5 + 0.3 * vec2(cos(iTime), sin(0.7 * iTime)));
+	if (iFrame % 30 == 0 || iMouse.z > 0.0) {
+		vec2 d = fragCoord - c;
+		height += 0.5 * exp(-dot(d, d) / 40.0);
+	}
+	fragColor = vec4(height, 0.0, 0.0, 1.0);
+}

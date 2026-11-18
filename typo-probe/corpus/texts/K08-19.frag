@@ -1,0 +1,32 @@
+#define SHADER_EDITOR 1
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+// An eighth of the size: each pixel here covers 8 x 8 of the screen,
+// and 5 x 5 taps two pixels apart reach 80 pixels far; filter=linear
+// blends the pixels between the taps in.
+
+
+uniform sampler2D bright;
+
+uniform vec2 resolution; // size of this pass's picture in pixels
+
+void main(void) {
+	vec2 uv = gl_FragCoord.xy / resolution;
+	vec2 texel = 1.0 / resolution;
+	// A Gaussian blur: neighbours count less the further they are.
+	vec3 sum = vec3(0.0);
+	float total = 0.0;
+	for (int y = -2; y <= 2; ++y) {
+		for (int x = -2; x <= 2; ++x) {
+			vec2 offset = vec2(float(x), float(y));
+			float weight = exp(-dot(offset, offset) / 8.0);
+			sum += weight * texture2D(bright, uv + 2 * offset * texel).rgb;
+			total += weight;
+		}
+	}
+	gl_FragColor = vec4(sum / total, 1.0);
+}

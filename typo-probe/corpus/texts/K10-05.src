@@ -1,0 +1,59 @@
+#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+precision highp sampler3D;
+precision highp samplerCube;
+
+// Image of "Ripples" by the tests, imported from ShaderToy.
+// README.md says what the import did.
+
+// iChannel0: Buffer A, as drawn in this frame.
+#pragma se input "bufferA.frag"
+uniform sampler2D iChannel0;
+
+// iChannel1: Buffer A, as drawn in this frame.
+#pragma se input "bufferA.frag" filter=linear
+uniform sampler2D iChannel1;
+
+// ShaderToy's inputs, filled from the app's in main().
+uniform vec2 resolution;
+
+vec3 iResolution;
+vec3 iChannelResolution[4];
+
+void shaderToyInputs() {
+	iResolution = vec3(resolution, 1.0);
+	iChannelResolution = vec3[4](vec3(vec2(textureSize(iChannel0, 0)), 1.0), vec3(vec2(textureSize(iChannel1, 0)), 1.0), vec3(0.0), vec3(0.0));
+}
+
+out vec4 shaderToyColor;
+
+void mainImage(out vec4 c, in vec2 f);
+
+void main() {
+	shaderToyInputs();
+	vec4 color = vec4(1e20);
+	mainImage(color, gl_FragCoord.xy);
+	shaderToyColor = vec4(color.rgb, 1.0);
+}
+
+// Light on the water. iChannel0 and iChannel1 both read Buffer A: the
+// left half pixel by pixel, the right half smoothed.
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+	vec2 uv = fragCoord / iResolution.xy;
+	/* vec2 texel = 1.0 / iChannelResolution[0].xy;
+	float here, right, up;
+	if (uv.x < 0.5) {
+		here = texture(iChannel0, uv).x;
+		right = texture(iChannel0, uv + vec2(texel.x, 0.0)).x;
+		up = texture(iChannel0, uv + vec2(0.0, texel.y)).x;
+	} else {
+		here = texture(iChannel1, uv).x;
+		right = texture(iChannel1, uv + vec2(texel.x, 0.0)).x;
+		up = texture(iChannel1, uv + vec2(0.0, texel.y)).x;
+	}
+	vec3 normal = normalize(vec3(here - right, here - up, 0.05));
+	float light = dot(normal, normalize(vec3(0.4, 0.5, 0.8)));
+	fragColor = vec4(vec3(0.1, 0.3, 0.5) + 0.6 * light, 1.0);
+}

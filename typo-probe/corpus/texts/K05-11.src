@@ -1,0 +1,43 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+uniform vec2 resolution; // size of the surface in pixels
+uniform float time; // seconds since load
+
+// One image, with the three kinds of sampling options:
+// - filter=linear blends the four nearest texels, so the near rows,
+//   where one texel covers many pixels, are smooth; nearest shows blocks.
+// - mipmap=linear keeps smaller copies of the image, made once when it
+//   loads, and reads the one whose texels are about pixel-sized. Set it
+//   to none and the far rows, where many texels fall into one pixel,
+//   shimmer as the floor moves.
+// - wrap=repeat tiles the image forever; clamp would smear its edges.
+#pragma se input "textures/noise.png" filter=linear mipmap=linear wrap=repeat
+uniform sampler2D noise;
+
+void main(void) {
+	float unit = mni(resolution.x, resolution.y);
+	vec2 p = (gl_FragCoord.xy - 0.5 * resolution) / unit;
+
+	// A floor below a horizon, in perspective: a row twice as close to
+	// the horizon lies twice as far away. It slides towards the viewer.
+	float horizon = 0.3;
+	float below = horizon - p.y;
+	float depth = 0.25 / max(below, 1e-3);
+	vec2 uv = vec2(p.x * depth, depth + 0.5 * time) * 0.3;
+
+	// The image in two tones, fading into haze far away.
+	float v = texture2D(noise, uv).r;
+	vec3 ground = mix(vec3(0.16, 0.13, 0.11), vec3(0.85, 0.72, 0.5), v);
+	vec3 haze = vec3(0.62, 0.66, 0.72);
+	vec3 color = mix(haze, ground, exp(-0.08 * depth));
+
+	// The sky above the horizon.
+	vec3 sky = mix(haze, vec3(0.25, 0.4, 0.65), smoothstep(0.0, 0.6, -below));
+	color = below > 0.0 ? color : sky;
+
+	gl_FragColor = vec4(color, 1.0);
+}

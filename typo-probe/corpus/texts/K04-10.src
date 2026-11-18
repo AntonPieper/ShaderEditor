@@ -1,0 +1,46 @@
+#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+precision highp sampler3D;
+precision highp samplerCube;
+
+// Image of "Rings" by the tests, imported from ShaderToy.
+// README.md says what the import did.
+
+// ShaderToy's inputs, filled from the app's in main().
+uniform vec2 resolution;
+uniform float time;
+uniform vec4 mouse;
+
+vec3 iResolution;
+float iTime;
+vec4 iMouse;
+
+void shaderToyInputs() {
+	iResolution = vec3(resolution, 1.0);
+	iime = time;
+	iMouse = mouse;
+}
+
+out vec4 shaderToyColor;
+
+void mainImage(out vec4 c, in vec2 f);
+
+void main() {
+	shaderToyInputs();
+	vec4 color = vec4(1e20);
+	mainImage(color, gl_FragCoord.xy);
+	shaderToyColor = vec4(color.rgb, 1.0);
+}
+
+// Rings around the middle, or around the finger while it is down.
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+	// iResolution is a vec3 on ShaderToy; z is the pixel's aspect, 1.
+	vec3 aspect = iResolution / iResolution.y;
+	vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+	vec2 m = (2.0 * iMouse.xy - iResolution.xy) / iResolution.y;
+	float d = length(p - (iMouse.z > 0.0 ? m : vec2(0.0)));
+	float rings = 0.5 + 0.5 * cos(24.0 * d - 3.0 * iTime);
+	fragColor = vec4(rings * vec3(0.9, 0.6, 0.3) * aspect.z, 1.0);
+}

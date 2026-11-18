@@ -1,0 +1,91 @@
+#version 300 es
+#define SHADER_EDITOR 1
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+precision highp sampler3D;
+precision highp samplerCube;
+
+// Image of "Pace" by the tests, imported from ShaderToy.
+// README.md says what the import did.
+
+// iChannel0: Buffer A, as drawn in this frame.
+
+uniform sampler2D iChannel0;
+
+// ShaderToy's inputs, filled from the app's in main().
+uniform vec2 resolution;
+uniform float time;
+uniform float frameRate;
+
+vec3 iResolution;
+float iTime;
+float iFrameRate;
+
+
+out vec4 shaderToyColor;
+
+void mainImage(out vec4 c, in vec2 f);
+
+void main() {
+	shaderToyInputs();
+	vec4 color = vec4(1e20);
+	mainImage(color, gl_FragCoord.xy);
+	shaderToyColor = vec4(color.rgb, 1.0);
+}
+
+void shaderToyInputs() {
+	iResolution = vec3(resolution, 1.0);
+	iTime = time;
+	iFrameRate = frameRate;
+}
+
+// How far a marker moves, in widths of the picture per second.
+const float SPEED = 0.2;
+
+// A position kept in two numbers, sixty-fourths and what is left of
+// one, so that small steps add up exactly in a 16-bit float.
+vec2 advance(vec2 at, float step) {
+	at.y += step;
+	float whole = floor(at.y * 64.0);
+	return vec2(fract(at.x + whole / 64.0), at.y - whole / 64.0);
+}
+
+// Three markers that should move alike. Top: where iTime says.
+// Middle: moved by iTimeDelta in every frame. Bottom: moved by 1/60 s
+// in every frame, which falls behind when frames come slower than 60
+// a second. The bar at the very bottom is iFrameRate, with marks at
+// 30, 60 and 90.
+
+// Set to a few hundred to make frames slow.
+#define WORK 0
+
+float marker(float x, float at) {
+	float d = abs(fract(x - at + 0.5) - 0.5);
+	return smoothstep(0.03, 0.02, d);
+}
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+	vec2 uv = fragCoord / iResolution.xy;
+	vec4 state = texelFetch(iChannel0, ivec2(0), 0);
+	float band = floor(uv.y * 4.0);
+	vec3 color = vec3(0.05);
+	if (band == 3.0) {
+		color += marker(uv.x, fract(SPEED * iTime)) * vec3(0.9);
+	} else if (band == 2.0) {
+		color += marker(uv.x, state.x + state.y) * vec3(0.3, 0.9, 0.4);
+	} else if (band == 1.0) {
+		color += marker(uv.x, state.z + state.w) * vec3(0.9, 0.4, 0.3);
+	} else {
+		float rate = iFrameRate / 120.0;
+		color += step(uv.x, rate) * vec3(0.2, 0.4, 0.9);
+		color += step(abs(fract(uv.x * 4.0 + 0.5) - 0.5), 0.004) * 0.6;
+	}
+	// A line between the bands.
+	color *= step(0.01, fract(uv.y * 4.0));
+	float work = 0.0;
+	for (int i = 0; i < WORK; ++i) {
+		work += sin(float(i) * uv.x + iTime) * 1e-6;
+	}
+	fragColor = vec4(color + work, 1.0);
+}

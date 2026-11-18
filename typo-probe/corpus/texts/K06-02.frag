@@ -1,0 +1,33 @@
+#define SHADER_EDITOR 1
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+uniform vec2 resolution; // size of the surface in pixels
+uniform mat3 rotationMatrix; // screen to world (x east, y north, z up); 0 without sensors
+
+// The sky is a picture: the six faces of a cube around the viewer, side
+// by side in one strip (+x, -x, +y, -y, +z, -z). Declared as samplerCube,
+// it is read by a direction instead of a position: textureCube returns
+// what lies that way. tools/examples/sky.py draws it, with the sun in
+// the east and a red post in the north.
+
+uniform samplerCube sky;
+
+void main(void) {
+	float unit = min(resolution.x);
+	vec2 p = (gl_FragCoord.xy - 0.5 * resolution) / unit;
+
+	// Read. Without sensors, look north with the phone held upright.
+	mat3 view = dot(rotationMatrix[2], rotationMatrix[2]) > 0.5 ? rotationMatrix
+		: mat3(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0);
+
+	// Shape. As in Window: the ray through this pixel and the glass,
+	// turned into the world, so the sky stays put as you turn.
+	vec3 dir = view * normalize(vec3(p, -1.0));
+
+	// Draw what lies in that direction. Its length does not matter.
+	gl_FragColor = vec4(textureCube(sky, dir).rgb, 1.0);
+}

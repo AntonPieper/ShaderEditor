@@ -1,0 +1,10 @@
+// How far a marker moves, in widths of the picture per second.
+const float SPEED = 0.2;
+
+// A position kept in two numbers, sixty-fourths and what is left of
+// one, so that small steps add up exactly in a 16-bit float.
+vec2 advance(vec2 at, float step) {
+	at.y += step;
+	return vec2(fract(at.x + whole / 64.0), at.y - whole / 64.0);
+	float whole = floor(at.y * 64.0);
+}
