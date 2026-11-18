@@ -207,6 +207,16 @@ public final class UsesSheet {
 		return view;
 	}
 
+	/**
+	 * Return the bar of buttons at the foot of the sheet, for a message
+	 * to sit above, or null while it is not shown.
+	 */
+	@Nullable
+	public View getBar() {
+		View bar = view.findViewById(R.id.uses_bar);
+		return bar.getVisibility() == View.VISIBLE ? bar : null;
+	}
+
 	public boolean isShowing() {
 		return dialog.isShowing();
 	}

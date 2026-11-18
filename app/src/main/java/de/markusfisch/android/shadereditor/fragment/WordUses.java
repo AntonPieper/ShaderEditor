@@ -499,22 +499,28 @@ final class WordUses {
 	// Says that count places were renamed, and that the shader no
 	// longer builds when broke, with Undo.
 	private void renamed(@NonNull Rename rename, int count, boolean broke) {
-		Snackbar.make(messageParent(), context().getResources()
-						.getQuantityString(broke
-								? R.plurals.uses_renamed_broke
-								: R.plurals.uses_renamed, count, count),
+		message(context().getResources().getQuantityString(broke
+						? R.plurals.uses_renamed_broke
+						: R.plurals.uses_renamed, count, count),
 				broke ? BROKE_MILLIS : Snackbar.LENGTH_LONG).setAction(
 				R.string.undo, v ->
 				rename.undo(rename.changed.keySet().iterator().next())).show();
 	}
 
 	private void tell(@NonNull String message) {
-		Snackbar.make(messageParent(), message, Snackbar.LENGTH_LONG).show();
+		message(message, Snackbar.LENGTH_LONG).show();
 	}
 
+	// Over the sheet while it is shown, above its buttons.
 	@NonNull
-	private View messageParent() {
-		return sheet != null && sheet.isShowing() ? sheet.getView() : view;
+	private Snackbar message(@NonNull CharSequence text, int duration) {
+		boolean onSheet = sheet != null && sheet.isShowing();
+		Snackbar snackbar = Snackbar.make(onSheet ? sheet.getView() : view,
+				text, duration);
+		if (onSheet) {
+			snackbar.setAnchorView(sheet.getBar());
+		}
+		return snackbar;
 	}
 
 	@NonNull
