@@ -1,0 +1,30 @@
+1	104	K07 | initializer of type vec4 cannot be assigned to variable of type vec3
+2	98	K01 | 'X' : syntax error
+3	52	K06 | N:N(N): error: no matching function for call to `<<WORD>>(float, float, float)'; candidates are:
+4	154	K11 | a conditional is not closed
+5	46	K08 | '+' : wrong operand types - no operation '+' exists that takes a left-hand operand of type 'highp N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+6	59	K06 | no matching function for call to `<<WORD>>(vec3, vec3, float, float)'; candidates are:
+7	64	K06 | no matching function for call to `<<WORD>>(sampler2D)'; candidates are:
+8	35	K01 | N:N(N): error: syntax error, unexpected IDENTIFIER, expecting ',' or ';'
+9	23	K01 | expected ; before }
+10	65	K09 | syntax error, unexpected '{', expecting ',' or ';'
+11	99	K06 | no matching function for call to `<<WORD>>(float, float, float)'; candidates are:
+12	136	K01 | expected ; before gl_FragColor
+13	138	K12 | '<<WORD>>' : no matching overloaded function found
+14	156	K09 | '<<WORD>>' : syntax error
+15	126	K10 | Block comment is not closed in this file
+16	162	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'uniform highp float' and a right operand of type 'const int' (or there is no acceptable conversion)
+17	108	K06 | N:N(N): error: no matching function for call to `<<WORD>>(float, float)'; candidates are:
+18	56	K06 | N:N(N): error: no matching function for call to `<<WORD>>(sampler2D, ivec2, int, int)'; candidates are:
+19	96	K02 | 'X' : not enough data provided for construction
+20	100	K01 | N:N(N): error: syntax error, unexpected '}', expecting ',' or ';'
+21	55	K07 | initializer of type vec3 cannot be assigned to variable of type vec4
+22	39	K03 | syntax error, unexpected ELSE
+23	119	K08 | '*' : wrong operand types - no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'highp float' (or there is no acceptable conversion)
+24	160	K09 | '<<WORD>>' : no matching overloaded function found
+25	87	K06 | N:N(N): error: no matching function for call to `<<WORD>>(vec3, vec3)'; candidates are:
+26	22	K02 | expected ; before )
+27	153	K02 | '=' : dimension mismatch
+28	151	K06 | N:N(N): error: no matching function for call to `<<WORD>>(sampler2D, vec2, float, float)'; candidates are:
+29	121	K06 | '<<WORD>>' : no matching overloaded function found
+30	81	K03 | '}' : syntax error

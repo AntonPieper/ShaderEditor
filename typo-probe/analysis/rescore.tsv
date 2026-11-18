@@ -1,0 +1,31 @@
+order	n	first	second	key
+1	104	2	2	K07 | initializer of type vec4 cannot be assigned to variable of type vec3
+2	98	1	1	K01 | 'X' : syntax error
+3	52	2	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(float, float, float)'; candidates are:
+4	154	2	2	K11 | a conditional is not closed
+5	46	2	2	K08 | '+' : wrong operand types - no operation '+' exists that takes a left-hand operand of type 'highp N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+6	59	2	2	K06 | no matching function for call to `<<WORD>>(vec3, vec3, float, float)'; candidates are:
+7	64	2	2	K06 | no matching function for call to `<<WORD>>(sampler2D)'; candidates are:
+8	35	2	2	K01 | N:N(N): error: syntax error, unexpected IDENTIFIER, expecting ',' or ';'
+9	23	2	2	K01 | expected ; before }
+10	65	0	0	K09 | syntax error, unexpected '{', expecting ',' or ';'
+11	99	2	2	K06 | no matching function for call to `<<WORD>>(float, float, float)'; candidates are:
+12	136	2	2	K01 | expected ; before gl_FragColor
+13	138	2	2	K12 | '<<WORD>>' : no matching overloaded function found
+14	156	2	2	K09 | '<<WORD>>' : syntax error
+15	126	2	2	K10 | Block comment is not closed in this file
+16	162	2	2	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'uniform highp float' and a right operand of type 'const int' (or there is no acceptable conversion)
+17	108	2	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(float, float)'; candidates are:
+18	56	2	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(sampler2D, ivec2, int, int)'; candidates are:
+19	96	0	0	K02 | 'X' : not enough data provided for construction
+20	100	2	2	K01 | N:N(N): error: syntax error, unexpected '}', expecting ',' or ';'
+21	55	2	2	K07 | initializer of type vec3 cannot be assigned to variable of type vec4
+22	39	1	1	K03 | syntax error, unexpected ELSE
+23	119	2	2	K08 | '*' : wrong operand types - no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'highp float' (or there is no acceptable conversion)
+24	160	2	2	K09 | '<<WORD>>' : no matching overloaded function found
+25	87	2	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(vec3, vec3)'; candidates are:
+26	22	2	1	K02 | expected ; before )
+27	153	0	0	K02 | '=' : dimension mismatch
+28	151	2	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(sampler2D, vec2, float, float)'; candidates are:
+29	121	2	2	K06 | '<<WORD>>' : no matching overloaded function found
+30	81	2	2	K03 | '}' : syntax error

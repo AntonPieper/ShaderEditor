@@ -41,3 +41,10 @@ The seed is fixed (2026), so the same tree gives the same corpus.
 ## Results so far
 
 `results/emulator-5554.jsonl` (Android 16) and `results/emulator-5556.jsonl` (Android 6). Both emulators report the same stack: "Android Emulator OpenGL ES Translator (Apple M1 Pro)", OpenGL ES 3.0 on the Mac's GL 4.1 over Metal. The two files are identical in every log. An emulator's messages come from the host's translator, not from a phone's Mali/Adreno/PowerVR driver.
+
+## Analysis (Mac)
+
+- `typo-probe/jvm/analyse.sh` runs over every file in `results/`. For each text it records three more voices: the app's own `DriverLog` on the driver's log, the strict reader of the one-front-end spike (`jvm/src/exact/`), and Mesa's `glsl_compiler`. It maps every voice's line back to file and line and scores it, writing `analysis/voices.jsonl`.
+- Then `python3 -I typo-probe/jvm/py/keys.py typo-probe`, `tabulate.py` and `decision.py` (same argument) apply the blind message scores in `analysis/scores.tsv` and write `analysis/scored.jsonl` and `analysis/tables.md`.
+- A message that has no score yet stops `tabulate.py`. Score it blind first.
+- The report as of this commit is in `analysis/typo-experiment-report.md`.

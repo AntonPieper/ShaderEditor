@@ -1,0 +1,165 @@
+n	score	key
+1	2	K06 | no matching function for call to `<<WORD>>(vec3, vec3, vec3)'; candidates are:
+2	2	K07 | N:N(N): error: initializer of type vec2 cannot be assigned to variable of type vec3
+3	2	K11 | 'X' : unexpected end of file found in conditional block
+4	0	K03 | syntax error, unexpected '{', expecting ';'
+5	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(vec3, vec3, float, float)'; candidates are:
+6	0	K03 | N:N(N): error: syntax error, unexpected '{', expecting ';'
+7	2	K10 | N:N(N): preprocessor error: Unterminated comment
+8	2	K09 | #pragma se input must be followed by a direct uniform declaration, not '<<WORD>>'; macro-generated declarations are not supported, write it as: uniform sampler2D name;
+9	2	K05 | no function with name '<<WORD>>'
+10	2	K08 | 'X' : cannot convert from 'const int' to 'highp float'
+11	2	K06 | no matching function for call to `<<WORD>>(float, float)'; candidates are:
+12	2	K08 | '*' : wrong operand types - no operation '*' exists that takes a left-hand operand of type 'in highp N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+13	2	K03 | syntax error, unexpected '}', expecting end of file
+14	2	K08 | N:N(N): error: could not implicitly convert operands to arithmetic operator
+15	2	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'highp float' and a right operand of type 'const int' (or there is no acceptable conversion)
+16	1	K09 | syntax error, unexpected NEW_IDENTIFIER, expecting end of file
+17	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(float, float, float, float)'; candidates are:
+18	2	K04 | N:N(N): error: no function with name '<<WORD>>'
+19	2	K09 | '<<WORD>>' : undeclared identifier
+20	2	K12 | '<<WORD>>' : undeclared identifier
+21	2	K02 | N:N(N): error: syntax error, unexpected ';', expecting ')' or ','
+22	2	K02 | expected ; before )
+23	2	K01 | expected ; before }
+24	2	K08 | N:N(N): error: could not implicitly convert operands to relational operator
+25	2	K06 | no matching function for call to `<<WORD>>(vec2)'; candidates are:
+26	2	K10 | 'EOF while in a comment' : unexpected end of file found in comment
+27	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(vec2)'; candidates are:
+28	2	K11 | Conditional is not closed by #endif in this file (included from Blobs.frag:N)
+29	2	K06 | no matching function for call to `<<WORD>>(vec2, vec2, vec2)'; candidates are:
+30	0	K02 | '+' : wrong operand types - no operation '+' exists that takes a left-hand operand of type 'highp N-component vector of float' and a right operand of type 'highp 2X2 matrix of float' (or there is no acceptable conversion)
+31	2	K03 | N:N(N): error: syntax error, unexpected '}', expecting end of file
+32	1	K03 | N:N(N): error: syntax error, unexpected ELSE
+33	2	K01 | N:N(N): error: syntax error, unexpected NEW_IDENTIFIER, expecting ',' or ';'
+34	2	K08 | could not implicitly convert operands to arithmetic operator
+35	2	K01 | N:N(N): error: syntax error, unexpected IDENTIFIER, expecting ',' or ';'
+36	0	K09 | N:N(N): error: syntax error, unexpected FLOATCONSTANT, expecting ',' or ';'
+37	2	K01 | syntax error, unexpected NEW_IDENTIFIER, expecting ',' or ';'
+38	0	K02 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'lowp N-component vector of float' and a right operand of type 'uniform highp N-component vector of float' (or there is no acceptable conversion)
+39	1	K03 | syntax error, unexpected ELSE
+40	2	K04 | `<<WORD>>' undeclared
+41	2	K02 | N:N(N): error: syntax error, unexpected ')', expecting ',' or ';'
+42	2	K06 | no matching function for call to `<<WORD>>(sampler2D, vec2, float, float)'; candidates are:
+43	2	K06 | no matching function for call to `<<WORD>>(float, float, float, float)'; candidates are:
+44	2	K07 | '=' : dimension mismatch
+45	2	K06 | no matching function for call to `<<WORD>>(vec3, vec3)'; candidates are:
+46	2	K08 | '+' : wrong operand types - no operation '+' exists that takes a left-hand operand of type 'highp N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+47	2	K08 | '<' : wrong operand types - no operation '<' exists that takes a left-hand operand of type 'highp float' and a right operand of type 'const int' (or there is no acceptable conversion)
+48	2	K02 | syntax error, unexpected NEW_IDENTIFIER, expecting ')' or ','
+49	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(float)'; candidates are:
+50	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(vec3, vec3, vec3)'; candidates are:
+51	2	K05 | <<WORD>> is not declared
+52	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(float, float, float)'; candidates are:
+53	2	K02 | ')' : syntax error
+54	2	K07 | N:N(N): error: initializer of type vec4 cannot be assigned to variable of type vec3
+55	2	K07 | initializer of type vec3 cannot be assigned to variable of type vec4
+56	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(sampler2D, ivec2, int, int)'; candidates are:
+57	2	K08 | '-' : wrong operand types - no operation '-' exists that takes a left-hand operand of type 'highp float' and a right operand of type 'const int' (or there is no acceptable conversion)
+58	2	K07 | initializer of type vec2 cannot be assigned to variable of type vec3
+59	2	K06 | no matching function for call to `<<WORD>>(vec3, vec3, float, float)'; candidates are:
+60	2	K06 | no matching function for call to `<<WORD>>(float)'; candidates are:
+61	2	K08 | '*' : wrong operand types - no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'highp N-component vector of float' (or there is no acceptable conversion)
+62	2	K05 | '<<WORD>>' : no matching overloaded function found
+63	1	K03 | '{' : syntax error
+64	2	K06 | no matching function for call to `<<WORD>>(sampler2D)'; candidates are:
+65	0	K09 | syntax error, unexpected '{', expecting ',' or ';'
+66	2	K05 | N:N(N): error: no function with name '<<WORD>>'
+67	2	K08 | '-' : wrong operand types - no operation '-' exists that takes a left-hand operand of type 'const int' and a right operand of type 'highp N-component vector of float' (or there is no acceptable conversion)
+68	1	K03 | syntax error, unexpected NEW_IDENTIFIER, expecting end of file
+69	2	K11 | Conditional is not closed by #endif in this file
+70	0	K02 | '0.x' : invalid number
+71	2	K04 | N:N(N): error: `<<WORD>>' undeclared
+72	2	K12 | <<WORD>> is not declared
+73	0	K09 | syntax error, unexpected FLOATCONSTANT, expecting ',' or ';'
+74	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(vec2, vec2, vec2)'; candidates are:
+75	2	K01 | expected ; before vec3
+76	2	K02 | N:N(N): error: syntax error, unexpected NEW_IDENTIFIER, expecting ')' or ','
+77	2	K01 | syntax error, unexpected IDENTIFIER, expecting ',' or ';'
+78	1	K09 | N:N(N): error: syntax error, unexpected NEW_IDENTIFIER, expecting end of file
+79	2	K11 | N:N(N): preprocessor error: Unterminated #if
+80	2	K08 | value of type int cannot be assigned to variable of type float
+81	2	K03 | '}' : syntax error
+82	1	K03 | '' : syntax error
+83	2	K01 | expected ; before vec2
+84	1	K03 | ERROR: N:N: '' : syntax error
+85	1	K02 | expected a value, not ;
+86	0	K02 | 'X' : no matching overloaded function found
+87	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(vec3, vec3)'; candidates are:
+88	2	K09 | <<WORD>> is not declared
+89	0	K09 | N:N(N): error: syntax error, unexpected NEW_IDENTIFIER, expecting ',' or ';'
+90	0	K03 | gl_FragColor is no type
+91	2	K11 | Unterminated #if
+92	2	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'const int' and a right operand of type 'highp N-component vector of float' (or there is no acceptable conversion)
+93	0	K10 | Conditional is not closed by #endif in this file (included from Blobs.frag:N)
+94	2	K04 | '<<WORD>>' : undeclared identifier
+95	2	K01 | expected ; before float
+96	0	K02 | 'X' : not enough data provided for construction
+97	0	K02 | 'X' : vector field selection out of range
+98	1	K01 | 'X' : syntax error
+99	2	K06 | no matching function for call to `<<WORD>>(float, float, float)'; candidates are:
+100	2	K01 | N:N(N): error: syntax error, unexpected '}', expecting ',' or ';'
+101	2	K08 | '*' : wrong operand types - no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'lowp N-component vector of float' (or there is no acceptable conversion)
+102	2	K03 | a block is not closed
+103	2	K02 | syntax error, unexpected ';', expecting ')' or ','
+104	2	K07 | initializer of type vec4 cannot be assigned to variable of type vec3
+105	1	K03 | expected a type
+106	2	K01 | expected ; before vec4
+107	2	K06 | no matching function for call to `<<WORD>>(vec4, vec2, vec2)'; candidates are:
+108	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(float, float)'; candidates are:
+109	2	K01 | expected ; before iTime
+110	1	K09 | syntax error, unexpected NEW_IDENTIFIER
+111	2	K10 | Unterminated comment
+112	2	K04 | no function with name '<<WORD>>'
+113	2	K02 | N:N(N): error: syntax error, unexpected ';', expecting ')'
+114	2	K06 | no matching function for call to `<<WORD>>(vec4)'; candidates are:
+115	2	K12 | `<<WORD>>' undeclared
+116	2	K02 | expected ) before ;
+117	2	K06 | no matching function for call to `<<WORD>>(sampler2D, ivec2, int, int)'; candidates are:
+118	2	K08 | N:N(N): error: value of type int cannot be assigned to variable of type float
+119	2	K08 | '*' : wrong operand types - no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'highp float' (or there is no acceptable conversion)
+120	2	K12 | N:N(N): error: no function with name '<<WORD>>'
+121	2	K06 | '<<WORD>>' : no matching overloaded function found
+122	1	K03 | expected a value, not else
+123	2	K02 | syntax error, unexpected ')', expecting ',' or ';'
+124	2	K09 | <<WORD>> is no type
+125	1	K03 | syntax error, unexpected end of file
+126	2	K10 | Block comment is not closed in this file
+127	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(vec4, vec2, vec2)'; candidates are:
+128	1	K01 | '}' : syntax error
+129	2	K08 | could not implicitly convert operands to relational operator
+130	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(sampler2D)'; candidates are:
+131	2	K04 | '<<WORD>>' : no matching overloaded function found
+132	1	K03 | a function is declared inside a function
+133	2	K08 | '-' : wrong operand types - no operation '-' exists that takes a left-hand operand of type 'const int' and a right operand of type 'highp float' (or there is no acceptable conversion)
+134	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(vec4)'; candidates are:
+135	2	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'mediump N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+136	2	K01 | expected ; before gl_FragColor
+137	2	K04 | <<WORD>> is not declared
+138	2	K12 | '<<WORD>>' : no matching overloaded function found
+139	2	K01 | expected ; before shaderToyColor
+140	2	K01 | syntax error, unexpected '}', expecting ',' or ';'
+141	2	K01 | syntax error, unexpected BASIC_TYPE_TOK, expecting ',' or ';'
+142	0	K09 | N:N(N): error: syntax error, unexpected '{', expecting ',' or ';'
+143	2	K01 | N:N(N): error: syntax error, unexpected BASIC_TYPE_TOK, expecting ',' or ';'
+144	1	K03 | 'X' : syntax error
+145	2	K12 | N:N(N): error: `<<WORD>>' undeclared
+146	2	K07 | N:N(N): error: initializer of type vec3 cannot be assigned to variable of type vec4
+147	2	K01 | expected ; before uint
+148	1	K09 | N:N(N): error: syntax error, unexpected NEW_IDENTIFIER
+149	1	K02 | ';' : syntax error
+150	2	K02 | syntax error, unexpected ';', expecting ')'
+151	2	K06 | N:N(N): error: no matching function for call to `<<WORD>>(sampler2D, vec2, float, float)'; candidates are:
+152	2	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'const highp float' and a right operand of type 'const int' (or there is no acceptable conversion)
+153	0	K02 | '=' : dimension mismatch
+154	2	K11 | a conditional is not closed
+155	2	K08 | '>' : wrong operand types - no operation '>' exists that takes a left-hand operand of type 'highp float' and a right operand of type 'const int' (or there is no acceptable conversion)
+156	2	K09 | '<<WORD>>' : syntax error
+157	1	K03 | N:N(N): error: syntax error, unexpected NEW_IDENTIFIER, expecting end of file
+158	1	K03 | N:N(N): error: syntax error, unexpected end of file
+159	2	K10 | a comment is not closed
+160	2	K09 | '<<WORD>>' : no matching overloaded function found
+161	2	K12 | no function with name '<<WORD>>'
+162	2	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'uniform highp float' and a right operand of type 'const int' (or there is no acceptable conversion)
+163	0	K09 | syntax error, unexpected NEW_IDENTIFIER, expecting ',' or ';'
+164	2	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'const int' and a right operand of type 'const float' (or there is no acceptable conversion)
