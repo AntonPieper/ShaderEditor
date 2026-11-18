@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The tuning bar in landscape (TUNING-UI 11.5): the tuned line on top,
-	then one row: Revert, −, the value, +, the ruler, the step and Done, so
+	then one row: Revert, Before, −, the value, +, the ruler, the step and Done, so
 	that the picture keeps most of the height. The same ids as in portrait. -->
 <de.markusfisch.android.shadereditor.widget.TuningBar
 	xmlns:android="http://schemas.android.com/apk/res/android"
@@ -151,6 +151,17 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:text="@string/tuning_revert" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/tuning_before"
+				style="@style/Widget.Material3.Button.OutlinedButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginStart="8dp"
+				android:checkable="true"
+				android:minWidth="0dp"
+				android:paddingHorizontal="16dp"
+				android:text="@string/tuning_before" />
 
 			<com.google.android.material.button.MaterialButton
 				android:id="@+id/tuning_decrease"

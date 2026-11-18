@@ -726,6 +726,16 @@ public final class LibraryScreen implements ShaderScreen {
 			public void select(int offset) {
 				retune(session.move(offset), true);
 			}
+
+			@Override
+			public void setBefore(boolean on) {
+				session.setBefore(on);
+			}
+
+			@Override
+			public boolean isBefore() {
+				return session.isBefore();
+			}
 		});
 		backTunes.setEnabled(true);
 		extraKeysManager.setCovered(true);
