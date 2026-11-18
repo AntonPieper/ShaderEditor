@@ -476,6 +476,8 @@
 	<string name="library_left">the settings were closed; choose the file again</string>
 	<string name="look_up">Look up</string>
 	<string name="a11y_look_up">Look up %1$s</string>
+	<string name="a11y_code_line">Line %1$d of %2$d</string>
+	<string name="a11y_code_line_error">Line %1$d of %2$d, error</string>
 	<string name="docs_kind_versions">%1$s · %2$s</string>
 	<string name="docs_builtin_function">Built-in function</string>
 	<string name="docs_builtin_type">Built-in type</string>
