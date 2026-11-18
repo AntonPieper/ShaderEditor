@@ -46,6 +46,7 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.EditCommands;
 import de.markusfisch.android.shadereditor.editor.KeyCommands;
+import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.LineStylesScheduler;
 import de.markusfisch.android.shadereditor.editor.Motion;
@@ -204,6 +205,7 @@ public class CodeView extends View {
 	// The connection the keyboard used last; only its updates reach it.
 	private CodeInputConnection active;
 	private LineStyles styles;
+	private LineMarks marks;
 	private LineStylesScheduler scheduler;
 	private boolean connected;
 	private boolean tabIndents = true;
@@ -225,6 +227,7 @@ public class CodeView extends View {
 	private int gutterFirst;
 	private int gutterLast = -1;
 	private int gutterDigits;
+	private int gutterMarks;
 	private LineCache.Line[] shown = new LineCache.Line[0];
 	private int shownFirst;
 	private int shownCount;
@@ -307,12 +310,13 @@ public class CodeView extends View {
 	}
 
 	public void setDocument(@NonNull Document document,
-			@NonNull LineStyles styles) {
+			@NonNull LineStyles styles, @Nullable LineMarks marks) {
 		disconnect();
 		closeInput();
 		toolbar.close();
 		this.document = document;
 		this.styles = styles;
+		this.marks = marks;
 		commands = new EditCommands(document);
 		commands.setTabWidth(appearance.tabWidth);
 		commands.setIndentation(styles.syntax().indentation());
@@ -380,6 +384,10 @@ public class CodeView extends View {
 	// does.
 	public void setTabIndents(boolean tabIndents) {
 		this.tabIndents = tabIndents;
+	}
+
+	public void marksChanged() {
+		invalidate();
 	}
 
 	public void bringCaretIntoView() {
@@ -749,6 +757,10 @@ public class CodeView extends View {
 			LineLayout layout = line.layout();
 			float top = textTop + lines.top(n);
 			int lineEnd = lineStart + s.length();
+			if (marks != null && marks.has(n)) {
+				fill.setColor(a.errorColor);
+				canvas.drawRect(clipLeft, top, right, top + lineHeight, fill);
+			}
 			canvas.translate(textLeft, top);
 			if (selStart < selEnd && selStart <= lineEnd &&
 					selEnd > lineStart) {
@@ -1430,8 +1442,9 @@ public class CodeView extends View {
 			gutter = new RenderNode("gutter");
 		}
 		RenderNode node = (RenderNode) gutter;
+		int markChanges = marks != null ? marks.changes() : 0;
 		if (first != gutterFirst || last != gutterLast ||
-				digitCount != gutterDigits ||
+				digitCount != gutterDigits || markChanges != gutterMarks ||
 				!node.hasDisplayList()) {
 			node.setPosition(0, 0,
 					(int) Math.ceil(digitCount * appearance.digitWidth) + 1,
@@ -1447,6 +1460,7 @@ public class CodeView extends View {
 			gutterFirst = first;
 			gutterLast = last;
 			gutterDigits = digitCount;
+			gutterMarks = markChanges;
 		}
 		canvas.drawRenderNode(node);
 	}
@@ -1457,8 +1471,16 @@ public class CodeView extends View {
 		Paint paint = a.paint;
 		float right = digitCount * a.digitWidth;
 		float firstTop = lines.top(first);
-		paint.setColor(a.lineNumberColor);
+		float edge = -getPaddingLeft();
+		fill.setColor(a.markColor);
 		for (int n = first; n <= last; ++n) {
+			boolean marked = marks != null && marks.has(n);
+			if (marked) {
+				float top = lines.top(n) - firstTop;
+				canvas.drawRect(edge, top, edge + a.markWidth,
+						top + a.lineHeight, fill);
+			}
+			paint.setColor(marked ? a.markColor : a.lineNumberColor);
 			int start = digits.length;
 			for (int number = n + 1; number > 0; number /= 10) {
 				digits[--start] = (char) ('0' + number % 10);
