@@ -34,6 +34,7 @@ import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.ErrorListModal;
 import de.markusfisch.android.shadereditor.widget.PassesSheet;
 import de.markusfisch.android.shadereditor.widget.ShaderEditor;
+import de.markusfisch.android.shadereditor.widget.NameView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 public class EditorFragment extends Fragment implements ErrorListModal.Host,
@@ -71,6 +72,8 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 	private ShaderEditor.CodeCompletionListener codeCompletionListener;
 	@Nullable
 	private OnSignatureListener signatureListener;
+	@Nullable
+	private OnNameListener nameListener;
 	@Nullable
 	private OnShaderToyShaderListener shaderToyShaderListener;
 	/** Hears the number the caret is on that can be tuned. */
@@ -166,6 +169,13 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 					@Nullable SignatureView.Signature signature) {
 				if (signatureListener != null) {
 					signatureListener.onSignature(signature);
+				}
+			}
+
+			@Override
+			public void onName(@Nullable NameView.Name name) {
+				if (nameListener != null) {
+					nameListener.onName(name);
 				}
 			}
 
@@ -389,6 +399,15 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 	public void setOnSignatureListener(
 			@Nullable OnSignatureListener listener) {
 		signatureListener = listener;
+	}
+
+	/** Hears the name the caret rests in, see SourceEditor.Listener. */
+	public interface OnNameListener {
+		void onName(@Nullable NameView.Name name);
+	}
+
+	public void setOnNameListener(@Nullable OnNameListener listener) {
+		nameListener = listener;
 	}
 
 	/** Hears when the text has become a shader from ShaderToy as JSON. */

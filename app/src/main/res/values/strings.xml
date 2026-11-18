@@ -520,6 +520,13 @@
 	<string name="docs_example">Example</string>
 	<string name="a11y_takes">%1$s takes %2$s</string>
 	<string name="a11y_takes_nothing">%1$s takes nothing</string>
+	<string name="a11y_definition">Go to definition of %1$s, line %2$d</string>
+	<string name="a11y_definition_in">Go to definition of %1$s, in %2$s, line %3$d</string>
+	<plurals name="a11y_definitions">
+		<item quantity="one">Go to definition of %1$s, %2$d definition</item>
+		<item quantity="other">Go to definition of %1$s, %2$d definitions</item>
+	</plurals>
+	<string name="a11y_uses_of">Uses of %1$s</string>
 	<string name="a11y_and">%1$s and %2$s</string>
 	<string name="docs_builtin_uniform">Built-in uniform</string>
 	<string name="docs_not_declared">Not declared in this file yet, so the shader cannot read it.</string>
@@ -537,6 +544,15 @@
 		<item quantity="other">%1$d definitions</item>
 	</plurals>
 	<string name="definition_fits">The call on line %1$d passes %2$s: line %3$d fits.</string>
+	<string name="no_definition">No definition found</string>
+	<plurals name="name_forms">
+		<item quantity="one">· %1$d form</item>
+		<item quantity="other">· %1$d forms</item>
+	</plurals>
+	<plurals name="name_definitions">
+		<item quantity="one">· %1$d definition</item>
+		<item quantity="other">· %1$d definitions</item>
+	</plurals>
 	<string name="a11y_completion_function">%1$s, function</string>
 	<string name="a11y_signature">%1$s, argument %2$d of %3$d, %4$s. Double-tap for docs.</string>
 	<string name="a11y_signature_open">%1$s: %2$s</string>
