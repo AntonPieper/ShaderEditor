@@ -14,7 +14,9 @@ import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -31,6 +33,7 @@ import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.FileKind;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.ProjectParseResult;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
@@ -115,6 +118,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// offers besides the language's own: the names they declare, then
 	// the app's uniforms, made again when those names change.
 	@NonNull
+	// What Definition reads of a folder at most: beyond, it cannot tell.
+	private static final int TEXTS_MOST = 500;
+	private static final long TEXTS_BYTES = 4 << 20;
 	private Knowledge.Scope scope = Knowledge.Scope.NONE;
 	@NonNull
 	private List<String> outside = Collections.emptyList();
@@ -157,10 +163,15 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.setAnalysisListener(this::analysed);
 		if (view.getResources().getBoolean(R.bool.project_mode)) {
 			docs = new WordDocs(view, new WordDocs.Host() {
+				// Nothing while the analysis is of an older text: its
+				// offsets are not this text's.
 				@NonNull
 				@Override
 				public Knowledge declared() {
-					return view.getAnalysis().knowledge();
+					Analysis analysis = view.getAnalysis();
+					return analysis.revision() == document.revision()
+							? analysis.knowledge()
+							: Knowledge.NONE;
 				}
 
 				@NonNull
@@ -182,14 +193,44 @@ final class CodeViewSourceEditor implements SourceEditor {
 				}
 
 				@Override
-				public void goToLine(int line) {
-					jump(null, line + 1);
+				public int revision() {
+					return document.revision();
+				}
+
+				@NonNull
+				@Override
+				public String file() {
+					return links != null ? links.file().toString() : "";
 				}
 
 				@Override
-				public void open(@NonNull String file, int line) {
-					// As Open in the strip does, with the way back.
-					jump(file, line + 1);
+				public void texts(@NonNull FileTexts.Callback<
+						Map<String, Text>> done) {
+					FileLinks asked = links;
+					if (asked == null) {
+						done.done(Map.of("", document.text()));
+						return;
+					}
+					asked.folderTexts(TEXTS_MOST, TEXTS_BYTES, read -> {
+						Map<String, Text> texts = new HashMap<>();
+						for (Map.Entry<ProjectPath, Text> e :
+								read.texts().entrySet()) {
+							texts.put(e.getKey().toString(), e.getValue());
+						}
+						done.done(read.unread() > 0 ? null : texts);
+					});
+				}
+
+				@Override
+				public void goTo(@NonNull String file, int start, int line,
+						@NonNull String word) {
+					goToName(file, start, line, word);
+				}
+
+				@Nullable
+				@Override
+				public List<String> arguments(@NonNull String word) {
+					return callArguments(word);
 				}
 
 				// The call the caret is in can be shown now.
@@ -525,6 +566,84 @@ final class CodeViewSourceEditor implements SourceEditor {
 		} else if (listener != null) {
 			listener.onOpenFile(file, line);
 		}
+	}
+
+	// Goes to word at start of file, a path or this file, as Open
+	// does, the caret on the name: in this file after the jump, which
+	// leaves from where the caret was; in another before it, once its
+	// text is read, if it still has the name there, else to line.
+	private void goToName(@NonNull String file, int start, int line,
+			@NonNull String word) {
+		FileLinks asked = links;
+		if (asked == null || file.equals(asked.file().toString())) {
+			Text text = document.text();
+			jump(null, text.lineOf(Math.min(start, text.length())) + 1);
+			selectName(document, start, word);
+			return;
+		}
+		ProjectParseResult<ProjectPath> path = ProjectPath.parse(file);
+		if (!path.isSuccess()) {
+			jump(file, line + 1);
+			return;
+		}
+		asked.load(List.of(path.value()), problem -> {
+			if (asked != links) {
+				return;
+			}
+			Document there = asked.document(path.value());
+			jump(file, there != null && selectName(there, start, word)
+					? there.text().lineOf(start) + 1
+					: line + 1);
+		});
+	}
+
+	// Puts the caret of document on word at start, if word still stands
+	// there; returns whether it does.
+	private static boolean selectName(@NonNull Document document, int start,
+			@NonNull String word) {
+		Text text = document.text();
+		boolean there = start + word.length() <= text.length() &&
+				text.substring(start, start + word.length()).equals(word);
+		if (there) {
+			document.select(start, start);
+		}
+		return there;
+	}
+
+	// The types of the arguments of the call of word whose name the
+	// caret is in, read from its line alone; null when no "(" follows
+	// the name or the call does not close in the line.
+	@Nullable
+	private List<String> callArguments(@NonNull String word) {
+		Text text = document.text();
+		int caret = document.selection().start();
+		int n = text.lineOf(caret);
+		int lineStart = text.lineStart(n);
+		String line = text.line(n);
+		int start = caret - lineStart;
+		while (start > 0 && (Character.isLetterOrDigit(
+				line.charAt(start - 1)) || line.charAt(start - 1) == '_')) {
+			--start;
+		}
+		int open = start + word.length();
+		if (!line.startsWith(word, start) || open >= line.length() ||
+				line.charAt(open) != '(') {
+			return null;
+		}
+		for (int i = open, depth = 0; i < line.length(); ++i) {
+			char c = line.charAt(i);
+			if (c == '(') {
+				++depth;
+			} else if (c == ')' && --depth == 0) {
+				Analysis analysis = view.getAnalysis();
+				return styles.syntax().argumentTypes(
+						k -> styles.runs(k).line(),
+						new Syntax.Call(word, n, start, 0), n, i, lineStart,
+						analysis.knowledge(),
+						analysis.revision() == document.revision(), scope);
+			}
+		}
+		return null;
 	}
 
 	@Override

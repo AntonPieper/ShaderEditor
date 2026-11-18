@@ -138,6 +138,23 @@ public class OpenProjectTest {
 		assertEquals(1, read.unread());
 	}
 
+	// Bounded, a file larger than what is left is not read, also the
+	// last one, and the files beyond the count are not either.
+	@Test
+	public void aBoundedFolderReadCountsWhatDoesNotFitAsUnread()
+			throws IOException {
+		write("a.glsl", "float a;\n");
+		write("b.glsl", "// " + "x".repeat(5 << 20) + "\n");
+		OpenProject project = open();
+		OpenProject.FolderTexts read = await(done -> project.folderTexts(500,
+				4 << 20, done));
+		assertEquals(Set.of(path("a.glsl")), read.texts().keySet());
+		assertEquals(1, read.unread());
+		read = await(done -> project.folderTexts(1, Long.MAX_VALUE, done));
+		assertEquals(1, read.texts().size());
+		assertTrue(read.unread() > 0);
+	}
+
 	@Test
 	public void runsMainWithoutManifestU10() throws IOException {
 		write("main.frag", SHADER);

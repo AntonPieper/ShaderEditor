@@ -73,17 +73,22 @@ public final class UsesSheet {
 		 * other name, or null when it can.
 		 */
 		@Nullable
-		String problem(@NonNull String name);
+		default String problem(@NonNull String name) {
+			return "";
+		}
 
 		/** Tell warn where name is written already, null for nowhere. */
-		void used(@NonNull String name, @NonNull Warn warn);
+		default void used(@NonNull String name, @NonNull Warn warn) {
+		}
 
 		/** Write name in places of the word. */
-		void rename(@NonNull String name,
-				@NonNull Set<WordPlaces.Place> places);
+		default void rename(@NonNull String name,
+				@NonNull Set<WordPlaces.Place> places) {
+		}
 
 		/** Write the word of the content in place, which was left. */
-		void renameLeft(@NonNull WordPlaces.Place place);
+		default void renameLeft(@NonNull WordPlaces.Place place) {
+		}
 	}
 
 	public interface Warn {
@@ -232,8 +237,6 @@ public final class UsesSheet {
 		this.content = content;
 		Context context = view.getContext();
 		Resources res = context.getResources();
-		word.setText(content.word());
-		dialog.setTitle(content.word());
 		int places = 0;
 		Set<String> files = new HashSet<>();
 		for (Group group : content.groups()) {
@@ -245,12 +248,6 @@ public final class UsesSheet {
 				}
 			}
 		}
-		((TextView) view.findViewById(R.id.uses_count)).setText(
-				context.getString(R.string.uses_count,
-						res.getQuantityString(R.plurals.uses_places, places,
-								places),
-						res.getQuantityString(R.plurals.uses_files,
-								files.size(), files.size())));
 		List<String> notes = new ArrayList<>();
 		if (content.glued()) {
 			notes.add(context.getString(R.string.uses_glued));
@@ -259,6 +256,28 @@ public final class UsesSheet {
 			notes.add(res.getQuantityString(R.plurals.uses_unread,
 					content.unread(), content.unread()));
 		}
+		show(content, again, context.getString(R.string.uses_count,
+				res.getQuantityString(R.plurals.uses_places, places, places),
+				res.getQuantityString(R.plurals.uses_files, files.size(),
+						files.size())), notes);
+	}
+
+	/**
+	 * List content as the declarations of its word, in place of its
+	 * uses: summary says how many there are, note, or null, which fits.
+	 */
+	public void showList(@NonNull Content content, @NonNull String summary,
+			@Nullable String note) {
+		this.content = content;
+		show(content, false, summary, note != null ? List.of(note)
+				: List.of());
+	}
+
+	private void show(@NonNull Content content, boolean again,
+			@NonNull String summary, @NonNull List<String> notes) {
+		word.setText(content.word());
+		dialog.setTitle(content.word());
+		((TextView) view.findViewById(R.id.uses_count)).setText(summary);
 		TextView note = view.findViewById(R.id.uses_note);
 		note.setText(String.join(" ", notes));
 		note.setVisibility(notes.isEmpty() ? View.GONE : View.VISIBLE);

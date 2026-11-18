@@ -1832,6 +1832,16 @@ public final class OpenProject {
 	 * on the worker.
 	 */
 	public void folderTexts(Callback<FolderTexts> done) {
+		folderTexts(Integer.MAX_VALUE, Long.MAX_VALUE, done);
+	}
+
+	/**
+	 * As {@link #folderTexts(Callback)}, but of at most most files and
+	 * bytes bytes in all: the files beyond, and a file larger than
+	 * what is left, are counted as not read.
+	 */
+	public void folderTexts(int most, long bytes,
+			Callback<FolderTexts> done) {
 		Map<ProjectPath, Text> snapshot = snapshot();
 		Set<ProjectPath> journaled = journaled();
 		Edited files = new Edited(snapshot, journaled);
@@ -1839,11 +1849,16 @@ public final class OpenProject {
 			Map<ProjectPath, Text> texts = new LinkedHashMap<>();
 			Map<ProjectPath, List<ProjectPath>> names = new HashMap<>();
 			List<ProjectPath> paths = new ArrayList<>();
-			int unread = lone != null ? 0 : collect(null, paths);
+			int unread = lone != null ? 0 : collect(null, paths, most);
 			if (lone != null) {
 				paths.add(lone);
 			}
+			long left = bytes;
 			for (ProjectPath path : paths) {
+				if (texts.size() >= most) {
+					++unread;
+					continue;
+				}
 				if (!snapshot.containsKey(path) &&
 						!journaled.contains(path)) {
 					byte[] head = store.head(path, FileKind.HEAD);
@@ -1851,14 +1866,17 @@ public final class OpenProject {
 						continue;
 					}
 				}
-				String text = files.read(path) instanceof Content content
-						? SourceText.decode(content.bytes())
-						: null;
+				ProjectFiles.Read got = files.read(path, Math.min(left,
+						Document.MAX_BYTES));
+				byte[] read = got instanceof Content content &&
+						content.bytes().length <= left ? content.bytes() : null;
+				String text = read != null ? SourceText.decode(read) : null;
 				if (text != null) {
-					Text read = Text.of(text);
-					texts.put(path, read);
+					left -= read.length;
+					Text decoded = Text.of(text);
+					texts.put(path, decoded);
 					names.put(path, ShaderLanguage.of(path.toString())
-							.named(path, read));
+							.named(path, decoded));
 				} else {
 					++unread;
 				}
@@ -1869,16 +1887,19 @@ public final class OpenProject {
 		});
 	}
 
-	// Adds the GLSL files under folder, the root for null; returns how
-	// many folders could not be listed.
-	private int collect(ProjectPath folder, List<ProjectPath> paths) {
+	// Adds the GLSL files under folder, the root for null, no more than
+	// most and one; returns how many folders could not be listed.
+	private int collect(ProjectPath folder, List<ProjectPath> paths,
+			int most) {
 		Folder listed = list(folder);
 		int unlisted = listed.problem() != null ? 1 : 0;
 		for (Item item : listed.items()) {
-			if (ProjectPath.isHidden(item.path().getFileName())) {
+			if (paths.size() > most) {
+				break;
+			} else if (ProjectPath.isHidden(item.path().getFileName())) {
 				continue;
 			} else if (item.folder()) {
-				unlisted += collect(item.path(), paths);
+				unlisted += collect(item.path(), paths, most);
 			} else if (ShaderLanguage.of(item.path().toString()) ==
 					ShaderLanguage.GLSL) {
 				paths.add(item.path());

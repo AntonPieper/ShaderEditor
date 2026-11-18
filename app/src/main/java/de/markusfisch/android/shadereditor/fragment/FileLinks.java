@@ -68,9 +68,11 @@ public interface FileLinks extends HostCompletion.Listing {
 
 	/**
 	 * Tell done the texts of the folder's GLSL files as the editor has
-	 * them, read off the main thread.
+	 * them, read off the main thread: of at most most files and bytes
+	 * bytes, see {@link OpenProject#folderTexts(int, long, FileTexts.Callback)}.
 	 */
-	void folderTexts(@NonNull FileTexts.Callback<OpenProject.FolderTexts> done);
+	void folderTexts(int most, long bytes,
+			@NonNull FileTexts.Callback<OpenProject.FolderTexts> done);
 
 	/**
 	 * Bring the documents of paths into memory; done gets null once all
