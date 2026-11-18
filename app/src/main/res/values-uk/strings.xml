@@ -659,6 +659,7 @@
 	<string name="conflict_unreadable">ShaderEditor cannot read %s anymore</string>
 	<string name="conflict_unreadable_unsaved">ShaderEditor cannot read %s anymore; its unsaved text is kept here</string>
 	<string name="conflict_reload">Reload from file</string>
+	<string name="a11y_reloaded">Reloaded %1$s</string>
 	<string name="conflict_keep">Keep my edits</string>
 	<string name="conflict_journal">ShaderEditor could not read the unsaved text of %s; the text shown is the file\'s</string>
 	<string name="conflict_discard">Discard</string>
