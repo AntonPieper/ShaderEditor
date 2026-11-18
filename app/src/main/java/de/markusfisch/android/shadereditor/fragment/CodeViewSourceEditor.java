@@ -149,6 +149,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 	private int seenRevision = -1;
 	private int seenCaret = -1;
 	private boolean typing;
+	// Where in its line the next jump puts the caret, or -1.
+	private int landing = -1;
 
 	CodeViewSourceEditor(@NonNull CodeView view) {
 		this.view = view;
@@ -444,10 +446,13 @@ final class CodeViewSourceEditor implements SourceEditor {
 		if (this.links != null) {
 			this.links.point(null);
 			this.links.setListener(null);
+			this.links.setJumping(null);
 		}
 		this.links = links;
 		hostOffer = null;
 		if (links != null) {
+			// Going back moves the caret as a jump does.
+			links.setJumping(view::jumping);
 			// A folder listed may name the file a missing one is near.
 			links.setListener(() -> {
 				complete();
@@ -554,10 +559,15 @@ final class CodeViewSourceEditor implements SourceEditor {
 	private void goToName(@NonNull Knowledge.Symbol place) {
 		String file = place.file();
 		if (file == null) {
+			// The caret lands on the name, so a screen reader hears the
+			// landing once.
 			Text text = document.text();
+			if (place.end() <= text.length() && text.substring(place.start(),
+					place.end()).equals(place.name())) {
+				landing = place.start();
+			}
 			jump(null, text.lineOf(Math.min(place.start(), text.length())) +
 					1);
-			selectName(document, place);
 			return;
 		}
 		ProjectParseResult<ProjectPath> path = ProjectPath.parse(file);
@@ -629,13 +639,18 @@ final class CodeViewSourceEditor implements SourceEditor {
 	@Override
 	public void navigateToLine(int line) {
 		Text text = document.text();
+		int at = landing;
+		landing = -1;
 		if (line < 1 || line > text.lineCount()) {
 			return;
 		}
 		int start = text.lineStart(line - 1);
+		int end = start + text.line(line - 1).length();
 		Document.Selection selection = document.selection();
-		if (selection.start() < start ||
-				selection.end() > start + text.line(line - 1).length()) {
+		view.jumping();
+		if (at >= start && at <= end) {
+			document.select(at, at);
+		} else if (selection.start() < start || selection.end() > end) {
 			document.select(start, start);
 		}
 		view.jumped();
@@ -1053,8 +1068,26 @@ final class CodeViewSourceEditor implements SourceEditor {
 		}
 
 		@Override
+		public boolean listsUses() {
+			String word = name();
+			return word != null && docs.listsUses(word);
+		}
+
+		@Override
+		public boolean renames() {
+			String word = name();
+			return word != null && docs.renames(word);
+		}
+
+		@Override
 		public boolean back() {
 			return links != null && links.back();
+		}
+
+		@Nullable
+		@Override
+		public String wayBack() {
+			return links != null ? links.wayBack() : null;
 		}
 	};
 
