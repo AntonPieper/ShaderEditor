@@ -20,8 +20,19 @@ import de.markusfisch.android.shadereditor.project.SourceMap;
  * message.
  */
 final class DriverLog {
+	// "ERROR: 0:12: 'foo' : undeclared identifier", as most Android
+	// drivers write it; severity is the word in front.
 	private static final Pattern LOCATED = Pattern.compile(
 			"^.*(\\d+):(\\d+):\\s+(.*)$");
+	// "0:12(5): error: `foo' undeclared", as Mesa writes it.
+	private static final Pattern MESA = Pattern.compile(
+			"^\\s*\\d+:(\\d+)\\(\\d+\\):\\s*(error|warning):\\s*(.*)$",
+			Pattern.CASE_INSENSITIVE);
+	// "0(12) : error C1008: undefined variable \"foo\"", as NVIDIA's
+	// documentation shows it.
+	private static final Pattern NVIDIA = Pattern.compile(
+			"^\\s*\\d+\\((\\d+)\\)\\s*:\\s*(error|warning)\\s*\\w*:\\s*(.*)$",
+			Pattern.CASE_INSENSITIVE);
 	private static final Pattern WARNING = Pattern.compile(
 			"^\\s*WARNING\\b",
 			Pattern.CASE_INSENSITIVE);
@@ -49,11 +60,20 @@ final class DriverLog {
 				? Severity.WARNING
 				: Severity.ERROR;
 		Matcher matcher = LOCATED.matcher(text);
-		if (!matcher.matches()) {
+		String lineText;
+		if (matcher.matches()) {
+			lineText = matcher.group(2);
+		} else if ((matcher = MESA.matcher(text)).matches() ||
+				(matcher = NVIDIA.matcher(text)).matches()) {
+			lineText = matcher.group(1);
+			severity = "warning".equalsIgnoreCase(matcher.group(2))
+					? Severity.WARNING
+					: Severity.ERROR;
+		} else {
 			return new ProjectDiagnostic(severity, text, null, 0);
 		}
 		String message = Objects.requireNonNull(matcher.group(3));
-		int line = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
+		int line = Integer.parseInt(Objects.requireNonNull(lineText));
 		if (sourceMap == null) {
 			return new ProjectDiagnostic(severity, message, null,
 					Math.max(line, 0), text);

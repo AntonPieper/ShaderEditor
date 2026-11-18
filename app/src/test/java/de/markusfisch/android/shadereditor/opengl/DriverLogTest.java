@@ -41,15 +41,54 @@ public class DriverLogTest {
 	}
 
 	@Test
+	public void mesaFormatGivesLineAndSeverity() {
+		// Lines from Mesa's glsl_compiler on the typo corpus.
+		ProjectDiagnostic error = single("0:24(2): error: syntax error, " +
+				"unexpected BASIC_TYPE_TOK, expecting ',' or ';'", null);
+		assertEquals(Severity.ERROR, error.severity());
+		assertEquals(24, error.line());
+		assertEquals("syntax error, unexpected BASIC_TYPE_TOK, " +
+				"expecting ',' or ';'", error.message());
+		ProjectDiagnostic warning = single(
+				"0:31(20): warning: `d' used uninitialized", null);
+		assertEquals(Severity.WARNING, warning.severity());
+		assertEquals(31, warning.line());
+		assertEquals("`d' used uninitialized", warning.message());
+	}
+
+	@Test
+	public void mesaFormatIsMapped() {
+		SourceMap mapping = nestedIncludeMap().insertGenerated(0, 1);
+		ProjectDiagnostic error = single("0:4(9): error: `noise' undeclared",
+				mapping);
+		assertEquals(path("lib/b.glsl"), error.file());
+		assertEquals(2, error.line());
+		assertEquals("`noise' undeclared", error.message());
+	}
+
+	@Test
+	public void nvidiaFormatGivesLineAndSeverity() {
+		// From NVIDIA's documentation; not seen on an Android device.
+		ProjectDiagnostic error = single(
+				"0(12) : error C1008: undefined variable \"foo\"", null);
+		assertEquals(Severity.ERROR, error.severity());
+		assertEquals(12, error.line());
+		assertEquals("undefined variable \"foo\"", error.message());
+		ProjectDiagnostic warning = single("0(7) : warning C7050: \"c\" " +
+				"might be used before being initialized", null);
+		assertEquals(Severity.WARNING, warning.severity());
+		assertEquals(7, warning.line());
+	}
+
+	@Test
 	public void unfamiliarFormatIsKeptRaw() {
-		String mesa = "0:12(5): error: `foo' undeclared";
-		ProjectDiagnostic error = single(mesa, null);
+		String log = "Info log for /tmp/typo.frag:";
+		ProjectDiagnostic error = single(log, null);
 		assertEquals(Severity.ERROR, error.severity());
 		assertNull(error.file());
 		assertEquals(0, error.line());
-		assertEquals(mesa, error.message());
-		assertEquals(mesa, error.raw());
-		assertEquals(mesa, error.toString());
+		assertEquals(log, error.message());
+		assertEquals(log, error.raw());
 	}
 
 	@Test
