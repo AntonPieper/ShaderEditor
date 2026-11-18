@@ -267,7 +267,8 @@ final class WordUses {
 		String declared = this.declared != null ? this.declared : file;
 		boolean renamable = this.renamable;
 		int ask = ++asked;
-		links.folderTexts(read -> FINDER.execute(() -> {
+		links.folderTexts(Integer.MAX_VALUE, Long.MAX_VALUE,
+				read -> FINDER.execute(() -> {
 			Map<String, Text> texts = new LinkedHashMap<>();
 			Map<String, List<String>> names = new LinkedHashMap<>();
 			for (Map.Entry<ProjectPath, Text> entry :

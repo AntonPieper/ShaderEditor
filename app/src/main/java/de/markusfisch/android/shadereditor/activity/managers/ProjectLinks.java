@@ -409,10 +409,10 @@ final class ProjectLinks implements FileLinks {
 	}
 
 	@Override
-	public void folderTexts(
+	public void folderTexts(int most, long bytes,
 			@NonNull FileTexts.Callback<OpenProject.FolderTexts> done) {
 		if (project != null) {
-			project.folderTexts(done);
+			project.folderTexts(most, bytes, done);
 		}
 	}
 
