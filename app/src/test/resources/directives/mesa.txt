@@ -1,0 +1,4307 @@
+# Written by tools/directives/oracle.sh from Mesa's glsl_compiler; do not edit.
+case examples/Ink/main.frag#0 b850af5515ed9fc5
+clean
+active 0-2,6-37,40-54,56-71,73-121,123-125,127-138
+inactive 4
+off 0 0 0
+on 129 0
+unknown 3
+end
+case examples/Ink/main.frag#1 6b1eb7dfc1e34e79
+clean
+active 0-2,6-25
+inactive 4
+off 0 0 0
+on 22 0
+unknown 3
+end
+case examples/Ink/main.frag#2 5decf823e7fca6aa
+clean
+active 0-2,6-33,36-50,52-67,69-75,77-79
+inactive 4
+off 0 0 0
+on 71 0
+unknown 3
+end
+case examples/Horizon.frag#0 39a4d53035477e5c
+clean
+active 0-2,6-28,30-99
+inactive 4
+off 0 0 0
+on 95 0
+unknown 3
+end
+case examples/Touch.frag#0 a9d341e3e50333f2
+clean
+active 0-2,6-17,21-25
+inactive 4
+off 0 0 0
+on 19 0
+unknown 3
+end
+case examples/Clock.frag#0 4a4c0d0f80af2a4b
+clean
+active 0-2,6-61
+inactive 4
+off 0 0 0
+on 58 0
+unknown 3
+end
+case examples/Skybox.frag#0 c3182a1f47ce2c03
+clean
+active 0-2,6-33
+inactive 4
+off 0 0 0
+on 30 0
+unknown 3
+end
+case examples/Trails.frag#0 c28aa65ce4941281
+clean
+active 0-2,6-49
+inactive 4
+off 0 0 0
+on 46 0
+unknown 3
+end
+case examples/Loop.frag#0 0f213a4c265db4e1
+clean
+active 0-2,6-42,44-57
+inactive 4
+off 0 0 0
+on 53 0
+unknown 3
+end
+case examples/Blobs.frag#0 7cd14025eeb0eb9e
+clean
+active 0-2,6-39,41-63,66-80,82-97,99-132,134-139
+inactive 4
+off 0 0 0
+on 130 0
+unknown 3
+end
+case examples/Compass.frag#0 ecb2768495120709
+clean
+active 0-2,6-55,57-61
+inactive 4
+off 0 0 0
+on 57 0
+unknown 3
+end
+case examples/Electric_Fade.frag#0 19b2b5bffd056cda
+clean
+active 0-2,6-7,10-23,25-37,43-70
+inactive 4
+off 0 0 0
+on 59 0
+unknown 3
+end
+case examples/Tilt.frag#0 2845ea82f8e8c709
+clean
+active 0-2,6-42,44-60
+inactive 4
+off 0 0 0
+on 56 0
+unknown 3
+end
+case examples/Bloom/main.frag#0 d368f65663813966
+clean
+active 0-2,6-42
+inactive 4
+off 0 0 0
+on 39 0
+unknown 3
+end
+case examples/Bloom/main.frag#1 38dff9e18b697c06
+clean
+active 0-2,6-25
+inactive 4
+off 0 0 0
+on 22 0
+unknown 3
+end
+case examples/Bloom/main.frag#2 75955dddf8797866
+clean
+active 0-2,6-32
+inactive 4
+off 0 0 0
+on 29 0
+unknown 3
+end
+case examples/Bloom/main.frag#3 609969312240d941
+clean
+active 0-2,6-29
+inactive 4
+off 0 0 0
+on 26 0
+unknown 3
+end
+case examples/Notifications.frag#0 e1906a259bc0806e
+clean
+active 0-2,6-56
+inactive 4
+off 0 0 0
+on 53 0
+unknown 3
+end
+case examples/Meters.frag#0 1ea4aff768959d0d
+clean
+active 0-2,6-14,16-53
+inactive 4
+off 0 0 0
+on 49 0
+unknown 3
+end
+case examples/Back_camera.frag#0 21090adc61afbeb8
+clean
+active 0-3,7-17,20-21
+inactive 5
+off 0 0 0
+on 16 0
+unknown 3
+end
+case examples/Shapes.frag#0 44f6c384aa539fab
+clean
+active 0-2,6-49
+inactive 4
+off 0 0 0
+on 46 0
+unknown 3
+end
+case examples/Swirl.frag#0 957e948a41c50ca8
+clean
+active 0-2,6-49
+inactive 4
+off 0 0 0
+on 46 0
+unknown 3
+end
+case examples/Game_of_Life/main.frag#0 068f847fc7c576a3
+clean
+active 0-2,6-33,35-48
+inactive 4
+off 0 0 0
+on 44 0
+unknown 3
+end
+case examples/Game_of_Life/main.frag#1 f3e6674d8e629e1d
+clean
+active 0-2,6-29,31-33
+inactive 4
+off 0 0 0
+on 29 0
+unknown 3
+end
+case examples/Game_of_Life/main.frag#2 2e009c4bed7b1b47
+clean
+active 0-2,6-34,37-51,53-58
+inactive 4
+off 0 0 0
+on 52 0
+unknown 3
+end
+case examples/GLES_3.frag#0 885e087f1324037d
+clean
+active 1-6,10-72
+inactive 8
+off 1 1 0
+on 69 0
+unknown 0
+end
+case examples/Texture.frag#0 a1dbbc83b31657b2
+clean
+active 0-2,6-44
+inactive 4
+off 0 0 0
+on 41 0
+unknown 3
+end
+case examples/Window.frag#0 cb64ab054bba5f38
+clean
+active 0-2,6-61
+inactive 4
+off 0 0 0
+on 58 0
+unknown 3
+end
+case examples/Sound.frag#0 80aa2e72a6a0894e
+clean
+active 0-2,6-43,45-58
+inactive 4
+off 0 0 0
+on 54 0
+unknown 3
+end
+case examples/Battery.frag#0 3d24f00da7fb520a
+clean
+active 0-2,6-53
+inactive 4
+off 0 0 0
+on 50 0
+unknown 3
+end
+case examples/Mirror.frag#0 636bb2e70b29b249
+clean
+active 0-3,7-46
+inactive 5
+off 0 0 0
+on 43 0
+unknown 3
+end
+case raw/default_shader.glsl#0 687e5ac042456316
+clean
+active 0-2,6-15,18-20,23-29
+inactive 4
+off 0 0 0
+on 22 0
+unknown 3
+end
+case raw/new_shader.glsl#0 4a6ad421ac385937
+clean
+active 0-2,6-14
+inactive 4
+off 0 0 0
+on 11 0
+unknown 3
+end
+case raw/sample_battery.glsl#0 3d24f00da7fb520a
+clean
+active 0-2,6-53
+inactive 4
+off 0 0 0
+on 50 0
+unknown 3
+end
+case raw/sample_camera_back.glsl#0 21090adc61afbeb8
+clean
+active 0-3,7-17,20-21
+inactive 5
+off 0 0 0
+on 16 0
+unknown 3
+end
+case raw/sample_clock.glsl#0 4a4c0d0f80af2a4b
+clean
+active 0-2,6-61
+inactive 4
+off 0 0 0
+on 58 0
+unknown 3
+end
+case raw/sample_compass.glsl#0 ecb2768495120709
+clean
+active 0-2,6-55,57-61
+inactive 4
+off 0 0 0
+on 57 0
+unknown 3
+end
+case raw/sample_electric_fade.glsl#0 5cf5a9c04dfa5f38
+clean
+active 0-2,6-7,10-21,23-35,41-68
+inactive 4
+off 0 0 0
+on 57 0
+unknown 3
+end
+case raw/sample_game_of_life.glsl#0 41650f9412277980
+clean
+active 0-2,6-13,15-50
+inactive 4
+off 0 0 0
+on 46 0
+unknown 3
+end
+case raw/sample_gles_300.glsl#0 8dee43f60054271f
+clean
+active 1-6,10-71
+inactive 8
+off 1 1 0
+on 68 0
+unknown 0
+end
+case raw/sample_horizon.glsl#0 39a4d53035477e5c
+clean
+active 0-2,6-28,30-99
+inactive 4
+off 0 0 0
+on 95 0
+unknown 3
+end
+case raw/sample_loop.glsl#0 0f213a4c265db4e1
+clean
+active 0-2,6-42,44-57
+inactive 4
+off 0 0 0
+on 53 0
+unknown 3
+end
+case raw/sample_meters.glsl#0 1ea4aff768959d0d
+clean
+active 0-2,6-14,16-53
+inactive 4
+off 0 0 0
+on 49 0
+unknown 3
+end
+case raw/sample_mirror.glsl#0 636bb2e70b29b249
+clean
+active 0-3,7-46
+inactive 5
+off 0 0 0
+on 43 0
+unknown 3
+end
+case raw/sample_notifications.glsl#0 e1906a259bc0806e
+clean
+active 0-2,6-56
+inactive 4
+off 0 0 0
+on 53 0
+unknown 3
+end
+case raw/sample_shapes.glsl#0 44f6c384aa539fab
+clean
+active 0-2,6-49
+inactive 4
+off 0 0 0
+on 46 0
+unknown 3
+end
+case raw/sample_sound.glsl#0 80aa2e72a6a0894e
+clean
+active 0-2,6-43,45-58
+inactive 4
+off 0 0 0
+on 54 0
+unknown 3
+end
+case raw/sample_swirl.glsl#0 8debb0578f98777d
+clean
+active 0-2,6-48
+inactive 4
+off 0 0 0
+on 45 0
+unknown 3
+end
+case raw/sample_texture.glsl#0 163ba27b8a736e56
+clean
+active 0-2,6-14,17-18
+inactive 4
+off 0 0 0
+on 13 0
+unknown 3
+end
+case raw/sample_tilt.glsl#0 2845ea82f8e8c709
+clean
+active 0-2,6-42,44-60
+inactive 4
+off 0 0 0
+on 56 0
+unknown 3
+end
+case raw/sample_touch.glsl#0 a9d341e3e50333f2
+clean
+active 0-2,6-17,21-25
+inactive 4
+off 0 0 0
+on 19 0
+unknown 3
+end
+case raw/sample_trails.glsl#0 787da4ed89ce16ef
+clean
+active 0-2,6-48
+inactive 4
+off 0 0 0
+on 45 0
+unknown 3
+end
+case raw/sample_window.glsl#0 cb64ab054bba5f38
+clean
+active 0-2,6-61
+inactive 4
+off 0 0 0
+on 58 0
+unknown 3
+end
+case shadertoy/media.json#0 848c6b8f784c218d
+clean
+active 1-59
+inactive -
+off 0 0 0
+on 59 0
+unknown 0
+end
+case shadertoy/media.json#1 266ad3e1f48e786e
+clean
+active 1-60
+inactive -
+off 0 0 0
+on 60 0
+unknown 0
+end
+case shadertoy/media.json#2 e655d3ac0b538442
+clean
+active 1-60
+inactive -
+off 0 0 0
+on 60 0
+unknown 0
+end
+case shadertoy/media.json#3 401c984cf44cffd8
+clean
+active 1-12
+inactive -
+off 0 0 0
+on 12 0
+unknown 0
+end
+case shadertoy/media.json#4 dc11366e0b70145a
+clean
+active 1-72,74-76
+inactive -
+off 0 0 0
+on 75 0
+unknown 0
+end
+case shadertoy/pace.json#0 0022a6882527c662
+clean
+active 1-57,60-61
+inactive -
+off 0 0 0
+on 59 0
+unknown 0
+end
+case shadertoy/pace.json#1 401c984cf44cffd8
+clean
+active 1-12
+inactive -
+off 0 0 0
+on 12 0
+unknown 0
+end
+case shadertoy/pace.json#2 f400556e6a7148eb
+clean
+active 1-90
+inactive -
+off 0 0 0
+on 90 0
+unknown 0
+end
+case shadertoy/rings.json#0 33476f7942e0469e
+clean
+active 1-47
+inactive -
+off 0 0 0
+on 47 0
+unknown 0
+end
+case shadertoy/ripples.json#0 57cf835580584d2f
+clean
+active 1-66
+inactive -
+off 0 0 0
+on 66 0
+unknown 0
+end
+case shadertoy/ripples.json#1 1a3dff14a4ee3d8e
+clean
+active 1-45,47-57
+inactive -
+off 0 0 0
+on 56 0
+unknown 0
+end
+case shadertoy/ripples.json#2 401c984cf44cffd8
+clean
+active 1-12
+inactive -
+off 0 0 0
+on 12 0
+unknown 0
+end
+case shadertoy/ripples.json#3 f53d94ac13a6ccb7
+clean
+active 1-60
+inactive -
+off 0 0 0
+on 60 0
+unknown 0
+end
+case shadertoy/trail.json#0 13da8b00abfa3f59
+clean
+active 1-72
+inactive -
+off 0 0 0
+on 72 0
+unknown 0
+end
+case shadertoy/trail.json#1 401c984cf44cffd8
+clean
+active 1-12
+inactive -
+off 0 0 0
+on 12 0
+unknown 0
+end
+case shadertoy/trail.json#2 a2148ff8efca3f9e
+clean
+active 1-51
+inactive -
+off 0 0 0
+on 51 0
+unknown 0
+end
+case probes/active-then-elif.frag#0 b12c760b358d7a60
+clean
+active 1-4,7-8
+inactive -
+off 0 0 0
+on 6 0
+unknown 0
+end
+case probes/array-prototype.frag#0 dc9f7f93a0229049
+clean
+active 1-5
+inactive -
+off 0 0 0
+on 5 0
+unknown 0
+end
+case probes/conditional-block-whole.frag#0 83aa46fc2d7177a3
+clean
+active 1-4,8-9
+inactive 6
+off 1 1 0
+on 6 0
+unknown 0
+end
+case probes/conditional-block.frag#0 f7b236ac0e96e738
+clean
+active 1-5,9-10
+inactive 7
+off 1 1 0
+on 7 0
+unknown 0
+end
+case probes/conditional-macro.frag#0 76cfebcdaf2d5b08
+clean
+active 1-4,8-9
+inactive 6
+off 1 1 0
+on 6 0
+unknown 0
+end
+case probes/conditional-sibling.frag#0 6012f83d84f82cfd
+clean
+active 1-5,7-8,10-11
+inactive -
+off 0 0 0
+on 9 0
+unknown 0
+end
+case probes/elif-reached.frag#0 03c0f2932cf41b0e
+active 1-2,5-6
+inactive -
+off 0 0 0
+on 4 0
+unknown 0
+end
+case probes/elif-reads-macro.frag#0 d368b05ceb1a15fe
+active 1-3
+inactive 6-7
+off 0 0 0
+on 5 2
+unknown 0
+end
+case probes/elif-skips-macro.frag#0 61b8aa4023ecef24
+clean
+active 1-3,6-7
+inactive -
+off 0 0 0
+on 5 0
+unknown 0
+end
+case probes/elif-taken.frag#0 561ddb458567aec3
+clean
+active 1-2,5-6
+inactive -
+off 0 0 0
+on 4 0
+unknown 0
+end
+case probes/elif.frag#0 0d33b8f43a9e8075
+clean
+active 1-4,6,8
+inactive -
+off 0 0 0
+on 6 0
+unknown 0
+end
+case probes/example-long.frag#0 af72511978ec1083
+clean
+active 1-13,17-21,25-29,33-37,41-45,49-53,57-61,65-69,73-77,81-85,89-93,97-101,105-109,113-117,121-125,129-133,137-141,145-149,153-157,161-165,169-173,177-181,185-189,193-197,201-205,209-213,217-221,225-229,233-237,241-245,249-253,257-261,265-269,273-277,281-285,289-293,297-301,305-309,313-317,321-325,329-333,337-341,345-349,353-357,361-365,369-373,377-381,385-389,393-397,401-405,409-413,417-421,425-429,433-437,441-445,449-453,457-461,465-469,473-477,481-485,489-493,497-501,505-509,513-517,521-525,529-533,537-541,545-549,553-557,561-565,569-573,577-581,585-589,593-597,601-605,609-613,617-621,625-629,633-637,641-645,649-653,657-661,665-669,673-677,681-685,689-693,697-701,705-709,713-717,721-725,729-733,737-741,745-749,753-757,761-765,769-773,777-781,785-789,793-797,801-805,809-813,817-821,825-829,833-837,841-845,849-853,857-861,865-869,873-877,881-885,889-893,897-901,905-909,913-917,921-925,929-933,937-941,945-949,953-957,961-965,969-973,977-981,985-989,993-997,1001-1005,1009-1013,1017-1021,1025-1029,1033-1037,1041-1045,1049-1053,1057-1061,1065-1069,1073-1077,1081-1085,1089-1093,1097-1101,1105-1109,1113-1117,1121-1125,1129-1133,1137-1141,1145-1149,1153-1157,1161-1165,1169-1173,1177-1181,1185-1189,1193-1197,1201-1205,1209-1213,1217-1221,1225-1229,1233-1237,1241-1245,1249-1253,1257-1261,1265-1269,1273-1277,1281-1285,1289-1293,1297-1301,1305-1309,1313-1317,1321-1325,1329-1333,1337-1341,1345-1349,1353-1357,1361-1365,1369-1373,1377-1381,1385-1389,1393-1397,1401-1405,1409-1413,1417-1421,1425-1429,1433-1437,1441-1445,1449-1453,1457-1461,1465-1469,1473-1477,1481-1485,1489-1493,1497-1501,1505-1509,1513-1517,1521-1525,1529-1533,1537-1541,1545-1549,1553-1557,1561-1565,1569-1573,1577-1581,1585-1589,1593-1597,1601-1605,1609-1613,1617-1621,1625-1629,1633-1637,1641-1645,1649-1653,1657-1661,1665-1669,1673-1677,1681-1685,1689-1693,1697-1701,1705-1709,1713-1717,1721-1725,1729-1733,1737-1741,1745-1749,1753-1757,1761-1765,1769-1773,1777-1781,1785-1789,1793-1797,1801-1805,1809-1813,1817-1821,1825-1829,1833-1837,1841-1845,1849-1853,1857-1861,1865-1869,1873-1877,1881-1885,1889-1893,1897-1901,1905-1909,1913-1917,1921-1925,1929-1933,1937-1941,1945-1949,1953-1957,1961-1965,1969-1973,1977-1981,1985-1989,1993-2000
+inactive 15,23,31,39,47,55,63,71,79,87,95,103,111,119,127,135,143,151,159,167,175,183,191,199,207,215,223,231,239,247,255,263,271,279,287,295,303,311,319,327,335,343,351,359,367,375,383,391,399,407,415,423,431,439,447,455,463,471,479,487,495,503,511,519,527,535,543,551,559,567,575,583,591,599,607,615,623,631,639,647,655,663,671,679,687,695,703,711,719,727,735,743,751,759,767,775,783,791,799,807,815,823,831,839,847,855,863,871,879,887,895,903,911,919,927,935,943,951,959,967,975,983,991,999,1007,1015,1023,1031,1039,1047,1055,1063,1071,1079,1087,1095,1103,1111,1119,1127,1135,1143,1151,1159,1167,1175,1183,1191,1199,1207,1215,1223,1231,1239,1247,1255,1263,1271,1279,1287,1295,1303,1311,1319,1327,1335,1343,1351,1359,1367,1375,1383,1391,1399,1407,1415,1423,1431,1439,1447,1455,1463,1471,1479,1487,1495,1503,1511,1519,1527,1535,1543,1551,1559,1567,1575,1583,1591,1599,1607,1615,1623,1631,1639,1647,1655,1663,1671,1679,1687,1695,1703,1711,1719,1727,1735,1743,1751,1759,1767,1775,1783,1791,1799,1807,1815,1823,1831,1839,1847,1855,1863,1871,1879,1887,1895,1903,1911,1919,1927,1935,1943,1951,1959,1967,1975,1983,1991
+off 248 248 0
+on 1256 0
+unknown 0
+end
+case probes/example-pass.frag#0 ce9896dce68c22f7
+clean
+active 1-16,20-22
+inactive 18
+off 1 1 0
+on 19 0
+unknown 0
+end
+case probes/example-rings-es100.frag#0 402e2193f577a537
+clean
+active 0-13,16,18-20
+inactive 14
+off 1 1 0
+on 18 0
+unknown 0
+end
+case probes/example-switches.frag#0 c486a58c2e81c4c0
+clean
+active 1-14,17,19-32,36,40-42,45,47-49,53-55
+inactive 15,34,37-38,43,51
+off 5 5 0
+on 39 0
+unknown 3
+end
+case probes/example-template.frag#0 d4a33bb81c7fb91f
+clean
+active 0-2,6-16,20-22
+inactive 4,18
+off 1 1 0
+on 16 0
+unknown 3
+end
+case probes/hidden-root-a.frag#0 3171290cea412d5e
+clean
+active 1-5,9-11
+inactive 7
+off 1 1 0
+on 8 0
+unknown 0
+end
+case probes/line.frag#0 32cf376bc6943c75
+clean
+active 1-6
+inactive -
+off 0 0 0
+on 6 0
+unknown 0
+end
+case probes/macro-body-tokens.frag#0 29430b2ce1297f39
+clean
+active 1-7,10-11,15
+inactive 8,13
+off 2 2 0
+on 10 0
+unknown 0
+end
+case probes/macro-dep.frag#0 9229ca19fca4dd0c
+clean
+active 1-4,7,9-10
+inactive 5
+off 1 1 0
+on 7 0
+unknown 0
+end
+case probes/multi-line-macro.frag#0 249a0de8fb92c64a
+clean
+active 1-4,6-7
+inactive -
+off 0 0 0
+on 3 0
+unknown 4
+end
+case probes/multi-line-param.frag#0 6609261fdaa5d328
+clean
+active 1-3,5-6
+inactive -
+off 0 0 0
+on 2 0
+unknown 4
+end
+case probes/paste.frag#0 e0e1bf4043f3b29f
+active 1-5
+inactive -
+off 0 0 0
+on 5 0
+unknown 0
+end
+case probes/release-colour.frag#0 34d02be2e11ceb3f
+clean
+active 0-1,4-5
+inactive 2
+off 1 1 0
+on 4 0
+unknown 0
+end
+case probes/release-conditional.frag#0 f378c5310223d24b
+clean
+active 0-2,5-7
+inactive -
+off 0 0 0
+on 6 0
+unknown 0
+end
+case probes/return-macro.frag#0 3cf5ba09b87fd374
+clean
+active 0-5
+inactive -
+off 0 0 0
+on 6 0
+unknown 0
+end
+case probes/silent-after.frag#0 d2c9303be08f7f8a
+clean
+active 0-5
+inactive -
+off 0 0 0
+on 6 0
+unknown 0
+end
+case probes/silent-before.frag#0 d249b9bf5849aa81
+clean
+active 0-5
+inactive -
+off 0 0 0
+on 6 0
+unknown 0
+end
+case probes/switch-after.frag#0 0fa935d198907a58
+clean
+active 1-5,9-10
+inactive 7
+off 1 1 0
+on 7 0
+unknown 0
+end
+case probes/switch-before.frag#0 4163c7eef694dae9
+clean
+active 1-4,7,9-10
+inactive 5
+off 1 1 0
+on 7 0
+unknown 0
+end
+case generated/0#0 45a70b7deb985969
+active 1-6,27-28,30-33
+inactive 7-9,11-12,14,16-17,19,22-25,34,36,38-43,45-50,52,54,56-58,61-62,64-66,68-70,72-73,77,79,81-83,85-87,89-92,94,96-98,100-101,105-106,110,112-113,115-116,119,121-128,131-132,134,136,138-139,141,144-148,150-151,153-154,156-160,162,164-166,169-172,174-175,177-180,182-184,186-189,191-194,197-202
+off 2 2 0
+on 6 0
+unknown 194
+end
+case generated/1#0 eab0e4319f4bfeed
+active 1-6,8-9,54-57,65-71,73-78
+inactive 13-15,17-20,22-23,25,27-29,32,36-38,40,42-44,47,50-51,59,61-63
+off 0 0 0
+on 5 0
+unknown 73
+end
+case generated/2#0 1975c69df72d027b
+active 0-2,6-10,12-14,22-23,35,39-40,80-83,125-126,131-135,172-177,181,183-188,199-201
+inactive 4,16-17,19-20,24-25,27,29,32,36-37,42-44,46-47,50-52,54-57,59-61,63,65-66,68-70,72-75,77,85-86,90-93,95,97,100,102,105-110,114,116-117,120-122,127-129,138-139,141-142,144,146-148,151-153,156,158-160,163,166-168,178-179,190-193,195-197
+off 0 0 0
+on 6 0
+unknown 195
+end
+case generated/3#0 3e173e3111704c3f
+active 1-9,35-36,38-45,51-53,55-57
+inactive 11-13,15-16,18,21-22,24-27,29,33,47-49
+off 0 0 0
+on 6 0
+unknown 51
+end
+case generated/4#0 5eea7cc84aa1cb80
+active 1-14,59-71
+inactive 16-17,19-21,23,27-30,32,34,40,42-43,45,47-51,53,55
+off 1 1 0
+on 14 0
+unknown 55
+end
+case generated/6#0 a45437f7335bc5dd
+active 1-20,22-29,32-35
+inactive -
+off 0 0 0
+on 18 0
+unknown 17
+end
+case generated/7#0 5d84ddd6cb6ac785
+active 1-15,24-34,37-39
+inactive 17-20
+off 3 3 0
+on 15 0
+unknown 20
+end
+case generated/8#0 37cd1079f2276c26
+active 1-11,16-18,23-29
+inactive 13-14,20-21
+off 4 4 0
+on 21 0
+unknown 0
+end
+case generated/9#0 472acadd7fe835b7
+active 0-2,6-11,13-14,18-19,31-32,39-56
+inactive 4,16,20-21,24,27-29,34,37
+off 0 0 0
+on 7 0
+unknown 49
+end
+case generated/10#0 59bc2e229c9a20b0
+clean
+active 1-6,8-22
+inactive -
+off 0 0 0
+on 5 0
+unknown 17
+end
+case generated/11#0 caa715ebb091d087
+active 0-11,13,37-45,47-52,57-59,62-64
+inactive 14-16,18-20,22-24,27-28,30-31,34-35,53,55
+off 0 0 0
+on 6 0
+unknown 59
+end
+case generated/12#0 9b492b387aaaa02a
+active 1-6,10,12-16,30-35
+inactive 7-8,17-22,24,27,36-37,39,41-43
+off 14 10 0
+on 16 0
+unknown 10
+end
+case generated/13#0 2e0b8eca356f118c
+active 1-13,18-32,34-35,37-39
+inactive 15-16
+off 0 0 0
+on 12 0
+unknown 27
+end
+case generated/14#0 3936cb8d51ca124e
+active 1-14
+inactive 15,17-19,21-23,25,28,30-31,33,36-38,40-41,45-49,51,53-54,56-57,59-60,63-65,67,69-70,73,75,78-79,81-85
+off 0 0 0
+on 9 0
+unknown 76
+end
+case generated/15#0 43c6d68ee4a60608
+active 1-6,8,11-12,17,28,30-31,41-45,49,98,100-101,103-108,110-114
+inactive 13-14,20-21,23-24,26,32-34,37-38,47,50-54,56-58,60-61,63-65,67-68,70-71,73-75,77,79-80,82,84-85,87-89,91,95-96
+off 0 0 0
+on 5 0
+unknown 109
+end
+case generated/16#0 75c90d08f24501cf
+active 1-10,12-17,52,54-55,57-59
+inactive 18-19,21-23,25-30,32-34,36-38,40-41,43,45,47-49
+off 0 0 0
+on 9 0
+unknown 50
+end
+case generated/17#0 f2287126b9b5c413
+active 1-10,18-33,40-41,46-47,56-63
+inactive 12-14,16,34-35,37,44,49-51,54
+off 4 4 0
+on 13 0
+unknown 43
+end
+case generated/18#0 f7c670ed849459cb
+clean
+active 1-19
+inactive -
+off 0 0 0
+on 19 0
+unknown 0
+end
+case generated/19#0 2f5d05669d989662
+active 1-6,14-15
+inactive 8-9,11,16,18,20-22,24-29,31-32,35,37,39-40,42-43,45,47-49,51,53,56-67,69-70,72-75,77,79,81,83-85,87,89-91,93,95,98-99,101-102,104-105,107,109,113-115,117-126
+off 0 0 0
+on 5 0
+unknown 121
+end
+case generated/20#0 234011a18b044e0a
+active 1-6,8-10,12,19-23,45-57
+inactive 15,17,25-26,28-30,32,34,37-39,41-43,58-60,62,64,66-67,69,71,75,77,79,81-86,88-89,91-92,94-96
+off 0 0 0
+on 5 0
+unknown 91
+end
+case generated/21#0 a0035b6d9b859a1b
+clean
+active 0-5,7-9,12,23-25,30,35-38,59,64-66,88,92,99-101
+inactive 10,14-15,17,19-21,26-28,31-33,39,41,43-47,50-52,55,60-62,68-72,75,77-79,81-82,84,89-90,93,95
+off 0 0 0
+on 5 0
+unknown 97
+end
+case generated/22#0 ae5fe39c6c3eb624
+clean
+active 1-20,38-41
+inactive 23-25,28-30,33,35-36
+off 0 0 0
+on 20 0
+unknown 21
+end
+case generated/23#0 281a575ca69483e4
+active 0-7,30,32,52-53,55,59,68,70,72-80,84,89,115-120,149-154
+inactive 8-12,14-15,17,19-21,23,25,27,33-35,37,39-42,44-47,49,57,60-63,65,81,86-87,93,95-97,99-101,103-105,107-108,110-113,122-127,129-131,133-135,138,140,142,144-146
+off 7 6 0
+on 8 0
+unknown 140
+end
+case generated/25#0 277057b269e0cdc3
+active 1-9,11-16,18,39-48,91-93
+inactive 20-22,24-25,27,30,32-33,35-37,50-51,53-54,57-59,61-66,68-71,73,75-80,82,84,86
+off 0 0 0
+on 8 0
+unknown 85
+end
+case generated/26#0 e670c744cb1ce0d4
+active 1-10,28,30,73-76,99-100,104-105,116-122,132-136
+inactive 11-15,17,19-21,23-24,26,34-37,39-42,44-45,48-49,51-53,55-58,60,62-64,66-67,69,71,78-82,85,88-90,92,94-95,97,101-102,107-109,111-114,124-126,128-130
+off 16 12 0
+on 10 0
+unknown 109
+end
+case generated/27#0 8c92dfce48e3a3ba
+active 1-24,29-31,36-41
+inactive 25-26,34
+off 0 0 0
+on 13 0
+unknown 28
+end
+case generated/28#0 08a432bb0eaa39a3
+active 0-2,6-21,26,49-58
+inactive 4,23-24,29-32,34-37,39-40,43,47
+off 0 0 0
+on 11 0
+unknown 47
+end
+case generated/29#0 e84b1bfaa04289f2
+active 1-8,14-15,17-25,27-30
+inactive 10-12
+off 3 3 0
+on 9 0
+unknown 16
+end
+case generated/30#0 9ce652f59df75e57
+active 1-6,8-15,42-45,47-52,57-60
+inactive 16-19,21,23,25-26,29-30,32-35,37,40,54-55
+off 0 0 0
+on 5 0
+unknown 55
+end
+case generated/31#0 34e8c20365d3dde5
+active 1-11,21-31
+inactive 13-14,18-19
+off 0 0 0
+on 10 0
+unknown 21
+end
+case generated/33#0 045fc6929f9ea428
+active 1-10,40-42,65-73,76-79,84-87,103,106,108,112,115-116,124,126,136,138,169-170,238-239,241-242,261-262,264,266-268
+inactive 11,13-17,20-21,24,26-28,30-32,35,38,44,46,48,50,52-53,55-56,59,61,63,80,90-92,94-95,97-98,101,104,110,113,117-119,121-122,128-129,132-133,140-142,144,146-151,153-155,157-158,160,162-163,165-167,171-172,174-177,179,181,183,186-187,189-192,195,199,201-202,204-205,207-209,211-212,214-217,220,222-223,226-231,233-234,244-246,248,251,253-254,257-258
+off 0 0 0
+on 10 0
+unknown 258
+end
+case generated/35#0 80a41787d04c8a7a
+active 1-9,11-12,25,33-41
+inactive 13-14,16,18-21,23,26-28,30-31
+off 0 0 0
+on 8 0
+unknown 33
+end
+case generated/37#0 94980707e2ac649d
+active 1-15,17,21-25,53-57,76,87-89,91-93,95,103-106,126-127,144-148,156-161,164,173-175
+inactive 19,27-32,34-36,39,41,44,47-49,51,59,61-62,64-66,68-69,72-73,78-80,82-83,85,97-99,101,109,111-115,117,119-121,123-124,129-131,133-134,137-140,150,152-154,166,168-171
+off 0 0 0
+on 12 0
+unknown 163
+end
+case generated/39#0 19392be91db3e66d
+active 1-8,38-40,42-43,76-78,82,91,94-95,99,101-105,111-112,118-121,124-126
+inactive 10-12,14-17,19,21,23,25-26,29-30,32-34,44-47,49-52,54-56,58-60,62,64-66,69-71,80,84,86,89,97,106-109,114-116
+off 2 2 0
+on 8 0
+unknown 115
+end
+case generated/40#0 df84dc8f5c91c4ea
+active 1-6,8-10,12-22,24,35-36,38-40
+inactive 25,27-28,30
+off 0 0 0
+on 5 0
+unknown 35
+end
+case generated/42#0 495e0cb5d1a3784b
+active 1-21,24-31
+inactive -
+off 0 0 0
+on 13 0
+unknown 18
+end
+case generated/43#0 87a3390d2829dc0a
+active 1-8,10,58,104-107,109-124
+inactive 11-12,14-15,17-18,20-22,24-25,28-29,31-33,35-36,39,41,43,45,47-49,51-53,55-56,60-62,65-67,70-71,73-75,77,79-80,82,84-85,87,90,92-93,95-96,99,101
+off 0 0 0
+on 7 0
+unknown 117
+end
+case generated/44#0 316182ccb00e98a0
+active 1-8,10,12,14-18
+inactive 19,21-22,24-25,27-30,32-34,37-42,44-45,48,50-57,59-60,62,64-69
+off 0 0 0
+on 7 0
+unknown 62
+end
+case generated/45#0 1d410ee0c3f33118
+active 0-2,6-12,20-21,26-30
+inactive 4,13-17,23,32-33,35-37,39,42-43,45-46,50,52-54,56-57,60-63,65,67,69,72-74,76-77,79,81,83,86,88-95,98-100,102-104,106,108-110,112,114-118
+off 0 0 0
+on 8 0
+unknown 110
+end
+case generated/46#0 e011835deea9af30
+active 1-7,11
+inactive 9,13-14,16-18,20-21,24,27,30,33,35,37-38,41-43,45-47,50,52,54-56,58-60,62-63,65-66,68-77,79-81,83-84,86-87,89,91-97
+off 0 0 0
+on 6 0
+unknown 91
+end
+case generated/47#0 370f91db39c51a3a
+active 0-2,6-18,20-21,23-25
+inactive 4
+off 0 0 0
+on 15 0
+unknown 9
+end
+case generated/49#0 3278abd142b7494a
+active 1-6,8-10,19-23,30-32
+inactive 11-12,16-17,25-28,34-35,37-43
+off 0 0 0
+on 5 0
+unknown 38
+end
+case generated/50#0 d9deb14170bfdee9
+active 0-2,6-23
+inactive 4
+off 0 0 0
+on 14 0
+unknown 9
+end
+case generated/51#0 0343f72befac9106
+active 1-8,10-11,14-15,17,30-31,34-41,43-46
+inactive 12,19-21,23,26-27,32
+off 0 0 0
+on 7 0
+unknown 39
+end
+case generated/52#0 208113cf7532307a
+active 1-8,22,27-33
+inactive 9-10,12-15,17,19,24-25,35,37,39-41,43-45,47-48,50,52-53,56,58-59,61,63-64,66,68,70-71,73,75,77-78,81-87,89-94
+off 8 6 0
+on 8 0
+unknown 78
+end
+case generated/53#0 47a16940cb662b7c
+active 1-13,46-49,51-53,56,58-61
+inactive 15-20,23-25,28,30-31,34-37,39-40,42-43
+off 6 6 0
+on 13 0
+unknown 41
+end
+case generated/55#0 f90330b67a422145
+active 1-8,39-41,43-44,80,87-91,93,95-99,101-102,108-109,111-113
+inactive 10-16,18-19,21-23,26,29-31,33,36-37,45-48,50-53,55-58,60,63-67,70-72,74-76,83-85,103-104,106
+off 0 0 0
+on 7 0
+unknown 106
+end
+case generated/56#0 60e74bafc2a2da2b
+active 1-6,24-25,27-35,38-40,42-47
+inactive 7-8,10-11,14,17-19,21-22
+off 0 0 0
+on 5 0
+unknown 42
+end
+case generated/57#0 2f5129161a640d09
+active 0-9,11,13-21
+inactive -
+off 0 0 0
+on 9 0
+unknown 13
+end
+case generated/58#0 003830b888e10835
+active 1-12,14-17,46,55,57-59,61-62,80-88
+inactive 19-21,23,25-27,30-31,34,38-40,43-44,47-48,50,52-53,64-66,69,71-73,75-76,78
+off 0 0 0
+on 11 0
+unknown 77
+end
+case generated/59#0 c9f96766af27b67f
+active 0-13,50-55,67-68,71-73
+inactive 15,17,19,21,23,25-30,32-35,37,39,42-45,47-48,57-59,61,63-65
+off 0 0 0
+on 8 0
+unknown 66
+end
+case generated/61#0 0681154e185607e0
+active 1-6,30-31,33-37,40-41,129-135,137-138,140,144,177-179
+inactive 8-10,13-16,19-22,24,26,28,38,43-45,48,50-53,55-57,59-60,62,64-66,68,70,72-73,75,77-80,82,84,86,88-89,92,94-97,99-100,102-103,105-107,109,113-115,117,119-122,124,126,142,146-147,149-152,154,156,158-160,163,165,167,171-172,174
+off 0 0 0
+on 5 0
+unknown 174
+end
+case generated/62#0 02e929eca2d93380
+active 1-11,15-16,19-29,38-39,48-51,59,88,90,92-94
+inactive 12-13,31,33-34,36,40-43,45,53,55-57,61-64,66-68,70,72,74,76-78,80-81,84
+off 0 0 0
+on 8 0
+unknown 86
+end
+case generated/63#0 c06bee190466d606
+active 0-2,6-17,20,28-29,49-57,60-62
+inactive 4,22-24,31,33-34,36,38-39,41,44,46
+off 0 0 0
+on 7 0
+unknown 55
+end
+case generated/64#0 d563670d72548ad5
+active 1-9,20-21,25-28,30,43,77-78,80-82,84,86-88,94-98,105-107,131-133,137-139,196-198
+inactive 12,15,17-18,22-23,32-33,35,37,39-40,45-50,52,56-57,59,61,63,65,68,71,73-75,91-92,100,103,108-111,114-115,119,121-122,126-128,135,141-148,150,153,156,158-159,161,163,166-167,169,171,173-174,177-182,184-186,188,190-193
+off 0 0 0
+on 8 0
+unknown 190
+end
+case generated/65#0 4056db0d811418f7
+active 1-12
+inactive 13,15-16,18-25,27-28,30-31,34-38,42-46,48,51-64
+off 0 0 0
+on 11 0
+unknown 53
+end
+case generated/66#0 1769b63a7f3de272
+active 1-7,10-13,16-20,26-33,40-43
+inactive 14,22-24,35-37
+off 0 0 0
+on 10 0
+unknown 31
+end
+case generated/67#0 fac681955a8b8530
+active 0-2,6-23,25-26,32-34
+inactive 4,28-30
+off 0 0 0
+on 8 0
+unknown 26
+end
+case generated/68#0 848c76cdcf8b0914
+active 0-2,6-11,18,25,29,33,43
+inactive 4,14-16,19-20,22-23,26,31,34,38-41,44-45,47-48,50,52,54,56-57,59-60,63-65,67,69-72,74,76-80,82-88,90,92-94,96,98-105
+off 12 10 0
+on 12 0
+unknown 72
+end
+case generated/69#0 36e0e3cb42bf49a5
+active 1-9,30-31,39-45,47,55-57,59-60,71-72,75,87-88,90-94
+inactive 13-17,19-20,22-26,33-35,37,48-49,51-53,62-64,67,69,77-79,81-83,85
+off 4 4 0
+on 9 0
+unknown 78
+end
+case generated/70#0 0431de5ebe31a0c1
+active 1-7,11,13-23,40-44
+inactive 8-9,25-28,30-31,33,35
+off 2 2 0
+on 12 0
+unknown 28
+end
+case generated/71#0 c49495f5a96c3b43
+active 1-15,35-38,40-45
+inactive 16,19-22,24,27-28,32-33
+off 0 0 0
+on 8 0
+unknown 37
+end
+case generated/72#0 5ef4db367cfca05f
+active 0-6,8-11,17-21,30,32-39
+inactive 12-14,23,25,27-28
+off 0 0 0
+on 6 0
+unknown 34
+end
+case generated/73#0 416ebaabd009f3dd
+active 1-21,23-26,35,43,45,48-52
+inactive 28,30-33,36-39,41
+off 0 0 0
+on 13 0
+unknown 39
+end
+case generated/74#0 6813775b716d37f3
+active 0-10,15-17,19-24,26-29
+inactive 12-13
+off 0 0 0
+on 8 0
+unknown 22
+end
+case generated/75#0 551874706bde750c
+active 1-7,9,11-15,71,73-75,98-100,113,116-117,119,123,125-127
+inactive 17,19-20,23-24,27-28,31-32,34-35,37,40-41,43,46,48-49,52-54,57-59,63-66,68-69,77-80,82,84-85,87-88,90,92-93,95-96,101,104-106,108-110,121
+off 0 0 0
+on 6 0
+unknown 121
+end
+case generated/77#0 34747ba1fb818e90
+active 0-17,24-29
+inactive 19,21-22
+off 3 3 0
+on 19 0
+unknown 5
+end
+case generated/78#0 f8d0150933afefa6
+active 1-7,9-12,14,37-42,48-49,51,54-59,61-63,71,78-81,117-118,120-122,124,128-131
+inactive 17,19-20,22-23,25,29-30,33-34,44-46,65-67,72-74,76,83-86,89-90,92-93,95-97,99-101,103-104,108-110,113-115,126
+off 0 0 0
+on 6 0
+unknown 125
+end
+case generated/79#0 154bd9ed8cb55993
+active 1-11,61,96,100,102-103,117-121,123-125,127-130,140-141,147,149,154-156,158-160,163-166
+inactive 13-15,17-19,21,23,26-28,31,33-34,36-37,39-43,46-51,53-54,57-58,62,64-66,68-69,71,73,75,78,80,82,84,86-87,89,91-94,97-98,105,108,110,112-114,131-133,135-136,138,144-145,152
+off 5 5 0
+on 11 0
+unknown 148
+end
+case generated/81#0 94955f3f229208a1
+active 1-9,12-13,21-24,30,33,35-39,41,43-48,50-52
+inactive 10,15,17-19,27-28
+off 1 1 0
+on 9 0
+unknown 42
+end
+case generated/82#0 f4ed35aeb87d5020
+active 1-6,14-15,17,54-56,60,66-69,75-78,80-89
+inactive 7-10,12,19-22,24-27,29,31,34-36,38-39,42-44,46,48,50,57-58,62-64,71,73
+off 6 5 0
+on 7 0
+unknown 75
+end
+case generated/83#0 e537446aba17b779
+active 1-9,15-16,74-87,114-120,132-135
+inactive 10-13,17-18,22,24-27,29-32,34-35,38,40-43,46,48-49,51-53,55,57-61,63-64,66-68,71-72,89-93,95-98,102-106,108-109,112,122,124,126,128-130
+off 0 0 0
+on 5 0
+unknown 130
+end
+case generated/84#0 d82a023a8f6618d2
+active 0-4,6,8-11
+inactive 12,14-16,18,21-23,25-28,30-33,36,38,40-44,46-48,51,53-55,57-58,60-63,65-67,70-71,74-79
+off 0 0 0
+on 4 0
+unknown 76
+end
+case generated/85#0 ecfbaca85ba8c415
+active 1-13,16,27-28,63-70,74-76,80,90,95-100
+inactive 14,18-21,23-24,30-32,34-35,37-40,42,45-48,50-51,53-54,56,58-59,61,71-72,77-78,82-84,86-88,92
+off 1 1 0
+on 13 0
+unknown 86
+end
+case generated/86#0 5e39a0e2af3c755b
+active 0-2,6-16,18-21,50,73-81,83-86
+inactive 4,23-28,30,32-36,38,40,44,46-48,51,53-54,56-62,64-65,68,70-71
+off 0 0 0
+on 9 0
+unknown 77
+end
+case generated/87#0 75f9268a61350962
+active 1-10
+inactive 11,13-14,16,18-19,21,23-25,27-28,30-34,36-38,40,42-44,47-49,51,53,55,57-59,61,63-69,71,74-77,79-80,82-83,85-87,89,91-94,96,98,100-103,107-109,111-113,115-120,122-124,126-128
+off 0 0 0
+on 10 0
+unknown 118
+end
+case generated/88#0 e869ca3ee1a35545
+active 1-22
+inactive -
+off 0 0 0
+on 15 0
+unknown 7
+end
+case generated/89#0 6ddfca8ed33129d7
+active 1-22,24-33
+inactive -
+off 0 0 0
+on 14 0
+unknown 19
+end
+case generated/90#0 40fa188fbe6cfcc1
+active 0-5,8-15,17-20,30,41,51-53
+inactive 21,24,26,28,31-32,34-35,38-39,43-45,48-49
+off 0 0 0
+on 10 0
+unknown 42
+end
+case generated/92#0 0bbdab16f83e9050
+active 1-7,12,38,53-65,70-74,124-128
+inactive 8-10,13-15,18,20,22,24-27,29-30,32,35,40,42-43,48,50-51,67,77-79,83,85,87-88,90,92-94,96,99-103,105,107,109-110,113,115,117-118,120,122
+off 5 5 0
+on 8 0
+unknown 114
+end
+case generated/93#0 7c2aec23615668d7
+active 0-2,6-18,21-23,47-53,55,57,93-94,110-113,116-121
+inactive 4,26-29,31-32,34,36,38-39,41-43,59-60,62-66,68-70,73-76,78-79,81,85-87,89-91,96-101,104-106,114
+off 0 0 0
+on 13 0
+unknown 108
+end
+case generated/94#0 fa6b25eb1cbd3879
+clean
+active 1-6,9,11-16,18-25
+inactive 7
+off 1 1 0
+on 6 0
+unknown 17
+end
+case generated/96#0 baf4f4370a7e16a5
+clean
+active 1-7,10-23
+inactive -
+off 0 0 0
+on 21 0
+unknown 0
+end
+case generated/97#0 4bd0f6adb90eb4b8
+active 0-2,6-17,65-69,71,83-87
+inactive 4,19-21,23-25,27-29,32-35,37-39,41,43-44,46-49,51-54,56-57,60,62,73-76,78-81
+off 0 0 0
+on 13 0
+unknown 74
+end
+case generated/98#0 c390234352489de6
+clean
+active 1-8,10,24-27,29,32-37,39-43
+inactive 12-14,16-19,21-22
+off 0 0 0
+on 7 0
+unknown 36
+end
+case generated/99#0 eb4d11adbf709771
+clean
+active 0-6,8-11,13-18
+inactive -
+off 0 0 0
+on 6 0
+unknown 13
+end
+case generated/100#0 b442aa00a2b64251
+active 1-14,17,22-23,25-27,38-47,52-56
+inactive 18-20,30,32,35-36,49-50
+off 0 0 0
+on 12 0
+unknown 44
+end
+case generated/101#0 965bc51ea3ecb612
+active 1-8,10-11,13,15,19-26,29-30,32-34
+inactive 17,27
+off 0 0 0
+on 7 0
+unknown 27
+end
+case generated/102#0 21355f951b826554
+active 1-7
+inactive 8-10,12-13,15-16,18-20,22,24,26-27,29-30,32,34-36,38-42,45,47-50,52,54-55,57-61,63-69,73-77,79-80,83,85,88,90-97,100-101,103-104,107-110,112-117,119-120,122-124,127-134,138-143,145,147-148,150,152,155,158-161,163-164,166-168,170-171,173-174,176,179-181,183-189,192-194
+off 0 0 0
+on 6 0
+unknown 188
+end
+case generated/103#0 0186598d6df52607
+active 0-5,21-23,25,28-30
+inactive 6-10,12-13,15,17,31-32,34-36,38,40-47
+off 0 0 0
+on 5 0
+unknown 43
+end
+case generated/104#0 0c4e668deb84881b
+active 0-2,6-10,12-23,29-31,46-49,51-52,54-57
+inactive 4,25-27,32-34,36,38-39,41,43
+off 0 0 0
+on 6 0
+unknown 51
+end
+case generated/105#0 133c90e702b6ed5e
+active 1-10,21,24-32,34-40
+inactive 12-14,16,18-19
+off 0 0 0
+on 7 0
+unknown 33
+end
+case generated/106#0 837f1f82f276e373
+active 1-13,23,28,32-35,39-40,43-46,87-89,91-94
+inactive 15-17,19-21,24,26,30,36-37,48-52,56-58,61-63,66-67,69-73,75-76,79-82,84
+off 0 0 0
+on 9 0
+unknown 85
+end
+case generated/108#0 ff4041ea0160290e
+active 0-2,6-14,41-42,44-45,59-62,71,73-77,91-94,97-102,107-109,111-113
+inactive 4,16-21,23,25,27,29,31-33,36-39,46-49,51,53,55,57,64-67,69,79-80,83,85,87-88,103-105
+off 0 0 0
+on 10 0
+unknown 103
+end
+case generated/111#0 2377b0a43f018de8
+active 1-8,10-16,18-25,35,52,54,60,62-67
+inactive 27-29,31-33,36-40,42-43,45,48-49,56-58
+off 0 0 0
+on 5 0
+unknown 62
+end
+case generated/112#0 5dfbe091c0899984
+active 1-14,16,25-27,29-31
+inactive 19-20,22-23
+off 0 0 0
+on 13 0
+unknown 18
+end
+case generated/113#0 4304bbb38c8be27a
+active 0-2,6-8
+inactive 4,9-11,13-16,18-20,22-23,25-26,28-30,32-33,35,37-39,42-43,46-52,54,56-59,61-62,64-65,67-68,70-72,75-78,80-85,87,89-90,94-96,98-110
+off 0 0 0
+on 4 0
+unknown 106
+end
+case generated/114#0 6af241f110161605
+active 1-19,27-35
+inactive 21,23-25
+off 0 0 0
+on 10 0
+unknown 25
+end
+case generated/115#0 c24b34ee17be6b31
+active 0-2,6-11,16,37-38,40-50,55,62-69
+inactive 4,12-14,18-20,22-24,26-28,30-32,34,51-52,57-60
+off 3 3 0
+on 8 0
+unknown 58
+end
+case generated/116#0 ded922e48e2a455b
+clean
+active 1-16,55-60
+inactive 18-20,23-25,27-30,32-33,35-36,38,40-42,44,46-47,49-50,52
+off 2 2 0
+on 16 0
+unknown 41
+end
+case generated/117#0 e0e5e8c4eb93193d
+active 1-9,11,54-58,60-64,77-84,94-97,100-104
+inactive 13-14,17-18,20-21,23-25,27-30,32,35-36,38,40,42-43,45,47-48,50-52,66,69-71,73,86-88,90-92,98
+off 0 0 0
+on 8 0
+unknown 96
+end
+case generated/119#0 92fb0b689b58a7c3
+active 1-16,31-33,37-40,42,76-79,117-124
+inactive 20,22-26,28-29,34-35,44-46,50,52,54-55,57-58,60-67,69,71-72,81-84,86,88,90-91,94-95,97-99,101-102,104-106,108,111-113
+off 0 0 0
+on 11 0
+unknown 113
+end
+case generated/120#0 66b3c14a87e30181
+active 0-16,25-28
+inactive 19-20,23
+off 0 0 0
+on 9 0
+unknown 20
+end
+case generated/121#0 c94483724d528b09
+active 1-9,11-12,14-17,49,51-56,58,81-85,124-128
+inactive 19,21-24,27-29,32-33,35,37,39-40,43,45-46,59,61-62,64,66,68-69,71-72,75,77-78,87-88,90-91,94,96,98-99,101,103,106,108,111-114,117,119-121
+off 0 0 0
+on 8 0
+unknown 120
+end
+case generated/123#0 ac5c1754c95f012d
+active 1-9,13,34-36,51-58,62-65,88-95,97-99,112,118-120
+inactive 11,14,16-17,19-21,23-25,29,31,40-42,45-48,60,67-72,74,76-79,82-84,86,101,103-104,106-107,109-110,114-116
+off 1 1 0
+on 10 0
+unknown 107
+end
+case generated/124#0 96c08906c30b3b0e
+active 1-7,10-11,27-28,30-31,33,39-40,44-45,54-59,81,129-139
+inactive 12-16,18-19,21,24,35-37,47-48,50-51,60-61,63-64,66-67,71-73,75-76,78,84-86,88-94,96,98-100,103-105,107-108,110,112-113,115,117-120,122-124,126
+off 9 7 0
+on 9 0
+unknown 119
+end
+case generated/127#0 f401d67a6570e639
+active 1-11,35-37,39-42
+inactive 14-19,21-24,27-28,30,33
+off 0 0 0
+on 9 0
+unknown 33
+end
+case generated/128#0 53243fdf078c83f4
+clean
+active 0-2,6-10,19-20,22-38
+inactive 4,11,13-15,17
+off 0 0 0
+on 7 0
+unknown 31
+end
+case generated/130#0 e60edd1d1a5e7673
+active 0-7,9-15,20-22
+inactive 16,18
+off 0 0 0
+on 7 0
+unknown 16
+end
+case generated/132#0 5579888ee8fff545
+active 1-8,19,21-24,26-27,32-34,45,47-55
+inactive 9-10,12-13,15,28-29,37-38,40,43
+off 2 2 0
+on 8 0
+unknown 45
+end
+case generated/133#0 1cf8c2fcb57fab10
+active 0-4,7-8,10-17,29,32,34-38,46,48,53-57,62-66
+inactive 5,19,21-24,27,41-42,44,50-51,59-60
+off 1 1 0
+on 5 0
+unknown 61
+end
+case generated/134#0 b79f94480894d67e
+active 1-9,15-16,19-21,66-68
+inactive 10-13,23-24,26-29,32-33,36,38,41,43-44,46-47,49,51-52,54,56-59,61-62,64,70-72,74-75,77,79-80,82-83,85,87,89,91-97
+off 4 4 0
+on 10 0
+unknown 82
+end
+case generated/135#0 308fdf4270b6b6ec
+active 1-7,20-23,55-57,66-67,73-76
+inactive 8-10,12-15,17,25-28,30,32,34,38-39,41,43,45,47,50-52,58-59,61-62,64,70-71
+off 0 0 0
+on 6 0
+unknown 70
+end
+case generated/136#0 98a33143a069d2aa
+active 1-7,18-27,59-61,87-91,111-118
+inactive 8,10-13,15-16,28-32,34-38,40-41,43-46,48,50-52,54-56,63-69,73,76-78,80,83-85,93-96,98-99,101-102,104,106,108-109
+off 1 1 0
+on 7 0
+unknown 110
+end
+case generated/137#0 ca1791e0948075a6
+active 0-6,25-36,85,88-92
+inactive 8,10,13-14,18,20-21,23,38,40-41,43-44,46,48-50,52-53,55,57-59,61-62,65,67,69-70,72-73,75-78,80,82
+off 0 0 0
+on 7 0
+unknown 85
+end
+case generated/138#0 4821119f2363810b
+active 1-8,10-28,30-33
+inactive -
+off 0 0 0
+on 7 0
+unknown 26
+end
+case generated/139#0 cb3825646011630e
+active 0-2,6-11,46-47,51,53-56,92-94,96,110-116,118-122
+inactive 4,12-13,15-16,19-21,23-24,26-27,29-30,32-33,35-39,41,43-44,48-49,57-58,60-62,64,67-69,72-75,78-80,82-83,85,87-90,98,101,103,105-107
+off 0 0 0
+on 7 0
+unknown 115
+end
+case generated/141#0 947c6da031ccadc1
+clean
+active 1-7,14,17-25,27-33
+inactive 8,10,12
+off 0 0 0
+on 7 0
+unknown 26
+end
+case generated/142#0 690ca04aca536e62
+active 1-7,9,13,15-17,19-21,32-34,36-43
+inactive 10,23-24,26,28-30
+off 0 0 0
+on 6 0
+unknown 37
+end
+case generated/143#0 f08767e3dcf9efaf
+active 1-8,19,24-26,28-29,31-38,40,42,49-53
+inactive 9-10,13-14,17,20,22,44-47
+off 3 2 0
+on 8 0
+unknown 42
+end
+case generated/144#0 e97f479eeeb503b5
+active 1-8,17-19,23-25,27,29-32,34-35,65-71,73-75,110,114,119-121
+inactive 10-14,20-21,38-40,43-46,48-49,52-53,56-59,61,63,77-80,82-83,85,87-89,91,93,95-97,99-101,103,105-106,111-112,116-117
+off 8 7 0
+on 13 0
+unknown 97
+end
+case generated/145#0 4a7c8d7398eb4f4f
+active 1-9,17-27,29-30,32-37
+inactive 11-12,14-15
+off 4 4 0
+on 10 0
+unknown 20
+end
+case generated/146#0 e4ebb16204ec8907
+active 0-9,55-56,61-64,72-78,80-86,91,106-113
+inactive 11-14,16,18-20,22,27-32,34-35,37,39,41-44,46-50,52,57-58,66-67,69-70,88-89,93-95,98-99,101,103-104
+off 0 0 0
+on 8 0
+unknown 106
+end
+case generated/148#0 4d85060008dbde29
+active 1-11,13-21,24-29,33-35
+inactive 30
+off 0 0 0
+on 10 0
+unknown 25
+end
+case generated/149#0 d8b8e21a2107108e
+active 0-2,6-10,22-25,33-37,39-41,47-53,55-60
+inactive 4,12-14,16-18,20,27-30,43-45
+off 12 11 0
+on 15 0
+unknown 27
+end
+case generated/150#0 f16fbebd0b16b23f
+active 1-8,11-14,16-18,20,25-26,86-95,97-98,100-104
+inactive 9,22-23,28-30,32,34-35,37-39,41-42,44,46-47,49,51-54,56-59,61,63,65,68-70,72-73,76,78-79,82,84
+off 1 1 0
+on 9 0
+unknown 93
+end
+case generated/151#0 0fb94d8faf7a76f4
+clean
+active 0-16
+inactive -
+off 0 0 0
+on 17 0
+unknown 0
+end
+case generated/152#0 d23efc7450a43de8
+clean
+active 1-7,9-16
+inactive -
+off 0 0 0
+on 6 0
+unknown 10
+end
+case generated/153#0 f3351dda9d9b4e13
+clean
+active 1-25
+inactive -
+off 0 0 0
+on 13 0
+unknown 12
+end
+case generated/154#0 7d7f3489326a8d3e
+active 1-8,31-32,39-44,47-48,71-72,77-79,81-83
+inactive 9-11,13-15,18-19,22,24-26,28-29,35,37,50-53,56-57,59-60,62,65-68,73-75
+off 8 6 0
+on 8 0
+unknown 67
+end
+case generated/155#0 3d5fd8cc37423b99
+active 0-5,7,13,18,20-21,23-24,30-37,39,41-44
+inactive 8-9,11,14,16,26-28
+off 0 0 0
+on 5 0
+unknown 40
+end
+case generated/157#0 ce07d40d95a376f9
+active 1-18,20-23,26-29,34,38-41,57
+inactive 24,32,35,43-46,48,51-53,58-60,63-66,68,70,72-73,75,78-82,84-86
+off 0 0 0
+on 20 0
+unknown 65
+end
+case generated/158#0 9e72dc128dcd903e
+active 1-9,11-16,19
+inactive 17,20-22,24,26,29-31,33,35-37,39-43,45-49,51,53-54,56,59-60,62,64,68-72
+off 0 0 0
+on 8 0
+unknown 64
+end
+case generated/159#0 ab004bdb9b451dd4
+active 1-7,10-12,14-17,19-21,23-25,30,34-37,39-44,57-59
+inactive 8,27,32,46,48-51,53-55
+off 1 1 0
+on 13 0
+unknown 43
+end
+case generated/160#0 949829f8708aed37
+clean
+active 0-2,6-17
+inactive 4
+off 0 0 0
+on 14 0
+unknown 3
+end
+case generated/161#0 a1bb98209e2af293
+active 1-8,15-16,18-19,28-37,84,88-90,105-108,110-113,135-141
+inactive 9-12,21-22,24-26,39-43,45-47,49,51,53-54,56,58-59,62,64-68,70-71,76,79-81,85,93-95,97,100-102,114-115,118,120-121,123,126-127,129-130,132-133
+off 5 4 0
+on 9 0
+unknown 126
+end
+case generated/162#0 6a51f2097e8f4a2a
+active 1-8,41,47-49,58,65,91-92,94,112-116,126,136-137,175-177,210-212,214,226-231
+inactive 10-12,14-19,21-22,24-26,28-29,32,34,36-37,39,42-44,51,53-55,60-63,66,68-70,74,76-79,82-83,85-87,89,96-99,101-103,105-106,109-110,117-121,123-124,129-130,132-133,139-141,143-145,147-148,150,152-153,155-157,160-164,166-167,169-170,172,179-185,189-190,193-196,199-200,204-206,208,216-219,221,223
+off 25 19 0
+on 8 0
+unknown 195
+end
+case generated/163#0 d7114627c9539ec1
+active 1-7,45-46,48,50-51,53-61
+inactive 8,10,13,15,17-18,21-23,25,27-28,30-32,35,37-38,40,42-43
+off 0 0 0
+on 7 0
+unknown 54
+end
+case generated/164#0 e5c2986285555d1e
+active 0-2,6-9,32-36,55-59,61-62,91-96,99
+inactive 4,10-12,14,16-17,19-20,22,24-26,28,38-39,42-43,45,47,49,52-53,65-68,70,73,78,80-83,85,87,100-104,106-107,109-110,112,115-116,118,120-126,128,130,132,134-137,139,141-142,144,146-149
+off 2 2 0
+on 6 0
+unknown 141
+end
+case generated/166#0 d5c649ee8f43e1a6
+active 0-6,8-26,61-68
+inactive 28,30-31,33-35,37,40-41,43-45,47-48,50-51,53,56-59
+off 0 0 0
+on 6 0
+unknown 63
+end
+case generated/168#0 878dd524eb9d1586
+active 1-10,48-49,51-52,104-111,134-137
+inactive 12-14,16-19,21-23,25-26,29-31,33-35,37-39,41,43,45,54-57,59-62,65-66,68,70-71,73-76,78-79,81-82,86-87,89,91-92,94,96,98,100,102,113-114,116-118,120,122-124,128-129,131
+off 18 14 0
+on 10 0
+unknown 107
+end
+case generated/170#0 f4b72c24e057495b
+active 1-23,25,32-35,37-44,81-83
+inactive 26,28-30,46-53,55-56,58-59,61-62,64,66-67,69,71,73,75-78
+off 0 0 0
+on 21 0
+unknown 62
+end
+case generated/171#0 0cd5d41f385525a8
+active 1-11,14-15,18,20-21,23-26,28-30,33,35
+inactive 16,31,37,39-40,42,45-46,48-49,51,53-54,56,58-61,64-68,71-74,76,80,82-84,86-89,91,93-94,96
+off 1 1 0
+on 13 0
+unknown 86
+end
+case generated/172#0 2abd9cd7366cfa11
+active 1-9,14,25,28-29,33-34,38-40,42-46,48-49,53-55
+inactive 10,15-17,19-20,23,31,35-36,51
+off 3 3 0
+on 10 0
+unknown 41
+end
+case generated/173#0 8d90dca88b2c2e87
+active 0-7,9-11,14-18,78-88,91,105-111,145-153
+inactive 20-25,27-28,31-32,34,36,39,41-43,46,49-52,54-56,59-60,62,64,67-69,71,73-75,92-94,98-100,102,114-117,119-122,126-127,130-133,135-136,138,140-143
+off 0 0 0
+on 7 0
+unknown 147
+end
+case generated/175#0 1b6e994518f610f0
+active 0-2,6-10,13-21,24-31
+inactive 4
+off 0 0 0
+on 14 0
+unknown 15
+end
+case generated/178#0 08484d011f9c8194
+active 0-2,6-13,15-20,33-37,77-82
+inactive 4,22-23,27-28,31,39-42,44-45,47,49-50,52-54,57,59,61,63,66,68-70,72,74
+off 0 0 0
+on 8 0
+unknown 74
+end
+case generated/179#0 78db8f266a4bcd62
+active 1-7,10,13-14,36,38,40-41,49,54-55,58-64
+inactive 15-16,18-23,25-27,31-33,42-44,46,50-51
+off 0 0 0
+on 9 0
+unknown 51
+end
+case generated/180#0 6f4a8392722f04b3
+active 1-12,19,67-77,80,91-93
+inactive 13-16,22-25,27-30,32,34-35,37-38,42-43,45,47,49-50,54-57,59,61-62,64,78,82-85,87,89
+off 4 4 0
+on 12 0
+unknown 77
+end
+case generated/181#0 888eda1c728a0cb4
+active 1-9,15-17,32,34-38,42-43,45-47,104-113,145-150
+inactive 10,12,22-24,26-28,40,48-53,55,57,61-64,66-68,70-71,73-74,76-77,80,82-85,87,89-92,94-96,98,100,102,116-117,120-122,124-125,127-130,132,134-135,137,140-141
+off 1 1 0
+on 9 0
+unknown 140
+end
+case generated/183#0 64c407f43746375d
+active 1-8,31-35,40-43,47-48,50,67-69,71-80,89,93,95,142-146
+inactive 10,13-14,16-19,21-25,29,37,44-45,52-54,56,58,60-63,82,84-85,87,90-91,97-99,101-103,105,107-109,112,114,117-120,122,125,127-129,133-134,136,139-140
+off 0 0 0
+on 8 0
+unknown 137
+end
+case generated/184#0 15fb7742f417966a
+active 1-14,17,19,23-25,30,36-37,69,130-133,137-138,179-182
+inactive 15,20,27-28,32-33,41-42,44,47,49-54,56-58,60-61,63-66,70-72,74,76-79,81-83,86-87,90,92,94,96-97,99-100,102-103,105-109,112-114,116,118-119,121-124,126,128,134-135,140-141,143-146,148,150-152,154,156-158,160,162-163,165-166,168,170,172-174,177
+off 0 0 0
+on 12 0
+unknown 170
+end
+case generated/185#0 d65d0a9b193e18f4
+clean
+active 0-2,6-18,24,39-40,57-62
+inactive 4,19-21,25-28,30-32,34-36,42,44-46,52-53,55
+off 3 3 0
+on 15 0
+unknown 44
+end
+case generated/186#0 4f203a67cee2b587
+active 1-8,10,13,22-23,35,43-46,48-50,52,54-57,89-93
+inactive 14-16,18-20,24-26,28-29,31-33,38-40,59,61-62,64-65,67,71-72,74-75,77,79,81-82,85,87
+off 0 0 0
+on 7 0
+unknown 86
+end
+case generated/187#0 2b2e0da49f8aca49
+active 0-4,6-7,9-10,12,16,33,35-36,41-57
+inactive 13,17-18,20-23,25-26,29-31,39
+off 0 0 0
+on 4 0
+unknown 54
+end
+case generated/188#0 facdae7aa514cb3a
+active 1-8,10-12,20-24,26-28,37-41
+inactive 13,15,17,30-31,33-35
+off 0 0 0
+on 7 0
+unknown 34
+end
+case generated/189#0 55aa17a2f7311bea
+active 1-17,19,21,31-34
+inactive 23,26-28
+off 0 0 0
+on 13 0
+unknown 21
+end
+case generated/190#0 26071d3d9c36821d
+active 1-14,31,37-43,55-62
+inactive 15-19,21,23,26,28,34-35,45-48,50-51,53
+off 4 4 0
+on 14 0
+unknown 44
+end
+case generated/192#0 5238d13232e67dde
+active 1-8,15-20,22-24,32-34
+inactive 9-12,26-27,29-30
+off 0 0 0
+on 7 0
+unknown 27
+end
+case generated/193#0 6634524fd1b9bafa
+active 1-7,9-10,12,14-18,25-34,38-41,70-74
+inactive 20,22-23,35-36,43-47,49,51-52,56-57,59,62-63,65-66
+off 0 0 0
+on 6 0
+unknown 68
+end
+case generated/195#0 008bffbb6bb3861e
+active 0-8,10-12,53-72,74-77,79,81-83,109-112
+inactive 13,15,17-18,22,24,26-28,30-32,34-36,40,42-44,46-48,51,86-87,90-91,95-97,99,101-102,104,106-107
+off 0 0 0
+on 8 0
+unknown 105
+end
+case generated/196#0 af10ae5ac53a31e1
+active 0-6,18-19,25-30,46-47,51,53,73-76,85-86,104-106,109-110,112-113,140-142,144-146
+inactive 7-8,12-14,22-23,31-32,34-35,37-38,41,43,48,55,58-59,61-62,64,67-69,78,80-83,87-90,92-98,100,107,115-117,119-123,126,129-131,133-134,137
+off 0 0 0
+on 5 0
+unknown 142
+end
+case generated/197#0 548a7a14a29c123e
+active 1-6,8-10,37-39,41-48,70-78,83,85-89,118,120-122
+inactive 11-14,16-17,21-22,24-27,29-30,32,34-35,50-55,57,59-61,64-66,79-81,92,95-96,98,100-101,103,105-107,109-110,112,114-116
+off 0 0 0
+on 5 0
+unknown 117
+end
+case generated/198#0 e876a46cd7e8e208
+active 1-12,43,47-52,56-58,63-66
+inactive 14-15,17,19,22,24-26,28-34,37,39-41,44-45,53-54,60-61
+off 0 0 0
+on 8 0
+unknown 58
+end
+case generated/199#0 fd150dbe8032ecaf
+active 1-11,13-17,20-31
+inactive -
+off 0 0 0
+on 10 0
+unknown 21
+end
+case generated/200#0 cb8172462b4d96fd
+active 0-2,6-12,26-27,34-35,37-38,49-52,71-76
+inactive 4,13-14,17-18,20,22-23,29-30,32,42,44-45,47,55-57,59,61,63,65,69
+off 0 0 0
+on 8 0
+unknown 68
+end
+case generated/201#0 ceb91f1d53200963
+active 1-13,15-27
+inactive -
+off 0 0 0
+on 12 0
+unknown 15
+end
+case generated/202#0 96d010aa9d448760
+active 0-8,71,73-75,94-96,110,112-117,122-132
+inactive 9-10,12-13,15,17-19,23-25,27-29,31,33-36,39-40,42-43,45-46,49,51,53,55,57,59,61-64,66-67,69,78-79,83-84,88-89,91,98-99,101-103,105,107,119-120
+off 0 0 0
+on 7 0
+unknown 126
+end
+case generated/203#0 9ad1f0c44cf794e1
+active 1-7,11-12,38-45,47-48,67-73,99-100,102-103,111-114
+inactive 8,15,18-21,23-25,27-28,30-31,33,35,50-51,53-54,56-57,59-62,64,74-77,79,81-84,86,88-89,91-93,95-96,105,108-109
+off 1 1 0
+on 7 0
+unknown 106
+end
+case generated/206#0 15686d8b1f2792a1
+active 1-15,17-18,21-31
+inactive -
+off 0 0 0
+on 15 0
+unknown 15
+end
+case generated/207#0 e85f6e26e3363acb
+active 1-8,10-20
+inactive -
+off 0 0 0
+on 7 0
+unknown 13
+end
+case generated/208#0 ccfee04e39e20191
+clean
+active 1-7,14,21-22,31-33,44-46,48-54,56-59
+inactive 8,11,15,19,23-26,28-29,35-38,40-42
+off 4 2 0
+on 7 0
+unknown 48
+end
+case generated/209#0 d673280423de8545
+active 1-23,52-54,60-64
+inactive 24-26,28-34,36,38-39,41-42,45-46,48,56-57
+off 0 0 0
+on 21 0
+unknown 43
+end
+case generated/210#0 b9db15d582984bb5
+active 1-7,9-10,12-22
+inactive -
+off 0 0 0
+on 6 0
+unknown 16
+end
+case generated/211#0 bd06dfff08c5f2d1
+active 1-7,9-12,20,22-25,61,90-91,94-96,100-102,133-138
+inactive 13-18,27-28,31-35,37-39,41-43,45-46,48,51-53,55,57-58,62-63,65-68,70,73-75,78,80-82,84,88,97-98,103-105,108-109,111,113-114,116,118-119,121-123,125-129,131
+off 0 0 0
+on 6 0
+unknown 132
+end
+case generated/212#0 a671ccddc19190ee
+active 0-7,9-12,61-70,72-74,133-135
+inactive 13,15-19,22,25,27,29-31,33-35,37,39,42-46,48-49,51-52,54-55,57,59,76-77,79,81-83,85,89-92,94,97-99,101-102,104-105,107,110-111,113,115,117,119-122,124-126,128,130
+off 0 0 0
+on 7 0
+unknown 129
+end
+case generated/213#0 31ab01656b2b3c17
+active 1-7,18-20,31-34,39-41,46-47,54-61,63-66,71
+inactive 8-10,12,14-15,22-25,27-29,35-36,43,49,51,69,72-73,75,78-79,81-83
+off 9 6 0
+on 7 0
+unknown 67
+end
+case generated/214#0 54a016cc6af8c7aa
+active 0-5,7,12-14,16,41-46,48-50
+inactive 8,17-19,21-23,25,27-28,31-34,36-37
+off 0 0 0
+on 5 0
+unknown 46
+end
+case generated/218#0 3c0f06a4856fc6d7
+active 0-2,6-8,10-20,24-30,32-35
+inactive 4,22
+off 0 0 0
+on 4 0
+unknown 31
+end
+case generated/220#0 635cda4fdd96ab94
+active 1-8,13,15-22,24-25,27-30,32-41,58-60,63-65,67-69,71-73
+inactive 9-10,43-45,50,53-56
+off 0 0 0
+on 7 0
+unknown 66
+end
+case generated/221#0 0d8920761abfab2b
+active 0-2,6-11,25-29,31-32,48,52-59,63,65-67
+inactive 4,12-13,15,17,19-22,34-36,38,40-42,45-46,50,61
+off 12 8 0
+on 8 0
+unknown 47
+end
+case generated/224#0 4bd0e1da60b20bd2
+active 1-13,15-17,21-28,30-35
+inactive 19
+off 0 0 0
+on 12 0
+unknown 23
+end
+case generated/225#0 7d29b9fbbd5df764
+active 0-2,6-10,12-14,16-18,50-52,59-60,65,67,94,96,99,108,149,151-152,154-156,166-169,174,184,186-188,190-192
+inactive 4,20,22,24-26,28-29,32-34,37,39-44,48,53,56-57,61-63,69-70,74-76,78-79,81,83,85,87-90,101-102,104-106,109-110,112-119,121-124,126-127,130-131,133-135,137,139,142-143,145,147,158-160,162,164,171-172,175,178-181
+off 0 0 0
+on 6 0
+unknown 186
+end
+case generated/226#0 ff92abe8e9cc9855
+active 1-6,20-31,33-38,40-43
+inactive 7-10,12,14-16,18
+off 0 0 0
+on 5 0
+unknown 38
+end
+case generated/227#0 8c68160d7139303a
+active 1-12,29-35,44-48,51,63,65,67-68,72,80-82,84-86,105-106,111-115
+inactive 14-16,18-19,21-24,26-27,37-38,40-42,49,52,54-57,59,69-70,75-76,78,87,89-90,92,95,97,99,101,103,108
+off 13 11 0
+on 18 0
+unknown 81
+end
+case generated/228#0 a1a2a83eb4072a77
+active 1-7,22,24,27
+inactive 9-13,16-17,19,25,28-29,31-32,34-35,37,39-44,46-49,53-55,57-59,62,65,68-74,77-84,86-88,90,92-95,97,100-101,103-104,106-111
+off 0 0 0
+on 6 0
+unknown 105
+end
+case generated/229#0 29c6666546c3ac44
+clean
+active 1-16,20-22,72-74,124-127
+inactive 17-18,24-26,29-30,32-33,37-38,40,42,44-47,49-54,56,59-62,64-65,68,70,76,78-79,81-82,84-85,88-89,91,93-95,98-100,102-103,105,108-109,112-114,117-118,120-122
+off 5 5 0
+on 19 0
+unknown 101
+end
+case generated/230#0 2066cdd4713aa58f
+active 1-12,14,16,18-22,24-30,57-59
+inactive 32-36,38,40-42,45,48,50-54
+off 0 0 0
+on 11 0
+unknown 48
+end
+case generated/231#0 589530e026d8ae09
+active 0-7,18,20-21,52-55,57-61,69-70,72,94-97,99-104,106-109
+inactive 10-11,14-16,23-24,26-30,32-33,35-36,38,40-41,44-49,63,65-67,73-75,77-78,80,82,84-85,87-89,92
+off 0 0 0
+on 4 0
+unknown 106
+end
+case generated/233#0 0d705bd7ffeae113
+active 1-6,44-45,84-86,88-89
+inactive 7-9,11-12,14,16,18-19,21,23-24,26-28,30-31,33-35,37-40,47-48,50-53,55-57,59,62-64,66-67,70,72,74-76,78,80-81,90-92,95-97,99-100,102-103,105,107-109,111,114-115,117-119,121-122,124,126-127,129-130,132,135,137,140-147
+off 36 24 0
+on 6 0
+unknown 105
+end
+case generated/235#0 4c580ec10ac53775
+active 1-9,11-14,28-35
+inactive 16-19,21-25
+off 0 0 0
+on 8 0
+unknown 27
+end
+case generated/236#0 016beb99ae7d82f6
+clean
+active 0-2,6-10,15-18,24,54-60,78,80-83
+inactive 4,11-13,20-21,26-28,30-34,36-40,43-45,47,49-50,62-64,67-69,71-74,76
+off 0 0 0
+on 5 0
+unknown 78
+end
+case generated/237#0 e9e9f151572b8a39
+active 1-10,12,14-17,54,74-81,83-84,86-90,92-97
+inactive 20-22,24-27,30-31,33,35-38,40-42,44-45,47-49,52,56-60,62,64-65,67-69,71-72
+off 0 0 0
+on 6 0
+unknown 91
+end
+case generated/238#0 c11066b0a9d253b8
+active 0-2,6-11,15-18,44-48
+inactive 4,12-13,19-26,28,30-31,33-34,36,40,42,49-50,52-56,58,62-64,67,69-70,72-73,75-76,78,81,83,85,87-90,94-96,98,100,103,105-107,109-110,112-113,115,117-119,121,123-124,126,128,130-136,138-139,141-143,146-148,151-152,154-160,162-165,167-168,170,173,175-178,180-181,184,186,189,191,193-197,199,201-202,204-206,208-210
+off 2 2 0
+on 11 0
+unknown 196
+end
+case generated/239#0 a6941e6a0d32f4c4
+active 1-11,71-82,84-89
+inactive 13-15,17-18,20,22,24,26-27,29,31,33-34,36,39,43,46-51,53-55,57,59-61,63-64,66,68-69
+off 5 4 0
+on 11 0
+unknown 72
+end
+case generated/240#0 e1eda5a983f34090
+active 1-6,9-10,12,41,49-52,54-55,57-59,79-80,82-88
+inactive 7,13-14,16-17,19-20,23-25,27-28,31-34,36,38-39,42-43,45-47,60-62,64,66,68-69,71-72,74-76,90,92-94,96-104,106-108
+off 3 3 0
+on 9 0
+unknown 94
+end
+case generated/242#0 cc6e01167472a32e
+active 1-14,20,29,36-37,39-45,47-48
+inactive 15-18,21-23,25-27,31,33-34,49-51,53-54,56,58-59,61,63,65-66,68,70,73-75,77,81-84,86-88
+off 0 0 0
+on 11 0
+unknown 77
+end
+case generated/243#0 39e6d5c4192c793d
+active 0-2,6-11,13-15,17-23
+inactive 4
+off 0 0 0
+on 7 0
+unknown 16
+end
+case generated/244#0 c1fba12dac335a12
+active 1-8,14-16,18-25,29-30,32-33,35-36,43,45-57
+inactive 9-11,27,39,41
+off 2 2 0
+on 8 0
+unknown 47
+end
+case generated/245#0 b69966eda34a7c37
+active 1-9,11-15,59-70,72-73,78-82
+inactive 17-20,22-25,27,29,33,35,37-39,41-42,45-48,50-52,54,56-57,76
+off 0 0 0
+on 8 0
+unknown 74
+end
+case generated/246#0 db7060565f8e1cd8
+active 1-6,10-15
+inactive 7-8,16-18,20,22-24,26-28,30,34-35,38,41-46,48-51,53-63,66-67,69-71,73,76-78,80-81,83-84,86,88,90,92-94,96-97,99-100,103-104,108-109,111-115,117-118,120,122,124,126,130-135
+off 2 2 0
+on 7 0
+unknown 125
+end
+case generated/247#0 9ca9b802ceb0ed69
+active 1-9,13-14,27,29,32-33,36-44
+inactive 10-11,15-17,19-20,22-23,34
+off 0 0 0
+on 8 0
+unknown 36
+end
+case generated/248#0 4847e9c38a480079
+active 0-10,43,45,72-81,83-84,86-88
+inactive 12,14-15,17,19-21,24-25,27-31,33-35,38-40,47-48,50-51,53,57,59-61,63-65,67-68,70
+off 0 0 0
+on 11 0
+unknown 77
+end
+case generated/249#0 60f034db38621420
+active 1-8,25-31,50-51,56-57,71,73-79,84-86
+inactive 9-15,19-20,22-23,33-34,36,38-41,43-45,47,52-54,60,62,64-65,67-68,81
+off 15 11 0
+on 10 0
+unknown 60
+end
+case generated/250#0 e4229458cdc6a42f
+active 1-9,11-15,43-46,48,51-53,55-59,62,64-70,93,97-100,103-105,130,133-134,148,150,152-155
+inactive 16-18,20,22-23,25-26,29-31,33-34,36,39,49,60,71,73-74,76-77,80-81,84-86,88-89,95,101,107-109,111-114,117,119-120,124-125,128,131,135-137,139-140,143,145-146
+off 0 0 0
+on 8 0
+unknown 147
+end
+case generated/251#0 8f1b7fc31a84e383
+active 1-11,27-30,32-33,39,44-51,53-56
+inactive 13,15-16,18-19,21-23,25,35,37,41-42
+off 12 9 0
+on 14 0
+unknown 27
+end
+case generated/252#0 af6899978eae8ca6
+active 1-7
+inactive 8-11,14-15,17-25,27,29-31,33-35,37-41,43-47
+off 0 0 0
+on 6 0
+unknown 41
+end
+case generated/253#0 4a5e04e4dc492022
+active 1-6,8,24-25,27-30,33,91-108
+inactive 9,11-13,17-19,21,31,35-39,42-43,45,47-48,50-51,53,55,58-59,61-62,64-65,67,69,71,73,75-76,78,80-81,83-86,88
+off 0 0 0
+on 5 0
+unknown 103
+end
+case generated/254#0 dd0bbcd83b73d7ba
+active 0-2,6-15,19-21,23-26
+inactive 4,16-17
+off 0 0 0
+on 10 0
+unknown 16
+end
+case generated/255#0 d4960907bbaadf93
+active 1-28
+inactive -
+off 0 0 0
+on 20 0
+unknown 8
+end
+case generated/256#0 d1727e274fd49188
+active 0-2,6-14,16-17,19-21,23,25-33,35-39
+inactive 4
+off 0 0 0
+on 10 0
+unknown 29
+end
+case generated/257#0 e56e3c74c423c555
+active 1-9,11-16
+inactive 18-22,24,26,28-30,32,34,36,38-39,41,44,46-48,51-54,56-59,61-63,65-68,70-71,73-77,79-81,83,86-88,90-94,97-98,101,103,105-107,110-111,113-117
+off 0 0 0
+on 8 0
+unknown 109
+end
+case generated/258#0 dfe7a5bed42bfa85
+active 0-6,8-9,22-25,27-28,32-34,47,101-105,107-116
+inactive 10-12,14-15,17-18,20,30,35-37,40-41,43-44,49-54,57-58,60,64,66-68,71,74,76-77,81-82,84-86,89-91,94-95,97-98
+off 0 0 0
+on 6 0
+unknown 111
+end
+case generated/259#0 385879ca3f115d65
+active 1-14,16-24,60,66-68,85-89
+inactive 26-31,33-35,37,39-41,43,46,48,51,55,58,61-64,70-71,73-75,77-79,82-83
+off 0 0 0
+on 13 0
+unknown 76
+end
+case generated/261#0 ba71696f9dd5736c
+active 1-11,19,21-28,59,61-64,67-69,71,81-83
+inactive 13,15-17,29-30,32-33,36-38,40-41,43-44,47,51,53,55-57,72-74,76,78-79
+off 0 0 0
+on 10 0
+unknown 73
+end
+case generated/262#0 e4a327a5fc7d0e8d
+active 1-6,8-9,30-40,43-44,46-47,49-51,77-79
+inactive 11-13,15-16,19-22,24-25,28,41,53-54,56-57,59-60,62,64-66,68,70,72,74
+off 0 0 0
+on 5 0
+unknown 74
+end
+case generated/263#0 7ca5ae1e72898f6f
+active 1-6,31-32,35-36,54-55,62,70,72,105,107-113,115,117-122
+inactive 7-9,12-15,17,19-20,22,24,26-28,37-38,40,42-44,46-47,49,51,57-58,60,63-64,67,74-76,78-80,83-89,91,93-94,97-99,101
+off 0 0 0
+on 5 0
+unknown 117
+end
+case generated/264#0 235728c74687b373
+active 1-6,8,32-41,43-46
+inactive 9,11,13-15,17-18,20-22,25,27,29-30
+off 0 0 0
+on 5 0
+unknown 41
+end
+case generated/265#0 3530a67fddc9c0fb
+active 0-6,8,21-23,40,43-44,50,52,59,66-71,74-77
+inactive 9-10,12-14,16-18,25-26,28,30,32-33,35-36,38,45,47-48,53-55,57,62-64,78-79,82-85,87-89,91,93-95,97-98,100-101,103-105,107-109
+off 0 0 0
+on 6 0
+unknown 104
+end
+case generated/266#0 2fbc9607c5b1968f
+active 1-17,19-20,32-35
+inactive 22-26,28,30
+off 0 0 0
+on 15 0
+unknown 20
+end
+case generated/267#0 feba0943123be16d
+active 0-8,52,77-80,85-87,92-93,95-96,118-122,124,141-142,225-228,230-233
+inactive 10-12,14-15,17-18,20,24-25,27,29-31,33,35,37-39,41-42,44,46-47,49-50,53-54,56-58,60,62,64-66,68,70-71,73,75,82-83,88,90,99-101,104-105,108-111,113,116,127-129,131-134,136-137,139,143-146,149-150,153-155,157,159-163,165,168,171,173-176,178-179,181-182,184-185,187,189,191,194-198,200,202,205,207,209-211,213-215,217,219,223
+off 10 7 0
+on 9 0
+unknown 214
+end
+case generated/268#0 e51a2e1b1389714d
+active 1-8,25,30,36-37,42-43,50-51,53,56-60,81-82,84,102,104-110,113,127-129,142-144
+inactive 9,11,13,16-19,21-22,26-28,31-34,39,45-48,54,62-64,66-67,69-70,72,75,77-78,86-89,91-92,94,96-98,100,114-117,119-121,123-124,131-133,136-138,140
+off 0 0 0
+on 8 0
+unknown 136
+end
+case generated/269#0 e1f18bc40105bbd7
+active 1-7,9-12,14-15,19
+inactive 17,20-23,26,29,31-32,34-38,40,43,46-48,50-51,53,55,57,59-63,65-67,69-70,72-74,76-79,83-86,88-91,93-94,96,98-100,103-106,108,111,114-116,118-119,121-122,124,126,131-133,135-140,142-143,145-146,148,150-151,153-155,157-158,162,164,166-168,170-172,175,177-182,184-185,188,191-193
+off 0 0 0
+on 6 0
+unknown 187
+end
+case generated/270#0 3d478cec28fdc32c
+active 1-11,15-17,23-31,33-44
+inactive 12-13,19-21
+off 5 5 0
+on 28 0
+unknown 7
+end
+case generated/273#0 3a94f6a16a49663f
+active 1-6,8-10,14-15,22-30,32-45
+inactive 11,17-19
+off 0 0 0
+on 5 0
+unknown 40
+end
+case generated/275#0 55450cef8c21aaa3
+active 1-9,16,25-35
+inactive 11-12,14,18,20,22,36-39,42-44,47,50-53,55-57,59,62-63,65-66,68,70-74
+off 0 0 0
+on 8 0
+unknown 66
+end
+case generated/276#0 7a0e65096962ba27
+active 1-9,22-25,28-34,78-80,83,85-86,94-100
+inactive 11,13-15,17-20,36-37,39-40,42-43,45-47,50-52,54-57,60-62,64,67,69-70,72-73,75-76,88-89,91-92
+off 9 9 0
+on 20 0
+unknown 64
+end
+case generated/277#0 72e52a6ab8f27bd5
+active 0-2,6-9,11,51,53,55,90,97-108,113,130-131,186,188-191
+inactive 4,12,14-16,18-21,23,26-29,31-32,35,37-39,43-45,47-48,57-58,60-63,65,67-69,71,73,75-77,79-81,83,85,88,92-93,95,109-111,114-117,119-121,123,125,127,134-135,137-140,142,144,146-147,149-150,153,156,158,160-165,167-168,170,172-173,176-178,180-182,184
+off 0 0 0
+on 5 0
+unknown 186
+end
+case generated/278#0 a20ad111360a772b
+active 1-7,9,13-14,20,22-36
+inactive 10-11,15,17-18
+off 0 0 0
+on 6 0
+unknown 30
+end
+case generated/279#0 37c6da1852fd3333
+active 0-2,6-9,12,16-23,29-34
+inactive 4,10,14,25-27
+off 0 0 0
+on 5 0
+unknown 29
+end
+case generated/281#0 1d6f88cc7b8dbb0f
+active 1-12,23,25-26,42-43,53-54,74-79,81-83
+inactive 14,16-17,21,27-30,32-33,35-36,38-40,44-45,47-49,51,57-59,61-62,64-71
+off 0 0 0
+on 12 0
+unknown 70
+end
+case generated/282#0 593e561cbc28f1d1
+active 1-14
+inactive 16,18,20-24,26,28-33,35-36,38,41-43,45-47,49-52,54-56,58-61,64,66,68-70,72,74,76-77,79-80,82,84-86,88-90,93-96,98-99,101,103-104,106,109,111,113,116,119-121,123-124,126-129,131,133,135-137,139-140,142-144,146,149-152,155-157,160,162-164,166,168,170-174
+off 0 0 0
+on 11 0
+unknown 163
+end
+case generated/283#0 d88da936769f0dc1
+active 0-5,7-9,19-20,22-27,29,31,38,48,50,84,86-89
+inactive 10-11,13,16-17,32-34,36,40-42,44-46,51-54,56-57,60,62-65,68-70,72-73,75,79,81-82
+off 0 0 0
+on 5 0
+unknown 85
+end
+case generated/284#0 dfe2bf5b339f7c8e
+active 0-6,47-50,52-53,62,85-91,93-94,110-114
+inactive 8,10-11,13-14,18,20-21,23,25-30,32,34-35,38-40,43,45,54-55,57,59,64-66,68-71,73-74,76-78,80,82-83,96-97,101-102,104-106,108
+off 2 2 0
+on 7 0
+unknown 104
+end
+case generated/285#0 a6c540fb644bf57b
+active 1-6
+inactive 8-9,11,13-15,17-23,25-28
+off 0 0 0
+on 5 0
+unknown 23
+end
+case generated/286#0 a3f3f6ab00fdfff1
+active 1-13,17-19,21,23-25,41-51
+inactive 15,28,30-33,35-37,39
+off 0 0 0
+on 8 0
+unknown 43
+end
+case generated/287#0 3ee68e81aa65d58a
+active 1-17,19-22,25-27,32-34
+inactive 23,29
+off 0 0 0
+on 10 0
+unknown 24
+end
+case generated/288#0 bd0b48567ffa76de
+active 1-7,9,47-52,61-65,67-68,94-96,131-135
+inactive 11-12,14-18,20-23,25,27,30-32,34,36,38-39,43-45,54-55,58,69-74,76,79-81,83-86,90,98-103,105-108,110-112,114,117-119,121-122,124,126,129
+off 0 0 0
+on 6 0
+unknown 129
+end
+case generated/289#0 0dc15f7f3f5866d3
+active 1-7,9-12,14-17,21-25,27,34-35,42-43,45,47,49-51
+inactive 19,28-31,36-38
+off 0 0 0
+on 6 0
+unknown 45
+end
+case generated/290#0 b9dc8ea47712b3f4
+active 1-16,20,44-48,56-57,59-62
+inactive 17-18,21-23,28-32,35,39,41,50
+off 0 0 0
+on 15 0
+unknown 47
+end
+case generated/291#0 03075cd95a9d1bc7
+active 1-6,9-13,15-16,32-33,37-44,46
+inactive 17-19,21-22,24-25,28-29,35
+off 0 0 0
+on 10 0
+unknown 42
+end
+case generated/292#0 6e66bcb52d54e94b
+active 0-2,6-8,37-38,40,43,46-52,111-115,117-121,123,135-138,141-143
+inactive 4,9-14,17,19,22,24-26,28-31,35,54-57,59-66,68-69,71,73,75,77-79,82,84,86,88-89,91-93,95-96,98,100-101,104-106,109,125-126,128,130-131,133
+off 12 8 0
+on 5 0
+unknown 125
+end
+case generated/293#0 d5eee5acb9f48009
+active 1-6,11-12,14-18,20-22,29-30,39-41,43,45-48
+inactive 7,23-26,32-33,35-37
+off 3 1 0
+on 12 0
+unknown 31
+end
+case generated/294#0 b6f4874d1076cae1
+active 0-2,6-15
+inactive 4,16,18,20-22,25-29,31,33,35,37,39,41-44,46,48-49,52-55,57,59-60,63,65-69
+off 2 2 0
+on 12 0
+unknown 54
+end
+case generated/295#0 f6d3f2a570b3e746
+active 1-9,11-13,40-41,43-44,46-57
+inactive 15-16,20-21,23-26,28-29,31-32,35-37
+off 0 0 0
+on 8 0
+unknown 49
+end
+case generated/296#0 fc691a53594cae06
+active 1-11,45-47,49-50,56-58,66-68,77,79-80,82,95-96,104-105,112-124
+inactive 12-14,16,18,20-23,25,27-29,31-33,36-39,41,53-54,61-62,64,70-71,74,83-84,87-90,92-93,98-99,101-102,108-110
+off 5 4 0
+on 11 0
+unknown 108
+end
+case generated/298#0 8e203173f08c7036
+active 1-6
+inactive 8-9,11,13-14,16-18,20-22,24,26-27,29-30,32-33,35-42,44,46-50,53-55,57-61,63-65,67,70-73
+off 0 0 0
+on 5 0
+unknown 68
+end
+case generated/300#0 eeef2359c0f8ef58
+active 1-10,20-25,45-47,49-52
+inactive 12-13,16-18,27-30,32,34,36-38,40-41,54,56-58,60-61,63-67,69,71-74,76,79,82-84,87-88,90-91,93-94,96,98-99,101,103-106,108-109,111-114,116,119,122-124
+off 0 0 0
+on 9 0
+unknown 115
+end
+case generated/301#0 df65971dd5b08981
+active 0-6,8,20-34
+inactive 10-13,15-16,18
+off 0 0 0
+on 6 0
+unknown 29
+end
+case generated/302#0 76a0c34df6347284
+active 1-7,9,27-28,30,32-38,42-52
+inactive 10-17,19-21,23,39-40
+off 0 0 0
+on 6 0
+unknown 46
+end
+case generated/303#0 f80fcc8d492d2422
+active 0-8,43
+inactive 11-13,15-19,22-24,27,29-33,35-36,38,40,44,46,48,50,52-54,56-57,59-60,62-69,71-73,75-76,78,81,83,85,87-92
+off 0 0 0
+on 9 0
+unknown 84
+end
+case generated/304#0 d4bec8c2315d2fd0
+active 0-2,6-10,12,16,19-25,39-43,77,83,89-96
+inactive 4,14,26-28,30-31,33-34,36,45,47-49,51-52,54-56,60-61,65-67,69-70,72,74,78-81,86-87
+off 0 0 0
+on 6 0
+unknown 90
+end
+case generated/305#0 d3830bed3a8b57a0
+active 1-10,12-13,52-56,73-78,80-82,91-92,95-98,101-103
+inactive 15,17-18,20-23,25,27,29,31,33,35-39,42,44,46,48,57-59,61,63,65-66,68,70,83-85,87-89
+off 0 0 0
+on 9 0
+unknown 94
+end
+case generated/306#0 fa8112634a024879
+active 1-6,66-68,72,74,78,83-95,98-101
+inactive 7-9,11-13,15,18-21,23-25,28-31,34,36-39,41-42,45-49,52,54-55,57-60,62,69-70,75-76,80-81
+off 10 7 0
+on 6 0
+unknown 85
+end
+case generated/309#0 69752cfa462a1814
+active 1-7,10-12,44-52,66,71,73,78-81
+inactive 13-16,18-20,22,24,26-28,31-32,34-36,39-40,42,54-56,58-59,61-63,67-69,75-76
+off 11 8 0
+on 10 0
+unknown 58
+end
+case generated/310#0 4536d810f6a94240
+active 0-2,6-9,18-20,22-23,27,50,52-55,80-84,86,89-95,140-145
+inactive 4,10,13,15-16,24-25,29-30,32,34-35,37,39,41,44-45,47-48,56-61,63-64,66-68,74,77-78,97-99,101,103,106-110,112,114-115,117,119-122,124,126-127,129,131,135,137-138
+off 0 0 0
+on 5 0
+unknown 140
+end
+case generated/311#0 c5abb433a2a193d0
+active 1-10,12-20,23-24,26-29
+inactive 21
+off 0 0 0
+on 9 0
+unknown 20
+end
+case generated/314#0 d9430d5b9e8c45a1
+active 1-9,13,20,22-24,26-31,35,56,58-60
+inactive 10-11,14-18,33,37,39-44,46-48,50-52
+off 2 2 0
+on 9 0
+unknown 48
+end
+case generated/316#0 caebdc39b4081bd2
+active 1-20
+inactive -
+off 0 0 0
+on 15 0
+unknown 5
+end
+case generated/317#0 3c599640c260f0ff
+active 1-9,15-16,21-22,24-27,32-38,43-48,60,62-64,72-73,85-87
+inactive 10-13,17-19,29,40-41,50-51,53,55-58,66-68,70,76-78,80-82
+off 7 7 0
+on 15 0
+unknown 62
+end
+case generated/318#0 d1ab8c0888cde2c3
+active 1-6
+inactive 7,9-13,15-16,18-19,23-25,27-37
+off 0 0 0
+on 5 0
+unknown 32
+end
+case generated/319#0 5a2c24753348913e
+active 0-5,11,13-15,19-22,33,35-38,70-71,75-80
+inactive 6,9,17,23-25,28-31,40-42,44-45,47,49-51,53,55,57-59,61,63,66-68
+off 4 2 0
+on 6 0
+unknown 70
+end
+case generated/320#0 f5f8d58ced935995
+active 1-8,17,19-23,26-32,38-39,41-42,44-46
+inactive 9-11,13-15,33-36
+off 0 0 0
+on 7 0
+unknown 39
+end
+case generated/321#0 5e623d72acf83303
+active 0-2,6-10,65-67,69-77,79-81,83-84,95,99,101-104,112-113,144-147,149-151
+inactive 4,11,13,15,17-19,21,23-24,26-27,30-32,34,36,38-39,42,44,46-47,49-51,53-54,57,59-60,63,86,89-91,93,96-97,106-108,116-120,122,125-126,129-130,132-134,136,138-141,152,154,156-159,161-163
+off 0 0 0
+on 7 0
+unknown 156
+end
+case generated/322#0 e48ece7268baee1d
+active 1-15,23-28,30-31,33-37,55,70-74,83,95-103,105-110
+inactive 17-18,20,40-42,44-45,48-49,51,53,56-59,62,65-66,68,77-78,81,86,88-90,92
+off 5 3 0
+on 20 0
+unknown 83
+end
+case generated/323#0 20a7387cedcb2181
+active 0-2,6-11,13-18,27-33,37-42
+inactive 4,20-22,24-25,35
+off 0 0 0
+on 7 0
+unknown 35
+end
+case generated/325#0 0160366e9c358d28
+active 1-12,31,33-35,46-49,51-61
+inactive 14,16,18,20-24,26-27,29,37-38,40,43-44
+off 0 0 0
+on 12 0
+unknown 48
+end
+case generated/326#0 6333c3e38d9f6ba7
+active 1-8,73-76,79-81,83-87,92-101,103-104,106-108
+inactive 10-11,14,16,18-21,24-25,28-29,31-32,34-37,39-41,43-45,48-49,53-58,60-62,64,66-67,69-70,77,89-90
+off 0 0 0
+on 5 0
+unknown 103
+end
+case generated/327#0 796962fd71fe3a5d
+active 1-8,32-34,36,38,42-49,51,88-92
+inactive 9-10,12-13,15,17-18,20-21,23,25-26,28,40,53-55,57-59,61-62,64-65,67,69,71-72,74-75,78,80-81,83,85-86
+off 1 1 0
+on 8 0
+unknown 83
+end
+case generated/328#0 80ccae5bf28b76b7
+active 0-7,9-11,46-48,52,55-56,59-60,62-72
+inactive 13-16,18-20,22-26,28-29,31,34-37,40,43-44,49-50,53
+off 0 0 0
+on 7 0
+unknown 66
+end
+case generated/329#0 95993d4529064fe3
+active 1-10,16,23-25,44-59
+inactive 11-13,17-20,27-30,32-34,37,40-42
+off 4 3 0
+on 10 0
+unknown 45
+end
+case generated/330#0 6f11b4b3ed5e66ad
+active 0-2,6-14,16-17,19-22,24-27,40-42,44-45,51,56-57,65-73
+inactive 4,28-29,31-33,35-36,38,46,48,53-54,59-60,63
+off 0 0 0
+on 10 0
+unknown 63
+end
+case generated/334#0 4a26ab371d574ab2
+active 0-9,11-12,24-27,45-48,60-62
+inactive 17,21-22,29-31,33,35,37-38,40-43,49-50,52-54,56,58
+off 0 0 0
+on 9 0
+unknown 54
+end
+case generated/335#0 5ce03a57a5b32fb6
+active 1-16,22-23,33-35,37-39,59,61-74
+inactive 18-20,24-26,29-30,41-42,44-46,48-52,55-57
+off 0 0 0
+on 14 0
+unknown 60
+end
+case generated/337#0 a451076c6aab6a31
+active 1-6,45-47,49-50,53,84,113-115,117-119,122-126,133,135-140
+inactive 7-10,12-14,16-17,19-22,24-26,28-30,32-34,36,38,40-41,56-59,61-63,65-66,68-72,74,78-81,86-91,93,95,97-99,101-104,106,108-110,127,129-131
+off 0 0 0
+on 5 0
+unknown 135
+end
+case generated/338#0 e9a45ba822b2044b
+active 1-16
+inactive -
+off 0 0 0
+on 7 0
+unknown 9
+end
+case generated/339#0 480d57919b4f6cf5
+active 1-11,13,15,23-38
+inactive 17-18,20-21
+off 0 0 0
+on 10 0
+unknown 28
+end
+case generated/340#0 3c0d6fbdf4c68d6c
+active 0-2,6-8
+inactive 4,9,12,14-16,18,21-23,25-26,28-32,34-40,42-45,47-48,51-52,54,57-61,63-66,68-71,73,75,77-78,80,83-85,87,91-94,96-98,102-103,105-106,108,110,112,116-121,123,125-127,130-132,135-138,140-142,144-146,148-149,151-156
+off 0 0 0
+on 4 0
+unknown 152
+end
+case generated/341#0 72715b47564628eb
+active 1-22,39,41-46,68-72,82-84
+inactive 23-25,27-28,30,32-35,37,48-49,51,53-54,56-58,60-62,65-66,74-75,79
+off 0 0 0
+on 17 0
+unknown 67
+end
+case generated/342#0 dfd0a3131140bf99
+active 1-12,14,20,25-26,47-48,53-55,78-82
+inactive 16-18,21-23,28-30,32-33,35-36,38-39,43-45,49-51,57-59,61-64,66,70-72,74-76
+off 0 0 0
+on 12 0
+unknown 69
+end
+case generated/344#0 ca798bd6755ad88c
+active 1-22
+inactive -
+off 0 0 0
+on 11 0
+unknown 11
+end
+case generated/345#0 675a3186e4d5fc7b
+active 1-11,27-30,32-37,49-57
+inactive 13-15,18-20,22-23,25,40-43,46-47
+off 0 0 0
+on 10 0
+unknown 47
+end
+case generated/346#0 97036b90919e7f1d
+active 0-2,6-11,13-15,19-21,28-30,36-38,41-43,76-77,79,82-89,92-94
+inactive 4,16-17,23,25-26,32-34,44-45,49-51,53-56,58-59,62-63,66-67,69-71,74,80
+off 0 0 0
+on 7 0
+unknown 87
+end
+case generated/348#0 401dcf053d4b116c
+active 1-6,23-25,30,32,47,49,66-67,69-81,89,91-95,103-106
+inactive 7-15,19-20,26,28,34,36-37,39,42,44-45,50-51,53,56,58-59,61-62,83-84,86,98,100-101
+off 10 9 0
+on 6 0
+unknown 90
+end
+case generated/349#0 4445df646974dcf6
+active 0-7,13,16-17,21-30
+inactive 8-11,18-19
+off 4 4 0
+on 8 0
+unknown 18
+end
+case generated/350#0 7eeeca652d853fbe
+active 1-10,18,20,59-66,68-69,71-74,99,101-102
+inactive 11-12,14-16,22-27,29-30,34-39,42-43,47,49-51,53-54,76-78,80-82,85,87-89,91-92,95-97
+off 5 5 0
+on 10 0
+unknown 86
+end
+case generated/351#0 94b0ea0f01ad2f12
+active 1-8,38-40,42-47,55-60,75-91
+inactive 9-10,12,14-18,20-21,25-26,28,31-33,35-36,49,52-53,62-69,71-72
+off 0 0 0
+on 7 0
+unknown 84
+end
+case generated/352#0 eaf6fa5f88786408
+active 1-14,16-22
+inactive -
+off 0 0 0
+on 21 0
+unknown 0
+end
+case generated/353#0 30bea651eca99eb8
+active 0-6,8,10-18
+inactive -
+off 0 0 0
+on 6 0
+unknown 13
+end
+case generated/355#0 4576bf622c70cb09
+active 1-9,24-28,33-36,59-63,74-75,78-86
+inactive 10-11,13,15,17-18,20,30-31,38,40-41,43-44,46-48,51-53,55-57,64,66,68-71
+off 0 0 0
+on 8 0
+unknown 78
+end
+case generated/356#0 f0e9e68a9b072f33
+active 1-7,11-13,15,18,24-33,35-37
+inactive 8-9,20-22
+off 2 2 0
+on 11 0
+unknown 20
+end
+case generated/357#0 5b3c7b910c41642d
+active 0-2,6-8,14-15,17-18,41-42,46-48,50-56,58-60
+inactive 4,10-12,19,21-24,26,28-29,31-32,34,37,39,43-44
+off 0 0 0
+on 4 0
+unknown 56
+end
+case generated/358#0 be13e1dba278a5de
+active 1-6,24-25,27-29,48-51,58,69-77,80-83,100-102
+inactive 8-12,16-17,20-21,30-32,34-36,38,40,42,44-45,53-54,56,60,62-64,66,86-89,91-92,94-97
+off 0 0 0
+on 5 0
+unknown 97
+end
+case generated/359#0 20ed3b3ad6dc5550
+active 0-2,6-11,13-19,23-31,37-46,48-54
+inactive 4,21,33-35
+off 1 1 0
+on 21 0
+unknown 29
+end
+case generated/360#0 0905748798ebc49e
+active 1-7,10-21
+inactive 22-29,32-33,35-36,40-41,44-46,48-53,55-56,58-59,61-64,66-71,73-75,77,80-84,86-87,90-93
+off 0 0 0
+on 18 0
+unknown 73
+end
+case generated/361#0 0fbc2a2cdea66579
+active 1-8,31,35-36,38,59-66,70-71,79-81,87-90,92-98,100-101,103-104,109-113
+inactive 9,11,13,16,18-21,24-26,29,33,39,41-42,44-45,47-48,51-52,54-55,67-68,75,77,83-85,106-107
+off 0 0 0
+on 7 0
+unknown 106
+end
+case generated/362#0 0885c93b2a527681
+active 1-9,35,37,59,61,63-67,83-85,92
+inactive 11-13,15-16,18-20,23,25-27,29-32,38,40,42,45-47,49-50,52-54,57,69-73,75-76,78,80-81,88-89,93-94,96-97,100,102,104,106,108,111-113,117,119-120,122-128,130,133-137,139-143,145,147-150,152-155,157-159,161,164,166,168-172,175,177-180,182-186
+off 23 16 0
+on 9 0
+unknown 152
+end
+case generated/364#0 01b29abd72b70a62
+active 0-5,7-8,10-13,16-25,28-30
+inactive -
+off 0 0 0
+on 5 0
+unknown 26
+end
+case generated/365#0 e3dd3a5f6b1a6d6c
+clean
+active 1-15,22-28
+inactive 17-20
+off 0 0 0
+on 10 0
+unknown 18
+end
+case generated/366#0 137caef06ed188b5
+active 0-2,6-13,21-25,31-32,69-71,73,84-86
+inactive 4,14-17,19,26-28,35,37,39-42,45-46,48-50,54-57,60,62-65,67,74-76,78,80
+off 3 3 0
+on 10 0
+unknown 73
+end
+case generated/367#0 72b9ea94704b1a6b
+clean
+active 1-8,10,12,14-21
+inactive -
+off 0 0 0
+on 7 0
+unknown 14
+end
+case generated/368#0 93b12b45fa5ab5a4
+active 1-13,21-29
+inactive 14,16-19
+off 0 0 0
+on 11 0
+unknown 18
+end
+case generated/370#0 a8ffaa7a52e873cf
+active 1-6,11-15,44,76,78,86,88-89,91-92,109-117,120-121,130,158-159,196-204
+inactive 7,9,17-21,23-24,26-28,30,33-34,36,38-40,42,46-50,53-54,56,58-59,61,65,68,70,72-74,79-80,82,84,94-97,100-101,104-106,118,123-124,127-128,132-133,136-137,139-141,143,145-146,148,152-154,156,161-162,165-167,171,173-174,176,178-181,183-186,188-189,192,194
+off 0 0 0
+on 6 0
+unknown 198
+end
+case generated/371#0 6281924ac0cba72a
+active 0-10,20,22-28,33-36,49-50,52-56
+inactive 12-13,15,17-18,29,38-43,45-46
+off 5 5 0
+on 14 0
+unknown 33
+end
+case generated/372#0 b1e96e2ca9da3c05
+active 1-25,40-41,50,53-57,59-60,67-70
+inactive 27-30,32,34-35,37-38,43-46,48,51,62-63
+off 0 0 0
+on 13 0
+unknown 57
+end
+case generated/373#0 5f21120c48ccf9e5
+active 1-9,14-24
+inactive 10-11
+off 1 1 0
+on 9 0
+unknown 14
+end
+case generated/374#0 47b962a3f999ddd6
+active 1-11,47,49,52,69-75,78-85,92-94
+inactive 12-15,17-20,22-23,26-27,29,31,33-36,39,42,45,55-57,59-62,64,67,76,87,89-90
+off 17 12 0
+on 11 0
+unknown 66
+end
+case generated/375#0 c00e6f272def6e7e
+active 0-2,6-8
+inactive 4,9,11-13,15-16,19-21,23-32,34-36,39-40,43-51
+off 0 0 0
+on 4 0
+unknown 47
+end
+case generated/376#0 d1b7300977f54353
+active 0-2,6-11,14,17-19,21-24,29-30,86-88,97,99,108,110,121,125,127,132-136
+inactive 4,15,25-27,32-38,41,44-48,51-52,55-57,59,61-62,64,66-68,70-71,73,75,77-79,81-82,89-90,93-95,100-101,103-104,106,111-114,116-117,119,122-123,129-130
+off 0 0 0
+on 5 0
+unknown 131
+end
+case generated/377#0 590342cf4e30ac37
+active 1-9,15-16,19-21,24-28,39-40,44-47,57-60
+inactive 11-13,29-32,35,37,41,49-50,53-54
+off 0 0 0
+on 6 0
+unknown 54
+end
+case generated/378#0 dcb7096a2bc4eaf5
+active 1-14,16-28
+inactive -
+off 0 0 0
+on 22 0
+unknown 5
+end
+case generated/379#0 9c16fd4dbf697fdc
+active 1-8,41,53-54,56-63,65,75-77,81-85
+inactive 9-11,13-17,19,21-22,24-25,27,30-34,38,42-44,46-47,49,51,66,68-72,79
+off 17 13 0
+on 8 0
+unknown 59
+end
+case generated/380#0 e5fbb8ffe03abd87
+active 0-15
+inactive -
+off 0 0 0
+on 9 0
+unknown 7
+end
+case generated/381#0 c0cf1ee089b63897
+active 1-10,12-15,31-44
+inactive 17,19,22-23,25-27,29
+off 0 0 0
+on 9 0
+unknown 35
+end
+case generated/382#0 eb6946fd177402c7
+active 0-10,24,26,31,56-60,70-72,98-103
+inactive 11,13-16,18-19,21,28,33-35,37-39,41,43-44,47-49,51,53-54,61-63,65,67,75-76,78,80,83,85,87-89,91,93-95
+off 1 1 0
+on 11 0
+unknown 92
+end
+case generated/383#0 df74ed00078b19f1
+active 1-8,10-11
+inactive 12-14,16-18,20,22,25-28,30,32,36-37,40-41,44,46-52,54-55,57,59-62,64-67
+off 0 0 0
+on 6 0
+unknown 61
+end
+case generated/384#0 d1bad7637138aba8
+active 0-17
+inactive -
+off 0 0 0
+on 12 0
+unknown 6
+end
+case generated/385#0 d4d9df949b4a2f12
+active 1-9,11,13-14,16,19-26
+inactive -
+off 0 0 0
+on 9 0
+unknown 16
+end
+case generated/386#0 d4144b443cdf9189
+active 0-2,6-19,33-35,39-40,44,50,58,60
+inactive 4,21-22,24,26,29-31,36-37,41-42,46,48,52,54-56,61-62,64,66-67,69,71-72,74,76-80,82-83,87-90,92-94,96-98,100-102,104,107-108,110-112,115-118
+off 0 0 0
+on 6 0
+unknown 112
+end
+case generated/387#0 6e3143eaee138a77
+active 1-7,11,13,15-21,38-39,42-45,47,54-55,58-60
+inactive 8-9,22-24,26-28,30,32,34,36,49-52
+off 2 2 0
+on 8 0
+unknown 48
+end
+case generated/388#0 4d95728af8ee57c3
+active 1-15,31-33,35-42,48-50
+inactive 16-20,22,24-25,27,44-46
+off 0 0 0
+on 12 0
+unknown 38
+end
+case generated/389#0 c64b6a2b88a77292
+active 1-16,18-21
+inactive -
+off 0 0 0
+on 15 0
+unknown 6
+end
+case generated/390#0 16ab6c452e09e45f
+active 0-6,14,18-21,44-50,90-95,118-120,130,132-135,181-183,185-191,206-210
+inactive 7,9,11-12,15-16,23-24,27-29,31,33-34,36-38,40,51-54,56-58,60-62,65-66,69,71-74,78-80,83,86-87,97-98,102,104-107,109,112,116,121-123,127-128,136,138-140,142-146,148-149,152-153,155,157-158,160-161,163-164,166-167,169,172-174,177-178,194-195,197-198,200,202-203
+off 0 0 0
+on 7 0
+unknown 204
+end
+case generated/391#0 32786313b84d6a9c
+active 1-7,9-10,13-14,16,18-19,70-76,79-82,84-85
+inactive 11,21-24,26-28,30-31,34-35,37-40,42-47,49-51,55-57,59,61-64,67-68
+off 0 0 0
+on 6 0
+unknown 79
+end
+case generated/392#0 53251b6c3aac6b82
+active 1-16,20-25
+inactive -
+off 0 0 0
+on 21 0
+unknown 3
+end
+case generated/394#0 d1c45701af480306
+active 1-7,18-19,27-36,73-85,90,93-96
+inactive 9-13,15,20-22,24-25,39,42-43,45-46,48-49,52,54-55,57-58,60-62,64-65,69-71,87-88
+off 0 0 0
+on 6 0
+unknown 90
+end
+case generated/396#0 1925f445cc90bdc3
+active 1-17,20-26
+inactive -
+off 0 0 0
+on 8 0
+unknown 18
+end
+case generated/398#0 983194e6354d2d8c
+active 1-7,17,24-27,37-39,45,50-60
+inactive 9-11,13-15,19-22,29-31,33-34,40-43,47-48
+off 0 0 0
+on 6 0
+unknown 54
+end
+case generated/399#0 7b6c86b494d26cae
+active 0-18,24-27
+inactive 20,22
+off 0 0 0
+on 16 0
+unknown 12
+end
+case generated/400#0 5c8c37102ced1dff
+active 1-13,16-17,36-37,48
+inactive 19-21,23,25-27,29-30,32-33,38-40,42-44,46,49-52,54-57,60-62,64,67,69-71
+off 18 13 0
+on 17 0
+unknown 32
+end
+case generated/402#0 7d01c81fa1834921
+active 0-7,14-16,30-31,37-38,41-44,46-50
+inactive 8-10,12,18-21,23,25-26,28,33-35
+off 2 2 0
+on 8 0
+unknown 41
+end
+case generated/403#0 d97b8db299ee4541
+active 1-11,13-14,25-28,33-37
+inactive 15-16,18,20,22-23,29-31
+off 0 0 0
+on 10 0
+unknown 27
+end
+case generated/404#0 a60db70783ee820b
+active 1-8,10,13,22,24-25,27-30,37-47,50,57-59
+inactive 11,15,18,20,32-34,48,52,55
+off 0 0 0
+on 7 0
+unknown 52
+end
+case generated/405#0 d50dc9963a34f40e
+active 0-4,6,8,10-18
+inactive -
+off 0 0 0
+on 4 0
+unknown 15
+end
+case generated/406#0 0e232ff6272b7e1b
+active 1-8,10-12,15-19,21-28,30,34-36,44,46-47,51-55
+inactive 31-32,38,40-42,49
+off 0 0 0
+on 7 0
+unknown 48
+end
+case generated/407#0 c2ebcbfa0dae1a25
+active 1-9,20,37-45,50-53,63-64,66-72
+inactive 10-11,13-15,17-18,22-24,26-28,30,32,35,46-48,55-58,60-61
+off 1 1 0
+on 9 0
+unknown 62
+end
+case generated/408#0 8b7fe76a256b2e98
+active 1-7,9-16,22,29-30,37,77,86-94,107-111,129-133,136-137,210-212
+inactive 17-19,23,25,27,34-35,39,41-42,44-46,48,50,52-53,56-57,60,62,65-66,69,72-73,75,79-83,96-98,100,103,105,112-113,115,117,119-120,122,124-125,127,139,141-143,146-147,149-150,153-157,159-160,162,164-166,168-169,172,174-177,179,181-182,184-185,187-189,191-194,196-197,199-200,202,204,206,208
+off 0 0 0
+on 6 0
+unknown 206
+end
+case generated/409#0 cc413951b229d3ab
+active 0-2,6-16,93-104,106-109
+inactive 4,18-22,25-28,31,33,35-36,39-40,43-46,48,50,52,54-55,57,59,61-64,66,68,70-71,74,77,79-82,84-85,88,90-91
+off 10 8 0
+on 13 0
+unknown 85
+end
+case generated/410#0 b97e959204dad6ca
+active 1-11,26,29-41
+inactive 13-15,19,21,24,27
+off 0 0 0
+on 8 0
+unknown 33
+end
+case generated/415#0 4f9d6fa7a98a29e8
+active 1-7,14-17,19-21,42-44,46-56,58-62
+inactive 8-11,23-26,28-31,33,35-36,38
+off 0 0 0
+on 6 0
+unknown 56
+end
+case generated/416#0 23ebc0c340b511d7
+active 1-7,16-18,23-30,32-35,37
+inactive 8-9,11,13,21,38-40,42,44-47,50-53,56,58,60,63-65
+off 0 0 0
+on 6 0
+unknown 59
+end
+case generated/417#0 00e081fa7eb19d20
+clean
+active 1-7,11,13,19-21,23-24,35-41,43-44,60,64-67
+inactive 9,14-16,26,29-30,32,45-47,49-51,53-54,57,62
+off 0 0 0
+on 6 0
+unknown 61
+end
+case generated/419#0 dd71c752a0660a59
+active 1-10,37-45,65-69,71-75
+inactive 12-13,15-19,21-23,26-27,29-32,34,47-50,52-53,55-57,59,62-63
+off 22 17 0
+on 14 0
+unknown 35
+end
+case generated/420#0 056fec76992af2d5
+active 0-5,9-12,14-16,18-19,21-24,26,46-52,54,56-58,61-63
+inactive 6-7,27,29,31,33-37,40,42
+off 0 0 0
+on 5 0
+unknown 59
+end
+case generated/423#0 e1987c3df22143f7
+active 1-13,15-16,18-21,23,27-28,34,66,68-72,78-79,81-82,84-85,90,92,103-105,111-113
+inactive 24-25,30-32,35-38,40,43,45-52,55-58,60-61,63-64,73,76,87-88,93-96,99,101,107-109
+off 0 0 0
+on 8 0
+unknown 105
+end
+case generated/424#0 d26e4dcefb8ac635
+active 1-8,13-14,33-43,46-50,52-56
+inactive 9-11,16-21,23-24,28,30
+off 0 0 0
+on 7 0
+unknown 49
+end
+case generated/425#0 7a273cb75fbfd276
+active 1-7,39-40,42-44,46-49,51-56,59,66,89,91-96
+inactive 8-12,15,17,19-20,22,24-26,28-29,31-32,35-37,57,60-63,67-73,75-78,80,84,86
+off 12 8 0
+on 7 0
+unknown 77
+end
+case generated/426#0 cc5f046a6c2f2881
+active 0-2,6-8,13-17,20,22-23,34,36-37,93-105,107-108
+inactive 4,9-11,24-25,27,31-32,40,44-49,52-54,58-60,62-65,68-69,72-75,80-81,84,87-88,90
+off 3 3 0
+on 10 0
+unknown 92
+end
+case generated/427#0 5f870bed2ab66301
+active 1-13,107,114-117,125,127-128,161,163-167,169-170,182-186,201,203-205,235,237,239-241,261,268,291-293
+inactive 14-17,19,22-23,26,28-29,31-33,35-38,41-42,44,47-48,50-52,55-58,62-63,65-68,71,74-76,79-83,85-88,90,92,94,96,98-99,101,104-105,109,111-112,119,121-123,130,132-136,138-141,143-146,148,151,153-154,157-159,172,174-177,179-180,188,191,194,196-197,207-212,214-215,217,219,221,223,225-226,229,231,233,243-245,247-248,250,254-256,259,263,265-266,269-271,273,275-277,281-283,285-286,288-289
+off 0 0 0
+on 8 0
+unknown 285
+end
+case generated/428#0 d41280f4615f23e7
+active 1-7,12-14,26-29,31-33,40-43,45-47,52-58,60-62
+inactive 8,10,16-17,19-20,22,35-37,48-49
+off 1 1 0
+on 7 0
+unknown 54
+end
+case generated/429#0 c08d3e18ab44807b
+active 0-2,6-9,13,15,17-22,24-27
+inactive 4,11
+off 1 1 0
+on 6 0
+unknown 18
+end
+case generated/430#0 9d052aabdf33c176
+active 1-7,9,15-17,20,28,31-35,97-108,110-111,113-115,124-125,130-131,133-135
+inactive 10-12,18,22,25,29,37,41-44,46-47,50-52,54-56,59,61,63-66,68-70,72,74-76,78,80,82-84,86-88,91-93,117-120,122,127-128
+off 0 0 0
+on 6 0
+unknown 129
+end
+case generated/431#0 a1a8bb63a52d46b1
+active 0-5
+inactive 6-9,11,13,15-17,20,22,24-25,27,29-33,37-39,41-42,44,47-60,62,65,67-73
+off 5 4 0
+on 6 0
+unknown 63
+end
+case generated/432#0 fe4ef32c81fa488a
+active 0-2,6-13
+inactive 4,14,16-17,19-22,24-25,27,30,32-35,38,40-42,46-50,52,55-57,60,62-63,65,67,69-71,73-74,76-77,79,81-83,85,88,90-91,93,96-97,99-102,104-105,107,112-114,116,118,120-121,123-124,126,129,131,133-134,136-144
+off 0 0 0
+on 7 0
+unknown 137
+end
+case generated/433#0 367ce7e166e6d162
+active 1-10,36-37,39-44,47-48,50,53-56,58-61
+inactive 11,13-18,21,24-25,27-29,34,45
+off 0 0 0
+on 7 0
+unknown 54
+end
+case generated/434#0 996bd32106aabb0f
+active 1-8,10,15-29
+inactive 12
+off 0 0 0
+on 7 0
+unknown 22
+end
+case generated/435#0 029595c9b73ba943
+active 1-9,11-13,35-36,48-50
+inactive 15-16,18-23,26-30,32,38-39,41,44-45,51,53,55-58,60,63-64,67-69,71,73-76,78,80,83-87,89,91,93,95-96,100,103-106,108-110,112-115,117-118,120,122-124,126-127,129-131,134,136-144
+off 0 0 0
+on 8 0
+unknown 136
+end
+case generated/436#0 7ea79dcd1a58088b
+active 0-2,6-8,10,12-13,15,28,43-50,52-65
+inactive 4,17-20,22,25-26,30-34,36-37,40-41
+off 0 0 0
+on 4 0
+unknown 61
+end
+case generated/438#0 d202f588e446bd70
+active 0-4,7,9-14,72-73,75-85,87-88
+inactive 5,16,18-21,23-24,26-27,30,32-34,37,39,42,44-46,49,51-52,55,57-58,60-61,63-64,66,69-70
+off 1 1 0
+on 5 0
+unknown 83
+end
+case generated/439#0 83b301f596a774da
+active 1-12,14-22,28-29,31,52-56
+inactive 23-26,33,35,37,39,42-43,45-46,49-50
+off 0 0 0
+on 12 0
+unknown 43
+end
+case generated/441#0 1eb483fc33983ead
+active 0-13,42-46,59,97-100,106,110-116,118-125
+inactive 15,17-19,22-23,25-28,30-31,33,36-37,40,50-51,54-57,61,63-64,66-72,74-77,79-81,83-85,88,90,93,95,102,104,108
+off 0 0 0
+on 11 0
+unknown 115
+end
+case generated/442#0 445271d6817e7586
+active 1-8,49,53-55,69-72,103-111,113-124
+inactive 10-12,14,16-18,20-21,23-25,27-28,30-32,35-39,41,44-45,47,50-51,58,60-61,63,65-67,73-76,79-82,84-85,89,91,93-95,97,99-100
+off 37 26 0
+on 8 0
+unknown 76
+end
+case generated/443#0 1903182c7b6c3f70
+active 1-15,17-25
+inactive -
+off 0 0 0
+on 8 0
+unknown 17
+end
+case generated/444#0 4591dbd2df9809d0
+active 1-10,12-15,30-32,34-37,45-46,51,54-57,72,78-82,98,100-103,105-107,111,118,129-134
+inactive 17-22,24,26,28,38,42-43,47-49,52,59-61,63,65,67-69,74,76,84-85,87,90-91,93,95-96,109,112-113,116,121,123-125,127
+off 0 0 0
+on 9 0
+unknown 125
+end
+case generated/445#0 b285c424d5e66911
+active 0-20
+inactive -
+off 0 0 0
+on 7 0
+unknown 14
+end
+case generated/447#0 cccaddb79cb7f4a7
+active 0-2,6-13,28-37,41-47
+inactive 4,15-16,18-22,24-26,39
+off 0 0 0
+on 9 0
+unknown 38
+end
+case generated/448#0 1ad1a97e29145a41
+active 1-10,20-31,33-35
+inactive 12,15,17-18
+off 0 0 0
+on 7 0
+unknown 28
+end
+case generated/450#0 f358766e6124e32c
+active 1-7,27,31-32,34-36,43,45,50-62
+inactive 8-12,14-17,22,24,28-29,37-38,40-41,46-48
+off 22 15 0
+on 13 0
+unknown 24
+end
+case generated/451#0 6d3eb1aa46179ab6
+active 0-2,6-9,44-52,54-59
+inactive 4,10-14,16,19-20,23-24,26-28,30-32,35,37,41-42
+off 0 0 0
+on 5 0
+unknown 54
+end
+case generated/452#0 df92688e2c017d57
+active 1-11,20,22-24,33-34,65,70,72,75-76,88-101
+inactive 12-15,17-18,26-29,31,35-36,40,43-45,47,50,52,54,57,59,61,67-68,73,78-79,81,85-86
+off 3 3 0
+on 11 0
+unknown 87
+end
+case generated/454#0 967e35ed457d8bf2
+active 1-7,14-16,18-28,35-41
+inactive 8-9,11-12,29-32
+off 0 0 0
+on 6 0
+unknown 35
+end
+case generated/455#0 fedc88b1fb9c9183
+active 1-6,24-28,68,74-82,100-101,110-113,118,120-127
+inactive 7,10-14,16,18-20,31,33-34,36-37,39-42,46-47,49-50,52,54-56,58-60,62,64-65,70-72,85,88-90,92-94,96,98,103,105-106,108,115-116
+off 0 0 0
+on 6 0
+unknown 121
+end
+case generated/457#0 f1ae523feb7913b8
+active 1-7,12,18-20,22-23,33,35,39,42,44-46,51-53,55-64
+inactive 8-10,13-16,26-27,29-31,36-37,48
+off 7 7 0
+on 10 0
+unknown 45
+end
+case generated/459#0 f5988436de7e06aa
+clean
+active 1-7,15-22,24-27
+inactive 9-10,12-13
+off 4 4 0
+on 14 0
+unknown 6
+end
+case generated/460#0 0df20a047c2193f0
+active 1-7,10-14
+inactive 16-18,20-21,24-25,27-28,31,33,35-36,38-40,42-45,48-49,51-53,55,59-60,62-63,65-70,72-73,76-79,81-83,85,87-88,90-91,93,95-96,98-100,103,105-107
+off 0 0 0
+on 11 0
+unknown 94
+end
+case generated/461#0 b30a260714667eb8
+active 1-8,11-14,20-21,25-26,31-32,84,87-88,90,92,94,110,134,143-148,150-155,157-160
+inactive 9,16,18,22-23,27-29,36-38,40,42-45,47,49-51,53-55,57-58,60,62,65-68,70-74,76-78,80-81,85,96-97,99,101-103,105-106,108,111-114,116,118,120-122,124,126,128-129,131,136,138,140-141
+off 1 1 0
+on 8 0
+unknown 151
+end
+case generated/462#0 5408ac5b9c0fb58d
+active 0-2,6-19,21-22,24-26
+inactive 4
+off 0 0 0
+on 10 0
+unknown 16
+end
+case generated/463#0 a8c5b662f5bae2f4
+active 1-14,39-40,48-50,54-55,57-65
+inactive 16-18,20,22-24,26,29,32,34,36-37,42-44,46,51-52
+off 0 0 0
+on 10 0
+unknown 55
+end
+case generated/464#0 9e78c95c24d14efd
+active 1-9,12-14,20
+inactive 10,16-18,21-24,26,28,30-31,34-36,38,40-45,47,49-50,52,54-56,59-63,65-68,70-71,74-88,90-92,94,96,98-99,101,104-105,108,110-111,114,116-122,125-128,131,133,136,138-140,142,144-146
+off 16 12 0
+on 13 0
+unknown 114
+end
+case generated/465#0 5df5a4f08317b5a0
+active 1-6,8-11,14-23
+inactive -
+off 0 0 0
+on 5 0
+unknown 18
+end
+case generated/466#0 6fccc86b55f0f7ac
+active 1-9,12-13,17,21-22,24,26-28,30-41,43-47,98-99,106-110,112,114-116
+inactive 10,15,49-50,52,55-56,60-63,65,67,70,73-75,77-79,82-83,85,91-92,94-96,101-102,104
+off 1 1 0
+on 10 0
+unknown 103
+end
+case generated/467#0 f613b456b4d8beb0
+active 0-6,8,26-27,29,37-40,77,91-93,118,120,134,156-158,160,162-164
+inactive 9-14,16-17,20-21,23-24,31-32,34-35,41,43-44,46-48,50,52-53,57-58,60-66,72-74,78-79,81-84,86,88,95-96,98-101,104-105,107-109,112-113,116,121-123,125-126,128-129,131-132,135-137,139,141-142,144-145,148-149,151,153
+off 0 0 0
+on 6 0
+unknown 159
+end
+case generated/468#0 5428c3ca91ebcba6
+active 0-2,6-9,14,16-19,59-65
+inactive 4,10,12,21-24,26,28-29,33-34,36-37,40-42,44-45,47-49,51-52,55-57,67,69-72,74-75,77,80-81,83-89
+off 0 0 0
+on 6 0
+unknown 83
+end
+case generated/471#0 d94bec85a8f4ed97
+active 1-21,88-92,95-96,98-101
+inactive 23-24,26,30,33,35,37-39,41,43-44,47-48,50-52,54,56-57,61-64,66-68,71-72,74-77,79-80,82-85,93
+off 0 0 0
+on 10 0
+unknown 91
+end
+case generated/472#0 8a49170c071553dd
+active 0-2,6-15,17-21,23-26,28,34-36,41-43
+inactive 4,30-32,37,39
+off 0 0 0
+on 11 0
+unknown 32
+end
+case generated/473#0 4c7e48e83865d458
+active 1-10,43,49-51,56,72,74-75,78-82,90,94,98,102-104,120-126,137,139-140,146,155-159,166,170-171,182,186,192,195-196,198-200
+inactive 12,14,16-18,20,22-24,26,28-29,32,34-35,37-38,40,44-45,47,53,57-60,62,65-66,68,76,84,87-88,91-92,96,100,106,108,110-112,115,127-130,132,135,142-144,149,151,153,161,163-164,167,173-174,178-180,183-184,187-190
+off 1 1 0
+on 10 0
+unknown 187
+end
+case generated/475#0 96ee5cfb7b852f07
+active 1-10,17-18,22-38,41-43,46,77-80
+inactive 11,13-15,20,39,48-50,52-54,58-59,62-65,67-68,70-71,74
+off 0 0 0
+on 8 0
+unknown 72
+end
+case generated/476#0 41f1aa70d43660e1
+active 1-10,12-13,39-44,48-57,63,66,68,70-72
+inactive 16-20,23,25,29-30,32-34,36,46,60-61,64
+off 0 0 0
+on 9 0
+unknown 63
+end
+case generated/477#0 8d771a1a4df9d0ba
+active 0-8,14-17,25-26,49,52,55,59-63,86-94
+inactive 11-12,18,20,22-23,27-30,32-35,37,39-40,42,44,47,56-57,65-68,70,72,74,76-78,80,84
+off 0 0 0
+on 8 0
+unknown 87
+end
+case generated/478#0 f4deb43f39fca787
+active 1-11,15,17-18,36-44
+inactive 12,20-22,24-25,27,29,32-34
+off 0 0 0
+on 11 0
+unknown 33
+end
+case generated/479#0 423af246126f8a60
+active 1-6,9-11,14-16,18-25,42-47
+inactive 27-31,33,35,37,40
+off 0 0 0
+on 8 0
+unknown 37
+end
+case generated/480#0 7a675872e6371425
+active 1-10,19-29,34-37
+inactive 12-14,16-17,30-32
+off 5 5 0
+on 12 0
+unknown 17
+end
+case generated/481#0 4e983691df67a15b
+active 0-2,6-13,15-18,20,26,31-32,39-43,45-46,49-51
+inactive 4,22-24,28-29,34,36-37
+off 0 0 0
+on 9 0
+unknown 42
+end
+case generated/482#0 8a98bf514a576ee0
+active 1-7
+inactive 8,10-12,15-17,19,21-22,24,28,30-31,33-35,37-42,44,46-48,51,53,55-56,58-61,63-64,66-68,70-72,74-84
+off 1 1 0
+on 7 0
+unknown 76
+end
+case generated/483#0 d6f0c4fcc556656c
+active 1-6,8-9,18,20-25,48-50,53,59,87-93
+inactive 11-13,15-16,27-30,33,35,37-38,40,42,44-45,51,55-57,62,64-65,69-70,72,74-75,77-79,81-82,84-85
+off 0 0 0
+on 5 0
+unknown 88
+end
+case generated/485#0 2e994495fe8aeb0c
+active 0-5,17-18
+inactive 6-7,9-11,13,19-23,25-27,30-31,33-35,38-39,41,43,45-46,48-49,54,56-68,70-72,74-76,78-83,85-88
+off 0 0 0
+on 5 0
+unknown 84
+end
+case generated/486#0 fb50dcda53d7e603
+active 1-11,23-24,26-28,35-45,48-49,57-61,73-75
+inactive 13-17,19-20,30-33,46,51-52,54-55,64-65,67,70-71
+off 0 0 0
+on 8 0
+unknown 67
+end
+case generated/487#0 d50e71c195952ae2
+active 0-2,6-8,10,15-24,42-45
+inactive 4,12-13,26-27,30,32-33,35,37-38,40
+off 0 0 0
+on 4 0
+unknown 41
+end
+case generated/488#0 e049bfd6ce4b4095
+active 1-15,25-26,52-60
+inactive 17,19,21-23,29,31,35-37,39-42,44-46,48
+off 5 5 0
+on 16 0
+unknown 35
+end
+case generated/490#0 caef2ada015fccde
+active 1-6,8-10,24-31,37,40,96,98-99,101,122,131-132,135-140,158,161-162,174,186-194,227-230
+inactive 14-15,17-19,21-22,33,35,38,43-49,51,53,56,58,60-65,68,70,72,74,76,78-81,83-84,87-88,90-91,103-107,109-112,114,116,118-119,124-125,127,129,141,143-144,146-150,152-153,155,164-167,169,171-172,176,178-179,181,183-184,196-199,201-204,206,208,210,212-215,217,219-220,224-225
+off 0 0 0
+on 5 0
+unknown 225
+end
+case generated/491#0 27a0a4203a2d76c9
+active 1-26,28,35-38
+inactive 30,32-33
+off 0 0 0
+on 25 0
+unknown 13
+end
+case generated/492#0 31b3a6beb250a685
+active 0-5,9,27-32,35-40,46-52
+inactive 6-7,11-16,18-21,23-24,43-44
+off 0 0 0
+on 5 0
+unknown 48
+end
+case generated/493#0 868ac37c161cdbb6
+active 1-13,15,17,21-22,27-30,32,55-60,64-65,68-71,74-76,100,102-104
+inactive 18,23-24,35-36,38,40,42,44,46-47,49,52,62,78-79,83-85,87,89-92,95,98
+off 0 0 0
+on 9 0
+unknown 95
+end
+case generated/494#0 8c121245a3adb656
+active 0-10,29-30,32-33,35-37
+inactive 11-13,15-18,20,22-23,25-26,38,40-42,44,46-50,52-53,57-58,60-68
+off 3 3 0
+on 11 0
+unknown 55
+end
+case generated/495#0 14c2d9c255494219
+active 1-6,8-10,15-18,24-26,32-36
+inactive 12-13,19-22,28-30,37,39-40,42-43,47-48,50-53,56-61,64,66-67,70-72,74-75,77-86,89-92,94-95,98-99,102-106,108-109,112-113,116,118-119,121-123,125-127
+off 0 0 0
+on 5 0
+unknown 122
+end
+case generated/496#0 6f0728726c747fc8
+active 1-9,15-17,38-41,55,57-67
+inactive 11,13,19-24,26,28,32-33,36,43-46,48,50,52-53
+off 2 2 0
+on 9 0
+unknown 53
+end
+case generated/497#0 c32e5b28019605b3
+clean
+active 0-2,6-20
+inactive 4
+off 0 0 0
+on 17 0
+unknown 3
+end
+case generated/498#0 70a90c71fccfec2b
+active 1-9,11-12,14-15,20-26,28-29,31,33-36,41-43,78-83
+inactive 17-18,38-39,45-46,48-49,51-53,55-58,61,63,65-67,69,71,74,76
+off 0 0 0
+on 8 0
+unknown 75
+end
+case generated/499#0 df6b416e50e59fa2
+active 0-2,6-10,12-20,60,82-84,99,120-121,126,131,133-135,138,146-152
+inactive 4,22-24,26,28-29,31-32,34-35,37-39,41-42,45,47-53,55,57,61,63,65-67,69-71,73,75,77,79,87-88,90-92,96-97,100-103,105-108,111,114,116-117,123-124,128,136,140-141,143-144
+off 0 0 0
+on 6 0
+unknown 146
+end
+case generated/500#0 84601b227a8ed907
+active 1-6
+inactive 8-10,12,15,17-19,22-23,25-26,28-30,32-33,35-36,38,40,42,44-58
+off 0 0 0
+on 5 0
+unknown 53
+end
+case generated/501#0 531aa1b38a3de984
+active 1-9,11-12,14-16,26-39,41-42,62,68,73,78-81,83-86
+inactive 18-23,45-48,52,54-56,59-60,63-65,71,74-75
+off 0 0 0
+on 6 0
+unknown 80
+end
+case generated/502#0 6445d779b5b78ff2
+active 1-11,31,33-34,60-62,68-72,79,82-83,94-97
+inactive 14-15,17-18,21-24,26-28,36-40,42,44-45,47-48,50-51,53-55,58,63,66,74-75,77,80,86-88,91-92
+off 0 0 0
+on 10 0
+unknown 87
+end
+case generated/503#0 8045cbf83be1ed21
+active 0-4,27,45-55,59,62,91-98
+inactive 5,7-8,10-12,14-15,17-19,21,23,25,29,31,33-35,37,39,43,56-57,64-67,69-70,72,74-76,80,82-83,85-86,89
+off 0 0 0
+on 5 0
+unknown 94
+end
+case generated/504#0 3505b9620429cb9e
+active 0-12,50-51
+inactive 14-15,17,20-21,23,25,27,29,32-35,37-38,40-42,44-45,47,52-54,56-57,59,61-62,64,66,68-69,72,74-76,78-79,83,86-94
+off 0 0 0
+on 7 0
+unknown 88
+end
+case generated/505#0 22e09202b76bd165
+clean
+active 1-21
+inactive -
+off 0 0 0
+on 21 0
+unknown 0
+end
+case generated/506#0 2bf23b731376708c
+active 1-13,18,37,41-42,44-46,74,79-82,86,93-98
+inactive 14-16,20-22,26,30-33,35,38-39,47-48,50-52,54-57,59,61-63,65,68-70,75-76,83-84,88-90
+off 0 0 0
+on 10 0
+unknown 88
+end
+case generated/507#0 2a772f5d3a6973b2
+active 1-12,22-28,33,52-61
+inactive 13,15,17-20,29,35-36,38,40-42,44-45,47-48
+off 0 0 0
+on 12 0
+unknown 49
+end
+case generated/508#0 083b45feab032554
+active 0-2,6-21,28,30,32,38,47-48,50-52,59-61
+inactive 4,22-23,25-26,33-35,39-41,43-45,54-56
+off 4 4 0
+on 18 0
+unknown 38
+end
+case generated/509#0 5476fb97f61b9b86
+active 1-16,27-31,37,39-43
+inactive 17-18,20-21,23-25,33,35
+off 5 4 0
+on 16 0
+unknown 22
+end
+case generated/510#0 1371e04a8caf8c12
+active 0-15,18,66-67,70,96-99,101-106,108,115-117
+inactive 16,20-22,26,28,30-31,34,36-37,39-41,43-46,48,50-52,54-57,62,64,68,73-76,78-80,83-85,88-90,93-94,110-111,113
+off 0 0 0
+on 11 0
+unknown 107
+end
+case generated/511#0 6575f58fa8a9fab1
+active 1-15,31,33,37-38,41-42,44,46,76-83,143-146,148-150
+inactive 16-20,23,26-27,29,34-35,47-49,52-53,55-56,59,61-62,64-66,68,72,74,85-90,92-95,98,100-102,105-107,109-114,116-118,120-124,128-129,131-132,134-136,138,140-141
+off 0 0 0
+on 12 0
+unknown 138
+end
+case generated/512#0 efa9562e8636cdac
+active 1-14,23,25-29,58-61
+inactive 15-18,20,31,34-37,40,42,44-45,47-48,50,52-53,56
+off 3 3 0
+on 14 0
+unknown 44
+end
+case generated/513#0 501c01387cc7f20a
+active 0-5,8,11-12,14-17,31-33,41-42,44-51,57-59,63-66
+inactive 6,18-21,23,26,28-29,35-39,53,55,60-61
+off 0 0 0
+on 5 0
+unknown 62
+end
+case generated/515#0 3eda7360cf51de3a
+active 1-7,9-10,53-56,60,68-70,77-81,87,90-100,102-104,158-161
+inactive 12-20,22,24,26,28-30,32-33,35,38-39,42,45,47-48,50,57-58,61-62,64,66,73,75,83-85,106-107,109-115,117-121,123-125,128-131,133-135,138,140-141,144,147-150,152,155-156
+off 0 0 0
+on 6 0
+unknown 155
+end
+case generated/516#0 0a79129ced6c8a39
+active 1-10,45-51,58-67
+inactive 12-18,20-21,23-24,26,28-31,33,35,38-40,42,54-56
+off 0 0 0
+on 7 0
+unknown 60
+end
+case generated/517#0 4c16678a16ec0be2
+active 0-2,6-11,31,50-52,56-57,59-60,73-74,76-79,81-87,89-90,97-99,101-106
+inactive 4,12-13,15-18,20-22,24,28-29,33-39,41-42,44-45,48,53-54,61-63,65-69,71,93-94
+off 6 5 0
+on 8 0
+unknown 92
+end
+case generated/518#0 ac465020dd2a7a93
+active 1-8
+inactive 9,11-14,16,18-20,22-26,28-29,31,33-34,38-39,41-43,45-53,55-56,58,61-63,65,67,69-70,73-74,76,78-80
+off 0 0 0
+on 7 0
+unknown 73
+end
+case generated/519#0 2253e2662596f3db
+active 0-2,6-8,33-36,38-39
+inactive 4,9-10,12-14,18-20,22-25,27-28,31,41-42,44-45,49-52,55-56,58-59,61,63-65,67,69-76,80,82,85,87-89,91-93,95-99,101,104-105,107-110,112,115,117-122,124,126,128-132,134,139-140,142-143,147-151,153-155,158,161,163-164,168-171
+off 1 1 0
+on 5 0
+unknown 165
+end
+case generated/521#0 086926245c0646e1
+active 1-16,19-28,93-95
+inactive 30-32,34-36,38,40,42,44,47-49,51-52,54-57,60-61,63,66-68,70,72-73,75-78,80,82-83,86-89
+off 0 0 0
+on 8 0
+unknown 87
+end
+case generated/522#0 5b00020df21933eb
+active 1-19
+inactive -
+off 0 0 0
+on 10 0
+unknown 9
+end
+case generated/523#0 c46c6a7bc041faea
+active 1-7,42-44,49-50,58-68,70,72-75,95-98,152-155
+inactive 8-9,12,15,17,20-21,23,25,28,30,32-33,37-40,45-46,53-54,56,77-78,81,84-86,88-89,92,100-103,106,108,110-113,115-117,119,121-123,125-128,131-132,135-137,140-141,144-145,147-148,150
+off 2 2 0
+on 7 0
+unknown 146
+end
+case generated/524#0 487103be815a12b5
+active 0-7,33,35-38,45-47
+inactive 8-13,16-17,19,21,24-25,27,29,39,41,43,48-49,51-52,54,56-58,61-68,70-71,74,77,79-81
+off 0 0 0
+on 5 0
+unknown 77
+end
+case generated/525#0 add959bd58eef584
+active 1-8,27-30,33-35,39-41,45-47,49-51
+inactive 10-11,13-14,18,23-24,36-37,43
+off 1 1 0
+on 8 0
+unknown 41
+end
+case generated/526#0 7d6b31d461f6da8a
+active 0-2,6-20,31,33,38-41
+inactive 4,21-24,27-28,34-36
+off 0 0 0
+on 12 0
+unknown 29
+end
+case generated/527#0 9d7a224ba8ac0da8
+clean
+active 1-20
+inactive -
+off 0 0 0
+on 20 0
+unknown 0
+end
+case generated/528#0 8e5d564d034dab95
+active 1-6,25-31,71-72,75-76,78-82,88-93
+inactive 7,9-12,15,20-22,33-37,39-40,42-45,47,49,51-54,57-61,63-65,67-68,73,85-86
+off 5 5 0
+on 6 0
+unknown 81
+end
+case generated/529#0 7559ccdf8646b884
+clean
+active 0-2,6-14,25,28-31,33,35-41
+inactive 4,15-17,19-20,22-23
+off 9 7 0
+on 11 0
+unknown 20
+end
+case generated/530#0 dd7d6405dd190938
+active 1-8,10,12-15,31-32,39-41,57-61,63-64,66-67,69-72
+inactive 16,18-20,22-24,26-27,29,34-35,37,43,47-51,54-55
+off 0 0 0
+on 7 0
+unknown 65
+end
+case generated/532#0 cf776cd8478a3eb3
+active 1-8,59-61,63-69,75-77,89,92,95-96,103,106-107,109-113
+inactive 9-14,16,18-19,22-23,25-29,31-33,35-36,38-39,41,43-45,48,50-52,55-57,70,72-73,79-80,83,85-87,90,98
+off 0 0 0
+on 7 0
+unknown 106
+end
+case generated/533#0 0ff3b2eb1f89d4cc
+clean
+active 1-18,20,22,26-28
+inactive 24
+off 0 0 0
+on 17 0
+unknown 11
+end
+case generated/534#0 a7b90e4e3d88712c
+active 1-12,20-26,30,32-39
+inactive 13-14,16-18,27-28
+off 5 5 0
+on 15 0
+unknown 17
+end
+case generated/535#0 0dacf6defe162d64
+active 0-2,6-8,13-17,21,23-32
+inactive 4,9-10,19
+off 1 1 0
+on 5 0
+unknown 26
+end
+case generated/536#0 9a1891aafb4852ba
+active 0-2,6-14,21-30
+inactive 4,16,18-19
+off 3 3 0
+on 21 0
+unknown 3
+end
+case generated/537#0 93a1b7a5cd5615ca
+active 1-16,18-23
+inactive -
+off 0 0 0
+on 10 0
+unknown 13
+end
+case generated/538#0 978e56e9c17f0121
+active 1-13,15-21
+inactive -
+off 0 0 0
+on 12 0
+unknown 9
+end
+case generated/539#0 b3bb0e2f9a2f878b
+active 1-9,13-15,18-21,23-27,29-31
+inactive 11,16
+off 2 2 0
+on 12 0
+unknown 15
+end
+case generated/541#0 13a83b86317d5d3d
+active 1-12,22-25,52-53,73-75,77-82,84-86,88,93,96,115-117,119-122,130-134
+inactive 15,17-18,20,26,28-29,31-32,34,36,39-41,43-45,48,50,56-59,61,63-64,66-67,69-71,89,91,98-101,103-104,106,109-110,112-113,124,126-127
+off 0 0 0
+on 12 0
+unknown 122
+end
+case generated/542#0 be2436ec3b528fc6
+active 0-7,21-24,26-31,36-37,46,59-65,72,74-77
+inactive 8,10-11,13-14,16-17,19,34,38-40,42-44,48,51,54-55,57,67-70
+off 11 8 0
+on 11 0
+unknown 54
+end
+case generated/543#0 8824c88ac6180aff
+active 1-6,15-16,18-19,23,25-28,30-35
+inactive 7-8,10,12-13,21,36,38-41,43,45,48-50,52-54,56-59,61-63
+off 2 2 0
+on 6 0
+unknown 55
+end
+case generated/544#0 cb2d4ea3b8e87f17
+clean
+active 0-14,16-18,32-34
+inactive 20-23,25-27,29
+off 0 0 0
+on 14 0
+unknown 21
+end
+case generated/545#0 6da634c88b87741c
+active 1-9,42,44-49,51-57
+inactive 10-11,13,16-18,20-23,25-26,28-30,33-34,36,39
+off 13 9 0
+on 9 0
+unknown 35
+end
+case generated/546#0 d196832b8be6544e
+active 0-12,14-15,18-23,26-28
+inactive 24
+off 0 0 0
+on 12 0
+unknown 17
+end
+case generated/547#0 60f20eefb4ac0478
+active 1-10,12-14,16,27,29-36,75-76,78-79,115-117
+inactive 17-21,23,25,37-40,42,44,46-49,51,56-59,62-64,66-67,69,71-72,80-85,87-90,92-93,95,97,100-103,105-107,110,112
+off 0 0 0
+on 9 0
+unknown 108
+end
+case generated/548#0 0c48476e915ba019
+active 1-7,9-17,42-48
+inactive 20,22-23,25-29,32-34,36,39-40,49-52,54,56,58-60,62,64-66,68-69,71,73-79,81-82,84,87-88,90-92,95,98-100,102-104,106-109
+off 0 0 0
+on 14 0
+unknown 94
+end
+case generated/549#0 9e5b2d10d38e8cd6
+active 1-10,17-23,25-29,63-64,68,86-89
+inactive 12-15,31,33,35,37,39-40,42,45-50,53-54,56-57,59-61,65-66,71,74,76-78,80-82,84
+off 4 4 0
+on 15 0
+unknown 68
+end
+case generated/550#0 f6a2c3cb852e2293
+active 1-13,31,33,35-46,70-71,98-101,106-107,113-116
+inactive 14,17,19-20,22-23,25-27,48-50,52-55,57-58,60,62,66-68,73,75-76,78,80,82-84,86,88,93,95-96,102-103,109
+off 0 0 0
+on 12 0
+unknown 104
+end
+case generated/552#0 22baf8bda65b0cea
+active 1-12,20-21,37-39,71,73-74,79-81,123-124,126-130,133,136-138,143-146
+inactive 14,16,18,23-24,27-29,31,33,40-41,43-45,47-49,51,55-56,58-59,61-62,65-66,68,75,84-88,90-92,94,96,98,100,102-105,108-109,111,113,115,118-119,121,140-141
+off 0 0 0
+on 7 0
+unknown 139
+end
+case generated/554#0 ff13b1d04c80ef3e
+active 1-9,11-14,16-20,72-85
+inactive 22-25,27-30,32,34,36-37,39,41-42,45-46,48-52,54,56-57,59,61-62,64-65,68-70
+off 0 0 0
+on 11 0
+unknown 73
+end
+case generated/555#0 efbab6d5ef936956
+active 0-2,6-8,10-11,15-29
+inactive 4,12-13
+off 0 0 0
+on 4 0
+unknown 25
+end
+case generated/556#0 d9ff4c29610e0738
+active 1-9,12-13,24-28,30,32-37
+inactive 16,18,20-22
+off 0 0 0
+on 10 0
+unknown 25
+end
+case generated/557#0 a5a9c53c550e9961
+active 1-7,9-14,17-19,21,26,28,106-109
+inactive 15,22-24,30-31,33-36,39-41,43-47,49,54-55,58-60,63-64,67,70-71,73-75,77-78,80-83,85,87,89,91-92,94-95,97-98,100,102-104,111,114-115,118,120-128
+off 0 0 0
+on 6 0
+unknown 122
+end
+case generated/558#0 49d6b4032273d69a
+active 1-6,13-14,16
+inactive 7-10,17-19,21,23,26,28,31-33,35-37,39-44,46-49,51-54,58-59,64,67-71,73-74,76,78,80-82,84,86,89-91,93-94,96,98-100,102-105,107-109,111-112,115,118-127
+off 4 4 0
+on 6 0
+unknown 117
+end
+case generated/559#0 01eeff322be31d95
+active 1-18,20-22,24,27-29
+inactive -
+off 0 0 0
+on 7 0
+unknown 22
+end
+case generated/560#0 d4dd12943e5834d3
+active 1-9,28-31,35-37,39-41,64-66,84-87,90,92-102,109,120-121,123-124,126,128-129
+inactive 11-12,14-19,21-22,24,26,32-33,42,44-49,51-52,54,56-58,60-61,68-70,72-73,75-76,78,80-82,103,105-107,110,112,114-115,117
+off 0 0 0
+on 6 0
+unknown 123
+end
+case generated/561#0 7f247ca6ad580893
+active 1-9,19-21,50,53-54,64-65,67-69,71-77,88-89,96,112,114-115,122-123,129,137-139
+inactive 10-11,13-14,16-17,23-24,26-29,31-33,36,38,40,42,45-46,55-56,58,60-62,79,81-83,85-86,90-93,97-99,101-103,105,107,109,117,119,124,126,134-135
+off 2 2 0
+on 9 0
+unknown 128
+end
+case generated/562#0 2c7565457b62a71e
+active 0-6,8-9,41-45,56-57,65-79
+inactive 11,13,15-16,18,21,23,25,27-29,31,33,35-36,38,46-47,49-51,53-54,60,62-63
+off 0 0 0
+on 6 0
+unknown 74
+end
+case generated/563#0 ace5f4ddbf352152
+active 1-21,23-27
+inactive -
+off 0 0 0
+on 9 0
+unknown 18
+end
+case generated/564#0 21fda670d59c0afb
+active 1-10,18-19,27-29,31-34,39-49
+inactive 13,15-16,20-21,23,25,36
+off 0 0 0
+on 9 0
+unknown 40
+end
+case generated/565#0 d698629c2e15e34e
+active 0-2,6-9,13,28-29,59,61-71,74-76
+inactive 4,10-11,14-19,21,24-26,32-34,37-40,42-44,46,48-50,53-54,57
+off 2 2 0
+on 6 0
+unknown 68
+end
+case generated/567#0 0ce50571ec3e7b3c
+active 0-5,10,12-21,41-43,57,59-60,62,120-124
+inactive 6-8,22-23,25,27,29-31,33,36-38,45-51,64,66,68-70,72-74,76-78,80,82,84-87,89-90,93,95,97,99,101,103-104,106-107,109-110,113,115,117
+off 3 3 0
+on 9 0
+unknown 111
+end
+case generated/568#0 a7d5f0631a40eb29
+active 1-6,8-11,19-20,22-27,30-43
+inactive 12-15,17
+off 0 0 0
+on 5 0
+unknown 38
+end
+case generated/569#0 82b056e8754def01
+active 1-9,20-21,40,50-52,54-59,61-62,66,68-71
+inactive 10-11,13,15,17-18,22-24,26,29,31,33,35-36,38,42-43,45-47,64
+off 3 2 0
+on 9 0
+unknown 59
+end
+case generated/570#0 345ed81e53c17895
+clean
+active 1-9,12,14-22
+inactive 10
+off 1 1 0
+on 19 0
+unknown 0
+end
+case generated/571#0 5cf52c9ec6226e8a
+active 0-2,6-11,41-46,55-59,71-74,102,104-116
+inactive 4,13-16,18,20-23,25-26,28-29,31,33,36,38-39,47,49-50,52-53,61-63,65,67,76,78-79,81,83-86,91-92,95-98,100
+off 0 0 0
+on 7 0
+unknown 109
+end
+case generated/573#0 2c308ffc79b30b32
+active 1-10,14,20-21,27-28,48-51,53-56,77,79-86
+inactive 11-12,15-17,24-25,29-30,32,34-38,40-41,43,46,57-61,63-66,68-70,72-74
+off 0 0 0
+on 8 0
+unknown 78
+end
+case generated/574#0 a6e7412d9dece61c
+clean
+active 1-22
+inactive -
+off 0 0 0
+on 22 0
+unknown 0
+end
+case generated/575#0 a13ac64a6a79932e
+active 1-13,16,46,52-60,94,96-99
+inactive 18-19,23,25-27,29-30,33-34,37-39,41,43,48-50,61,63-65,67,69-70,72,75-78,80,82-83,85-87,91-92
+off 0 0 0
+on 13 0
+unknown 84
+end
+case generated/576#0 380fb06a2a0224bf
+active 1-12,18-23,25,28,30-31,33-37,39,57-59,65-66,75-76,129-131
+inactive 14,16,40-41,43,46,48,50,52-53,55,61-63,68-70,72-73,78-79,81-82,84-85,87-91,93-97,99,101-105,107,109,112-114,116,119,121-123,127
+off 0 0 0
+on 11 0
+unknown 120
+end
+case generated/577#0 2ea6dee57fe9c617
+active 1-6,10,12-19,25,28-31,34-35,49-50,67,72-73,81-83
+inactive 7,20-21,37-40,42-43,45,51-55,57,59-61,63,65,68-70,75-76,78-79
+off 0 0 0
+on 6 0
+unknown 77
+end
+case generated/578#0 c543170a9dcf0d2d
+active 1-9,14,20-25,28-38
+inactive 10-12,16-17
+off 4 4 0
+on 10 0
+unknown 22
+end
+case generated/579#0 9dbd6b81bd4626c7
+active 1-11,13,15-18,25-30,32-39
+inactive 20-23
+off 0 0 0
+on 8 0
+unknown 31
+end
+case generated/580#0 1df8ae5e9489e249
+active 0-2,6-15,18-19,27-31,33-36,38-39
+inactive 4,20-23,41-45,47-50,52,55-56,58,60,62-65,67-68,70,72,74,76,78,80,83-85,87,89-91
+off 3 3 0
+on 14 0
+unknown 72
+end
+case generated/581#0 2cd6b305c8bf6c35
+active 1-7,9-10,25,30-31,33-34,36-43,60,64-70
+inactive 12-15,17-18,20-23,26-28,45-47,49,51-52,54-55,57,62
+off 0 0 0
+on 6 0
+unknown 64
+end
+case generated/583#0 0860439e3555ba16
+active 1-9,13-15,47-52,54-56,58-60
+inactive 10-11,17-20,22-23,25,27-28,30-32,34-37,39,41-42
+off 2 2 0
+on 9 0
+unknown 49
+end
+case generated/584#0 a957eb184bb94666
+active 1-8,18-19,21,31-34,37,75,77,95-97
+inactive 9,11-12,14-16,25,27-28,35,38,41-43,45,47,50,52-53,55,57-58,60-61,64-67,69-70,73,78,80,82-84,86,89,91-93
+off 0 0 0
+on 6 0
+unknown 91
+end
+case generated/585#0 d350b8d14a2e7936
+active 1-10,12,14-21,23,25-29
+inactive -
+off 0 0 0
+on 10 0
+unknown 18
+end
+case generated/586#0 258616670cd0aa6e
+active 1-8,10-11,29,32-33,59,67-79,83-84,86-91
+inactive 13-14,16-18,21,23-25,27,34,36-40,42-43,45,48-49,51,53-56,60,62,64,80
+off 0 0 0
+on 8 0
+unknown 82
+end
+case generated/587#0 e148a0b1f4c027b4
+active 1-6,33-38,106-108,110-113,119,128,136-139,141-144
+inactive 7-12,14,16-17,19,21-25,27-28,30,40-44,46-47,49-50,52,54-56,59,61-64,68-69,72-75,78-80,82-83,87,89-91,94-96,99-101,103-104,114-117,121-123,125-126,129,131-133
+off 25 18 0
+on 8 0
+unknown 110
+end
+case generated/588#0 68cf3a9dac1e4bc7
+active 1-7,12-13,22-40
+inactive 8-10,16-18,20
+off 3 3 0
+on 7 0
+unknown 30
+end
+case generated/589#0 57793e6cbb80ae46
+active 0-6,20-23,25,51-52,68-69,72-79,81,83-88
+inactive 8-11,13-14,16-18,26,28-29,31-34,36-38,42-43,45-46,48,53-54,56-58,60-61,63,65-66
+off 0 0 0
+on 5 0
+unknown 84
+end
+case generated/590#0 d77a29e3f2d0e506
+active 1-8,10,12-13,15,19-22,72,84,89,112,114,120-124
+inactive 17,23-24,26-28,30,32,35-38,41-45,47,49,51-52,55-56,58,60-61,63,65,70,75-79,81,85-87,90,92,94,96-98,100-101,103,105-107,110,118
+off 0 0 0
+on 7 0
+unknown 117
+end
+case generated/591#0 8fc398b0dfd0b0b8
+active 0-2,6-13,28,30-32,42-48,50-55
+inactive 4,15-16,18-21,23-26,34-36,38-40
+off 0 0 0
+on 8 0
+unknown 47
+end
+case generated/592#0 a1c1e84067cdb365
+active 0-6,8,10-14,17-19,21,25-26,28-30,35-37,39,41,48,50,52-54
+inactive 22-23,31-33,43-46
+off 0 0 0
+on 6 0
+unknown 49
+end
+case generated/594#0 078f072dc356c574
+active 1-7,10-11,15-16,18-22,82-83,85-87,99,109-111,113,119,122-124,168-170,172-176,187-189,191-198,220-226
+inactive 12-13,24-25,27-28,31,34-37,39-42,45-48,50,54-55,57-58,60-61,63-65,67-68,70,72-73,76-79,89,91-92,94-95,100-103,105-106,115,117,126-128,130-132,134,136-137,141-143,145-146,148-149,151,154-156,158,160-163,166,179-181,183-185,200-205,207-208,210,213,215,217-218
+off 0 0 0
+on 8 0
+unknown 216
+end
+case generated/596#0 da02ef0764a3333b
+active 1-10,12,40-49
+inactive 13,15-18,20-22,25-27,29-31,33-36
+off 0 0 0
+on 9 0
+unknown 40
+end
+case generated/597#0 57d5f0310c8bc2d0
+active 1-9,46,53
+inactive 11,13-18,22-25,28,30-31,33-36,38,40-42,47-48,50,54-59,62-67,69,72-74,76,79,81,84-86,89-90,92,94,97,99-100,102-107,110-114,116-118,120-122,124,126,128-129,131-132,134-136,138-140,142,144,146-147,149,151,153,155-156,158-160,162,164,166,168,170,172-178,180-182,186-190,192-199,201-202,204-208,210-213,216-217,219,223-230
+off 34 23 0
+on 10 0
+unknown 183
+end
+case generated/598#0 399abfd27ca51f62
+active 0-2,6-11,35-36,38-40,42-45,64-65,67-72
+inactive 4,12-14,16-17,19-20,22-23,25-26,28-30,33,46-48,50-51,54,56,59-60
+off 0 0 0
+on 7 0
+unknown 65
+end
+case generated/599#0 848a43360e917beb
+active 1-14,16,19,32-38,44-45,47-51
+inactive 21-24,27-29,39,41-42
+off 0 0 0
+on 9 0
+unknown 42
+end
