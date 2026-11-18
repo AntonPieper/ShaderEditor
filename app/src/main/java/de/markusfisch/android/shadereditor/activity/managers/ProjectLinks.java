@@ -85,12 +85,6 @@ final class ProjectLinks implements FileLinks {
 		void failed(@NonNull String message);
 	}
 
-	// Where Open went from, and to, and what follows the way back.
-	private record Back(@NonNull OpenProject project,
-			@NonNull ProjectPath from, int line, @NonNull ProjectPath to,
-			@Nullable Runnable then) {
-	}
-
 	/**
 	 * Shows a pass of the running shader full size in place of its
 	 * picture: the engine's, once it can. Without one, Show is not
@@ -137,10 +131,9 @@ final class ProjectLinks implements FileLinks {
 	private Runnable changed;
 	@Nullable
 	private HostCompletion.Named pointed;
-	// The way back after Open, until it is taken or another file is
-	// shown; or null.
+	// The way back of the project shown, or null.
 	@Nullable
-	private Back back;
+	private WayBack way;
 	// The number of the last rename or deletion heard of.
 	private int heard;
 	// Told once the texts of the generation awaited are built, or null.
@@ -165,8 +158,10 @@ final class ProjectLinks implements FileLinks {
 	}
 
 	/**
-	 * file of project is in the editor now. After Open, the key back
-	 * shows in the file opened; any other file takes it away.
+	 * file of project is in the editor now. The key back shows where the
+	 * last jump left from, in this file or another, as long as there is
+	 * a way back; the project keeps it, also for the screen made again
+	 * after a configuration change.
 	 */
 	void show(@NonNull OpenProject project, @NonNull ProjectPath file) {
 		if (project == this.project) {
@@ -181,17 +176,13 @@ final class ProjectLinks implements FileLinks {
 		forget();
 		this.project = project;
 		this.file = file;
-		Back way = back;
-		if (way != null && way.project() == project &&
-				way.to().equals(file)) {
-			showBack(way.from().getFileName(), way.line(), way.then(), () -> {
-				back = null;
-				host.open(way.from(), way.line());
-			});
+		if (project.wayBack() instanceof WayBack kept) {
+			way = kept;
 		} else {
-			back = null;
-			host.showBack("", 0, null);
+			way = new WayBack();
+			project.setWayBack(way);
 		}
+		showWay();
 	}
 
 	/** No file is in the editor. */
@@ -201,7 +192,7 @@ final class ProjectLinks implements FileLinks {
 		renames.clear();
 		project = null;
 		file = null;
-		back = null;
+		way = null;
 		host.showBack("", 0, null);
 	}
 
@@ -234,6 +225,9 @@ final class ProjectLinks implements FileLinks {
 	}
 
 	void destroy() {
+		if (way != null) {
+			way.release(this);
+		}
 		hide();
 		listings.shutdownNow();
 	}
@@ -439,18 +433,62 @@ final class ProjectLinks implements FileLinks {
 		}
 	}
 
-	// Shows the key back to the file named name at line, or to line of
-	// this file for null, as "Uses" when then is not null, which runs
-	// after back.
-	private void showBack(@Nullable String name, int line,
-			@Nullable Runnable then, @NonNull Runnable back) {
-		host.showBack(then != null ? context.getString(R.string.uses) : name,
-				then != null ? 0 : line, () -> {
-					back.run();
-					if (then != null) {
-						then.run();
-					}
-				});
+	// Shows the key back to the place on top of the way back: "Uses"
+	// where going back shows Uses again, a line of this file, or another
+	// file at a line; none without a way back.
+	private void showWay() {
+		WayBack.Place place = top();
+		if (place == null) {
+			host.showBack("", 0, null);
+			return;
+		}
+		int line = place.document.text().lineOf(place.offset) + 1;
+		host.showBack(place.then != null
+						? context.getString(R.string.uses)
+						: place.path.equals(file) ? null
+						: place.path.getFileName(),
+				place.then != null ? 0 : line, this::back);
+	}
+
+	// The place on top of the way back, or null; a place whose document
+	// is no longer the one of its file is dropped.
+	@Nullable
+	private WayBack.Place top() {
+		OpenProject open = project;
+		WayBack places = way;
+		if (open == null || places == null) {
+			return null;
+		}
+		for (WayBack.Place place = places.top(this); place != null;
+				place = places.top(this)) {
+			ProjectPath now = renamed(place.path);
+			if (now != null) {
+				place.path = now;
+			}
+			if (open.document(place.path) == place.document) {
+				return place;
+			}
+			places.pop();
+		}
+		return null;
+	}
+
+	@Override
+	public boolean back() {
+		WayBack.Place place = top();
+		if (place == null) {
+			return false;
+		}
+		way.pop();
+		// The caret goes where it was; the jump keeps it in its line.
+		place.document.select(place.offset, place.offset);
+		host.open(place.path, place.document.text().lineOf(place.offset) +
+				1);
+		showWay();
+		if (place.then != null) {
+			place.then.run();
+		}
+		return true;
 	}
 
 	@Override
@@ -525,19 +563,13 @@ final class ProjectLinks implements FileLinks {
 			return;
 		}
 		Text text = document.text();
-		int left = text.lineOf(document.selection().head()) + 1;
-		if (!path.equals(from)) {
-			back = new Back(open, from, left, path, then);
-		} else if (line != left || then != null) {
-			// A jump inside the file: the key leads back to the line it
-			// left, once, in place of a way back to another file.
-			back = null;
-			showBack(null, left, then, () -> {
-				host.showBack("", 0, null);
-				host.open(from, left);
-			});
+		int caret = document.selection().head();
+		if (way != null && (!path.equals(from) ||
+				line != text.lineOf(caret) + 1 || then != null)) {
+			way.push(this, from, document, caret, then);
 		}
 		host.open(path, line);
+		showWay();
 	}
 
 	// The picture of the pass as it ran last, or null. Off the main
