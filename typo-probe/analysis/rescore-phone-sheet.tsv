@@ -1,0 +1,12 @@
+1	181	K08 | '<' :  wrong operand types  no operation '<' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+2	187	K10 | Block comment is not closed in this file (included from Blobs.frag:N)
+3	198	K01 | 'X' : Syntax error:  syntax error
+4	166	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+5	194	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'const int' and a right operand of type 'const float' (or there is no acceptable conversion)
+6	180	K08 | '*' :  wrong operand types  no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'X' (or there is no acceptable conversion)
+7	185	K03 | '=' : Syntax error:  syntax error
+8	199	K02 | ';' : Syntax error:  syntax error
+9	193	K08 | '>' :  wrong operand types  no operation '>' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+10	170	K02 | 'X' :  cannot convert from 'N-component vector of float' to 'FragColor N-component vector of float'
+11	168	K01 | '}' : Syntax error:  syntax error
+12	176	K03 | ERROR: N:N: 'premature EOF' : Syntax error:  syntax error

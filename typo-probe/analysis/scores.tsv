@@ -163,3 +163,40 @@ n	score	key
 162	2	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'uniform highp float' and a right operand of type 'const int' (or there is no acceptable conversion)
 163	0	K09 | syntax error, unexpected NEW_IDENTIFIER, expecting ',' or ';'
 164	2	K08 | '/' : wrong operand types - no operation '/' exists that takes a left-hand operand of type 'const int' and a right operand of type 'const float' (or there is no acceptable conversion)
+165	1	K09 | 'X' : Syntax error:  syntax error
+166	2	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+167	2	K07 | '=' :  cannot convert from 'const N-component vector of float' to 'N-component vector of float'
+168	1	K01 | '}' : Syntax error:  syntax error
+169	2	K03 | '}' : Syntax error:  syntax error
+170	0	K02 | 'X' :  cannot convert from 'N-component vector of float' to 'FragColor N-component vector of float'
+171	2	K08 | '-' :  wrong operand types  no operation '-' exists that takes a left-hand operand of type 'const int' and a right operand of type 'N-component vector of float' (or there is no acceptable conversion)
+172	2	K07 | '=' :  cannot convert from 'N-component vector of float' to 'N-component vector of float'
+173	0	K02 | '+' :  wrong operand types  no operation '+' exists that takes a left-hand operand of type 'N-component vector of float' and a right operand of type '2X2 matrix of float' (or there is no acceptable conversion)
+174	2	K08 | '-' :  wrong operand types  no operation '-' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+175	2	K11 | '' :     GLSL compile error:  #endif missing.
+176	1	K03 | ERROR: N:N: 'premature EOF' : Syntax error:  syntax error
+177	2	K08 | '*' :  wrong operand types  no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'N-component vector of float' (or there is no acceptable conversion)
+178	2	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'const float' and a right operand of type 'const int' (or there is no acceptable conversion)
+179	0	K02 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'N-component vector of float' and a right operand of type 'uniform N-component vector of float' (or there is no acceptable conversion)
+180	2	K08 | '*' :  wrong operand types  no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'X' (or there is no acceptable conversion)
+181	2	K08 | '<' :  wrong operand types  no operation '<' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+182	1	K03 | 'X' : Syntax error:  syntax error
+183	2	K02 | ')' : Syntax error:  syntax error
+184	2	K08 | '-' :  wrong operand types  no operation '-' exists that takes a left-hand operand of type 'const int' and a right operand of type 'X' (or there is no acceptable conversion)
+185	1	K03 | '=' : Syntax error:  syntax error
+186	1	K02 | 'X' : Syntax error:  syntax error
+187	2	K10 | Block comment is not closed in this file (included from Blobs.frag:N)
+188	2	K08 | '*' :  wrong operand types  no operation '*' exists that takes a left-hand operand of type 'in N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+189	1	K03 | 'X' : function declaration not in global scope
+190	2	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'const int' and a right operand of type 'N-component vector of float' (or there is no acceptable conversion)
+191	1	K03 | 'premature EOF' : Syntax error:  syntax error
+192	2	K10 | '' :     GLSL compile error:  EOF found inside comment
+193	2	K08 | '>' :  wrong operand types  no operation '>' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+194	2	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'const int' and a right operand of type 'const float' (or there is no acceptable conversion)
+195	2	K08 | 'X' :  cannot convert from 'const int' to 'X'
+196	2	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+197	2	K08 | '+' :  wrong operand types  no operation '+' exists that takes a left-hand operand of type 'N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+198	1	K01 | 'X' : Syntax error:  syntax error
+199	1	K02 | ';' : Syntax error:  syntax error
+200	2	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'uniform float' and a right operand of type 'const int' (or there is no acceptable conversion)
+201	0	K02 | '=' :  cannot convert from 'N-component vector of float' to 'X'

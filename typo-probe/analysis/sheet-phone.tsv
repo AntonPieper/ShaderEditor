@@ -1,0 +1,37 @@
+165	K09 | 'X' : Syntax error:  syntax error
+166	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+167	K07 | '=' :  cannot convert from 'const N-component vector of float' to 'N-component vector of float'
+168	K01 | '}' : Syntax error:  syntax error
+169	K03 | '}' : Syntax error:  syntax error
+170	K02 | 'X' :  cannot convert from 'N-component vector of float' to 'FragColor N-component vector of float'
+171	K08 | '-' :  wrong operand types  no operation '-' exists that takes a left-hand operand of type 'const int' and a right operand of type 'N-component vector of float' (or there is no acceptable conversion)
+172	K07 | '=' :  cannot convert from 'N-component vector of float' to 'N-component vector of float'
+173	K02 | '+' :  wrong operand types  no operation '+' exists that takes a left-hand operand of type 'N-component vector of float' and a right operand of type '2X2 matrix of float' (or there is no acceptable conversion)
+174	K08 | '-' :  wrong operand types  no operation '-' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+175	K11 | '' :     GLSL compile error:  #endif missing.
+176	K03 | ERROR: N:N: 'premature EOF' : Syntax error:  syntax error
+177	K08 | '*' :  wrong operand types  no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'N-component vector of float' (or there is no acceptable conversion)
+178	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'const float' and a right operand of type 'const int' (or there is no acceptable conversion)
+179	K02 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'N-component vector of float' and a right operand of type 'uniform N-component vector of float' (or there is no acceptable conversion)
+180	K08 | '*' :  wrong operand types  no operation '*' exists that takes a left-hand operand of type 'const int' and a right operand of type 'X' (or there is no acceptable conversion)
+181	K08 | '<' :  wrong operand types  no operation '<' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+182	K03 | 'X' : Syntax error:  syntax error
+183	K02 | ')' : Syntax error:  syntax error
+184	K08 | '-' :  wrong operand types  no operation '-' exists that takes a left-hand operand of type 'const int' and a right operand of type 'X' (or there is no acceptable conversion)
+185	K03 | '=' : Syntax error:  syntax error
+186	K02 | 'X' : Syntax error:  syntax error
+187	K10 | Block comment is not closed in this file (included from Blobs.frag:N)
+188	K08 | '*' :  wrong operand types  no operation '*' exists that takes a left-hand operand of type 'in N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+189	K03 | 'X' : function declaration not in global scope
+190	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'const int' and a right operand of type 'N-component vector of float' (or there is no acceptable conversion)
+191	K03 | 'premature EOF' : Syntax error:  syntax error
+192	K10 | '' :     GLSL compile error:  EOF found inside comment
+193	K08 | '>' :  wrong operand types  no operation '>' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+194	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'const int' and a right operand of type 'const float' (or there is no acceptable conversion)
+195	K08 | 'X' :  cannot convert from 'const int' to 'X'
+196	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'X' and a right operand of type 'const int' (or there is no acceptable conversion)
+197	K08 | '+' :  wrong operand types  no operation '+' exists that takes a left-hand operand of type 'N-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)
+198	K01 | 'X' : Syntax error:  syntax error
+199	K02 | ';' : Syntax error:  syntax error
+200	K08 | '/' :  wrong operand types  no operation '/' exists that takes a left-hand operand of type 'uniform float' and a right operand of type 'const int' (or there is no acceptable conversion)
+201	K02 | '=' :  cannot convert from 'N-component vector of float' to 'X'

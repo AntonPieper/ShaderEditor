@@ -1,8 +1,22 @@
 # The typo experiment: how good are the drivers' own messages?
 
-Experiment, 2026-11-18. No app code changed. Status: **complete for the emulator compiler stacks** (Mac/Apple and Windows/NVIDIA hosts). The phone run is still to come, and only happens when the owner says the phone is free. The plan in section 1 was written before any output was seen and has not been changed; the deviations are listed in section 10.
+Experiment, 2026-11-18. No app code changed. Status: **complete**, on the emulator compiler stacks (Mac/Apple and Windows/NVIDIA hosts) and on the owner's phone (Samsung SM-S938B, Qualcomm Adreno 830, run on 2026-11-18). The owner has since parked the strict reader; the phone run is for knowing what a real phone driver says and how the app's own error display handles it. The plan in section 1 was written before any output was seen and has not been changed; the deviations are listed in section 10.
 
 ## The answer in short
+
+**On the phone (Adreno 830):**
+
+- **Its driver accepted all 47 originals and rejected all 264 typos.** No typo slipped through.
+- **It is worse than the emulators' translator.** Right line and a message that names the problem: **155 of 264 (59 %)**, against 73 % on the emulators. The losses are in two kinds:
+  - **Keyword typos:** it names the misspelled word in 6 of 22, where the emulators name it in 22. `flaot x` gives `'x' : Syntax error:  syntax error`.
+  - **A missing `#endif`:** it gives the end of the text, never the `#if` line (0 of 22).
+
+  Everything else matches the emulators within one typo. It is the same glslang-style log (`ERROR: 0:L: 'token' : …`), with Qualcomm's own words such as `Syntax error:  syntax error`, `premature EOF`, `#endif missing.` and `function declaration not in global scope`.
+- **What the app shows on the phone** (classes at integration head 1089ba0e, with the three log fixes): **198 of 264 (75 %)**. Its own pre-driver check covers exactly the phone's weak `#endif` case. Measured the same way, it shows no line at all in **0** of 264 typos, and **7** wrong lines that the driver gives too. The same app at 6049accc showed no line in 7 typos.
+- **One new display fault, phone only:** every failed compile on the Adreno ends with `ERROR: N compilation errors.  No code generated.` `DriverLog` turns that line into an extra error row **without a line**, in all 264 typos. It is never the first row, so the snackbar is unaffected; the error list has one row of noise. A fix would be about 3 lines (section 7).
+- **Kill criterion 1 is not met on the phone either:** 59 % for the driver and 75 % for the app, against 95 %.
+
+**On the emulators (earlier result, unchanged):**
 
 - **Kill criterion 1 is not met.** The criterion asks whether the driver already gives the right line and a usable message in 95 % of typos. On both emulator stacks the driver's first error line alone does that in **73 %** of the 264 typos. What the app shows today does it in **80 %**: its own check catches unterminated comments and missing `#endif` before the driver. Both are 15 to 22 points short of 95 %. Even if a merely "true but unhelpful" message counted as usable, the figures are 84 % and 89 %, still short.
 - **Where today's messages are short of that is narrow.** It is almost entirely punctuation:
@@ -123,6 +137,7 @@ Lines of (a), (c), (d) are lines of the assembled text and are mapped back to fi
 | emulator-5556 | ShaderEditor_API_23, Mac | 6.0 (SDK 23) | ES 3 | the same |
 | homepc-api37 | Home-PC emulator, Windows | 17 (SDK 37) | ES 3 | Google (NVIDIA Corporation) / Android Emulator OpenGL ES Translator (NVIDIA GeForce RTX 3080/PCIe/SSE2) / OpenGL ES 3.1 (4.5.0 NVIDIA 621.24) |
 | homepc-api23 | Home-PC emulator, Windows | 6.0 (SDK 23) | **ES 2** (GLSL ES 1.0.17) | Google (NVIDIA Corporation) / the same translator on the RTX 3080 / OpenGL ES 2.0 (4.5.0 NVIDIA 621.24) |
+| phone-s938b | **The owner's phone**, Samsung SM-S938B (Galaxy S25 Ultra class, `pa3q`), over WiFi adb | 17 (SDK 37) | ES 3 (GLSL ES 3.20) | Qualcomm / Adreno (TM) 830 / OpenGL ES 3.2 V@0800.64.8 (GIT@0603ba43d2, Id52d3f334b, 1782110333) (Date:06/22/26) |
 
 **What compiles the shader.** On all four devices it is the emulator's own GLES translator. It checks the shader first and writes the log in the format of ANGLE's shader translator (`ERROR: 0:L: 'token' : message`); then it hands the text on to the host's desktop GL, which is Apple's GL 4.1 over Metal on the Mac and NVIDIA's 621.24 driver on Windows. The host's own compiler never speaks to the guest. No log line has Apple's or NVIDIA's own format.
 
@@ -134,7 +149,17 @@ Lines of (a), (c), (d) are lines of the assembled text and are mapped back to fi
 
 **The ES 2 context compiled the `#version 300 es` programs.** On homepc-api23 the probe got an ES 2.0 context, and that context accepted all 17 ES 3.00 originals. The translator does not hold an ES 2 context to GLSL ES 1.00. **The app never gets that far:** on an ES 2 context, `PlanSource.of` refuses an ES 3.00 program before compiling it ("#version 300 es needs OpenGL ES 3.0, but this device only has OpenGL ES 2.0"), and that is the line it shows. So on that device the 86 mutants of ES 3.00 programs are not scored for the driver, and they are scored for the app only where the app's own pre-driver check comes first (9 cases). Every program the app would compile there gives the same first error as on the other devices. A real ES 2 phone driver would reject `#version 300 es`; the emulator does not, which is one more way an emulator is not a phone.
 
-**Limit.** These are emulator stacks. Their messages come from the emulator's translator, whatever the host GPU is. A phone's Mali, Adreno or PowerVR driver compiles the shader itself and writes its own messages, and nothing here says what those are.
+**The phone is a third, real stack.** On the phone, Qualcomm's driver compiles the shader itself; no translator stands in between.
+
+- It accepted all 47 originals and rejected all 264 typos. No vertex shader or link failed, and the originals' logs are empty.
+- Its log has the glslang shape `ERROR: 0:L: 'token' : message`, so the line number is where every other stack puts it. Three raw lines, verbatim:
+  - `ERROR: 0:24: 'float' : Syntax error:  syntax error` (K01-01, missing `;`)
+  - `ERROR: 0:50: '' :     GLSL compile error:  #endif missing.` (K11-03)
+  - `ERROR: 1 compilation errors.  No code generated.` (the last line of every failed compile)
+- It sometimes adds `INTERNAL ERROR: no main() function!`, when a comment or a conditional left open swallows `main`.
+- **`DriverLog` reads this format**, at 6049accc and at 1089ba0e alike. Every error line gets its file and line through the source map. The summary line and the `INTERNAL ERROR` line match no pattern and become rows without a line (section 7).
+
+**Limit.** The four emulator rows are emulator stacks. Their messages come from the emulator's translator, whatever the host GPU is. The phone row is one Adreno 830 with one driver version (V@0800.64.8, June 2026). Mali, PowerVR and older Adreno drivers are not measured.
 
 ## 4. Results per voice
 
@@ -186,6 +211,53 @@ The ES 2 device (homepc-api23) is scored over the 178 texts it gets as ES 1.00. 
 
 **Consistency of the message scores.** 164 distinct (kind, message) pairs were scored once, in a shuffled list without the voice's name. 30 of them, drawn at random, were scored again later in a new order without the first scores: **29 of 30 agreed**. The one disagreement was the reader's "expected ; before )" for an extra `)`: 2 the first time, 1 the second. That pair occurs in 6 texts, all in the reader's column. Counted at 1, the reader's K02 "both" falls from 21 to 15 and its total from 150 to 144, and no conclusion changes.
 
+### 4.1 The phone beside the emulators
+
+Each cell is again right line / message names the problem / both, with 22 typos per kind.
+
+- **"App 1089ba0e"** is what the app shows with the classes of integration head 1089ba0e, which has three log fixes: fork PR #785 for the line just past the end, #786 for Mesa's and NVIDIA's formats, and #788 for an open comment being named first.
+- **"App 6049accc"** is the app at the earlier analysis point.
+
+The corpus generated again with the 1089ba0e classes is byte-identical in every text. Only the app's own first diagnostic differs, for the two comments left open in library files (fix #788).
+
+| Kind | Driver, emulators | **Driver, phone** | App 6049accc, phone | App 1089ba0e, emulators | **App 1089ba0e, phone** |
+| --- | --- | --- | --- | --- | --- |
+| K01 missing `;` | 15 / 0 / **0** | 15 / 0 / **0** | 15 / 0 / **0** | 15 / 0 / **0** | 15 / 0 / **0** |
+| K02 parenthesis | 22 / 6 / **6** | 22 / 6 / **6** | 22 / 6 / **6** | 22 / 6 / **6** | 22 / 6 / **6** |
+| K03 brace | 15 / 10 / **10** | 15 / 10 / **10** | 11 / 10 / **10** | 15 / 10 / **10** | 15 / 10 / **10** |
+| K04 misspelled name | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** |
+| K05 misspelled built-in | 22 / 22 / **22** | 21 / 22 / **21** | 21 / 22 / **21** | 22 / 22 / **22** | 21 / 22 / **21** |
+| K06 argument count | 21 / 22 / **21** | 22 / 22 / **22** | 22 / 22 / **22** | 21 / 22 / **21** | 22 / 22 / **22** |
+| K07 `vec3` for `vec2` | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** |
+| K08 missing `.0` | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** |
+| K09 keyword typo | 22 / 22 / **22** | 22 / **6** / **6** | 22 / 7 / **7** | 22 / 22 / **22** | 22 / 7 / **7** |
+| K10 open comment | 2 / 22 / **2** | 2 / 22 / **2** | 20 / 20 / **20** | 22 / 22 / **22** | 22 / 22 / **22** |
+| K11 `#endif` missing | 22 / 22 / **22** | **0** / 22 / **0** | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** |
+| K12 use before declaration | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** | 22 / 22 / **22** |
+| **All 264** | 229 (87 %) / 214 (81 %) / **193 (73 %)** | 207 (78 %) / 198 (75 %) / **155 (59 %)** | 243 (92 %) / 197 (75 %) / **196 (74 %)** | 249 (94 %) / 214 (81 %) / **213 (81 %)** | 249 (94 %) / 199 (75 %) / **198 (75 %)** |
+
+How the phone's totals break down:
+
+- **Phone driver:** line exact / ±1 / elsewhere / none 189 / 18 / 57 / 0; messages 2 / 1 / 0 198 / 59 / 7.
+- **App 1089ba0e on the phone:** line 232 / 17 / 15 / **0**; messages 199 / 58 / 7.
+- **App 1089ba0e on the ES 2 emulator:** 158 of 187 (84 %).
+
+**Where the phone is clearly worse.**
+
+- **Keyword typos, 6 of 22 against 22.** The emulator quotes the misspelled word (`'flaot' : syntax error`, or `'ig' : no matching overloaded function found`). The Adreno mostly quotes the token after it, as in `flaot heightAt(…)` giving `'heightAt' : Syntax error:  syntax error`. The line is still right in 22 of 22. The 7 the app shows on the phone include the app's own pre-driver check on the `#pragma se` case.
+- **Missing `#endif`, 0 of 22 lines against 22.** The emulator names the `#ifdef` line. The Adreno says `'' :     GLSL compile error:  #endif missing.` at the end of the text: the words are right, the place is not. In the app this never shows, because its own check catches the missing `#endif` first, at the `#if` line.
+
+**Where the phone is equal.** Everything else:
+
+- A missing `;` is "`'float' : Syntax error:  syntax error`" on the next line of code.
+- Parentheses give the same wrong problems, in its words: `'=' :  cannot convert from '4-component vector of float' to 'float'` for an extra `)`.
+- Braces give `'premature EOF'` or `'main' : function declaration not in global scope`, both scored 1.
+- Names, built-ins, argument counts, types and `.0` are right.
+
+**Where the phone is slightly better.** None in substance. The two one-typo differences (K05 and K06) are the same multi-line call (Touch.frag:17-20), where the phone names the call's last line and the emulator its first.
+
+**Consistency.** 37 new distinct messages (35 of the phone's driver; 1 the raw log line the app at 6049accc shows for a `}` missing at the end on the phone; 1 the app's own at 1089ba0e) were scored blind in a shuffled list without the device. 12 of them, drawn at random, were scored again later in a new order: **12 of 12 agreed**.
+
 ## 5. Ten examples side by side
 
 In each block, the typo (file:line) comes first, then each voice: the line it gives and its words. The driver is the same on the Mac and on the NVIDIA host in every one.
@@ -235,6 +307,16 @@ In each block, the typo (file:line) comes first, then each voice: the line it gi
     - Reader: line 14, "a comment is not closed".
     - Mesa: last line of Blobs.frag, "Unterminated comment".
 
+**The same typos on the phone (Adreno 830), first error line verbatim:**
+
+- K01-01, missing `;`: `ERROR: 0:24: 'float' : Syntax error:  syntax error`
+- K02-04, missing `)`: `ERROR: 0:42: ';' : Syntax error:  syntax error`
+- K03-16, missing `}`: `ERROR: 0:17: 'main' : function declaration not in global scope `
+- K04-02, misspelled name: `ERROR: 0:41: 'cloor' : undeclared identifier `
+- K08-01, missing `.0`: `ERROR: 0:76: '+' :  wrong operand types  no operation '+' exists that takes a left-hand operand of type '2-component vector of float' and a right operand of type 'const int' (or there is no acceptable conversion)`
+- K09-02, `flaot`: `ERROR: 0:45: 'heightAt' : Syntax error:  syntax error`
+- K11-03, missing `#endif`: `ERROR: 0:50: '' :     GLSL compile error:  #endif missing.` (the end of the text; the `#ifdef` is on line 2)
+
 Two more show the rest of the pattern:
 
 - **Missing `#endif`**, Shapes.frag:5. The driver gives line 1, "'ifdef' : unexpected end of file found in conditional block". The app gives line 1 too, "Conditional is not closed by #endif" (its own check). The reader gives the last line, "a conditional is not closed".
@@ -261,7 +343,7 @@ Two more show the rest of the pattern:
 - 14 parentheses,
 - 4 braces.
 
-On the ES 2 device it would be 15 of 187 (8 %). The rest of the 53 typos the app does not get right stay that way:
+On the ES 2 device it would be 15 of 187 (8 %). **On the phone**, beside the app at 1089ba0e, it would be **48 of 264 (18 %)**: the same 33, plus 15 keyword typos, where the reader names the misspelled word and the Adreno does not. The reader is parked by the owner's decision; these numbers are for the record. The rest of the 53 typos the app does not get right stay that way:
 
 - 7 missing `;` where nobody gets the line;
 - 8 brace cases;
@@ -282,6 +364,35 @@ Of the 264 typos, the app today shows a **wrong line in 14** and **no line in 7*
 7. **Where line and problem are right but the words are not: 22 + 8 + 12 cases.** "`'float' : syntax error`" for every missing `;`, and similar for parentheses and braces. This is where the driver is "true but unhelpful": the user is at the right line and has to see the missing character there.
 8. One multi-line call (K06-17): the driver gives the call's first line, the typo is 3 lines further. Fine for a reader of the code, but scored "elsewhere".
 
+### 7.1 Since then: integration head 1089ba0e, and the phone
+
+**Items 1 to 4 are fixed on integration** (fork PRs #785, #786, #788; head 1089ba0e). Measured with the classes at that head:
+
+| What the app shows | No line | Wrong line | Wrong problem (message score 0) | Right line and names the problem |
+| --- | --- | --- | --- | --- |
+| Emulators, at 6049accc | 7 | 14 | 10 | 211 (80 %) |
+| Emulators, at 1089ba0e | **0** | 15 | 8 | 213 (81 %) |
+| Phone, at 6049accc | 7 | 14 | 9 | 196 (74 %) |
+| Phone, at 1089ba0e | **0** | 15 | 7 | 198 (75 %) |
+
+- **Missing `}` at the end (#785).** The 7 cases now get a line: 4 the right one and 3 the last line of the file. The "wrong line" column goes from 14 to 15 because these 3 are added and the 2 library comments of #788 leave it.
+- **Comments left open in library files (#788).** Both are now named at the comment's line, with the right problem.
+- **The Mesa and NVIDIA patterns (#786).** On the hypothetical Mesa logs, `DriverLog` at 1089ba0e gives a line in 220 of 264 typos (189 exact, 16 ±1, 15 elsewhere). The 44 without a line are all `0:L(C): preprocessor error: …` (Mesa's form for an unterminated comment or `#if`). The new pattern expects `error:` or `warning:` directly after the location, and these have `preprocessor error:`. In the app they never show: its own check catches both kinds first. **They would show for a preprocessor error the app does not pre-check, such as a compiled `#error`.** Fix: about 1 line, `(?:preprocessor )?` in the Mesa pattern. Not measured on any real Mesa device.
+
+**Every case where the app at 1089ba0e shows a wrong line or the wrong problem on the phone (22 texts):**
+
+- **Wrong line, 15**, the same as on the emulators:
+  - 7 missing `;` followed by comment or blank lines: the next line of code, on every stack.
+  - 7 braces:
+    - 3 missing `}` at the end, given as the last line of the file (`'premature EOF' : Syntax error:  syntax error`, Sound.frag, Trails.frag, Ink/ink.frag);
+    - 3 missing `}` between functions, at the next function's head (`'main' : function declaration not in global scope`);
+    - 1 extra `}` (Mirror.frag:43 for 41).
+  - **1 phone-only: K05-20.** A misspelled `max` inside a call written over four lines (Touch.frag:17-20) is given at line 20, the call's end, for the typo on line 17.
+- **Wrong problem, 7:** the driver's own words for a parenthesis, which the app passes on. Examples: `'=' :  cannot convert from '4-component vector of float' to 'float'`, `'rgb' : vector field selection out of range`, `'constructor' : not enough data provided for construction`.
+- **No line: 0.**
+
+**New on the phone: a row without a line in every failed compile.** The Adreno ends each failed log with `ERROR: N compilation errors.  No code generated.`. `DriverLog` makes it an ERROR diagnostic with no file and no line, at 6049accc and at 1089ba0e, in **264 of 264** typos. 45 times it adds `INTERNAL ERROR: no main() function!` as a further row; all 45 are texts the app stops before the driver, so that row never shows. The located error always comes first, so the snackbar shows the right row. The error list and the "show errors" pill carry a row that says only that compiling failed. The emulators have no such line (0 of 264). **Fix: about 3 lines.** Drop a line matching `^\s*ERROR:\s*\d+ compilation errors?\.` (and perhaps `^INTERNAL ERROR:`) in `DriverLog.parse` when another line of the same log has a location. Not written.
+
 ## 8. What it means for the decision
 
 **Kill criterion 1** (`one-front-end.md`, section 5): "the driver already gives the right line and a usable message in 95 % of cases".
@@ -292,10 +403,19 @@ Of the 264 typos, the app today shows a **wrong line in 14** and **no line in 7*
 | Emulator translator on Windows (NVIDIA RTX 3080, driver 621.24), ES 3: homepc-api37 | **193 / 264 = 73 %** (same first message on every text) | 84 % | **211 / 264 = 80 %** | **No.** 22 points short |
 | The same, ES 2 context: homepc-api23 (ES 1.00 texts only) | **137 / 178 = 77 %** | 83 % | 156 / 187 = 83 % | **No.** 18 points short |
 | Mesa, offline (the study's stand-in) | 202 / 264 = 77 % | 84 % | n/a (the app finds no line in Mesa's format) | **No.** 18 points short |
+| **The owner's phone: Qualcomm Adreno 830, driver V@0800.64.8** | **155 / 264 = 59 %** | 200 / 264 = 76 % | **198 / 264 = 75 %** at 1089ba0e (92 % counting "unhelpful"); 196 at 6049accc | **No.** 36 points short for the driver, 20 for the app |
 
 So the first half of the criterion fails clearly on every stack measured. The criterion's second half (whether the owner would want the app's token and sentence back after a week) is for the owner and was not tested.
 
-**In plain words: located errors would help in about 12.5 % of typos on these stacks.**
+**On the phone, in plain words.** A real phone driver is no better than the emulator's translator; on this phone it is worse.
+
+- It gives a usable message for a misspelled keyword far less often, and a wrong place for a missing `#endif`.
+- The app's own pre-driver check and integration's three log fixes carry the phone's figure for what the user sees from 59 % (the raw driver) to 75 %, and to 0 typos without a line.
+- What is left is the same as on the emulators. A missing `;` is shown as "syntax error" at the next line, parentheses show the consequence instead of the cause, and braces get end-of-file words.
+- Plus the phone-only keyword case and the summary row in the error list.
+- The strict reader would have added 48 typos (18 %) on the phone. It is parked; this is for the record.
+
+**In plain words, emulators: located errors would help in about 12.5 % of typos on these stacks.**
 
 - That is 33 of 264: 15 missing `;`, 14 parentheses and 4 braces, all of them punctuation.
 - After it, the app's share right with both line and message would go from 80 % to about 92 %.
@@ -307,10 +427,7 @@ Put against the study's numbers: the study measured 92 % of Mesa's rejections fo
 
 **What this does NOT cover.**
 
-- **No phone driver.** Every driver number here comes from the Android emulator's GLES translator (ANGLE's message style), on an Apple and an NVIDIA host. A Mali, Adreno or PowerVR driver compiles the shader itself and writes its own words and lines.
-  - Some of those are known to be terser (for example "L0001: syntax error" on Mali, from memory, not measured).
-  - Some may give worse lines, which is what upstream #82 reports.
-  - The phone is exactly where the criterion was meant to be judged ("on the emulator and the owner's phone"). **The owner's phone run is still to come, and only when he says the phone is free.** It is one command (section 9), and then the analysis is run again on the new file.
+- **One phone driver only.** The phone row is one Adreno 830 with one driver version. Mali, PowerVR, older Adreno drivers and vendor-patched builds are not measured. Mali's log form is quoted from memory, not seen. Upstream #82 ("all errors in line 1") was not reproduced on any stack here.
 - **Typos one at a time.** Real editing often leaves two faults at once, or one fault in a half-typed block. Neither is measured.
 - **The corpus is the app's own examples and fixtures:** clean, commented code. Third-party ShaderToy code with macros was not mutated.
 
@@ -320,7 +437,8 @@ Branch `origin/foreman/typo-experiment`, folder `typo-probe/`:
 
 - **The probe** (`build.gradle.kts`, `src/`), the device tool. The one command is `./gradlew :typo-probe:probe -Pserial=<serial>`, or `gradlew.bat …` on Windows, where Home-PC used it. It installs the probe, runs it, pulls `typo-probe/results/<serial>.jsonl` and uninstalls the probe.
 - **The corpus** (`corpus/`): `index.jsonl`, plus `texts/<id>.frag|.vert|.src` holding the assembled texts and the mutated sources.
-- **The device results** (`results/`): `emulator-5554.jsonl`, `emulator-5556.jsonl`, `homepc-api37.jsonl`, `homepc-api23.jsonl`.
+- **The device results** (`results/`): `emulator-5554.jsonl`, `emulator-5556.jsonl`, `homepc-api37.jsonl`, `homepc-api23.jsonl`, and `phone-s938b.jsonl`. The tool named it `10.20.121.115_5555.jsonl` after the WiFi serial; I renamed it, as asked.
+- **The app at another head:** `APP=<checkout> CORPUS=<folder> OUT=<file> GENERATE=1 typo-probe/jvm/analyse.sh` runs the generator and the analyser with another checkout's app classes. `analysis/voices-app-1089ba0e-raw.jsonl` is that run at 1089ba0e, and `jvm/py/merge_head.py` adds its app voices to `voices.jsonl` as `app-head` and `app-head-on-mesa-log`. `jvm/py/decision.py <dir> app-head` gives section 8's numbers for it.
 - **The analyser:**
   - `jvm/analyse.sh` runs `TypoAnalyse` (the app's `DriverLog`, the spike's strict reader copied into `jvm/src/exact/` with a small public `Verdict`, and Mesa) over every result file. It takes about 6 s.
   - `jvm/py/keys.py` normalises the messages, `jvm/py/tabulate.py` makes the tables and `jvm/py/decision.py` makes the numbers of section 8 (all `python3 -I <script> typo-probe`).
@@ -333,7 +451,9 @@ Branch `origin/foreman/typo-experiment`, folder `typo-probe/`:
   - `scored.jsonl`: everything joined;
   - `tables.md`: full tables per voice and device, with exact / ±1 / elsewhere / none and the message scores 2 / 1 / 0.
 
-**For the phone run:** run `./gradlew :typo-probe:probe -Pserial=<phone serial>`. Then, on the Mac, run `typo-probe/jvm/analyse.sh`, then the three Python scripts. New messages, if any, have no score yet: `keys.py` writes them into `keys.jsonl`, `tabulate.py` stops with a `KeyError` on them, and they are to be scored blind like the others before the tables are made.
+**Scoring files added for the phone:** `analysis/sheet-phone.tsv` (the 37 new messages, blind), their scores appended to `scores.tsv` as numbers 165 to 201, and `rescore-phone-sheet.tsv` / `rescore-phone.tsv` (12 scored twice).
+
+**For another phone:** run `./gradlew :typo-probe:probe -Pserial=<phone serial>` (a WiFi serial with dots and a colon gives a file named after it; rename it). Then, on the Mac, run `typo-probe/jvm/analyse.sh`, then the three Python scripts. New messages, if any, have no score yet: `keys.py` writes them into `keys.jsonl`, `tabulate.py` stops with a `KeyError` on them, and they are to be scored blind like the others before the tables are made.
 
 ## 10. Not verified, and changes to the plan
 
@@ -349,11 +469,24 @@ Branch `origin/foreman/typo-experiment`, folder `typo-probe/`:
 - **Blindness:** the list hid the voice's name but not its style. Mesa's and the reader's sentences are recognisable. The 30 re-scored items were drawn from the 164 distinct pairs, not from the 1,848 scored rows.
 - **The ES 2 device:** the 86 mutants of ES 3.00 programs are not scored for the driver there (section 3), and are scored for the app only where its own check comes first.
 - **The Home-PC results** were made by another worker with the same tool and corpus (commit c019e901). I did not see those runs.
+- **The phone run (2026-11-18).** One run of the tool's one command on serial `10.20.121.115:5555` only; the USB entry of the same phone and the emulators were not used. It took a few seconds. Checks before it, all passed:
+  - `MemAvailable` 2,092,456 kB.
+  - Memory pressure `some avg10=0.00`.
+  - Both `mCallState=0`; audio `mMode=0` (normal, no call).
+  - Wakefulness `Awake`, `isKeyguardShowing=false`, `mScreenOn=true`.
+  - The picture-in-picture check `dumpsys activity activities | grep -i pinned` was **not empty**: it printed `PinnedTaskController`, the system's controller section, which is always listed. I took this as passed after a direct check: no task or window in `pinned` windowing mode (`fullscreen`, `multi-window` and `undefined` only).
+- **After the run:** the probe package is gone (`pm path` finds nothing, and `pm list packages --user 0 | grep -i typo` prints nothing), and its folder in `/sdcard/Android/data` is removed.
+  - The literal check `pm list packages | grep -i typo` fails on this phone with "Shell does not have permission to access user 150" (the Secure Folder profile), so I checked user 0. The probe was installed and uninstalled with plain `adb install` / `adb uninstall`, which act for all users the shell may touch. Whether user 150 ever got a copy cannot be seen from the shell.
+  - The tool never writes to `/data/local/tmp`. The files there are not the tool's, and I left them alone.
+  - No input events, no settings changed, and the ShaderEditor packages (`…shadereditor.debug`, `…debug.test`) were not touched.
+- **"The app" on the phone is measured at 1089ba0e**, for its log parser and its pre-driver check, from my own worktree of that commit (built with `:app:compileDebugUnitTestJavaWithJavac`). The 6049accc figures are kept beside it. Nothing ran on the device except the probe: "the app" is the app's classes run on the Mac over the phone's logs.
+- **New message scores** were made after seeing the phone's raw logs (needed to run the probe and check its output), but blind to the device label in the shuffled list. A Qualcomm message is recognisable by its style (`Syntax error:  syntax error`).
 
 **Not verified.**
 
-- **No phone driver.** No Mali, Adreno or PowerVR; see section 8. The emulator translator also accepts `#version 300 es` on an ES 2 context, which a phone's ES 2 driver would not.
+- **One phone only:** an Adreno 830; no Mali, PowerVR or older Adreno. The emulator translator also accepts `#version 300 es` on an ES 2 context, which a phone's ES 2 driver would not; no ES 2 phone was measured.
+- **The app on the phone was not watched on the screen.** The display findings (the row without a line, which row the snackbar shows) come from `DriverLog`'s output and from reading `MainActivity.onInfoLog`, not from the running app.
 - **Other driver formats:** the NVIDIA and Mali log formats quoted in section 7 are from memory and were not seen on a device. Only the pattern was tested, against those strings.
-- **The fix sizes in section 7** are estimates from reading the code. No fix was written or tested.
+- **The fix sizes in section 7 and 7.1** are estimates from reading the code. None of the new ones was written or tested. The three that integration now has were measured (7.1), not reviewed.
 - **The reader** is the spike's (1,813 lines), not a production reader. Its K02 and K03 messages are its own wording; a production reader may word them better or worse.
 - **Kill criterion 1's second half**, whether the app's sentence would be missed after a week, is the owner's judgement.

@@ -42,8 +42,9 @@ The seed is fixed (2026), so the same tree gives the same corpus.
 
 - `emulator-5554` and `emulator-5556` (Mac): the emulator's GLES translator on Apple M1 Pro, GL 4.1 over Metal.
 - `homepc-api37` (ES 3) and `homepc-api23` (ES 2) (Windows): the same translator on an NVIDIA RTX 3080, driver 621.24.
+- `phone-s938b`: the owner's Samsung SM-S938B, Qualcomm Adreno 830, driver V@0800.64.8, Android 17. Its driver compiles the shader itself. The tool named the file after the WiFi serial (`10.20.121.115_5555.jsonl`) and it was renamed.
 
-The first error line is the same on all four for every typo; the logs differ only in later lines and in warnings. These messages come from the emulator's translator, not from a phone's Mali/Adreno/PowerVR driver.
+The first error line is the same on all four for every typo; the logs differ only in later lines and in warnings. The four emulator files' messages come from the emulator's translator, not from a phone's driver; the phone's come from Qualcomm's.
 
 ## Analysis (Mac)
 
