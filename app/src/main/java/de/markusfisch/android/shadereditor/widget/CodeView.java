@@ -760,6 +760,12 @@ public class CodeView extends View {
 		accessibility.jumped();
 	}
 
+	// The document shown is where a jump to another file landed, with the
+	// caret where it was: a screen reader hears that line, as after a jump.
+	public void landed() {
+		accessibility.jumped();
+	}
+
 	public void bringCaretIntoView() {
 		if (document == null) {
 			return;
