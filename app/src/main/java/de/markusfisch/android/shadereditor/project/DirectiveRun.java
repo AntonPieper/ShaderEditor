@@ -22,7 +22,7 @@ import java.util.Set;
  * the text is broken, as by an #else after #else, it cannot tell anything.
  * Comments and directive lines are those of {@link PreprocessorScan}.
  */
-public final class DirectiveRun {
+public final class DirectiveRun implements BuiltLines.Directives {
 	public enum State {ON, OFF, UNKNOWN}
 
 	// More steps of expansion than this, and it cannot tell.

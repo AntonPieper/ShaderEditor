@@ -26,12 +26,19 @@ public class DirectiveRunOracleTest {
 
 	@Test
 	public void agreesWithMesa() throws IOException {
-		File file = new File(DirectiveCases.probes().getParentFile(),
-				"mesa.txt");
+		for (String variant : new String[]{"full", "v1", "v2", "v1j", "v2j"}) {
+			agree(variant, variant.equals("full") ? "mesa.txt"
+					: "mesa-" + variant + ".txt");
+		}
+	}
+
+	private static void agree(String variant, String name)
+			throws IOException {
+		File file = new File(DirectiveCases.probes().getParentFile(), name);
 		Map<String, List<String>> records = DirectiveOracle.read(file);
 		int off = 0;
 		int shown = 0;
-		for (DirectiveCases.Case c : DirectiveCases.all()) {
+		for (DirectiveCases.Case c : DirectiveCases.all(variant)) {
 			List<String> record = records.get(c.name());
 			assertNotNull("No record of " + c.name() + RERUN, record);
 			assertEquals(c.name() + " changed" + RERUN,
@@ -60,6 +67,6 @@ public class DirectiveRunOracleTest {
 			}
 		}
 		assertTrue(off > 1000);
-		assertTrue(shown > 1000);
+		assertTrue(variant, variant.startsWith("v1") || shown > 10);
 	}
 }

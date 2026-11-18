@@ -42,10 +42,163 @@ final class DirectiveCases {
 			List<DirectiveRun.State> states, List<Expansion> expansions) {
 	}
 
+	private static String variant = "full";
+
+	// The head of an imported ShaderToy shader, as far as macros go.
+	private static final String HEAD = """
+			#version 300 es
+			precision highp float;
+			#define HW_PERFORMANCE 0
+			uniform vec3 iResolution;
+			uniform float iTime;
+			out vec4 fragColor;
+			""";
+	// The shapes of conditionals and macros in 50 ShaderToy shaders, as
+	// texts of their kind; none is from the site.
+	static final Map<String, String> SHAPES = Map.of(
+			"aa", """
+					#define AA 1
+					float shade(vec2 p) { return length(p) - 0.5; }
+					void main() {
+						vec3 col = vec3(0.0);
+					#if AA>1
+						for (int m = 0; m < AA; m++)
+						for (int n = 0; n < AA; n++) {
+							vec2 o = vec2(float(m), float(n)) / float(AA) - 0.5;
+							col += vec3(shade((gl_FragCoord.xy + o) / iResolution.y));
+						}
+						col /= float(AA * AA);
+					#else
+						col = vec3(shade(gl_FragCoord.xy / iResolution.y));
+					#endif
+						fragColor = vec4(col, 1.0);
+					}
+					""",
+			"commented", """
+					//#define SOFT
+					// #define DEBUG 1
+					void main() {
+						float d = length(gl_FragCoord.xy / iResolution.y);
+					#ifdef SOFT
+						d = smoothstep(0.0, 0.1, d);
+					#else
+						d = step(0.5, d);
+					#endif
+					#ifndef DEBUG
+						fragColor = vec4(d);
+					#else
+						fragColor = vec4(1.0, 0.0, 0.0, 1.0);
+					#endif
+					}
+					""",
+			"zero", """
+					void main() {
+						vec3 col = vec3(0.2);
+					#if 0
+						col = vec3(1.0, 0.0, 1.0);
+						col *= 0.5;
+					#endif
+					#if 1
+						col += 0.1;
+					#else
+						col -= 0.1;
+					#endif
+						fragColor = vec4(col, 1.0);
+					}
+					""",
+			"hw", """
+					#if HW_PERFORMANCE==0
+					#define STEPS 32
+					#else
+					#define STEPS 128
+					#endif
+					void main() {
+						float t = 0.0;
+						for (int i = 0; i < STEPS; i++) t += 0.01;
+						fragColor = vec4(t);
+					}
+					""",
+			"quality", """
+					#define LOWQUALITY
+					void main() {
+					#ifdef LOWQUALITY
+						float n = 0.5;
+					#else
+						float n = sin(iTime);
+					#endif
+					#ifndef LOWQUALITY
+						n *= 2.0;
+					#endif
+						fragColor = vec4(n);
+					}
+					""",
+			"continued", """
+					#define R(a) mat2(cos(a), sin(a), \\
+						-sin(a), cos(a))
+					#define AA 2
+					void main() {
+						vec2 p = R(iTime) * gl_FragCoord.xy;
+					#if AA>1
+						p *= 0.5;
+					#else
+						p *= 2.0;
+					#endif
+						fragColor = vec4(p, 0.0, 1.0);
+					}
+					""",
+			"macros", """
+					#define PI 3.14159265
+					#define TAU (2.0 * PI)
+					#define R(a) mat2(cos(a), sin(a), -sin(a), cos(a))
+					#define S(a, b, x) smoothstep(a, b, x)
+					#define ZERO (min(int(iTime), 0))
+					#define SQ(x) ((x) * (x))
+					void main() {
+						vec2 p = gl_FragCoord.xy / iResolution.y;
+						p *= R(TAU * 0.25);
+						float d = S(0.0, 0.01, length(p) - 0.5);
+						for (int i = ZERO; i < 4; i++) d += SQ(float(i) * 0.1);
+						d += SQ(S(0.1, 0.2, p.x));
+						fragColor = vec4(d * TAU);
+					}
+					""");
+
 	private DirectiveCases() {
 	}
 
+	static BuiltLines.Evaluator evaluator() {
+		boolean joins = variant.endsWith("j");
+		boolean expands = variant.startsWith("v2");
+		return switch (variant) {
+			case "v1", "v2", "v1j", "v2j" -> (text, version) ->
+					new BuiltLines.Directives() {
+						final DirectiveFloor floor =
+								DirectiveFloor.of(text, version, joins);
+
+						public DirectiveRun.State state(int line) {
+							return floor.state(line);
+						}
+
+						public String expansion(int line, int column,
+								String name) {
+							return expands ? ExpansionFloor.of(text, version,
+									joins, line, column, name) : null;
+						}
+					};
+			default -> DirectiveRun::of;
+		};
+	}
+
 	static List<Case> all() {
+		return all(System.getProperty("directives.variant", "full"));
+	}
+
+	/**
+	 * The cases as an evaluator sees them: "full" DirectiveRun, "v1" the
+	 * floor without expansion, "v2" the floor with expansion on request.
+	 */
+	static List<Case> all(String variant) {
+		DirectiveCases.variant = variant;
 		List<Case> cases = new ArrayList<>();
 		DirectoryProjectFiles examples = new DirectoryProjectFiles(
 				ExamplesTest.folder());
@@ -71,6 +224,9 @@ final class DirectiveCases {
 			}
 			add(cases, "shadertoy/" + name, files, ProjectPath.parse(
 					ShaderToyProject.ENTRY).value());
+		}
+		for (Map.Entry<String, String> shape : SHAPES.entrySet()) {
+			add(cases, "shapes/" + shape.getKey(), HEAD + shape.getValue());
 		}
 		File probes = probes();
 		for (String name : sorted(probes.list())) {
@@ -99,13 +255,14 @@ final class DirectiveCases {
 		if (plan == null) {
 			return;
 		}
-		BuiltLines built = BuiltLines.of(plan);
+		BuiltLines built = BuiltLines.of(plan, evaluator());
 		for (int p = 0; p < plan.programs().size(); ++p) {
 			RenderPlan.Program program = plan.programs().get(p);
 			CompiledSource compiled = CompiledSource.of(program.lines(),
 					program.head(), program.sourceMap());
 			String text = compiled.text();
-			DirectiveRun run = DirectiveRun.of(text, compiled.version());
+			BuiltLines.Directives run = evaluator().run(text,
+					compiled.version());
 			String[] lines = text.split("\n", -1);
 			List<Integer> off = new ArrayList<>();
 			List<DirectiveRun.State> states = new ArrayList<>();

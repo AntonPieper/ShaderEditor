@@ -2,7 +2,8 @@
 # Asks Mesa's offline compiler which lines of the cases of DirectiveCases it
 # compiles and what their macro uses become, and records the verdicts in
 # app/src/test/resources/directives/mesa.txt, which DirectiveRunOracleTest
-# checks without Mesa. Needs glsl_compiler (brew install mesa), the Android
+# checks without Mesa. The argument picks the evaluator: full (DirectiveRun,
+# the default), v1 or v2 (DirectiveFloor, without or with ExpansionFloor). Needs glsl_compiler (brew install mesa), the Android
 # SDK in ANDROID_HOME and a JDK 17. Prints the totals.
 set -e
 cd "$(dirname "$0")/../.."
@@ -13,10 +14,13 @@ jar() {
 }
 sdk=${ANDROID_HOME:-$HOME/Library/Android/sdk}
 build=build/intermediates
-java -cp "$build/javac/debug/compileDebugJavaWithJavac/classes:\
+variant=${1:-full}
+out=src/test/resources/directives/mesa.txt
+[ "$variant" = full ] || out=src/test/resources/directives/mesa-$variant.txt
+java -Ddirectives.variant="$variant" -cp "$build/javac/debug/compileDebugJavaWithJavac/classes:\
 $build/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes:\
 src/test/resources:$(jar 'junit-4.13*.jar'):$(jar 'hamcrest-core-1.3.jar'):\
 $(jar 'json-2018*.jar'):$(ls -d "$sdk"/platforms/android-*/android.jar | tail -1):\
 $build/compile_and_runtime_r_class_jar/debug/processDebugResources/R.jar" \
 	de.markusfisch.android.shadereditor.project.DirectiveOracle \
-	src/test/resources/directives/mesa.txt
+	"$out"

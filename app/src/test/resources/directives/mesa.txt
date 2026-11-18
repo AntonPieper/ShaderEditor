@@ -552,6 +552,70 @@ off 0 0 0
 on 51 0
 unknown 0
 end
+case shapes/aa#0 13c65a9a6ccd6ed2
+clean
+active 1-11,19,21-23
+inactive 12-17
+off 6 6 0
+on 15 0
+unknown 0
+end
+case shapes/continued#0 ec16c79ed0dd15f0
+clean
+active 1-7,9-13,17-19
+inactive 15
+off 1 1 0
+on 15 0
+unknown 0
+expansion 11 10 R unseen mat2(cos(iTime), sin(iTime), -sin(iTime), cos(iTime))
+end
+case shapes/zero#0 d6e598d1b629cd59
+clean
+active 1-9,13-14,18-20
+inactive 10-11,16
+off 3 3 0
+on 14 0
+unknown 0
+end
+case shapes/quality#0 44eea17a06223128
+clean
+active 1-10,14,17-19
+inactive 12,15
+off 2 2 0
+on 14 0
+unknown 0
+end
+case shapes/commented#0 7692105027afd2a5
+clean
+active 1-11,14,16-17,21-22
+inactive 12,19
+off 2 2 0
+on 16 0
+unknown 0
+end
+case shapes/macros#0 68fc4623ea691cec
+clean
+active 1-21
+inactive -
+off 0 0 0
+on 21 0
+unknown 0
+expansion 15 6 R same mat2(cos((2.0 * 3.14159265) * 0.25), sin((2.0 * 3.14159265) * 0.25), -sin((2.0 * 3.14159265) * 0.25), cos((2.0 * 3.14159265) * 0.25))
+expansion 16 11 S same smoothstep(0.0, 0.01, length(p) - 0.5)
+expansion 17 14 ZERO same (min(int(iTime), 0))
+expansion 17 37 SQ same ((float(i) * 0.1) * (float(i) * 0.1))
+expansion 18 6 SQ same ((smoothstep(0.1, 0.2, p.x)) * (smoothstep(0.1, 0.2, p.x)))
+expansion 19 22 TAU same (2.0 * 3.14159265)
+end
+case shapes/hw#0 43c6914b800ffe09
+clean
+active 1-8,12-17
+inactive 10
+off 1 1 0
+on 14 0
+unknown 0
+expansion 14 21 STEPS same 32
+end
 case probes/active-then-elif.frag#0 b12c760b358d7a60
 clean
 active 1-4,7-8

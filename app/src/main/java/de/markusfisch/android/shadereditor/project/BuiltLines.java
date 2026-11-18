@@ -23,17 +23,34 @@ public final class BuiltLines {
 	private final Map<ProjectPath, Map<Integer, List<Place>>> places =
 			new HashMap<>();
 
-	private record Place(DirectiveRun run, int line) {
+	private record Place(Directives run, int line) {
+	}
+
+	/** What runs the directives of one compiled text. */
+	public interface Directives {
+		DirectiveRun.State state(int line);
+
+		String expansion(int line, int column, String name);
+	}
+
+	/** Makes what runs the directives of a text of a version. */
+	public interface Evaluator {
+		Directives run(String text, int version);
 	}
 
 	/** Run the directives of every program of plan. */
 	public static BuiltLines of(RenderPlan plan) {
+		return of(plan, DirectiveRun::of);
+	}
+
+	/** Run the directives of every program of plan with evaluator. */
+	public static BuiltLines of(RenderPlan plan, Evaluator evaluator) {
 		BuiltLines built = new BuiltLines();
 		Set<ProjectPath> included = new HashSet<>();
 		for (RenderPlan.Program program : plan.programs()) {
 			CompiledSource compiled = CompiledSource.of(program.lines(),
 					program.head(), program.sourceMap());
-			DirectiveRun run = DirectiveRun.of(compiled.text(),
+			Directives run = evaluator.run(compiled.text(),
 					compiled.version());
 			List<SourceLocation> lines = compiled.sourceMap().lines();
 			for (int n = 0; n < lines.size(); ++n) {
