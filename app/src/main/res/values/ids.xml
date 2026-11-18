@@ -2,6 +2,9 @@
 <resources>
 	<!-- The code view's toolbar action that explains the selected word. -->
 	<item name="look_up" type="id" />
+	<item name="name_uses" type="id" />
+	<item name="name_rename" type="id" />
+	<item name="way_back" type="id" />
 	<!-- The code view's accessibility action that opens the file the caret's
 		line names. -->
 	<item name="open_link" type="id" />

@@ -453,10 +453,13 @@ final class CodeViewSourceEditor implements SourceEditor {
 		if (this.links != null) {
 			this.links.point(null);
 			this.links.setListener(null);
+			this.links.setJumping(null);
 		}
 		this.links = links;
 		hostOffer = null;
 		if (links != null) {
+			// Going back moves the caret as a jump does.
+			links.setJumping(view::jumping);
 			// A folder listed may name the file a missing one is near.
 			links.setListener(() -> {
 				complete();
@@ -547,6 +550,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 				? ProjectPath.parse(file)
 				: null;
 		if (links != null && (path == null || path.isSuccess())) {
+			view.leaving();
 			links.open(path != null ? path.value() : links.file(),
 					Math.max(0, line), back);
 		} else if (file == null) {
@@ -563,9 +567,10 @@ final class CodeViewSourceEditor implements SourceEditor {
 			return;
 		}
 		int start = text.lineStart(line - 1);
+		int end = start + text.line(line - 1).length();
 		Document.Selection selection = document.selection();
-		if (selection.start() < start ||
-				selection.end() > start + text.line(line - 1).length()) {
+		view.jumping();
+		if (selection.start() < start || selection.end() > end) {
 			document.select(start, start);
 		}
 		view.jumped();
@@ -1029,8 +1034,26 @@ final class CodeViewSourceEditor implements SourceEditor {
 		}
 
 		@Override
+		public boolean listsUses() {
+			String word = name();
+			return word != null && docs.listsUses(word);
+		}
+
+		@Override
+		public boolean renames() {
+			String word = name();
+			return word != null && docs.renames(word);
+		}
+
+		@Override
 		public boolean back() {
 			return links != null && links.back();
+		}
+
+		@Nullable
+		@Override
+		public String wayBack() {
+			return links != null ? links.wayBack() : null;
 		}
 	};
 
