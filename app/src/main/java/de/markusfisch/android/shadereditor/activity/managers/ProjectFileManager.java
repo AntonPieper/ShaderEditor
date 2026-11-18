@@ -1,9 +1,13 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewStub;
+import android.view.ViewTreeObserver;
+import android.view.accessibility.AccessibilityManager;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -175,6 +179,10 @@ public final class ProjectFileManager {
 	// The bar that says what changed outside the app, once made.
 	@Nullable
 	private View bar;
+	// The sentence of the bar a screen reader was sent to last, while the
+	// bar is shown.
+	@Nullable
+	private String pointed;
 	// The build of what runs asked for last, of which project and file.
 	@Nullable
 	private OpenProject.Build build;
@@ -926,12 +934,13 @@ public final class ProjectFileManager {
 		}
 		bar.setVisibility(outside != null ? View.VISIBLE : View.GONE);
 		if (outside == null) {
+			pointed = null;
 			return;
 		}
 		ProjectFile.Outside.Kind kind = outside.kind();
 		boolean unsaved = shown.isModified();
 		TextView text = bar.findViewById(R.id.conflict_text);
-		text.setText(activity.getString(switch (kind) {
+		String sentence = activity.getString(switch (kind) {
 			case CHANGED -> R.string.conflict_changed;
 			case DELETED -> R.string.conflict_deleted;
 			case GONE -> R.string.conflict_gone;
@@ -939,18 +948,27 @@ public final class ProjectFileManager {
 					? R.string.conflict_unreadable_unsaved
 					: R.string.conflict_unreadable;
 			case JOURNAL, JOURNAL_UNREAD -> R.string.conflict_journal;
-		}, shown.getTitle()));
+		}, shown.getTitle());
+		text.setText(sentence);
+		if (!sentence.equals(pointed)) {
+			pointed = sentence;
+			point(text);
+		}
 		boolean decides = kind == ProjectFile.Outside.Kind.CHANGED;
 		// The bar goes with its button: a screen reader hears that the
 		// file's text is shown now.
 		View said = bar;
-		offer(R.id.conflict_reload, decides,
-				() -> shown.resolve(outside, OpenProject.Choice.RELOAD,
-						() -> said.announceForAccessibility(activity.getString(
-								R.string.a11y_reloaded, shown.getTitle()))));
+		offer(R.id.conflict_reload, decides, () -> {
+			Runnable back = focusBack();
+			shown.resolve(outside, OpenProject.Choice.RELOAD, () -> {
+				back.run();
+				said.announceForAccessibility(activity.getString(
+						R.string.a11y_reloaded, shown.getTitle()));
+			});
+		});
 		offer(R.id.conflict_keep, decides ||
-						kind == ProjectFile.Outside.Kind.DELETED,
-				() -> shown.resolve(outside, OpenProject.Choice.KEEP, null));
+						kind == ProjectFile.Outside.Kind.DELETED, () ->
+				shown.resolve(outside, OpenProject.Choice.KEEP, focusBack()));
 		offer(R.id.conflict_discard, kind == ProjectFile.Outside.Kind.JOURNAL,
 				() -> discard(shown));
 		offer(R.id.conflict_retry,
@@ -962,6 +980,55 @@ public final class ProjectFileManager {
 		offer(R.id.conflict_save, kind == ProjectFile.Outside.Kind.GONE &&
 						shown.can(OpenItem.Action.SAVE),
 				() -> shown.save(true));
+	}
+
+	// A button of the bar with the input focus, as TalkBack 17 gives it
+	// the button it clicks, goes with the bar, and the keys typed next
+	// would go nowhere: once the bar is done, the code has it back.
+	@NonNull
+	private Runnable focusBack() {
+		boolean focused = bar.hasFocus();
+		return () -> {
+			if (focused || bar.hasFocus()) {
+				editor.focusCode();
+			}
+		};
+	}
+
+	// A screen reader goes to the bar's sentence when it appears or says
+	// something else, as the app comes back to the front. A live region
+	// was not heard then whenever the code had the input focus: the screen
+	// reader's reading of the code cut it short, and the same sentence
+	// again within half a minute it drops. The input focus stays where it
+	// is; the window must have the focus first, or the screen reader puts
+	// its own focus back over this one.
+	private static void point(@NonNull View view) {
+		AccessibilityManager manager = (AccessibilityManager) view
+				.getContext().getSystemService(Context.ACCESSIBILITY_SERVICE);
+		if (manager == null || !manager.isTouchExplorationEnabled()) {
+			return;
+		}
+		Runnable go = () -> {
+			if (view.isShown()) {
+				view.performAccessibilityAction(
+						AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
+			}
+		};
+		if (view.hasWindowFocus()) {
+			view.post(go);
+			return;
+		}
+		view.getViewTreeObserver().addOnWindowFocusChangeListener(
+				new ViewTreeObserver.OnWindowFocusChangeListener() {
+					@Override
+					public void onWindowFocusChanged(boolean hasFocus) {
+						if (hasFocus) {
+							view.getViewTreeObserver()
+									.removeOnWindowFocusChangeListener(this);
+							view.post(go);
+						}
+					}
+				});
 	}
 
 	// Unsaved text that is given up is gone for good: only after a yes.
