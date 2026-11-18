@@ -74,6 +74,16 @@ public interface FileLinks extends HostCompletion.Listing {
 		return false;
 	}
 
+	/** Run jumping before going back moves the caret, none for null. */
+	default void setJumping(@Nullable Runnable jumping) {
+	}
+
+	/** What going back is called, as its key says it, or null. */
+	@Nullable
+	default String wayBack() {
+		return null;
+	}
+
 	/**
 	 * Tell done the texts of the folder's GLSL files as the editor has
 	 * them, read off the main thread: of at most most files and bytes

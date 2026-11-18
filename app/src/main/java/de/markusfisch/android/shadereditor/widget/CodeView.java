@@ -130,11 +130,20 @@ public class CodeView extends View {
 		/** List its uses (Shift+F12), renaming at once (F2). */
 		void uses(boolean rename);
 
+		/** Whether its uses can be listed, and whether renamed there. */
+		boolean listsUses();
+
+		boolean renames();
+
 		/** Explain it (Ctrl+Q). */
 		void lookUp();
 
 		/** Go back one place (Alt+Left); return whether there was one. */
 		boolean back();
+
+		/** What going back is called, "Back to line 25", or null. */
+		@Nullable
+		String wayBack();
 	}
 
 	public interface LineLink {
@@ -862,6 +871,11 @@ public class CodeView extends View {
 	public void jumped() {
 		bringCaretIntoView();
 		accessibility.jumped();
+	}
+
+	// A jump is about to move the caret: a service hears its landing only.
+	public void jumping() {
+		accessibility.jumping();
 	}
 
 	// The document shown is where a jump to another file landed, with the
