@@ -251,8 +251,8 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 				@Override
 				public void uses(@NonNull String word, @Nullable String file,
-						boolean keyboard, boolean renamable) {
-					uses.show(word, file, keyboard, renamable);
+						boolean keyboard, boolean renamable, boolean rename) {
+					uses.show(word, file, keyboard, renamable, rename);
 				}
 			});
 			uses = new WordUses(view, new WordUses.Host() {
