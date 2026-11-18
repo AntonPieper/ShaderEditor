@@ -9,11 +9,15 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * What {@link DirectiveRun} says of the cases of {@link DirectiveCases},
@@ -61,5 +65,42 @@ public class DirectiveRunOracleTest {
 		}
 		assertTrue(off > 1000);
 		assertTrue(shown > 1000);
+	}
+
+	// Every expansion the README of the examples promises is one Mesa
+	// compiled the same, and one the app still shows.
+	@Test
+	public void theExamplesSayWhatMesaCompiled() throws IOException {
+		File macros = new File(DirectiveCases.probes().getParentFile(),
+				"macros");
+		Set<String> same = new HashSet<>();
+		for (Map.Entry<String, List<String>> record : DirectiveOracle.read(
+				new File(macros.getParentFile(), "mesa.txt")).entrySet()) {
+			for (String line : record.getValue()) {
+				String[] f = line.split(" ", 6);
+				if (record.getKey().startsWith("macros/") &&
+						f[0].equals("expansion") && f[4].equals("same")) {
+					same.add(f[5]);
+				}
+			}
+		}
+		Set<String> shown = new HashSet<>();
+		for (DirectiveCases.Case c : DirectiveCases.all()) {
+			if (c.name().startsWith("macros/")) {
+				for (DirectiveCases.Expansion e : c.expansions()) {
+					shown.add(e.text());
+				}
+			}
+		}
+		Matcher here = Pattern.compile("Here: `([^`]+)`").matcher(
+				new String(Files.readAllBytes(new File(macros, "README.md")
+						.toPath()), StandardCharsets.UTF_8));
+		int promised = 0;
+		while (here.find()) {
+			assertTrue(here.group(1), same.contains(here.group(1)));
+			assertTrue(here.group(1), shown.contains(here.group(1)));
+			++promised;
+		}
+		assertEquals(17, promised);
 	}
 }

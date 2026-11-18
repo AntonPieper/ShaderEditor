@@ -552,6 +552,86 @@ off 0 0 0
 on 51 0
 unknown 0
 end
+case macros/Lines.frag#0 7918ef0ee9bcac32
+clean
+active 1-9,12-27
+inactive -
+off 0 0 0
+on 25 0
+unknown 0
+expansion 18 11 CHECKER same mod(floor((uv).x * (8.0)) + floor((uv).y * (8.0)), 2.0)
+expansion 21 31 SWAP same { vec3 t_ = dark; dark = light; light = t_; }
+expansion 24 1 CLAMP01 same col = clamp(col, 0.0, 1.0)
+end
+case macros/Nested.frag#0 3e95a7c795597f01
+clean
+active 1-28
+inactive -
+off 0 0 0
+on 28 0
+unknown 0
+expansion 19 6 SPIN same mat2(cos(((time * 0.05) * (2.0 * 3.14159265))), sin(((time * 0.05) * (2.0 * 3.14159265))), -sin(((time * 0.05) * (2.0 * 3.14159265))), cos(((time * 0.05) * (2.0 * 3.14159265))))
+expansion 21 10 ROT same mat2(cos(((0.125) * (2.0 * 3.14159265))), sin(((0.125) * (2.0 * 3.14159265))), -sin(((0.125) * (2.0 * 3.14159265))), cos(((0.125) * (2.0 * 3.14159265))))
+expansion 23 30 TAU same (2.0 * 3.14159265)
+end
+case macros/Parameters.frag#0 7651791bf418ef1b
+clean
+active 1-11,13-20,22-24
+inactive -
+off 0 0 0
+on 22 0
+unknown 0
+expansion 19 15 RING same smoothstep(0.02, 0.0, abs(length(uv) - (0.3)))
+expansion 19 37 RING same smoothstep(0.03, 0.0, abs(length(uv) - (0.6)))
+expansion 19 59 RING same smoothstep(0.04 * pulse, 0.0, abs(length(uv) - (0.9)))
+expansion 20 12 MIX3 same mix(mix(vec3(0.1, 0.2, 0.5), vec3(0.9, 0.4, 0.2), smoothstep(0.0, 0.5, length(uv))), vec3(1.0, 0.9, 0.6), smoothstep(0.5, 1.0, length(uv)))
+end
+case macros/Redefined.frag#0 abe1e603ba577a38
+clean
+active 1-35
+inactive -
+off 0 0 0
+on 35 0
+unknown 0
+expansion 14 8 SHAPE same length(p)
+expansion 14 19 SIZE same (0.5 * 0.6)
+expansion 24 8 SHAPE same max(abs((p).x), abs((p).y))
+expansion 24 19 SIZE same (0.5 * 0.9)
+end
+case macros/ShaderToy.frag#0 0eb6446cff6cde6d
+clean
+active 1-42,44-47
+inactive -
+off 0 0 0
+on 46 0
+unknown 0
+expansion 39 30 R same iResolution.xy
+expansion 39 35 R same iResolution.xy
+expansion 40 7 rot same mat2(cos(iTime * 0.3), -sin(iTime * 0.3), sin(iTime * 0.3), cos(iTime * 0.3))
+expansion 43 2 S same smoothstep(0.0, 0.01, d)
+expansion 44 20 S same smoothstep(0.3, 0.9, length(uv))
+end
+case macros/Switches.frag#0 c486a58c2e81c4c0
+clean
+active 1-14,17,19-32,36,40-42,45,47-49,53-55
+inactive 15,34,37-38,43,51
+off 5 5 0
+on 39 0
+unknown 2
+expansion 26 21 AA same 2
+expansion 27 22 AA same 2
+expansion 28 53 AA same 2
+expansion 32 12 AA same 2
+expansion 32 17 AA same 2
+end
+case macros/Template.frag#0 d4a33bb81c7fb91f
+clean
+active 0-2,6-16,20-22
+inactive 4,18
+off 1 1 0
+on 16 0
+unknown 2
+end
 case probes/active-then-elif.frag#0 b12c760b358d7a60
 clean
 active 1-4,7-8
@@ -785,7 +865,7 @@ inactive 5
 off 1 1 0
 on 7 0
 unknown 0
-expansion 9 12 T unseen float
+expansion 9 12 T same float
 end
 case probes/matrix-spelling.frag#0 5f95dd6a5593e012
 clean
@@ -939,7 +1019,7 @@ inactive -
 off 0 0 0
 on 6 0
 unknown 0
-expansion 3 20 RET unseen return
+expansion 3 20 RET same return
 end
 case probes/return-member.frag#0 d841c131868b6f17
 clean
@@ -964,7 +1044,7 @@ inactive -
 off 0 0 0
 on 6 0
 unknown 0
-expansion 3 35 RET unseen return
+expansion 3 35 RET same return
 end
 case probes/silent-before.frag#0 d249b9bf5849aa81
 clean
@@ -973,7 +1053,7 @@ inactive -
 off 0 0 0
 on 6 0
 unknown 0
-expansion 3 35 RET unseen return
+expansion 3 35 RET same return
 end
 case probes/struct-dot-newline.frag#0 9b35fa7e029f5d15
 clean

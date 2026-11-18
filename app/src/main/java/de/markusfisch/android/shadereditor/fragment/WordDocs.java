@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -93,6 +94,16 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		 */
 		void uses(@NonNull String word, @Nullable String file,
 				boolean keyboard, boolean renamable);
+
+		/**
+		 * Return what tells, on any thread, what the use of the macro
+		 * word at the caret became in the last build, or null for
+		 * nothing, as when the text changed since.
+		 */
+		@Nullable
+		default Callable<String> here(@NonNull String word) {
+			return null;
+		}
 	}
 
 	private static final String ASSET = "glsl-docs.txt";
@@ -395,11 +406,20 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	private void show(@NonNull DocsSheet.Content content,
 			@Nullable String action, @Nullable Runnable onAction,
 			boolean leads, @Nullable String uses, @Nullable String file) {
+		show(content, action, onAction, leads, uses, file, null);
+	}
+
+	// With what a macro use became here, or nothing for null.
+	private void show(@NonNull DocsSheet.Content content,
+			@Nullable String action, @Nullable Runnable onAction,
+			boolean leads, @Nullable String uses, @Nullable String file,
+			@Nullable String here) {
 		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(view);
 		boolean keyboard = insets != null &&
 				insets.isVisible(WindowInsetsCompat.Type.ime());
 		DocsSheet sheet = new DocsSheet(view.getContext(), content, action,
 				onAction, leads);
+		sheet.setHere(here);
 		boolean[] handedOn = {false};
 		if (uses != null && host.offersUses()) {
 			boolean renamable = !UNIFORMS.containsKey(uses) ||
@@ -534,8 +554,35 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	}
 
 	// What the file or a file around it declares: the declaration, the
-	// comment that belongs to it, and the way to it.
+	// comment that belongs to it, and the way to it; for a macro, what it
+	// became here, told off the main thread first.
 	private void showDeclared(@NonNull List<Knowledge.Symbol> forms) {
+		Callable<String> here = forms.isEmpty() ||
+				forms.get(0).kind() != Knowledge.Kind.MACRO
+				? null
+				: host.here(forms.get(0).name());
+		if (here == null) {
+			showDeclared(forms, null);
+			return;
+		}
+		READER.execute(() -> {
+			String code;
+			try {
+				code = here.call();
+			} catch (Exception e) {
+				code = null;
+			}
+			String told = code;
+			handler.post(() -> {
+				if (view.isAttachedToWindow()) {
+					showDeclared(forms, told);
+				}
+			});
+		});
+	}
+
+	private void showDeclared(@NonNull List<Knowledge.Symbol> forms,
+			@Nullable String here) {
 		if (forms.isEmpty()) {
 			return;
 		}
@@ -558,7 +605,18 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 						null, null, null, null), action,
 				file != null ? () -> host.open(file, line)
 						: () -> host.goToLine(line), true, first.name(),
-				file);
+				file, repeats(first, here) ? null : here);
+	}
+
+	// Whether code is what the definition of an object-like macro says.
+	static boolean repeats(@NonNull Knowledge.Symbol macro,
+			@Nullable String code) {
+		String define = "#define " + macro.name();
+		String detail = macro.detail();
+		return code != null && detail.startsWith(define) &&
+				!detail.startsWith(define + "(") &&
+				detail.substring(define.length()).replaceAll("\\s", "")
+						.equals(code.replaceAll("\\s", ""));
 	}
 
 	/**

@@ -72,6 +72,12 @@ final class DirectiveCases {
 			add(cases, "shadertoy/" + name, files, ProjectPath.parse(
 					ShaderToyProject.ENTRY).value());
 		}
+		File macros = new File(probes().getParentFile(), "macros");
+		for (String name : sorted(macros.list())) {
+			if (name.endsWith(".frag")) {
+				add(cases, "macros/" + name, read(new File(macros, name)));
+			}
+		}
 		File probes = probes();
 		for (String name : sorted(probes.list())) {
 			add(cases, "probes/" + name, read(new File(probes, name)));
