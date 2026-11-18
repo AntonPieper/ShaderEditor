@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A line over the bar of the Uses sheet. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+	<item
+		android:gravity="top|fill_horizontal"
+		android:height="1dp">
+		<shape android:shape="rectangle">
+			<solid android:color="?attr/colorOutlineVariant" />
+		</shape>
+	</item>
+</layer-list>

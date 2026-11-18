@@ -87,10 +87,12 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		/**
 		 * List the places of word, declared in file, a path of the
 		 * project, or in this one for null; keyboard tells whether the
-		 * keyboard comes back after.
+		 * keyboard comes back after, renamable whether Rename is
+		 * offered: not for one of the app's uniforms, which the app
+		 * sets by its name.
 		 */
 		void uses(@NonNull String word, @Nullable String file,
-				boolean keyboard);
+				boolean keyboard, boolean renamable);
 	}
 
 	private static final String ASSET = "glsl-docs.txt";
@@ -400,9 +402,11 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				onAction, leads);
 		boolean[] handedOn = {false};
 		if (uses != null && host.offersUses()) {
+			boolean renamable = !UNIFORMS.containsKey(uses) ||
+					isLocal(host.declared(), host.offset(), uses);
 			sheet.setUses(() -> {
 				handedOn[0] = true;
-				host.uses(uses, file, keyboard);
+				host.uses(uses, file, keyboard, renamable);
 			});
 		}
 		sheet.setOnDismiss(() -> {

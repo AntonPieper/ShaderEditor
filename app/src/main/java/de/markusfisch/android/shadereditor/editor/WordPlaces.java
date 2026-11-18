@@ -39,7 +39,8 @@ public final class WordPlaces {
 	// OTHER holds the files not connected to the shown one.
 	public record Group(Kind kind, String name, List<Place> places) {
 		public enum Kind {
-			FUNCTION, ELSEWHERE, FILE, OTHER, COMMENTS;
+			// LEFT: the places a rename left with the old name.
+			FUNCTION, ELSEWHERE, FILE, OTHER, COMMENTS, LEFT;
 
 			// Whether a rename changes its places unless told otherwise.
 			public boolean ticked() {
@@ -195,21 +196,27 @@ public final class WordPlaces {
 		list.add(to);
 	}
 
-	// The first code place of a name in the scope a rename stays in: the
-	// function of a local, else the connected files (null for all), the
-	// shown file first; null for none.
-	public static Place firstInScope(List<Place> places, String shown,
+	// The code places of a name in the scope a rename stays in: the
+	// function of a local, else the connected files (null for all); the
+	// shown file first.
+	public static List<Place> inScope(List<Place> places, String shown,
 			Function function, Set<String> connected) {
-		Place first = null;
-		Comparator<Place> order = order(shown, null);
+		List<Place> in = new ArrayList<>();
 		for (Place place : places) {
 			if (!place.comment() &&
-					inScope(place, shown, function, connected) &&
-					(first == null || order.compare(place, first) < 0)) {
-				first = place;
+					inScope(place, shown, function, connected)) {
+				in.add(place);
 			}
 		}
-		return first;
+		Collections.sort(in, order(shown, null));
+		return in;
+	}
+
+	// The first of inScope, or null.
+	public static Place firstInScope(List<Place> places, String shown,
+			Function function, Set<String> connected) {
+		List<Place> in = inScope(places, shown, function, connected);
+		return in.isEmpty() ? null : in.get(0);
 	}
 
 	private static boolean inScope(Place place, String shown,

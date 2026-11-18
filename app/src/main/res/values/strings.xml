@@ -699,4 +699,24 @@
 	<string name="a11y_use_in">%1$s, line %2$d: %3$s</string>
 	<string name="a11y_collapsed">Collapsed</string>
 	<string name="a11y_expanded">Expanded</string>
+	<string name="uses_new_name">New name</string>
+	<plurals name="uses_rename_places">
+		<item quantity="one">Rename %1$d place</item>
+		<item quantity="other">Rename %1$d places</item>
+	</plurals>
+	<string name="uses_left">Left as %1$s</string>
+	<string name="name_not_glsl">A name has letters, digits and _, and starts with a letter or _</string>
+	<string name="name_word_of_glsl">%1$s is a word of GLSL</string>
+	<string name="name_gl">Names that start with gl_ belong to GLSL</string>
+	<string name="name_reserved">A name with __ is reserved</string>
+	<string name="name_used_function">%1$s is already used in this function, line %2$d</string>
+	<string name="name_used_here">%1$s is already used in this file, line %2$d</string>
+	<string name="name_used_in">%1$s is already used in %2$s, line %3$d</string>
+	<plurals name="uses_renamed">
+		<item quantity="one">Renamed %1$d place</item>
+		<item quantity="other">Renamed %1$d places</item>
+	</plurals>
+	<string name="uses_changed">The code changed since the list was made. Here it is again.</string>
+	<string name="uses_not_renamed">Nothing was renamed: %1$s</string>
+	<string name="a11y_use_rename">Rename line %1$d</string>
 </resources>
