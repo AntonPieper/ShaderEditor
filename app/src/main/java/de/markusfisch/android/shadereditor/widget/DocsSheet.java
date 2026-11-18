@@ -8,6 +8,9 @@ import android.text.TextPaint;
 import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityEvent;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -31,8 +34,9 @@ import de.markusfisch.android.shadereditor.syntax.Syntax;
 /**
  * What a word of the code is, in a sheet: the word, what kind of word
  * it is, what it means, its forms or declaration, the notes on them and
- * an example, and one action: a filled button for what changes the
- * text, a text button for what leads to where a name is declared. Code
+ * an example; under the kind what can be done with a name, Definition,
+ * Uses and Rename, as peers, and at the end a filled button for what
+ * changes the text. Code
  * is in the editor's font and colours; a form wider than its box takes
  * a line per parameter, indented by four characters, and any other line
  * breaks after a comma or an operator, the rest indented by four
@@ -65,22 +69,10 @@ public final class DocsSheet {
 	 * @param action   the label of the button, or null for none
 	 * @param onAction what it does; the sheet closes first
 	 */
-	public DocsSheet(@NonNull Context context, @NonNull Content content,
-			@Nullable String action, @Nullable Runnable onAction) {
-		this(context, content, action, onAction, false);
-	}
-
-	/**
-	 * @param action   the label of the button, or null for none
-	 * @param onAction what it does; the sheet closes first
-	 * @param leads    whether the action leads somewhere, a text button,
-	 *                 or changes the text, a filled one
-	 */
 	// The sheet gives its content a parent only once it is set.
 	@SuppressLint("InflateParams")
 	public DocsSheet(@NonNull Context context, @NonNull Content content,
-			@Nullable String action, @Nullable Runnable onAction,
-			boolean leads) {
+			@Nullable String action, @Nullable Runnable onAction) {
 		view = LayoutInflater.from(context).inflate(R.layout.sheet_docs,
 				null);
 		TextView word = view.findViewById(R.id.docs_word);
@@ -106,12 +98,21 @@ public final class DocsSheet {
 					v.getPaddingRight(), bottom + bars.bottom);
 			return insets;
 		});
-		dialog = new BottomSheetDialog(context);
-		TextView button = view.findViewById(leads
-				? R.id.docs_link
-				: R.id.docs_action);
-		view.findViewById(leads ? R.id.docs_action : R.id.docs_link)
-				.setVisibility(View.GONE);
+		dialog = new BottomSheetDialog(context) {
+			// Opening, a service hears the word, not every text of the
+			// sheet, which TalkBack read once backwards before reading on.
+			@Override
+			public boolean dispatchPopulateAccessibilityEvent(
+					@NonNull AccessibilityEvent event) {
+				if (event.getEventType() ==
+						AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+					event.getText().add(content.word());
+					return true;
+				}
+				return super.dispatchPopulateAccessibilityEvent(event);
+			}
+		};
+		TextView button = view.findViewById(R.id.docs_action);
 		if (action != null && onAction != null) {
 			button.setText(action);
 			button.setOnClickListener(v -> {
@@ -121,8 +122,6 @@ public final class DocsSheet {
 		} else {
 			button.setVisibility(View.GONE);
 		}
-		view.findViewById(R.id.docs_links).setVisibility(
-				view.findViewById(R.id.docs_link).getVisibility());
 		dialog.setTitle(content.word());
 		dialog.setContentView(view);
 		BottomSheetBehavior<?> behavior = dialog.getBehavior();
@@ -136,14 +135,47 @@ public final class DocsSheet {
 		dialog.show();
 	}
 
-	/** Offer Uses beside the action, doing uses; the sheet closes first. */
-	public void setUses(@NonNull Runnable uses) {
-		View button = view.findViewById(R.id.docs_uses);
-		button.setVisibility(View.VISIBLE);
-		view.findViewById(R.id.docs_links).setVisibility(View.VISIBLE);
-		button.setOnClickListener(v -> {
+	/**
+	 * Offer what can be done with the name under its kind, each where
+	 * it is not null; the sheet closes first. Where the three do not
+	 * fit side by side, as at the largest text sizes, they stand one
+	 * under the other.
+	 */
+	public void setActions(@Nullable Runnable definition,
+			@Nullable Runnable uses, @Nullable Runnable rename) {
+		LinearLayout row = view.findViewById(R.id.docs_actions);
+		bind(row.findViewById(R.id.docs_definition), definition);
+		bind(row.findViewById(R.id.docs_uses), uses);
+		bind(row.findViewById(R.id.docs_rename), rename);
+		row.setVisibility(definition != null || uses != null ||
+				rename != null ? View.VISIBLE : View.GONE);
+		row.addOnLayoutChangeListener((v, left, top, right, bottom,
+				oldLeft, oldTop, oldRight, oldBottom) -> {
+			int wide = 0;
+			for (int i = 0; i < row.getChildCount(); ++i) {
+				View child = row.getChildAt(i);
+				if (child.getVisibility() == View.VISIBLE) {
+					child.measure(View.MeasureSpec.UNSPECIFIED,
+							View.MeasureSpec.UNSPECIFIED);
+					wide += child.getMeasuredWidth() + ((ViewGroup
+							.MarginLayoutParams) child.getLayoutParams())
+							.getMarginEnd();
+				}
+			}
+			int orientation = wide > right - left
+					? LinearLayout.VERTICAL
+					: LinearLayout.HORIZONTAL;
+			if (row.getOrientation() != orientation) {
+				row.post(() -> row.setOrientation(orientation));
+			}
+		});
+	}
+
+	private void bind(@NonNull View button, @Nullable Runnable action) {
+		button.setVisibility(action != null ? View.VISIBLE : View.GONE);
+		button.setOnClickListener(action == null ? null : v -> {
 			dialog.dismiss();
-			uses.run();
+			action.run();
 		});
 	}
 
