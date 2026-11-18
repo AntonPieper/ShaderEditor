@@ -823,6 +823,7 @@ public final class LibraryScreen implements ShaderScreen {
 		passes.setProblems(infoLog);
 		if (open instanceof ProjectFile file) {
 			files.onDiagnostics(infoLog);
+			links.built();
 			editorFragment.setErrors(infoLog, file.getPath());
 		} else {
 			editorFragment.setErrors(infoLog);

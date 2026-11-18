@@ -83,6 +83,18 @@ public interface FileLinks extends HostCompletion.Listing {
 	@Nullable
 	Document document(@NonNull ProjectPath path);
 
+	/**
+	 * Return whether what runs was last built from the texts as they
+	 * are now, without an error.
+	 */
+	boolean builtWithoutErrors();
+
+	/**
+	 * Tell done, once what runs is built from the texts as they are now,
+	 * whether without an error; nothing when they change before.
+	 */
+	void afterBuild(@NonNull FileTexts.Callback<Boolean> done);
+
 	/** Run changed when a folder asked for is listed, none when null. */
 	void setListener(@Nullable Runnable changed);
 }

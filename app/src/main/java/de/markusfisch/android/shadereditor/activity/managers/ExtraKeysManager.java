@@ -139,7 +139,8 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	/**
 	 * Show the call being written behind the keys, which keep their
 	 * places while it fills the rest of the strip, or none for null.
-	 * TalkBack hears a call once when it opens, not at every comma.
+	 * TalkBack hears a call once when it opens, not at every comma,
+	 * and not while something else is in front.
 	 */
 	public void setSignature(@Nullable SignatureView.Signature signature) {
 		SignatureView.Signature before = signatureView.getSignature();
@@ -155,7 +156,8 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 			completions.setLayoutParams(params);
 		}
 		signatureView.setSignature(signature);
-		if (shown && (before == null ||
+		// Not under a sheet or dialog, whose window has the focus.
+		if (shown && signatureView.hasWindowFocus() && (before == null ||
 				!before.name().equals(signature.name()))) {
 			signatureView.announceForAccessibility(
 					signatureView.getContext().getString(

@@ -742,4 +742,10 @@
 	<string name="uses_changed">The code changed since the list was made. Here it is again.</string>
 	<string name="uses_not_renamed">Nothing was renamed: %1$s</string>
 	<string name="a11y_use_rename">Rename line %1$d</string>
+	<plurals name="uses_renamed_broke">
+		<item quantity="one">Renamed %1$d place · the shader no longer builds</item>
+		<item quantity="few">Renamed %1$d places · the shader no longer builds</item>
+		<item quantity="many">Renamed %1$d places · the shader no longer builds</item>
+		<item quantity="other">Renamed %1$d places · the shader no longer builds</item>
+	</plurals>
 </resources>
