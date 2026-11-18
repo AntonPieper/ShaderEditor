@@ -57,6 +57,45 @@ public class DriverLogTest {
 	}
 
 	@Test
+	public void mesaPreprocessorFormatGivesLineAndSeverity() {
+		// Lines from Mesa's glsl_compiler: a compiled #error, and a
+		// macro name with "__".
+		ProjectDiagnostic error = single(
+				"0:4(1): preprocessor error: #error no colour yet", null);
+		assertEquals(Severity.ERROR, error.severity());
+		assertEquals(4, error.line());
+		assertEquals("#error no colour yet", error.message());
+		ProjectDiagnostic warning = single("0:4(9): preprocessor warning: " +
+				"Macro names containing \"__\" are reserved for use by the " +
+				"implementation.", null);
+		assertEquals(Severity.WARNING, warning.severity());
+		assertEquals(4, warning.line());
+	}
+
+	@Test
+	public void adrenoSummaryIsDropped() {
+		// A failed compile on an Adreno 830.
+		List<ProjectDiagnostic> errors = DriverLog.parse(
+				"ERROR: 0:27: 'iTime' : Syntax error:  syntax error\n" +
+						"INTERNAL ERROR: no main() function!\n" +
+						"ERROR: 1 compilation errors.  No code generated.\n\n",
+				null);
+		assertEquals(2, errors.size());
+		assertEquals(27, errors.get(0).line());
+		assertEquals("INTERNAL ERROR: no main() function!",
+				errors.get(1).message());
+	}
+
+	@Test
+	public void adrenoSummaryAloneIsKept() {
+		String log = "ERROR: 2 compilation errors.  No code generated.";
+		ProjectDiagnostic error = single(log + "\n\n", null);
+		assertEquals(Severity.ERROR, error.severity());
+		assertEquals(0, error.line());
+		assertEquals(log, error.message());
+	}
+
+	@Test
 	public void mesaFormatIsMapped() {
 		SourceMap mapping = nestedIncludeMap().insertGenerated(0, 1);
 		ProjectDiagnostic error = single("0:4(9): error: `noise' undeclared",

@@ -24,15 +24,21 @@ final class DriverLog {
 	// drivers write it; severity is the word in front.
 	private static final Pattern LOCATED = Pattern.compile(
 			"^.*(\\d+):(\\d+):\\s+(.*)$");
-	// "0:12(5): error: `foo' undeclared", as Mesa writes it.
+	// "0:12(5): error: `foo' undeclared" or "0:4(1): preprocessor
+	// error: #error ...", as Mesa writes it.
 	private static final Pattern MESA = Pattern.compile(
-			"^\\s*\\d+:(\\d+)\\(\\d+\\):\\s*(error|warning):\\s*(.*)$",
+			"^\\s*\\d+:(\\d+)\\(\\d+\\):\\s*(?:preprocessor\\s+)?" +
+					"(error|warning):\\s*(.*)$",
 			Pattern.CASE_INSENSITIVE);
 	// "0(12) : error C1008: undefined variable \"foo\"", as NVIDIA's
 	// documentation shows it.
 	private static final Pattern NVIDIA = Pattern.compile(
 			"^\\s*\\d+\\((\\d+)\\)\\s*:\\s*(error|warning)\\s*\\w*:\\s*(.*)$",
 			Pattern.CASE_INSENSITIVE);
+	// "ERROR: 2 compilation errors.  No code generated.", the line
+	// Adreno ends every failed compile with.
+	private static final Pattern SUMMARY = Pattern.compile(
+			"^ERROR: \\d+ compilation errors?\\.\\s+No code generated\\.\\s*$");
 	private static final Pattern WARNING = Pattern.compile(
 			"^\\s*WARNING\\b",
 			Pattern.CASE_INSENSITIVE);
@@ -47,7 +53,15 @@ final class DriverLog {
 		String[] lines = infoLog.split("\n");
 		List<ProjectDiagnostic> diagnostics = new ArrayList<>(lines.length);
 		for (String line : lines) {
-			diagnostics.add(parseLine(line, sourceMap));
+			if (!SUMMARY.matcher(line).matches()) {
+				diagnostics.add(parseLine(line, sourceMap));
+			}
+		}
+		// A log that is only the summary still says the build failed.
+		if (diagnostics.isEmpty()) {
+			for (String line : lines) {
+				diagnostics.add(parseLine(line, sourceMap));
+			}
 		}
 		return diagnostics;
 	}
