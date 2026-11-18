@@ -706,6 +706,11 @@ public final class LibraryScreen implements ShaderScreen {
 	}
 
 	@Override
+	public boolean isTuning() {
+		return files.isTuning();
+	}
+
+	@Override
 	public void onTextModified() {
 		// Changed by something else than the session, such as Undo:
 		// where the number was is not known anymore.

@@ -426,8 +426,6 @@ public class TuningRuler extends View {
 						.ACTION_SCROLL_BACKWARD)) {
 			listener.onStep(action == android.view.accessibility
 					.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD ? 1 : -1);
-			sendAccessibilityEvent(android.view.accessibility
-					.AccessibilityEvent.TYPE_VIEW_SELECTED);
 			return true;
 		}
 		if (listener != null && arguments != null &&
