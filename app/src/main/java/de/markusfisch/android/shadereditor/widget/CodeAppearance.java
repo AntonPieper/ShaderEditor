@@ -39,6 +39,8 @@ final class CodeAppearance {
 	final int lineNumberColor;
 	final int errorColor;
 	final int warningColor;
+	// Of a missing ';' in the row.
+	final int hintColor;
 	// Of the bar and the number of a line with an error.
 	final int markColor;
 	final float markWidth;
@@ -111,6 +113,7 @@ final class CodeAppearance {
 		errorColor = ContextCompat.getColor(context, R.color.syntax_error);
 		warningColor = ContextCompat.getColor(context,
 				R.color.syntax_warning);
+		hintColor = ContextCompat.getColor(context, R.color.se_warning);
 		markColor = MaterialColors.getColor(context,
 				androidx.appcompat.R.attr.colorError, errorColor);
 		markWidth = res.getDimension(R.dimen.editor_mark_width);

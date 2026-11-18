@@ -46,6 +46,18 @@ final class DriverLog {
 	private DriverLog() {
 	}
 
+	/** The first error of a parsed log if it has a line, else null. */
+	@Nullable
+	static ProjectDiagnostic firstError(
+			@NonNull List<ProjectDiagnostic> diagnostics) {
+		for (ProjectDiagnostic diagnostic : diagnostics) {
+			if (diagnostic.severity() == Severity.ERROR) {
+				return diagnostic.line() > 0 ? diagnostic : null;
+			}
+		}
+		return null;
+	}
+
 	@NonNull
 	static List<ProjectDiagnostic> parse(
 			@NonNull String infoLog,

@@ -152,13 +152,13 @@ public class CodeView extends View {
 
 	private static final int[] NO_LINES = new int[0];
 
-	// Its fixes are on fixLines lines of their own under the text. NONE while
-	// no row is open.
+	// Its fixes are on fixLines lines of their own under the text; text from
+	// hintFrom on is the missing ';' on line hint. NONE while no row is open.
 	private record Row(int line, @Nullable List<String> messages, int width,
 			@NonNull String[] text, @NonNull List<MessageRow.Placed> fixes,
-			int fixLines) {
+			int fixLines, int hint, int hintFrom) {
 		static final Row NONE = new Row(-1, null, 0, new String[0],
-				Collections.emptyList(), 0);
+				Collections.emptyList(), 0, -1, 0);
 
 		// Its height: the padding, the lines of text, 4 dp, the lines of
 		// fixes with a gap between them, the padding.
@@ -711,10 +711,18 @@ public class CodeView extends View {
 		placeRow();
 		invalidate();
 		accessibility.errorsChanged(failing.length > 0
-				? withFix(errorOnLine(failing[0],
-				marks.messages(failing[0]).get(0)), failing[0],
+				? withFix(withHint(failing[0], errorOnLine(failing[0],
+				marks.messages(failing[0]).get(0))), failing[0],
 				marks.messages(failing[0]))
 				: null);
+	}
+
+	// With the missing ';' that the row of line shows.
+	private String withHint(int line, String said) {
+		int hint = marks.hintFor(line);
+		return hint >= 0
+				? said + "\n" + errorOnLine(hint, marks.hintMessage())
+				: said;
 	}
 
 	private void chooseRow() {
@@ -2629,7 +2637,8 @@ public class CodeView extends View {
 						textLeft(document.text().lineCount()),
 				appearance.rowMaxWidth) - appearance.rowPadding);
 		if (line == row.line() && messages == row.messages() &&
-				(line < 0 || width == row.width())) {
+				(line < 0 || (width == row.width() &&
+						marks.hintFor(line) == row.hint()))) {
 			return;
 		}
 		int anchor = anchorLine();
@@ -2718,10 +2727,13 @@ public class CodeView extends View {
 		canvas.drawRect(right - corner, top, right, bottom, fill);
 		float x = getScrollX() + textLeft;
 		float y = top + a.rowPaddingVertical + a.rowBaseline;
-		for (String text : row.text()) {
-			canvas.drawText(text, x, y, a.rowPaint);
+		String[] text = row.text();
+		for (int i = 0; i < text.length; ++i) {
+			a.rowPaint.setColor(i < row.hintFrom() ? a.markColor : a.hintColor);
+			canvas.drawText(text[i], x, y, a.rowPaint);
 			y += a.rowLineHeight;
 		}
+		a.rowPaint.setColor(a.markColor);
 		for (MessageRow.Placed fix : row.fixes()) {
 			float lineTop = top + row.fixTop(fix.line(), a);
 			if (fixPressed == fix.index()) {
@@ -2743,9 +2755,17 @@ public class CodeView extends View {
 	private Row layRow(int line, @NonNull List<String> messages,
 			int width) {
 		CodeAppearance a = appearance;
-		String[] text = MessageRow.lines(rowFix != null
+		List<String> shown = rowFix != null
 				? rowFix.shown(line, messages)
-				: messages, Math.max(1, width), rowStyle);
+				: messages;
+		String[] text = MessageRow.lines(shown, Math.max(1, width), rowStyle);
+		int hint = marks.hintFor(line);
+		int hintFrom = text.length;
+		if (hint >= 0) {
+			List<String> both = new ArrayList<>(shown);
+			both.add(errorOnLine(hint, marks.hintMessage()));
+			text = MessageRow.lines(both, Math.max(1, width), rowStyle);
+		}
 		List<MessageRow.Placed> placed = MessageRow.place(fixes(line,
 						messages), width + a.rowPadding - a.fixInset,
 				new MessageRow.FixMetrics(a.fixPadding, a.fixGap,
@@ -2754,7 +2774,8 @@ public class CodeView extends View {
 		for (MessageRow.Placed fix : placed) {
 			fixLines = Math.max(fixLines, fix.line() + 1);
 		}
-		return new Row(line, messages, width, text, placed, fixLines);
+		return new Row(line, messages, width, text, placed, fixLines, hint,
+				hintFrom);
 	}
 
 	// Returns the fix of the row at the view's point x, y, or -1: each

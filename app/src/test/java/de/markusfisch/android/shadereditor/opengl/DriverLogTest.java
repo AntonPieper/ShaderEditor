@@ -189,6 +189,20 @@ public class DriverLogTest {
 		assertEquals(log, error.raw());
 	}
 
+	@Test
+	public void firstErrorIsTheFirstLocatedError() {
+		ProjectDiagnostic first = DriverLog.firstError(DriverLog.parse(
+				"WARNING: 0:3: 'x' : variable is unused\n" +
+						"ERROR: 0:24: 'float' : Syntax error:  syntax error\n" +
+						"ERROR: 1 compilation errors.  No code generated.\n",
+				null));
+		assertEquals(24, first.line());
+		assertEquals("'float' : Syntax error:  syntax error", first.message());
+		assertNull(DriverLog.firstError(DriverLog.parse(
+				"INTERNAL ERROR: no main() function!\nERROR: 0:2: 'x' : y",
+				null)));
+	}
+
 	private static SourceMap nestedIncludeMap() {
 		SourceLocation includeA = new SourceLocation(path("main.frag"), 2, null);
 		SourceLocation includeB = new SourceLocation(path("lib/a.glsl"), 1,
