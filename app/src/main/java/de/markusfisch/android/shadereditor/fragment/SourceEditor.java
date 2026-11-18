@@ -14,6 +14,7 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.widget.CodeView;
+import de.markusfisch.android.shadereditor.widget.NameView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 /**
@@ -50,6 +51,13 @@ interface SourceEditor {
 		 */
 		default void onSignature(
 				@Nullable SignatureView.Signature signature) {
+		}
+
+		/**
+		 * Called with the name the caret rests in, moved there, not
+		 * typed, as the strip shows it; with null when there is none.
+		 */
+		default void onName(@Nullable NameView.Name name) {
 		}
 
 		/**
