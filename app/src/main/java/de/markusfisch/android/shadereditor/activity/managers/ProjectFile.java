@@ -30,13 +30,6 @@ public final class ProjectFile implements OpenItem {
 		/** The title, the second line or the unsaved state changed. */
 		void onChanged();
 
-		/**
-		 * An explicit save is about to look at storage and may give the
-		 * file its stored text: whatever else is changing the text, as
-		 * a number being tuned, ends first.
-		 */
-		void onSaving();
-
 		/** An explicit save wrote every file. */
 		void onSaved();
 
@@ -286,9 +279,6 @@ public final class ProjectFile implements OpenItem {
 				listener.onReadOnly(this);
 			}
 			return;
-		}
-		if (explicit) {
-			listener.onSaving();
 		}
 		project.save(explicit, outcomes -> {
 			// "Saved" only when every write was made and nothing else

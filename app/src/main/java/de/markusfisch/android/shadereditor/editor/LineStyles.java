@@ -157,6 +157,11 @@ public final class LineStyles {
 		return staleFrom;
 	}
 
+	// The state line starts in, or -1 while it is stale.
+	public int state(int line) {
+		return line <= staleFrom ? startState(line) : -1;
+	}
+
 	int startState(int line) {
 		return line == 0 ? Syntax.TEXT_START : get(line - 1);
 	}

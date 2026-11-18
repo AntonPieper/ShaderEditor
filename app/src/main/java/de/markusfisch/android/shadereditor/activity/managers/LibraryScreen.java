@@ -128,10 +128,13 @@ public final class LibraryScreen implements ShaderScreen {
 	// what showed before it opened.
 	private TuningBar tuningBar;
 	private final Map<String, BigDecimal> tuningSteps = new HashMap<>();
+	private final Map<Integer, BigDecimal> sessionSteps = new HashMap<>();
 	@Nullable
 	private String tuningStepsFor;
 	private boolean codeBeforeTuning;
 	private boolean keyboardBeforeTuning;
+	// Whether the pause left its save to the stop, as a number was tuned.
+	private boolean pausedTuning;
 	private final OnBackPressedCallback backTunes =
 			new OnBackPressedCallback(false) {
 				@Override
@@ -443,7 +446,7 @@ public final class LibraryScreen implements ShaderScreen {
 	public void onSaveInstanceState(@NonNull Bundle state) {
 		// The value is kept, as Back keeps it, and the code shows again
 		// before what shows is kept.
-		files.endTuning(true);
+		leaveTuning();
 		state.putString(OPEN, openState().encode());
 		state.putBoolean(ASKS_IMPORT, importQuestion != null);
 		shaderManager.savePendingImport(state);
@@ -473,8 +476,21 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void onStop() {
+		leaveTuning();
 		passes.onStop();
 		files.onStop();
+	}
+
+	// Out of sight tuning ends as Done ends it, and the file is saved as
+	// the pause did not while tuning, also if it ended meanwhile.
+	private void leaveTuning() {
+		if (files.isTuning() || pausedTuning) {
+			pausedTuning = false;
+			files.endTuning(true);
+			if (ShaderEditorApp.preferences.autoSave()) {
+				open.save(false);
+			}
+		}
 	}
 
 	@Override
@@ -484,6 +500,7 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void onPause() {
+		pausedTuning = files.isTuning();
 		guard.left();
 	}
 
@@ -643,12 +660,13 @@ public final class LibraryScreen implements ShaderScreen {
 			tuningSteps.clear();
 			tuningStepsFor = steps;
 		}
+		// The step of a number is kept by where it starts.
 		String number = String.valueOf(place.start);
-		// The step of a part of a vector is kept by where it starts.
-		boolean started = files.tune(place, tunedListener());
-		if (!started) {
+		TuningSession session = files.tune(place, tunedListener());
+		if (session == null) {
 			return;
 		}
+		sessionSteps.clear();
 		// The bar takes the sheet's place: the sheet closes, a pass it
 		// shows stays shown, so the number is tuned in what is seen.
 		passes.close();
@@ -657,10 +675,14 @@ public final class LibraryScreen implements ShaderScreen {
 		tuningBar.open(place, tuningSteps.get(number), new TuningBar.Session() {
 			@Override
 			public void set(@NonNull TuningBar.Tuned tuned) {
-				tuningSteps.put(String.valueOf(tuned.place().start),
-						tuned.step());
-				files.setTuned(tuned.literalValue(), tuned.literalText(),
-						tuned.changed() ? tuned.text() : null);
+				TuningSession.Tuned now = session.tuned();
+				if (now != null) {
+					// By id while edits move it, by place for next time.
+					sessionSteps.put(now.id(), tuned.step());
+					tuningSteps.put(String.valueOf(now.place().start),
+							tuned.step());
+				}
+				session.set(tuned.text());
 			}
 
 			@Override
@@ -670,11 +692,34 @@ public final class LibraryScreen implements ShaderScreen {
 
 			@Override
 			public void selectPart(int index) {
-				TunedPlace next = files.retune(index, tunedListener());
-				if (next != null) {
-					tuningBar.retarget(next, tuningSteps.get(
-							String.valueOf(next.start)));
+				TuningSession.Tuned now = session.tuned();
+				TunedPlace.Vector vector = now != null
+						? now.place().vector()
+						: null;
+				if (vector != null) {
+					retune(session.move(vector.parts().get(index).start),
+							false);
 				}
+			}
+
+			@Override
+			public boolean canUndo() {
+				return session.canUndo();
+			}
+
+			@Override
+			public boolean canRedo() {
+				return session.canRedo();
+			}
+
+			@Override
+			public void undo() {
+				session.undo();
+			}
+
+			@Override
+			public void redo() {
+				session.redo();
 			}
 		});
 		backTunes.setEnabled(true);
@@ -691,19 +736,42 @@ public final class LibraryScreen implements ShaderScreen {
 	private TuningSession.Listener tunedListener() {
 		return new TuningSession.Listener() {
 			@Override
-			public void onLive() {
-				tuningBar.setConstant(false);
+			public void onSettle() {
+				tuningBar.settle();
 			}
 
 			@Override
-			public void onMustRebuild(@NonNull List<ProjectDiagnostic> why) {
-				tuningBar.setConstant(true);
+			public void onConstant(boolean constant) {
+				tuningBar.setConstant(constant);
+			}
+
+			@Override
+			public void onBuilding(boolean building) {
+				tuningBar.setBuilding(building);
+			}
+
+			@Override
+			public void onTuned(@NonNull TuningSession.Tuned tuned) {
+				retune(tuned, true);
 			}
 
 			@Override
 			public void onFailed(@NonNull List<ProjectDiagnostic> errors) {
+				tuningEnded(errors);
 			}
 		};
+	}
+
+	// announce says it to a screen reader, as after Undo.
+	private void retune(@Nullable TuningSession.Tuned tuned,
+			boolean announce) {
+		if (tuned != null) {
+			BigDecimal step = sessionSteps.get(tuned.id());
+			tuningBar.retarget(tuned, step != null
+					? step
+					: tuningSteps.get(String.valueOf(tuned.place().start)),
+					announce);
+		}
 	}
 
 	@Override
@@ -713,10 +781,9 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void onTextModified() {
-		// Changed by something else than the session, such as Undo:
-		// where the number was is not known anymore.
+		// Changed by something else than the session.
 		if (files.isTuning()) {
-			files.endTuning(false);
+			files.endTuning(true);
 		}
 	}
 
@@ -770,10 +837,15 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void onEditPaused(@NonNull CharSequence text) {
+		// An edit made before the bar opened: the session's builds have
+		// it, and so has the one at its end.
+		if (files.isTuning()) {
+			return;
+		}
 		if (ShaderEditorApp.preferences.doesRunOnChange() &&
 				open instanceof ProjectFile) {
 			editorFragment.runningEdit();
-			files.run();
+			files.runEdit();
 		} else if (ShaderEditorApp.preferences.doesRunOnChange() &&
 				open.hasText()) {
 			editorFragment.runningEdit();
@@ -1017,6 +1089,12 @@ public final class LibraryScreen implements ShaderScreen {
 						shaderManager.selectShader(id);
 					}
 
+					// As the eye does: the bar is not used under it.
+					@Override
+					public void onOpening() {
+						files.endTuning(true);
+					}
+
 					// The file in the editor, for an image's sheet.
 					@Nullable
 					@Override
@@ -1079,11 +1157,6 @@ public final class LibraryScreen implements ShaderScreen {
 			}
 
 			@Override
-			public void onTuningBuilds(boolean building) {
-				tuningBar.setBuilding(building);
-			}
-
-			@Override
 			public void onShown(@NonNull ProjectFile file) {
 				leaveNotMoved();
 				open = file;
@@ -1127,12 +1200,6 @@ public final class LibraryScreen implements ShaderScreen {
 			public void onChanged() {
 				links.changed();
 				showRunning();
-			}
-
-			// A number being tuned is part of the text that is saved.
-			@Override
-			public void onSaving() {
-				files.endTuning(true);
 			}
 
 			@Override

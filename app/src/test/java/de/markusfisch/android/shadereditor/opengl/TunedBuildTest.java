@@ -5,6 +5,7 @@ import static de.markusfisch.android.shadereditor.opengl.TestProjects.path;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import androidx.annotation.NonNull;
@@ -17,7 +18,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.BuiltinNames;
 import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.OpenProject;
@@ -28,12 +31,10 @@ import de.markusfisch.android.shadereditor.project.ProjectLimits;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.SourceLocation;
-import de.markusfisch.android.shadereditor.tuning.ConstantContext;
-import de.markusfisch.android.shadereditor.tuning.NumberLiteral;
 import de.markusfisch.android.shadereditor.tuning.TunedPreparation;
 
-// The running shader built with one number of one file replaced by the
-// uniform the engine then declares: in the file that runs, a pass or an
+// The running shader built with numbers of one file replaced by the
+// uniforms the engine then declares: in the file that runs, a pass or an
 // include, with every line where the user wrote it.
 public class TunedBuildTest {
 	private static final String PRECISION = lines(
@@ -50,7 +51,6 @@ public class TunedBuildTest {
 			"#endif");
 
 	private final Map<String, String> texts = new LinkedHashMap<>();
-	private final List<String> replacedBy = new ArrayList<>();
 
 	@Test
 	public void aNumberOfTheShaderThatRuns() {
@@ -59,14 +59,13 @@ public class TunedBuildTest {
 				"	gl_FragColor = vec4(0.3);",
 				"}"));
 		var ready = ready("main.frag", "0.3");
-		assertEquals("se_tune0", ready.name());
-		assertEquals(new NumberLiteral(Tuning.Type.FLOAT, 0.3), ready.number());
+		assertEquals(List.of(), ready.constants());
 		assertTrue(ready.preparation().temporary());
 		var source = source(ready, "main.frag", 2);
 		assertTrue(source.fragment(),
 				source.fragment().startsWith("#define SHADER_EDITOR 1\n" +
 						DECLARATION));
-		assertKeepsTheUsersLines(source, "main.frag", "0.3");
+		assertKeepsTheUsersLines(source, "main.frag", "0.3", "se_tune0");
 	}
 
 	@Test
@@ -79,7 +78,7 @@ public class TunedBuildTest {
 		var source = source(ready("main.frag", "0.3"), "main.frag", 3);
 		assertTrue(source.fragment(), source.fragment().startsWith(
 				"#version 300 es\n#define SHADER_EDITOR 1\n" + DECLARATION));
-		assertKeepsTheUsersLines(source, "main.frag", "0.3");
+		assertKeepsTheUsersLines(source, "main.frag", "0.3", "se_tune0");
 	}
 
 	// Each pass that includes the file declares and gets it.
@@ -94,7 +93,7 @@ public class TunedBuildTest {
 		for (String file : List.of("main.frag", "blur.frag")) {
 			var source = source(ready, file, 2);
 			assertTrue(file, source.fragment().contains(DECLARATION));
-			assertKeepsTheUsersLines(source, "common.glsl", "0.02");
+			assertKeepsTheUsersLines(source, "common.glsl", "0.02", "se_tune0");
 		}
 	}
 
@@ -110,7 +109,10 @@ public class TunedBuildTest {
 				.contains("se_tune0"));
 	}
 
-	// One more build with a name no file of the build has.
+	// A name a file of the build has is taken: the build says which
+	// names the files have, and one with another name is ready. Other
+	// names of the prefix do not matter; one at the largest number a
+	// long holds is no number to count on.
 	@Test
 	public void aNameTheTextHasIsNotTaken() {
 		texts.put("main.frag", lines(PRECISION,
@@ -119,9 +121,14 @@ public class TunedBuildTest {
 				"	gl_FragColor = vec4(0.3 * se_tune4);",
 				"}"));
 		texts.put("common.glsl", "float se_tune4 = 1.0; // not se_tune0\n");
-		var ready = ready("main.frag", "0.3");
-		assertEquals("se_tune5", ready.name());
-		assertEquals(List.of("se_tune0", "se_tune5"), replacedBy);
+		assertEquals(new TunedPreparation.Taken(Set.of("se_tune0",
+				"se_tune4")), prepare("main.frag", "0.3", "se_tune0"));
+		assertTrue(prepare("main.frag", "0.3", "se_tune5")
+				instanceof TunedPreparation.Ready);
+		texts.put("common.glsl", "float se_tune4 = 1.0, " +
+				"se_tune9223372036854775807 = 2.0;\n");
+		assertTrue(prepare("main.frag", "0.3", "se_tune0")
+				instanceof TunedPreparation.Ready);
 	}
 
 	// F4: GLSL splices a line that ends in a backslash with the next one
@@ -136,24 +143,56 @@ public class TunedBuildTest {
 				"ne0 = 0.7;",
 				"	color = vec4(0.3);",
 				"}"));
-		assertEquals("se_tune1", ready("main.frag", "0.3").name());
+		assertEquals(new TunedPreparation.Taken(Set.of("se_tune0")),
+				prepare("main.frag", "0.3", "se_tune0"));
 	}
 
-	// F3: the period of ftime is read by the app, not compiled.
+	// Several numbers of one build, two of one line and one in the body
+	// of a macro that two passes use through an include: each program
+	// declares what its code uses, and each line is the user's with the
+	// numbers replaced.
 	@Test
-	public void theNumberOfFtimePeriodIsBuiltAsText() {
-		texts.put("main.frag", lines("#define FTIME_PERIOD 7.0", PRECISION,
-				"uniform float ftime;",
-				"void main(void) {",
-				"	gl_FragColor = vec4(ftime);",
-				"}"));
-		int at = texts.get("main.frag").indexOf("7.0");
-		assertEquals(new TunedPreparation.Constant(ConstantContext.Kind.HOST,
-						new NumberLiteral(Tuning.Type.FLOAT, 7.0)),
-				prepare("main.frag", at, at + 3, Tuning.Type.FLOAT));
+	public void severalNumbersOfOneBuild() {
+		putPasses("#include \"common.glsl\"", "#include \"common.glsl\"");
+		String common = lines(
+				"#define GLOW 0.02",
+				"float glow(float d) {",
+				"	return GLOW / max(d, 0.001) * mix(0.5, 1.5, d);",
+				"}");
+		texts.put("common.glsl", common);
+		var parts = new ArrayList<OpenProject.Replacement>();
+		String[] numbers = {"0.02", "0.001", "0.5", "1.5"};
+		for (int i = 0; i < numbers.length; ++i) {
+			int at = common.indexOf(numbers[i]);
+			parts.add(new OpenProject.Replacement(path("common.glsl"), at,
+					at + numbers[i].length(), i == 3 ? "2.5" : "se_tune" + i));
+		}
+		TunedPreparation.Result[] result = {null};
+		TunedPreparation.prepare(new Project(), path("common.glsl"), parts,
+				List.of(), Runnable::run, Runnable::run,
+				done -> result[0] = done);
+		assertTrue(String.valueOf(result[0]),
+				result[0] instanceof TunedPreparation.Ready);
+		var ready = (TunedPreparation.Ready) result[0];
+		var tunings = List.of(
+				new Tuning("se_tune0", Tuning.Type.FLOAT, 0.02),
+				new Tuning("se_tune1", Tuning.Type.FLOAT, 0.001),
+				new Tuning("se_tune2", Tuning.Type.FLOAT, 0.5));
+		String replaced = common.replace("0.02", "se_tune0")
+				.replace("0.001", "se_tune1").replace("0.5", "se_tune2")
+				.replace("1.5", "2.5");
+		for (String file : List.of("main.frag", "blur.frag")) {
+			var source = source(ready, file, 2, tunings);
+			for (int i = 0; i < 3; ++i) {
+				assertTrue(file, source.fragment().contains(
+						"uniform highp float se_tune" + i + ";"));
+			}
+			assertKeepsTheUsersLines(source, "common.glsl", replaced);
+		}
 	}
 
-	// Where the tokens say a constant is needed nothing is built.
+	// Where the tokens say a constant is needed: in GLSL ES 1.00 a loop
+	// count must be one, in GLSL ES 3.00 it may be a uniform.
 	@Test
 	public void aConstantOfAnIncludeReadInGlslEs100() {
 		String loop = lines(
@@ -167,9 +206,8 @@ public class TunedBuildTest {
 		putPasses("#include \"loop.glsl\"", "");
 		texts.put("loop.glsl", loop);
 		int at = loop.indexOf("3;");
-		var result = prepare("loop.glsl", at, at + 1, Tuning.Type.INT);
-		assertEquals(new TunedPreparation.Constant(ConstantContext.Kind.LOOP,
-				new NumberLiteral(Tuning.Type.INT, 3)), result);
+		assertEquals(List.of(at), ((TunedPreparation.Ready) prepare(
+				"loop.glsl", "3;", "se_tune0")).constants());
 		// In GLSL ES 3.00 a loop count may be a uniform.
 		texts.put("main.frag", lines("#version 300 es", PRECISION,
 				"#pragma se input \"blur.frag\"",
@@ -184,29 +222,20 @@ public class TunedBuildTest {
 				"void main(void) {",
 				"	color = vec4(1.0);",
 				"}"));
-		assertTrue(prepare("loop.glsl", at, at + 1, Tuning.Type.INT)
-				instanceof TunedPreparation.Ready);
+		assertEquals(List.of(), ((TunedPreparation.Ready) prepare(
+				"loop.glsl", "3;", "se_tune0")).constants());
 	}
 
+	// A file that is not read by what runs.
 	@Test
 	public void whatCannotBeTunedFailsOnItsLine() {
 		texts.put("main.frag", lines(PRECISION,
-				"// 0.5",
 				"void main(void) {",
 				"	gl_FragColor = vec4(0.3);",
 				"}"));
-		String text = texts.get("main.frag");
-		int comment = text.indexOf("0.5");
-		assertFailed(prepare("main.frag", comment, comment + 3,
-				Tuning.Type.FLOAT), 7, "not a number of the code");
-		int number = text.indexOf("0.3");
-		assertFailed(prepare("main.frag", number, number + 3,
-				Tuning.Type.INT), 9, "a float, not a int");
-		// A file that is not read by what runs.
 		texts.put("other.glsl", "float x = 2.0;\n");
-		assertFailed(prepare("other.glsl", 10, 13, Tuning.Type.FLOAT), 1,
+		assertFailed(prepare("other.glsl", "2.0", "se_tune0"), 1,
 				"not part of what runs");
-		assertTrue(replacedBy.size() == 1);
 	}
 
 	@Test
@@ -216,9 +245,7 @@ public class TunedBuildTest {
 				"void main(void) {",
 				"	gl_FragColor = vec4(0.3);",
 				"}"));
-		int number = texts.get("main.frag").indexOf("0.3");
-		var result = prepare("main.frag", number, number + 3,
-				Tuning.Type.FLOAT);
+		var result = prepare("main.frag", "0.3", "se_tune0");
 		assertTrue(result.toString(),
 				result instanceof TunedPreparation.Failed failed &&
 						failed.errors().get(0).line() == 7);
@@ -239,11 +266,12 @@ public class TunedBuildTest {
 				"}"));
 	}
 
-	// Every line of file in the source is the user's line, the number
-	// replaced by the name on its own line only.
+	// Every line of file in the source is the user's line, as replaced
+	// has it where it differs.
 	private void assertKeepsTheUsersLines(@NonNull PlanSource source,
-			@NonNull String file, @NonNull String number) {
+			@NonNull String file, @NonNull String replaced) {
 		String[] user = texts.get(file).split("\n", -1);
+		String[] lines = replaced.split("\n", -1);
 		String[] compiled = source.fragment().split("\n", -1);
 		boolean found = false;
 		for (int i = 0; i < compiled.length - 1; ++i) {
@@ -251,33 +279,41 @@ public class TunedBuildTest {
 			if (at == null || !path(file).equals(at.file())) {
 				continue;
 			}
-			String line = user[at.line() - 1];
-			if (line.contains(number)) {
-				assertEquals(line.replace(number, "se_tune0"), compiled[i]);
-				found = true;
-			} else {
-				assertEquals(line, compiled[i]);
-			}
+			assertEquals(lines[at.line() - 1], compiled[i]);
+			found |= !user[at.line() - 1].equals(compiled[i]);
 		}
 		assertTrue(found);
+	}
+
+	private void assertKeepsTheUsersLines(@NonNull PlanSource source,
+			@NonNull String file, @NonNull String number,
+			@NonNull String name) {
+		assertKeepsTheUsersLines(source, file,
+				texts.get(file).replace(number, name));
 	}
 
 	@NonNull
 	private TunedPreparation.Ready ready(@NonNull String file,
 			@NonNull String number) {
-		int at = texts.get(file).indexOf(number);
-		var result = prepare(file, at, at + number.length(),
-				NumberLiteral.at(texts.get(file), at, at + number.length())
-						.type());
+		var result = prepare(file, number, "se_tune0");
 		assertTrue(String.valueOf(result),
 				result instanceof TunedPreparation.Ready);
 		return (TunedPreparation.Ready) result;
 	}
 
-	private TunedPreparation.Result prepare(@NonNull String file, int start,
-			int end, @NonNull Tuning.Type type) {
+	// The first number of file in the text replaced by text.
+	private TunedPreparation.Result prepare(@NonNull String file,
+			@NonNull String number, @NonNull String text) {
+		int at = texts.get(file).indexOf(number);
+		int end = at;
+		while (end < number.length() + at &&
+				"0123456789.eEfFuUxX".indexOf(number.charAt(end - at)) > -1) {
+			++end;
+		}
 		TunedPreparation.Result[] result = {null};
-		TunedPreparation.prepare(new Project(), path(file), start, end, type,
+		TunedPreparation.prepare(new Project(), path(file), List.of(
+						new OpenProject.Replacement(path(file), at, end, text)),
+				List.of(at), Runnable::run, Runnable::run,
 				done -> result[0] = done);
 		assertNotNull(result[0]);
 		return result[0];
@@ -286,14 +322,21 @@ public class TunedBuildTest {
 	@NonNull
 	private static PlanSource source(@NonNull TunedPreparation.Ready ready,
 			@NonNull String file, int glesVersion) {
+		return source(ready, file, glesVersion, List.of(
+				new Tuning("se_tune0", Tuning.Type.FLOAT, 0)));
+	}
+
+	@NonNull
+	private static PlanSource source(@NonNull TunedPreparation.Ready ready,
+			@NonNull String file, int glesVersion,
+			@NonNull List<Tuning> tunings) {
 		RenderPlan plan = ready.preparation().plan();
 		assertNotNull(plan);
 		for (RenderPlan.Program program : plan.programs()) {
 			if (program.file().equals(path(file))) {
 				var errors = new ArrayList<ProjectDiagnostic>();
-				var source = PlanSource.of(program, glesVersion,
-						List.of(new Tuning(ready.name(), ready.number().type(),
-								ready.number().value())), errors);
+				var source = PlanSource.of(program, glesVersion, tunings,
+						errors);
 				assertEquals(List.of(), errors);
 				assertNotNull(source);
 				return source;
@@ -315,24 +358,26 @@ public class TunedBuildTest {
 	// The texts, prepared as OpenProject does with a replacement.
 	private final class Project implements TunedPreparation.Project {
 		@Override
-		public String text(@NonNull ProjectPath path) {
-			return texts.get(path.toString());
+		public Text text(@NonNull ProjectPath path) {
+			String text = texts.get(path.toString());
+			return text != null ? Text.of(text) : null;
 		}
 
 		@Override
 		public void prepare(
 				@NonNull List<OpenProject.Replacement> replacements,
 				@NonNull FileTexts.Callback<Preparation> done) {
-			var replacement = replacements.get(0);
-			assertEquals(1, replacements.size());
-			replacedBy.add(replacement.text());
+			var backwards = new ArrayList<>(replacements);
+			backwards.sort((a, b) -> b.start() - a.start());
 			var files = new HashMap<ProjectPath, ProjectFiles.Content>();
 			for (var entry : texts.entrySet()) {
 				String text = entry.getValue();
-				if (replacement.path().toString().equals(entry.getKey())) {
-					text = text.substring(0, replacement.start()) +
-							replacement.text() +
-							text.substring(replacement.end());
+				for (var replacement : backwards) {
+					if (replacement.path().toString().equals(entry.getKey())) {
+						text = text.substring(0, replacement.start()) +
+								replacement.text() +
+								text.substring(replacement.end());
+					}
 				}
 				files.put(path(entry.getKey()), new ProjectFiles.Content(
 						text.getBytes(StandardCharsets.UTF_8), "r"));

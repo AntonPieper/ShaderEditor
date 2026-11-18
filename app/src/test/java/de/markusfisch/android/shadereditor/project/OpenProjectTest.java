@@ -572,6 +572,56 @@ public class OpenProjectTest {
 		assertNull(after.preparation());
 	}
 
+	// The build at the end of tuning comes even when an edit followed
+	// it, as a build of the text as it was; another build does not.
+	@Test
+	public void prepareAlwaysComesAfterALaterEdit() throws IOException {
+		write("main.frag", SHADER);
+		OpenProject project = open();
+		Document main = document(project, "main.frag");
+		List<OpenProject.Build> dropped = new ArrayList<>();
+		List<OpenProject.Build> kept = new ArrayList<>();
+		project.prepare(BuiltinNames.ALL, dropped::add);
+		project.prepareAlways(BuiltinNames.ALL, kept::add);
+		edit(project, main, SHADER + "// later\n");
+		settle();
+		assertEquals(List.of(), dropped);
+		assertEquals(1, kept.size());
+		assertEquals(SHADER, built(kept.get(0).preparation(), "main.frag"));
+	}
+
+	// Review 3, M2: what reads the texts for use elsewhere, a run, a
+	// copy, a save, ends what still changes them first, as a number
+	// being tuned; a build of the session itself does not.
+	@Test
+	public void readingForElsewhereEndsTuningFirst() throws IOException {
+		write("main.frag", SHADER);
+		OpenProject project = open();
+		Document main = document(project, "main.frag");
+		String tried = SHADER + "// tried\n";
+		int[] reads = {0};
+		project.setBeforeReading(() -> {
+			++reads[0];
+			edit(project, main, tried);
+		});
+		OpenProject.Build tuned = await(done -> project.prepare(
+				BuiltinNames.ALL, List.of(new OpenProject.Replacement(
+						path("main.frag"), 0, 0, "")), done));
+		assertNotNull(tuned);
+		assertEquals(0, reads[0]);
+		OpenProject.Build run = await(done -> project.prepare(
+				BuiltinNames.ALL, done));
+		assertEquals(tried, built(run.preparation(), "main.frag"));
+		MemoryProjectFiles copy = new MemoryProjectFiles();
+		copy.writable = true;
+		Map<ProjectPath, String> copied = await(done -> project.copyTo(copy,
+				List.of(path("main.frag")), done));
+		assertNull(copied.get(path("main.frag")));
+		save(project, true);
+		assertEquals(3, reads[0]);
+		assertEquals(tried, read("main.frag"));
+	}
+
 	@Test
 	public void aReplacementOfAFileWithoutDocumentRunsNothing()
 			throws IOException {

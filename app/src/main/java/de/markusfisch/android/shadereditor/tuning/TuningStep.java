@@ -82,15 +82,30 @@ public final class TuningStep {
 	}
 
 	/**
-	 * Return value moved by count steps; a uint stops at 0.
+	 * Return value moved by count steps; an int or uint stops at the
+	 * ends of what it holds.
 	 */
 	@NonNull
 	public static BigDecimal move(@NonNull BigDecimal value,
 			@NonNull BigDecimal step, long count, @NonNull Tuning.Type type) {
-		BigDecimal moved = value.add(step.multiply(BigDecimal.valueOf(count)));
-		return type == Tuning.Type.UINT && moved.signum() < 0
-				? BigDecimal.ZERO
-				: moved;
+		return clamp(value.add(step.multiply(BigDecimal.valueOf(count))),
+				type);
+	}
+
+	/** Return value within what a literal of type holds. */
+	@NonNull
+	static BigDecimal clamp(@NonNull BigDecimal value,
+			@NonNull Tuning.Type type) {
+		if (type == Tuning.Type.FLOAT) {
+			return value;
+		}
+		BigDecimal min = BigDecimal.valueOf(type == Tuning.Type.INT
+				? Integer.MIN_VALUE
+				: 0);
+		BigDecimal max = BigDecimal.valueOf(type == Tuning.Type.INT
+				? Integer.MAX_VALUE
+				: 0xffffffffL);
+		return value.max(min).min(max);
 	}
 
 	/**

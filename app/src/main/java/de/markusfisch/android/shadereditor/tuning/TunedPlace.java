@@ -51,8 +51,10 @@ public final class TunedPlace {
 	public final BigDecimal value;
 	/** Whether it is the angle in degrees of radians(). */
 	public final boolean degrees;
-	// Whether a negative value needs parentheses where it is.
+	// Whether a negative value needs parentheses where it is, and
+	// whether a name ends right before signStart.
 	private final boolean afterBinary;
+	private boolean joined;
 	@Nullable
 	private Vector vector;
 	// The line it is in, and where that starts in the text.
@@ -80,7 +82,13 @@ public final class TunedPlace {
 	 */
 	@Nullable
 	public static TunedPlace at(@NonNull CharSequence text, int offset) {
-		Tokens tokens = GlslLexer.lex(text);
+		return at(text, GlslLexer.lex(text), offset);
+	}
+
+	/** As {@link #at(CharSequence, int)}, with the tokens of text. */
+	@Nullable
+	public static TunedPlace at(@NonNull CharSequence text,
+			@NonNull Tokens tokens, int offset) {
 		int index = numberAt(tokens, offset);
 		if (index < 0) {
 			return null;
@@ -89,6 +97,8 @@ public final class TunedPlace {
 		if (place == null) {
 			return null;
 		}
+		place.joined = place.signStart > 0 && Character.isLetterOrDigit(
+				text.charAt(place.signStart - 1));
 		place.vector = vector(text, tokens, index);
 		int lineStart = place.signStart;
 		while (lineStart > 0 && !isLineEnd(text.charAt(lineStart - 1))) {
@@ -135,6 +145,18 @@ public final class TunedPlace {
 		return vector;
 	}
 
+	/** This place delta characters on, as an edit before it moves it. */
+	@NonNull
+	TunedPlace movedBy(int delta) {
+		TunedPlace moved = new TunedPlace(signStart + delta, start + delta,
+				end + delta, literal, type, value, degrees, afterBinary);
+		moved.joined = joined;
+		moved.vector = vector;
+		moved.line = line;
+		moved.lineStart = lineStart + delta;
+		return moved;
+	}
+
 	/**
 	 * Return what to write from signStart to end for value, with
 	 * step's decimals at least.
@@ -152,40 +174,12 @@ public final class TunedPlace {
 	public String text(@NonNull String style, @NonNull BigDecimal value,
 			@NonNull BigDecimal step) {
 		String written = LiteralText.write(style, value, step);
-		return afterBinary && value.signum() < 0
-				? "(" + written + ")"
-				: written;
-	}
-
-	/**
-	 * Return what to put from start to end, the literal alone, for
-	 * value: the minus in front of it stays, so the literal holds the
-	 * value with the opposite sign then.
-	 */
-	@NonNull
-	public String literalText(@NonNull BigDecimal value,
-			@NonNull BigDecimal step) {
-		return literalText(literal, value, step);
-	}
-
-	/** {@link #literalText(BigDecimal, BigDecimal)} in style's style. */
-	@NonNull
-	public String literalText(@NonNull String style,
-			@NonNull BigDecimal value, @NonNull BigDecimal step) {
-		if (signStart == start) {
-			return text(style, value, step);
+		if (afterBinary && value.signum() < 0) {
+			return "(" + written + ")";
 		}
-		BigDecimal own = value.negate();
-		String written = LiteralText.write(style, own, step);
-		return own.signum() < 0 ? "(" + written + ")" : written;
-	}
-
-	/**
-	 * Return the number the literal from start to end stands for when
-	 * the place has value: its uniform's value while it is tuned.
-	 */
-	public double literalValue(@NonNull BigDecimal value) {
-		return (signStart == start ? value : value.negate()).doubleValue();
+		// After a name, as in return-1., without its minus it would join
+		// the name.
+		return joined && !written.startsWith("-") ? " " + written : written;
 	}
 
 	private static boolean isLineEnd(char c) {
@@ -220,7 +214,11 @@ public final class TunedPlace {
 		if (before > -1 && "-".equals(token(text, tokens, before)) &&
 				tokens.end(before) == start && isUnary(text, tokens, before)) {
 			signStart = tokens.start(before);
-			value = value.negate();
+			// An int wraps after its minus, as in the shader:
+			// -2147483648 is itself.
+			value = type == Tuning.Type.INT
+					? BigDecimal.valueOf((int) -value.longValue())
+					: value.negate();
 			afterBinary = isBinarySign(text, tokens, before - 1);
 		} else if (before > -1) {
 			afterBinary = isBinarySign(text, tokens, before);

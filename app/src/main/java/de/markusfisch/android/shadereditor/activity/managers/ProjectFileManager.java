@@ -23,6 +23,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
@@ -44,6 +47,7 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.tuning.TunedPlace;
 import de.markusfisch.android.shadereditor.tuning.Tuner;
 import de.markusfisch.android.shadereditor.tuning.TuningSession;
+import de.markusfisch.android.shadereditor.tuning.Window;
 
 /**
  * Opens files of folders in the editor and keeps the one open: its
@@ -82,13 +86,6 @@ public final class ProjectFileManager {
 		 * not be tuned (errors say why; empty otherwise).
 		 */
 		default void onTuningEnded(@NonNull List<ProjectDiagnostic> errors) {
-		}
-
-		/**
-		 * A build of the tuned number's text runs, where it must stay a
-		 * constant, or none does anymore.
-		 */
-		default void onTuningBuilds(boolean building) {
 		}
 	}
 
@@ -151,37 +148,22 @@ public final class ProjectFileManager {
 	// The tuning sessions of the file in the editor, one at a time.
 	@NonNull
 	private final Tuner tuner;
-	// The number tuned now, of which file, and the text it has now from
-	// its signStart, or null while it is as it was.
-	@Nullable
-	private TunedPlace tunedPlace;
-	@Nullable
-	private ProjectPath tunedPath;
-	@Nullable
-	private String tunedText;
-	// The tuned number while its session ends and writes it.
-	@Nullable
-	private TunedPlace writing;
-	// Where the number must stay a constant: the text it is built as
-	// when the finger rests, a rest after the last change.
-	@Nullable
-	private String restText;
+	private final ExecutorService tuning =
+			Executors.newSingleThreadExecutor();
+	private boolean tuningEdits;
 	private final android.os.Handler rests =
 			new android.os.Handler(android.os.Looper.getMainLooper());
-	private final Runnable rested = this::rebuildTuned;
-	private boolean tunedBuilds;
-	// While the parts of one vector are tuned one after the other, the
-	// document that holds them is in a batch, so that all of them are
-	// one step of undo; the last write ends it.
 	@Nullable
-	private Document partsBatch;
-	// The vector's arguments as they were when the bar opened: from
-	// where they start, the text up to the closing parenthesis, so that
-	// Revert puts every part back, not only the one tuned last.
-	private int partsStart = -1;
+	private Runnable resting;
+	// The last session's document and states, while what runs is one of
+	// them.
 	@Nullable
-	private String partsText;
-	private boolean retuning;
+	private Document tunedDocument;
+	// The project of the session that began last.
+	@Nullable
+	private OpenProject tunedProject;
+	@Nullable
+	private Set<Integer> tunedStates;
 	@Nullable
 	private ProjectFile file;
 	// The bar that says what changed outside the app, once made.
@@ -228,7 +210,7 @@ public final class ProjectFileManager {
 		this.runner = runner;
 		this.engine = engine;
 		tuner = new Tuner(new TuningHost(),
-				ContextCompat.getMainExecutor(activity));
+				ContextCompat.getMainExecutor(activity), tuning);
 		this.editor = editor;
 		this.holds = holds;
 		this.listener = listener;
@@ -388,6 +370,7 @@ public final class ProjectFileManager {
 		heard = last(project.events(0));
 		project.setListener(ContextCompat.getMainExecutor(activity),
 				this::changed);
+		project.setBeforeReading(() -> endTuning(true));
 		editor.showDocument(document, project.syntax(path),
 				project.scope(path), project.editorState(path),
 				holds.projects().isLibrary(key) &&
@@ -414,6 +397,18 @@ public final class ProjectFileManager {
 	 * from the text its documents have now.
 	 */
 	public void run() {
+		run(false);
+	}
+
+	/**
+	 * Run after an edit; between states the last tuning session made,
+	 * the build goes on from the picture, as the session's builds did.
+	 */
+	public void runEdit() {
+		run(true);
+	}
+
+	private void run(boolean edit) {
 		ProjectFile shown = file;
 		if (shown == null) {
 			return;
@@ -421,6 +416,14 @@ public final class ProjectFileManager {
 		// What runs replaces the session's build.
 		endTuning(true);
 		OpenProject project = shown.getProject();
+		Document document = project.document(shown.getPath());
+		boolean tuned = document != null && document == tunedDocument &&
+				tunedStates != null && tunedStates.contains(document.state());
+		if (!tuned) {
+			tunedDocument = null;
+			tunedStates = null;
+		}
+		boolean goesOn = edit && tuned;
 		built = project;
 		builtEntry = project.running();
 		project.prepare(UniformTable.builtins(), prepared -> {
@@ -438,9 +441,16 @@ public final class ProjectFileManager {
 							: null,
 					prepared.texts().get(at),
 					prepared.again(project, at, gles));
+			Preparation preparation = prepared.preparation();
+			if (goesOn && preparation != null) {
+				engine.continuePlan(preparation, now.getQuality(),
+						Arrays.asList(key, project.running()), List.of(),
+						null);
+				return;
+			}
 			// Nothing runs, as for a folder without a shader: a picture
 			// or errors left from before are not this project's.
-			runner.run(prepared.preparation(), prepared.nothingRuns(),
+			runner.run(preparation, prepared.nothingRuns(),
 					now.getQuality());
 		});
 	}
@@ -471,6 +481,8 @@ public final class ProjectFileManager {
 			return;
 		}
 		endTuning(true);
+		tunedDocument = null;
+		tunedStates = null;
 		file = null;
 		deciding = null;
 		stale = false;
@@ -480,6 +492,7 @@ public final class ProjectFileManager {
 		OpenProject project = left.getProject();
 		project.setEditorState(left.getPath(), editor.getDocumentState());
 		project.setListener(null, null);
+		project.setBeforeReading(null);
 		holds.release(project);
 		showOutside();
 	}
@@ -580,6 +593,7 @@ public final class ProjectFileManager {
 	public void destroy() {
 		leave();
 		tuner.destroy();
+		tuning.shutdown();
 		destroyed = true;
 	}
 
@@ -593,265 +607,66 @@ public final class ProjectFileManager {
 		Document document = shown != null
 				? shown.getProject().document(shown.getPath())
 				: null;
+		int caret = document != null ? document.selection().head() : 0;
 		return document != null
-				? TunedPlace.at(document.text().toString(),
-				document.selection().head())
+				? Window.around(document.text(), caret, editor::lineState)
+						.place(caret)
 				: null;
 	}
 
 	/**
 	 * Return whether a number is being tuned; not while its session
-	 * ends and writes it.
+	 * changes the text.
 	 */
 	public boolean isTuning() {
-		return tunedPlace != null && writing == null;
+		return tuner.open() != null && !tuningEdits;
 	}
 
 	/**
-	 * Tune place of the file in the editor, a number from
-	 * {@link #numberAtCaret()}; tuned hears what became of it. Return
-	 * false when it cannot start.
-	 */
-	public boolean tune(@NonNull TunedPlace place,
-			@NonNull TuningSession.Listener tuned) {
-		ProjectFile shown = file;
-		if (shown == null || isTuning() || tuner.open() != null) {
-			return false;
-		}
-		tunedPlace = place;
-		tunedPath = shown.getPath();
-		tunedText = null;
-		tuner.begin(shown.getPath(), place.start, place.end, place.type,
-				new TuningSession.Listener() {
-					@Override
-					public void onLive() {
-						tuned.onLive();
-					}
-
-					@Override
-					public void onMustRebuild(
-							@NonNull List<ProjectDiagnostic> why) {
-						tuned.onMustRebuild(why);
-						// A value set while it was found out.
-						if (restText != null) {
-							rebuildTuned();
-						}
-					}
-
-					@Override
-					public void onFailed(
-							@NonNull List<ProjectDiagnostic> errors) {
-						clearTuning();
-						tuned.onFailed(errors);
-						listener.onTuningEnded(errors);
-					}
-				});
-		return true;
-	}
-
-	/**
-	 * The tuned number has a new value: literal is the number the
-	 * literal stands for, literalText what is built in its place where
-	 * it must stay a constant, and text what Done writes from its
-	 * signStart, or null while it is as it was.
-	 */
-	public void setTuned(double literal, @NonNull String literalText,
-			@Nullable String text) {
-		TuningSession session = tuner.open();
-		if (session == null || tunedPlace == null) {
-			return;
-		}
-		tunedText = text;
-		restText = literalText;
-		session.set(literal);
-		if (session.state() == TuningSession.State.MUST_REBUILD) {
-			// Built when the finger rests, not for every step.
-			rests.removeCallbacks(rested);
-			rests.postDelayed(rested, REST_MILLIS);
-		}
-	}
-
-	/**
-	 * End tuning: keep writes the tuned number's new text, as Done and
-	 * Back do; else it stays as it was, as Revert does. The listener
-	 * hears that it ended.
-	 */
-	public void endTuning(boolean keep) {
-		if (!isTuning()) {
-			return;
-		}
-		TuningSession session = tuner.open();
-		String text = keep ? tunedText : null;
-		TunedPlace place = tunedPlace;
-		if (text == null) {
-			// Revert: every part as it was when the bar opened, in the
-			// batch of the parts written before, so the sitting is one
-			// step that changes nothing, and built once by the session.
-			revertParts();
-			endPartsBatch();
-		}
-		try {
-			writing = place;
-			if (session != null) {
-				session.end(text);
-			}
-		} finally {
-			writing = null;
-			clearTuning();
-		}
-		listener.onTuningEnded(List.of());
-	}
-
-	/**
-	 * Tune part index of the vector the tuned number is in instead:
-	 * the value tuned now is written and the part's own session
-	 * begins. Return the part, or null when it cannot be tuned; then
-	 * tuning has ended.
+	 * Tune place, from {@link #numberAtCaret()}; null when it cannot
+	 * start.
 	 */
 	@Nullable
-	public TunedPlace retune(int index,
+	public TuningSession tune(@NonNull TunedPlace place,
 			@NonNull TuningSession.Listener tuned) {
-		TunedPlace place = tunedPlace;
-		TunedPlace.Vector vector = place != null ? place.vector() : null;
-		if (vector == null || index < 0 || index >= vector.parts().size()) {
-			return null;
-		}
-		// The first part does not move when a part is written.
-		int first = vector.parts().get(0).start;
-		TuningSession session = tuner.open();
-		String text = tunedText;
-		if (partsBatch == null) {
-			ProjectFile shown = file;
-			partsBatch = shown != null
-					? shown.getProject().document(shown.getPath())
-					: null;
-			if (partsBatch != null) {
-				TunedPlace last = vector.parts().get(
-						vector.parts().size() - 1);
-				partsStart = vector.parts().get(0).signStart;
-				partsText = partsBatch.text().toString().substring(
-						partsStart, last.end);
-				partsBatch.beginBatch();
-			}
-		}
-		try {
-			writing = place;
-			retuning = true;
-			if (session != null) {
-				session.end(text);
-			}
-		} finally {
-			writing = null;
-			clearTuning();
-			retuning = false;
-		}
-		TunedPlace again = numberAt(first);
-		TunedPlace part = again != null && again.vector() != null &&
-				index < again.vector().parts().size()
-				? numberAt(again.vector().parts().get(index).start)
-				: null;
-		if (part == null || !tune(part, tuned)) {
-			listener.onTuningEnded(List.of());
-			return null;
-		}
-		return part;
-	}
-
-	@Nullable
-	private TunedPlace numberAt(int offset) {
 		ProjectFile shown = file;
 		Document document = shown != null
 				? shown.getProject().document(shown.getPath())
 				: null;
-		return document != null
-				? TunedPlace.at(document.text().toString(), offset)
-				: null;
+		if (document == null || tuner.open() != null) {
+			return null;
+		}
+		tunedProject = shown.getProject();
+		return tuner.begin(document, shown.getPath(), place, tuned);
 	}
 
-	// Ends the batch of the parts of a vector, if one is open. Before a
-	// build is prepared: a batch's end tells the project the text
-	// changed, which drops a build prepared before.
-	private void endPartsBatch() {
-		Document batch = partsBatch;
-		partsBatch = null;
-		partsStart = -1;
-		partsText = null;
-		if (batch != null) {
-			batch.endBatch();
-		}
-	}
-
-	// Puts the vector's arguments back as they were when the bar opened,
-	// when parts of it were written since; the session that ends then
-	// builds the text.
-	private void revertParts() {
-		Document batch = partsBatch;
-		String before = partsText;
-		TunedPlace place = tunedPlace;
-		TunedPlace.Vector vector = place != null ? place.vector() : null;
-		if (batch == null || before == null || vector == null) {
-			return;
-		}
-		// Where the arguments end now: the last part of the vector the
-		// tuned part is in, as the text has it.
-		TunedPlace now = numberAt(place.start);
-		TunedPlace.Vector parts = now != null ? now.vector() : null;
-		if (parts == null) {
-			return;
-		}
-		int end = parts.parts().get(parts.parts().size() - 1).end;
-		if (!batch.text().toString().substring(partsStart, end)
-				.equals(before)) {
-			ProjectFile shown = file;
-			if (shown != null) {
-				editor.skipNextRun();
-			}
-			batch.replace(partsStart, end, Text.of(before));
-		}
-	}
-
-	private void clearTuning() {
-		if (!retuning) {
-			endPartsBatch();
-		}
-		tunedPlace = null;
-		tunedPath = null;
-		tunedText = null;
-		restText = null;
-		rests.removeCallbacks(rested);
-		building(false);
-	}
-
-	// Builds the text the tuned number has now, where it must stay a
-	// constant.
-	private void rebuildTuned() {
+	/** End tuning as {@link TuningSession#end} does. */
+	public void endTuning(boolean keep) {
 		TuningSession session = tuner.open();
-		String text = restText;
-		if (session == null || text == null ||
-				session.state() != TuningSession.State.MUST_REBUILD) {
+		if (session == null || tuningEdits) {
 			return;
 		}
-		building(true);
-		session.rebuild(text);
-	}
-
-	private void building(boolean building) {
-		if (tunedBuilds != building) {
-			tunedBuilds = building;
-			listener.onTuningBuilds(building);
-		}
+		session.end(keep);
+		rests.removeCallbacks(resting);
+		resting = null;
+		ProjectFile shown = file;
+		tunedDocument = shown != null
+				? shown.getProject().document(shown.getPath())
+				: null;
+		tunedStates = session.states();
+		listener.onTuningEnded(List.of());
 	}
 
 	// The project and the engine as a tuning session needs them.
 	private final class TuningHost implements TuningSession.Host {
 		@Nullable
 		@Override
-		public String text(@NonNull ProjectPath path) {
+		public Text text(@NonNull ProjectPath path) {
 			OpenProject project = project();
 			Document document = project != null
 					? project.document(path)
 					: null;
-			return document != null ? document.text().toString() : null;
+			return document != null ? document.text() : null;
 		}
 
 		@Override
@@ -865,11 +680,12 @@ public final class ProjectFileManager {
 			}
 		}
 
+		// Even of a text that changed meanwhile: it retires the session's.
 		@Override
 		public void prepare(@NonNull FileTexts.Callback<Preparation> done) {
 			OpenProject project = project();
 			if (project != null) {
-				project.prepare(UniformTable.builtins(),
+				project.prepareAlways(UniformTable.builtins(),
 						prepared -> done.done(prepared.preparation()));
 			}
 		}
@@ -878,17 +694,13 @@ public final class ProjectFileManager {
 		public void run(@NonNull Preparation preparation,
 				@NonNull List<Tuning> tunings,
 				@Nullable Tuning.Listener heard) {
+			// Another project shown now runs its own picture.
 			ProjectFile shown = file;
-			if (shown == null) {
-				return;
+			if (shown != null && shown.getProject() == tunedProject) {
+				engine.continuePlan(preparation, shown.getQuality(),
+						Arrays.asList(key, shown.getProject().running()),
+						tunings, heard);
 			}
-			if (tunings.isEmpty()) {
-				// A rebuild of the number's text is handed over.
-				building(false);
-			}
-			engine.continuePlan(preparation, shown.getQuality(),
-					Arrays.asList(key, shown.getProject().running()),
-					tunings, heard);
 		}
 
 		@Override
@@ -897,34 +709,26 @@ public final class ProjectFileManager {
 		}
 
 		@Override
-		public void write(@NonNull ProjectPath path, int start, int end,
-				@NonNull String text) {
-			OpenProject project = project();
-			Document document = project != null
-					? project.document(path)
-					: null;
-			if (document == null) {
-				return;
-			}
-			// The minus that belongs to the value is written with it.
-			TunedPlace place = writing;
-			int from = place != null && place.start == start
-					? place.signStart
-					: start;
-			ProjectFile shown = file;
-			if (shown != null && path.equals(shown.getPath())) {
-				// The session builds the text right after.
-				editor.skipNextRun();
-			}
-			document.beginBatch();
+		public void edit(@NonNull Runnable edit) {
+			editor.skipNextRun();
+			tuningEdits = true;
 			try {
-				document.replace(from, end, Text.of(text));
+				edit.run();
 			} finally {
-				document.endBatch();
+				tuningEdits = false;
 			}
-			if (!retuning) {
-				endPartsBatch();
-			}
+		}
+
+		@Override
+		public int lineState(int line) {
+			return editor.lineState(line);
+		}
+
+		@Override
+		public void rest(@NonNull Runnable build) {
+			rests.removeCallbacks(resting);
+			resting = build;
+			rests.postDelayed(build, REST_MILLIS);
 		}
 
 		@Nullable
@@ -937,11 +741,16 @@ public final class ProjectFileManager {
 	private void changed() {
 		forgetChangedBuild();
 		// Files were renamed or deleted: what is tuned may be gone. A
-		// build or a keystroke tells this listener too, and does not.
+		// build or a keystroke tells this listener too, and does not;
+		// any change drops a build being prepared.
 		ProjectFile shown = file;
 		if (isTuning() && shown != null &&
 				!shown.getProject().events(heard).isEmpty()) {
 			endTuning(true);
+		}
+		TuningSession session = tuner.open();
+		if (session != null) {
+			session.projectChanged();
 		}
 		follow();
 		decide();
