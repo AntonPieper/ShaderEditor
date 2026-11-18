@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 
 import java.util.List;
@@ -39,6 +40,9 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 	}
 
 	private static final DiffUtil.ItemCallback<String> DIFF_CALLBACK = new StringDiffer();
+
+	/** Tab among the keys: a key with the tab icon that inserts a tab. */
+	public static final String TAB = "\t";
 
 	private final OnInsertListener onInsertListener;
 	private final LookUp lookUp;
@@ -81,12 +85,17 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 
 	public class ViewHolder extends RecyclerView.ViewHolder {
 		private final Button btn;
+		private final int padding;
+		private final int tabPadding;
 		private final int typedColor;
 		private String item = "";
 
 		public ViewHolder(@NonNull View itemView) {
 			super(itemView);
 			btn = itemView.findViewById(R.id.btn);
+			padding = btn.getPaddingStart();
+			tabPadding = Math.round(10 * btn.getResources()
+					.getDisplayMetrics().density);
 			btn.setTypeface(ShaderEditorApp.preferences.getFont());
 			typedColor = MaterialColors.getColor(btn,
 					androidx.appcompat.R.attr.colorPrimary);
@@ -110,6 +119,26 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 
 		public void update(String item) {
 			this.item = item;
+			boolean tab = TAB.equals(item);
+			if (btn instanceof MaterialButton key) {
+				// The same cell as the other keys: 44 dp, the icon in the
+				// row's text colour.
+				key.setIconResource(tab ? R.drawable.ic_keyboard_tab : 0);
+				int side = tab ? tabPadding : padding;
+				key.setPaddingRelative(side, key.getPaddingTop(), side,
+						key.getPaddingBottom());
+			}
+			if (tab) {
+				btn.setText(null);
+				btn.setContentDescription(btn.getContext().getString(
+						R.string.insert_tab));
+				btn.setOnLongClickListener(null);
+				btn.setLongClickable(false);
+				ViewCompat.replaceAccessibilityAction(btn,
+						AccessibilityNodeInfoCompat.AccessibilityActionCompat
+								.ACTION_LONG_CLICK, null, null);
+				return;
+			}
 			// The typed prefix is marked in the accent, the rest keeps the
 			// row's text colour; one face, so both parts share a baseline.
 			SpannableString text = new SpannableString(item);
