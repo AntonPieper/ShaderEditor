@@ -24,6 +24,8 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.ErrorAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
+import de.markusfisch.android.shadereditor.project.BuiltLines;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectParseResult;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -484,6 +486,18 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 	public boolean showsErrorMessage(@NonNull ProjectDiagnostic error) {
 		return editor.showsErrorMessages() && error.line() > 0 &&
 				(errorsFile == null || errorsFile.equals(error.file()));
+	}
+
+	/**
+	 * Take what the last build says of the lines of path, the file shown,
+	 * as of text, the text it read, and again, which tells it for another
+	 * text of path; null for lines forgets it.
+	 */
+	public void setBuilt(@Nullable BuiltLines lines, @Nullable Text text,
+			@Nullable ProjectPath path, @Nullable BuiltLines.Again again) {
+		if (editor != null) {
+			editor.setBuilt(lines, text, path, again);
+		}
 	}
 
 	/** A build reported errors, perhaps none. */

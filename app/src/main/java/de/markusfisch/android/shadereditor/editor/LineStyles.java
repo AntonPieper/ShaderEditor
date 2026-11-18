@@ -22,6 +22,7 @@ public final class LineStyles {
 	private static final int ADOPT = 4096;
 	private static final int CACHE = 256;
 	private static final int BREAK_FOLLOWS = 0x100;
+	private static final int DIMMED = 0x200;
 	private static final Style[] STYLES = Style.values();
 
 	private final LineTokens tokens = new LineTokens();
@@ -45,6 +46,7 @@ public final class LineStyles {
 		}
 	};
 	private Set<String> typeNames = Collections.emptySet();
+	private DimmedLines dimmed;
 	// The state every line ends in, with a gap at the last edit.
 	private byte[] states;
 	private int gapStart;
@@ -90,10 +92,12 @@ public final class LineStyles {
 		return Math.min(to, lines) > staleFrom && walk();
 	}
 
-	// A stale line has the colours of its old start state.
+	// A stale line has the colours of its old start state; a dimmed line is one
+	// run in the colour of comments.
 	public Runs runs(int n) {
 		String line = document.text().line(n);
-		int key = startState(n) | (n < lines - 1 ? BREAK_FOLLOWS : 0);
+		int key = startState(n) | (n < lines - 1 ? BREAK_FOLLOWS : 0) |
+				(dimmed != null && dimmed.isOff(n) ? DIMMED : 0);
 		int slot = (System.identityHashCode(line) * 31 + key) & (CACHE - 1);
 		Runs runs = cache[slot];
 		if (runs == null || runs.line.text() != line || runs.key != key) {
@@ -101,6 +105,11 @@ public final class LineStyles {
 			cache[slot] = runs;
 		}
 		return runs;
+	}
+
+	// The lines drawn as comments are, or none for null.
+	public void setDimmed(DimmedLines dimmed) {
+		this.dimmed = dimmed;
 	}
 
 	// names must not change afterwards; another set, even an equal one, is a
@@ -231,6 +240,11 @@ public final class LineStyles {
 				runs[size++] = end;
 				runs[size++] = style.ordinal();
 			}
+		}
+		if ((key & DIMMED) != 0 && size > 0) {
+			runs[1] = runs[size - 2];
+			runs[2] = Style.COMMENT.ordinal();
+			size = 3;
 		}
 		return new Runs(lexed, key, Arrays.copyOf(runs, size));
 	}
