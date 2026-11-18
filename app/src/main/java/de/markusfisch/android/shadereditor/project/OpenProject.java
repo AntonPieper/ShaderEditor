@@ -1934,11 +1934,23 @@ public final class OpenProject {
 
 	/**
 	 * Tell done the text of every file of the folder and its folders
-	 * that is read as GLSL: its document's, else its journal's, else
-	 * the stored one, as a build reads it. Pictures are left out. Read
-	 * on the worker.
+	 * that is read as GLSL, and of every file one of these names that a
+	 * build reads, hidden or not: its document's, else its journal's,
+	 * else the stored one, as a build reads it. Pictures are left out,
+	 * and a named file that cannot be read, as a build fails on it.
+	 * Read on the worker.
 	 */
 	public void folderTexts(Callback<FolderTexts> done) {
+		folderTexts(Integer.MAX_VALUE, Long.MAX_VALUE, done);
+	}
+
+	/**
+	 * As {@link #folderTexts(Callback)}, but of at most most files and
+	 * bytes bytes in all: the files beyond, and a file larger than
+	 * what is left, are counted as not read.
+	 */
+	public void folderTexts(int most, long bytes,
+			Callback<FolderTexts> done) {
 		Map<ProjectPath, Text> snapshot = snapshot();
 		Set<ProjectPath> journaled = journaled();
 		Edited files = new Edited(snapshot, journaled);
@@ -1946,11 +1958,18 @@ public final class OpenProject {
 			Map<ProjectPath, Text> texts = new LinkedHashMap<>();
 			Map<ProjectPath, List<ProjectPath>> names = new HashMap<>();
 			List<ProjectPath> paths = new ArrayList<>();
-			int unread = lone != null ? 0 : collect(null, paths);
+			int unread = lone != null ? 0 : collect(null, paths, most);
 			if (lone != null) {
 				paths.add(lone);
 			}
-			for (ProjectPath path : paths) {
+			long left = bytes;
+			int walked = paths.size();
+			for (int i = 0; i < paths.size(); ++i) {
+				ProjectPath path = paths.get(i);
+				if (texts.size() >= most) {
+					++unread;
+					continue;
+				}
 				if (!snapshot.containsKey(path) &&
 						!journaled.contains(path)) {
 					byte[] head = store.head(path, FileKind.HEAD);
@@ -1958,15 +1977,24 @@ public final class OpenProject {
 						continue;
 					}
 				}
-				String text = files.read(path) instanceof Content content
-						? SourceText.decode(content.bytes())
-						: null;
+				ProjectFiles.Read got = files.read(path, Math.min(left,
+						Document.MAX_BYTES));
+				byte[] read = got instanceof Content content &&
+						content.bytes().length <= left ? content.bytes() : null;
+				String text = read != null ? SourceText.decode(read) : null;
 				if (text != null) {
-					Text read = Text.of(text);
-					texts.put(path, read);
-					names.put(path, ShaderLanguage.of(path.toString())
-							.named(path, read));
-				} else {
+					left -= read.length;
+					Text decoded = Text.of(text);
+					texts.put(path, decoded);
+					List<ProjectPath> named = ShaderLanguage.of(
+							path.toString()).named(path, decoded);
+					names.put(path, named);
+					for (ProjectPath include : named) {
+						if (!paths.contains(include)) {
+							paths.add(include);
+						}
+					}
+				} else if (i < walked || got instanceof Content) {
 					++unread;
 				}
 			}
@@ -1976,16 +2004,19 @@ public final class OpenProject {
 		});
 	}
 
-	// Adds the GLSL files under folder, the root for null; returns how
-	// many folders could not be listed.
-	private int collect(ProjectPath folder, List<ProjectPath> paths) {
+	// Adds the GLSL files under folder, the root for null, no more than
+	// most and one; returns how many folders could not be listed.
+	private int collect(ProjectPath folder, List<ProjectPath> paths,
+			int most) {
 		Folder listed = list(folder);
 		int unlisted = listed.problem() != null ? 1 : 0;
 		for (Item item : listed.items()) {
-			if (ProjectPath.isHidden(item.path().getFileName())) {
+			if (paths.size() > most) {
+				break;
+			} else if (ProjectPath.isHidden(item.path().getFileName())) {
 				continue;
 			} else if (item.folder()) {
-				unlisted += collect(item.path(), paths);
+				unlisted += collect(item.path(), paths, most);
 			} else if (ShaderLanguage.of(item.path().toString()) ==
 					ShaderLanguage.GLSL) {
 				paths.add(item.path());

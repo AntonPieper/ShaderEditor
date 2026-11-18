@@ -14,7 +14,9 @@ import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -36,6 +38,7 @@ import de.markusfisch.android.shadereditor.project.BuiltLines;
 import de.markusfisch.android.shadereditor.project.FileKind;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
+import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.ProjectParseResult;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
@@ -139,6 +142,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// offers besides the language's own: the names they declare, then
 	// the app's uniforms, made again when those names change.
 	@NonNull
+	// What Definition reads of a folder at most: beyond, it cannot tell.
+	private static final int TEXTS_MOST = 500;
+	private static final long TEXTS_BYTES = 4 << 20;
 	private Knowledge.Scope scope = Knowledge.Scope.NONE;
 	@NonNull
 	private List<String> outside = Collections.emptyList();
@@ -181,10 +187,15 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.setAnalysisListener(this::analysed);
 		if (view.getResources().getBoolean(R.bool.project_mode)) {
 			docs = new WordDocs(view, new WordDocs.Host() {
+				// Nothing while the analysis is of an older text: its
+				// offsets are not this text's.
 				@NonNull
 				@Override
 				public Knowledge declared() {
-					return view.getAnalysis().knowledge();
+					Analysis analysis = view.getAnalysis();
+					return analysis.revision() == document.revision()
+							? analysis.knowledge()
+							: Knowledge.NONE;
 				}
 
 				@NonNull
@@ -206,14 +217,41 @@ final class CodeViewSourceEditor implements SourceEditor {
 				}
 
 				@Override
-				public void goToLine(int line) {
-					jump(null, line + 1);
+				public int revision() {
+					return document.revision();
+				}
+
+				@NonNull
+				@Override
+				public String file() {
+					return links != null ? links.file().toString() : "";
 				}
 
 				@Override
-				public void open(@NonNull String file, int line) {
-					// As Open in the strip does, with the way back.
-					jump(file, line + 1);
+				public void texts(@NonNull FileTexts.Callback<
+						Map<String, Text>> done) {
+					FileLinks asked = links;
+					Text shown = document.text();
+					if (asked == null) {
+						done.done(Map.of("", shown));
+						return;
+					}
+					asked.folderTexts(TEXTS_MOST, TEXTS_BYTES, read -> {
+						Map<String, Text> texts = new HashMap<>();
+						for (Map.Entry<ProjectPath, Text> e :
+								read.texts().entrySet()) {
+							texts.put(e.getKey().toString(), e.getValue());
+						}
+						// The text the offsets asked about are of.
+						texts.put(asked.file().toString(), shown);
+						done.done(read.unread() > 0 ? null : texts);
+					});
+				}
+
+				@Override
+				public void goTo(@NonNull String file, int start, int line,
+						@NonNull String word, @NonNull Runnable then) {
+					goToName(file, start, line, word, then);
 				}
 
 				// The call the caret is in can be shown now.
@@ -558,6 +596,52 @@ final class CodeViewSourceEditor implements SourceEditor {
 			listener.onOpenFile(file, line);
 		}
 	}
+
+	// Goes to word at start of file, a path or this file, as Open
+	// does, the caret on the name: in this file after the jump, which
+	// leaves from where the caret was; in another before it, once its
+	// text is read, if it still has the name there, else to line.
+	private void goToName(@NonNull String file, int start, int line,
+			@NonNull String word, @NonNull Runnable then) {
+		FileLinks asked = links;
+		if (asked == null || file.equals(asked.file().toString())) {
+			Text text = document.text();
+			jump(null, text.lineOf(Math.min(start, text.length())) + 1);
+			selectName(document, start, word);
+			then.run();
+			return;
+		}
+		ProjectParseResult<ProjectPath> path = ProjectPath.parse(file);
+		if (!path.isSuccess()) {
+			jump(file, line + 1);
+			then.run();
+			return;
+		}
+		asked.load(List.of(path.value()), problem -> {
+			if (asked != links) {
+				return;
+			}
+			Document there = asked.document(path.value());
+			jump(file, there != null && selectName(there, start, word)
+					? there.text().lineOf(start) + 1
+					: line + 1);
+			then.run();
+		});
+	}
+
+	// Puts the caret of document on word at start, if word still stands
+	// there; returns whether it does.
+	private static boolean selectName(@NonNull Document document, int start,
+			@NonNull String word) {
+		Text text = document.text();
+		boolean there = start + word.length() <= text.length() &&
+				text.substring(start, start + word.length()).equals(word);
+		if (there) {
+			document.select(start, start);
+		}
+		return there;
+	}
+
 
 	@Override
 	public void navigateToLine(int line) {

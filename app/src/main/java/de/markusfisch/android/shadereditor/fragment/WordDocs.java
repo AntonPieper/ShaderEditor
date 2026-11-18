@@ -19,6 +19,7 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,8 +29,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.editor.Definitions;
+import de.markusfisch.android.shadereditor.editor.Text;
+import de.markusfisch.android.shadereditor.editor.WordPlaces;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
+import de.markusfisch.android.shadereditor.project.FileTexts;
+import de.markusfisch.android.shadereditor.project.ProjectParseResult;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.syntax.GlslDocs;
 import de.markusfisch.android.shadereditor.syntax.GlslWords;
@@ -38,6 +46,7 @@ import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.DocsSheet;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
+import de.markusfisch.android.shadereditor.widget.UsesSheet;
 
 /**
  * Explains a word in a sheet: a built-in word of GLSL ES from the docs
@@ -66,11 +75,27 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		/** The line, from 0, of an offset of the file's text. */
 		int lineOf(int offset);
 
-		/** Put the caret in line, from 0. */
-		void goToLine(int line);
+		/** The revision of the file's text, which an edit changes. */
+		int revision();
 
-		/** Show file, a path of the project, at line, from 0. */
-		void open(@NonNull String file, int line);
+		/** The path of the file shown, or "" outside a folder. */
+		@NonNull
+		String file();
+
+		/**
+		 * Read the texts of the files the file shown may see, as Uses
+		 * reads them, the file shown's under file(); done gets them by
+		 * path, or null when not all could be read.
+		 */
+		void texts(@NonNull FileTexts.Callback<Map<String, Text>> done);
+
+		/**
+		 * Go to the name word at start of file, a path, or the file
+		 * shown, in line, from 0, with the way back; then runs once it
+		 * landed.
+		 */
+		void goTo(@NonNull String file, int start, int line,
+				@NonNull String word, @NonNull Runnable then);
 
 		/** The docs are read: what waited for them can be asked again. */
 		void onDocsRead();
@@ -101,6 +126,7 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 			"'([A-Za-z_][A-Za-z0-9_]*)'");
 	private static final Map<String, UniformDef> UNIFORMS = new HashMap<>();
 	private static final Executor READER = Executors.newSingleThreadExecutor();
+	private static final Executor FINDER = Executors.newSingleThreadExecutor();
 	// Read once, on the main thread's word, for the process.
 	@Nullable
 	private static GlslDocs docs;
@@ -115,6 +141,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	private final Host host;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private boolean reading;
+	// Whether the sheet shown last handed the keyboard on to the next.
+	private boolean handedOn;
 	// The word to explain once the docs are read.
 	@Nullable
 	private String asked;
@@ -395,22 +423,20 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	private void show(@NonNull DocsSheet.Content content,
 			@Nullable String action, @Nullable Runnable onAction,
 			boolean leads, @Nullable String uses, @Nullable String file) {
-		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(view);
-		boolean keyboard = insets != null &&
-				insets.isVisible(WindowInsetsCompat.Type.ime());
+		boolean keyboard = keyboardUp();
 		DocsSheet sheet = new DocsSheet(view.getContext(), content, action,
 				onAction, leads);
-		boolean[] handedOn = {false};
+		handedOn = false;
 		if (uses != null && host.offersUses()) {
 			boolean renamable = !UNIFORMS.containsKey(uses) ||
 					isLocal(host.declared(), host.offset(), uses);
 			sheet.setUses(() -> {
-				handedOn[0] = true;
+				handedOn = true;
 				host.uses(uses, file, keyboard, renamable);
 			});
 		}
 		sheet.setOnDismiss(() -> {
-			if (!handedOn[0]) {
+			if (!handedOn) {
 				view.post(() -> refocus(keyboard));
 			}
 		});
@@ -549,16 +575,156 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				? context.getString(R.string.docs_where, file, line + 1)
 				: context.getString(R.string.docs_where_line, line + 1);
 		String kind = context.getString(kindName(first.kind()));
-		String action = line < 0 ? null : file != null
-				? context.getString(R.string.docs_open, file)
-				: context.getString(R.string.docs_go_to_line, line + 1);
+		boolean keyboard = keyboardUp();
 		show(new DocsSheet.Content(first.name(), where == null ? kind
 						: context.getString(R.string.docs_kind_versions, kind,
 								where), documentation(forms), code(forms),
-						null, null, null, null), action,
-				file != null ? () -> host.open(file, line)
-						: () -> host.goToLine(line), true, first.name(),
-				file);
+						null, null, null, null),
+				context.getString(R.string.definition), () -> {
+					handedOn = true;
+					definition(first.name(), keyboard);
+				}, true, first.name(), file);
+	}
+
+	/** Where word may be declared, and its places as rows of a list. */
+	record Found(@NonNull Definitions.Answer answer,
+			@NonNull List<WordPlaces.Place> rows) {
+	}
+
+	/**
+	 * Find where word, at the caret, may be declared, see
+	 * {@link Definitions}, from the texts in reach read now, off the
+	 * main thread; done is told on it, unless the text or the caret
+	 * changed meanwhile.
+	 */
+	void definitions(@NonNull String word,
+			@NonNull FileTexts.Callback<Found> done) {
+		int offset = host.offset();
+		int revision = host.revision();
+		String shown = host.file();
+		host.texts(texts -> FINDER.execute(() -> {
+			Found found = texts == null
+					? new Found(Definitions.Answer.UNKNOWN, List.of())
+					: find(texts, shown, offset, word);
+			view.post(() -> {
+				if (host.revision() == revision && host.offset() == offset) {
+					done.done(found);
+				}
+			});
+		}));
+	}
+
+	// What is found for word, which the caret at offset of the file
+	// shown stands in or at the end of.
+	private static Found find(@NonNull Map<String, Text> texts,
+			@NonNull String shown, int caret, @NonNull String word) {
+		Map<String, String> strings = new LinkedHashMap<>();
+		for (Map.Entry<String, Text> e : texts.entrySet()) {
+			strings.put(e.getKey(), e.getValue().toString());
+		}
+		String own = strings.get(shown);
+		int offset = own != null ? Math.min(caret, own.length()) : caret;
+		while (offset > 0 && own != null &&
+				Character.isJavaIdentifierPart(own.charAt(offset - 1))) {
+			--offset;
+		}
+		Definitions.Answer answer = Definitions.of(Definitions.reach(strings,
+				shown, (file, path) -> {
+					ProjectParseResult<ProjectPath> from =
+							ProjectPath.parse(file);
+					ProjectParseResult<ProjectPath> to = from.isSuccess()
+							? ProjectPath.resolve(from.value(), path) : null;
+					return to != null && to.isSuccess()
+							? to.value().toString() : null;
+				}), offset, word);
+		List<WordPlaces.Place> rows = new ArrayList<>();
+		for (Definitions.Place place : answer.places()) {
+			Text text = texts.get(place.file());
+			int line = text.lineOf(place.start());
+			int start = text.lineStart(line);
+			rows.add(new WordPlaces.Place(place.file(), place.start(), line,
+					place.start() - start, text.line(line), false));
+		}
+		return new Found(answer, rows);
+	}
+
+	/**
+	 * Go where word, at the caret, is declared: there when it has one
+	 * place; else a list of its places to choose from, after which the
+	 * keyboard comes back if it was up, as it does after a jump or when
+	 * nothing is found.
+	 */
+	void definition(@NonNull String word, boolean keyboard) {
+		definitions(word, found -> {
+			if (found.answer().form() == Definitions.Form.LIST) {
+				list(word, found, keyboard);
+				return;
+			} else if (found.answer().form() == Definitions.Form.JUMP) {
+				goTo(found.rows().get(0), word, keyboard);
+				return;
+			}
+			refocus(keyboard);
+		});
+	}
+
+	// Goes to row, and the keyboard comes back, if it was up, once
+	// there: a screen reader then hears the landing alone.
+	private void goTo(@NonNull WordPlaces.Place row, @NonNull String word,
+			boolean keyboard) {
+		host.goTo(row.file(), row.start(), row.line(), word,
+				() -> refocus(keyboard));
+	}
+
+	// Lists the places found in the rows of Uses, by file, the nearest
+	// first and named.
+	private void list(@NonNull String word, @NonNull Found found,
+			boolean keyboard) {
+		Context context = view.getContext();
+		String shown = host.file();
+		Map<String, List<WordPlaces.Place>> byFile = new LinkedHashMap<>();
+		for (WordPlaces.Place row : found.rows()) {
+			List<WordPlaces.Place> inFile = byFile.get(row.file());
+			if (inFile == null) {
+				inFile = new ArrayList<>();
+				byFile.put(row.file(), inFile);
+			}
+			inFile.add(row);
+		}
+		List<WordPlaces.Group> groups = new ArrayList<>();
+		for (Map.Entry<String, List<WordPlaces.Place>> file :
+				byFile.entrySet()) {
+			groups.add(new WordPlaces.Group(WordPlaces.Group.Kind.FILE,
+					file.getKey(), file.getValue()));
+		}
+		WordPlaces.Place nearest = found.rows().get(0);
+		boolean[] chosen = {false};
+		UsesSheet sheet = new UsesSheet(context,
+				ShaderEditorApp.preferences.getFont(), row -> {
+			chosen[0] = true;
+			goTo(row, word, keyboard);
+		});
+		sheet.setOnDismiss(() -> view.post(() -> {
+			if (!chosen[0]) {
+				refocus(keyboard);
+			}
+		}));
+		int count = found.rows().size();
+		sheet.showList(new UsesSheet.Content(word, shown, groups, 0, false,
+						false), context.getResources().getQuantityString(
+						R.plurals.definitions, count, count),
+				context.getString(R.string.definition_nearest,
+						nearest.file().equals(shown)
+								? context.getString(R.string.docs_where_line,
+								nearest.line() + 1)
+								: context.getString(R.string.docs_where,
+								nearest.file(), nearest.line() + 1)));
+	}
+
+	// Whether the keyboard is up.
+	private boolean keyboardUp() {
+		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(view);
+		return insets != null &&
+				insets.isVisible(WindowInsetsCompat.Type.ime());
 	}
 
 	/**
