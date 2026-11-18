@@ -48,11 +48,13 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	private Text windowOf;
 	private AccessibleText.Window window;
 	private String windowText;
-	// The window of the last node, in the text it was of. A service takes a
-	// selection event's indices as indices into the text of the node it got
-	// last, so they are into this window while it holds the selection.
-	private Text shownOf;
-	private AccessibleText.Window shown;
+	// The window of the last selection event, in the text it was of. A
+	// service says what a move passed over from the text of the selection
+	// event, between the index of the event before and the new one, so the
+	// window stays the same while it holds the selection.
+	private Text toldOf;
+	private AccessibleText.Window toldWindow;
+	private String toldText;
 	// The selection the last event reported.
 	private Document.Selection reported;
 	// The first change of an edit told by tell.
@@ -106,8 +108,6 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		Document.Selection selection = document.selection();
 		Text all = document.text();
 		AccessibleText.Window window = reading(all, selection);
-		shownOf = all;
-		shown = window;
 		String text = text(all, window);
 		info.setText(text.isEmpty() ? null : text);
 		AccessibilityNodeInfoCompat.wrap(info).setStateDescription(
@@ -225,10 +225,10 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		}
 		Document.Selection selection = document.selection();
 		Text all = document.text();
-		String text = text(all, event.getEventType() ==
+		String text = event.getEventType() ==
 				AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED
-				? told(all, selection.start(), selection.end())
-				: reading(all, selection));
+				? toldText(all, told(all, selection.start(), selection.end()))
+				: text(all, reading(all, selection));
 		if (!text.isEmpty()) {
 			event.getText().add(text);
 		}
@@ -387,12 +387,23 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		return super.performAccessibilityAction(host, action, arguments);
 	}
 
-	// The window of the last node if it holds from to to in text, else the
-	// lines read for them.
+	// The window of the last selection event if it holds from to to in text,
+	// else the window of a change there.
 	private AccessibleText.Window told(Text text, int from, int to) {
-		return text == shownOf && from >= shown.start() && to <= shown.end()
-				? shown
-				: AccessibleText.reading(text, from, to);
+		if (text != toldOf || from < toldWindow.start() ||
+				to > toldWindow.end()) {
+			toldOf = text;
+			toldWindow = AccessibleText.window(text, from, to);
+			toldText = null;
+		}
+		return toldWindow;
+	}
+
+	private String toldText(Text text, AccessibleText.Window window) {
+		if (toldText == null) {
+			toldText = text.substring(window.start(), window.end());
+		}
+		return toldText;
 	}
 
 	private static AccessibleText.Window reading(Text text,
@@ -444,10 +455,9 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		if (parent == null || !isEnabled()) {
 			return;
 		}
-		Document.Selection selection = view.getDocument().selection();
-		AccessibleText.Window window = told(text,
-				Math.min(selection.start(), segment.start()),
-				Math.max(selection.end(), segment.end()));
+		// A service reads it against the node it gets for it.
+		AccessibleText.Window window = reading(text,
+				view.getDocument().selection());
 		AccessibilityEvent event = AccessibilityEvent.obtain(AccessibilityEvent
 				.TYPE_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY);
 		view.onInitializeAccessibilityEvent(event);
