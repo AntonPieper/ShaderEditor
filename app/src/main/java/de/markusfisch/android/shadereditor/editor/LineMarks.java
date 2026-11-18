@@ -32,6 +32,12 @@ public final class LineMarks {
 	private int size;
 	private int changes;
 	private int open = -1;
+	// A missing ';' that the first error's row tells; its line moves like a
+	// mark, and hintChanged once that line is edited.
+	private int hint = -1;
+	private int hinted = -1;
+	private String hintMessage;
+	private boolean hintChanged;
 
 	public LineMarks(Document document) {
 		this.document = document;
@@ -79,6 +85,13 @@ public final class LineMarks {
 		if (severity(open) != Severity.ERROR) {
 			open = -1;
 		}
+		hint = hinted = -1;
+		hintChanged = false;
+		if (n > 1 && diagnostics.get(1).isMissingSemicolon()) {
+			hinted = diagnostics.get(0).line() - 1;
+			hint = diagnostics.get(1).line() - 1;
+			hintMessage = diagnostics.get(1).message();
+		}
 		return true;
 	}
 
@@ -119,6 +132,21 @@ public final class LineMarks {
 		return found;
 	}
 
+	public String hintMessage() {
+		return hintMessage;
+	}
+
+	// The line of the missing ';' the row of line tells, or -1.
+	public int hintFor(int line) {
+		return line == hinted ? hint : -1;
+	}
+
+	// Whether the line of the missing ';' was edited since the marks were
+	// set.
+	public boolean hintChanged() {
+		return hintChanged;
+	}
+
 	// -1 for none.
 	public int open() {
 		return open;
@@ -141,15 +169,16 @@ public final class LineMarks {
 	}
 
 	private void move(Document.Change change, Text before) {
+		int start = change.start();
+		int first = before.lineOf(start);
+		int last = first + change.removed().lineCount() - 1;
+		hintChanged |= hint >= first && hint <= last;
 		int removed = change.removed().lineCount();
 		if (size == 0 || (removed > 1 &&
 				removed == change.inserted().lineCount())) {
 			return;
 		}
-		int start = change.start();
 		int end = start + change.removed().length();
-		int first = before.lineOf(start);
-		int last = first + change.removed().lineCount() - 1;
 		// Where what follows the change starts, how far the lines below
 		// it move, and whether text stands in front of it on its line.
 		Text inserted = change.inserted();
@@ -158,10 +187,12 @@ public final class LineMarks {
 		boolean joined = !inserted.line(inserted.lineCount() - 1).isEmpty() ||
 				(after == first && start > before.lineStart(first));
 		int count = size;
+		int oldHint = hint;
 		size = 0;
 		boolean moved = false;
 		int opened = open;
-		open = -1;
+		int oldHinted = hinted;
+		open = hinted = -1;
 		for (int i = 0; i < count; ++i) {
 			int line = lines[i];
 			if (line > last) {
@@ -180,6 +211,8 @@ public final class LineMarks {
 			if (lines[i] == opened) {
 				open = line;
 			}
+			hint = lines[i] == oldHint ? line : hint;
+			hinted = lines[i] == oldHinted ? line : hinted;
 			add(line, severities[i], messages[i]);
 		}
 		if (moved || size != count) {

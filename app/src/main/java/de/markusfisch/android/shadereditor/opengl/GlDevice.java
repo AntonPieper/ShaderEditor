@@ -19,7 +19,9 @@ import de.markusfisch.android.shadereditor.graphics.BitmapEditor;
 import de.markusfisch.android.shadereditor.project.HostDirective.Format;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
+import de.markusfisch.android.shadereditor.project.SourceLocation;
 import de.markusfisch.android.shadereditor.project.SourceMap;
+import de.markusfisch.android.shadereditor.syntax.MissingSemicolon;
 
 // Every GL call the engine makes, so that tests can drive the engine
 // with a device of their own.
@@ -665,16 +667,51 @@ class GlDevice {
 		int[] compiled = new int[1];
 		GLES20.glGetShaderiv(shaderId, GLES20.GL_COMPILE_STATUS, compiled, 0);
 		if (compiled[0] == 0) {
-			List<ProjectDiagnostic> infoLog = DriverLog.parse(
-					GLES20.glGetShaderInfoLog(shaderId),
-					sourceMap);
+			String log = GLES20.glGetShaderInfoLog(shaderId);
 			GLES20.glDeleteShader(shaderId);
+			List<ProjectDiagnostic> infoLog = DriverLog.parse(log, sourceMap);
+			if (type == GLES20.GL_FRAGMENT_SHADER && sourceMap != null) {
+				ProjectDiagnostic missing = missingSemicolon(log, source,
+						sourceMap);
+				if (missing != null) {
+					infoLog.add(1, missing);
+				}
+			}
 			return new ShaderCompileResult(null, infoLog);
 		}
 
 		return new ShaderCompileResult(
 				new GlShader(shaderId, type, source),
 				java.util.Collections.emptyList());
+	}
+
+	// A ';' that a trial compile shows missing before the first error.
+	@Nullable
+	private ProjectDiagnostic missingSemicolon(@NonNull String log,
+			@NonNull String source, @NonNull SourceMap sourceMap) {
+		ProjectDiagnostic first = DriverLog.firstError(
+				DriverLog.parse(log, null));
+		int place = first != null
+				? MissingSemicolon.place(source, first.line() - 1,
+				first.message())
+				: -1;
+		if (place < 0) {
+			return null;
+		}
+		ShaderCompileResult trial = compileShader(GLES20.GL_FRAGMENT_SHADER,
+				source.substring(0, place) + ";" + source.substring(place),
+				null);
+		deleteShader(trial.shader);
+		ProjectDiagnostic error = DriverLog.firstError(trial.infoLog);
+		SourceLocation at = trial.shader != null ||
+				(error != null && error.line() > first.line())
+				? sourceMap.locate(
+				source.substring(0, place).split("\n", -1).length)
+				: null;
+		return at == null || at.isGenerated()
+				? null
+				: ProjectDiagnostic.missingSemicolon(at.file(), at.line(),
+						MissingSemicolon.before(source, place));
 	}
 
 	private void deleteShader(@Nullable GlShader shader) {

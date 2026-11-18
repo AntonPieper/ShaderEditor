@@ -13,6 +13,8 @@ public record ProjectDiagnostic(
 		ProjectPath file,
 		int line,
 		String raw) {
+	private static final String MISSING_SEMICOLON = "';' is missing after '";
+
 	public enum Severity {
 		ERROR,
 		WARNING
@@ -24,6 +26,19 @@ public record ProjectDiagnostic(
 			ProjectPath file,
 			int line) {
 		this(severity, message, file, line, message);
+	}
+
+	/** A compile showed that a ';' after token on line is missing. */
+	public static ProjectDiagnostic missingSemicolon(ProjectPath file,
+			int line, String token) {
+		return new ProjectDiagnostic(Severity.WARNING,
+				MISSING_SEMICOLON + token + "'", file, line);
+	}
+
+	/** Whether this was made by {@link #missingSemicolon}. */
+	public boolean isMissingSemicolon() {
+		return severity == Severity.WARNING &&
+				message.startsWith(MISSING_SEMICOLON);
 	}
 
 	/**

@@ -56,6 +56,29 @@ public class LineMarksTest {
 		assertEquals(-1, marks.lineOf(1, "z"));
 	}
 
+	// The missing ';' lives as long as the first error's marks: it moves
+	// with edits elsewhere, is changed by an edit on its line, and goes
+	// with the next build's result.
+	@Test
+	public void missingSemicolonLivesUntilTheNextResult() {
+		Document document = new Document(Text.of(TEXT));
+		LineMarks marks = new LineMarks(document);
+		marks.set(document.revision(), List.of(error(3, "'x' : syntax error"),
+				ProjectDiagnostic.missingSemicolon(null, 2, "a")));
+		assertEquals(1, marks.hintFor(2));
+		assertEquals(-1, marks.hintFor(1));
+		document.replace(0, 0, Text.of("\n"));
+		assertEquals(2, marks.hintFor(3));
+		assertFalse(marks.hintChanged());
+		int b1 = document.text().lineStart(2);
+		document.replace(b1 + 1, b1 + 2, Text.of("x"));
+		assertEquals(2, marks.hintFor(3));
+		assertTrue(marks.hintChanged());
+		marks.set(document.revision(), List.of(error(4), warning(3)));
+		assertEquals(-1, marks.hintFor(3));
+		assertFalse(marks.hintChanged());
+	}
+
 	@Test
 	public void movesWithLinesInsertedOrRemovedAbove() {
 		Document document = new Document(Text.of(TEXT));

@@ -551,6 +551,7 @@
 	<string name="a11y_back_to_file">Back to %1$s, line %2$d</string>
 	<string name="fix_use">Use %1$s</string>
 	<string name="fix_create">Create</string>
+	<string name="fix_insert_semicolon">Insert \';\'</string>
 	<string name="file_not_in_folder">Not in this folder</string>
 	<string name="rename_also">Also change %1$s</string>
 	<string name="rename_undone">Renamed back to %1$s</string>

@@ -37,6 +37,7 @@ import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
+import de.markusfisch.android.shadereditor.syntax.MissingSemicolon;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
@@ -256,7 +257,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 				public Document document() {
 					return document;
 				}
-			}, docs);
+			}, new SemicolonFix(docs));
 		} else {
 			docs = null;
 			fixes = null;
@@ -1041,5 +1042,56 @@ final class CodeViewSourceEditor implements SourceEditor {
 				return text.toString();
 			}
 		};
+	}
+
+	// Insert ';' where a build showed it missing, then the other fixes.
+	private final class SemicolonFix implements CodeView.RowFix {
+		private final CodeView.RowFix other;
+
+		SemicolonFix(CodeView.RowFix other) {
+			this.other = other;
+		}
+
+		@NonNull
+		@Override
+		public List<CodeView.Fix> fixes(int line,
+				@NonNull List<String> messages) {
+			List<CodeView.Fix> fixes = new ArrayList<>(
+					other.fixes(line, messages));
+			if (marks.hintFor(line) >= 0) {
+				fixes.add(0, CodeView.Fix.of(view.getContext().getString(
+						R.string.fix_insert_semicolon)));
+			}
+			return fixes;
+		}
+
+		@Override
+		public void apply(int line, @NonNull List<String> messages,
+				int index) {
+			int at = semicolonAt(line, messages);
+			if (at >= 0 && index-- == 0) {
+				document.replace(at, at, Text.of(";"));
+			} else {
+				other.apply(line, messages, index);
+			}
+		}
+	}
+
+	// Where the build showed a ';' missing for the error on line, while
+	// that line is as built; else -1, and the fix does nothing until the
+	// next build. Diagnostics have no column.
+	private int semicolonAt(int line, @NonNull List<String> messages) {
+		int missing = marks.hintFor(line);
+		if (missing < 0 || marks.hintChanged()) {
+			return -1;
+		}
+		Text text = document.text();
+		int start = text.lineStart(missing);
+		int at = MissingSemicolon.place(text.substring(start,
+						text.lineStart(line) + text.line(line).length()),
+				line - missing, messages.get(0));
+		return at >= 0 && at <= text.line(missing).length()
+				? start + at
+				: -1;
 	}
 }
