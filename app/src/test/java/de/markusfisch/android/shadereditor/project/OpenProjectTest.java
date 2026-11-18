@@ -326,8 +326,8 @@ public class OpenProjectTest {
 
 		int at = ("#include \"lib/common.glsl\"\n" + SHADER).indexOf("1.0");
 		OpenProject.Build tuned = await(done -> project.prepare(
-				BuiltinNames.ALL, new OpenProject.Replacement(
-						path("main.frag"), at, at + 3, "se_tune0"), done));
+				BuiltinNames.ALL, List.of(new OpenProject.Replacement(
+						path("main.frag"), at, at + 3, "se_tune0")), done));
 		assertTrue(tuned.preparation().temporary());
 		// The same list: nothing was read again.
 		assertSame(names, scope.names());
@@ -418,8 +418,8 @@ public class OpenProjectTest {
 		assertEquals(List.of(3), build.lines().off(path("main.frag"), 3));
 		int at = text.indexOf("1.0");
 		OpenProject.Build tuned = await(done -> project.prepare(
-				BuiltinNames.ALL, new OpenProject.Replacement(
-						path("main.frag"), at, at + 3, "se_tune0"), done));
+				BuiltinNames.ALL, List.of(new OpenProject.Replacement(
+						path("main.frag"), at, at + 3, "se_tune0")), done));
 		assertNull(tuned.lines());
 		assertNull(tuned.again(project, path("main.frag"), 3));
 	}
@@ -486,12 +486,23 @@ public class OpenProjectTest {
 		Document main = document(project, "main.frag");
 		int at = SHADER.indexOf("1.0");
 		OpenProject.Build replaced = await(done -> project.prepare(
-				BuiltinNames.ALL, new OpenProject.Replacement(
-						path("main.frag"), at, at + 3, "se_tune0"), done));
+				BuiltinNames.ALL, List.of(new OpenProject.Replacement(
+						path("main.frag"), at, at + 3, "se_tune0")), done));
 
 		assertEquals(SHADER.replace("1.0", "se_tune0"),
 				built(replaced.preparation(), "main.frag"));
 		assertTrue(replaced.preparation().temporary());
+		// Several ranges, each where the document has it, in any order.
+		int first = SHADER.indexOf("mediump");
+		OpenProject.Build both = await(done -> project.prepare(
+				BuiltinNames.ALL, List.of(
+						new OpenProject.Replacement(path("main.frag"), at,
+								at + 3, "se_tune0"),
+						new OpenProject.Replacement(path("main.frag"), first,
+								first + 7, "highp")), done));
+		assertEquals(SHADER.replace("1.0", "se_tune0")
+						.replace("mediump", "highp"),
+				built(both.preparation(), "main.frag"));
 		assertEquals(SHADER, main.text().toString());
 		assertFalse(main.isModified());
 		assertEquals(SHADER, read("main.frag"));
@@ -514,7 +525,7 @@ public class OpenProjectTest {
 		OpenProject.Replacement replacement = new OpenProject.Replacement(
 				path("main.frag"), at, at + 3, "se_tune0");
 		OpenProject.Build replaced = await(done -> project.prepare(
-				BuiltinNames.ALL, replacement, done));
+				BuiltinNames.ALL, List.of(replacement), done));
 		assertTrue(built(replaced.preparation(), "main.frag")
 				.contains("se_tune0"));
 
@@ -544,7 +555,7 @@ public class OpenProjectTest {
 		OpenProject.Replacement replacement = new OpenProject.Replacement(
 				path("main.frag"), at, at + 3, "se_tune0");
 		List<OpenProject.Build> builds = new ArrayList<>();
-		project.prepare(BuiltinNames.ALL, replacement, builds::add);
+		project.prepare(BuiltinNames.ALL, List.of(replacement), builds::add);
 		OpenProject.Moved moved = await(done -> project.rename(
 				path("main.frag"), path("b.frag"), done));
 
@@ -557,7 +568,7 @@ public class OpenProjectTest {
 				.toString());
 		assertEquals(SHADER, read("b.frag"));
 		OpenProject.Build after = await(done -> project.prepare(
-				BuiltinNames.ALL, replacement, done));
+				BuiltinNames.ALL, List.of(replacement), done));
 		assertNull(after.preparation());
 	}
 
@@ -567,8 +578,8 @@ public class OpenProjectTest {
 		write("main.frag", SHADER);
 		OpenProject project = open();
 		OpenProject.Build build = await(done -> project.prepare(
-				BuiltinNames.ALL, new OpenProject.Replacement(
-						path("main.frag"), 0, 1, "x"), done));
+				BuiltinNames.ALL, List.of(new OpenProject.Replacement(
+						path("main.frag"), 0, 1, "x")), done));
 
 		assertNull(build.preparation());
 		assertEquals(path("main.frag"), build.nothingRuns().get(0).file());

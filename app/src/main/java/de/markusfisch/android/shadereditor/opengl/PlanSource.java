@@ -37,15 +37,15 @@ record PlanSource(
 			@NonNull RenderPlan.Program program,
 			int glesVersion,
 			@NonNull List<ProjectDiagnostic> errors) {
-		return of(program, glesVersion, null, errors);
+		return of(program, glesVersion, List.of(), errors);
 	}
 
-	// With the declaration of tuning's uniform when the code uses it.
+	// With the declaration of each of tunings the code uses.
 	@Nullable
 	static PlanSource of(
 			@NonNull RenderPlan.Program program,
 			int glesVersion,
-			@Nullable Tuning tuning,
+			@NonNull List<Tuning> tunings,
 			@NonNull List<ProjectDiagnostic> errors) {
 		String text = program.text();
 		// What the compiler reads: comments mean nothing.
@@ -68,11 +68,15 @@ record PlanSource(
 		// The text itself is made where everybody who has to know what
 		// the compiler reads can make it too.
 		int after = 0;
-		List<String> declaration = List.of();
-		if (tuning != null && uses(scan, tuning.name)) {
+		List<String> declaration = new ArrayList<>();
+		for (Tuning tuning : tunings) {
+			if (uses(scan, tuning.name)) {
+				declaration.addAll(tuning.declaration());
+			}
+		}
+		if (!declaration.isEmpty()) {
 			// After every #extension, which no declaration may precede.
 			after = declarationLine(scan, program.lines(), program.head());
-			declaration = tuning.declaration();
 		}
 		CompiledSource compiled = CompiledSource.of(program.lines(), scan,
 				program.head(), program.sourceMap(), after, declaration);

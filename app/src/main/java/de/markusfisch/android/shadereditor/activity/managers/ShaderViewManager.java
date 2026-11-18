@@ -122,14 +122,16 @@ public class ShaderViewManager implements PassesSheet.Engine,
 	 * Run a prepared project of a tuning session, a revision of the
 	 * picture shown, which goes on from it: time and frame go on, and
 	 * the previous frames of its passes when no pass changed its size
-	 * or format. tuning, if not null, is the uniform that replaced a
-	 * tuned number of the text, and hears whether the build draws. The
+	 * or format. tunings are the uniforms that replaced tuned numbers of
+	 * the text; heard, if not null, hears whether the build draws. The
 	 * quality stays as it is.
 	 */
 	@Override
 	public void continuePlan(@NonNull Preparation preparation, float quality,
-			@NonNull Object picture, @Nullable Tuning tuning) {
-		shaderView.continuePlan(preparation, quality, picture, tuning);
+			@NonNull Object picture, @NonNull List<Tuning> tunings,
+			@Nullable Tuning.Listener heard) {
+		shaderView.continuePlan(preparation, quality, picture, tunings,
+				heard);
 	}
 
 	/**
