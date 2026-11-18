@@ -5,9 +5,9 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.TextAppearanceSpan;
 import android.text.style.TypefaceSpan;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -69,7 +69,6 @@ public final class SignatureView extends AppCompatTextView {
 			@Nullable AttributeSet attrs) {
 		super(context, attrs);
 		setTypeface(ShaderEditorApp.preferences.getFont());
-		setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
 		setSingleLine(true);
 	}
 
@@ -118,9 +117,10 @@ public final class SignatureView extends AppCompatTextView {
 			sb.setSpan(new ForegroundColorSpan(quiet), i, i + 1,
 					Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 		}
+		// It explains: the current parameter bright in the grey form.
 		if (fits.to() > fits.from()) {
-			sb.setSpan(new ForegroundColorSpan(MaterialColors.getColor(this,
-							androidx.appcompat.R.attr.colorPrimary)),
+			sb.setSpan(new TextAppearanceSpan(getContext(),
+							R.style.TextAppearance_StripInfo_Bright),
 					fits.from(), fits.to(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 		}
 		setText(sb);

@@ -3,6 +3,9 @@ package de.markusfisch.android.shadereditor.activity.managers;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -16,7 +19,6 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
-import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -106,6 +108,11 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 			lookUp(editor);
 			return true;
 		});
+		// What explains is looked up: "Double-tap to look up".
+		ViewCompat.replaceAccessibilityAction(signatureView,
+				AccessibilityNodeInfoCompat.AccessibilityActionCompat
+						.ACTION_CLICK, activity.getString(R.string.look_up),
+				null);
 		referenceView = extraKeysView.findViewById(R.id.reference);
 		referencePicture = extraKeysView.findViewById(R.id.reference_picture);
 		referenceShow = extraKeysView.findViewById(R.id.reference_show);
@@ -131,7 +138,6 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 				null);
 		backView = extraKeysView.findViewById(R.id.back_to_file);
 		tuneView = extraKeysView.findViewById(R.id.tune);
-		tuneView.setTypeface(ShaderEditorApp.preferences.getFont());
 		tuneView.setOnClickListener(v -> {
 			if (onTune != null) {
 				onTune.run();
@@ -140,14 +146,18 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 
 		completions.setLayoutManager(new LinearLayoutManager(
 				activity, RecyclerView.HORIZONTAL, false));
-		completionsAdapter = new CompletionsAdapter(editor::complete, editor);
+		// The row's rules of what inserts and what acts are those of the
+		// new editor in project mode; the release build's row stays.
+		boolean projectMode = activity.getResources().getBoolean(
+				R.bool.project_mode);
+		completionsAdapter = new CompletionsAdapter(editor::complete, editor,
+				projectMode);
 		completions.setAdapter(completionsAdapter);
 
-		var divider = new DividerItemDecoration(
-				completions.getContext(), DividerItemDecoration.HORIZONTAL);
-		divider.setDrawable(Objects.requireNonNull(ContextCompat.getDrawable(
-				activity, R.drawable.divider_with_padding_vertical)));
-		completions.addItemDecoration(divider);
+		completions.addItemDecoration(new Hairlines(Objects.requireNonNull(
+				ContextCompat.getDrawable(activity,
+						R.drawable.divider_with_padding_vertical)),
+				projectMode));
 		ViewCompat.setOnApplyWindowInsetsListener(extraKeysView, (v, insets) -> {
 			setVisible(ShaderEditorApp.preferences.showExtraKeys());
 			return insets;
@@ -307,8 +317,6 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 			tuneView.setVisibility(View.GONE);
 			return;
 		}
-		tuneView.setText(tuneView.getContext().getString(R.string.tune_offer,
-				number));
 		tuneView.setContentDescription(tuneView.getContext().getString(
 				R.string.a11y_tune, number));
 		tuneView.setVisibility(View.VISIBLE);
@@ -364,6 +372,54 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	private boolean isKeyboardOpen() {
 		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(extraKeysView);
 		return insets != null && insets.isVisible(WindowInsetsCompat.Type.ime());
+	}
+
+	// A hairline after each cell of what inserts; with notLast none after
+	// the last, as what follows the keys, the call's form or Tune, is no
+	// cell.
+	private static final class Hairlines extends RecyclerView.ItemDecoration {
+		@NonNull
+		private final Drawable line;
+		private final boolean notLast;
+
+		private Hairlines(@NonNull Drawable line, boolean notLast) {
+			this.line = line;
+			this.notLast = notLast;
+		}
+
+		@Override
+		public void getItemOffsets(@NonNull Rect outRect, @NonNull View view,
+				@NonNull RecyclerView parent,
+				@NonNull RecyclerView.State state) {
+			outRect.set(0, 0, last(view, parent) ? 0
+					: line.getIntrinsicWidth(), 0);
+		}
+
+		@Override
+		public void onDraw(@NonNull Canvas canvas,
+				@NonNull RecyclerView parent,
+				@NonNull RecyclerView.State state) {
+			for (int i = 0, n = parent.getChildCount(); i < n; ++i) {
+				View child = parent.getChildAt(i);
+				if (last(child, parent)) {
+					continue;
+				}
+				int right = child.getRight() +
+						Math.round(child.getTranslationX());
+				line.setBounds(right, 0, right + line.getIntrinsicWidth(),
+						parent.getHeight());
+				line.draw(canvas);
+			}
+		}
+
+		private boolean last(@NonNull View view,
+				@NonNull RecyclerView parent) {
+			RecyclerView.Adapter<?> adapter = parent.getAdapter();
+			int position = parent.getChildAdapterPosition(view);
+			return notLast && (adapter == null ||
+					position == RecyclerView.NO_POSITION ||
+					position == adapter.getItemCount() - 1);
+		}
 	}
 
 	private static int getVisibility(boolean isVisible) {
