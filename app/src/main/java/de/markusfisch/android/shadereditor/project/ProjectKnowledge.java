@@ -265,16 +265,44 @@ public final class ProjectKnowledge {
 	 */
 	public List<Symbol> find(ProjectPath path, CharSequence word) {
 		List<Symbol> found = find(includes(path), word);
-		if (!found.isEmpty()) {
-			return found;
-		}
+		return found.isEmpty() ? find(around(path), word) : found;
+	}
+
+	/**
+	 * Return every declaration of word in the files find asks, each with
+	 * its file, in their order: where find answers with the first
+	 * declaration of a name that is no function, this answers with all.
+	 */
+	public List<Symbol> all(ProjectPath path, CharSequence word) {
+		List<Symbol> found = all(includes(path), word);
+		return found.isEmpty() ? all(around(path), word) : found;
+	}
+
+	// The files that include path, and what they include, but path.
+	private Set<ProjectPath> around(ProjectPath path) {
 		Set<ProjectPath> around = new LinkedHashSet<>();
 		for (ProjectPath includer : includers(path)) {
 			around.add(includer);
 			around.addAll(includes(includer));
 		}
 		around.remove(path);
-		return find(around, word);
+		return around;
+	}
+
+	private List<Symbol> all(Set<ProjectPath> files, CharSequence word) {
+		List<Symbol> found = new ArrayList<>();
+		for (ProjectPath file : files) {
+			Knowledge knowledge = of(file);
+			if (knowledge == null) {
+				continue;
+			}
+			for (Symbol symbol : knowledge.symbols()) {
+				if (symbol.name().contentEquals(word)) {
+					found.add(symbol.in(file.toString()));
+				}
+			}
+		}
+		return found;
 	}
 
 	/**

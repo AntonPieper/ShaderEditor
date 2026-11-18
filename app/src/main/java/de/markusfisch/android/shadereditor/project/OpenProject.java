@@ -1925,6 +1925,11 @@ public final class OpenProject {
 			}
 
 			@Override
+			public List<Knowledge.Symbol> all(CharSequence word) {
+				return knowledge.all(path(), word);
+			}
+
+			@Override
 			public int line(Knowledge.Symbol symbol) {
 				return knowledge.line(symbol);
 			}

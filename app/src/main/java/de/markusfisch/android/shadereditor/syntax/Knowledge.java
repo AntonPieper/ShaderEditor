@@ -107,6 +107,16 @@ public interface Knowledge {
 		List<Symbol> find(CharSequence word);
 
 		/**
+		 * Return every declaration of word outside of the text, each
+		 * with its file: where find answers one symbol for a name that
+		 * is no function, every one of them. By default what find
+		 * answers.
+		 */
+		default List<Symbol> all(CharSequence word) {
+			return find(word);
+		}
+
+		/**
 		 * Return the line, from 0, the name of symbol stands in in its
 		 * file, for a symbol find gave; -1 if it cannot be told.
 		 */
