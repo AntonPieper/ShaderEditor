@@ -497,6 +497,8 @@ public final class ProjectFileManager {
 
 	/** Keep everything typed, when the app goes to the background. */
 	public void onStop() {
+		// Back in front, a bar that is still shown is pointed out again.
+		pointed = null;
 		if (file != null) {
 			file.getProject().flush(() -> {
 			});
