@@ -194,8 +194,8 @@ public class TuningBar extends LinearLayout {
 		});
 		lineView.setTypeface(ShaderEditorApp.preferences.getFont());
 		valueView.setTypeface(ShaderEditorApp.preferences.getFont());
-		decrease.setOnClickListener(v -> move(-1));
-		increase.setOnClickListener(v -> move(1));
+		decrease.setOnClickListener(v -> press(-1));
+		increase.setOnClickListener(v -> press(1));
 		stepView.setOnClickListener(v -> chooseStep());
 		findViewById(R.id.tuning_revert).setOnClickListener(v -> revert());
 		findViewById(R.id.tuning_done).setOnClickListener(v -> done());
@@ -737,6 +737,16 @@ public class TuningBar extends LinearLayout {
 			valueView.clearFocus();
 			valueView.setError(null);
 			showValue();
+		}
+	}
+
+	// A screen reader's focus stays on the button: the value is said.
+	private void press(long steps) {
+		move(steps);
+		Tuned now = tuned;
+		if (now != null) {
+			announceForAccessibility(now.text().replace("(", "")
+					.replace(")", ""));
 		}
 	}
 

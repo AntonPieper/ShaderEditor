@@ -410,6 +410,11 @@ public class TuningRuler extends View {
 				.AccessibilityAction.ACTION_SCROLL_FORWARD);
 		info.addAction(android.view.accessibility.AccessibilityNodeInfo
 				.AccessibilityAction.ACTION_SCROLL_BACKWARD);
+		// TalkBack adjusts a node with a range by setting its progress.
+		if (android.os.Build.VERSION.SDK_INT >= 24) {
+			info.addAction(android.view.accessibility.AccessibilityNodeInfo
+					.AccessibilityAction.ACTION_SET_PROGRESS);
+		}
 	}
 
 	@Override
@@ -423,6 +428,19 @@ public class TuningRuler extends View {
 					.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD ? 1 : -1);
 			sendAccessibilityEvent(android.view.accessibility
 					.AccessibilityEvent.TYPE_VIEW_SELECTED);
+			return true;
+		}
+		if (listener != null && arguments != null &&
+				android.os.Build.VERSION.SDK_INT >= 24 &&
+				action == android.R.id.accessibilityActionSetProgress) {
+			// The range has no ends: a progress asked for is a step towards
+			// it.
+			float to = arguments.getFloat(android.view.accessibility
+					.AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE);
+			if (Float.isNaN(to) || to == (float) position) {
+				return false;
+			}
+			listener.onStep(to > position ? 1 : -1);
 			return true;
 		}
 		return super.performAccessibilityAction(action, arguments);
