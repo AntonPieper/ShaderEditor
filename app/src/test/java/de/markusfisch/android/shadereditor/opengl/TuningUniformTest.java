@@ -36,8 +36,6 @@ public class TuningUniformTest {
 			"uniform mediump float se_tune0;",
 			"#endif");
 
-	private final List<String> heard = new ArrayList<>();
-
 	@Test
 	public void theDeclarationFollowsTheGeneratedLines() {
 		var source = source(lines(PRECISION,
@@ -128,7 +126,7 @@ public class TuningUniformTest {
 						"void main(void) {",
 						"	gl_FragColor = vec4(se_tune0);",
 						"}")),
-				TargetFormats.of(2, ""), tuning);
+				TargetFormats.of(2, ""), List.of(tuning));
 		assertTrue(engine.diagnostics.toString(), engine.runtime != null);
 		engine.resize(4, 4);
 		engine.draw(0);
@@ -163,7 +161,7 @@ public class TuningUniformTest {
 								"void main(void) {",
 								"	gl_FragColor = vec4(se_tune0);",
 								"}")),
-				TargetFormats.of(2, ""), tuning);
+				TargetFormats.of(2, ""), List.of(tuning));
 		engine.resize(4, 4);
 		engine.draw(0);
 		assertEquals(2f, value(engine, "blur.frag"), 0f);
@@ -178,7 +176,7 @@ public class TuningUniformTest {
 						"void main(void) {",
 						"	color = vec4(float(se_tune0));",
 						"}")),
-				TargetFormats.of(3, ""), tuning);
+				TargetFormats.of(3, ""), List.of(tuning));
 		engine.resize(4, 4);
 		engine.draw(0);
 		assertEquals(7f, value(engine, "main.frag"), 0f);
@@ -201,7 +199,7 @@ public class TuningUniformTest {
 						"void main(void) {",
 						"	color = vec4(float(se_tune0));",
 						"}")),
-				TargetFormats.of(3, ""), tuning);
+				TargetFormats.of(3, ""), List.of(tuning));
 		engine.resize(4, 4);
 		engine.draw(0);
 		assertEquals(-1f, value(engine, "main.frag"), 0f);
@@ -233,29 +231,121 @@ public class TuningUniformTest {
 	private PlanSource source(@NonNull String text, int glesVersion) {
 		var errors = new ArrayList<ProjectDiagnostic>();
 		var source = PlanSource.of(plan("main.frag", text).programs().get(0),
-				glesVersion, tuning(Tuning.Type.FLOAT, 0.0), errors);
+				glesVersion, List.of(tuning(Tuning.Type.FLOAT, 0.0)), errors);
 		assertEquals(List.of(), errors);
 		return source;
 	}
 
-	@NonNull
-	private Tuning tuning(@NonNull Tuning.Type type, double value) {
-		return new Tuning("se_tune0", type, value, new Tuning.Listener() {
-			@Override
-			public void onLive() {
-				heard.add("live");
-			}
+	// Several numbers of one build, each a uniform of its own: each
+	// program declares the ones its text uses, and each is set without a
+	// build.
+	@Test
+	public void severalUniformsInOneBuild() {
+		var a = new Tuning("se_tune0", Tuning.Type.FLOAT, 0.25);
+		var b = new Tuning("se_tune1", Tuning.Type.FLOAT, 0.5);
+		var c = new Tuning("se_tune2", Tuning.Type.INT, 3);
+		var engine = new FakeEngine(new FakeGlDevice(), prepare(
+						"main.frag", lines(PRECISION,
+								"#pragma se input \"blur.frag\"",
+								"uniform sampler2D blur;",
+								"uniform vec2 resolution;",
+								"void main(void) {",
+								"	gl_FragColor = texture2D(blur, vec2(0.0)) *",
+								"			vec4(se_tune0, se_tune1, 0.0, 1.0);",
+								"}"),
+						"blur.frag", lines(PRECISION,
+								"void main(void) {",
+								"	gl_FragColor = vec4(se_tune1 * " +
+										"float(se_tune2));",
+								"}")),
+				TargetFormats.of(2, ""), List.of(a, b, c));
+		assertTrue(engine.diagnostics.toString(), engine.runtime != null);
+		for (var diagnostic : engine.diagnostics) {
+			assertFalse(diagnostic.toString(),
+					diagnostic.message().contains("se_tune"));
+		}
+		engine.resize(4, 4);
+		engine.draw(0);
+		assertEquals(0.25f, value(engine, "main.frag", "se_tune0"), 0f);
+		assertEquals(0.5f, value(engine, "main.frag", "se_tune1"), 0f);
+		assertNull(last(engine, "main.frag").uniforms().get("se_tune2"));
+		assertEquals(0.5f, value(engine, "blur.frag", "se_tune1"), 0f);
+		assertEquals(3f, value(engine, "blur.frag", "se_tune2"), 0f);
+		assertNull(last(engine, "blur.frag").uniforms().get("se_tune0"));
+		int programs = engine.device.programs.size();
+		a.set(0.75);
+		c.set(-4);
+		engine.runtime.applyTuning();
+		engine.draw(1);
+		assertEquals(0.75f, value(engine, "main.frag", "se_tune0"), 0f);
+		assertEquals(0.5f, value(engine, "main.frag", "se_tune1"), 0f);
+		assertEquals(-4f, value(engine, "blur.frag", "se_tune2"), 0f);
+		assertEquals(programs, engine.device.programs.size());
+	}
 
-			@Override
-			public void onRefused(@NonNull List<ProjectDiagnostic> errors) {
-				heard.add("refused " + errors);
-			}
-		});
+	// The build owns which uniforms it has: a caller that reuses its list
+	// changes nothing; a value set on a uniform still shows.
+	@Test
+	public void aBuildOwnsItsUniforms() {
+		var tuning = tuning(Tuning.Type.FLOAT, 0.25);
+		var list = new ArrayList<Tuning>();
+		list.add(tuning);
+		var engine = new FakeEngine(new FakeGlDevice(), prepare("main.frag",
+				lines(PRECISION, "void main(){gl_FragColor=vec4(se_tune0);}")),
+				TargetFormats.of(2, ""), list);
+		engine.resize(4, 4);
+		engine.draw(0);
+		list.clear();
+		tuning.set(0.75);
+		engine.runtime.applyTuning();
+		engine.draw(1);
+		assertEquals(0.75f, value(engine, "main.frag"), 0f);
+	}
+
+	// Declared once each, together, after the last #extension; one the
+	// program does not use is left out.
+	@Test
+	public void eachUsedUniformIsDeclaredOnce() {
+		var program = plan("main.frag", lines(
+				"#extension GL_OES_standard_derivatives : enable",
+				PRECISION,
+				"void main(void) {",
+				"	gl_FragColor = vec4(se_tune1, se_tune0, se_tune1, 1.0);",
+				"}")).programs().get(0);
+		var errors = new ArrayList<ProjectDiagnostic>();
+		var source = PlanSource.of(program, 2, List.of(
+				new Tuning("se_tune0", Tuning.Type.FLOAT, 0),
+				new Tuning("se_tune1", Tuning.Type.FLOAT, 0),
+				new Tuning("se_tune2", Tuning.Type.FLOAT, 0)), errors);
+		assertEquals(List.of(), errors);
+		var lines = List.of(source.fragment().split("\n"));
+		assertEquals("#extension GL_OES_standard_derivatives : enable",
+				lines.get(1));
+		var both = new ArrayList<>(DECLARATION);
+		for (String line : DECLARATION) {
+			both.add(line.replace("se_tune0", "se_tune1"));
+		}
+		assertEquals(both, lines.subList(2, 12));
+		assertFalse(source.fragment().contains("se_tune2"));
+		// The user's line 9 (PRECISION ends in an empty line).
+		var use = source.sourceMap().locate(lines.size() - 1);
+		assertTrue(lines.get(lines.size() - 2).contains("se_tune1, se_tune0"));
+		assertEquals(9, use.line());
+	}
+
+	@NonNull
+	private static Tuning tuning(@NonNull Tuning.Type type, double value) {
+		return new Tuning("se_tune0", type, value);
 	}
 
 	private static float value(@NonNull FakeEngine engine,
 			@NonNull String file) {
-		return last(engine, file).uniforms().get("se_tune0")[0];
+		return value(engine, file, "se_tune0");
+	}
+
+	private static float value(@NonNull FakeEngine engine,
+			@NonNull String file, @NonNull String name) {
+		return last(engine, file).uniforms().get(name)[0];
 	}
 
 	@NonNull

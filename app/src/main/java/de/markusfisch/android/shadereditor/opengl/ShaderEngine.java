@@ -253,16 +253,17 @@ public final class ShaderEngine {
 	// It starts again as any build does when it is of another picture or
 	// quality than the build that draws, or nothing draws.
 	//
-	// tuning, if not null, is the uniform that replaced a tuned number
-	// of the text: the build declares it, and once it draws,
-	// applyTuning() writes new values into it. tuning hears whether the
-	// build draws or was refused; a refusal goes to tuning only, not to
-	// the listener, and the build before keeps drawing.
+	// tunings are the uniforms that replaced tuned numbers of the text:
+	// the build declares those it uses, and once it draws, applyTuning()
+	// writes new values into them. heard, if not null, hears whether the
+	// build draws or was refused; a refusal goes to heard only, not to the
+	// listener, and the build before keeps drawing.
 	public void continuePlan(@NonNull Preparation preparation, float quality,
-			@NonNull Object picture, @Nullable Tuning tuning) {
+			@NonNull Object picture, @NonNull List<Tuning> tunings,
+			@Nullable Tuning.Listener heard) {
 		shaders.offer(request(), new Offer(
 				new PlanShader(preparation, quality, AS_PREPARED.textureFix(),
-						tuning),
+						tunings, heard),
 				preparation, 0, AS_PREPARED, picture, true));
 	}
 
@@ -639,11 +640,11 @@ public final class ShaderEngine {
 		}
 		thumbnails.onFramesLost();
 		var shown = Objects.requireNonNull(shaders.currentRevision());
-		var tuning = shown.shader().shader().tuning();
-		if (tuning != null) {
-			// The value set while it was built.
-			next.applyTuning();
-			tuning.live();
+		// The values set while it was built.
+		next.applyTuning();
+		var heard = shown.shader().shader().heard();
+		if (heard != null) {
+			heard.onLive();
 		}
 		long now = System.nanoTime();
 		if (!continues) {
@@ -712,16 +713,16 @@ public final class ShaderEngine {
 	}
 
 	// Only the outcome of the newest revision reported so far. A build
-	// with a tuned number tells its tuning instead, which decides.
+	// someone hears tells them instead, who decide.
 	private void report(
 			@Nullable ShaderSwap.Revision<Offer> revision,
 			@NonNull List<ProjectDiagnostic> errors) {
-		var tuning = revision != null
-				? revision.shader().shader().tuning()
+		var heard = revision != null
+				? revision.shader().shader().heard()
 				: null;
-		if (tuning != null && !Objects.equals(revision,
+		if (heard != null && !Objects.equals(revision,
 				shaders.currentRevision())) {
-			tuning.refused(errors);
+			heard.onRefused(errors);
 			return;
 		}
 		if (revision != null && shaders.report(revision)) {

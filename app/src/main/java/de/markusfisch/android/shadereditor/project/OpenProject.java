@@ -105,7 +105,8 @@ public final class OpenProject {
 	 * One range of one document's text with other text in its place,
 	 * for a build only: from start to end of the text of path, as the
 	 * document has it when the build is asked for. The document, the
-	 * journal and the stored file never see it.
+	 * journal and the stored file never see it. The ranges of one build
+	 * do not overlap.
 	 */
 	public record Replacement(ProjectPath path, int start, int end,
 			String text) {
@@ -1714,21 +1715,24 @@ public final class OpenProject {
 	 * gets the preparation, or null when nothing runs.
 	 */
 	public void prepare(Builtins builtins, Callback<Build> done) {
-		prepare(builtins, null, done);
+		prepare(builtins, List.of(), done);
 	}
 
 	/**
 	 * Prepare what runs as {@link #prepare(Builtins, Callback)} does,
-	 * with replacement in the text of its document, when not null. Such
-	 * a preparation is {@link Preparation#temporary()}: it runs while a
-	 * number is tuned, and is never kept, as the wallpaper is. When path
-	 * has no document a build would read, done gets nothing to run.
+	 * with replacements in the texts of their documents. With any, such
+	 * a preparation is {@link Preparation#temporary()}: it runs while
+	 * numbers are tuned, and is never kept, as the wallpaper is. When a
+	 * path has no document a build would read, done gets nothing to run.
 	 */
-	public void prepare(Builtins builtins, Replacement replacement,
+	public void prepare(Builtins builtins, List<Replacement> replacements,
 			Callback<Build> done) {
 		Map<ProjectPath, Text> snapshot = snapshot();
 		int generation = this.generation;
-		if (replacement != null) {
+		// From the end, so that each range is where the document has it.
+		List<Replacement> backwards = new ArrayList<>(replacements);
+		Collections.sort(backwards, (a, b) -> b.start() - a.start());
+		for (Replacement replacement : backwards) {
 			Text text = snapshot.get(replacement.path());
 			if (text == null) {
 				main.execute(() -> done.done(new Build(null,
@@ -1746,7 +1750,7 @@ public final class OpenProject {
 		persist();
 		ProjectPath entry = running;
 		Edited edited = new Edited(snapshot, journaled());
-		boolean temporary = replacement != null;
+		boolean temporary = !replacements.isEmpty();
 		ProjectKnowledge known = knowledge;
 		worker.execute(() -> {
 			Preparation prepared = entry != null

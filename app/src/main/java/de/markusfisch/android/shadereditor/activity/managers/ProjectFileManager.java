@@ -93,9 +93,13 @@ public final class ProjectFileManager {
 
 	/** The engine a tuning session builds its revisions on. */
 	public interface Engine {
-		/** Run preparation as a revision of picture, with tuning. */
+		/**
+		 * Run preparation as a revision of picture, with tunings; heard
+		 * hears whether it draws, if not null.
+		 */
 		void continuePlan(@NonNull Preparation preparation, float quality,
-				@NonNull Object picture, @Nullable Tuning tuning);
+				@NonNull Object picture, @NonNull List<Tuning> tunings,
+				@Nullable Tuning.Listener heard);
 
 		/** Show the value of the tuning that runs with the next frame. */
 		void applyTuning();
@@ -830,11 +834,12 @@ public final class ProjectFileManager {
 		}
 
 		@Override
-		public void prepare(@NonNull OpenProject.Replacement replacement,
+		public void prepare(
+				@NonNull List<OpenProject.Replacement> replacements,
 				@NonNull FileTexts.Callback<Preparation> done) {
 			OpenProject project = project();
 			if (project != null) {
-				project.prepare(UniformTable.builtins(), replacement,
+				project.prepare(UniformTable.builtins(), replacements,
 						prepared -> done.done(prepared.preparation()));
 			}
 		}
@@ -850,18 +855,19 @@ public final class ProjectFileManager {
 
 		@Override
 		public void run(@NonNull Preparation preparation,
-				@Nullable Tuning tuning) {
+				@NonNull List<Tuning> tunings,
+				@Nullable Tuning.Listener heard) {
 			ProjectFile shown = file;
 			if (shown == null) {
 				return;
 			}
-			if (tuning == null) {
+			if (tunings.isEmpty()) {
 				// A rebuild of the number's text is handed over.
 				building(false);
 			}
 			engine.continuePlan(preparation, shown.getQuality(),
 					Arrays.asList(key, shown.getProject().running()),
-					tuning);
+					tunings, heard);
 		}
 
 		@Override

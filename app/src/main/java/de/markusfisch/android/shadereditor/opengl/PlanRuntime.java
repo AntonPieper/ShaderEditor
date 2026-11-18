@@ -30,8 +30,8 @@ import de.markusfisch.android.shadereditor.project.RenderPlan.Sampling;
 // a new context.
 final class PlanRuntime implements ShaderSwap.Build {
 	private final float quality;
-	@Nullable
-	private final Tuning tuning;
+	@NonNull
+	private final List<Tuning> tunings;
 	@NonNull
 	private final GlDevice device;
 	@NonNull
@@ -105,7 +105,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 		this.device = device;
 		this.preparation = shader.preparation();
 		this.quality = shader.quality();
-		this.tuning = shader.tuning();
+		this.tunings = shader.tunings();
 		this.plan = plan;
 		this.passes = passes;
 		this.formats = formats;
@@ -203,7 +203,7 @@ final class PlanRuntime implements ShaderSwap.Build {
 		boolean linked = true;
 		for (int i = 0; i < plan.passes().size(); ++i) {
 			var pass = PlanPass.link(device, plan, i, formats.glesVersion(),
-					shader.textureFix(), shader.tuning(), reasons);
+					shader.textureFix(), shader.tunings(), reasons);
 			linked &= pass != null;
 			passes.add(pass);
 		}
@@ -217,25 +217,20 @@ final class PlanRuntime implements ShaderSwap.Build {
 			return null;
 		}
 		var runtime = new PlanRuntime(device, shader, plan, passes, formats);
-		// Its first frame shows the number as the text has it.
+		// Its first frame shows the numbers as the text has them.
 		runtime.applyTuning();
 		return runtime;
 	}
 
-	// GL thread. Writes the value of its tuned number into the programs
-	// that use it; nothing without one.
+	// GL thread. Writes the values of its tuned numbers into the
+	// programs that use them; nothing without one.
 	void applyTuning() {
-		if (tuning == null) {
+		if (tunings.isEmpty()) {
 			return;
 		}
 		for (var pass : passes) {
-			pass.applyTuning(tuning);
+			pass.applyTuning(tunings);
 		}
-	}
-
-	@Nullable
-	Tuning tuning() {
-		return tuning;
 	}
 
 	// The passes as a host shows them, with the warnings of this build.

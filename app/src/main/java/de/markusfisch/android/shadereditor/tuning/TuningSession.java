@@ -54,10 +54,13 @@ public final class TuningSession {
 
 		/**
 		 * Run preparation as a revision of the picture that runs, going
-		 * on from it (ShaderEngine.continuePlan()); tuning is the
-		 * uniform of the tuned number, or null for a text.
+		 * on from it (ShaderEngine.continuePlan()); tunings are the
+		 * uniforms of tuned numbers, and heard, if not null, hears
+		 * whether it draws instead of the engine's listener.
 		 */
-		void run(@NonNull Preparation preparation, @Nullable Tuning tuning);
+		void run(@NonNull Preparation preparation,
+				@NonNull List<Tuning> tunings,
+				@Nullable Tuning.Listener heard);
 
 		/** Show the value of the tuning that runs with the next frame. */
 		void applyTuning();
@@ -171,7 +174,8 @@ public final class TuningSession {
 			return;
 		}
 		rebuilding = true;
-		host.prepare(new OpenProject.Replacement(path, start, end, text),
+		host.prepare(List.of(new OpenProject.Replacement(path, start, end,
+						text)),
 				preparation -> {
 					rebuilding = false;
 					if (state != State.MUST_REBUILD) {
@@ -179,7 +183,7 @@ public final class TuningSession {
 					}
 					if (preparation != null) {
 						ran = true;
-						host.run(preparation, null);
+						host.run(preparation, List.of(), null);
 					}
 					String next = pending;
 					pending = null;
@@ -217,7 +221,7 @@ public final class TuningSession {
 		if (ran || commit != null) {
 			host.prepare(preparation -> {
 				if (preparation != null) {
-					host.run(preparation, null);
+					host.run(preparation, List.of(), null);
 				}
 			});
 		}
@@ -235,23 +239,22 @@ public final class TuningSession {
 		}
 		if (result instanceof TunedPreparation.Ready ready) {
 			// What the engine tells is about this uniform only.
-			Tuning[] made = {null};
-			made[0] = tuning = new Tuning(ready.name(), type,
-					Double.isNaN(value) ? ready.number().value() : value,
+			Tuning made = tuning = new Tuning(ready.name(), type,
+					Double.isNaN(value) ? ready.number().value() : value);
+			ran = true;
+			host.run(ready.preparation(), List.of(made),
 					new Tuning.Listener() {
 						@Override
 						public void onLive() {
-							main.execute(() -> live(made[0]));
+							main.execute(() -> live(made));
 						}
 
 						@Override
 						public void onRefused(
 								@NonNull List<ProjectDiagnostic> errors) {
-							main.execute(() -> refused(made[0], errors));
+							main.execute(() -> refused(made, errors));
 						}
 					});
-			ran = true;
-			host.run(ready.preparation(), tuning);
 		} else if (result instanceof TunedPreparation.Constant constant) {
 			state = State.MUST_REBUILD;
 			listener.onMustRebuild(List.of(new ProjectDiagnostic(
