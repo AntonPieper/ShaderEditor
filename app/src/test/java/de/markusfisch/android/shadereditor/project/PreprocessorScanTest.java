@@ -92,6 +92,22 @@ public class PreprocessorScanTest {
 		assertEquals(2, scan.diagnostics().get(0).line());
 	}
 
+	@Test
+	public void openCommentComesBeforeTheGuardItHides() {
+		PreprocessorScan scan = scan(
+				"#ifndef LIB_COLOR_GLSL",
+				"#define LIB_COLOR_GLSL",
+				"vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {",
+				"\t/* return a + b * cos(6.2831853 * (c * t + d));",
+				"}",
+				"#endif");
+		assertEquals(2, scan.diagnostics().size());
+		assertEquals("Block comment is not closed in this file",
+				scan.diagnostics().get(0).message());
+		assertEquals(4, scan.diagnostics().get(0).line());
+		assertEquals(1, scan.diagnostics().get(1).line());
+	}
+
 	private static PreprocessorScan scan(String... lines) {
 		return PreprocessorScan.scan(List.of(lines), FILE);
 	}

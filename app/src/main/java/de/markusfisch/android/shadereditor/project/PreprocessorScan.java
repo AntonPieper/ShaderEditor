@@ -93,13 +93,14 @@ public record PreprocessorScan(
 			}
 			directives.add(directive);
 		}
-		for (int line : open) {
-			diagnostics.add(error("Conditional is not closed by #endif " +
-					"in this file", file, line));
-		}
+		// First, since a comment left open can hide an #endif.
 		if (lexed.unclosed > 0) {
 			diagnostics.add(error("Block comment is not closed in this file",
 					file, lexed.unclosed));
+		}
+		for (int line : open) {
+			diagnostics.add(error("Conditional is not closed by #endif " +
+					"in this file", file, line));
 		}
 		return new PreprocessorScan(List.copyOf(lexed.code),
 				List.copyOf(directives), List.copyOf(depths),
