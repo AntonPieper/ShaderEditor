@@ -2,6 +2,7 @@ package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
@@ -12,6 +13,7 @@ import android.view.ViewTreeObserver;
 import android.widget.LinearLayout;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,12 +26,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.CompletionsAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
 import de.markusfisch.android.shadereditor.widget.NameView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 
@@ -45,12 +49,13 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	/**
 	 * The file the caret rests in the path of, as the strip shows it in
 	 * place of the completions: its name, its picture or null for none
-	 * yet, what it is, and what Show and Open do, each null when it is
-	 * not offered.
+	 * yet, what it is, for code the names it declares or null where they
+	 * are not known, and what Show and Open do, each null when it is not
+	 * offered.
 	 */
 	public record Reference(@NonNull String name, @Nullable Bitmap picture,
-			@NonNull Kind kind, @Nullable Runnable show,
-			@Nullable Runnable open) {
+			@NonNull Kind kind, @Nullable String names,
+			@Nullable Runnable show, @Nullable Runnable open) {
 		public enum Kind {PASS, IMAGE, CODE}
 	}
 
@@ -60,6 +65,8 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	private final View referenceView;
 	@NonNull
 	private final ImageView referencePicture;
+	@NonNull
+	private final TextView referenceNames;
 	@NonNull
 	private final View referenceShow;
 	@NonNull
@@ -84,6 +91,18 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	private final android.widget.Button tuneView;
 	@androidx.annotation.Nullable
 	private Runnable onTune;
+	// The keys in project mode, Tab first, then by how often GLSL needs
+	// them and how far they are on the common keyboards. What does not
+	// fit scrolls.
+	private static final List<String> KEYS = List.of(CompletionsAdapter.TAB,
+			"(", ")", ";", "=", "*", "{", "}");
+
+	// Whether the row follows the rules of the new editor in project
+	// mode; the release build's row stays as it was.
+	private final boolean projectMode;
+	private final int hairline;
+	// Whether the completions are the keys.
+	private boolean keysShown;
 	private boolean hasText = true;
 	// What stands in place of the completions, if anything.
 	@Nullable
@@ -96,6 +115,7 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	public ExtraKeysManager(@NonNull Activity activity,
 			@NonNull View rootView, @NonNull Editor editor) {
 		this.extraKeysView = rootView.findViewById(R.id.extra_keys);
+		projectMode = activity.getResources().getBoolean(R.bool.project_mode);
 
 		insertTabView = extraKeysView.findViewById(R.id.insert_tab);
 		insertTabView.setOnClickListener(v -> editor.tab());
@@ -115,6 +135,8 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 				null);
 		referenceView = extraKeysView.findViewById(R.id.reference);
 		referencePicture = extraKeysView.findViewById(R.id.reference_picture);
+		referenceNames = extraKeysView.findViewById(R.id.reference_names);
+		referenceNames.setTypeface(ShaderEditorApp.preferences.getFont());
 		referenceShow = extraKeysView.findViewById(R.id.reference_show);
 		referenceOpen = extraKeysView.findViewById(R.id.reference_open);
 		nameRow = extraKeysView.findViewById(R.id.name);
@@ -152,18 +174,42 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 
 		completions.setLayoutManager(new LinearLayoutManager(
 				activity, RecyclerView.HORIZONTAL, false));
-		// The row's rules of what inserts and what acts are those of the
-		// new editor in project mode; the release build's row stays.
-		boolean projectMode = activity.getResources().getBoolean(
-				R.bool.project_mode);
-		completionsAdapter = new CompletionsAdapter(editor::complete, editor,
-				projectMode);
+		completionsAdapter = new CompletionsAdapter((word, typed) -> {
+			if (CompletionsAdapter.TAB.equals(word)) {
+				editor.tab();
+			} else {
+				editor.complete(word, typed);
+			}
+		}, editor, projectMode);
 		completions.setAdapter(completionsAdapter);
+		if (projectMode) {
+			// A list that gains a first item, as the keys do with Tab,
+			// starts at it, not where the old first one was; the keys
+			// fit again when their number or the room changes.
+			completionsAdapter.registerAdapterDataObserver(
+					new RecyclerView.AdapterDataObserver() {
+						@Override
+						public void onItemRangeInserted(int start, int count) {
+							if (start == 0) {
+								completions.scrollToPosition(0);
+							}
+							fitKeys();
+						}
 
-		completions.addItemDecoration(new Hairlines(Objects.requireNonNull(
-				ContextCompat.getDrawable(activity,
-						R.drawable.divider_with_padding_vertical)),
-				projectMode));
+						@Override
+						public void onItemRangeRemoved(int start, int count) {
+							fitKeys();
+						}
+					});
+			extraKeysView.addOnLayoutChangeListener((v, left, top, right,
+					bottom, oldLeft, oldTop, oldRight, oldBottom) ->
+					v.post(this::fitKeys));
+		}
+
+		Drawable line = Objects.requireNonNull(ContextCompat.getDrawable(
+				activity, R.drawable.divider_with_padding_vertical));
+		hairline = line.getIntrinsicWidth();
+		completions.addItemDecoration(new Hairlines(line, projectMode));
 		ViewCompat.setOnApplyWindowInsetsListener(extraKeysView, (v, insets) -> {
 			setVisible(ShaderEditorApp.preferences.showExtraKeys());
 			return insets;
@@ -183,7 +229,89 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	}
 
 	public void setCompletions(List<String> completions, int position) {
+		// The keys, Tab first unless the setting hides it; none with a
+		// hardware keyboard, which has them.
+		keysShown = projectMode && completions == GlslCompletion.KEYS &&
+				!hardwareKeyboard();
+		if (projectMode && completions == GlslCompletion.KEYS) {
+			completions = hardwareKeyboard()
+					? Collections.emptyList()
+					: ShaderEditorApp.preferences.doesShowInsertTab()
+					? KEYS
+					: KEYS.subList(1, KEYS.size());
+		}
 		completionsAdapter.submitCompletions(completions, position);
+		fitKeys();
+	}
+
+	// With a call the keys take the room they need, without one the
+	// completions take all of it. In project mode the keys leave the
+	// call's form the room of two keys at least, and the rest of them
+	// scrolls: one item at the end. Where the keys do not all fit, their
+	// room ends on half a key, which says that more can be swiped in:
+	// the room is shortened before the item at the end, so no key moves.
+	private void fitKeys() {
+		LinearLayout.LayoutParams params = (LinearLayout.LayoutParams)
+				completions.getLayoutParams();
+		boolean form = signatureView.getVisibility() == View.VISIBLE;
+		int width = form ? ViewGroup.LayoutParams.WRAP_CONTENT : 0;
+		int gap = 0;
+		if (projectMode && extraKeysView.getWidth() > 0 &&
+				(form || keysShown)) {
+			int key = extraKeysView.getResources().getDimensionPixelSize(
+					R.dimen.se_key_height);
+			int n = completionsAdapter.getItemCount();
+			int keys = n * key + Math.max(0, n - 1) * hairline;
+			if (form) {
+				int room = extraKeysView.getWidth() -
+						extraKeysView.getPaddingLeft() -
+						extraKeysView.getPaddingRight() - 2 * key -
+						(backView.getVisibility() == View.VISIBLE
+								? backView.getWidth() + ((ViewGroup
+								.MarginLayoutParams) backView.getLayoutParams())
+								.getMarginEnd()
+								: 0);
+				width = Math.max(key, Math.min(keys,
+						room - halfKey(room, keys, key)));
+			} else {
+				int room = completions.getWidth() + params.rightMargin;
+				gap = halfKey(room, keys, key);
+			}
+		}
+		if (params.width != width || params.weight != (form ? 0 : 1) ||
+				params.rightMargin != gap) {
+			params.width = width;
+			params.weight = form ? 0 : 1;
+			params.rightMargin = gap;
+			completions.setLayoutParams(params);
+		}
+	}
+
+	// What room, for keys cells of width key one after the other, has
+	// to give up so that its end cuts a key in half, through its symbol,
+	// which stands in the middle of the key: nothing where they all
+	// fit, nor where the end already cuts one between 45 % and 55 % of
+	// its width; never a sliver.
+	private int halfKey(int room, int keys, int key) {
+		int pitch = key + hairline;
+		if (keys <= room || room <= key) {
+			return 0;
+		}
+		int rest = room % pitch;
+		if (rest >= key * 45 / 100 && rest <= key * 55 / 100) {
+			return 0;
+		}
+		return ((rest - key / 2) % pitch + pitch) % pitch;
+	}
+
+	// A hardware keyboard is attached and not hidden, by the device's
+	// configuration; a cover or a dock may report one too.
+	private boolean hardwareKeyboard() {
+		Configuration config = extraKeysView.getResources()
+				.getConfiguration();
+		return config.keyboard == Configuration.KEYBOARD_QWERTY &&
+				config.hardKeyboardHidden ==
+						Configuration.HARDKEYBOARDHIDDEN_NO;
 	}
 
 	/**
@@ -197,13 +325,7 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		boolean shown = signature != null;
 		if (shown != (before != null)) {
 			signatureView.setVisibility(getVisibility(shown));
-			// With a call the keys take the room they need, without
-			// one the completions take all of it.
-			LinearLayout.LayoutParams params = (LinearLayout.LayoutParams)
-					completions.getLayoutParams();
-			params.width = shown ? ViewGroup.LayoutParams.WRAP_CONTENT : 0;
-			params.weight = shown ? 0 : 1;
-			completions.setLayoutParams(params);
+			fitKeys();
 		}
 		signatureView.setSignature(signature);
 		// Not under a sheet or dialog, whose window has the focus.
@@ -233,6 +355,12 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 			return;
 		}
 		String name = reference.name();
+		// Code shows the names it declares in place of an icon; a
+		// picture or a pass its picture. Either way the actions end the
+		// row.
+		String names = reference.names();
+		referencePicture.setVisibility(getVisibility(names == null));
+		referenceNames.setText(names);
 		if (reference.picture() != null) {
 			referencePicture.setScaleType(ImageView.ScaleType.CENTER_CROP);
 			referencePicture.setImageBitmap(reference.picture());
@@ -369,8 +497,9 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	public void updateVisibility() {
 		var preferences = ShaderEditorApp.preferences;
 		setVisible(preferences.showExtraKeys());
-		insertTabView.setVisibility(
-				getVisibility(preferences.doesShowInsertTab()));
+		// In project mode Tab is one of the keys.
+		insertTabView.setVisibility(getVisibility(!projectMode &&
+				preferences.doesShowInsertTab()));
 	}
 
 	/** Hide the keys while something else stands where they are. */
