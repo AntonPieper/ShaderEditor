@@ -2926,13 +2926,20 @@ public class CodeView extends View {
 		}
 	}
 
+	// The line one reads stays where it is on screen.
 	private void appearanceChanged() {
+		boolean shown = document != null && getHeight() > 0;
+		int anchor = shown ? anchorLine() : -1;
+		float anchorTop = shown ? lineTop(anchor) - getScrollY() : 0;
 		appearance.measure();
 		lines.setLineHeight(appearance.lineHeight);
 		forgetLines();
 		// The row's text follows the code's size: lay it out again.
 		row = Row.NONE;
 		placeRow();
+		if (shown) {
+			scrollInside(getScrollX(), Math.round(lineTop(anchor) - anchorTop));
+		}
 		gutterLast = -1;
 		invalidate();
 	}
