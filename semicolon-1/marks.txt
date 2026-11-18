@@ -1,0 +1,44 @@
+=== 20:34:21 A1: delete ';' at end of line 6
+=== 20:35:44 SLIP: double Back left the app; return
+=== 20:36:07 A1 tap Insert ';'
+=== 20:36:14 A1 one Undo (menu)
+=== 20:37:14 T1-1 timing row1
+=== 20:37:24 T1-2 timing row1
+=== 20:37:33 T1-3 timing row1
+=== 20:37:43 T5-1 timing row5
+=== 20:37:51 T5-2 timing row5
+=== 20:38:00 T5-3 timing row5
+=== 20:38:22 A5 '/ mx' -> 'mx' on line 6
+=== 20:38:46 A2 delete ';' end of line 7
+=== 20:39:05 A2 Insert
+=== 20:39:13 A2 one Undo
+=== 20:39:49 A3 delete ';' end of line 9
+=== 20:40:04 A3 Insert
+=== 20:40:11 A3 one Undo
+=== 20:40:41 A4 new line 6: float a = 1.0 float b = 2.0;
+=== 20:41:00 A4 add the trailing ';' (keyevent 74)
+=== 20:41:16 A4 Insert
+=== 20:41:24 A4 one Undo
+=== 20:42:02 A6 missing ')' on line 7
+=== 20:42:26 A7 new line 6: float a = 1.0 float b = 2.0 float c = 3.0;
+=== 20:42:49 A7 type ';' after 1.0
+=== 20:43:02 A7 Insert
+=== 20:43:10 A7 one Undo
+=== 20:43:52 A8 row 1 state
+=== 20:43:57 A8 type space at end of line 2
+=== 20:44:33 A9 New editor off
+=== 20:47:27 R9 old editor (release c9597ddd): delete ';' line 6
+=== 20:51:28 B1 API23: delete ';' end of line 6
+=== 20:51:48 B1 Insert
+=== 20:51:54 B1 one Undo
+=== 20:52:21 B2 delete ';' end of line 7
+=== 20:52:37 B2 Insert
+=== 20:52:43 B2 one Undo
+=== 20:53:23 B5 '/ mx' -> 'mx' on line 6
+=== 20:53:46 TB1-1
+=== 20:53:56 TB1-2
+=== 20:54:06 TB1-3
+=== 20:54:17 TB5-1
+=== 20:54:26 TB5-2
+=== 20:54:34 TB5-3
+=== 20:55:30 R23 old editor: delete ';' line 6
