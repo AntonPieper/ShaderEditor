@@ -22,7 +22,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.view.AccessibilityDelegateCompat;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -66,6 +68,8 @@ public class FindBar extends LinearLayout {
 	private static final String QUERY = "find_query";
 	private static final String MATCH_CASE = "find_match_case";
 	private static final String WHOLE_WORD = "find_whole_word";
+	// Typing that pauses this long, in milliseconds, hears the count.
+	private static final long SAY_COUNT_DELAY = 1000;
 	private static final String REPLACING = "find_replacing";
 	private static final String REPLACEMENT = "find_replacement";
 	// The lines the main thread reads per keystroke for the match to
@@ -121,6 +125,10 @@ public class FindBar extends LinearLayout {
 	private boolean wholeWord;
 	@Nullable
 	private Runnable openChanged;
+	// The count of a query is said once typing paused, not per key.
+	private final Runnable sayCount = this::sayCount;
+	@Nullable
+	private Search.Query said;
 
 	public FindBar(Context context) {
 		super(context);
@@ -135,6 +143,19 @@ public class FindBar extends LinearLayout {
 		super.onFinishInflate();
 		row = findViewById(R.id.find_row);
 		field = findViewById(R.id.find_field);
+		// The field's state is the current match, read with the field; a
+		// change of it is not told, as the count is said once typing
+		// paused.
+		ViewCompat.setAccessibilityDelegate(field,
+				new AccessibilityDelegateCompat() {
+					@Override
+					public void onInitializeAccessibilityNodeInfo(
+							@NonNull View host,
+							@NonNull AccessibilityNodeInfoCompat info) {
+						super.onInitializeAccessibilityNodeInfo(host, info);
+						info.setStateDescription(spoken());
+					}
+				});
 		replaceRow = findViewById(R.id.replace_row);
 		replaceIndent = replaceRow.getPaddingStart();
 		replacement = findViewById(R.id.replace_field);
@@ -385,9 +406,25 @@ public class FindBar extends LinearLayout {
 		previous.setEnabled(!none);
 		next.setEnabled(!none);
 		count.setText(countText());
-		// TalkBack hears the count with the field.
-		ViewCompat.setStateDescription(field, spoken());
+		removeCallbacks(sayCount);
+		if (matches != null && field.hasFocus() &&
+				!state.query().isEmpty() && !state.query().equals(said)) {
+			postDelayed(sayCount, SAY_COUNT_DELAY);
+		}
 		replaceRow.setVisibility(state.replacing() ? VISIBLE : GONE);
+	}
+
+	private void sayCount() {
+		Search.Matches matches = state.matches();
+		// None is said at once, when the query stops matching.
+		if (matches == null || matches.count() == 0 || !field.hasFocus()) {
+			return;
+		}
+		said = state.query();
+		announceForAccessibility(getContext().getString(
+				R.string.a11y_find_matches, matches.more()
+						? getContext().getString(R.string.find_many)
+						: String.valueOf(matches.count())));
 	}
 
 	@NonNull
@@ -480,6 +517,7 @@ public class FindBar extends LinearLayout {
 				state.matches().count() > 0);
 		set(state.with(matches, current));
 		if (none) {
+			said = matches.query();
 			announceForAccessibility(spoken());
 		}
 	}
