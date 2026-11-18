@@ -59,6 +59,11 @@ final class DriverLog {
 					Math.max(line, 0), text);
 		}
 		SourceLocation location = sourceMap.locate(line);
+		// A "}" missing at the end is reported on the line after the
+		// last newline, one past the text: it belongs to the last line.
+		if (location == null && line == sourceMap.lines().size() + 1) {
+			location = sourceMap.locate(line - 1);
+		}
 		if (location == null || location.isGenerated()) {
 			return new ProjectDiagnostic(severity, text, null, 0);
 		}
