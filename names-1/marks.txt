@@ -1,0 +1,58 @@
+=== 23:18:37 R19 hw keyboard attached (qwerty/v/v): caret in disc on line 14
+=== 23:18:52 R19 hw: blank line 19
+=== 23:18:57 R19 hw: type 'sm' on line 19
+=== 23:19:46 R20 F12 (142) on disc line 14
+=== 23:19:51 R20 Alt+Left (way back)
+=== 23:20:07 R20 Shift+F12
+=== 23:20:16 R20 F2
+=== 23:20:37 R20 Ctrl+Q
+=== 23:20:46 R20 Alt+Left without a way back
+=== 23:22:37 R20 Ctrl+click on disc line 9
+=== 23:29:18 R14 tap Definition on disc (line 14)
+=== 23:29:52 R15 Definition on sdBox
+=== 23:30:15 R17a tap way back (Names.frag)
+=== 23:30:29 R16 Definition on sdCircle
+=== 23:30:46 R16 tap 'line 2' entry
+=== 23:32:07 R17 back tap 1
+=== 23:32:17 R17 back tap 2
+=== 23:32:27 R17 back tap 3
+=== 23:32:53 R17 edit above: Enter at end of line 1
+=== 23:32:59 R17 back after edit
+=== 23:33:22 R17 rotate with way back
+=== 23:33:46 R17 rotate with way back
+=== 23:34:18 R17 app's notification prompt after rotation: Don't allow
+=== 23:34:59 R18 tap grey form
+=== 23:36:40 TB on
+=== 23:36:52 T21-a: tt 330 857
+=== 23:37:34 T21-b: dt 400 800
+=== 23:38:08 T21-c: dt 400 800
+=== 23:38:25 T21-f: tt 330 857
+=== 23:38:35 T21-g: dt 400 800
+=== 23:38:55 T21-h: tt 330 857
+=== 23:39:29 T21-i: dt 400 800
+=== 23:40:02 T21-l: dt 400 800
+=== 23:40:14 T21-m: dt 400 800
+=== 23:40:38 T22-a: dt 450 1371
+=== 23:41:04 T22-d: kev 54
+=== 23:41:58 T22-h: kev 54
+=== 23:42:20 T23-b: dt 950 1371
+=== 23:42:49 T23-c: dt 500 1500
+=== 23:43:13 T23-d: dt 550 1371
+=== 23:43:51 T23-g: dt 550 1371
+=== 23:44:35 T23-j: dt 550 1371
+=== 23:45:03 TB off
+=== 23:47:49 R26 hold Down 2 s, then Right 2 s, screenshots during
+=== 23:52:02 B1 swipe keys left
+=== 23:52:06 B1 tap ; = *
+=== 23:52:46 B2 type sm
+=== 23:52:51 B4 disc on line 14
+=== 23:52:55 B14 Definition
+=== 23:53:10 SLIP: '}' inserted by tap on row; delete
+=== 23:53:26 B14 Definition on disc
+=== 23:53:40 B17 Definition on sdBox
+=== 23:53:48 B17 Definition on sdBox at its own declaration -> should be Uses
+=== 23:54:14 B17 back 1
+=== 23:54:22 B17 back 2
+=== 23:54:30 B17 back 3
+=== 23:55:05 B17 Enter at end of line 1 (above both places)
+=== 23:55:08 B17 rotate

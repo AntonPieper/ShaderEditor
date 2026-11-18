@@ -1,0 +1,7 @@
+enabled_accessibility_services=null
+accessibility_enabled=0
+talkback notification flags USER_SENSITIVE_WHEN_GRANTED only
+debug app POST_NOTIFICATIONS: USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED before; USER_FIXED added by my Dont allow
+debug new_editor=false (earlier build)
+AVD config.ini hw.keyboard=yes (backup n1prev/config-37.ini.bak)
+TalkBack: Display speech output off, log ERROR
