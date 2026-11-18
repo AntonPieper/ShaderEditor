@@ -572,7 +572,7 @@
 		<item quantity="other">· %1$d definitions</item>
 	</plurals>
 	<string name="a11y_completion_function">%1$s, function</string>
-	<string name="a11y_signature">%1$s, argument %2$d of %3$d, %4$s. Double-tap for docs.</string>
+	<string name="a11y_signature">%1$s, argument %2$d of %3$d, %4$s</string>
 	<string name="a11y_signature_open">%1$s: %2$s</string>
 	<string name="fix_add_uniform">Add uniform %1$s %2$s</string>
 	<string name="a11y_added_uniform">Added %1$s on line %2$d</string>
@@ -646,8 +646,9 @@
 	<string name="passes_a11y_read_by">read by %1$s</string>
 	<string name="passes_a11y_shown">shown</string>
 	<string name="passes_frame">frame %1$,d</string>
-	<string name="tune_offer">⇆ %1$s</string>
 	<string name="a11y_tune">Tune %1$s</string>
+	<string name="tune_offer">Tune</string>
+	<string name="a11y_insert">Insert</string>
 	<string name="tuning_value">Value</string>
 	<string name="tuning_revert">Revert</string>
 	<string name="tuning_done">Done</string>
