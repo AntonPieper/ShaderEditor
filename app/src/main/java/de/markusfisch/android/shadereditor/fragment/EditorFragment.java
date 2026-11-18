@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.fragment;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.view.LayoutInflater;
@@ -403,7 +404,15 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 		super.onResume();
 		if (newEditor != ShaderEditorApp.preferences.useNewEditor()) {
 			// The draft keeps the text while the other editor is made.
-			requireActivity().recreate();
+			// Once the screen has resumed: made again from within its
+			// onResume, the picture of the new screen stayed black on
+			// Android 6.
+			requireView().post(() -> {
+				Activity activity = getActivity();
+				if (activity != null) {
+					activity.recreate();
+				}
+			});
 			return;
 		}
 		editor.applySettings(ShaderEditorApp.preferences);
