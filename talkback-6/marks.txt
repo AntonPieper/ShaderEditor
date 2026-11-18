@@ -1,0 +1,48 @@
+=== 21:05:50 BASE-NC: keyboard open on code, Home, return (no conflict)
+=== 21:06:14 BASE-C: letter, outside write, Home, return (conflict)
+=== 21:08:28 BASE-NC2 launcher-intent return, no conflict
+=== 21:09:23 BASE-C2 letter, outside write, launcher-intent return
+=== 21:11:18 TB on
+=== 21:11:29 R0-a: tt 400 1100
+=== 21:11:32 R0-b: dt 400 1100
+=== 21:11:44 S1 letter + outside + Home + launcher-intent return
+=== 21:11:53 S1-key: kev 54
+=== 21:12:08 S1-b: nx
+=== 21:12:11 S3-a: tt 646 511
+=== 21:12:14 S3-b: dt 646 511
+=== 21:12:18 S3-c: kev 54
+=== 21:12:28 S4A letter + outside + Home + launcher-intent return
+=== 21:12:37 S4A-key: kev 54
+=== 21:12:40 S4B letter + outside + Home + launcher-intent return
+=== 21:12:50 S4B-key: kev 54
+=== 21:13:23 S5-a: tt 331 511
+=== 21:13:26 S5-b: dt 331 511
+=== 21:13:29 S5-c: kev 54
+=== 21:13:36 C on stack: Go to line 6
+=== 21:13:53 C1-goto: dt 300 490
+=== 21:14:23 C2 Go to line 6 with the code having input focus (keyboard up)
+=== 21:14:39 C2-goto: dt 300 490
+=== 21:16:14 F1 letter + outside + Home + launcher-intent return
+=== 21:16:23 F1-key: kev 54
+=== 21:16:26 F2 letter + outside + Home + launcher-intent return
+=== 21:16:36 F2-key: kev 54
+=== 21:16:39 F3 letter + outside + Home + launcher-intent return
+=== 21:16:49 F3-key: kev 54
+=== 21:17:01 F4 letter + outside + Home + launcher-intent return
+=== 21:17:11 F4-sr: nx
+=== 21:17:16 F4-keep: dt 646 511
+=== 21:17:19 F4-key: kev 54
+=== 21:17:22 F5 letter + outside + Home + launcher-intent return
+=== 21:17:34 F5-reload: dt 331 511
+=== 21:17:37 F5-key: kev 54
+=== 21:17:40 F6 letter + outside + Home + launcher-intent return
+=== 21:17:49 F6-key: kev 54
+=== 21:18:11 H1-a: tt 400 1300
+=== 21:18:15 H1 letter + outside + Home + launcher-intent return
+=== 21:18:25 H2-a: tt 540 385
+=== 21:18:28 H2 letter + outside + Home + launcher-intent return
+=== 21:18:38 H3-a: tt 400 1300
+=== 21:18:41 H3 letter + outside + Home + launcher-intent return
+=== 21:19:54 C3-goto1: dt 300 490
+=== 21:20:21 C3-goto2: dt 300 490
+=== 21:20:38 S7 TalkBack off
