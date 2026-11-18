@@ -403,11 +403,13 @@ public class ShaderViewManager implements PassesSheet.Engine,
 							frameRate, getItem(position)));
 				}
 				// The spinner builds every quality to measure the widest;
-				// only the chosen one is what the chip shows.
-				if (qualitySpinner.opens() && position ==
-						qualitySpinner.getSelectedItemPosition()) {
-					qualitySpinner.setContentDescription(spoken(activity,
-							frameRate, getItem(position)));
+				// only the chosen one is what the chip shows. A list of
+				// qualities alone is read as its number, without a name.
+				if (position == qualitySpinner.getSelectedItemPosition()) {
+					qualitySpinner.setContentDescription(qualitySpinner.opens()
+							? spoken(activity, frameRate, getItem(position))
+							: activity.getString(R.string.a11y_quality,
+							getItem(position)));
 				}
 				return view;
 			}

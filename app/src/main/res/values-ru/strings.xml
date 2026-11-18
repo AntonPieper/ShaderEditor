@@ -572,6 +572,7 @@
 	<string name="passes_quality">Quality %1$s</string>
 	<string name="passes_chip">Passes, %1$s, quality %2$s</string>
 	<string name="passes_chip_quality">Passes, quality %1$s</string>
+	<string name="a11y_quality">Quality %1$s</string>
 	<string name="passes_chip_rate">%1$d frames a second</string>
 	<string name="passes_key">read the last frame</string>
 	<string name="passes_first_frame">first frame</string>
