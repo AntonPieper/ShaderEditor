@@ -37,6 +37,7 @@ import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.DocsSheet;
+import de.markusfisch.android.shadereditor.widget.NameView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 /**
@@ -263,9 +264,14 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		if (uniform != null && !isLocal(host.declared(), host.offset(),
 				word)) {
 			showUniform(uniform);
+		} else if (!declared(word).isEmpty()) {
+			showDeclared(declared(word));
 		} else if (GlslWords.style(word, 0, word.length()) ==
 				Style.IDENTIFIER) {
-			showDeclared(declared(word));
+			// Declared nowhere the editor knows: its Uses and Rename.
+			show(new DocsSheet.Content(word, view.getContext().getString(
+					R.string.docs_name), null, null, null, null, null, null),
+					null, null, null, null, word, null);
 		} else if (docs != null) {
 			showBuiltin(word);
 		} else {
@@ -513,12 +519,9 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		List<Form> found = new ArrayList<>();
 		if (GlslWords.style(name, 0, name.length()) == Style.IDENTIFIER) {
 			for (Knowledge.Symbol form : declared(name)) {
-				List<String> names = new ArrayList<>();
+				List<String> names = names(form);
 				List<String> types = new ArrayList<>();
 				for (Knowledge.Symbol part : form.parts()) {
-					// A parameter without a name shows its type.
-					names.add(part.name().isEmpty() && part.type() != null
-							? part.type() : part.name());
 					types.add(part.type());
 				}
 				if (!names.isEmpty()) {
@@ -569,6 +572,93 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 						null, null, null, null), null, null, action,
 				file != null ? () -> host.open(file, line)
 						: () -> host.goToLine(line), first.name(), file);
+	}
+
+	/**
+	 * What the strip shows for word, a name the caret rests in, see
+	 * {@link NameView.Name}: how it is declared, as far as the editor
+	 * knows, and Uses where the folder lists uses; for a built-in or an
+	 * app uniform the file lacks, no action. A tap on the form looks it
+	 * up. Null while the docs a built-in needs are read.
+	 */
+	@Nullable
+	NameView.Name name(@NonNull String word) {
+		Context context = view.getContext();
+		Runnable open = () -> lookUp(word);
+		List<Knowledge.Symbol> declared = declared(word);
+		// A built-in, unless the file declares a macro of its name.
+		if (GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER &&
+				declared.isEmpty()) {
+			GlslDocs.Entry entry = docs != null ? docs.lookup(word) : null;
+			if (docs == null) {
+				readDocs(null);
+			}
+			if (entry == null || entry.forms().isEmpty()) {
+				return null;
+			}
+			String form = entry.forms().get(0);
+			if (entry.kind() == GlslDocs.Kind.FUNCTION) {
+				form = call(word, GlslDocs.parameterNames(form));
+			}
+			String spoken = spoken(context, entry);
+			return new NameView.Name(word, form,
+					spoken != null ? spoken : form, open, null, 0, null,
+					null);
+		}
+		UniformDef uniform = UNIFORMS.get(word);
+		if (declared.isEmpty() && uniform != null) {
+			String form = uniform.getType().getKeyword() + " " +
+					uniform.getDeclarator();
+			return new NameView.Name(word, form, form, open, null, 0, null,
+					null);
+		}
+		Knowledge.Symbol first = declared.isEmpty() ? null : declared.get(0);
+		String form = first == null ? word : first.kind() ==
+				Knowledge.Kind.FUNCTION ? call(word, names(first))
+				: first.detail();
+		// A function as TalkBack says a built-in one: "disc takes p and r".
+		List<String> parameters = first != null &&
+				first.kind() == Knowledge.Kind.FUNCTION ? names(first) : null;
+		String spoken = parameters == null ? form : parameters.isEmpty()
+				? context.getString(R.string.a11y_takes_nothing, word)
+				: context.getString(R.string.a11y_takes, word,
+				list(context, parameters));
+		if (!host.offersUses()) {
+			return new NameView.Name(word, form, spoken, open, null, 0, null,
+					null);
+		}
+		boolean renamable = !UNIFORMS.containsKey(word) ||
+				isLocal(host.declared(), host.offset(), word);
+		return new NameView.Name(word, form, spoken, open,
+				context.getString(R.string.uses), R.drawable.ic_list,
+				context.getString(R.string.a11y_uses_of, word),
+				() -> host.uses(word, null, keyboardUp(), renamable, false));
+	}
+
+	// "name(a, b)".
+	@NonNull
+	private static String call(@NonNull String name,
+			@NonNull List<String> parameters) {
+		return name + "(" + TextUtils.join(", ", parameters) + ")";
+	}
+
+	// The names of the parameters of function, of one without a name
+	// its type.
+	@NonNull
+	private static List<String> names(@NonNull Knowledge.Symbol function) {
+		List<String> names = new ArrayList<>();
+		for (Knowledge.Symbol part : function.parts()) {
+			names.add(part.name().isEmpty() && part.type() != null
+					? part.type() : part.name());
+		}
+		return names;
+	}
+
+	// Whether the keyboard is up.
+	private boolean keyboardUp() {
+		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(view);
+		return insets != null &&
+				insets.isVisible(WindowInsetsCompat.Type.ime());
 	}
 
 	/**
