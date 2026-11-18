@@ -1888,6 +1888,14 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Return what the last build of what runs knows of the text of path,
+	 * or null where it did not read it; see {@link ProjectKnowledge#of}.
+	 */
+	public Knowledge knowledge(ProjectPath path) {
+		return knowledge.of(path);
+	}
+
+	/**
 	 * Return what the file at path sees of the other files of the last
 	 * build of what runs: the names the files it includes declare, and
 	 * what a word refers to there. It answers for the last build at the
