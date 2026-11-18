@@ -103,6 +103,28 @@ public class CodeView extends View {
 		void lookUp(@NonNull String word);
 	}
 
+	/**
+	 * What can be done with the name the caret rests in, by a key, a
+	 * click with Ctrl, and TalkBack.
+	 */
+	public interface Names {
+		/** The name the caret rests in, or null. */
+		@Nullable
+		String name();
+
+		/** Go where it is declared (F12, Ctrl+click). */
+		void definition();
+
+		/** List its uses (Shift+F12), renaming at once (F2). */
+		void uses(boolean rename);
+
+		/** Explain it (Ctrl+Q). */
+		void lookUp();
+
+		/** Go back one place (Alt+Left); return whether there was one. */
+		boolean back();
+	}
+
 	public interface LineLink {
 		// The name of the file line names, to be opened; null for none.
 		@Nullable
@@ -368,6 +390,8 @@ public class CodeView extends View {
 	private LineMarks marks;
 	private boolean connected;
 	private LookUp lookUp;
+	@Nullable
+	private Names names;
 	private LineLink lineLink;
 	private RowFix rowFix;
 	// The lines marked after a fix put them in, until the next edit.
@@ -484,6 +508,12 @@ public class CodeView extends View {
 							toggleRow(mark);
 						} else {
 							placeCaret(e.getX(), e.getY());
+							// A tap with Ctrl held on a keyboard, as a
+							// click with Ctrl, goes to the definition.
+							if (names != null && (e.getMetaState() &
+									KeyEvent.META_CTRL_ON) != 0) {
+								names.definition();
+							}
 						}
 						return true;
 					}
@@ -666,6 +696,16 @@ public class CodeView extends View {
 	// For a selected word that lookUp has; none for null, the default.
 	public void setLookUp(@Nullable LookUp lookUp) {
 		this.lookUp = lookUp;
+	}
+
+	// For the name at the caret; none for null, the default.
+	public void setNames(@Nullable Names names) {
+		this.names = names;
+	}
+
+	@Nullable
+	Names names() {
+		return names;
 	}
 
 	// For a line that names a file; none for null, the default.
@@ -1128,6 +1168,10 @@ public class CodeView extends View {
 			return super.onKeyDown(keyCode, event);
 		}
 		int meta = event.getMetaState();
+		if (names != null && nameKey(keyCode, event)) {
+			action("key", event.getAction(), keyCode, meta, null);
+			return true;
+		}
 		// Alt+Enter, the quick fix key of Android Studio, applies the
 		// first fix of the caret's line.
 		if ((keyCode == KeyEvent.KEYCODE_ENTER ||
@@ -1159,6 +1203,46 @@ public class CodeView extends View {
 		}
 		action("key", event.getAction(), keyCode, meta, typed);
 		return key(keyCode, meta, typed) || super.onKeyDown(keyCode, event);
+	}
+
+	// Whether the last Alt+Left pressed went back.
+	private boolean wentBack;
+
+	// The keys of other editors for a name: F12 Definition, Shift+F12
+	// Uses, F2 Rename, Ctrl+Q the docs, Alt+Left back, where the way
+	// back has a place, else the caret moves as without Alt. A key held
+	// down does it once.
+	private boolean nameKey(int keyCode, KeyEvent event) {
+		boolean shift = event.isShiftPressed();
+		boolean ctrl = event.isCtrlPressed();
+		boolean alt = event.isAltPressed();
+		boolean once = event.getRepeatCount() == 0;
+		if (keyCode == KeyEvent.KEYCODE_F12 && !ctrl && !alt) {
+			if (once && shift) {
+				names.uses(false);
+			} else if (once) {
+				names.definition();
+			}
+			return true;
+		} else if (keyCode == KeyEvent.KEYCODE_F2 && !shift && !ctrl &&
+				!alt) {
+			if (once) {
+				names.uses(true);
+			}
+			return true;
+		} else if (keyCode == KeyEvent.KEYCODE_Q && ctrl && !shift && !alt) {
+			if (once) {
+				names.lookUp();
+			}
+			return true;
+		}
+		if (keyCode != KeyEvent.KEYCODE_DPAD_LEFT || !alt || ctrl || shift) {
+			return false;
+		} else if (once) {
+			wentBack = names.back();
+		}
+		// Held, it does not move the caret from where it went back to.
+		return wentBack;
 	}
 
 	// Back closes the toolbar first, before Android 13.
@@ -2254,6 +2338,13 @@ public class CodeView extends View {
 				if (event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)) {
 					dragging = 0;
 					contextClick(x, y);
+					return true;
+				} else if (names != null &&
+						(event.getMetaState() & KeyEvent.META_CTRL_ON) != 0) {
+					// Ctrl+click goes to the definition of the name.
+					dragging = 0;
+					select(offsetAt(x, y), offsetAt(x, y));
+					names.definition();
 					return true;
 				}
 				click(event, offsetAt(x, y));
