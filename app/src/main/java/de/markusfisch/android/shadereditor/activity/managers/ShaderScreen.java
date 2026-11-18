@@ -146,6 +146,11 @@ public interface ShaderScreen {
 	default void tune() {
 	}
 
+	/** Return whether a number is being tuned. */
+	default boolean isTuning() {
+		return false;
+	}
+
 	/** The text in the editor changed. */
 	default void onTextModified() {
 	}

@@ -305,6 +305,10 @@ public class MainActivity extends AppCompatActivity {
 			private final View toolbar = findViewById(R.id.toolbar);
 			// Warnings show once, not again on every run.
 			private List<ProjectDiagnostic> shownWarnings = List.of();
+			// The first error of the last result. While a number is tuned
+			// the code is hidden and every step is built again: the same
+			// error is not shown again then.
+			private ProjectDiagnostic lastError;
 
 			@Override
 			public void onFramesPerSecond(int fps) {
@@ -329,6 +333,7 @@ public class MainActivity extends AppCompatActivity {
 					screen.forgetErrors();
 					showErrors.setVisibility(View.GONE);
 					shownWarnings = List.of();
+					lastError = null;
 				});
 			}
 
@@ -347,6 +352,8 @@ public class MainActivity extends AppCompatActivity {
 						return;
 					}
 					screen.showErrors(infoLog);
+					ProjectDiagnostic before = lastError;
+					lastError = null;
 					showErrors.setVisibility(infoLog.isEmpty()
 							? View.GONE
 							: View.VISIBLE);
@@ -359,9 +366,11 @@ public class MainActivity extends AppCompatActivity {
 							if (diagnostic.severity() ==
 									ProjectDiagnostic.Severity.ERROR) {
 								if (!editorFragment.showsErrorMessage(
-										diagnostic)) {
+										diagnostic) && !(screen.isTuning() &&
+										diagnostic.equals(before))) {
 									showError(diagnostic.toString());
 								}
+								lastError = diagnostic;
 								break;
 							}
 						}
