@@ -163,10 +163,10 @@ final class WordUses {
 	 * Show the places of word, declared in file, a path of the project,
 	 * or in the file shown for null; keyboard tells whether the keyboard
 	 * comes back when the sheet goes; renamable whether Rename is
-	 * offered.
+	 * offered; rename whether the sheet opens renaming.
 	 */
 	void show(@NonNull String word, @Nullable String file, boolean keyboard,
-			boolean renamable) {
+			boolean renamable, boolean rename) {
 		this.word = word;
 		left = null;
 		declared = file;
@@ -210,6 +210,9 @@ final class WordUses {
 			}
 		});
 		shown.setOnDismiss(() -> view.post(() -> host.refocus(keyboard)));
+		if (rename) {
+			shown.renameFirst();
+		}
 		sheet = shown;
 		find();
 	}

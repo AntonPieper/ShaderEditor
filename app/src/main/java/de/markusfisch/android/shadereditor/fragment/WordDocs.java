@@ -114,10 +114,10 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		 * project, or in this one for null; keyboard tells whether the
 		 * keyboard comes back after, renamable whether Rename is
 		 * offered: not for one of the app's uniforms, which the app
-		 * sets by its name.
+		 * sets by its name; rename whether the sheet opens renaming.
 		 */
 		void uses(@NonNull String word, @Nullable String file,
-				boolean keyboard, boolean renamable);
+				boolean keyboard, boolean renamable, boolean rename);
 	}
 
 	private static final String ASSET = "glsl-docs.txt";
@@ -356,8 +356,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 						: R.string.docs_es_300));
 		show(new DocsSheet.Content(word, kind, entry.text(),
 				lines(entry.forms()), spoken(context, entry), entry.detail(),
-				entry.note(), lines(entry.example())), null, null, false,
-				null, null);
+				entry.note(), lines(entry.example())), null, null, null,
+				false, null);
 	}
 
 	private void showUniform(@NonNull UniformDef uniform) {
@@ -374,8 +374,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 						declared ? null : context.getString(
 								R.string.docs_not_declared), null),
 				declared ? null : context.getString(R.string.docs_add_uniform),
-				() -> host.addUniforms(List.of(statement)), false,
-				declared ? name : null, null);
+				() -> host.addUniforms(List.of(statement)),
+				declared ? name : null, true, null);
 	}
 
 	/**
@@ -416,25 +416,39 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				names.get(last));
 	}
 
-	// Opens the sheet, with Uses of the name uses, declared in file, or
-	// without for null; when it closes, the code view has the focus
-	// again, and the keyboard, which the sheet sends down, comes back
-	// if it was up, unless Uses follows, which does that when it goes.
+	// Opens the sheet; for name, declared in file or in this one for
+	// null, with Definition where it is declared, and Uses and Rename
+	// where the folder lists uses, Rename not for one of the app's
+	// uniforms. When it closes, the code view has the focus again, and
+	// the keyboard, which the sheet sends down, comes back if it was
+	// up, unless a sheet follows, which does that when it goes.
 	private void show(@NonNull DocsSheet.Content content,
 			@Nullable String action, @Nullable Runnable onAction,
-			boolean leads, @Nullable String uses, @Nullable String file) {
+			@Nullable String name, boolean declared, @Nullable String file) {
 		boolean keyboard = keyboardUp();
 		DocsSheet sheet = new DocsSheet(view.getContext(), content, action,
-				onAction, leads);
+				onAction);
 		handedOn = false;
-		if (uses != null && host.offersUses()) {
-			boolean renamable = !UNIFORMS.containsKey(uses) ||
-					isLocal(host.declared(), host.offset(), uses);
-			sheet.setUses(() -> {
+		Runnable uses = null;
+		Runnable rename = null;
+		if (name != null && host.offersUses()) {
+			boolean renamable = !UNIFORMS.containsKey(name) ||
+					isLocal(host.declared(), host.offset(), name);
+			uses = () -> {
 				handedOn = true;
-				host.uses(uses, file, keyboard, renamable);
-			});
+				host.uses(name, file, keyboard, renamable, false);
+			};
+			rename = !renamable ? null : () -> {
+				handedOn = true;
+				host.uses(name, file, keyboard, true, true);
+			};
 		}
+		sheet.setActions(name != null && declared
+				? () -> {
+					handedOn = true;
+					definition(name, keyboard);
+				}
+				: null, uses, rename);
 		sheet.setOnDismiss(() -> {
 			if (!handedOn) {
 				view.post(() -> refocus(keyboard));
@@ -575,15 +589,11 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				? context.getString(R.string.docs_where, file, line + 1)
 				: context.getString(R.string.docs_where_line, line + 1);
 		String kind = context.getString(kindName(first.kind()));
-		boolean keyboard = keyboardUp();
 		show(new DocsSheet.Content(first.name(), where == null ? kind
 						: context.getString(R.string.docs_kind_versions, kind,
 								where), documentation(forms), code(forms),
-						null, null, null, null),
-				context.getString(R.string.definition), () -> {
-					handedOn = true;
-					definition(first.name(), keyboard);
-				}, true, first.name(), file);
+						null, null, null, null), null, null, first.name(),
+				true, file);
 	}
 
 	/** Where word may be declared, and its places as rows of a list. */
