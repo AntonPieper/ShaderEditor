@@ -663,6 +663,7 @@
 	<string name="conflict_reload">Reload from file</string>
 	<string name="a11y_reloaded">Reloaded %1$s</string>
 	<string name="conflict_keep">Keep my edits</string>
+	<string name="a11y_kept">Kept your edits to %1$s</string>
 	<string name="conflict_journal">ShaderEditor could not read the unsaved text of %s; the text shown is the file\'s</string>
 	<string name="conflict_discard">Discard</string>
 	<string name="conflict_discard_title">Discard the unsaved text of %s?</string>

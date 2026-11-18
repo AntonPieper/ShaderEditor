@@ -956,7 +956,7 @@ public final class ProjectFileManager {
 		}
 		boolean decides = kind == ProjectFile.Outside.Kind.CHANGED;
 		// The bar goes with its button: a screen reader hears that the
-		// file's text is shown now.
+		// file's text is shown now, or that the edits stay.
 		View said = bar;
 		offer(R.id.conflict_reload, decides, () -> {
 			Runnable back = focusBack();
@@ -967,8 +967,14 @@ public final class ProjectFileManager {
 			});
 		});
 		offer(R.id.conflict_keep, decides ||
-						kind == ProjectFile.Outside.Kind.DELETED, () ->
-				shown.resolve(outside, OpenProject.Choice.KEEP, focusBack()));
+						kind == ProjectFile.Outside.Kind.DELETED, () -> {
+			Runnable back = focusBack();
+			shown.resolve(outside, OpenProject.Choice.KEEP, () -> {
+				back.run();
+				said.announceForAccessibility(activity.getString(
+						R.string.a11y_kept, shown.getTitle()));
+			});
+		});
 		offer(R.id.conflict_discard, kind == ProjectFile.Outside.Kind.JOURNAL,
 				() -> discard(shown));
 		offer(R.id.conflict_retry,
