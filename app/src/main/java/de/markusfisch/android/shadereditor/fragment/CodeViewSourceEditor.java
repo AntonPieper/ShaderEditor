@@ -236,6 +236,13 @@ final class CodeViewSourceEditor implements SourceEditor {
 				public void refocus(boolean keyboard) {
 					docs.refocus(keyboard);
 				}
+
+				// As a pause in typing does, now.
+				@Override
+				public void run() {
+					view.removeCallbacks(editPaused);
+					editPaused();
+				}
 			});
 			fixes = new FileFixes(view.getContext(), new FileFixes.Host() {
 				@Nullable

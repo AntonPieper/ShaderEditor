@@ -353,6 +353,8 @@ public final class OpenProject {
 	// Counts the changes of text and of what runs, and the choices of
 	// what runs alone; a result asked for before is stale.
 	private int generation;
+	// The generation the diagnostics are of, -1 before the first.
+	private int diagnosed = -1;
 	private int choice;
 
 	private OpenProject(String id, ProjectFiles store,
@@ -2004,7 +2006,24 @@ public final class OpenProject {
 			return;
 		}
 		this.diagnostics = List.copyOf(diagnostics);
+		diagnosed = generation;
 		changed();
+	}
+
+	/**
+	 * Return a number for the texts and what runs as they are now; it
+	 * changes with every change of them.
+	 */
+	public int generation() {
+		return generation;
+	}
+
+	/**
+	 * Return whether the diagnostics are those of a build of the texts
+	 * as they are now.
+	 */
+	public boolean diagnosedNow() {
+		return diagnosed == generation;
 	}
 
 	/** Return the diagnostics of the last build, of all files. */

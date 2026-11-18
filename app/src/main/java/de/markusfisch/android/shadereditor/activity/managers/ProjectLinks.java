@@ -138,6 +138,10 @@ final class ProjectLinks implements FileLinks {
 	private Back back;
 	// The number of the last rename or deletion heard of.
 	private int heard;
+	// Told once the texts of the generation awaited are built, or null.
+	@Nullable
+	private FileTexts.Callback<Boolean> afterBuild;
+	private int awaited;
 	// Counts the forgettings; a listing made before one is void.
 	private int generation;
 
@@ -187,6 +191,7 @@ final class ProjectLinks implements FileLinks {
 
 	/** No file is in the editor. */
 	void hide() {
+		afterBuild = null;
 		forget();
 		renames.clear();
 		project = null;
@@ -455,6 +460,34 @@ final class ProjectLinks implements FileLinks {
 	@Override
 	public Document document(@NonNull ProjectPath path) {
 		return project != null ? project.document(path) : null;
+	}
+
+	@Override
+	public boolean builtWithoutErrors() {
+		OpenProject open = project;
+		return open != null && open.running() != null &&
+				open.diagnosedNow() && open.errors() == 0;
+	}
+
+	@Override
+	public void afterBuild(@NonNull FileTexts.Callback<Boolean> done) {
+		OpenProject open = project;
+		awaited = open != null ? open.generation() : -1;
+		afterBuild = open != null ? done : null;
+	}
+
+	/** What runs was built, and its diagnostics kept. */
+	void built() {
+		OpenProject open = project;
+		FileTexts.Callback<Boolean> done = afterBuild;
+		if (open == null || done == null) {
+			return;
+		} else if (open.generation() != awaited) {
+			afterBuild = null;
+		} else if (open.diagnosedNow()) {
+			afterBuild = null;
+			done.done(open.errors() == 0);
+		}
 	}
 
 	@Override

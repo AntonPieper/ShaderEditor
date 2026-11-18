@@ -58,6 +58,9 @@ final class WordUses {
 
 		/** The code takes the focus again, and the keyboard if it was up. */
 		void refocus(boolean keyboard);
+
+		/** Run what runs from the texts now, if edits run it. */
+		void run();
 	}
 
 	// The places of a word, the texts they were found in by file, and
@@ -118,6 +121,8 @@ final class WordUses {
 	}
 
 	private static final Executor FINDER = Executors.newSingleThreadExecutor();
+	// How long a rename that broke the build is told.
+	private static final int BROKE_MILLIS = 10_000;
 
 	private final View view;
 	private final Host host;
@@ -417,13 +422,24 @@ final class WordUses {
 				tell(context().getString(R.string.uses_changed));
 				return;
 			}
+			boolean built = links.builtWithoutErrors();
 			Rename rename = new Rename(from, word, left);
 			for (int i = 0; i < paths.size(); ++i) {
 				write(documents.get(i), byFile.get(paths.get(i).toString()),
 						from, to, rename);
 				rename.changed.put(documents.get(i), paths.get(i));
 			}
-			renamed(rename, places.size());
+			renamed(rename, places.size(), false);
+			// What built before and fails now says so, with Undo.
+			if (built) {
+				links.afterBuild(builds -> {
+					if (!builds && rename.changed.keySet().iterator().next()
+							.endsWith(rename)) {
+						renamed(rename, places.size(), true);
+					}
+				});
+			}
+			host.run();
 			word = to;
 			left = from;
 			find();
@@ -480,11 +496,15 @@ final class WordUses {
 		return null;
 	}
 
-	// Says that count places were renamed, with Undo.
-	private void renamed(@NonNull Rename rename, int count) {
+	// Says that count places were renamed, and that the shader no
+	// longer builds when broke, with Undo.
+	private void renamed(@NonNull Rename rename, int count, boolean broke) {
 		Snackbar.make(messageParent(), context().getResources()
-						.getQuantityString(R.plurals.uses_renamed, count, count),
-				Snackbar.LENGTH_LONG).setAction(R.string.undo, v ->
+						.getQuantityString(broke
+								? R.plurals.uses_renamed_broke
+								: R.plurals.uses_renamed, count, count),
+				broke ? BROKE_MILLIS : Snackbar.LENGTH_LONG).setAction(
+				R.string.undo, v ->
 				rename.undo(rename.changed.keySet().iterator().next())).show();
 	}
 
