@@ -446,9 +446,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		handedOn = false;
 		Runnable uses = null;
 		Runnable rename = null;
-		if (name != null && host.offersUses()) {
-			boolean renamable = !UNIFORMS.containsKey(name) ||
-					isLocal(host.declared(), host.offset(), name);
+		if (name != null && listsUses(name)) {
+			boolean renamable = renames(name);
 			uses = () -> {
 				handedOn = true;
 				host.uses(name, file, keyboard, renamable, false);
@@ -689,7 +688,7 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		}
 		String said = spoken + (note != null ? ", " + note : "");
 		if (rows.isEmpty() || found.here()) {
-			if (!host.offersUses()) {
+			if (!listsUses(word)) {
 				return new NameView.Name(word, form, note, said, open,
 						null, 0, null, null, false);
 			}
@@ -746,13 +745,31 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	 * folder lists uses.
 	 */
 	void uses(@NonNull String word, boolean rename) {
-		if ((GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER &&
-				declared(word).isEmpty()) || !host.offersUses()) {
+		if (!listsUses(word)) {
 			return;
 		}
-		boolean renamable = !UNIFORMS.containsKey(word) ||
-				isLocal(host.declared(), host.offset(), word);
+		boolean renamable = renames(word);
 		host.uses(word, null, keyboardUp(), renamable, rename && renamable);
+	}
+
+	/**
+	 * Return whether the uses of word at the caret can be listed: a name
+	 * of the file or the files around, or declared nowhere, in a folder.
+	 */
+	boolean listsUses(@NonNull String word) {
+		return host.offersUses() && (GlslWords.style(word, 0,
+				word.length()) == Style.IDENTIFIER ||
+				!declared(word).isEmpty());
+	}
+
+	/**
+	 * Return whether word at the caret can be renamed where its uses are
+	 * listed: not an app uniform, which the app sets by its name, unless
+	 * a local or parameter of the name hides it.
+	 */
+	boolean renames(@NonNull String word) {
+		return listsUses(word) && (!UNIFORMS.containsKey(word) ||
+				isLocal(host.declared(), host.offset(), word));
 	}
 
 	/**
