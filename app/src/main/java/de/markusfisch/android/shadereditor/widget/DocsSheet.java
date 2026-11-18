@@ -107,6 +107,7 @@ public final class DocsSheet {
 		setCode(view.findViewById(R.id.docs_example), content.example());
 		view.findViewById(R.id.docs_example_heading).setVisibility(
 				content.example() != null ? View.VISIBLE : View.GONE);
+		setHere(null);
 		View inside = view.findViewById(R.id.docs_content);
 		int bottom = inside.getPaddingBottom();
 		ViewCompat.setOnApplyWindowInsetsListener(inside, (v, insets) -> {
@@ -155,6 +156,18 @@ public final class DocsSheet {
 			dialog.dismiss();
 			uses.run();
 		});
+	}
+
+	/**
+	 * Show what a macro use became where it is, under its definition,
+	 * or nothing for null.
+	 */
+	public void setHere(@Nullable String code) {
+		TextView here = view.findViewById(R.id.docs_here);
+		setCode(here, code);
+		int visibility = code != null ? View.VISIBLE : View.GONE;
+		here.setVisibility(visibility);
+		view.findViewById(R.id.docs_here_heading).setVisibility(visibility);
 	}
 
 	/** Run when the sheet goes, however it goes. */

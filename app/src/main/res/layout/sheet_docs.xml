@@ -47,6 +47,22 @@
 			android:layout_marginTop="12dp" />
 
 		<TextView
+			android:id="@+id/docs_here_heading"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginHorizontal="@dimen/se_margin_sheet"
+			android:layout_marginTop="@dimen/se_margin_sheet"
+			android:text="@string/docs_here"
+			android:textAppearance="?attr/textAppearanceTitleSmall"
+			android:textColor="?attr/colorPrimary"
+			android:visibility="gone" />
+
+		<TextView
+			android:id="@+id/docs_here"
+			style="@style/DocsCode"
+			android:layout_marginTop="12dp" />
+
+		<TextView
 			android:id="@+id/docs_detail"
 			style="@style/DocsNote" />
 

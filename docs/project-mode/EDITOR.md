@@ -723,3 +723,17 @@ The new editor draws the lines of a shader's own file that the last build did no
 - **Cost.** On the main thread, per edit: the check of the edited lines, at most 4 KB, and a walk over the ranges of dimmed lines. A dimmed line is one run of colour. Per build, on the worker: 7.8 ms for a 4,993-line text on the desktop JVM. Per run after a key, on its own thread: 7.5 ms for 2,000 lines and 13.9 ms for 5,000 on the desktop JVM; a phone is slower, and past 50 ms the stale lines go and come back with the answer.
 - Completion, Look up and the outline read every arm as before; nothing they know comes from the dimmed lines.
 
+**What a macro use becomes.** Look up of a macro use shows, under the definition, a row **Here** with what that use expands to, fully, with arguments and the macros they reach, from the same programs of the last build.
+
+- **When it is absent.** The row is absent:
+  - when the document is not the text the build read;
+  - when another file the build read has changed;
+  - when the use is not compiled for sure, or stands in the arguments of another macro;
+  - when it reaches a macro that is not known, or `#`/`##`;
+  - when it takes part of what follows it;
+  - when two programs disagree;
+  - when the program is one the engine refuses before compiling it, as GLSL ES 3.00 on OpenGL ES 2.0;
+  - when it would repeat the definition of an object-like macro.
+- **Where it runs.** The main thread only checks that the text is the one the build read. The expansion runs on the sheet's background thread before the sheet opens: 1.3 ms at the last line of a 4,994-line text on the desktop JVM, as it scans the code before the use for parentheses that are still open.
+- **Examples.** `app/src/test/resources/directives/macros/` holds example shaders with a README of what each shows. A test checks that every expansion the README names is one Mesa's compiler compiles the same.
+

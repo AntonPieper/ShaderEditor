@@ -542,3 +542,4 @@ Comments and strings are not touched. Before the first change every file's revis
 | Look up for one's own names | Built, in project mode: the declaration, its comment, and the way to its line or its file |
 | The call in the strip | Built, in project mode: the form chosen by the number of arguments; by their types with half 2 |
 | Half 2, usages, rename | Not built |
+| Which lines are compiled, what a macro use becomes | Built, in project mode, from the build and not from this parser: the directives of the programs the engine compiles are run in order, and where that cannot tell, nothing is said (EDITOR.md 15) |
