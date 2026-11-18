@@ -561,6 +561,7 @@
 	<string name="a11y_reference_include">Included code %1$s</string>
 	<string name="a11y_reference_show">Show %1$s</string>
 	<string name="a11y_reference_open">Open %1$s</string>
+	<string name="a11y_back_to">Back to %1$s</string>
 	<string name="a11y_back_to_file">Back to %1$s, line %2$d</string>
 	<string name="fix_use">Use %1$s</string>
 	<string name="fix_create">Create</string>
@@ -692,4 +693,33 @@
 	<string name="a11y_find_match">Match %1$d of %2$d, line %3$d</string>
 	<string name="a11y_find_none">No matches</string>
 	<string name="a11y_find_matches">Matches: %1$s</string>
+	<string name="uses">Uses</string>
+	<string name="uses_count">%1$s in %2$s</string>
+	<plurals name="uses_places">
+		<item quantity="one">%1$d place</item>
+		<item quantity="few">%1$d places</item>
+		<item quantity="many">%1$d places</item>
+		<item quantity="other">%1$d places</item>
+	</plurals>
+	<plurals name="uses_files">
+		<item quantity="one">%1$d file</item>
+		<item quantity="few">%1$d files</item>
+		<item quantity="many">%1$d files</item>
+		<item quantity="other">%1$d files</item>
+	</plurals>
+	<string name="uses_in_function">In %1$s</string>
+	<string name="uses_elsewhere">Elsewhere</string>
+	<string name="uses_in_comments">In comments</string>
+	<string name="uses_other">Other files in this folder</string>
+	<string name="uses_glued">A name that a macro glues together with ## is not listed.</string>
+	<plurals name="uses_unread">
+		<item quantity="one">%1$d file could not be read.</item>
+		<item quantity="few">%1$d files could not be read.</item>
+		<item quantity="many">%1$d files could not be read.</item>
+		<item quantity="other">%1$d files could not be read.</item>
+	</plurals>
+	<string name="a11y_use">Line %1$d: %2$s</string>
+	<string name="a11y_use_in">%1$s, line %2$d: %3$s</string>
+	<string name="a11y_collapsed">Collapsed</string>
+	<string name="a11y_expanded">Expanded</string>
 </resources>

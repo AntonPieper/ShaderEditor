@@ -3,7 +3,9 @@ package de.markusfisch.android.shadereditor.fragment;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
+import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 
 /**
@@ -51,7 +53,21 @@ public interface FileLinks extends HostCompletion.Listing {
 	 * line the caret is on: the one way a file is opened from a line,
 	 * after which a key leads back to that line once.
 	 */
-	void open(@NonNull ProjectPath path, int line);
+	default void open(@NonNull ProjectPath path, int line) {
+		open(path, line, null);
+	}
+
+	/**
+	 * Open path at line as above; the key back is "Uses" and runs then
+	 * after leading back, when then is not null.
+	 */
+	void open(@NonNull ProjectPath path, int line, @Nullable Runnable then);
+
+	/**
+	 * Tell done the texts of the folder's GLSL files as the editor has
+	 * them, read off the main thread.
+	 */
+	void folderTexts(@NonNull FileTexts.Callback<OpenProject.FolderTexts> done);
 
 	/** Run changed when a folder asked for is listed, none when null. */
 	void setListener(@Nullable Runnable changed);

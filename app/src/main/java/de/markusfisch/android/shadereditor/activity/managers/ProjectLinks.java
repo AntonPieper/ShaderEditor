@@ -31,6 +31,7 @@ import de.markusfisch.android.shadereditor.graphics.OldPlaceholder;
 import de.markusfisch.android.shadereditor.navigation.Face;
 import de.markusfisch.android.shadereditor.navigation.Moves;
 import de.markusfisch.android.shadereditor.project.FileKind;
+import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.Previews;
@@ -81,9 +82,10 @@ final class ProjectLinks implements FileLinks {
 		void failed(@NonNull String message);
 	}
 
-	// Where Open went from, and to.
+	// Where Open went from, and to, and what follows the way back.
 	private record Back(@NonNull OpenProject project,
-			@NonNull ProjectPath from, int line, @NonNull ProjectPath to) {
+			@NonNull ProjectPath from, int line, @NonNull ProjectPath to,
+			@Nullable Runnable then) {
 	}
 
 	/**
@@ -173,7 +175,7 @@ final class ProjectLinks implements FileLinks {
 		Back way = back;
 		if (way != null && way.project() == project &&
 				way.to().equals(file)) {
-			host.showBack(way.from().getFileName(), way.line(), () -> {
+			showBack(way.from().getFileName(), way.line(), way.then(), () -> {
 				back = null;
 				host.open(way.from(), way.line());
 			});
@@ -402,7 +404,30 @@ final class ProjectLinks implements FileLinks {
 	}
 
 	@Override
-	public void open(@NonNull ProjectPath path, int line) {
+	public void folderTexts(
+			@NonNull FileTexts.Callback<OpenProject.FolderTexts> done) {
+		if (project != null) {
+			project.folderTexts(done);
+		}
+	}
+
+	// Shows the key back to the file named name at line, or to line of
+	// this file for null, as "Uses" when then is not null, which runs
+	// after back.
+	private void showBack(@Nullable String name, int line,
+			@Nullable Runnable then, @NonNull Runnable back) {
+		host.showBack(then != null ? context.getString(R.string.uses) : name,
+				then != null ? 0 : line, () -> {
+					back.run();
+					if (then != null) {
+						then.run();
+					}
+				});
+	}
+
+	@Override
+	public void open(@NonNull ProjectPath path, int line,
+			@Nullable Runnable then) {
 		OpenProject open = project;
 		ProjectPath from = file;
 		Document document = open != null && from != null
@@ -414,12 +439,12 @@ final class ProjectLinks implements FileLinks {
 		Text text = document.text();
 		int left = text.lineOf(document.selection().head()) + 1;
 		if (!path.equals(from)) {
-			back = new Back(open, from, left, path);
-		} else if (line != left) {
+			back = new Back(open, from, left, path, then);
+		} else if (line != left || then != null) {
 			// A jump inside the file: the key leads back to the line it
 			// left, once, in place of a way back to another file.
 			back = null;
-			host.showBack(null, left, () -> {
+			showBack(null, left, then, () -> {
 				host.showBack("", 0, null);
 				host.open(from, left);
 			});
