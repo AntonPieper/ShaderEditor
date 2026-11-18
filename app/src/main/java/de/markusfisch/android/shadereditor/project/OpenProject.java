@@ -344,6 +344,7 @@ public final class OpenProject {
 	private State announced;
 	private Executor executor;
 	private Runnable listener;
+	private Runnable beforeReading;
 	// What was renamed or deleted last, and how many were.
 	private final List<Event> events = new ArrayList<>();
 	private int moves;
@@ -585,6 +586,22 @@ public final class OpenProject {
 		this.executor = executor;
 		this.listener = listener;
 		announced = state();
+	}
+
+	/**
+	 * Run beforeReading on the main thread before the texts are read
+	 * for use elsewhere: a save, a copy, a run, the wallpaper. Whatever
+	 * still changes a text, as a number being tuned, ends there. null
+	 * for none.
+	 */
+	public void setBeforeReading(Runnable beforeReading) {
+		this.beforeReading = beforeReading;
+	}
+
+	private void beforeReading() {
+		if (beforeReading != null) {
+			beforeReading.run();
+		}
 	}
 
 	/**
@@ -1008,6 +1025,7 @@ public final class OpenProject {
 	 * or renamed too: no save brings it back.
 	 */
 	public void save(boolean explicit, Callback<Map<ProjectPath, Outcome>> done) {
+		beforeReading();
 		persist();
 		Map<ProjectPath, Outcome> outcomes = new LinkedHashMap<>();
 		int[] left = {1};
@@ -1338,6 +1356,7 @@ public final class OpenProject {
 			anyMain.execute(() -> done.done(problems));
 			return;
 		}
+		beforeReading();
 		Map<ProjectPath, Text> texts = new HashMap<>();
 		for (ProjectPath path : paths) {
 			FileRecord record = loaded(path);
@@ -1715,7 +1734,16 @@ public final class OpenProject {
 	 * gets the preparation, or null when nothing runs.
 	 */
 	public void prepare(Builtins builtins, Callback<Build> done) {
-		prepare(builtins, List.of(), done);
+		prepare(builtins, List.of(), false, done);
+	}
+
+	/**
+	 * Prepare what runs as {@link #prepare(Builtins, Callback)} does;
+	 * done gets it even when the text changed meanwhile, as a build of
+	 * the text as it was, which tells nothing of what is known.
+	 */
+	public void prepareAlways(Builtins builtins, Callback<Build> done) {
+		prepare(builtins, List.of(), true, done);
 	}
 
 	/**
@@ -1727,6 +1755,15 @@ public final class OpenProject {
 	 */
 	public void prepare(Builtins builtins, List<Replacement> replacements,
 			Callback<Build> done) {
+		prepare(builtins, replacements, false, done);
+	}
+
+	private void prepare(Builtins builtins, List<Replacement> replacements,
+			boolean always, Callback<Build> done) {
+		// The session's own builds change no text.
+		if (replacements.isEmpty()) {
+			beforeReading();
+		}
 		Map<ProjectPath, Text> snapshot = snapshot();
 		int generation = this.generation;
 		// From the end, so that each range is where the document has it.
@@ -1797,6 +1834,10 @@ public final class OpenProject {
 			main.execute(() -> {
 				// Not delivered when the text or what runs changed.
 				if (generation != this.generation) {
+					if (always) {
+						done.done(new Build(preparation, nothingRuns,
+								generation));
+					}
 					return;
 				}
 				if (built != null) {
