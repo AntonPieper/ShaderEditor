@@ -364,6 +364,14 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 		SoftKeyboard.show(getActivity(), editor.getView());
 	}
 
+	/** Give the code the input focus, without the keyboard. */
+	public void focusCode() {
+		View view = editor.getView();
+		if (view != null) {
+			view.requestFocus();
+		}
+	}
+
 	/** The next change of the text starts no run of its own. */
 	public void skipNextRun() {
 		editor.skipNextRun();
@@ -633,6 +641,16 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 
 	public void navigateToLine(int lineNumber) {
 		editor.navigateToLine(lineNumber);
+	}
+
+	/**
+	 * The file just shown was opened from a line of another, with its
+	 * caret where it was: a screen reader hears the line it is on.
+	 */
+	public void landed() {
+		if (editor.getView() instanceof CodeView code) {
+			code.landed();
+		}
 	}
 
 
