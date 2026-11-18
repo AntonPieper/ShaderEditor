@@ -693,13 +693,10 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				return new NameView.Name(word, form, note, said, open,
 						null, 0, null, null, false);
 			}
-			boolean renamable = !UNIFORMS.containsKey(word) ||
-					isLocal(host.declared(), host.offset(), word);
 			return new NameView.Name(word, form, note, said, open,
 					context.getString(R.string.uses), R.drawable.ic_list,
 					context.getString(R.string.a11y_uses_of, word),
-					() -> host.uses(word, null, keyboardUp(), renamable,
-							false), false);
+					() -> uses(word, false), false);
 		}
 		WordPlaces.Place first = rows.get(0);
 		String where = answer.form() != Definitions.Form.JUMP
@@ -741,6 +738,40 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	 */
 	record Found(@NonNull Definitions.Answer answer,
 			@NonNull List<WordPlaces.Place> rows, boolean here) {
+	}
+
+	/**
+	 * List the uses of word at the caret, renaming at once when rename
+	 * and word can be renamed: not for a built-in, and only where the
+	 * folder lists uses.
+	 */
+	void uses(@NonNull String word, boolean rename) {
+		if ((GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER &&
+				declared(word).isEmpty()) || !host.offersUses()) {
+			return;
+		}
+		boolean renamable = !UNIFORMS.containsKey(word) ||
+				isLocal(host.declared(), host.offset(), word);
+		host.uses(word, null, keyboardUp(), renamable, rename && renamable);
+	}
+
+	/**
+	 * Do what F12 does on word at the caret: go to its definition; on
+	 * its own declaration list its uses; where it has no place, as for
+	 * a built-in, an app uniform the file lacks or a name declared
+	 * nowhere, explain it.
+	 */
+	void definitionKey(@NonNull String word) {
+		boolean keyboard = keyboardUp();
+		definitions(word, found -> {
+			if (found.rows().isEmpty()) {
+				lookUp(word);
+			} else if (found.here()) {
+				uses(word, false);
+			} else {
+				answer(word, found, keyboard);
+			}
+		});
 	}
 
 	/**
@@ -823,16 +854,19 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	 * nothing is found.
 	 */
 	void definition(@NonNull String word, boolean keyboard) {
-		definitions(word, found -> {
-			if (found.answer().form() == Definitions.Form.LIST) {
-				list(word, found, keyboard);
-				return;
-			} else if (found.answer().form() == Definitions.Form.JUMP) {
-				goTo(found.rows().get(0), word, keyboard);
-				return;
-			}
-			refocus(keyboard);
-		});
+		definitions(word, found -> answer(word, found, keyboard));
+	}
+
+	private void answer(@NonNull String word, @NonNull Found found,
+			boolean keyboard) {
+		if (found.answer().form() == Definitions.Form.LIST) {
+			list(word, found, keyboard);
+			return;
+		} else if (found.answer().form() == Definitions.Form.JUMP) {
+			goTo(found.rows().get(0), word, keyboard);
+			return;
+		}
+		refocus(keyboard);
 	}
 
 	// Goes to row, and the keyboard comes back, if it was up, once

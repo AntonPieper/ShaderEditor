@@ -24,6 +24,10 @@ public class KeyCommandsTest {
 				{KeyEvent.KEYCODE_DPAD_LEFT, 0, Command.BACKWARD},
 				{KeyEvent.KEYCODE_DPAD_LEFT, SHIFT, Command.BACKWARD},
 				{KeyEvent.KEYCODE_DPAD_LEFT, CTRL, Command.WORD_BACKWARD},
+				// Alt is not read: Alt+Left moves as Left, where the
+				// way back has no place to go to.
+				{KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.META_ALT_ON,
+						Command.BACKWARD},
 				{KeyEvent.KEYCODE_DPAD_RIGHT, 0, Command.FORWARD},
 				{KeyEvent.KEYCODE_DPAD_RIGHT, CTRL | SHIFT,
 						Command.WORD_FORWARD},
