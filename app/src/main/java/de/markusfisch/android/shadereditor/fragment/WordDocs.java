@@ -45,6 +45,7 @@ import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.DocsSheet;
+import de.markusfisch.android.shadereditor.widget.NameView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 import de.markusfisch.android.shadereditor.widget.UsesSheet;
 
@@ -148,6 +149,11 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	private final Host host;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private boolean reading;
+	// Whether a read of the texts in reach is on its way, and the one
+	// asked for meanwhile, to run after it.
+	private boolean finding;
+	@Nullable
+	private Runnable waiting;
 	// Whether the sheet shown last handed the keyboard on to the next.
 	private boolean handedOn;
 	// The word to explain once the docs are read.
@@ -295,12 +301,21 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	@Override
 	public void lookUp(@NonNull String word) {
 		UniformDef uniform = UNIFORMS.get(word);
+		List<Knowledge.Symbol> declared = declared(word);
 		if (uniform != null && !isLocal(host.declared(), host.offset(),
 				word)) {
 			showUniform(uniform);
+		} else if (!declared.isEmpty()) {
+			showDeclared(declared);
 		} else if (GlslWords.style(word, 0, word.length()) ==
 				Style.IDENTIFIER) {
-			showDeclared(declared(word));
+			// Declared nowhere the editor knows: where it is written;
+			// that there is none only when nothing in reach writes it.
+			definitions(word, found -> show(new DocsSheet.Content(word,
+					view.getContext().getString(found.answer().form() ==
+							Definitions.Form.NONE ? R.string.no_definition
+							: R.string.docs_name), null, null, null, null,
+					null, null), null, null, word, false, null));
 		} else if (docs != null) {
 			showBuiltin(word);
 		} else {
@@ -549,12 +564,9 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		List<Form> found = new ArrayList<>();
 		if (GlslWords.style(name, 0, name.length()) == Style.IDENTIFIER) {
 			for (Knowledge.Symbol form : declared(name)) {
-				List<String> names = new ArrayList<>();
+				List<String> names = names(form);
 				List<String> types = new ArrayList<>();
 				for (Knowledge.Symbol part : form.parts()) {
-					// A parameter without a name shows its type.
-					names.add(part.name().isEmpty() && part.type() != null
-							? part.type() : part.name());
 					types.add(part.type());
 				}
 				if (!names.isEmpty()) {
@@ -603,9 +615,139 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				true, file);
 	}
 
-	/** Where word may be declared, and its places as rows of a list. */
+	/**
+	 * What the strip shows for word, a name the caret rests in, see
+	 * {@link NameView.Name}: how it is declared, as far as the editor
+	 * knows at once, and the one thing to do with it. For a built-in or
+	 * an app uniform the file lacks that is nothing; else the action
+	 * waits for where the name may be declared, which later gets:
+	 * Definition, or Uses on its own declaration and where it has no
+	 * place. A tap on the form looks it up. Null while the docs a
+	 * built-in needs are read.
+	 */
+	@Nullable
+	NameView.Name name(@NonNull String word,
+			@NonNull FileTexts.Callback<NameView.Name> later) {
+		Context context = view.getContext();
+		Runnable open = () -> lookUp(word);
+		List<Knowledge.Symbol> declared = declared(word);
+		// A built-in, unless the file declares a macro of its name.
+		if (GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER &&
+				declared.isEmpty()) {
+			GlslDocs.Entry entry = docs != null ? docs.lookup(word) : null;
+			if (docs == null) {
+				readDocs(null);
+			}
+			if (entry == null || entry.forms().isEmpty()) {
+				return null;
+			}
+			String form = entry.forms().get(0);
+			if (entry.kind() == GlslDocs.Kind.FUNCTION) {
+				form = call(word, GlslDocs.parameterNames(form));
+			}
+			String spoken = spoken(context, entry);
+			return new NameView.Name(word, form, null,
+					spoken != null ? spoken : form, open, null, 0, null,
+					null, false);
+		}
+		UniformDef uniform = UNIFORMS.get(word);
+		if (declared.isEmpty() && uniform != null) {
+			String form = uniform.getType().getKeyword() + " " +
+					uniform.getDeclarator();
+			return new NameView.Name(word, form, null, form, open, null, 0,
+					null, null, false);
+		}
+		Knowledge.Symbol first = declared.isEmpty() ? null : declared.get(0);
+		String form = first == null ? word : first.kind() ==
+				Knowledge.Kind.FUNCTION ? call(word, names(first))
+				: first.detail();
+		// A function as TalkBack says a built-in one: "disc takes p and r".
+		List<String> parameters = first != null &&
+				first.kind() == Knowledge.Kind.FUNCTION ? names(first) : null;
+		String spoken = parameters == null ? form : parameters.isEmpty()
+				? context.getString(R.string.a11y_takes_nothing, word)
+				: context.getString(R.string.a11y_takes, word,
+				list(context, parameters));
+		definitions(word, found -> later.done(named(word, form, spoken,
+				open, found)));
+		return new NameView.Name(word, form, null, spoken, open, null, 0,
+				null, null, true);
+	}
+
+	// The name with what found says: its note and its action.
+	@NonNull
+	private NameView.Name named(@NonNull String word, @NonNull String form,
+			@NonNull String spoken, @NonNull Runnable open,
+			@NonNull Found found) {
+		Context context = view.getContext();
+		Definitions.Answer answer = found.answer();
+		List<WordPlaces.Place> rows = found.rows();
+		String note = null;
+		if (answer.form() == Definitions.Form.NONE) {
+			note = context.getString(R.string.no_definition);
+		} else if (rows.size() > 1) {
+			boolean forms = true;
+			for (Definitions.Place place : answer.places()) {
+				forms &= place.types() != null;
+			}
+			note = context.getResources().getQuantityString(forms
+					? R.plurals.name_forms
+					: R.plurals.name_definitions, rows.size(), rows.size());
+		}
+		String said = spoken + (note != null ? ", " + note : "");
+		if (rows.isEmpty() || found.here()) {
+			if (!host.offersUses()) {
+				return new NameView.Name(word, form, note, said, open,
+						null, 0, null, null, false);
+			}
+			boolean renamable = !UNIFORMS.containsKey(word) ||
+					isLocal(host.declared(), host.offset(), word);
+			return new NameView.Name(word, form, note, said, open,
+					context.getString(R.string.uses), R.drawable.ic_list,
+					context.getString(R.string.a11y_uses_of, word),
+					() -> host.uses(word, null, keyboardUp(), renamable,
+							false), false);
+		}
+		WordPlaces.Place first = rows.get(0);
+		String where = answer.form() != Definitions.Form.JUMP
+				? context.getResources().getQuantityString(
+				R.plurals.a11y_definitions, rows.size(), word, rows.size())
+				: first.file().equals(host.file())
+				? context.getString(R.string.a11y_definition, word,
+				first.line() + 1)
+				: context.getString(R.string.a11y_definition_in, word,
+				first.file(), first.line() + 1);
+		return new NameView.Name(word, form, note, said, open,
+				context.getString(R.string.definition),
+				R.drawable.ic_arrow_forward, where,
+				() -> definition(word, keyboardUp()), false);
+	}
+
+	// "name(a, b)".
+	@NonNull
+	private static String call(@NonNull String name,
+			@NonNull List<String> parameters) {
+		return name + "(" + TextUtils.join(", ", parameters) + ")";
+	}
+
+	// The names of the parameters of function, of one without a name
+	// its type.
+	@NonNull
+	private static List<String> names(@NonNull Knowledge.Symbol function) {
+		List<String> names = new ArrayList<>();
+		for (Knowledge.Symbol part : function.parts()) {
+			names.add(part.name().isEmpty() && part.type() != null
+					? part.type() : part.name());
+		}
+		return names;
+	}
+
+	/**
+	 * Where word may be declared, its places as rows of a list, and
+	 * whether the caret is on one of its declarations.
+	 */
 	record Found(@NonNull Definitions.Answer answer,
-			@NonNull List<WordPlaces.Place> rows) {
+			@NonNull List<WordPlaces.Place> rows, boolean here) {
 	}
 
 	/**
@@ -619,16 +761,30 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		int offset = host.offset();
 		int revision = host.revision();
 		String shown = host.file();
-		host.texts(texts -> FINDER.execute(() -> {
+		Runnable ask = () -> host.texts(texts -> FINDER.execute(() -> {
 			Found found = texts == null
-					? new Found(Definitions.Answer.UNKNOWN, List.of())
+					? new Found(Definitions.Answer.UNKNOWN, List.of(), false)
 					: find(texts, shown, offset, word);
 			view.post(() -> {
+				Runnable next = waiting;
+				waiting = null;
+				if (next != null) {
+					next.run();
+				} else {
+					finding = false;
+				}
 				if (host.revision() == revision && host.offset() == offset) {
 					done.done(found);
 				}
 			});
 		}));
+		// One read at a time; of those asked for meanwhile, the last.
+		if (finding) {
+			waiting = ask;
+		} else {
+			finding = true;
+			ask.run();
+		}
 	}
 
 	private static Found find(@NonNull Map<String, Text> texts,
@@ -637,7 +793,7 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		for (Map.Entry<String, Text> e : texts.entrySet()) {
 			strings.put(e.getKey(), e.getValue().toString());
 		}
-		Definitions.Answer answer = Definitions.of(Definitions.reach(strings,
+		List<Definitions.Index> reach = Definitions.reach(strings,
 				shown, (file, path) -> {
 					ProjectParseResult<ProjectPath> from =
 							ProjectPath.parse(file);
@@ -645,7 +801,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 							? ProjectPath.resolve(from.value(), path) : null;
 					return to != null && to.isSuccess()
 							? to.value().toString() : null;
-				}), offset, word);
+				});
+		Definitions.Answer answer = Definitions.of(reach, offset, word);
 		List<WordPlaces.Place> rows = new ArrayList<>();
 		for (Definitions.Place place : answer.places()) {
 			Text text = texts.get(place.file());
@@ -654,7 +811,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 			rows.add(new WordPlaces.Place(place.file(), place.start(), line,
 					place.start() - start, text.line(line), false));
 		}
-		return new Found(answer, rows);
+		return new Found(answer, rows, !reach.isEmpty() &&
+				Definitions.declares(reach.get(0), offset, word));
 	}
 
 	/**

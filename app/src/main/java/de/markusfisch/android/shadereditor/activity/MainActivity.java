@@ -167,6 +167,7 @@ public class MainActivity extends AppCompatActivity {
 		});
 		editorFragment.setCodeCompletionListener(extraKeysManager::setCompletions);
 		editorFragment.setOnSignatureListener(extraKeysManager::setSignature);
+		editorFragment.setOnNameListener(extraKeysManager::showName);
 		// Only the new editor in project mode offers it. The tuning bar
 		// and Find never stand together: tuning closes Find.
 		editorFragment.setOnTunableListener(number ->

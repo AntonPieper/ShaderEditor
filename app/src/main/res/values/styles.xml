@@ -153,6 +153,31 @@
 		<item name="android:paddingBottom">0dp</item>
 		<item name="android:textColor">?attr/colorPrimary</item>
 		<item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+		<!-- An action leads with its icon, where it has one. -->
+		<item name="iconTint">?attr/colorPrimary</item>
+		<item name="iconSize">18dp</item>
+		<item name="iconPadding">8dp</item>
+	</style>
+
+	<!-- The strip's items by what a tap on them does, one look for each
+		kind: what puts in text is a BarButton (the keys, completions),
+		code between hairlines; what acts is a BarButton.Action
+		(Definition, Open), a word with its icon in the accent, at the
+		end; what explains is StripInfo (the name at the caret), grey
+		code with the part that matters in TextAppearance.StripInfo.Bright
+		and its notes in TextAppearance.StripInfo.Note. -->
+	<style name="StripInfo">
+		<item name="android:textSize">14sp</item>
+		<item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+	</style>
+
+	<style name="TextAppearance.StripInfo.Bright" parent="">
+		<item name="android:textColor">?attr/colorOnSurface</item>
+	</style>
+
+	<style name="TextAppearance.StripInfo.Note" parent="TextAppearance.Material3.BodyMedium">
+		<item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+		<item name="android:fontFamily">sans-serif</item>
 	</style>
 
 	<!-- The key back to the file a reference was opened from. -->
