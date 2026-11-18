@@ -43,6 +43,7 @@ import androidx.core.view.MenuCompat;
 import androidx.core.view.MenuItemCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -1141,6 +1142,8 @@ public class NavigationDrawer implements ShaderList {
 		upSpace.setVisibility(canGoUp ? View.GONE : View.VISIBLE);
 		menu.setVisibility(listing.sortable() ? View.VISIBLE : View.GONE);
 		title.setText(boldLastPart(listing.title()));
+		// Said when the drawer opens; without it TalkBack says " menu".
+		drawerLayout.setDrawerTitle(GravityCompat.START, listing.title());
 		// A path is shortened at its start, so its last part stays.
 		title.setEllipsize(listing.title().contains(" / ")
 				? TextUtils.TruncateAt.START
