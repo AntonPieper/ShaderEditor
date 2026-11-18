@@ -36,6 +36,7 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectLimits;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.tuning.Statement;
 import de.markusfisch.android.shadereditor.tuning.TunedPlace;
 import de.markusfisch.android.shadereditor.tuning.Tuner;
 import de.markusfisch.android.shadereditor.tuning.TuningSession;
@@ -824,6 +825,61 @@ public class TuningSessionTest {
 		assertEquals("; ++i) {", session.statement().after());
 	}
 
+	// Before shows every number as it was when the bar opened and writes
+	// nothing: the uniforms with the next frame, a constant with one build
+	// once the finger rests, the statement with the starts. A change is
+	// to the values of now again.
+	@Test
+	public void beforeShowsTheStartAndWritesNothing() {
+		var session = begin("0.1,");
+		live();
+		session.set("0.15");
+		move("3;");
+		session.set("5");
+		rest();
+		rest();
+		move("0.2,");
+		session.set("0.25");
+		rest();
+		live();
+		String now = text();
+		int steps = edits;
+		int built = runs.size();
+		var uniforms = runs.get(built - 1);
+
+		session.setBefore(true);
+		assertTrue(session.isBefore());
+		assertEquals("se_tune0=0.1 se_tune2=0.2", uniforms.values());
+		assertEquals("gl_FragColor = vec4(s, 0.1, ",
+				session.statement().before());
+		assertEquals(built, runs.size());
+		rest();
+		assertEquals(built + 1, runs.size());
+		assertTrue(runs.get(built).text.contains("i < 3;"));
+		assertEquals(now, text());
+		assertEquals(steps, edits);
+
+		session.setBefore(false);
+		assertEquals("se_tune0=0.15 se_tune2=0.25", uniforms.values());
+		rest();
+		assertTrue(runs.get(built + 1).text.contains("i < 5;"));
+
+		session.setBefore(true);
+		session.set("0.3");
+		assertFalse(session.isBefore());
+		assertEquals("se_tune0=0.15 se_tune2=0.3", uniforms.values());
+		session.setBefore(true);
+		move("0.15,");
+		assertFalse(session.isBefore());
+		move("0.3,");
+		session.setBefore(true);
+		session.undo();
+		assertFalse(session.isBefore());
+		session.redo();
+		session.end(true);
+		assertEquals(now.replace("0.2, 1.0", "0.3, 1.0"), text());
+	}
+
 	// Previous and next go through the numbers of the text in order,
 	// past comments; at either end there is none.
 	@Test
@@ -1091,6 +1147,80 @@ public class TuningSessionTest {
 		move("2.0;");
 		assertEquals(steps, edits);
 		assertTrue(text(), text().contains("0.34 *"));
+	}
+
+	// Review 3, H2: with Before on, the statement shows the starts, but
+	// a tap on one of its numbers tunes that number of the text now.
+	@Test
+	public void aTapUnderBeforeTunesTheNumberTapped() {
+		document.replace(0, text().length(), Text.of(SHADER.replace(
+				"vec4(s, 0.1, 0.2, 1.0)", "vec4(0.12345, 0.2, 1.0,0.7)")));
+		var session = begin("0.12345");
+		live();
+		session.set("0.5");
+		move("0.2,");
+		session.setBefore(true);
+		Statement statement = session.statement();
+		Statement.Mark one = null;
+		Statement.Mark first = null;
+		for (Statement.Mark mark : statement.marks()) {
+			String shown = (mark.inAfter() ? statement.after()
+					: statement.before()).substring(mark.start(), mark.end());
+			if (shown.equals("1.0")) {
+				one = mark;
+			} else if (shown.equals("0.12345")) {
+				first = mark;
+			}
+		}
+		assertNotNull(one);
+		assertNotNull(first);
+		assertEquals("1.0", session.move(one.offset()).text());
+		assertEquals("0.5", session.move(first.offset()).text());
+	}
+
+	// Near the end of the text, where an offset of the starts is past it.
+	@Test
+	public void aTapUnderBeforeNearTheEndStaysInTheText() {
+		String longValue = "0.1" + "2".repeat(50);
+		document.replace(0, text().length(), Text.of(PRECISION +
+				"\nvoid main(){gl_FragColor=vec4(" + longValue +
+				",0.2,0.3,1.0);}"));
+		var session = begin(longValue);
+		session.set("0.4");
+		move("0.2");
+		session.setBefore(true);
+		List<Statement.Mark> marks = session.statement().marks();
+		assertEquals("1.0", session.move(marks.get(marks.size() - 1)
+				.offset()).text());
+	}
+
+	// Review 3, M3: Done with Before on: the picture has the values of
+	// now, which Done writes, at once.
+	@Test
+	public void doneWithBeforeOnShowsTheValuesWritten() {
+		var session = begin("0.3 *");
+		live();
+		session.set("0.65");
+		session.setBefore(true);
+		session.end(true);
+		assertTrue(text().contains("0.65 *"));
+		assertEquals(0.65, runs.get(0).value("se_tune0"), 0);
+	}
+
+	// Review 3, L1: a written number waiting for its turn is built with
+	// its start under Before, as the others show it.
+	@Test
+	public void aWaitingNumberShowsItsStartUnderBefore() {
+		var session = begin("0.1,");
+		session.set("0.65");
+		move("0.2,");
+		rest();
+		runs.get(1).heard.onRefused(List.of(ProjectDiagnostic.error("one")));
+		session.setBefore(true);
+		rest();
+		Run one = runs.get(2);
+		assertEquals(1, one.tunings.size());
+		assertTrue(one.text, one.text.contains("vec4(s, 0.1, (se_tune"));
 	}
 
 	// Review 3, H1: the screen goes (a rotation) while a build is being
