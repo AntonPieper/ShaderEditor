@@ -19,6 +19,7 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,6 +29,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
+import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.editor.Definitions;
+import de.markusfisch.android.shadereditor.editor.Text;
+import de.markusfisch.android.shadereditor.editor.WordPlaces;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
@@ -38,6 +43,7 @@ import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.DocsSheet;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
+import de.markusfisch.android.shadereditor.widget.UsesSheet;
 
 /**
  * Explains a word in a sheet: a built-in word of GLSL ES from the docs
@@ -66,11 +72,27 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		/** The line, from 0, of an offset of the file's text. */
 		int lineOf(int offset);
 
-		/** Put the caret in line, from 0. */
-		void goToLine(int line);
+		/** The file's text as it is now. */
+		@NonNull
+		Text text();
 
-		/** Show file, a path of the project, at line, from 0. */
-		void open(@NonNull String file, int line);
+		/** The path of the file shown, or "" outside a folder. */
+		@NonNull
+		String file();
+
+		/**
+		 * Go where place is declared, in the file shown, or in the file
+		 * it names, with the way back.
+		 */
+		void goTo(@NonNull Knowledge.Symbol place);
+
+		/**
+		 * The types of the arguments of the call of word whose name
+		 * the caret is in, null for one not told; null when the caret
+		 * is in no call of word.
+		 */
+		@Nullable
+		List<String> arguments(@NonNull String word);
 
 		/** The docs are read: what waited for them can be asked again. */
 		void onDocsRead();
@@ -115,6 +137,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	private final Host host;
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private boolean reading;
+	// Whether the sheet shown last handed the keyboard on to the next.
+	private boolean handedOn;
 	// The word to explain once the docs are read.
 	@Nullable
 	private String asked;
@@ -395,22 +419,20 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	private void show(@NonNull DocsSheet.Content content,
 			@Nullable String action, @Nullable Runnable onAction,
 			boolean leads, @Nullable String uses, @Nullable String file) {
-		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(view);
-		boolean keyboard = insets != null &&
-				insets.isVisible(WindowInsetsCompat.Type.ime());
+		boolean keyboard = keyboardUp();
 		DocsSheet sheet = new DocsSheet(view.getContext(), content, action,
 				onAction, leads);
-		boolean[] handedOn = {false};
+		handedOn = false;
 		if (uses != null && host.offersUses()) {
 			boolean renamable = !UNIFORMS.containsKey(uses) ||
 					isLocal(host.declared(), host.offset(), uses);
 			sheet.setUses(() -> {
-				handedOn[0] = true;
+				handedOn = true;
 				host.uses(uses, file, keyboard, renamable);
 			});
 		}
 		sheet.setOnDismiss(() -> {
-			if (!handedOn[0]) {
+			if (!handedOn) {
 				view.post(() -> refocus(keyboard));
 			}
 		});
@@ -549,16 +571,98 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				? context.getString(R.string.docs_where, file, line + 1)
 				: context.getString(R.string.docs_where_line, line + 1);
 		String kind = context.getString(kindName(first.kind()));
-		String action = line < 0 ? null : file != null
-				? context.getString(R.string.docs_open, file)
-				: context.getString(R.string.docs_go_to_line, line + 1);
+		boolean keyboard = keyboardUp();
 		show(new DocsSheet.Content(first.name(), where == null ? kind
 						: context.getString(R.string.docs_kind_versions, kind,
 								where), documentation(forms), code(forms),
-						null, null, null, null), action,
-				file != null ? () -> host.open(file, line)
-						: () -> host.goToLine(line), true, first.name(),
-				file);
+						null, null, null, null),
+				context.getString(R.string.definition),
+				() -> handedOn = definition(first.name(), keyboard), true,
+				first.name(), file);
+	}
+
+	/** Where word, at the caret, is declared, see {@link Definitions}. */
+	@NonNull
+	Definitions.Found definitions(@NonNull String word) {
+		return Definitions.of(host.declared(), host.scope(), host.text(),
+				host.offset(), word);
+	}
+
+	/**
+	 * Go where word, at the caret, is declared: there when it is
+	 * declared once; else a list of its declarations to choose from,
+	 * after which the keyboard comes back if it was up. Return whether
+	 * that list is shown.
+	 */
+	boolean definition(@NonNull String word, boolean keyboard) {
+		List<Knowledge.Symbol> places = definitions(word).places();
+		if (places.size() == 1) {
+			host.goTo(places.get(0));
+		} else if (!places.isEmpty()) {
+			list(word, places, keyboard);
+			return true;
+		}
+		return false;
+	}
+
+	// Lists places, the declarations of word, in the rows of Uses, by
+	// file; with the one form the call at the caret fits, named, never
+	// chosen.
+	private void list(@NonNull String word,
+			@NonNull List<Knowledge.Symbol> places, boolean keyboard) {
+		Context context = view.getContext();
+		String shown = host.file();
+		Pattern name = Pattern.compile("(?<![A-Za-z0-9_])" +
+				Pattern.quote(word) + "(?![A-Za-z0-9_])");
+		Map<String, List<WordPlaces.Place>> byFile = new LinkedHashMap<>();
+		Map<WordPlaces.Place, Knowledge.Symbol> declared = new HashMap<>();
+		List<WordPlaces.Place> rows = new ArrayList<>();
+		for (Knowledge.Symbol place : places) {
+			String file = place.file() != null ? place.file() : shown;
+			String code = place.detail();
+			Matcher at = name.matcher(code);
+			WordPlaces.Place row = new WordPlaces.Place(file, place.start(),
+					Math.max(0, place.file() != null
+							? host.scope().line(place)
+							: host.lineOf(place.start())),
+					at.find() ? at.start() : 0, code, false);
+			List<WordPlaces.Place> inFile = byFile.get(file);
+			if (inFile == null) {
+				inFile = new ArrayList<>();
+				byFile.put(file, inFile);
+			}
+			inFile.add(row);
+			rows.add(row);
+			declared.put(row, place);
+		}
+		List<WordPlaces.Group> groups = new ArrayList<>();
+		for (Map.Entry<String, List<WordPlaces.Place>> file :
+				byFile.entrySet()) {
+			groups.add(new WordPlaces.Group(WordPlaces.Group.Kind.FILE,
+					file.getKey(), file.getValue()));
+		}
+		List<String> types = host.arguments(word);
+		int fits = types != null && !types.contains(null)
+				? Definitions.fitting(places, types)
+				: -1;
+		UsesSheet sheet = new UsesSheet(context,
+				ShaderEditorApp.preferences.getFont(),
+				row -> host.goTo(declared.get(row)));
+		sheet.setOnDismiss(() -> view.post(() -> refocus(keyboard)));
+		sheet.showList(new UsesSheet.Content(word, shown, groups, 0, false,
+						false), context.getResources().getQuantityString(
+						R.plurals.definitions, places.size(), places.size()),
+				fits < 0 ? null : context.getString(R.string.definition_fits,
+						host.lineOf(host.offset()) + 1,
+						TextUtils.join(", ", types),
+						rows.get(fits).line() + 1));
+	}
+
+	// Whether the keyboard is up.
+	private boolean keyboardUp() {
+		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(view);
+		return insets != null &&
+				insets.isVisible(WindowInsetsCompat.Type.ime());
 	}
 
 	/**

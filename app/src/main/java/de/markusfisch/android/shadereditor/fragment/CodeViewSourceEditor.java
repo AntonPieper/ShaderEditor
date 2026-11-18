@@ -181,15 +181,27 @@ final class CodeViewSourceEditor implements SourceEditor {
 							text.length())));
 				}
 
+				@NonNull
 				@Override
-				public void goToLine(int line) {
-					jump(null, line + 1);
+				public Text text() {
+					return document.text();
+				}
+
+				@NonNull
+				@Override
+				public String file() {
+					return links != null ? links.file().toString() : "";
 				}
 
 				@Override
-				public void open(@NonNull String file, int line) {
-					// As Open in the strip does, with the way back.
-					jump(file, line + 1);
+				public void goTo(@NonNull Knowledge.Symbol place) {
+					goToName(place);
+				}
+
+				@Nullable
+				@Override
+				public List<String> arguments(@NonNull String word) {
+					return callArguments(word);
 				}
 
 				// The call the caret is in can be shown now.
@@ -525,6 +537,83 @@ final class CodeViewSourceEditor implements SourceEditor {
 		} else if (listener != null) {
 			listener.onOpenFile(file, line);
 		}
+	}
+
+	// Goes where place is declared, as Open does, the caret on its name:
+	// in this file after the jump, which leaves from where the caret
+	// was; in another before it, once its text is read, if it still has
+	// the name there.
+	private void goToName(@NonNull Knowledge.Symbol place) {
+		String file = place.file();
+		if (file == null) {
+			jump(null, document.text().lineOf(place.start()) + 1);
+			selectName(document, place);
+			return;
+		}
+		ProjectParseResult<ProjectPath> path = ProjectPath.parse(file);
+		FileLinks asked = links;
+		if (asked == null || !path.isSuccess()) {
+			jump(file, scope.line(place) + 1);
+			return;
+		}
+		asked.load(List.of(path.value()), problem -> {
+			if (asked != links) {
+				return;
+			}
+			Document there = asked.document(path.value());
+			jump(file, there != null && selectName(there, place)
+					? there.text().lineOf(place.start()) + 1
+					: scope.line(place) + 1);
+		});
+	}
+
+	// Puts the caret of document on the name of place, if the name still
+	// stands there; returns whether it does.
+	private static boolean selectName(@NonNull Document document,
+			@NonNull Knowledge.Symbol place) {
+		Text text = document.text();
+		boolean there = place.end() <= text.length() && text.substring(
+				place.start(), place.end()).equals(place.name());
+		if (there) {
+			document.select(place.start(), place.start());
+		}
+		return there;
+	}
+
+	// The types of the arguments of the call of word whose name the
+	// caret is in, read from its line alone; null when no "(" follows
+	// the name or the call does not close in the line.
+	@Nullable
+	private List<String> callArguments(@NonNull String word) {
+		Text text = document.text();
+		int caret = document.selection().start();
+		int n = text.lineOf(caret);
+		int lineStart = text.lineStart(n);
+		String line = text.line(n);
+		int start = caret - lineStart;
+		while (start > 0 && (Character.isLetterOrDigit(
+				line.charAt(start - 1)) || line.charAt(start - 1) == '_')) {
+			--start;
+		}
+		int open = start + word.length();
+		if (!line.startsWith(word, start) || open >= line.length() ||
+				line.charAt(open) != '(') {
+			return null;
+		}
+		for (int i = open, depth = 0; i < line.length(); ++i) {
+			char c = line.charAt(i);
+			if (c == '(') {
+				++depth;
+			} else if (c == ')' && --depth == 0) {
+				Analysis analysis = view.getAnalysis();
+				return styles.syntax().argumentTypes(
+						k -> styles.runs(k).line(),
+						new Syntax.Call(word, n, start, 0), n, i, lineStart,
+						analysis.knowledge(),
+						analysis.revision() == document.revision(), scope);
+			}
+		}
+		return null;
 	}
 
 	@Override
