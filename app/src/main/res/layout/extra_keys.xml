@@ -6,9 +6,13 @@
 	android:layout_height="@dimen/se_key_height"
 	android:background="@drawable/extra_keys_background"
 	android:clickable="true"
+	android:descendantFocusability="blocksDescendants"
 	android:focusable="true"
 	android:orientation="horizontal"
 	android:paddingHorizontal="4dp">
+
+	<!-- A key keeps the focus with the code: a screen reader's click
+		would focus a key, and typing would go nowhere. -->
 
 	<Button
 		android:id="@+id/back_to_file"

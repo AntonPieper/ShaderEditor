@@ -339,7 +339,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 				? offer.choice(word)
 				: null;
 		if (choice == null) {
-			SourceEditor.super.complete(word, typed);
+			completeWord(word, typed);
 			return;
 		}
 		int lineStart = document.text().lineStart(
@@ -350,6 +350,21 @@ final class CodeViewSourceEditor implements SourceEditor {
 		document.select(lineStart + choice.caret(),
 				lineStart + choice.caret());
 		document.endBatch();
+		view.bringCaretIntoView();
+	}
+
+	// The word replaces what was typed of it, so that a screen reader hears
+	// the word and not only its rest.
+	private void completeWord(@NonNull String word, int typed) {
+		Document.Selection selection = document.selection();
+		int start = selection.head() - typed;
+		if (!selection.isEmpty() || typed > word.length() || start < 0 ||
+				!document.text().substring(start, selection.head())
+						.equals(word.substring(0, typed))) {
+			SourceEditor.super.complete(word, typed);
+			return;
+		}
+		document.replace(start, selection.head(), Text.of(word));
 		view.bringCaretIntoView();
 	}
 
