@@ -59,6 +59,7 @@ public final class DocsSheet {
 	private static final String OPERATORS = "+-*/%=<>&|^?:";
 
 	private final BottomSheetDialog dialog;
+	private final View view;
 
 	/**
 	 * @param action   the label of the button, or null for none
@@ -80,7 +81,7 @@ public final class DocsSheet {
 	public DocsSheet(@NonNull Context context, @NonNull Content content,
 			@Nullable String action, @Nullable Runnable onAction,
 			boolean leads) {
-		View view = LayoutInflater.from(context).inflate(R.layout.sheet_docs,
+		view = LayoutInflater.from(context).inflate(R.layout.sheet_docs,
 				null);
 		TextView word = view.findViewById(R.id.docs_word);
 		word.setTypeface(ShaderEditorApp.preferences.getFont());
@@ -120,6 +121,8 @@ public final class DocsSheet {
 		} else {
 			button.setVisibility(View.GONE);
 		}
+		view.findViewById(R.id.docs_links).setVisibility(
+				view.findViewById(R.id.docs_link).getVisibility());
 		dialog.setTitle(content.word());
 		dialog.setContentView(view);
 		BottomSheetBehavior<?> behavior = dialog.getBehavior();
@@ -131,6 +134,17 @@ public final class DocsSheet {
 
 	public void show() {
 		dialog.show();
+	}
+
+	/** Offer Uses beside the action, doing uses; the sheet closes first. */
+	public void setUses(@NonNull Runnable uses) {
+		View button = view.findViewById(R.id.docs_uses);
+		button.setVisibility(View.VISIBLE);
+		view.findViewById(R.id.docs_links).setVisibility(View.VISIBLE);
+		button.setOnClickListener(v -> {
+			dialog.dismiss();
+			uses.run();
+		});
 	}
 
 	/** Run when the sheet goes, however it goes. */

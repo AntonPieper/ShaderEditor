@@ -69,14 +69,29 @@
 			style="@style/DocsCode"
 			android:layout_marginTop="12dp" />
 
-		<Button
-			android:id="@+id/docs_link"
-			style="?attr/borderlessButtonStyle"
+		<LinearLayout
+			android:id="@+id/docs_links"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_gravity="end"
 			android:layout_marginHorizontal="@dimen/se_margin_sheet"
-			android:layout_marginTop="@dimen/se_margin_sheet" />
+			android:layout_marginTop="@dimen/se_margin_sheet"
+			android:orientation="horizontal">
+
+			<Button
+				android:id="@+id/docs_uses"
+				style="?attr/borderlessButtonStyle"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/uses"
+				android:visibility="gone" />
+
+			<Button
+				android:id="@+id/docs_link"
+				style="?attr/borderlessButtonStyle"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content" />
+		</LinearLayout>
 
 		<Button
 			android:id="@+id/docs_action"

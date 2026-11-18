@@ -215,9 +215,11 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 				? name
 				: context.getString(R.string.back_to_line, line));
 		backView.setOnClickListener(back != null ? v -> back.run() : null);
-		backView.setContentDescription(name != null
+		backView.setContentDescription(name == null
+				? context.getString(R.string.a11y_back_to_line, line)
+				: line > 0
 				? context.getString(R.string.a11y_back_to_file, name, line)
-				: context.getString(R.string.a11y_back_to_line, line));
+				: context.getString(R.string.a11y_back_to, name));
 	}
 
 	private static void bind(@NonNull View button, @Nullable Runnable action,

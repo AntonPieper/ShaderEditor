@@ -125,6 +125,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// The fixes of the error row, where docs are.
 	@Nullable
 	private final FileFixes fixes;
+	// Where docs are.
+	@Nullable
+	private final WordUses uses;
 	// The files a file of a folder names, or null.
 	@Nullable
 	private FileLinks links;
@@ -198,6 +201,41 @@ final class CodeViewSourceEditor implements SourceEditor {
 				public void addUniforms(@NonNull List<String> statements) {
 					addMarked(statements);
 				}
+
+				@Override
+				public boolean offersUses() {
+					return uses.offered();
+				}
+
+				@Override
+				public void uses(@NonNull String word, @Nullable String file,
+						boolean keyboard) {
+					uses.show(word, file, keyboard);
+				}
+			});
+			uses = new WordUses(view, new WordUses.Host() {
+				@Nullable
+				@Override
+				public FileLinks links() {
+					return links;
+				}
+
+				@NonNull
+				@Override
+				public Document document() {
+					return document;
+				}
+
+				@Override
+				public void jump(@Nullable String file, int line,
+						@NonNull Runnable back) {
+					CodeViewSourceEditor.this.jump(file, line, back);
+				}
+
+				@Override
+				public void refocus(boolean keyboard) {
+					docs.refocus(keyboard);
+				}
 			});
 			fixes = new FileFixes(view.getContext(), new FileFixes.Host() {
 				@Nullable
@@ -215,6 +253,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		} else {
 			docs = null;
 			fixes = null;
+			uses = null;
 		}
 		show(new Document(Text.EMPTY), DATABASE);
 	}
@@ -264,6 +303,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 			@Nullable Object state, boolean shaderToy) {
 		show(document, syntax);
 		this.scope = scope;
+		if (uses != null) {
+			uses.shown(document);
+		}
 		// The text as it is now is not the user's doing: only what is
 		// put in after is converted.
 		converting = shaderToy ? getText() : null;
@@ -458,12 +500,18 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// of the project, or of the file shown for null, as Open does: the
 	// strip's key leads back.
 	private void jump(@Nullable String file, int line) {
+		jump(file, line, null);
+	}
+
+	// As above; the key back runs back after leading back.
+	private void jump(@Nullable String file, int line,
+			@Nullable Runnable back) {
 		ProjectParseResult<ProjectPath> path = file != null
 				? ProjectPath.parse(file)
 				: null;
 		if (links != null && (path == null || path.isSuccess())) {
 			links.open(path != null ? path.value() : links.file(),
-					Math.max(0, line));
+					Math.max(0, line), back);
 		} else if (file == null) {
 			navigateToLine(line);
 		} else if (listener != null) {

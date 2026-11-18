@@ -80,6 +80,17 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		 * undo step.
 		 */
 		void addUniforms(@NonNull List<String> statements);
+
+		/** Whether Uses can list the places of a name. */
+		boolean offersUses();
+
+		/**
+		 * List the places of word, declared in file, a path of the
+		 * project, or in this one for null; keyboard tells whether the
+		 * keyboard comes back after.
+		 */
+		void uses(@NonNull String word, @Nullable String file,
+				boolean keyboard);
 	}
 
 	private static final String ASSET = "glsl-docs.txt";
@@ -315,7 +326,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 						: R.string.docs_es_300));
 		show(new DocsSheet.Content(word, kind, entry.text(),
 				lines(entry.forms()), spoken(context, entry), entry.detail(),
-				entry.note(), lines(entry.example())), null, null, false);
+				entry.note(), lines(entry.example())), null, null, false,
+				null, null);
 	}
 
 	private void showUniform(@NonNull UniformDef uniform) {
@@ -332,7 +344,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 						declared ? null : context.getString(
 								R.string.docs_not_declared), null),
 				declared ? null : context.getString(R.string.docs_add_uniform),
-				() -> host.addUniforms(List.of(statement)), false);
+				() -> host.addUniforms(List.of(statement)), false,
+				declared ? name : null, null);
 	}
 
 	/**
@@ -373,22 +386,34 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				names.get(last));
 	}
 
-	// Opens the sheet; when it closes, the code view has the focus
+	// Opens the sheet, with Uses of the name uses, declared in file, or
+	// without for null; when it closes, the code view has the focus
 	// again, and the keyboard, which the sheet sends down, comes back
-	// if it was up.
+	// if it was up, unless Uses follows, which does that when it goes.
 	private void show(@NonNull DocsSheet.Content content,
 			@Nullable String action, @Nullable Runnable onAction,
-			boolean leads) {
+			boolean leads, @Nullable String uses, @Nullable String file) {
 		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(view);
 		boolean keyboard = insets != null &&
 				insets.isVisible(WindowInsetsCompat.Type.ime());
 		DocsSheet sheet = new DocsSheet(view.getContext(), content, action,
 				onAction, leads);
-		sheet.setOnDismiss(() -> view.post(() -> refocus(keyboard)));
+		boolean[] handedOn = {false};
+		if (uses != null && host.offersUses()) {
+			sheet.setUses(() -> {
+				handedOn[0] = true;
+				host.uses(uses, file, keyboard);
+			});
+		}
+		sheet.setOnDismiss(() -> {
+			if (!handedOn[0]) {
+				view.post(() -> refocus(keyboard));
+			}
+		});
 		sheet.show();
 	}
 
-	private void refocus(boolean keyboard) {
+	void refocus(boolean keyboard) {
 		if (!view.isAttachedToWindow() || !view.requestFocus() || !keyboard) {
 			return;
 		}
@@ -528,7 +553,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 								where), documentation(forms), code(forms),
 						null, null, null, null), action,
 				file != null ? () -> host.open(file, line)
-						: () -> host.goToLine(line), true);
+						: () -> host.goToLine(line), true, first.name(),
+				file);
 	}
 
 	/**
