@@ -543,6 +543,8 @@
 		<item quantity="other">Go to definition of %1$s, %2$d definitions</item>
 	</plurals>
 	<string name="a11y_uses_of">Uses of %1$s</string>
+	<string name="a11y_definition_of">Go to definition of %1$s</string>
+	<string name="a11y_rename_name">Rename %1$s</string>
 	<string name="a11y_and">%1$s and %2$s</string>
 	<string name="docs_builtin_uniform">Built-in uniform</string>
 	<string name="docs_not_declared">Not declared in this file yet, so the shader cannot read it.</string>
