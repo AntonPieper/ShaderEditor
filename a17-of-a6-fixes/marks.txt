@@ -1,0 +1,113 @@
+=== 01:09:45 I1-a release fx: Gboard keys: abc xyz 0123456789 ., (caret line 29)
+=== 01:10:08 I1-b symbols layer: @#$_&-+()/*":;!?
+=== 01:10:34 I1-d glide 't-h-e' by input motionevent path, then space
+=== 01:10:47 I1-d2 glide t-h-e with 40 ms pauses
+=== 01:11:01 I1-e switch IME: TestInputMethodService then Gboard back; type ' sw1'
+=== 01:11:07 I1-e2 switch IME: Google voice IME then Gboard back; type ' sw2'
+=== 01:11:28 I1-f Settings and back; type ' st'
+=== 01:11:43 I1-g rotate to landscape; type ' ro'
+=== 01:12:42 I1-h tap on line 29 end (1000,1219), type ' tp'
+=== 01:13:27 S1-fx start (IME com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME)
+=== 01:13:32 S1-fx Settings and back
+=== 01:13:47 S1-fx Home and back
+=== 01:15:00 C1-before clean install of bf-release.apk, New editor on
+=== 01:15:38 C1-before Settings and back (no change)
+=== 01:15:57 C1-before rotate landscape and back
+=== 01:16:14 C1-before Home and back
+=== 01:17:05 C2-before clean install of bf-release.apk, New editor on
+=== 01:17:43 C2-before Settings and back (no change)
+=== 01:18:02 C2-before rotate landscape and back
+=== 01:18:21 C2-before Home and back
+=== 01:18:50 C3-fx clean install of fx-release.apk, New editor on
+=== 01:19:28 C3-fx Settings and back (no change)
+=== 01:19:47 C3-fx rotate landscape and back
+=== 01:20:06 C3-fx Home and back
+=== 01:20:31 K-fx: input keycombination 113 123 (Ctrl+End), then Gboard 'a'
+=== 01:20:49 I1-i Find open (menu), type 'uv', close, then type ' fd' in the code
+=== 01:22:39 I1-i debug: tap end of line 1, type ' f0'; Find open, type 'line', close; type ' f1'
+=== 01:23:15 I1-j round 01
+=== 01:23:36 I1-j rounds 02-14 start
+=== 01:25:41 I1-j rounds done after 125 s
+=== 01:26:27 E1-fx a: keyboard closed, long press 'pointerCount' line 8 (415,599)
+=== 01:26:30 E1-fx b: Back, then tap (415,599): caret handle
+=== 01:26:33 E1-fx c: keyboard up, long press 'gl_FragColor' line 27 near the bottom (266,1280)
+=== 01:26:37 E1-fx d: Back x2, keyboard closed
+=== 01:27:14 E1-fx c: keyboard up, long press on a word in the lowest code line (y 1270)
+=== 01:27:20 E1-fx e: landscape, keyboard docked, long press a word
+=== 01:27:53 E2-fx c: keyboard up, long press 'a1' on lowest line 29 (116,1198)
+=== 01:27:58 E2-fx e: landscape, tap code for keyboard, long press 'mix' line 24
+=== 01:28:53 SLIP: landscape long press (300,600) hit Gboard 'q' -> typed into release Default; 2nd Back left release to debug app (ours)
+=== 01:29:02 F1-fx a: keyboard closed, long press 'pointerCount' line 8 (415,599)
+=== 01:29:05 F1-fx m: drag the right handle (~565,640) to the right, screenshot mid-drag (magnifier)
+=== 01:29:10 F1-fx b: tap (415,599): caret handle
+=== 01:29:12 F1-fx c: keyboard up, scroll to end, long press 'a2' on lowest line 29 (175,1218)
+=== 01:29:30 F2-before: clean install bf-release, New editor on
+=== 01:30:09 F2-before a: keyboard closed, long press 'pointerCount' line 8 (415,599)
+=== 01:30:12 F2-before m: drag the right handle (~565,640) to the right, screenshot mid-drag (magnifier)
+=== 01:30:17 F2-before b: tap (415,599): caret handle
+=== 01:30:19 F2-before c: keyboard up, scroll to end, long press 'a2' on lowest line 29 (175,1218)
+=== 01:30:26 F2-before landscape: tap code, keyboard up
+=== 01:30:58 G1-fx clean install fx-release.apk
+=== 01:31:36 G1-fx ime helper -> Gboard, type b2
+=== 01:31:41 G1-fx ime voice -> Gboard, type b3
+=== 01:31:47 G1-fx Settings and back, type b4 (keyboard left up before Settings, as in I1-f)
+=== 01:32:01 G1-fx tap line 29 end, type b5
+=== 01:32:17 G1-fx round 6: keyboard closed, Settings and back, caret, type b6
+=== 01:32:36 G1-fx round 7: keyboard closed, Settings and back, caret, type b7
+=== 01:32:54 G1-fx round 8: keyboard closed, Settings and back, caret, type b8
+=== 01:33:26 H1-fx: keycombination 113 123 (Ctrl+End) with keyboard up, then Gboard ' c1'
+=== 01:33:30 H1-fx: Settings and back, caret by DPAD, ' c2'
+=== 01:34:03 TOOL EFFECT: after input keycombination 113 123, Gboard letters dropped until connection renewed; same on before (C1-before)
+=== 01:36:17 J1-fx-ON: type 'hel' slowly
+=== 01:36:52 J2 Hide native suggestions OFF
+=== 01:37:00 J2-fx-OFF: type 'hel' slowly
+=== 01:37:13 J2 pick suggestion 'help' (828,1576)
+=== 01:37:15 J2 one Undo (menu)
+=== 01:37:34 J3 Enter, type 'wirld' + space
+=== 01:37:41 J3 one Undo (menu)
+=== 01:38:26 J5 OFF: GLSL line on empty line 32, Gboard keys
+=== 01:39:17 J6 OFF: retype 'vec3 col = mix(a, b, 0.5);' on line 33
+=== 01:39:49 J7 OFF: 'teh' + space, then one Undo
+=== 01:40:14 J8-before: clean bf-release, New editor on, setting ON: 'hel'
+=== 01:41:14 J8-before setting OFF: 'hel'
+=== 01:42:31 L2 text size Small -> Big
+=== 01:43:00 L3 Big -> Small
+=== 01:43:51 L4 caret off screen; font Monospace -> IBM Plex Mono
+=== 01:44:13 L5 font back to Monospace
+=== 01:44:48 K release fx: fresh, New editor on, save, toggle x6
+=== 01:48:09 K-before: fresh bf, toggle x2
+=== 01:49:26 K-fx: fresh fx, text size Big then rotate at once
+=== 01:51:30 ITEM6 start: fresh fx-release, New editor on
+=== 01:52:18 ITEM6 1 toggle
+=== 01:52:40 ITEM6 2 send
+=== 01:52:50 ITEM6 3 rot
+=== 01:53:02 ITEM6 4 kill
+=== 01:53:16 ITEM6 5 toggle
+=== 01:53:39 ITEM6 6 home
+=== 01:53:51 ITEM6 7 send
+=== 01:54:01 ITEM6 8 toggle
+=== 01:54:23 ITEM6 9 kill
+=== 01:54:36 ITEM6 10 rot
+=== 01:54:48 ITEM6 11 toggle
+=== 01:55:10 ITEM6 12 send
+=== 01:55:20 ITEM6 13 home
+=== 01:55:32 ITEM6 14 kill
+=== 01:55:45 ITEM6 15 toggle
+=== 01:56:07 ITEM6 16 rot
+=== 01:56:20 ITEM6 17 send
+=== 01:56:30 ITEM6 18 kill
+=== 01:56:44 ITEM6 19 toggle
+=== 01:57:06 ITEM6 20 toggle
+=== 01:57:29 ITEM6 21 home
+=== 01:57:41 ITEM6 22 send
+=== 01:57:52 ITEM6 23 rot
+=== 01:58:04 ITEM6 24 kill
+=== 01:58:17 ITEM6 25 toggle
+=== 01:58:39 ITEM6 26 send
+=== 01:58:49 ITEM6 27 kill
+=== 01:59:02 ITEM6 28 home
+=== 01:59:14 ITEM6 29 toggle
+=== 01:59:36 ITEM6 30 rot
+=== 01:59:55 ITEM6 31 send
+=== 02:00:06 ITEM6 32 toggle
+=== 02:00:27 ITEM6 33 kill
