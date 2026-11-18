@@ -28,6 +28,7 @@ import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
+import de.markusfisch.android.shadereditor.project.FileKind;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectParseResult;
@@ -602,6 +603,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		styles = new LineStyles(document, syntax, STYLE_BUDGET);
 		// GLSL's words, in GLSL only.
 		view.setLookUp(syntax == DATABASE ? docs : null);
+		view.setLineLink(syntax == DATABASE ? lineLink : null);
 		marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
 		view.setRowFix(syntax == DATABASE ? fixes : null);
@@ -882,6 +884,39 @@ final class CodeViewSourceEditor implements SourceEditor {
 		hostCaret = caret;
 		listener.onCompletions(offer.words(), offer.typed());
 		return true;
+	}
+
+	private final CodeView.LineLink lineLink = new CodeView.LineLink() {
+		@Nullable
+		@Override
+		public String name(int line) {
+			HostCompletion.Named named = namedOn(line);
+			return named != null ? named.path().getFileName() : null;
+		}
+
+		@Override
+		public void open(int line) {
+			HostCompletion.Named named = namedOn(line);
+			if (named != null) {
+				links.open(named.path(), 0);
+			}
+		}
+	};
+
+	// The file the path of line names, as the strip shows it with the caret
+	// in the path; a picture is not opened from a line there either.
+	@Nullable
+	private HostCompletion.Named namedOn(int line) {
+		if (links == null || document == null) {
+			return null;
+		}
+		HostCompletion.Named named = HostCompletion.namedOn(
+				document.text().line(line), links.file(), links);
+		return named != null && (named.kind() == HostCompletion.Kind.INCLUDE ||
+				FileKind.hint(named.path().getFileName(), null) !=
+						FileKind.PICTURE)
+				? named
+				: null;
 	}
 
 	// Tells links which file the caret rests in the path of, if any.
