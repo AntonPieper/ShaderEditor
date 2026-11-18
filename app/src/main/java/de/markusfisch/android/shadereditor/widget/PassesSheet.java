@@ -456,6 +456,9 @@ public final class PassesSheet {
 		limit.setOnCloseIconClickListener(this::chooseLimit);
 		limit.setCloseIconContentDescription(activity.getText(
 				R.string.passes_limit_menu));
+		// The arrow opens what the chip opens: one stop for a screen
+		// reader, not a second one for the chip's close icon.
+		ViewCompat.setAccessibilityDelegate(limit, null);
 
 		var names = activity.getResources().getStringArray(R.array.quality_names);
 		var values = activity.getResources().getStringArray(R.array.quality_values);
