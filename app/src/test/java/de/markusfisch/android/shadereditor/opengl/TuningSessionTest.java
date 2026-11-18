@@ -801,6 +801,47 @@ public class TuningSessionTest {
 		assertEquals(kept, text());
 	}
 
+	// The statement of the tuned number on one line: a call over two
+	// lines joined, a for loop's header whole; its other numbers, and
+	// which of them the session changed.
+	@Test
+	public void theStatementOfTheTunedNumber() {
+		var session = begin("0.26,");
+		var statement = session.statement();
+		assertEquals("return smoothstep(", statement.before());
+		assertEquals(", 0.01, length(p - vec2(0.5)));", statement.after());
+		assertEquals(2, statement.marks().size());
+		var second = statement.marks().get(0);
+		assertEquals("0.01", statement.after().substring(second.start(),
+				second.end()));
+		assertFalse(second.changed());
+		move("0.01,");
+		session.set("0.02");
+		move("0.26,");
+		assertTrue(session.statement().marks().get(0).changed());
+		move("3;");
+		assertEquals("for (int i = 0; i < ", session.statement().before());
+		assertEquals("; ++i) {", session.statement().after());
+	}
+
+	// Previous and next go through the numbers of the text in order,
+	// past comments; at either end there is none.
+	@Test
+	public void previousAndNextWalkTheText() {
+		document.replace(0, 0, Text.of("// 9.9 in a comment\n"));
+		var session = begin("0.26,");
+		assertNull(session.neighbour(false));
+		assertEquals("0.01", session.neighbour(true));
+		String[] order = {"0.01", "0.5", "0.0", "0", "3", "0.3", "2.0", "0.1",
+				"0.2", "1.0", "0.25"};
+		for (String number : order) {
+			assertEquals(number, session.step(true).text());
+		}
+		assertNull(session.neighbour(true));
+		assertNull(session.step(true));
+		assertEquals("1.0", session.step(false).text());
+	}
+
 	@Test
 	public void oneSessionAtATime() {
 		var first = begin("0.3");

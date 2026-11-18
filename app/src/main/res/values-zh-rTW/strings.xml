@@ -594,6 +594,10 @@
 	<string name="tuning_part">%1$s %2$s</string>
 	<string name="a11y_tuning_value">%1$s, started at %2$s</string>
 	<string name="a11y_tuning_open">Tuning %1$s</string>
+	<string name="tuning_previous">Previous number %1$s</string>
+	<string name="tuning_next">Next number %1$s</string>
+	<string name="tuning_number_tunable">%1$s, can be tuned</string>
+	<string name="tuning_number_changed">%1$s, changed</string>
 	<string name="fix_add_uniform_name">Add uniform %1$s</string>
 	<string name="fix_add_uniform_short">Add uniform</string>
 	<plurals name="fix_add_uniforms">
