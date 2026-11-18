@@ -941,11 +941,16 @@ public final class ProjectFileManager {
 			case JOURNAL, JOURNAL_UNREAD -> R.string.conflict_journal;
 		}, shown.getTitle()));
 		boolean decides = kind == ProjectFile.Outside.Kind.CHANGED;
+		// The bar goes with its button: a screen reader hears that the
+		// file's text is shown now.
+		View said = bar;
 		offer(R.id.conflict_reload, decides,
-				() -> shown.resolve(outside, OpenProject.Choice.RELOAD));
+				() -> shown.resolve(outside, OpenProject.Choice.RELOAD,
+						() -> said.announceForAccessibility(activity.getString(
+								R.string.a11y_reloaded, shown.getTitle()))));
 		offer(R.id.conflict_keep, decides ||
 						kind == ProjectFile.Outside.Kind.DELETED,
-				() -> shown.resolve(outside, OpenProject.Choice.KEEP));
+				() -> shown.resolve(outside, OpenProject.Choice.KEEP, null));
 		offer(R.id.conflict_discard, kind == ProjectFile.Outside.Kind.JOURNAL,
 				() -> discard(shown));
 		offer(R.id.conflict_retry,

@@ -215,11 +215,13 @@ public final class ProjectFile implements OpenItem {
 	 * seen to change again since.
 	 */
 	public void resolve(@NonNull Outside outside,
-			@NonNull OpenProject.Choice choice) {
+			@NonNull OpenProject.Choice choice, @Nullable Runnable done) {
 		Callback<String> told = problem -> {
 			if (problem != null) {
 				listener.onFailed(context.getString(R.string.file_problem,
 						path.toString(), problem));
+			} else if (done != null) {
+				done.run();
 			}
 		};
 		project.resolve(path, choice, outside.seen(), told);
