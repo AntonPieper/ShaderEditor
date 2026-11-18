@@ -325,6 +325,8 @@ public final class OpenProject {
 	private List<Used> used = List.of();
 	// What the files of the last build know of each other.
 	private ProjectKnowledge knowledge = ProjectKnowledge.NONE;
+	// See wayBack().
+	private Object wayBack;
 	// The lines of the last build of what runs that name its files.
 	private List<HostDirectives.Reference> references = List.of();
 	// What ran when the files used were built.
@@ -1914,6 +1916,20 @@ public final class OpenProject {
 	 */
 	public Knowledge knowledge(ProjectPath path) {
 		return knowledge.of(path);
+	}
+
+	/**
+	 * Return what the screen keeps of its way back while this project
+	 * is open, or null: the screen made again after a configuration
+	 * change takes it. Nothing here reads it.
+	 */
+	public Object wayBack() {
+		return wayBack;
+	}
+
+	/** Keep way as the way back, see {@link #wayBack}. */
+	public void setWayBack(Object way) {
+		wayBack = way;
 	}
 
 	/**

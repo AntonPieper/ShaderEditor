@@ -53,8 +53,8 @@ public interface FileLinks extends HostCompletion.Listing {
 
 	/**
 	 * Open path at line, from 1, or where its caret is when 0, from the
-	 * line the caret is on: the one way a file is opened from a line,
-	 * after which a key leads back to that line once.
+	 * line the caret is on: the one way a file is opened from a line;
+	 * where the caret was goes on the way back.
 	 */
 	default void open(@NonNull ProjectPath path, int line) {
 		open(path, line, null);
@@ -65,6 +65,14 @@ public interface FileLinks extends HostCompletion.Listing {
 	 * after leading back, when then is not null.
 	 */
 	void open(@NonNull ProjectPath path, int line, @Nullable Runnable then);
+
+	/**
+	 * Go back one place on the way back, as its key does; return
+	 * whether there was one.
+	 */
+	default boolean back() {
+		return false;
+	}
 
 	/**
 	 * Tell done the texts of the folder's GLSL files as the editor has
