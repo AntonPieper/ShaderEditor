@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import de.markusfisch.android.shadereditor.project.FileKind;
+import de.markusfisch.android.shadereditor.project.ProjectPath;
 
 /**
  * How far the files of one folder are read: being read, read, or not,
@@ -257,7 +258,7 @@ public record Reading(Phase phase, List<Entry> entries, String reason,
 	private List<Entry> visible() {
 		List<Entry> visible = new ArrayList<>();
 		for (Entry entry : entries) {
-			if (!entry.name.startsWith(".")) {
+			if (!ProjectPath.isHidden(entry.name)) {
 				visible.add(entry);
 			}
 		}

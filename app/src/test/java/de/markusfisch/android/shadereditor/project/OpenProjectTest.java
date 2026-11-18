@@ -110,6 +110,8 @@ public class OpenProjectTest {
 				"#pragma se input \"main.frag\" uniform=last\n" +
 				"// #include \"no.glsl\"\n");
 		write("lib/sdf.glsl", "float sdf;\r\n");
+		// A save cut short leaves its temporary file: hidden, never read.
+		write("lib/.shadereditor-123.tmp", SHADER);
 		write("shader-project.json", "{}");
 		File photo = new File(root, "noise.frag");
 		Files.write(photo.toPath(), new byte[]{(byte) 0x89, 0x50, 0x4e, 0x47,
