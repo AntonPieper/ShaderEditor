@@ -109,8 +109,8 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 			btn.setText(text);
 			// A word with docs looks itself up on a long press, which
 			// TalkBack offers as Look up; a function without its
-			// parenthesis.
-			boolean function = item.endsWith("(");
+			// parenthesis; the key "(" alone is no function.
+			boolean function = item.length() > 1 && item.endsWith("(");
 			String word = function
 					? item.substring(0, item.length() - 1)
 					: item;
