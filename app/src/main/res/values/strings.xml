@@ -539,6 +539,7 @@
 	<string name="fix_add_uniform">Add uniform %1$s %2$s</string>
 	<string name="a11y_added_uniform">Added %1$s on line %2$d</string>
 	<string name="a11y_fix_available">Fix in the actions menu: %1$s</string>
+	<string name="a11y_selected">Selected %1$s</string>
 	<string name="reference_show">Show</string>
 	<string name="reference_open">Open</string>
 	<string name="a11y_reference_pass">Pass %1$s</string>
