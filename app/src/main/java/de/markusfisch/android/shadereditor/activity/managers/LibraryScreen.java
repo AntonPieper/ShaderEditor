@@ -500,6 +500,10 @@ public final class LibraryScreen implements ShaderScreen {
 		}
 		shaderViewManager.setDrawingListener(null);
 		newest.shutdownNow();
+		// The editor keeps laying out its row until its view is gone, and a
+		// report posted before this may still reach it: links without a file
+		// must not be asked for one.
+		editorFragment.setFileLinks(null);
 		links.destroy();
 		handler.removeCallbacksAndMessages(null);
 		files.destroy();
