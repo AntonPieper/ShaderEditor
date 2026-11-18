@@ -192,6 +192,11 @@ public class ShaderViewManager implements PassesSheet.Engine,
 		shaderView.applyTuning();
 	}
 
+	@Override
+	public int glesVersion() {
+		return shaderView.getEngine().glesVersion();
+	}
+
 	/**
 	 * Show no picture until the next shader or plan is set, as when
 	 * what is open runs nothing; the engine cannot clear its picture.
