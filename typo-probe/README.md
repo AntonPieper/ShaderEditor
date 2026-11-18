@@ -40,7 +40,10 @@ The seed is fixed (2026), so the same tree gives the same corpus.
 
 ## Results so far
 
-`results/emulator-5554.jsonl` (Android 16) and `results/emulator-5556.jsonl` (Android 6). Both emulators report the same stack: "Android Emulator OpenGL ES Translator (Apple M1 Pro)", OpenGL ES 3.0 on the Mac's GL 4.1 over Metal. The two files are identical in every log. An emulator's messages come from the host's translator, not from a phone's Mali/Adreno/PowerVR driver.
+- `emulator-5554` and `emulator-5556` (Mac): the emulator's GLES translator on Apple M1 Pro, GL 4.1 over Metal.
+- `homepc-api37` (ES 3) and `homepc-api23` (ES 2) (Windows): the same translator on an NVIDIA RTX 3080, driver 621.24.
+
+The first error line is the same on all four for every typo; the logs differ only in later lines and in warnings. These messages come from the emulator's translator, not from a phone's Mali/Adreno/PowerVR driver.
 
 ## Analysis (Mac)
 
