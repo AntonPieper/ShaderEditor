@@ -643,6 +643,16 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 		editor.navigateToLine(lineNumber);
 	}
 
+	/**
+	 * The file just shown was opened from a line of another, with its
+	 * caret where it was: a screen reader hears the line it is on.
+	 */
+	public void landed() {
+		if (editor.getView() instanceof CodeView code) {
+			code.landed();
+		}
+	}
+
 
 	public String getText() {
 		// Before the view is made, the text it will show.
