@@ -627,12 +627,10 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 			return new NameView.Name(word, form, spoken, open, null, 0, null,
 					null);
 		}
-		boolean renamable = !UNIFORMS.containsKey(word) ||
-				isLocal(host.declared(), host.offset(), word);
 		return new NameView.Name(word, form, spoken, open,
 				context.getString(R.string.uses), R.drawable.ic_list,
 				context.getString(R.string.a11y_uses_of, word),
-				() -> host.uses(word, null, keyboardUp(), renamable, false));
+				() -> uses(word, false));
 	}
 
 	// "name(a, b)".
@@ -652,6 +650,21 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 					? part.type() : part.name());
 		}
 		return names;
+	}
+
+	/**
+	 * List the uses of word at the caret, renaming at once when rename
+	 * and word can be renamed: not for a built-in, and only where the
+	 * folder lists uses.
+	 */
+	void uses(@NonNull String word, boolean rename) {
+		if ((GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER &&
+				declared(word).isEmpty()) || !host.offersUses()) {
+			return;
+		}
+		boolean renamable = !UNIFORMS.containsKey(word) ||
+				isLocal(host.declared(), host.offset(), word);
+		host.uses(word, null, keyboardUp(), renamable, rename && renamable);
 	}
 
 	// Whether the keyboard is up.
