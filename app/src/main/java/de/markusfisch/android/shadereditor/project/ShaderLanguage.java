@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.util.List;
 import java.util.Locale;
 
 import de.markusfisch.android.shadereditor.editor.Text;
@@ -118,6 +119,15 @@ public enum ShaderLanguage {
 	 */
 	boolean runnable(Text text) {
 		return this == GLSL && Glsl.definesMain(text);
+	}
+
+	/**
+	 * Return the files text, of file, names in this language: what it
+	 * includes and the files it reads as passes; none for a language
+	 * that does not run.
+	 */
+	List<ProjectPath> named(ProjectPath file, Text text) {
+		return this == GLSL ? Glsl.named(file, text) : List.of();
 	}
 
 	/** Return what a file must define to run, as a message names it. */

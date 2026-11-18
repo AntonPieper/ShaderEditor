@@ -104,6 +104,39 @@ public class OpenProjectTest {
 	}
 
 	@Test
+	public void readsTheFolderTextsAsTheEditorHasThem() throws IOException {
+		write("main.frag", SHADER);
+		write("pass.frag", "#include \"lib/sdf.glsl\" // the field\n" +
+				"#pragma se input \"main.frag\" uniform=last\n" +
+				"// #include \"no.glsl\"\n");
+		write("lib/sdf.glsl", "float sdf;\r\n");
+		write("shader-project.json", "{}");
+		File photo = new File(root, "noise.frag");
+		Files.write(photo.toPath(), new byte[]{(byte) 0x89, 0x50, 0x4e, 0x47,
+				0x0d, 0x0a, 0x1a, 0x0a, 0});
+		Files.write(new File(root, "lib/bytes.glsl").toPath(),
+				new byte[]{(byte) 0xff, (byte) 0xfe, 0});
+		OpenProject project = open();
+		Document main = document(project, "main.frag");
+		main.replace(0, 0, Text.of("// edited\n"));
+
+		OpenProject.FolderTexts read = await(project::folderTexts);
+
+		assertEquals(Set.of(path("main.frag"), path("pass.frag"),
+				path("lib/sdf.glsl")), read.texts().keySet());
+		assertEquals(List.of(path("lib/sdf.glsl"), path("main.frag")),
+				read.names().get(path("pass.frag")));
+		assertEquals(List.of(), read.names().get(path("main.frag")));
+		assertEquals(main.text().toString(),
+				read.texts().get(path("main.frag")).toString());
+		// Not in memory: as stored, its lines as a document has them.
+		assertEquals("float sdf;\n",
+				read.texts().get(path("lib/sdf.glsl")).toString());
+		assertNull(project.document(path("lib/sdf.glsl")));
+		assertEquals(1, read.unread());
+	}
+
+	@Test
 	public void runsMainWithoutManifestU10() throws IOException {
 		write("main.frag", SHADER);
 		write("other.glsl", SHADER);

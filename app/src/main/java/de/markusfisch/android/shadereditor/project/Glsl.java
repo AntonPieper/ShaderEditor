@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.project;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -116,5 +117,42 @@ final class Glsl {
 			}
 		}
 		return false;
+	}
+
+	// The files text, of file, names in #include and #pragma se input
+	// lines, read as a build reads them.
+	static List<ProjectPath> named(ProjectPath file, Text text) {
+		List<ProjectPath> named = new ArrayList<>();
+		if (text.toString().indexOf('#') < 0) {
+			return named;
+		}
+		List<String> lines = new ArrayList<>();
+		for (int i = 0; i < text.lineCount(); ++i) {
+			lines.add(text.line(i));
+		}
+		for (PreprocessorScan.Directive directive :
+				PreprocessorScan.scan(lines, file).directives()) {
+			String argument = directive.argument();
+			ProjectPath path = null;
+			if (directive.kind() == PreprocessorScan.Kind.INCLUDE &&
+					argument.length() > 1 && argument.startsWith("\"")) {
+				int close = argument.indexOf('"', 1);
+				ProjectParseResult<ProjectPath> resolved = close > 0
+						? ProjectPath.resolve(file,
+						argument.substring(1, close))
+						: null;
+				path = resolved != null && resolved.isSuccess()
+						? resolved.value()
+						: null;
+			} else if (directive.kind() == PreprocessorScan.Kind.PRAGMA &&
+					HostDirective.isHostPragma(argument)) {
+				path = HostDirective.parse(argument, new SourceLocation(file,
+						directive.line(), null)).path();
+			}
+			if (path != null) {
+				named.add(path);
+			}
+		}
+		return named;
 	}
 }
