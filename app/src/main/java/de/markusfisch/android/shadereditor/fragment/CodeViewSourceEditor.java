@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.AddUniform;
 import de.markusfisch.android.shadereditor.editor.Analysis;
+import de.markusfisch.android.shadereditor.editor.Definitions;
 import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
@@ -35,6 +36,7 @@ import de.markusfisch.android.shadereditor.project.ProjectParseResult;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.syntax.GlslCompletion;
+import de.markusfisch.android.shadereditor.syntax.GlslWords;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.MissingSemicolon;
@@ -43,6 +45,7 @@ import de.markusfisch.android.shadereditor.syntax.Syntax;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.GoToSheet;
+import de.markusfisch.android.shadereditor.widget.NameView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
 import de.markusfisch.android.shadereditor.widget.ShaderToySource;
@@ -752,6 +755,10 @@ final class CodeViewSourceEditor implements SourceEditor {
 		seenRevision = -1;
 		typing = false;
 		errors = Collections.emptyList();
+		// The name of the file before is not under the caret.
+		if (listener != null) {
+			listener.onName(null);
+		}
 		styles = new LineStyles(document, syntax, STYLE_BUDGET);
 		// GLSL's words, in GLSL only.
 		view.setLookUp(syntax == DATABASE ? docs : null);
@@ -886,6 +893,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		} else if (!selection.isEmpty()) {
 			signature(-1, 0);
 			point(null);
+			listener.onName(null);
 			return;
 		}
 		Text text = document.text();
@@ -904,6 +912,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 		LexedLine line = styles.runs(n).line();
 		int column = caret - lineStart;
 		if (completeHostLine(line, column, caret)) {
+			listener.onName(null);
+			return;
+		}
+		NameView.Name name = !typing && analysis.revision() ==
+				document.revision() ? name(line, column, lineStart) : null;
+		listener.onName(name);
+		if (name != null) {
+			signature(-1, 0);
 			return;
 		}
 		// Functions with their parenthesis, unless one follows already.
@@ -923,6 +939,47 @@ final class CodeViewSourceEditor implements SourceEditor {
 							? withParentheses(words, known)
 							: words, position);
 				});
+	}
+
+	// The name the caret at column of line, which starts at lineStart,
+	// rests in, as the strip shows it, or null: in GLSL where there are
+	// docs, for an identifier, a built-in function or variable; not for
+	// a field, behind a "." or where its struct declares it, nor a
+	// qualifier in "layout(...)", nor in a directive but #define. Lookups only, as on every caret move.
+	@Nullable
+	private NameView.Name name(@NonNull LexedLine line, int column,
+			int lineStart) {
+		if (docs == null || styles.syntax() != DATABASE) {
+			return null;
+		}
+		String text = line.text();
+		int start = column;
+		while (start > 0 && isWordChar(text.charAt(start - 1))) {
+			--start;
+		}
+		int end = column;
+		while (end < text.length() && isWordChar(text.charAt(end))) {
+			++end;
+		}
+		int i = start < end ? line.indexAt(start) : -1;
+		Style style = i < 0 ? null : line.style(i);
+		if ((style != Style.IDENTIFIER && style != Style.TYPE &&
+				style != Style.BUILTIN_FUNCTION) ||
+				(line.inDirective(i) && !text.trim().startsWith("#define")) ||
+				Definitions.noName(view.getAnalysis().knowledge(),
+						document.text(), lineStart + start)) {
+			return null;
+		}
+		String word = text.substring(start, end);
+		Style kind = GlslWords.style(word, 0, word.length());
+		return kind == Style.IDENTIFIER || kind == Style.BUILTIN_FUNCTION
+				? docs.name(word)
+				: null;
+	}
+
+	private static boolean isWordChar(char c) {
+		return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+				(c >= '0' && c <= '9');
 	}
 
 	// Tells the listener the call the caret at column of line is an

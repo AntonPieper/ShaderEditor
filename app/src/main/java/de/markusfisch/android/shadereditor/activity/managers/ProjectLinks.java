@@ -478,6 +478,10 @@ final class ProjectLinks implements FileLinks {
 
 	/** What runs was built, and its diagnostics kept. */
 	void built() {
+		// What the files around declare may have changed with it.
+		if (changed != null) {
+			changed.run();
+		}
 		OpenProject open = project;
 		FileTexts.Callback<Boolean> done = afterBuild;
 		if (open == null || done == null) {

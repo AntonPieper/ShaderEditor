@@ -64,6 +64,7 @@ public final class ProjectKnowledge {
 	private final Map<ProjectPath, List<String>> names = new HashMap<>();
 	private final Map<ProjectPath, List<Symbol>> macros = new HashMap<>();
 	private final Map<ProjectPath, Boolean> wholes = new HashMap<>();
+	private final Map<ProjectPath, int[]> lineStarts = new HashMap<>();
 
 	private ProjectKnowledge(Map<ProjectPath, Entry> entries) {
 		this.entries = entries;
@@ -390,17 +391,38 @@ public final class ProjectKnowledge {
 				? ProjectPath.parse(symbol.file()) : null;
 		Entry entry = path != null && path.isSuccess()
 				? entries.get(path.value()) : null;
-		String text = entry != null ? SourceText.decode(entry.bytes) : null;
-		if (text == null) {
+		if (entry == null) {
 			return -1;
 		}
-		int line = 0;
-		for (int i = Math.min(symbol.start(), text.length()); i-- > 0; ) {
+		// Where each line starts, read once: this is asked on every
+		// caret move that rests in a name of another file.
+		int[] starts = lineStarts.get(path.value());
+		if (starts == null) {
+			String text = SourceText.decode(entry.bytes);
+			starts = text == null ? new int[0] : starts(text);
+			lineStarts.put(path.value(), starts);
+		}
+		if (starts.length == 0) {
+			return -1;
+		}
+		int line = Arrays.binarySearch(starts, symbol.start());
+		return line < 0 ? -line - 2 : line;
+	}
+
+	private static int[] starts(String text) {
+		int count = 1;
+		for (int i = 0, length = text.length(); i < length; ++i) {
 			if (text.charAt(i) == '\n') {
-				++line;
+				++count;
 			}
 		}
-		return line;
+		int[] starts = new int[count];
+		for (int i = 0, n = 1, length = text.length(); i < length; ++i) {
+			if (text.charAt(i) == '\n') {
+				starts[n++] = i + 1;
+			}
+		}
+		return starts;
 	}
 
 	private List<Symbol> find(Set<ProjectPath> files, CharSequence word) {

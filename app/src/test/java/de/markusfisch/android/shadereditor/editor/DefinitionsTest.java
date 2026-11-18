@@ -284,6 +284,31 @@ public class DefinitionsTest {
 				Arrays.asList(null, "float")));
 	}
 
+	@Test
+	public void aFieldOrALayoutQualifierIsNoNameToLookUp() {
+		String text = """
+				int location = 0;
+				layout(location = 0) out vec4 color;
+				float r = 1.0;
+				struct Disc { vec2 c; float r; };
+				void main() {
+					Disc d = Disc(vec2(0.0), r);
+					float x = d.
+						r + d \\
+						.c.x;
+				}
+				""";
+		Knowledge known = GlslKnowledge.of(text);
+		Text t = Text.of(text);
+		assertTrue(Definitions.noName(known, t, text.indexOf("r; }")));
+		assertTrue(Definitions.noName(known, t, text.indexOf("r + d")));
+		assertTrue(Definitions.noName(known, t, text.indexOf("c.x")));
+		assertFalse(Definitions.noName(known, t, text.indexOf("r);")));
+		assertFalse(Definitions.noName(known, t, text.indexOf("Disc d")));
+		assertTrue(Definitions.noName(known, t, text.indexOf("location = 0)")));
+		assertFalse(Definitions.noName(known, t, text.indexOf("location")));
+	}
+
 	private static Definitions.Found find(String text, String before,
 			String word) {
 		return find(text, before, word, 0);
