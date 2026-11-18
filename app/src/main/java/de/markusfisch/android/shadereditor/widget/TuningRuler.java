@@ -24,6 +24,8 @@ import com.google.android.material.color.MaterialColors;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+import de.markusfisch.android.shadereditor.R;
+
 /**
  * A horizontal ruler without ends, one tick per step: dragging it moves
  * a number by whole steps, 1 : 1 under the finger; a fling runs on and
@@ -402,6 +404,10 @@ public class TuningRuler extends View {
 			// text before that.
 			if (android.os.Build.VERSION.SDK_INT >= 30) {
 				info.setStateDescription(listener.describe());
+				// A name of its own: a slider of nothing but a state is
+				// not touched by TalkBack 17.
+				info.setContentDescription(getContext().getString(
+						R.string.tuning_value));
 			} else {
 				info.setText(listener.describe());
 			}

@@ -265,6 +265,53 @@ public final class TuningSession {
 		return tuned();
 	}
 
+	@Nullable
+	public Statement statement() {
+		Number n = tuned;
+		return !open || n == null
+				? null
+				: Statement.of(window(n.from), n.from, n.to, offset -> {
+					Number other = numberAt(offset);
+					return other != null && other != n &&
+							!text(other).equals(other.start);
+				});
+	}
+
+	/** The text of the next or previous number, or null at an end. */
+	@Nullable
+	public String neighbour(boolean forward) {
+		int at = neighbourAt(forward);
+		TunedPlace place = at < 0 ? null : window(at).place(at);
+		return place != null ? place.literalWithSign() : null;
+	}
+
+	/** {@link #move} to the next or previous number; null at an end. */
+	@Nullable
+	public Tuned step(boolean forward) {
+		int at = neighbourAt(forward);
+		return at < 0 ? null : move(at);
+	}
+
+	// Window by window, so that no step reads the whole text.
+	private int neighbourAt(boolean forward) {
+		Number n = tuned;
+		if (!open || n == null) {
+			return -1;
+		}
+		int length = document.text().length();
+		for (int at = forward ? n.to : n.from; ; ) {
+			Window lines = window(at);
+			int found = lines.number(at, forward);
+			if (found > -1) {
+				return found;
+			}
+			at = forward ? lines.end() + 1 : lines.start() - 1;
+			if (at < 0 || at > length) {
+				return -1;
+			}
+		}
+	}
+
 	public boolean canUndo() {
 		return open && ((steps > 0 && document.canUndo()) || pending != null);
 	}

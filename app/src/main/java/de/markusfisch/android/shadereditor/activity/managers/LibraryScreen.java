@@ -40,6 +40,7 @@ import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.ShaderLanguage;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
+import de.markusfisch.android.shadereditor.tuning.Statement;
 import de.markusfisch.android.shadereditor.tuning.TunedPlace;
 import de.markusfisch.android.shadereditor.tuning.TuningSession;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
@@ -704,6 +705,26 @@ public final class LibraryScreen implements ShaderScreen {
 			@Override
 			public void redo() {
 				session.redo();
+			}
+
+			@Override
+			public Statement statement() {
+				return session.statement();
+			}
+
+			@Override
+			public String neighbour(boolean forward) {
+				return session.neighbour(forward);
+			}
+
+			@Override
+			public void step(boolean forward) {
+				retune(session.step(forward), true);
+			}
+
+			@Override
+			public void select(int offset) {
+				retune(session.move(offset), true);
 			}
 		});
 		backTunes.setEnabled(true);
