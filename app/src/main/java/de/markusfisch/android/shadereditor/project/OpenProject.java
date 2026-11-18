@@ -1815,6 +1815,75 @@ public final class OpenProject {
 	}
 
 	/**
+	 * The texts of the folder's GLSL files as the editor has them, by
+	 * path, the files each names as its language reads them, and how
+	 * many files or folders could not be read.
+	 */
+	public record FolderTexts(Map<ProjectPath, Text> texts,
+			Map<ProjectPath, List<ProjectPath>> names, int unread) {
+	}
+
+	/**
+	 * Tell done the text of every file of the folder and its folders
+	 * that is read as GLSL: its document's, else its journal's, else
+	 * the stored one, as a build reads it. Pictures are left out. Read
+	 * on the worker.
+	 */
+	public void folderTexts(Callback<FolderTexts> done) {
+		Map<ProjectPath, Text> snapshot = snapshot();
+		Set<ProjectPath> journaled = journaled();
+		Edited files = new Edited(snapshot, journaled);
+		worker.execute(() -> {
+			Map<ProjectPath, Text> texts = new LinkedHashMap<>();
+			Map<ProjectPath, List<ProjectPath>> names = new HashMap<>();
+			List<ProjectPath> paths = new ArrayList<>();
+			int unread = lone != null ? 0 : collect(null, paths);
+			if (lone != null) {
+				paths.add(lone);
+			}
+			for (ProjectPath path : paths) {
+				if (!snapshot.containsKey(path) &&
+						!journaled.contains(path)) {
+					byte[] head = store.head(path, FileKind.HEAD);
+					if (head != null && FileKind.picture(head) != null) {
+						continue;
+					}
+				}
+				String text = files.read(path) instanceof Content content
+						? SourceText.decode(content.bytes())
+						: null;
+				if (text != null) {
+					Text read = Text.of(text);
+					texts.put(path, read);
+					names.put(path, ShaderLanguage.of(path.toString())
+							.named(path, read));
+				} else {
+					++unread;
+				}
+			}
+			int count = unread;
+			main.execute(() -> done.done(new FolderTexts(texts, names,
+					count)));
+		});
+	}
+
+	// Adds the GLSL files under folder, the root for null; returns how
+	// many folders could not be listed.
+	private int collect(ProjectPath folder, List<ProjectPath> paths) {
+		Folder listed = list(folder);
+		int unlisted = listed.problem() != null ? 1 : 0;
+		for (Item item : listed.items()) {
+			if (item.folder()) {
+				unlisted += collect(item.path(), paths);
+			} else if (ShaderLanguage.of(item.path().toString()) ==
+					ShaderLanguage.GLSL) {
+				paths.add(item.path());
+			}
+		}
+		return unlisted;
+	}
+
+	/**
 	 * Return what the file at path sees of the other files of the last
 	 * build of what runs: the names the files it includes declare, and
 	 * what a word refers to there. It answers for the last build at the
