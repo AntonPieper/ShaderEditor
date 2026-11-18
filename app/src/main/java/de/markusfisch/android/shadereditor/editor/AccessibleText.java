@@ -7,14 +7,15 @@ package de.markusfisch.android.shadereditor.editor;
 // A service reads the node's text out whole each time the view gets focus, so
 // the node holds only the lines of the selection and the line before and after
 // them (reading). TalkBack moves by lines over that text itself and sets the
-// selection, so it needs the line it moves to next; and it tells the text a
-// move passed over from the indices of the node it got last, so a move inside
-// the line, or to the next or previous one, is told in that node's text.
+// selection, so it needs the line it moves to next.
 //
-// A larger window (window) is for a change: the block of BLOCK_LINES lines of
-// its start, the block before it and the block after it; when those have more
-// than MAX_CHARS characters, the MAX_CHARS characters from the quarter of
-// MAX_CHARS before its quarter on.
+// A larger window (window) is for a change, and for a selection event: TalkBack
+// tells what a move passed over from the event's text between the index of the
+// event before and the new one, so the events need a window that stays while
+// the selection moves. It is the block of BLOCK_LINES lines of the start, the
+// block before it and the block after it; when those have more than MAX_CHARS
+// characters, the MAX_CHARS characters from the quarter of MAX_CHARS before its
+// quarter on.
 //
 // Movement by a unit works as TextView's iterators for accessibility, with
 // Motion's characters and words; white space alone is never a word. A line has
