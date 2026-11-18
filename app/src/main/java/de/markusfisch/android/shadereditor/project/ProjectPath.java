@@ -45,6 +45,16 @@ public final class ProjectPath {
 		return resolve(segments, reference, containingFile);
 	}
 
+	/**
+	 * Return whether a file or folder named name is hidden: its name
+	 * starts with a dot, as the app's own temporary files do. The
+	 * drawer does not list it, completion does not offer it, and Uses,
+	 * Rename and the files around never read it.
+	 */
+	public static boolean isHidden(String name) {
+		return name.startsWith(".");
+	}
+
 	public String getFileName() {
 		return path.substring(path.lastIndexOf('/') + 1);
 	}
