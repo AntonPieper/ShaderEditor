@@ -750,6 +750,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		styles = new LineStyles(document, syntax, STYLE_BUDGET);
 		// GLSL's words, in GLSL only.
 		view.setLookUp(syntax == DATABASE ? docs : null);
+		view.setNames(syntax == DATABASE && docs != null ? names : null);
 		view.setLineLink(syntax == DATABASE ? lineLink : null);
 		marks = new LineMarks(document);
 		view.setDocument(document, styles, marks);
@@ -945,6 +946,13 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// in a directive but #define. Lookups only, as on every caret move.
 	@Nullable
 	private NameView.Name name(@NonNull LexedLine line, int column) {
+		String word = nameAt(line, column);
+		return word != null ? docs.name(word) : null;
+	}
+
+	// The word of that name, or null.
+	@Nullable
+	private String nameAt(@NonNull LexedLine line, int column) {
 		if (docs == null || styles.syntax() != DATABASE) {
 			return null;
 		}
@@ -968,9 +976,68 @@ final class CodeViewSourceEditor implements SourceEditor {
 		String word = text.substring(start, end);
 		Style kind = GlslWords.style(word, 0, word.length());
 		return kind == Style.IDENTIFIER || kind == Style.BUILTIN_FUNCTION
-				? docs.name(word)
+				? word
 				: null;
 	}
+
+	// The name the caret rests in, typed or not, for keys and TalkBack.
+	private final CodeView.Names names = new CodeView.Names() {
+		@Nullable
+		@Override
+		public String name() {
+			Document.Selection selection = document.selection();
+			if (!selection.isEmpty()) {
+				return null;
+			}
+			Text text = document.text();
+			int n = text.lineOf(selection.head());
+			return nameAt(styles.runs(n).line(),
+					selection.head() - text.lineStart(n));
+		}
+
+		// On a path, F12 opens its file, as the strip's Open does.
+		@Override
+		public void definition() {
+			String word = name();
+			if (word != null) {
+				docs.definitionKey(word);
+				return;
+			}
+			Text text = document.text();
+			int caret = document.selection().head();
+			int n = text.lineOf(caret);
+			HostCompletion.Named named = links != null
+					? HostCompletion.named(text.line(n),
+					caret - text.lineStart(n), links.file(), links)
+					: null;
+			if (named != null && (named.kind() == HostCompletion.Kind.INCLUDE ||
+					FileKind.hint(named.path().getFileName(), null) !=
+							FileKind.PICTURE)) {
+				links.open(named.path(), 0);
+			}
+		}
+
+		@Override
+		public void uses(boolean rename) {
+			String word = name();
+			if (word != null) {
+				docs.uses(word, rename);
+			}
+		}
+
+		@Override
+		public void lookUp() {
+			String word = name();
+			if (word != null) {
+				docs.lookUp(word);
+			}
+		}
+
+		@Override
+		public boolean back() {
+			return links != null && links.back();
+		}
+	};
 
 	private static boolean isWordChar(char c) {
 		return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
