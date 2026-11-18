@@ -43,6 +43,7 @@ import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyJson;
 import de.markusfisch.android.shadereditor.tuning.TunedPlace;
 import de.markusfisch.android.shadereditor.tuning.TuningSession;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
+import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.Message;
 import de.markusfisch.android.shadereditor.widget.PassesSheet;
 import de.markusfisch.android.shadereditor.widget.TuningBar;
@@ -723,6 +724,12 @@ public final class LibraryScreen implements ShaderScreen {
 			uiManager.toggleCodeVisibility();
 			if (keyboardBeforeTuning) {
 				editorFragment.showKeyboard();
+			}
+			// A screen reader's focus was on the bar: it lands on the
+			// tuned number's line.
+			CodeView code = editorFragment.findableCode();
+			if (code != null) {
+				code.jumped();
 			}
 		}
 		codeBeforeTuning = false;

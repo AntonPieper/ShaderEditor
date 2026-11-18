@@ -23,6 +23,7 @@ import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsAnimationCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
@@ -151,6 +152,10 @@ public class TuningBar extends LinearLayout {
 	@NonNull
 	private BigDecimal dragFrom = BigDecimal.ZERO;
 	private int bottomInset;
+	// The ruler takes a screen reader's focus once the bar shows and no
+	// keyboard covers it: a service moves its focus off a view under one.
+	private boolean focusing;
+	private boolean keyboardMoves;
 	// The view the bar stays below, so the bars above it can be read.
 	@Nullable
 	private View ceiling;
@@ -252,6 +257,39 @@ public class TuningBar extends LinearLayout {
 			setPadding(bars.left, 0, bars.right, bottomInset);
 			return insets;
 		});
+		ViewCompat.setWindowInsetsAnimationCallback(this,
+				new WindowInsetsAnimationCompat.Callback(
+						WindowInsetsAnimationCompat.Callback
+								.DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+					@Override
+					public void onPrepare(
+							@NonNull WindowInsetsAnimationCompat animation) {
+						if (isIme(animation)) {
+							keyboardMoves = true;
+						}
+					}
+
+					@NonNull
+					@Override
+					public WindowInsetsCompat onProgress(
+							@NonNull WindowInsetsCompat insets,
+							@NonNull List<WindowInsetsAnimationCompat> running) {
+						return insets;
+					}
+
+					@Override
+					public void onEnd(
+							@NonNull WindowInsetsAnimationCompat animation) {
+						if (isIme(animation)) {
+							keyboardMoves = false;
+							focusRuler();
+						}
+					}
+				});
+	}
+
+	private static boolean isIme(WindowInsetsAnimationCompat animation) {
+		return (animation.getTypeMask() & WindowInsetsCompat.Type.ime()) != 0;
 	}
 
 	/**
@@ -410,6 +448,7 @@ public class TuningBar extends LinearLayout {
 		tuned = new Tuned(place, place.value, place.value,
 				step != null ? step : first, first, place.literal);
 		colourMode = false;
+		focusing = true;
 		showParts();
 		show();
 		// Fades in and rises 16 dp, emphasized decelerate, 200 ms.
@@ -421,14 +460,30 @@ public class TuningBar extends LinearLayout {
 			animate().alpha(1f).translationY(0f).setDuration(200)
 					.setInterpolator(new android.view.animation.PathInterpolator(
 							0.05f, 0.7f, 0.1f, 1f))
-					.withEndAction(null).start();
+					.withEndAction(this::focusRuler).start();
 		} else {
 			setAlpha(1f);
 			setTranslationY(0f);
+			post(this::focusRuler);
 		}
 		ruler.requestFocus();
 		announceForAccessibility(getContext().getString(
 				R.string.a11y_tuning_open, place.literalWithSign()));
+	}
+
+	// A screen reader's focus was on the code the bar replaces. A service
+	// takes a view that is not opaque yet, or is under the keyboard, for one
+	// it cannot see.
+	private void focusRuler() {
+		WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(this);
+		if (!focusing || tuned == null || getAlpha() < 1f || keyboardMoves ||
+				(insets != null && insets.isVisible(
+						WindowInsetsCompat.Type.ime()))) {
+			return;
+		}
+		focusing = false;
+		ruler.performAccessibilityAction(android.view.accessibility
+				.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
 	}
 
 	/**
@@ -646,6 +701,7 @@ public class TuningBar extends LinearLayout {
 	/** Close the bar without telling the session: it ended. */
 	public void close() {
 		tuned = null;
+		focusing = false;
 		session = null;
 		setConstant(false);
 		setBuilding(false);

@@ -731,7 +731,8 @@ public class CodeView extends View {
 		return appearance.lineHeight;
 	}
 
-	// The caret was put somewhere else on purpose, by Go to or a link.
+	// The caret was put somewhere else on purpose, by Go to or a link, or the
+	// code is back where the caret was after tuning.
 	public void jumped() {
 		bringCaretIntoView();
 		accessibility.jumped();
