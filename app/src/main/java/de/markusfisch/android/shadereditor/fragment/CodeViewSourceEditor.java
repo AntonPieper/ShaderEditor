@@ -463,12 +463,11 @@ final class CodeViewSourceEditor implements SourceEditor {
 		}
 		int start = text.lineStart(line - 1);
 		Document.Selection selection = document.selection();
-		if (selection.start() >= start &&
-				selection.end() <= start + text.line(line - 1).length()) {
-			return;
+		if (selection.start() < start ||
+				selection.end() > start + text.line(line - 1).length()) {
+			document.select(start, start);
 		}
-		document.select(start, start);
-		view.bringCaretIntoView();
+		view.jumped();
 	}
 
 	@NonNull
