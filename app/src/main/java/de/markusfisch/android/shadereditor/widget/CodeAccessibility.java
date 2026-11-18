@@ -55,6 +55,9 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	private AccessibleText.Window shown;
 	// The selection the last event reported.
 	private Document.Selection reported;
+	// The first change of an edit told by tell.
+	private boolean telling;
+	private Document.Change told;
 	// The error announced last, while results have errors.
 	private String announced;
 	// A jump made while a sheet over the view had focus: it lands when the
@@ -242,8 +245,48 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		}
 	}
 
+	// A service drops a text change of a view in a window that is not
+	// active, as the code's is while the menu that asked for an undo is
+	// open: what done changed is announced instead.
+	void tell(int done, Runnable edit) {
+		telling = true;
+		told = null;
+		try {
+			edit.run();
+		} finally {
+			telling = false;
+		}
+		if (told != null && isEnabled()) {
+			view.announceForAccessibility(view.getContext().getString(done,
+					describe(told)));
+		}
+		told = null;
+	}
+
+	private String describe(Document.Change change) {
+		Context context = view.getContext();
+		if (change.inserted().length() == 0) {
+			return context.getString(R.string.a11y_deleted,
+					say(change.removed()));
+		} else if (change.removed().length() == 0) {
+			return say(change.inserted());
+		}
+		return context.getString(R.string.a11y_replaced,
+				say(change.inserted()), say(change.removed()));
+	}
+
+	private String say(Text text) {
+		int lines = text.lineCount();
+		return lines > 1
+				? view.getContext().getString(R.string.a11y_lines, lines)
+				: text.toString();
+	}
+
 	// As TextView does while it has focus.
 	void changed(Document.Change change, Text before) {
+		if (telling && told == null) {
+			told = change;
+		}
 		ViewParent parent = view.getParent();
 		Document document = view.getDocument();
 		if (parent == null || document == null || !view.isFocused() ||

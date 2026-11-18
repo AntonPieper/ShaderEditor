@@ -643,6 +643,11 @@
 	</plurals>
 	<string name="a11y_fix_add_uniforms">Add uniforms %1$s</string>
 	<string name="a11y_added_uniforms">Added %1$s on lines %2$s</string>
+	<string name="a11y_undone">Undone: %1$s</string>
+	<string name="a11y_redone">Redone: %1$s</string>
+	<string name="a11y_deleted">%1$s deleted</string>
+	<string name="a11y_replaced">%1$s replaces %2$s</string>
+	<string name="a11y_lines">%1$d lines</string>
 	<string name="a11y_list_and">%1$s and %2$s</string>
 	<string name="conflict_changed">%s was changed outside ShaderEditor and has unsaved text here</string>
 	<string name="conflict_deleted">%s was deleted outside ShaderEditor and has unsaved text here</string>
