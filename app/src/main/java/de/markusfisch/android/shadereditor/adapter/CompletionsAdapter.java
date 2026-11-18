@@ -42,14 +42,17 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 
 	private final OnInsertListener onInsertListener;
 	private final LookUp lookUp;
+	// Whether TalkBack hears "Double-tap to insert".
+	private final boolean saysInsert;
 
 	private int position = 0;
 
 	public CompletionsAdapter(OnInsertListener onInsertListener,
-			LookUp lookUp) {
+			LookUp lookUp, boolean saysInsert) {
 		super(DIFF_CALLBACK);
 		this.onInsertListener = onInsertListener;
 		this.lookUp = lookUp;
+		this.saysInsert = saysInsert;
 	}
 
 	@NonNull
@@ -90,6 +93,12 @@ public class CompletionsAdapter extends ListAdapter<String, CompletionsAdapter.V
 			btn.setOnClickListener((v) -> {
 				onInsertListener.onChoose(item, prefixLength());
 			});
+			if (saysInsert) {
+				ViewCompat.replaceAccessibilityAction(btn,
+						AccessibilityNodeInfoCompat.AccessibilityActionCompat
+								.ACTION_CLICK, btn.getContext().getString(
+								R.string.a11y_insert), null);
+			}
 			itemView.setOnTouchListener(new View.OnTouchListener() {
 				@SuppressLint("ClickableViewAccessibility")
 				@Override
