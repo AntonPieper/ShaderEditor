@@ -192,6 +192,9 @@ public final class ProjectFileManager {
 	private ProjectPath builtEntry;
 	// The line to go to once the file asked for last is shown, or 0.
 	private int line;
+	// Whether the file asked for last was asked for from a line, as a
+	// jump: shown where its caret is, the landing is said as a jump's.
+	private boolean landing;
 	@Nullable
 	private String key;
 	@Nullable
@@ -283,6 +286,7 @@ public final class ProjectFileManager {
 		}
 		if (open(key, path, shown.isSingle(), false)) {
 			this.line = line;
+			landing = true;
 		}
 	}
 
@@ -315,6 +319,7 @@ public final class ProjectFileManager {
 		}
 		int ask = ++asked;
 		line = 0;
+		landing = false;
 		holds.open(key, opened -> {
 			OpenProject project = opened.project();
 			if (project == null) {
@@ -386,7 +391,10 @@ public final class ProjectFileManager {
 		if (line > 0) {
 			editor.navigateToLine(line);
 			line = 0;
+		} else if (landing) {
+			editor.landed();
 		}
+		landing = false;
 		deciding = tapped ? path : null;
 		decide();
 		if (project != built ||
