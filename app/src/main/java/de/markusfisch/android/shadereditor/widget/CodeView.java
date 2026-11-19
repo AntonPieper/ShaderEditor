@@ -240,10 +240,6 @@ public class CodeView extends View {
 				getResources().getDimension(R.dimen.editor_tap_target));
 		setFocusable(true);
 		setFocusableInTouchMode(true);
-		if (getImportantForAccessibility() ==
-				IMPORTANT_FOR_ACCESSIBILITY_AUTO) {
-			setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
-		}
 		setAccessibilityDelegate(accessibility);
 		scroller = new OverScroller(context);
 		edgeTop = new EdgeEffect(context);
