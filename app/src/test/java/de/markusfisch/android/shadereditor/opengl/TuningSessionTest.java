@@ -62,7 +62,7 @@ public class TuningSessionTest {
 	private final Tuner tuner = new Tuner(new Host(false), Runnable::run);
 
 	private record Run(@NonNull String text, boolean temporary,
-			@Nullable Tuning tuning) {
+			@Nullable Tuning tuning, @Nullable Tuning.Listener heard) {
 	}
 
 	@Test
@@ -75,7 +75,7 @@ public class TuningSessionTest {
 		assertEquals(0.3, tuning.value(), 0);
 		assertTrue(runs.get(0).temporary);
 		assertTrue(runs.get(0).text.contains("s += se_tune0 * sin(time);"));
-		tuning.live();
+		runs.get(0).heard.onLive();
 		assertEquals(List.of("live"), heard);
 		assertEquals(TuningSession.State.LIVE, session.state());
 		// Once as it draws, for a value set meanwhile.
@@ -109,7 +109,7 @@ public class TuningSessionTest {
 		var tuning = runs.get(0).tuning;
 		session.set(0.6);
 		assertEquals(0, applied);
-		tuning.live();
+		runs.get(0).heard.onLive();
 		assertEquals(1, applied);
 		assertEquals(0.6, tuning.value(), 0);
 	}
@@ -117,7 +117,7 @@ public class TuningSessionTest {
 	@Test
 	public void doneWritesTheNumberOnceAndBuildsThatText() {
 		var session = begin("0.3", Tuning.Type.FLOAT);
-		runs.get(0).tuning.live();
+		runs.get(0).heard.onLive();
 		session.set(0.42);
 		session.end("0.42");
 		assertEquals(List.of("main.frag:0.42"), written);
@@ -173,7 +173,7 @@ public class TuningSessionTest {
 		var live = begin("0.3", Tuning.Type.FLOAT);
 		var tuning = runs.get(0).tuning;
 		tuner.destroy();
-		tuning.live();
+		runs.get(0).heard.onLive();
 		live.set(0.5);
 		live.end("0.5");
 		assertEquals(1, runs.size());
@@ -194,7 +194,7 @@ public class TuningSessionTest {
 		var tuning = runs.get(0).tuning;
 		session.set(0.8);
 		session.end(null);
-		tuning.live();
+		runs.get(0).heard.onLive();
 		assertEquals(List.of(), heard);
 		assertEquals(0, applied);
 		settle();
@@ -221,7 +221,7 @@ public class TuningSessionTest {
 	public void aRefusedBuildMustRebuildEachText() {
 		var session = begin("0.3", Tuning.Type.FLOAT);
 		var errors = List.of(ProjectDiagnostic.error("must be constant"));
-		runs.get(0).tuning.refused(errors);
+		runs.get(0).heard.onRefused(errors);
 		assertEquals(List.of("must rebuild [must be constant]"), heard);
 		assertEquals(TuningSession.State.MUST_REBUILD, session.state());
 		session.set(0.5);
@@ -339,9 +339,11 @@ public class TuningSessionTest {
 		}
 
 		@Override
-		public void prepare(@NonNull OpenProject.Replacement replacement,
+		public void prepare(
+				@NonNull List<OpenProject.Replacement> replacements,
 				@NonNull FileTexts.Callback<Preparation> done) {
-			deliver(replacement, done);
+			assertEquals(1, replacements.size());
+			deliver(replacements.get(0), done);
 		}
 
 		@Override
@@ -351,10 +353,14 @@ public class TuningSessionTest {
 
 		@Override
 		public void run(@NonNull Preparation preparation,
-				@Nullable Tuning tuning) {
+				@NonNull List<Tuning> tunings,
+				@Nullable Tuning.Listener heard) {
+			assertTrue(tunings.size() < 2);
+			assertEquals(tunings.isEmpty(), heard == null);
 			runs.add(new Run(new String(preparation.files().get(
 					path("main.frag")).bytes(), StandardCharsets.UTF_8),
-					preparation.temporary(), tuning));
+					preparation.temporary(),
+					tunings.isEmpty() ? null : tunings.get(0), heard));
 		}
 
 		@Override

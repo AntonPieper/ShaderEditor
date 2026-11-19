@@ -227,8 +227,9 @@ public class ShaderView extends GLSurfaceView {
 	// tuning session, which goes on from the one shown: see
 	// ShaderEngine.continuePlan(). The runtime goes on for its owner.
 	public void continuePlan(@NonNull Preparation preparation, float quality,
-			@NonNull Object picture, @Nullable Tuning tuning) {
-		engine.continuePlan(preparation, quality, picture, tuning);
+			@NonNull Object picture, @NonNull List<Tuning> tunings,
+			@Nullable Tuning.Listener heard) {
+		engine.continuePlan(preparation, quality, picture, tunings, heard);
 		requestRender();
 	}
 
