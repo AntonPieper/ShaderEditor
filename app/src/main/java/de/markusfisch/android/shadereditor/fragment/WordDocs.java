@@ -436,9 +436,8 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		handedOn = false;
 		Runnable uses = null;
 		Runnable rename = null;
-		if (name != null && host.offersUses()) {
-			boolean renamable = !UNIFORMS.containsKey(name) ||
-					isLocal(host.declared(), host.offset(), name);
+		if (name != null && listsUses(name)) {
+			boolean renamable = renames(name);
 			uses = () -> {
 				handedOn = true;
 				host.uses(name, file, keyboard, renamable, false);
@@ -664,7 +663,7 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				: context.getString(R.string.a11y_takes, word,
 				list(context, parameters))) + (note != null ? ", " + note : "");
 		if (first == null || found.here()) {
-			if (!host.offersUses()) {
+			if (!listsUses(word)) {
 				return new NameView.Name(word, form, note, spoken, open,
 						null, 0, null, null);
 			}
@@ -716,15 +715,33 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	 * folder lists uses.
 	 */
 	void uses(@NonNull String word, boolean rename) {
-		List<Knowledge.Symbol> places = definitions(word).places();
-		if ((GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER &&
-				places.isEmpty()) || !host.offersUses()) {
+		if (!listsUses(word)) {
 			return;
 		}
-		boolean renamable = !UNIFORMS.containsKey(word) ||
-				isLocal(host.declared(), host.offset(), word);
+		List<Knowledge.Symbol> places = definitions(word).places();
+		boolean renamable = renames(word);
 		host.uses(word, places.isEmpty() ? null : places.get(0).file(),
 				keyboardUp(), renamable, rename && renamable);
+	}
+
+	/**
+	 * Return whether the uses of word at the caret can be listed: a name
+	 * of the file or the files around, or declared nowhere, in a folder.
+	 */
+	boolean listsUses(@NonNull String word) {
+		return host.offersUses() && (GlslWords.style(word, 0,
+				word.length()) == Style.IDENTIFIER ||
+				!definitions(word).places().isEmpty());
+	}
+
+	/**
+	 * Return whether word at the caret can be renamed where its uses are
+	 * listed: not an app uniform, which the app sets by its name, unless
+	 * a local or parameter of the name hides it.
+	 */
+	boolean renames(@NonNull String word) {
+		return listsUses(word) && (!UNIFORMS.containsKey(word) ||
+				isLocal(host.declared(), host.offset(), word));
 	}
 
 	/**
