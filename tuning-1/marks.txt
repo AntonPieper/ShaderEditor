@@ -1,0 +1,43 @@
+=== 00:10:45 A1 tap 0.75
+=== 00:10:57 A1 tap ⇆ 0.75
+=== 00:11:13 A1 drag ruler left
+=== 00:11:29 A2 tap 0.25
+=== 00:11:52 A3 next x8
+=== 00:12:29 A3 previous x16
+=== 00:14:25 A4 RADIUS + x5
+=== 00:14:49 A4 type 0.060 into the field
+=== 00:16:27 A5 + twice on loop bound 3
+=== 00:16:52 A5x field stale at 0.060 while on gl_FragColor 1.0 -> + + made 1.2, picture black; - - back
+=== 00:18:19 A5x Revert
+=== 00:18:52 S2 start: ⇆ 0.75
+=== 00:19:35 S2 start: ⇆ 0.75
+=== 00:20:10 A5 loop bound 3: + twice
+=== 00:20:35 A6 hold Before
+=== 00:22:34 A7 Undo x3 then Redo x3 with the bar open
+=== 01:30:53 14-prev touch
+=== 01:30:56 14-line touch
+=== 01:30:59 14-next touch
+=== 01:31:02 14-dec touch
+=== 01:31:05 14-value touch
+=== 01:31:08 14-inc touch
+=== 01:31:12 14-ruler touch
+=== 01:31:15 14-revert touch
+=== 01:31:18 14-before touch
+=== 01:31:21 14-step touch
+=== 01:31:24 14-done touch
+=== 01:31:36 14-line touch again
+=== 01:31:41 14-ruler touch again
+=== 01:31:46 14 from prev: swipe right x3
+=== 01:31:55 14 from inc: swipe right
+=== 01:32:12 14 + focus
+=== 01:32:16 14 + double tap
+=== 01:32:19 14 + double tap again
+=== 01:32:23 14 ruler via swipe, then swipe up
+=== 01:32:38 14 Before focus
+=== 01:32:42 14 Before double tap (on)
+=== 01:32:46 14 Before double tap (off)
+=== 01:32:49 14 › focus
+=== 01:32:52 14 › double tap
+=== 01:32:57 14 › double tap again
+=== 01:33:01 14 Done focus
+=== 01:33:04 14 Done double tap
