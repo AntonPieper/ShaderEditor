@@ -91,6 +91,16 @@ public interface Knowledge {
 			public int line(Symbol symbol) {
 				return -1;
 			}
+
+			@Override
+			public boolean whole(Knowledge known) {
+				for (Symbol link : known.links()) {
+					if (link.kind() == Kind.INCLUDE) {
+						return false;
+					}
+				}
+				return true;
+			}
 		};
 
 		/**
@@ -107,10 +117,38 @@ public interface Knowledge {
 		List<Symbol> find(CharSequence word);
 
 		/**
+		 * Return every declaration of word outside of the text, each
+		 * with its file: where find answers one symbol for a name that
+		 * is no function, every one of them. By default what find
+		 * answers.
+		 */
+		default List<Symbol> all(CharSequence word) {
+			return find(word);
+		}
+
+		/**
 		 * Return the line, from 0, the name of symbol stands in in its
 		 * file, for a symbol find gave; -1 if it cannot be told.
 		 */
 		int line(Symbol symbol);
+
+		/**
+		 * Return the macros declared outside that the text may see,
+		 * each with its file. By default none.
+		 */
+		default List<Symbol> macros() {
+			return Collections.emptyList();
+		}
+
+		/**
+		 * Return whether all is known of what is outside of a text that
+		 * known is the knowledge of: whether every declaration outside
+		 * is among what {@link #all} answers, so that nothing answered
+		 * means there is none. By default false.
+		 */
+		default boolean whole(Knowledge known) {
+			return false;
+		}
 	}
 
 	/** Reads a text line by line. */
@@ -125,7 +163,7 @@ public interface Knowledge {
 		Knowledge build();
 	}
 
-	/** Knows nothing. */
+	/** Knows nothing, and so is not complete. */
 	Knowledge NONE = new Knowledge() {
 		@Override
 		public List<Symbol> symbols() {
@@ -145,6 +183,11 @@ public interface Knowledge {
 		@Override
 		public int[] folds() {
 			return new int[0];
+		}
+
+		@Override
+		public boolean complete() {
+			return false;
 		}
 	};
 

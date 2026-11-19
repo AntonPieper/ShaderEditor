@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import de.markusfisch.android.shadereditor.editor.Definitions;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Knowledge.Symbol;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
@@ -61,6 +62,8 @@ public final class ProjectKnowledge {
 	private final Map<ProjectPath, Set<ProjectPath>> included =
 			new HashMap<>();
 	private final Map<ProjectPath, List<String>> names = new HashMap<>();
+	private final Map<ProjectPath, List<Symbol>> macros = new HashMap<>();
+	private final Map<ProjectPath, Boolean> wholes = new HashMap<>();
 
 	private ProjectKnowledge(Map<ProjectPath, Entry> entries) {
 		this.entries = entries;
@@ -265,16 +268,117 @@ public final class ProjectKnowledge {
 	 */
 	public List<Symbol> find(ProjectPath path, CharSequence word) {
 		List<Symbol> found = find(includes(path), word);
-		if (!found.isEmpty()) {
-			return found;
+		return found.isEmpty() ? find(around(path), word) : found;
+	}
+
+	/**
+	 * Return every declaration of word in the files path includes, then
+	 * in those around it, each with its file, in their order: where
+	 * find answers with the first declaration of a name that is no
+	 * function, or asks the files around only when the includes have
+	 * none, this answers with all.
+	 */
+	public List<Symbol> all(ProjectPath path, CharSequence word) {
+		return all(reach(path), word);
+	}
+
+	/**
+	 * Return the macros of the files all asks, each with its file, in
+	 * their order.
+	 */
+	public List<Symbol> macros(ProjectPath path) {
+		List<Symbol> found = macros.get(path);
+		if (found == null) {
+			found = new ArrayList<>();
+			for (ProjectPath file : reach(path)) {
+				Knowledge knowledge = of(file);
+				for (Symbol symbol : knowledge != null
+						? knowledge.symbols()
+						: Collections.<Symbol>emptyList()) {
+					if (symbol.kind() == Knowledge.Kind.MACRO) {
+						found.add(symbol.in(file.toString()));
+					}
+				}
+			}
+			found = Collections.unmodifiableList(found);
+			macros.put(path, found);
 		}
+		return found;
+	}
+
+	/**
+	 * Return whether all and find know everything declared outside of
+	 * the text of path whose knowledge is known: the build read path,
+	 * and every file it names to include; each file around it was read
+	 * whole; and no macro there glues names together with ##, which
+	 * makes names that are declared nowhere.
+	 */
+	public boolean whole(ProjectPath path, Knowledge known) {
+		if (!entries.containsKey(path)) {
+			return false;
+		}
+		Set<ProjectPath> includes = includes(path);
+		for (Symbol link : known.links()) {
+			if (link.kind() != Knowledge.Kind.INCLUDE) {
+				continue;
+			}
+			ProjectParseResult<ProjectPath> target =
+					ProjectPath.resolve(path, link.name());
+			if (!target.isSuccess() ||
+					!includes.contains(target.value())) {
+				return false;
+			}
+		}
+		Boolean whole = wholes.get(path);
+		if (whole == null) {
+			whole = true;
+			for (ProjectPath file : reach(path)) {
+				Knowledge knowledge = of(file);
+				whole &= knowledge != null && knowledge.complete();
+				for (Symbol symbol : knowledge != null
+						? knowledge.symbols()
+						: Collections.<Symbol>emptyList()) {
+					whole &= !Definitions.gluing(symbol);
+				}
+			}
+			wholes.put(path, whole);
+		}
+		return whole;
+	}
+
+	// The files whose declarations path may see: those it includes,
+	// then those around it.
+	private Set<ProjectPath> reach(ProjectPath path) {
+		Set<ProjectPath> reach = new LinkedHashSet<>(includes(path));
+		reach.addAll(around(path));
+		return reach;
+	}
+
+	// The files that include path, and what they include, but path.
+	private Set<ProjectPath> around(ProjectPath path) {
 		Set<ProjectPath> around = new LinkedHashSet<>();
 		for (ProjectPath includer : includers(path)) {
 			around.add(includer);
 			around.addAll(includes(includer));
 		}
 		around.remove(path);
-		return find(around, word);
+		return around;
+	}
+
+	private List<Symbol> all(Set<ProjectPath> files, CharSequence word) {
+		List<Symbol> found = new ArrayList<>();
+		for (ProjectPath file : files) {
+			Knowledge knowledge = of(file);
+			if (knowledge == null) {
+				continue;
+			}
+			for (Symbol symbol : knowledge.symbols()) {
+				if (symbol.name().contentEquals(word)) {
+					found.add(symbol.in(file.toString()));
+				}
+			}
+		}
+		return found;
 	}
 
 	/**

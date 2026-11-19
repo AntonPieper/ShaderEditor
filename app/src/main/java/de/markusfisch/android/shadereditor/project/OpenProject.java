@@ -1892,7 +1892,8 @@ public final class OpenProject {
 	 * build of what runs: the names the files it includes declare, and
 	 * what a word refers to there. It answers for the last build at the
 	 * moment it is asked, on the thread the project is used on; a file
-	 * the build did not read sees nothing. A file that is renamed, or
+	 * the build did not read sees nothing, and is not told that is all
+	 * ({@link Knowledge.Scope#whole}). A file that is renamed, or
 	 * moved with a folder above it, stays the file that is asked about.
 	 */
 	public Knowledge.Scope scope(ProjectPath path) {
@@ -1927,8 +1928,23 @@ public final class OpenProject {
 			}
 
 			@Override
+			public List<Knowledge.Symbol> all(CharSequence word) {
+				return knowledge.all(path(), word);
+			}
+
+			@Override
 			public int line(Knowledge.Symbol symbol) {
 				return knowledge.line(symbol);
+			}
+
+			@Override
+			public List<Knowledge.Symbol> macros() {
+				return knowledge.macros(path());
+			}
+
+			@Override
+			public boolean whole(Knowledge known) {
+				return knowledge.whole(path(), known);
 			}
 		};
 	}

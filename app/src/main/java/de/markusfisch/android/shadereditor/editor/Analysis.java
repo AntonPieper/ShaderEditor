@@ -67,7 +67,8 @@ public final class Analysis {
 				builder.addLine(line, text.lineStart(n), tokens);
 			}
 		}
-		Knowledge knowledge = builder != null
+		// What could not be read is not known, nor complete.
+		Knowledge knowledge = outlined
 				? builder.build()
 				: Knowledge.NONE;
 		Set<String> typeNames = new HashSet<>();
