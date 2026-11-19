@@ -1,0 +1,25 @@
+=== 08:46:07 1 reading control -> Actions
+=== 08:46:18 1 double tap: Go to definition of disc
+=== 08:46:33 1 Actions: Back to line
+=== 08:46:43 1 double tap: Back to line
+=== 08:47:03 1 move caret to sdCircle (keys)
+=== 08:47:06 1 Actions on sdCircle
+=== 08:47:12 1 double tap: Go to definition of sdCircle
+=== 08:47:31 1 swipe through the list
+=== 08:47:48 1 double tap the vec2 row
+=== 08:48:09 2 open drawer
+=== 08:49:37 2 double tap code (editing)
+=== 08:49:50 2 touch grey form
+=== 08:49:54 2 swipe right
+=== 08:50:06 3 double tap the form (glw)
+=== 08:50:12 3 swipe right through sheet
+=== 08:50:42 3b close sheet, Back to Names.frag via way back
+=== 08:51:00 3b way back Names.frag
+=== 08:51:22 3 touch form (disc)
+=== 08:51:26 3 double tap form -> Look up
+=== 08:51:31 3 swipe through
+=== 08:52:06 3 touch form (disc)
+=== 08:52:09 3 double tap form -> Look up
+=== 08:52:15 3 swipe through
+=== 08:52:44 3 again: touch form
+=== 08:52:47 3 again: double tap
