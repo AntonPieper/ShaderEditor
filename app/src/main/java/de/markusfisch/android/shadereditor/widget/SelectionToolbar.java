@@ -25,8 +25,9 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 	private final Runnable reveal = this::reveal;
 	private ActionMode mode;
 	private boolean closing;
-	// From Android 13 on, the dispatcher Back goes through and the
-	// callback that closes the toolbar, while it shows.
+	// From Android 13 on, while the toolbar shows: the dispatcher and the
+	// callback that closes it. Back reaches the callback only while
+	// predictive back is on for the app; else it comes as a key.
 	private Object backDispatcher;
 	private Object backCallback;
 
