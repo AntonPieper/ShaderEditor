@@ -10,6 +10,7 @@ import de.markusfisch.android.shadereditor.project.FileTexts;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 
 /**
  * The files around the file of a folder the editor shows: what the
@@ -113,6 +114,17 @@ public interface FileLinks extends HostCompletion.Listing {
 	 */
 	void afterBuild(@NonNull FileTexts.Callback<Boolean> done);
 
-	/** Run changed when a folder asked for is listed, none when null. */
+	/**
+	 * Run changed when a folder asked for is listed, or what the files
+	 * around declare may have changed; none when null.
+	 */
 	void setListener(@Nullable Runnable changed);
+
+	/**
+	 * The file's text was read again, as known: have what the files it
+	 * includes and those that include it declare read, if its includes
+	 * changed; changed runs when it is.
+	 */
+	default void know(@NonNull Knowledge known) {
+	}
 }

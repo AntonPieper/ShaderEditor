@@ -325,6 +325,18 @@ public final class OpenProject {
 	private List<Used> used = List.of();
 	// What the files of the last build know of each other.
 	private ProjectKnowledge knowledge = ProjectKnowledge.NONE;
+	// What was read around a file the last build does not cover, for
+	// which includes and moves; whether all of the folder was read.
+	private record Around(ProjectPath path, Set<ProjectPath> includes,
+			int moves, ProjectKnowledge knowledge, boolean whole) {
+	}
+
+	// The most files and bytes read around a file; beyond, it cannot
+	// tell.
+	static final int AROUND_FILES = 500;
+	static final long AROUND_BYTES = 4 << 20;
+	private Around around;
+	private int aroundAsked;
 	// See wayBack().
 	private Object wayBack;
 	// The lines of the last build of what runs that name its files.
@@ -1912,6 +1924,70 @@ public final class OpenProject {
 	}
 
 	/**
+	 * Read what the files around path declare, path including the files
+	 * includes, when the last build does not cover it: another shader
+	 * of the folder, a library what runs does not include, or a file
+	 * that now includes one the build did not read. Not again for the
+	 * same path, includes and moves. done is told on the main thread
+	 * when it is read; an answer for an older question is dropped.
+	 */
+	public void know(ProjectPath path, Set<ProjectPath> includes,
+			Runnable done) {
+		Around was = around;
+		if (covers(path, includes) || (was != null && was.path.equals(path) &&
+				was.includes.equals(includes) && was.moves == moves)) {
+			return;
+		}
+		int asked = ++aroundAsked;
+		int heard = moves;
+		Edited files = new Edited(snapshot(), journaled());
+		ProjectKnowledge previous = was != null ? was.knowledge : knowledge;
+		worker.execute(() -> {
+			// Every GLSL file of the folder: which include path is told
+			// only by their text. Beyond the bounds, it cannot tell.
+			List<ProjectPath> paths = new ArrayList<>();
+			boolean whole = lone != null ? paths.add(lone)
+					: collect(null, paths) == 0;
+			Map<ProjectPath, byte[]> texts = new LinkedHashMap<>();
+			long bytes = 0;
+			for (ProjectPath file : paths) {
+				if (texts.size() == AROUND_FILES || bytes > AROUND_BYTES) {
+					whole = false;
+					break;
+				} else if (files.read(file) instanceof Content content) {
+					texts.put(file, content.bytes());
+					bytes += content.bytes().length;
+				} else {
+					whole = false;
+				}
+			}
+			Around read = new Around(path, includes, heard,
+					ProjectKnowledge.of(texts, previous), whole);
+			main.execute(() -> {
+				if (asked == aroundAsked) {
+					around = read;
+					done.run();
+				}
+			});
+		});
+	}
+
+	// Whether the last build read path and every file it includes.
+	private boolean covers(ProjectPath path, Set<ProjectPath> includes) {
+		return knowledge.has(path) &&
+				knowledge.includes(path).containsAll(includes);
+	}
+
+	// What path sees of the files around it. The last build's knowledge
+	// wins wherever it covers the file, since that is what compiles;
+	// else what was read around path when it was shown.
+	private ProjectKnowledge known(ProjectPath path) {
+		Around read = around;
+		return read == null || !read.path.equals(path) ||
+				covers(path, read.includes) ? knowledge : read.knowledge;
+	}
+
+	/**
 	 * Return what the file at path sees of the other files of the last
 	 * build of what runs: the names the files it includes declare, and
 	 * what a word refers to there. It answers for the last build at the
@@ -1943,32 +2019,36 @@ public final class OpenProject {
 
 			@Override
 			public List<String> names() {
-				return knowledge.names(path());
+				return known(path()).names(path());
 			}
 
 			@Override
 			public List<Knowledge.Symbol> find(CharSequence word) {
-				return knowledge.find(path(), word);
+				return known(path()).find(path(), word);
 			}
 
 			@Override
 			public List<Knowledge.Symbol> all(CharSequence word) {
-				return knowledge.all(path(), word);
+				return known(path()).all(path(), word);
 			}
 
 			@Override
 			public int line(Knowledge.Symbol symbol) {
-				return knowledge.line(symbol);
+				return known(path()).line(symbol);
 			}
 
 			@Override
 			public List<Knowledge.Symbol> macros() {
-				return knowledge.macros(path());
+				return known(path()).macros(path());
 			}
 
 			@Override
 			public boolean whole(Knowledge known) {
-				return knowledge.whole(path(), known);
+				ProjectPath at = path();
+				ProjectKnowledge read = known(at);
+				Around was = around;
+				return read.whole(at, known) && (read == knowledge ||
+						(was.whole && was.moves == moves));
 			}
 		};
 	}

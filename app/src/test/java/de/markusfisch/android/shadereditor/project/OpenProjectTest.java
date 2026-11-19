@@ -39,6 +39,7 @@ import de.markusfisch.android.shadereditor.project.ProjectSessions.Kind;
 import de.markusfisch.android.shadereditor.project.ProjectSessions.Locator;
 import de.markusfisch.android.shadereditor.syntax.GlslSyntax;
 import de.markusfisch.android.shadereditor.syntax.JsonSyntax;
+import de.markusfisch.android.shadereditor.syntax.GlslKnowledge;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.LexedLine;
 import de.markusfisch.android.shadereditor.syntax.LineTokens;
@@ -285,6 +286,41 @@ public class OpenProjectTest {
 				"float third(float x) { return x / 3.0; }\n");
 		prepare(project);
 		assertEquals(List.of("third"), scope.names());
+	}
+
+	// A file the last build did not read sees what the files around it
+	// declare once they are read for it, and knows when that is all.
+	@Test
+	public void aFileTheBuildDidNotReadSeesTheFilesAroundOnceRead()
+			throws IOException {
+		String other = "#include \"lib/common.glsl\"\n" + SHADER;
+		write("main.frag", SHADER);
+		write("other.frag", other);
+		write("lib/common.glsl", "float half(float x) { return x * 0.5; }\n");
+		OpenProject project = open();
+		shown(project, "main.frag");
+		project.runThisFile(path("main.frag"));
+		prepare(project);
+		Knowledge.Scope scope = project.scope(path("other.frag"));
+		Knowledge known = GlslKnowledge.of(other);
+		assertFalse(scope.whole(known));
+
+		Boolean read = await(done -> project.know(path("other.frag"),
+				Set.of(path("lib/common.glsl")), () -> done.done(true)));
+		assertTrue(read);
+		assertEquals("lib/common.glsl", scope.all("half").get(0).file());
+		assertTrue(scope.whole(known));
+		// An include that is not there: it cannot tell.
+		assertFalse(scope.whole(GlslKnowledge.of(
+				"#include \"gone.glsl\"\n" + other)));
+
+		// An answer to an older question is dropped.
+		boolean[] told = new boolean[2];
+		project.know(path("other.frag"), Set.of(), () -> told[0] = true);
+		project.know(path("lib/common.glsl"), Set.of(), () -> told[1] = true);
+		settle();
+		assertFalse(told[0]);
+		assertTrue(told[1]);
 	}
 
 	// The editor asks once for what the file it shows sees, and keeps

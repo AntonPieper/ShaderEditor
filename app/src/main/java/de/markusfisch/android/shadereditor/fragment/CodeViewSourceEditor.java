@@ -861,6 +861,9 @@ final class CodeViewSourceEditor implements SourceEditor {
 	}
 
 	private void analysed(@NonNull Analysis analysis) {
+		if (links != null) {
+			links.know(analysis.knowledge());
+		}
 		complete();
 		if (convert && isShaderToySource(analysis.knowledge())) {
 			String source = getText();

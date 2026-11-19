@@ -176,6 +176,11 @@ public final class ProjectKnowledge {
 		return false;
 	}
 
+	/** Return whether the files given held path. */
+	public boolean has(ProjectPath path) {
+		return entries.containsKey(path);
+	}
+
 	/**
 	 * Return what is known of the text of path; null for a file that
 	 * was not given, and for one that includes nothing and that nothing
