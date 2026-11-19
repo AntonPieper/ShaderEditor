@@ -1,6 +1,14 @@
 # Device rows: grey lines and the Here row
 
-**Build commit `8944a402844946b5411245cf07b6b92a84d55c11`** of `github.com/AntonPieper/ShaderEditor`. It is the head of PR #807 (the Here row), on top of PR #806 (grey lines). These rows were written for that commit. Build two apps from it, the debug app and an old-editor variant, as below. This branch (`foreman/dimmed-rows`) holds this checklist, the shader files and the small scripts the rows use. It is never merged.
+**Build commit `f8039a6e1a01e2871510c25dea48d436ad814182`** of `github.com/AntonPieper/ShaderEditor`. It is the head of PR #807 (the Here row), on top of PR #806 (grey lines). These rows were written for that commit. Build two apps from it, the debug app and an old-editor variant, as below. This branch (`foreman/dimmed-rows`) holds this checklist, the shader files and the small scripts the rows use. It is never merged.
+
+## Re-run for this commit
+
+The first pass (results on `foreman/android6-pass`, `dimmed-2/`, build 8944a402) passed the other rows. For this commit run step 0, row 1 (it adds `Extra/Es100`), and then:
+
+- **Row 7**, all of it. Its expectation was wrong before: opening a file runs it, in either run mode, so the grey of a file comes from a build of the texts as they are when it is opened.
+- **Row 13**, both files, at the largest font, portrait and landscape: the layout changed.
+- **Row 15** (new), on the Android 6 device (OpenGL ES 2.0 only): a program the app refuses before compiling it shows no grey and no Here row.
 
 ## 0. Build and set up
 
@@ -8,7 +16,7 @@ On Windows, in `cmd`, from your clone of the repository. In PowerShell write `.\
 
 ```
 git fetch origin
-git worktree add ..\se-trial 8944a402844946b5411245cf07b6b92a84d55c11
+git worktree add ..\se-trial f8039a6e1a01e2871510c25dea48d436ad814182
 git worktree add ..\se-rows origin/foreman/dimmed-rows
 cd ..\se-trial
 gradlew.bat assembleDebug
@@ -44,7 +52,8 @@ After a key on a line that may change a condition (a line with `#`, a backslash,
 - The grey **below** it is worked out again in the background right after the key, without a run. Until the answer arrives the old grey below stays. If no answer arrives within 50 ms, the grey below the edit goes until one does.
 - A line typed inside a grey block is grey at once.
 - An edit of an `#include` or `#pragma` line removes all grey until the next build.
-- A file the running shader uses, such as a pass, shows the last build's grey as soon as it is opened.
+- Opening a file runs it, in either run mode, so its grey comes from a build of the texts as they are then.
+- A program the app refuses before compiling it, one of `#version 300 es` on a device with only OpenGL ES 2.0, shows no grey and no Here row.
 
 So the one wrong picture allowed is old grey (or missing grey) on lines below the edit, for at most 50 ms after the key.
 
@@ -78,10 +87,11 @@ adb shell rm -rf /data/local/tmp/se-rows
 adb push Macros /data/local/tmp/se-rows/Macros
 adb push Extra/Passes /data/local/tmp/se-rows/Passes
 adb push Extra/Long /data/local/tmp/se-rows/Long
+adb push Extra/Es100 /data/local/tmp/se-rows/Es100
 adb push send-switches.sh /data/local/tmp/se-rows/send-switches.sh
 adb push send-parameters.sh /data/local/tmp/se-rows/send-parameters.sh
-adb shell run-as de.markusfisch.android.shadereditor.debug cp -r /data/local/tmp/se-rows/Macros /data/local/tmp/se-rows/Passes /data/local/tmp/se-rows/Long files/user-files/Shaders/
-adb shell run-as de.markusfisch.android.shadereditor.debug ls files/user-files/Shaders/Macros files/user-files/Shaders/Passes files/user-files/Shaders/Long
+adb shell run-as de.markusfisch.android.shadereditor.debug cp -r /data/local/tmp/se-rows/Macros /data/local/tmp/se-rows/Passes /data/local/tmp/se-rows/Long /data/local/tmp/se-rows/Es100 files/user-files/Shaders/
+adb shell run-as de.markusfisch.android.shadereditor.debug ls files/user-files/Shaders/Macros files/user-files/Shaders/Passes files/user-files/Shaders/Long files/user-files/Shaders/Es100
 adb shell am force-stop de.markusfisch.android.shadereditor.debug
 adb shell am start -n de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity
 ```
@@ -89,8 +99,8 @@ adb shell am start -n de.markusfisch.android.shadereditor.debug/de.markusfisch.a
 (`force-stop` drops a live wallpaper of this app, if the device uses one.)
 
 **Expected:**
-- The `ls` lists, for Macros: Lines.frag, Nested.frag, Parameters.frag, README.md, Redefined.frag, ShaderToy.frag, Switches.frag, Template.frag. For Passes: Main.frag, Pass.frag. For Long: Long.frag.
-- The app's file list shows the folders Macros, Passes and Long with those files.
+- The `ls` lists, for Macros: Lines.frag, Nested.frag, Parameters.frag, README.md, Redefined.frag, ShaderToy.frag, Switches.frag, Template.frag. For Passes: Main.frag, Pass.frag. For Long: Long.frag. For Es100: Rings.frag.
+- The app's file list shows the folders Macros, Passes, Long and Es100 with those files.
 - `Macros/README.md` describes every example.
 
 **Evidence:** a screenshot of the file list (`r1.png`).
@@ -166,14 +176,16 @@ b. Delete the space. **Expected:** the same: grey gone, back after the next buil
 
 Files: `Passes/Main.frag`, then `Passes/Pass.frag`. `Main.frag` reads `Pass.frag` as an input pass.
 
+Opening a file runs its project: `Main.frag`, which is what runs here, with the texts as they are when the file is opened. That is so in both run modes. The grey of the file opened comes from that build.
+
 a. Tap `Main.frag`; it runs. **Expected:** line 18 grey.
-b. Tap `Pass.frag`. It opens without running on its own, because `Main.frag` uses it; the picture stays `Main.frag`'s. **Expected:** line 18 (`float v = smoothstep(...)`) is grey at once, from `Main.frag`'s last build.
+b. Tap `Pass.frag`. It is not run on its own, because `Main.frag` uses it; `Main.frag` runs again. **Expected:** line 18 (`float v = smoothstep(...)`) grey, a moment after it opens.
 c. Delete the `1` of line 9, `#define RINGS 1`. **Expected:** right after the key line 18 turns plain, because with nothing after `RINGS` the app cannot tell. Type `0`: line 16 (`float v = 0.5 + ...`) turns grey.
 d. Delete the `0` and type `1`. **Expected:** line 16 plain, then line 18 grey.
-e. Wait past the next build, then tap `Main.frag`. **Expected:** line 18 of `Main.frag` grey at once.
-f. Settings → **Run mode** → "Run manually". In `Main.frag`, type a space at the end of line 20. Tap `Pass.frag`. **Expected:** no grey in `Pass.frag`, because `Main.frag` changed since the last build. Tap **Run code**: line 18 grey. Go back to `Main.frag`, delete the space, tap **Run code**, and set **Run mode** back to "Auto run on change".
+e. Tap `Main.frag`. **Expected:** line 18 of `Main.frag` grey, a moment after it opens.
+f. Settings → **Run mode** → "Run manually". In `Main.frag`, delete the `1` of line 10, `#define TINT 1`, and type `0`. **Expected:** after the delete lines 16 and 18 are both plain (the app cannot tell); right after the `0` line 16 is grey and line 18 plain. The picture keeps its orange tint (no run). Tap `Pass.frag`. **Expected:** the picture loses its tint (opening the file ran `Main.frag` with `TINT 0`), and line 18 of `Pass.frag` is grey. Tap `Main.frag`: lines 16 grey, 18 plain. Change line 10 back to `#define TINT 1`, tap **Run code**, and set **Run mode** back to "Auto run on change".
 
-**Evidence:** screenshots after b, c and f.
+**Evidence:** screenshots after b, c and of each step of f (with the picture).
 
 ## 8. Switching files and back
 
@@ -253,7 +265,66 @@ For reference, the Here texts unbroken are:
 - `MIX3`: `mix(mix(vec3(0.1, 0.2, 0.5), vec3(0.9, 0.4, 0.2), smoothstep(0.0, 0.5, length(uv))), vec3(1.0, 0.9, 0.6), smoothstep(0.5, 1.0, length(uv)))`
 - `SPIN`: `mat2(cos(((time * 0.05) * (2.0 * 3.14159265))), sin(((time * 0.05) * (2.0 * 3.14159265))), -sin(((time * 0.05) * (2.0 * 3.14159265))), cos(((time * 0.05) * (2.0 * 3.14159265))))`
 
-Set the font size back. **Evidence:** four screenshots (two files, portrait and landscape).
+**At about 20 columns** (the largest font in portrait), it should read like this; at other widths the steps differ, but the rules hold:
+
+- **No line is wider than the box.** No line goes on at the box's left edge; no `*` stands alone on a line; `length(uv)` and `3.14159265` are never split.
+- **Indent step.** A part goes four columns in, or two, or one: whichever gives the fewest lines that all fit.
+- **A `#define` head that does not fit** breaks after a comma, with the rest two steps in.
+
+`MIX3` (step 2):
+
+```
+mix(
+  mix(
+    vec3(
+      0.1,
+      0.2,
+      0.5),
+    vec3(
+      0.9,
+      0.4,
+      0.2),
+    smoothstep(
+      0.0,
+      0.5,
+      length(uv))),
+  vec3(
+    1.0,
+    0.9,
+    0.6),
+  smoothstep(
+    0.5,
+    1.0,
+    length(uv)))
+```
+
+`SPIN` (step 1), the first of its four calls:
+
+```
+mat2(
+ cos(
+  ((time * 0.05)
+   * (2.0
+    * 3.14159265))),
+ sin(
+  ...
+```
+
+The definition of `MIX3` at the top of its sheet:
+
+```
+#define MIX3(a, b,
+  c, t)
+ mix(
+  mix(
+   a,
+   b,
+   S(0.0, 0.5, t)),
+  c,
+  S(0.5, 1.0, t))
+```
+
+Set the font size back. **Evidence:** four screenshots (two files, portrait and landscape), and for each whether any line wraps at the left edge.
 
 ## 14. TalkBack reads the Here row
 
@@ -268,6 +339,19 @@ To get the spoken text, set TalkBack Settings → Advanced → Developer setting
 
 **Evidence:** the spoken lines from the log, or a screen recording with sound.
 
+## 15. Android 6: what the app refuses shows nothing
+
+On the Android 6 device (OpenGL ES 2.0 only), after step 0 and row 1 there.
+
+a. Tap `Macros/Switches.frag`. The app says it cannot run it: "#version 300 es needs OpenGL ES 3.0, but this device only has OpenGL ES 2.0". **Expected:** no line is grey; lines 15, 34, 37, 38 and 51 have their syntax colours.
+b. Type `-` before the `2` of line 9. **Expected:** still no grey. Delete the `-`.
+c. Tap `Macros/Parameters.frag` (also `#version 300 es`). Long-press the first `RING` in line 19 and tap **Look up**. **Expected:** the definition, and no **Here** row.
+d. Tap `Passes/Main.frag`. **Expected:** no grey in it; tap `Pass.frag`: no grey there either.
+e. Tap `Es100/Rings.frag` (GLSL ES 1.00, which this device runs). **Expected:** it runs (rings); line 14 is grey. Look up the first `RING` in line 16: **Here** `smoothstep(0.02, 0.0, abs(length(uv) - (0.3)))`.
+f. Tap `Macros/Template.frag` (ES 1.00). **Expected:** it runs; line 18 is grey; lines 2 and 4 are not.
+
+**Evidence:** a screenshot of each step.
+
 ## When you are done
 
 ```
@@ -281,7 +365,9 @@ Leave the imported folders in the app; they do no harm. Report per row: pass or 
 - `DEVICE-ROWS.md`: this checklist.
 - `Macros/`: the example shaders, the same as `app/src/test/resources/directives/macros/` at the commit above, with a README of what each shows.
 - `Extra/Passes/`: a shader with a second pass, each with a switch of its own.
-- `Extra/Long/`: a 1,999-line shader. Both `Extra` shaders compile in Mesa's compiler and in the app without errors.
+- `Extra/Long/`: a 1,999-line shader.
+- `Extra/Es100/`: a GLSL ES 1.00 shader with a macro and a switch, which OpenGL ES 2.0 runs.
+- All the `Extra` shaders compile in Mesa's compiler and in the app without errors.
 - `send-switches.sh`, `send-parameters.sh`: run on the device by row 11; they share a file's text with the old-editor variant.
 - `dbscreen.ps1`: makes a checkout the old-editor variant (step 0).
 - `.gitattributes`: keeps every file's line ends as they are, so the scripts run on the device from a Windows checkout too.

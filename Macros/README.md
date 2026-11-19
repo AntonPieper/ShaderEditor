@@ -50,6 +50,8 @@ Line 20, `MIX3`, whose arguments go on into line 21 and whose definition takes t
 
 ## ShaderToy.frag: the usual shorthands, as the ShaderToy import writes a shader
 
+Lines 1 to 31 are what the import puts above a ShaderToy shader. `vec4 color = vec4(1e20);` in line 28 is part of that: like ShaderToy's site, it starts the colour at a huge value, so a shader that leaves part of its colour unwritten looks as it does there. The example's own code starts at line 33.
+
 - Line 40, `rot`: Here: `mat2(cos(iTime * 0.3), -sin(iTime * 0.3), sin(iTime * 0.3), cos(iTime * 0.3))`
 - Line 43, `S`: Here: `smoothstep(0.0, 0.01, d)`
 - Line 44, `S`: Here: `smoothstep(0.3, 0.9, length(uv))`
