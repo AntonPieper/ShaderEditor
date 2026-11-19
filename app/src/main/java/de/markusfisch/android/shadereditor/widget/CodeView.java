@@ -156,28 +156,7 @@ public class CodeView extends View {
 					return false;
 				}
 			};
-	private final SelectionToolbar toolbar = new SelectionToolbar(this,
-			new SelectionToolbar.Host() {
-				@Override
-				public void contentRect(Rect out) {
-					selectionRect(out);
-				}
-
-				@Override
-				public int[] actions() {
-					return offered();
-				}
-
-				@Override
-				public boolean act(int id) {
-					return toolbarAction(id);
-				}
-
-				@Override
-				public void closed(boolean dismissed) {
-					toolbarClosed(dismissed);
-				}
-			});
+	private final SelectionToolbar toolbar = new SelectionToolbar(this);
 	private final OverScroller scroller;
 	private final GestureDetector gestures;
 	private final int touchSlop;
@@ -1034,8 +1013,9 @@ public class CodeView extends View {
 		return done;
 	}
 
-	// Dismissed by the user, it drops a selection as the platform's does.
-	private void toolbarClosed(boolean dismissed) {
+	// Dismissed by the user (Back), it drops a selection as the platform's
+	// does.
+	void toolbarClosed(boolean dismissed) {
 		if (dismissed && touched != null) {
 			// The document's end: a change may have moved it since.
 			int end = document.selection().end();
@@ -1095,8 +1075,9 @@ public class CodeView extends View {
 	}
 
 	// Puts the part of the selection on screen, and the handles under
-	// it, into out, in the view's coordinates; above the view if none is.
-	private void selectionRect(Rect out) {
+	// it, into out, in the view's coordinates; above the view, which hides
+	// the toolbar, if none is.
+	void selectionRect(Rect out) {
 		Text text = document.text();
 		Document.Selection selection = document.selection();
 		int lineCount = text.lineCount();

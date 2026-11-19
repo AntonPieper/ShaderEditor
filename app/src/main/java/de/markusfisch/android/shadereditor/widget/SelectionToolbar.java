@@ -17,22 +17,7 @@ import androidx.annotation.RequiresApi;
 // while the host moves what it points at and comes back a moment after. Back
 // closes it, as the user's dismissal.
 final class SelectionToolbar extends ActionMode.Callback2 {
-	interface Host {
-		// In the view's coordinates; a rectangle outside the view hides the
-		// toolbar.
-		void contentRect(Rect out);
-
-		int[] actions();
-
-		// Returns whether the toolbar is done.
-		boolean act(int id);
-
-		// Dismissed if the user closed it (Back).
-		void closed(boolean dismissed);
-	}
-
-	private final View view;
-	private final Host host;
+	private final CodeView host;
 	private final Runnable reveal = this::reveal;
 	private ActionMode mode;
 	private boolean closing;
@@ -41,8 +26,7 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 	private Object backDispatcher;
 	private Object backCallback;
 
-	SelectionToolbar(View view, Host host) {
-		this.view = view;
+	SelectionToolbar(CodeView host) {
 		this.host = host;
 	}
 
@@ -80,7 +64,7 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 	// A moment after the last touch if it was hidden.
 	void show() {
 		if (mode == null) {
-			mode = view.startActionMode(this, ActionMode.TYPE_FLOATING);
+			mode = host.startActionMode(this, ActionMode.TYPE_FLOATING);
 			if (mode != null &&
 					Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 				takeBack();
@@ -89,14 +73,14 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 		}
 		mode.invalidate();
 		mode.invalidateContentRect();
-		view.removeCallbacks(reveal);
-		view.postDelayed(reveal, ViewConfiguration.getDoubleTapTimeout());
+		host.removeCallbacks(reveal);
+		host.postDelayed(reveal, ViewConfiguration.getDoubleTapTimeout());
 	}
 
 	// For as long as a drag goes on.
 	void hide() {
 		if (mode != null) {
-			view.removeCallbacks(reveal);
+			host.removeCallbacks(reveal);
 			mode.hide(ActionMode.DEFAULT_HIDE_DURATION);
 		}
 	}
@@ -130,7 +114,7 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 	@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 	private void takeBack() {
 		OnBackInvokedDispatcher dispatcher =
-				view.findOnBackInvokedDispatcher();
+				host.findOnBackInvokedDispatcher();
 		if (dispatcher != null) {
 			OnBackInvokedCallback callback = this::dismiss;
 			dispatcher.registerOnBackInvokedCallback(
@@ -166,13 +150,13 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 
 	@Override
 	public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-		fill(menu, host.actions());
+		fill(menu, host.offered());
 		return true;
 	}
 
 	@Override
 	public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-		if (host.act(item.getItemId())) {
+		if (host.toolbarAction(item.getItemId())) {
 			close();
 		}
 		return true;
@@ -181,13 +165,13 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 	@Override
 	public void onDestroyActionMode(ActionMode mode) {
 		this.mode = null;
-		view.removeCallbacks(reveal);
+		host.removeCallbacks(reveal);
 		releaseBack();
-		host.closed(!closing);
+		host.toolbarClosed(!closing);
 	}
 
 	@Override
 	public void onGetContentRect(ActionMode mode, View view, Rect outRect) {
-		host.contentRect(outRect);
+		host.selectionRect(outRect);
 	}
 }
