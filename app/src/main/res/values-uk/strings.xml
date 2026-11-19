@@ -640,6 +640,7 @@
 	<string name="tuning_part">%1$s %2$s</string>
 	<string name="a11y_tuning_value">%1$s, started at %2$s</string>
 	<string name="a11y_tuning_open">Tuning %1$s</string>
+	<string name="a11y_tuning_code">say the number being tuned</string>
 	<string name="tuning_previous">Previous number %1$s</string>
 	<string name="tuning_next">Next number %1$s</string>
 	<string name="tuning_number_tunable">%1$s, can be tuned</string>
@@ -647,6 +648,8 @@
 	<string name="tuning_before">Before</string>
 	<string name="tuning_before_on">On: the values before tuning</string>
 	<string name="tuning_before_off">Off</string>
+	<string name="tuning_show_code">Show code</string>
+	<string name="tuning_hide_code">Hide code</string>
 	<string name="tuning_building">Building</string>
 	<string name="fix_add_uniform_name">Add uniform %1$s</string>
 	<string name="fix_add_uniform_short">Add uniform</string>

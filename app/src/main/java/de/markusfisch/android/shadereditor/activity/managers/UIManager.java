@@ -12,6 +12,7 @@ import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
@@ -170,6 +171,13 @@ public class UIManager implements PassesSheet.Line {
 		View showErrors = toolbar.findViewById(R.id.show_errors);
 		ViewCompat.setTooltipText(showErrors, activity.getText(R.string.show_errors));
 		showErrors.setOnClickListener(showErrorClickListener);
+	}
+
+	/** Name the code button for what it does now. */
+	public void nameCodeButton(@StringRes int name) {
+		View toggleCode = toolbar.findViewById(R.id.toggle_code);
+		toggleCode.setContentDescription(activity.getText(name));
+		ViewCompat.setTooltipText(toggleCode, activity.getText(name));
 	}
 
 	public void updateUiToPreferences() {
