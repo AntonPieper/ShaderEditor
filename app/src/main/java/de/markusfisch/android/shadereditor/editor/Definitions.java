@@ -133,6 +133,55 @@ public final class Definitions {
 		return found;
 	}
 
+	/**
+	 * Return whether the word at offset of text is no name of its own
+	 * to look up: a field, behind a "." across spaces, line breaks and
+	 * the backslashes that continue a line, or where its struct
+	 * declares it; or a qualifier in "layout(...)".
+	 */
+	public static boolean noName(Knowledge known, Text text, int offset) {
+		if (inLayout(text, offset)) {
+			return true;
+		}
+		for (int i = offset, stop = Math.max(0, offset - 256); i-- > stop; ) {
+			char c = text.substring(i, i + 1).charAt(0);
+			if (c == '.') {
+				return true;
+			} else if (!Character.isWhitespace(c) && c != '\\') {
+				break;
+			}
+		}
+		for (Knowledge.Symbol symbol : known.symbols()) {
+			if (symbol.from() > offset) {
+				break;
+			} else if (symbol.kind() == Knowledge.Kind.TYPE &&
+					offset < symbol.to()) {
+				for (Knowledge.Symbol part : symbol.parts()) {
+					if (part.start() == offset) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	// Whether offset stands in the parentheses of a "layout" on its
+	// line.
+	private static boolean inLayout(Text text, int offset) {
+		int lineStart = text.lineStart(text.lineOf(offset));
+		String line = text.substring(lineStart, offset);
+		for (int i = line.length(), depth = 0; i-- > 0; ) {
+			char c = line.charAt(i);
+			if (c == ')') {
+				++depth;
+			} else if (c == '(' && depth-- == 0) {
+				return line.substring(0, i).trim().endsWith("layout");
+			}
+		}
+		return false;
+	}
+
 	private static boolean holds(List<Knowledge.Symbol> symbols,
 			Knowledge.Symbol symbol) {
 		for (Knowledge.Symbol s : symbols) {

@@ -15,9 +15,12 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
 import java.util.Objects;
@@ -25,6 +28,7 @@ import java.util.Objects;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.CompletionsAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
+import de.markusfisch.android.shadereditor.widget.NameView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 
 public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeListener {
@@ -59,6 +63,12 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	@NonNull
 	private final View referenceOpen;
 	@NonNull
+	private final View nameRow;
+	@NonNull
+	private final NameView nameForm;
+	@NonNull
+	private final MaterialButton nameAction;
+	@NonNull
 	private final Button backView;
 	@NonNull
 	private final View insertTabView;
@@ -73,6 +83,11 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	@androidx.annotation.Nullable
 	private Runnable onTune;
 	private boolean hasText = true;
+	// What stands in place of the completions, if anything.
+	@Nullable
+	private Reference reference;
+	@Nullable
+	private NameView.Name name;
 	// While a number is tuned the bar stands where the keys are.
 	private boolean covered;
 
@@ -95,6 +110,25 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		referencePicture = extraKeysView.findViewById(R.id.reference_picture);
 		referenceShow = extraKeysView.findViewById(R.id.reference_show);
 		referenceOpen = extraKeysView.findViewById(R.id.reference_open);
+		nameRow = extraKeysView.findViewById(R.id.name);
+		nameForm = extraKeysView.findViewById(R.id.name_form);
+		nameForm.setOnClickListener(v -> {
+			if (name != null) {
+				name.open().run();
+			}
+		});
+		nameForm.setOnLongClickListener(v -> {
+			if (name != null) {
+				name.open().run();
+			}
+			return true;
+		});
+		nameAction = extraKeysView.findViewById(R.id.name_action);
+		// TalkBack: "Double-tap to look up".
+		ViewCompat.replaceAccessibilityAction(nameForm,
+				AccessibilityNodeInfoCompat.AccessibilityActionCompat
+						.ACTION_CLICK, activity.getString(R.string.look_up),
+				null);
 		backView = extraKeysView.findViewById(R.id.back_to_file);
 		tuneView = extraKeysView.findViewById(R.id.tune);
 		tuneView.setTypeface(ShaderEditorApp.preferences.getFont());
@@ -175,7 +209,9 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 
 	/** Show reference in place of the completions, them when null. */
 	public void showReference(@Nullable Reference reference) {
-		completions.setVisibility(getVisibility(reference == null));
+		this.reference = reference;
+		completions.setVisibility(getVisibility(reference == null &&
+				name == null));
 		referenceView.setVisibility(getVisibility(reference != null));
 		if (reference == null) {
 			return;
@@ -202,6 +238,34 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 				name);
 		bind(referenceOpen, reference.open(), R.string.a11y_reference_open,
 				name);
+	}
+
+	/**
+	 * Show the name the caret rests in in place of the completions,
+	 * them when null. It is not announced: it would speak at every
+	 * arrow key; the code's own actions are TalkBack's way to it.
+	 */
+	public void showName(@Nullable NameView.Name name) {
+		if (name == null && this.name == null) {
+			return;
+		}
+		this.name = name;
+		completions.setVisibility(getVisibility(reference == null &&
+				name == null));
+		nameRow.setVisibility(getVisibility(name != null));
+		if (name == null) {
+			return;
+		}
+		nameForm.setForm(name.word(), name.form(), name.note());
+		nameForm.setContentDescription(name.spoken());
+		Runnable act = name.act();
+		nameAction.setVisibility(getVisibility(act != null));
+		nameAction.setText(name.action());
+		if (name.icon() != 0) {
+			nameAction.setIconResource(name.icon());
+		}
+		nameAction.setContentDescription(name.actionSpoken());
+		nameAction.setOnClickListener(act != null ? v -> act.run() : null);
 	}
 
 	/**

@@ -42,6 +42,7 @@ import de.markusfisch.android.shadereditor.syntax.Knowledge;
 import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.widget.CodeView;
 import de.markusfisch.android.shadereditor.widget.DocsSheet;
+import de.markusfisch.android.shadereditor.widget.NameView;
 import de.markusfisch.android.shadereditor.widget.SignatureView;
 import de.markusfisch.android.shadereditor.widget.UsesSheet;
 
@@ -284,12 +285,20 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 	@Override
 	public void lookUp(@NonNull String word) {
 		UniformDef uniform = UNIFORMS.get(word);
+		Definitions.Found found = definitions(word);
 		if (uniform != null && !isLocal(host.declared(), host.offset(),
 				word)) {
 			showUniform(uniform);
+		} else if (!found.places().isEmpty()) {
+			showDeclared(found.places());
 		} else if (GlslWords.style(word, 0, word.length()) ==
 				Style.IDENTIFIER) {
-			showDeclared(definitions(word).places());
+			// Declared nowhere the editor knows: where it is written;
+			// that there is none only when that is sure.
+			show(new DocsSheet.Content(word, view.getContext().getString(
+					found.none() ? R.string.no_definition
+							: R.string.docs_name), null, null, null, null,
+					null, null), null, null, word, false, null);
 		} else if (docs != null) {
 			showBuiltin(word);
 		} else {
@@ -535,12 +544,9 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		List<Form> found = new ArrayList<>();
 		if (GlslWords.style(name, 0, name.length()) == Style.IDENTIFIER) {
 			for (Knowledge.Symbol form : declared(name)) {
-				List<String> names = new ArrayList<>();
+				List<String> names = names(form);
 				List<String> types = new ArrayList<>();
 				for (Knowledge.Symbol part : form.parts()) {
-					// A parameter without a name shows its type.
-					names.add(part.name().isEmpty() && part.type() != null
-							? part.type() : part.name());
 					types.add(part.type());
 				}
 				if (!names.isEmpty()) {
@@ -591,6 +597,121 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 								where), documentation(forms), code(forms),
 						null, null, null, null), null, null, first.name(),
 				true, file);
+	}
+
+	/**
+	 * What the strip shows for word, a name the caret rests in, see
+	 * {@link NameView.Name}: how it is declared, and the one thing to
+	 * do with it: Definition; Uses on its own declaration and for a
+	 * name declared nowhere; nothing for a built-in or an app uniform
+	 * the file lacks. A tap on the form looks it up. Null while the
+	 * docs a built-in needs are read.
+	 */
+	@Nullable
+	NameView.Name name(@NonNull String word) {
+		Context context = view.getContext();
+		Runnable open = () -> lookUp(word);
+		Definitions.Found found = definitions(word);
+		List<Knowledge.Symbol> places = found.places();
+		// A built-in, unless the file declares a macro of its name.
+		if (GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER &&
+				places.isEmpty()) {
+			GlslDocs.Entry entry = docs != null ? docs.lookup(word) : null;
+			if (docs == null) {
+				readDocs(null);
+			}
+			if (entry == null || entry.forms().isEmpty()) {
+				return null;
+			}
+			String form = entry.forms().get(0);
+			if (entry.kind() == GlslDocs.Kind.FUNCTION) {
+				form = call(word, GlslDocs.parameterNames(form));
+			}
+			String spoken = spoken(context, entry);
+			return new NameView.Name(word, form, null,
+					spoken != null ? spoken : form, open, null, 0, null,
+					null);
+		}
+		UniformDef uniform = UNIFORMS.get(word);
+		if (places.isEmpty() && uniform != null) {
+			String form = uniform.getType().getKeyword() + " " +
+					uniform.getDeclarator();
+			return new NameView.Name(word, form, null, form, open, null, 0,
+					null, null);
+		}
+		Knowledge.Symbol first = places.isEmpty() ? null : places.get(0);
+		String form = first == null ? word : first.kind() ==
+				Knowledge.Kind.FUNCTION ? call(word, names(first))
+				: first.detail();
+		String note = null;
+		if (first == null) {
+			note = found.none() ? context.getString(R.string.no_definition)
+					: null;
+		} else if (places.size() > 1) {
+			boolean forms = true;
+			for (Knowledge.Symbol place : places) {
+				forms &= place.kind() == Knowledge.Kind.FUNCTION;
+			}
+			note = context.getResources().getQuantityString(forms
+					? R.plurals.name_forms
+					: R.plurals.name_definitions, places.size(), places.size());
+		}
+		// A function as TalkBack says a built-in one: "disc takes p and r".
+		List<String> parameters = first != null &&
+				first.kind() == Knowledge.Kind.FUNCTION ? names(first) : null;
+		String spoken = (parameters == null ? form : parameters.isEmpty()
+				? context.getString(R.string.a11y_takes_nothing, word)
+				: context.getString(R.string.a11y_takes, word,
+				list(context, parameters))) + (note != null ? ", " + note : "");
+		if (first == null || found.here()) {
+			if (!host.offersUses()) {
+				return new NameView.Name(word, form, note, spoken, open,
+						null, 0, null, null);
+			}
+			String file = first != null ? first.file() : null;
+			boolean renamable = uniform == null ||
+					isLocal(host.declared(), host.offset(), word);
+			return new NameView.Name(word, form, note, spoken, open,
+					context.getString(R.string.uses), R.drawable.ic_list,
+					context.getString(R.string.a11y_uses_of, word),
+					() -> host.uses(word, file, keyboardUp(), renamable,
+							false));
+		}
+		String where;
+		if (found.only() == null) {
+			where = context.getResources().getQuantityString(
+					R.plurals.a11y_definitions, places.size(), word,
+					places.size());
+		} else if (first.file() != null) {
+			where = context.getString(R.string.a11y_definition_in, word,
+					first.file(), host.scope().line(first) + 1);
+		} else {
+			where = context.getString(R.string.a11y_definition, word,
+					host.lineOf(first.start()) + 1);
+		}
+		return new NameView.Name(word, form, note, spoken, open,
+				context.getString(R.string.definition),
+				R.drawable.ic_arrow_forward, where,
+				() -> definition(word, keyboardUp()));
+	}
+
+	// "name(a, b)".
+	@NonNull
+	private static String call(@NonNull String name,
+			@NonNull List<String> parameters) {
+		return name + "(" + TextUtils.join(", ", parameters) + ")";
+	}
+
+	// The names of the parameters of function, of one without a name
+	// its type.
+	@NonNull
+	private static List<String> names(@NonNull Knowledge.Symbol function) {
+		List<String> names = new ArrayList<>();
+		for (Knowledge.Symbol part : function.parts()) {
+			names.add(part.name().isEmpty() && part.type() != null
+					? part.type() : part.name());
+		}
+		return names;
 	}
 
 	/** Where word, at the caret, is declared, see {@link Definitions}. */

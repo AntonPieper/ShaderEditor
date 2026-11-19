@@ -90,6 +90,34 @@
 			android:text="@string/reference_open" />
 
 	</LinearLayout>
+	<!-- The name the caret rests in, in place of the keys: its form,
+		which looks it up, and its one action, see ExtraKeysManager. -->
+	<LinearLayout
+		android:id="@+id/name"
+		android:layout_width="0dp"
+		android:layout_height="match_parent"
+		android:layout_weight="1"
+		android:gravity="center_vertical"
+		android:orientation="horizontal"
+		android:visibility="gone">
+
+		<de.markusfisch.android.shadereditor.widget.NameView
+			android:id="@+id/name_form"
+			style="@style/StripInfo"
+			android:layout_width="0dp"
+			android:layout_height="match_parent"
+			android:layout_weight="1"
+			android:background="?attr/selectableItemBackground"
+			android:gravity="center_vertical"
+			android:paddingHorizontal="8dp" />
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/name_action"
+			style="@style/BarButton.Action"
+			android:layout_width="wrap_content"
+			android:layout_height="match_parent" />
+	</LinearLayout>
+
 	<!-- Tune the number the caret is on, offered only then, after the
 		keys, which keep their places. -->
 	<Button
