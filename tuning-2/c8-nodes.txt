@@ -1,0 +1,6 @@
+Previous number 0.93{tuning_previous}[68,1779]
+… 0.010) * (0.93 + 0.31 * sin(time));{tuning_line}[540,1779]
+0.010, can be tuned{}[225,1779]
+0.93, changed{}[434,1779]
+Tuning 0.31{}[588,1779]
+Next number 1{tuning_next}[1012,1779]

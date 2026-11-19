@@ -1,0 +1,17 @@
+=== 06:55:19 8 touch row item
+=== 06:55:22 8 double tap row item
+=== 06:55:41 8 touch ruler
+=== 06:55:45 8 touch 0.010
+=== 06:55:48 8 touch 0.31
+=== 06:55:52 8 touch tuned 0.93
+=== 06:55:56 8 double tap +
+=== 06:56:02 8 touch 0.31 then double tap
+=== 06:56:21 8 touch 0.94 (changed)
+=== 06:56:24 8 touch tuned 0.31
+=== 06:56:27 8 swipes from ‹
+=== 06:56:30 8 swipe right 1
+=== 06:56:34 8 swipe right 2
+=== 06:56:38 8 swipe right 3
+=== 06:56:41 8 swipe right 4
+=== 06:56:45 8 swipe right 5
+=== 06:56:49 8 swipe right 6

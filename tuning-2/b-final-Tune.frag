@@ -1,0 +1,16 @@
+precision mediump float;
+uniform vec2 resolution;
+uniform float time;
+#define RADIUS 0.30
+#define GLOW(d) (0.060 / (d))
+void main(void) {
+	vec2 uv = (gl_FragCoord.xy - 0.5 * resolution) / resolution.y;
+	float d = abs(length(uv) - RADIUS);
+	vec3 tint = vec3(
+		0.20,
+		0.61,
+		1.00);
+	vec3 col = tint * GLOW(d + 0.010) * (0.98 + 0.27 * sin(time));
+	for (int i = 0; i < 4; i++) { col *= 1.05; }
+	gl_FragColor = vec4(col, 1.0);
+}
