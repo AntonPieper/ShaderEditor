@@ -317,6 +317,11 @@ public class CodeView extends View {
 	private final EdgeEffect edgeLeft;
 	private final EdgeEffect edgeRight;
 	private Insets insets = Insets.NONE;
+	// The insets given, and what a bar over the code takes at its bottom.
+	private Insets given = Insets.NONE;
+	private int cover;
+	@Nullable
+	private OnTap onTap;
 	// What a touch, the mouse or a drop drags, 0 while no drag is in
 	// progress; where it went down, whether it moved since, and where
 	// the finger is.
@@ -595,6 +600,22 @@ public class CodeView extends View {
 	public void setInputType(int inputType) {
 		this.inputType = inputType;
 		restartInput();
+	}
+
+	/** Hears a tap or a click on the code; a screen reader's comes at the caret. */
+	public interface OnTap {
+		/** Whether the tap at offset was taken, and does nothing more. */
+		boolean onTap(int offset);
+	}
+
+	public void setOnTap(@Nullable OnTap onTap) {
+		this.onTap = onTap;
+	}
+
+	/** Keep bottom pixels clear, as for the keyboard: a bar over the code. */
+	public void setCover(int bottom) {
+		cover = bottom;
+		fitInsets(true);
 	}
 
 	@Nullable
@@ -1195,21 +1216,27 @@ public class CodeView extends View {
 
 	@Override
 	public WindowInsets onApplyWindowInsets(WindowInsets windowInsets) {
-		int bottom = insets.bottom;
 		// Only the insets given: with the view, AndroidX below Android 11
 		// adds the keyboard read from the window, which a host that made
 		// room for it has already taken off the view's height.
-		insets = WindowInsetsCompat.toWindowInsetsCompat(windowInsets)
+		given = WindowInsetsCompat.toWindowInsetsCompat(windowInsets)
 				.getInsets(WindowInsetsCompat.Type.systemBars() |
 						WindowInsetsCompat.Type.displayCutout() |
 						WindowInsetsCompat.Type.ime());
-		if (insets.bottom > bottom && isFocused()) {
+		fitInsets(isFocused());
+		return windowInsets;
+	}
+
+	// More room taken at the bottom keeps the caret's line clear of it.
+	private void fitInsets(boolean reveal) {
+		int bottom = insets.bottom;
+		insets = Insets.of(given.left, given.top, given.right, Math.max(given.bottom, cover));
+		if (insets.bottom > bottom && reveal) {
 			bringCaretIntoView();
 		} else {
 			scrollInside(getScrollX(), getScrollY());
 		}
 		invalidate();
-		return windowInsets;
 	}
 
 	@Override
@@ -1918,6 +1945,9 @@ public class CodeView extends View {
 	// As an accessibility service's tap on an EditText: focus and show the
 	// keyboard; the caret stays.
 	boolean clickForAccessibility() {
+		if (onTap != null && document != null && onTap.onTap(document.selection().head())) {
+			return true;
+		}
 		if (!isFocused()) {
 			requestFocus();
 		}
@@ -2062,7 +2092,11 @@ public class CodeView extends View {
 		}
 		toolbar.close();
 		int offset = offsetAt(x, y);
+		// First, so that what the tap's listener writes moves the caret too.
 		select(offset, offset);
+		if (onTap != null && onTap.onTap(offset)) {
+			return;
+		}
 		showCaretHandle();
 		requestFocus();
 		InputMethodManager imm = inputMethodManager();
@@ -2237,6 +2271,15 @@ public class CodeView extends View {
 		float y = event.getY();
 		switch (event.getActionMasked()) {
 			case MotionEvent.ACTION_DOWN:
+				int offset = offsetAt(x, y);
+				if (onTap != null && !event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)) {
+					// As a tap: the caret first, so that what the listener writes moves it.
+					select(offset, offset);
+					if (onTap.onTap(offset)) {
+						return true;
+					}
+					offset = document.selection().head();
+				}
 				requestFocus();
 				toolbar.close();
 				touched = null;
@@ -2256,7 +2299,7 @@ public class CodeView extends View {
 					contextClick(x, y);
 					return true;
 				}
-				click(event, offsetAt(x, y));
+				click(event, offset);
 				return true;
 			case MotionEvent.ACTION_MOVE:
 				if (dragging == DRAG_MOUSE) {
