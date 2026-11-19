@@ -1,0 +1,20 @@
+=== 09:18:49 11 double tap code (edit)
+=== 09:19:38 11 Tune item
+=== 09:19:55 11 touch eye (bar open)
+=== 09:19:58 11 double tap eye
+=== 09:20:03 11 touch eye (code showing)
+=== 09:20:17 11 touch code
+=== 09:20:20 11 double tap code (caret on 0.52)
+=== 09:20:35 11 reading control -> Words
+=== 09:20:59 11 next word 1
+=== 09:21:03 11 next word 2
+=== 09:21:06 11 next word 3
+=== 09:21:09 11 next word 4
+=== 09:21:13 11 next word 5
+=== 09:21:16 11 double tap on 0.255
+=== 09:21:31 11 touch code again
+=== 09:21:46 11 double tap after reaching 0.255
+=== 09:22:01 11 Words onward to sin
+=== 09:22:04 11 double tap on sin (word focus)
+=== 09:22:19 11 touch Done
+=== 09:22:23 11 double tap Done
