@@ -48,6 +48,7 @@
 		it ends at the edge of the screen, in the strip's own padding -->
 	<de.markusfisch.android.shadereditor.widget.SignatureView
 		android:id="@+id/signature"
+		style="@style/StripInfo"
 		android:layout_width="0dp"
 		android:layout_height="match_parent"
 		android:layout_marginEnd="-4dp"
@@ -55,7 +56,6 @@
 		android:background="?attr/selectableItemBackground"
 		android:gravity="center_vertical|end"
 		android:paddingEnd="2dp"
-		android:textColor="?attr/colorOnSurface"
 		android:visibility="gone" />
 
 	<LinearLayout
@@ -80,14 +80,16 @@
 			style="@style/BarButton.Action"
 			android:layout_width="wrap_content"
 			android:layout_height="match_parent"
-			android:text="@string/reference_show" />
+			android:text="@string/reference_show"
+			app:icon="@drawable/ic_visibility" />
 
 		<Button
 			android:id="@+id/reference_open"
 			style="@style/BarButton.Action"
 			android:layout_width="wrap_content"
 			android:layout_height="match_parent"
-			android:text="@string/reference_open" />
+			android:text="@string/reference_open"
+			app:icon="@drawable/ic_arrow_forward" />
 
 	</LinearLayout>
 	<!-- The name the caret rests in, in place of the keys: its form,
@@ -122,11 +124,13 @@
 		keys, which keep their places. -->
 	<Button
 		android:id="@+id/tune"
-		style="@style/BarButton"
+		style="@style/BarButton.Action"
 		android:layout_width="wrap_content"
 		android:layout_height="match_parent"
 		android:layout_weight="0"
-		android:visibility="gone" />
+		android:text="@string/tune_offer"
+		android:visibility="gone"
+		app:icon="@drawable/ic_tune" />
 
 
 </LinearLayout>
