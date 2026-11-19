@@ -1,0 +1,33 @@
+=== 05:26:09 2a swipe right from toolbar
+=== 05:26:12 2a swipe right 1
+=== 05:26:16 2a swipe right 2
+=== 05:26:20 2a swipe right 3
+=== 05:26:24 2a swipe right 4
+=== 05:26:27 2a swipe right 5
+=== 05:26:31 2a swipe right 6
+=== 05:26:35 2a swipe right 7
+=== 05:26:39 2a swipe right 8
+=== 05:26:52 2b touch code line 14
+=== 05:26:55 2b touch code line 24
+=== 05:26:59 2c double tap (focus editing)
+=== 05:27:03 2c type x
+=== 05:27:06 2c type y
+=== 05:27:09 2c delete
+=== 05:27:12 2c delete
+=== 05:27:47 3 set Words
+=== 05:27:55 3 forward (swipe down) 1
+=== 05:27:59 3 forward (swipe down) 2
+=== 05:28:02 3 forward (swipe down) 3
+=== 05:28:06 3 forward (swipe down) 4
+=== 05:28:10 3 forward (swipe down) 5
+=== 05:28:14 3 forward (swipe down) 6
+=== 05:28:18 3 forward (swipe down) 7
+=== 05:28:29 3 back (swipe up) 1
+=== 05:28:33 3 back (swipe up) 2
+=== 05:28:37 3 back (swipe up) 3
+=== 05:28:40 3 back (swipe up) 4
+=== 05:28:44 3 back (swipe up) 5
+=== 05:28:48 3 back (swipe up) 6
+=== 05:28:52 3 back (swipe up) 7
+=== 05:28:56 3 back (swipe up) 8
+=== 05:28:59 3 back (swipe up) 9
