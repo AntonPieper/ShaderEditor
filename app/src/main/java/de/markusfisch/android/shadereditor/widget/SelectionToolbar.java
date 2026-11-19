@@ -91,13 +91,11 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 		}
 	}
 
-	// As the user does with Back; returns whether it showed.
-	boolean dismiss() {
-		if (mode == null) {
-			return false;
+	// As the user does with Back.
+	void dismiss() {
+		if (mode != null) {
+			mode.finish();
 		}
-		mode.finish();
-		return true;
 	}
 
 	void close() {
@@ -142,9 +140,6 @@ final class SelectionToolbar extends ActionMode.Callback2 {
 
 	@Override
 	public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-		mode.setTitle(null);
-		mode.setSubtitle(null);
-		mode.setTitleOptionalHint(true);
 		return onPrepareActionMode(mode, menu);
 	}
 
