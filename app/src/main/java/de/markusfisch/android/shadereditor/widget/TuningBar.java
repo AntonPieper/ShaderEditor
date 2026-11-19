@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.widget;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Paint;
 import android.text.Editable;
@@ -12,7 +13,9 @@ import android.util.AttributeSet;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
@@ -102,6 +105,13 @@ public class TuningBar extends LinearLayout {
 
 		default void select(int offset) {
 		}
+
+		default void setBefore(boolean on) {
+		}
+
+		default boolean isBefore() {
+			return false;
+		}
 	}
 
 	private static final String[] XYZW = {"x", "y", "z", "w"};
@@ -181,6 +191,17 @@ public class TuningBar extends LinearLayout {
 	private MaterialButton decrease;
 	private MaterialButton increase;
 	private MaterialButton stepView;
+	private MaterialButton beforeView;
+	private android.graphics.drawable.Drawable doneIcon;
+	// What the bottom row gave up to stay one line: 0 nothing, 1 Done's
+	// icon, 2 also the word of the step.
+	private int giving;
+	// Whether Before was on when a press of it began, and when that was:
+	// an up event's own down time is not to be trusted (Android 6's
+	// input tool sends none); and whether a flip may wait for a build.
+	private boolean wasBefore;
+	private long pressedAt;
+	private boolean flipped;
 	private TuningRuler ruler;
 	// The value when a drag on the ruler began.
 	@NonNull
@@ -213,6 +234,8 @@ public class TuningBar extends LinearLayout {
 		super(context, attrs);
 	}
 
+	// Before's clicks come from a screen reader and keys; a touch holds.
+	@SuppressLint("ClickableViewAccessibility")
 	@Override
 	protected void onFinishInflate() {
 		super.onFinishInflate();
@@ -241,7 +264,38 @@ public class TuningBar extends LinearLayout {
 		increase.setOnClickListener(v -> press(1));
 		stepView.setOnClickListener(v -> chooseStep());
 		findViewById(R.id.tuning_revert).setOnClickListener(v -> revert());
-		findViewById(R.id.tuning_done).setOnClickListener(v -> done());
+		beforeView = findViewById(R.id.tuning_before);
+		// A screen reader's or a key's click toggles; a touch shows Before
+		// while held, and a tap toggles.
+		beforeView.setOnClickListener(v -> setBefore(beforeView.isChecked()));
+		beforeView.setOnTouchListener((v, event) -> {
+			switch (event.getActionMasked()) {
+				case MotionEvent.ACTION_DOWN -> {
+					v.drawableHotspotChanged(event.getX(), event.getY());
+					v.setPressed(true);
+					beforeDown(event.getEventTime());
+				}
+				case MotionEvent.ACTION_UP -> {
+					v.setPressed(false);
+					beforeUp(event.getEventTime());
+				}
+				case MotionEvent.ACTION_CANCEL -> {
+					v.setPressed(false);
+					setBefore(wasBefore);
+				}
+				default -> {
+				}
+			}
+			return true;
+		});
+		valueView.setOnFocusChangeListener((v, focused) -> {
+			if (focused) {
+				setBefore(false);
+			}
+		});
+		MaterialButton doneButton = findViewById(R.id.tuning_done);
+		doneButton.setOnClickListener(v -> done());
+		doneIcon = doneButton.getIcon();
 		valueView.setOnEditorActionListener((v, actionId, event) -> {
 			if (actionId == EditorInfo.IME_ACTION_DONE ||
 					(event != null &&
@@ -289,6 +343,7 @@ public class TuningBar extends LinearLayout {
 			public void onDragStart() {
 				// A drag ends typing: the field shows the ruler's value.
 				dropTyping();
+				setBefore(false);
 				if (tuned != null) {
 					dragFrom = tuned.value();
 				}
@@ -410,7 +465,27 @@ public class TuningBar extends LinearLayout {
 						lp.rightMargin;
 			}
 		}
-		boolean wrap = needed > session.getMeasuredWidth();
+		// Where the row is short, Done drops its icon, then the step its
+		// word; only then does Done go under the others.
+		MaterialButton doneButton = (MaterialButton) done;
+		int icon = (doneButton.getIconSize() > 0
+				? doneButton.getIconSize()
+				: doneIcon.getIntrinsicWidth()) + doneButton.getIconPadding();
+		Tuned now = tuned;
+		String step = now != null ? TuningStep.label(now.step()) : "";
+		Paint paint = stepView.getPaint();
+		int word = Math.round(paint.measureText(getContext().getString(
+				R.string.tuning_step, step)) - paint.measureText(step));
+		int room = session.getMeasuredWidth();
+		int full = needed + (giving > 0 ? icon : 0) + (giving > 1 ? word : 0);
+		int want = full <= room ? 0 : full - icon <= room ? 1 : 2;
+		if (want != giving) {
+			giving = want;
+			doneButton.setIcon(giving == 0 ? doneIcon : null);
+			showStep();
+			super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+		}
+		boolean wrap = full - icon - word > room;
 		int orientation = wrap ? VERTICAL : HORIZONTAL;
 		if (session.getOrientation() != orientation) {
 			session.setOrientation(orientation);
@@ -445,7 +520,17 @@ public class TuningBar extends LinearLayout {
 	@Override
 	public boolean dispatchKeyEvent(KeyEvent event) {
 		// Enter is Done and Escape is Revert, unless a value is typed;
-		// Ctrl+Z is Undo, Ctrl+Shift+Z and Ctrl+Y are Redo.
+		// Ctrl+Z is Undo, Ctrl+Shift+Z and Ctrl+Y are Redo; \ is Before.
+		if (tuned != null && !valueView.hasFocus() &&
+				event.getKeyCode() == KeyEvent.KEYCODE_BACKSLASH) {
+			if (event.getAction() == KeyEvent.ACTION_DOWN &&
+					event.getRepeatCount() == 0) {
+				beforeDown(event.getEventTime());
+			} else if (event.getAction() == KeyEvent.ACTION_UP) {
+				beforeUp(event.getEventTime());
+			}
+			return true;
+		}
 		if (tuned != null && !valueView.hasFocus() &&
 				event.getAction() == KeyEvent.ACTION_DOWN) {
 			if (event.isCtrlPressed() && (event.getKeyCode() ==
@@ -583,6 +668,7 @@ public class TuningBar extends LinearLayout {
 		tuned = new Tuned(place, start, number.value(),
 				step != null ? step : first, first, style);
 		typing = false;
+		flipped = false;
 		showParts();
 		show();
 		if (announce) {
@@ -607,12 +693,14 @@ public class TuningBar extends LinearLayout {
 	public void undo() {
 		if (canUndo()) {
 			session.undo();
+			showBefore();
 		}
 	}
 
 	public void redo() {
 		if (canRedo()) {
 			session.redo();
+			showBefore();
 		}
 	}
 
@@ -623,6 +711,46 @@ public class TuningBar extends LinearLayout {
 	public void settle() {
 		takeTypedIfChanged();
 		dropTyping();
+	}
+
+	private void beforeDown(long at) {
+		wasBefore = session != null && session.isBefore();
+		pressedAt = at;
+		setBefore(true);
+	}
+
+	// Held as long as a long press, it shows Before only while held.
+	private void beforeUp(long at) {
+		setBefore(at - pressedAt < ViewConfiguration.getLongPressTimeout() &&
+				!wasBefore);
+	}
+
+	// Nothing is written: the picture, the statement, the value and the
+	// ruler show the values of when the bar opened, or those of now.
+	private void setBefore(boolean on) {
+		if (session == null || tuned == null || on == session.isBefore()) {
+			return;
+		}
+		flipped = true;
+		session.setBefore(on);
+		show();
+	}
+
+	private void showBefore() {
+		boolean on = session != null && session.isBefore();
+		beforeView.setChecked(on);
+		ViewCompat.setStateDescription(beforeView, getContext().getString(on
+				? R.string.tuning_before_on
+				: R.string.tuning_before_off));
+	}
+
+	// What the bar shows: the start while Before is on.
+	@Nullable
+	private Tuned shown() {
+		Tuned now = tuned;
+		return now != null && session != null && session.isBefore()
+				? now.with(now.start())
+				: now;
 	}
 
 	private void selectPart(int index) {
@@ -830,6 +958,7 @@ public class TuningBar extends LinearLayout {
 		focusing = false;
 		session = null;
 		typing = false;
+		showBefore();
 		setConstant(false);
 		setBuilding(false);
 		SoftKeyboard.hide(getContext(), valueView);
@@ -869,6 +998,10 @@ public class TuningBar extends LinearLayout {
 				progress = findViewById(R.id.tuning_building);
 		if (building) {
 			progress.show();
+			if (flipped) {
+				announceForAccessibility(getContext().getString(
+						R.string.tuning_building));
+			}
 		} else {
 			progress.hide();
 		}
@@ -956,7 +1089,9 @@ public class TuningBar extends LinearLayout {
 		if (now == null || value.compareTo(now.value()) == 0) {
 			return;
 		}
+		setBefore(false);
 		tuned = now.with(value);
+		flipped = false;
 		if (session != null) {
 			session.set(tuned);
 		}
@@ -1068,9 +1203,10 @@ public class TuningBar extends LinearLayout {
 		statement = session != null ? session.statement() : null;
 		showNeighbour(previous, false, R.string.tuning_previous);
 		showNeighbour(next, true, R.string.tuning_next);
-		ruler.show(now.value(), now.start(), now.step());
+		showBefore();
+		ruler.show(shown().value(), now.start(), now.step());
 		String step = TuningStep.label(now.step());
-		stepView.setText(getContext().getString(R.string.tuning_step, step));
+		showStep();
 		decrease.setContentDescription(getContext().getString(
 				R.string.tuning_decrease, step));
 		increase.setContentDescription(getContext().getString(
@@ -1079,8 +1215,18 @@ public class TuningBar extends LinearLayout {
 		showLine();
 	}
 
-	private void showValue() {
+	private void showStep() {
 		Tuned now = tuned;
+		if (now != null) {
+			String step = TuningStep.label(now.step());
+			String named = getContext().getString(R.string.tuning_step, step);
+			stepView.setText(giving > 1 ? step : named);
+			stepView.setContentDescription(named);
+		}
+	}
+
+	private void showValue() {
+		Tuned now = shown();
 		if (now != null && !typing) {
 			showingValue = true;
 			valueView.setText(shownValue(now));
@@ -1112,7 +1258,7 @@ public class TuningBar extends LinearLayout {
 
 	// Cut on both sides so that the digits stay in the middle.
 	private void showLine() {
-		Tuned now = tuned;
+		Tuned now = shown();
 		Statement shown = statement;
 		int width = lineView.getWidth() - lineView.getPaddingLeft() -
 				lineView.getPaddingRight();

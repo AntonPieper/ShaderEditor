@@ -598,6 +598,10 @@
 	<string name="tuning_next">Next number %1$s</string>
 	<string name="tuning_number_tunable">%1$s, can be tuned</string>
 	<string name="tuning_number_changed">%1$s, changed</string>
+	<string name="tuning_before">Before</string>
+	<string name="tuning_before_on">On: the values before tuning</string>
+	<string name="tuning_before_off">Off</string>
+	<string name="tuning_building">Building</string>
 	<string name="fix_add_uniform_name">Add uniform %1$s</string>
 	<string name="fix_add_uniform_short">Add uniform</string>
 	<plurals name="fix_add_uniforms">

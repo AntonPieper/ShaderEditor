@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The tuning bar: the tuned line, the value with − and +, the ruler,
-	and Revert, the step and Done. Content at most 600 dp wide. -->
+	and Revert, Before, the step and Done. Content at most 600 dp wide. -->
 <de.markusfisch.android.shadereditor.widget.TuningBar
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -191,8 +191,8 @@
 			android:layout_marginTop="8dp" />
 		</LinearLayout>
 
-		<!-- Revert, the step and Done; Done goes under the other two
-			when the three do not fit, as with large text. -->
+		<!-- Revert, Before, the step and Done; Done goes under the other two
+			when they do not fit, as with large text. -->
 		<LinearLayout
 			android:id="@+id/tuning_session"
 			android:layout_width="match_parent"
@@ -213,6 +213,17 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:text="@string/tuning_revert" />
+
+				<com.google.android.material.button.MaterialButton
+					android:id="@+id/tuning_before"
+					style="@style/Widget.Material3.Button.OutlinedButton"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginStart="8dp"
+					android:checkable="true"
+					android:minWidth="0dp"
+					android:paddingHorizontal="16dp"
+					android:text="@string/tuning_before" />
 
 				<com.google.android.material.button.MaterialButton
 					android:id="@+id/tuning_step"

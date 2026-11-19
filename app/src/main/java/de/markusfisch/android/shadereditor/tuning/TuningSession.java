@@ -170,6 +170,7 @@ public final class TuningSession {
 	private boolean open = true;
 	// The session itself changes the document now.
 	private boolean editing;
+	private boolean before;
 
 	private TuningSession(@NonNull Host host, @NonNull Executor main,
 			@NonNull Executor worker, @NonNull Document document,
@@ -220,6 +221,8 @@ public final class TuningSession {
 			throw new IllegalArgumentException(
 					"the uniform of a session is never written");
 		}
+		// A change is to the value now, as the tuned number has it.
+		setBefore(false);
 		Number n = tuned;
 		// A value its type cannot hold is never written, nor shown.
 		if (!open || n == null ||
@@ -242,6 +245,7 @@ public final class TuningSession {
 			return null;
 		}
 		listener.onSettle();
+		setBefore(false);
 		Number next = numberAt(offset);
 		if (next == null) {
 			TunedPlace place = window(offset).place(offset);
@@ -265,16 +269,82 @@ public final class TuningSession {
 		return tuned();
 	}
 
+	/**
+	 * Show every number as it was when the bar opened, or as it is now;
+	 * nothing is written.
+	 */
+	public void setBefore(boolean on) {
+		if (!open || before == on) {
+			return;
+		}
+		before = on;
+		for (Number n : numbers) {
+			if (!n.start.equals(text(n))) {
+				show(n);
+			}
+		}
+	}
+
+	public boolean isBefore() {
+		return before;
+	}
+
+	// As Before shows it.
 	@Nullable
 	public Statement statement() {
 		Number n = tuned;
-		return !open || n == null
-				? null
-				: Statement.of(window(n.from), n.from, n.to, offset -> {
+		if (!open || n == null) {
+			return null;
+		}
+		Text text = document.text();
+		int from = n.from;
+		int to = n.to;
+		if (before) {
+			// From the end, so that each range is where the text has it.
+			List<Number> back = new ArrayList<>(numbers);
+			Collections.sort(back, (a, b) -> b.from - a.from);
+			for (Number m : back) {
+				String written = written(m);
+				int delta = m.start.length() - written.length();
+				text = text.replace(m.from, m.to, Text.of(m.start));
+				from += m.to <= n.from ? delta : 0;
+				to += m.to <= n.to ? delta : 0;
+			}
+		}
+		Statement statement = Statement.of(Window.around(text, from,
+				host::lineState), from, to, offset -> {
 					Number other = numberAt(offset);
-					return other != null && other != n &&
+					return !before && other != null && other != n &&
 							!text(other).equals(other.start);
 				});
+		return before ? inNow(statement) : statement;
+	}
+
+	// The marks of a statement of the starts with offsets of the text
+	// now, where a tap moves: a number of the session by its range.
+	@NonNull
+	private Statement inNow(@NonNull Statement statement) {
+		List<Number> ascending = new ArrayList<>(numbers);
+		Collections.sort(ascending, (a, b) -> a.from - b.from);
+		List<Statement.Mark> marks = new ArrayList<>();
+		for (Statement.Mark mark : statement.marks()) {
+			int at = mark.offset();
+			int shift = 0;
+			int now = -1;
+			for (Number m : ascending) {
+				int from = m.from + shift;
+				if (at < from) {
+					break;
+				} else if (at < from + m.start.length()) {
+					now = m.from;
+					break;
+				}
+				shift += m.start.length() - (m.to - m.from);
+			}
+			marks.add(new Statement.Mark(mark.inAfter(), mark.start(),
+					mark.end(), now > -1 ? now : at - shift, mark.changed()));
+		}
+		return new Statement(statement.before(), statement.after(), marks);
 	}
 
 	/** The text of the next or previous number, or null at an end. */
@@ -328,6 +398,7 @@ public final class TuningSession {
 		if (!canUndo()) {
 			return;
 		}
+		setBefore(false);
 		if (pending != null && !write()) {
 			return;
 		}
@@ -339,6 +410,7 @@ public final class TuningSession {
 			listener.onSettle();
 		}
 		if (canRedo()) {
+			setBefore(false);
 			walk(false);
 		}
 	}
@@ -410,6 +482,12 @@ public final class TuningSession {
 			}
 		}
 		return null;
+	}
+
+	// The text the builds have for n.
+	@NonNull
+	private String shown(@NonNull Number n) {
+		return before ? n.start : text(n);
 	}
 
 	@NonNull
@@ -559,7 +637,7 @@ public final class TuningSession {
 
 	private void show(@NonNull Number n) {
 		if (n.uniform != null) {
-			n.uniform.set(value(text(n)).doubleValue());
+			n.uniform.set(value(shown(n)).doubleValue());
 			host.applyTuning();
 		} else {
 			host.rest(this::build);
@@ -599,9 +677,11 @@ public final class TuningSession {
 					trying.add(n);
 					literals.add(literal(n));
 				}
-			} else if (n.constant || n == tuned) {
+			} else if (n.constant || n == tuned ||
+					!shown(n).equals(written(n))) {
+				// Also a written one waiting for its turn, under Before.
 				parts.add(new OpenProject.Replacement(path, n.from, n.to,
-						text(n)));
+						shown(n)));
 			}
 		}
 		List<Tuning> theirs = new ArrayList<>();
@@ -643,7 +723,7 @@ public final class TuningSession {
 		do {
 			name = TunedPreparation.name(named++);
 		} while (taken.contains(name));
-		return new Tuning(name, n.place.type, value(text(n)).doubleValue());
+		return new Tuning(name, n.place.type, value(shown(n)).doubleValue());
 	}
 
 	private static int literal(@NonNull Number n) {
