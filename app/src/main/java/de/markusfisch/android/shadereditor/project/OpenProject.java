@@ -1875,7 +1875,9 @@ public final class OpenProject {
 		Folder listed = list(folder);
 		int unlisted = listed.problem() != null ? 1 : 0;
 		for (Item item : listed.items()) {
-			if (item.folder()) {
+			if (ProjectPath.isHidden(item.path().getFileName())) {
+				continue;
+			} else if (item.folder()) {
 				unlisted += collect(item.path(), paths);
 			} else if (ShaderLanguage.of(item.path().toString()) ==
 					ShaderLanguage.GLSL) {

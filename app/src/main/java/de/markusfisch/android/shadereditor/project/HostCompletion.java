@@ -295,7 +295,7 @@ public final class HostCompletion {
 		boolean tie = false;
 		for (Entry entry : entries) {
 			String n = entry.name();
-			if (entry.folder() || n.equals(name) || n.startsWith(".") ||
+			if (entry.folder() || n.equals(name) || ProjectPath.isHidden(n) ||
 					rank(kind, n) < 0 ||
 					(FileKind.hint(n, null) == FileKind.PICTURE) != picture) {
 				continue;
@@ -382,7 +382,7 @@ public final class HostCompletion {
 		List<Choice> folders = new ArrayList<>();
 		for (Entry entry : entries) {
 			String n = entry.name();
-			if (n.startsWith(".") ||
+			if (ProjectPath.isHidden(n) ||
 					!n.toLowerCase(Locale.ROOT).startsWith(lower)) {
 				continue;
 			} else if (entry.folder()) {
