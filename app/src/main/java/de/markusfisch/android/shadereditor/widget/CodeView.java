@@ -92,10 +92,19 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 // the caret, as anywhere else, and a long press past the end of a line shows
 // the toolbar for the caret.
 //
+// The view keeps the state of a touch, a drag and drop and the mouse itself
+// (what it started as, where the pointer is, what it selected, whether it
+// scrolls), as drawing, scrolling, focus, the toolbar and edits all read or
+// reset it. What of it has a boundary of its own is outside: TouchSelection,
+// which text a gesture selects, tested on its own; SelectionHandles,
+// SelectionToolbar and DragMagnifier, one widget each. Moving more out would
+// pass that state back and forth.
+//
 // From Android 10 on, a line's drawing is recorded once and replayed until its
 // string or colours change; a frame records at most a third of the lines on
-// screen and draws the others directly. Accessibility services see it as an
-// EditText, through CodeAccessibility.
+// screen and draws the others directly. The app runs from Android 6 on, so
+// what later versions add is used behind version checks. Accessibility
+// services see it as an EditText, through CodeAccessibility and AccessibleText.
 public class CodeView extends View {
 	public interface LookUp {
 		boolean has(@NonNull String word);
@@ -274,41 +283,7 @@ public class CodeView extends View {
 					return false;
 				}
 			};
-	private final SelectionToolbar toolbar = new SelectionToolbar(this,
-			new SelectionToolbar.Host() {
-				@Override
-				public void contentRect(Rect out) {
-					selectionRect(out);
-				}
-
-				@Override
-				public int[] actions() {
-					return offered();
-				}
-
-				@Override
-				public boolean act(int id) {
-					return toolbarAction(id);
-				}
-
-				@Override
-				public void addProcessText(Menu menu) {
-					if (!document.selection().isEmpty()) {
-						ProcessText.addTo(menu, getContext(),
-								resultRegistry() == null);
-					}
-				}
-
-				@Override
-				public boolean process(Intent intent) {
-					return processText(intent);
-				}
-
-				@Override
-				public void closed(boolean dismissed) {
-					toolbarClosed(dismissed);
-				}
-			});
+	private final SelectionToolbar toolbar = new SelectionToolbar(this);
 	private final OverScroller scroller;
 	private final GestureDetector gestures;
 	private final int touchSlop;
@@ -389,7 +364,8 @@ public class CodeView extends View {
 	private float caretTop;
 	private float caretClipLeft;
 	// From Android 10 on, the drawing of everything but the caret,
-	// replayed when only the caret blinked.
+	// replayed when only the caret blinked. Typed Object, as gutter, so
+	// only code behind a version check names RenderNode.
 	private Object content;
 	private boolean caretOnly;
 	// From Android 10 on, the numbers of the lines from gutterFirst to
@@ -454,10 +430,6 @@ public class CodeView extends View {
 				getResources().getDimension(R.dimen.se_tap_target));
 		setFocusable(true);
 		setFocusableInTouchMode(true);
-		if (getImportantForAccessibility() ==
-				IMPORTANT_FOR_ACCESSIBILITY_AUTO) {
-			setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
-		}
 		setAccessibilityDelegate(accessibility);
 		scroller = new OverScroller(context);
 		edgeTop = new EdgeEffect(context);
@@ -1161,7 +1133,8 @@ public class CodeView extends View {
 		return key(keyCode, meta, typed) || super.onKeyDown(keyCode, event);
 	}
 
-	// Back closes the toolbar first, before Android 13.
+	// Back closes the toolbar first while Back comes as a key: before Android
+	// 13, and later while predictive back is off for the app.
 	@Override
 	public boolean onKeyPreIme(int keyCode, KeyEvent event) {
 		if (keyCode == KeyEvent.KEYCODE_BACK && toolbar.isShown()) {
@@ -1643,7 +1616,7 @@ public class CodeView extends View {
 	// selection as one step, as in TextView, if the host takes results;
 	// else the intent says the text is read only. Returns false if the
 	// selection is too large to send, which it says.
-	private boolean processText(Intent intent) {
+	boolean processText(Intent intent) {
 		Document.Selection selection = document.selection();
 		if (tooLargeToSend(selection)) {
 			return false;
@@ -1721,7 +1694,7 @@ public class CodeView extends View {
 
 	// The user closed the toolbar, which then drops a selection as the
 	// platform's does, or something else closed it.
-	private void toolbarClosed(boolean dismissed) {
+	void toolbarClosed(boolean dismissed) {
 		if (dismissed && touched != null) {
 			// The document's end: a change may have moved it since.
 			int end = document.selection().end();
@@ -1733,6 +1706,14 @@ public class CodeView extends View {
 		}
 	}
 
+	// What other apps offer for the selected text.
+	void addProcessText(Menu menu) {
+		if (!document.selection().isEmpty()) {
+			ProcessText.addTo(menu, getContext(), resultRegistry() == null);
+		}
+	}
+
+	// Ids of android.R.id or look_up.
 	int[] offered() {
 		Document.Selection selection = document.selection();
 		ClipboardManager manager = clipboardManager();
@@ -1818,8 +1799,9 @@ public class CodeView extends View {
 	}
 
 	// Puts the part of the selection on screen, and the handles under
-	// it, into out, in the view's coordinates; above the view if none is.
-	private void selectionRect(Rect out) {
+	// it, into out, in the view's coordinates; above the view, which hides
+	// the toolbar, if none is.
+	void selectionRect(Rect out) {
 		Text text = document.text();
 		Document.Selection selection = document.selection();
 		int lineCount = text.lineCount();
