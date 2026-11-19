@@ -62,6 +62,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import de.markusfisch.android.shadereditor.R;
@@ -190,6 +192,8 @@ public class CodeView extends View {
 	// to every app that reads it, in binder transactions of at most
 	// 1 MB, at up to two bytes a character.
 	private static final int MAX_CLIP = 400_000;
+	// Reads, splits and counts a clip, whose size has no bound.
+	private static final Executor PASTING = Executors.newSingleThreadExecutor();
 	private static final String PROCESS_TEXT = "CodeView.processText";
 	private static final int HORIZONTAL = 1;
 	private static final int VERTICAL = 2;
@@ -247,14 +251,22 @@ public class CodeView extends View {
 	private final KeyCommands.Clipboard clipboard =
 			new KeyCommands.Clipboard() {
 				@Override
-				public CharSequence get() {
-					ClipboardManager manager = clipboardManager();
-					ClipData clip = manager != null
-							? manager.getPrimaryClip()
-							: null;
-					return clip != null && clip.getItemCount() > 0
-							? clip.getItemAt(0).coerceToText(getContext())
-							: null;
+				public void read(KeyCommands.Pasted pasted) {
+					Document requested = document;
+					PASTING.execute(() -> {
+						CharSequence clip = clipText();
+						if (clip == null) {
+							return;
+						}
+						Text text = Text.of(clip);
+						long bytes = Document.bytes(text);
+						handler.post(() -> {
+							if (document == requested) {
+								pasted.paste(text, bytes);
+								bringCaretIntoView();
+							}
+						});
+					});
 				}
 
 				@Override
@@ -1610,7 +1622,10 @@ public class CodeView extends View {
 			return false;
 		}
 		if (done) {
-			select(selection.end(), selection.end());
+			// A paste puts the caret behind what it pastes when it comes.
+			if (command != KeyCommands.Command.PASTE) {
+				select(selection.end(), selection.end());
+			}
 			touched = null;
 			invalidate();
 		}
@@ -1965,7 +1980,21 @@ public class CodeView extends View {
 
 	private void recordClip() {
 		if (session != null) {
-			session.action("clip", clipboard.get());
+			session.action("clip", clipText());
+		}
+	}
+
+	// Null if there is none or it cannot be read. A clip of a content URI is
+	// read from its provider.
+	private CharSequence clipText() {
+		try {
+			ClipboardManager manager = clipboardManager();
+			ClipData clip = manager != null ? manager.getPrimaryClip() : null;
+			return clip != null && clip.getItemCount() > 0
+					? clip.getItemAt(0).coerceToText(getContext())
+					: null;
+		} catch (RuntimeException e) {
+			return null;
 		}
 	}
 

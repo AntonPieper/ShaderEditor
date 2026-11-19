@@ -17,11 +17,17 @@ public final class KeyCommands {
 	}
 
 	public interface Clipboard {
-		// Null if there is none.
-		CharSequence get();
+		// Reads and splits the clip away from the main thread and hands it
+		// to pasted on the main thread; nothing if there is none.
+		void read(Pasted pasted);
 
 		// False if that failed.
 		boolean set(String text);
+	}
+
+	public interface Pasted {
+		// bytes is what Document.bytes counts for text.
+		void paste(Text text, long bytes);
 	}
 
 	private static final int SHORTCUT = KeyEvent.META_CTRL_ON |
@@ -135,8 +141,8 @@ public final class KeyCommands {
 		return true;
 	}
 
-	// Returns false if a command of the clipboard did nothing; the document is
-	// then as it was.
+	// Returns false if a cut or copy did nothing; the document is then as it
+	// was. A paste comes later.
 	public boolean run(Command command, boolean extend, int pageLines) {
 		switch (command) {
 			case BACKWARD -> commands.moveBackward(extend);
@@ -168,8 +174,16 @@ public final class KeyCommands {
 				return copy();
 			}
 			case PASTE -> {
-				CharSequence clip = clipboard.get();
-				return clip != null && paste(Text.of(clip));
+				// Only where it was asked for: an edit or a move made
+				// before the clip arrives wins.
+				Selection selection = document.selection();
+				int revision = document.revision();
+				clipboard.read((text, bytes) -> {
+					if (document.revision() == revision &&
+							document.selection().equals(selection)) {
+						paste(text, bytes);
+					}
+				});
 			}
 		}
 		return true;
@@ -185,11 +199,15 @@ public final class KeyCommands {
 
 	// False if the document refused it.
 	public boolean paste(Text text) {
+		return paste(text, Document.bytes(text));
+	}
+
+	private boolean paste(Text text, long bytes) {
 		Selection selection = document.selection();
 		int start = selection.start();
 		document.beginBatch();
 		try {
-			if (!document.replace(start, selection.end(), text)) {
+			if (!document.replace(start, selection.end(), text, bytes)) {
 				return false;
 			}
 			document.select(start + text.length(), start + text.length());
