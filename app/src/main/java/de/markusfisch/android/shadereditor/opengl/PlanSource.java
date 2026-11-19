@@ -51,7 +51,7 @@ record PlanSource(
 		// What the compiler reads: comments mean nothing.
 		var scan = PreprocessorScan.scan(program.lines(), null);
 		int version = CompiledSource.version(scan);
-		if (version >= 300 && glesVersion < 3) {
+		if (!CompiledSource.compiles(version, glesVersion)) {
 			SourceLocation at = program.sourceMap().locate(program.head());
 			errors.add(new ProjectDiagnostic(ProjectDiagnostic.Severity.ERROR,
 					"#version " + version + " es needs OpenGL ES 3.0, but " +
