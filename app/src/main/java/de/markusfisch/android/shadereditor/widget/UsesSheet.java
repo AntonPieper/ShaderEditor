@@ -132,6 +132,8 @@ public final class UsesSheet {
 	};
 	@Nullable
 	private Content content;
+	// Whether the sheet opens renaming.
+	private boolean renameFirst;
 
 	// The sheet gives its content a parent only once it is set.
 	@SuppressLint("InflateParams")
@@ -204,6 +206,11 @@ public final class UsesSheet {
 	/** Run when the sheet goes, however it goes. */
 	public void setOnDismiss(@NonNull Runnable gone) {
 		dialog.setOnDismissListener(d -> gone.run());
+	}
+
+	/** Open renaming, where Rename is offered; Cancel shows the uses. */
+	public void renameFirst() {
+		renameFirst = true;
 	}
 
 	/** Return a view inside the sheet, to show a message over it. */
@@ -287,6 +294,10 @@ public final class UsesSheet {
 		adapter.show(content);
 		if (!dialog.isShowing()) {
 			dialog.show();
+			if (renameFirst && content.renamable()) {
+				setRenaming(true);
+			}
+			renameFirst = false;
 		} else if (adapter.renaming && again) {
 			checkName();
 		} else {
