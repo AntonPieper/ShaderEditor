@@ -1319,7 +1319,7 @@ public class CodeView extends View {
 		if (pressed) {
 			performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
 		}
-		startDrag(DRAG_WORDS, x, y);
+		startDrag(DRAG_WORDS);
 	}
 
 	private void grabHandle(float x, float y) {
@@ -1343,7 +1343,7 @@ public class CodeView extends View {
 		pointDy = handles.y(which) - getScrollY() -
 				appearance.lineHeight / 2f - y;
 		handler.removeCallbacks(hideCaretHandle);
-		startDrag(DRAG_HANDLE, x, y);
+		startDrag(DRAG_HANDLE);
 	}
 
 	private void dragCaret(float x, float y) {
@@ -1357,16 +1357,15 @@ public class CodeView extends View {
 		requestFocus();
 		performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
 		caretHandle = true;
-		startDrag(DRAG_WORDS, x, y);
+		startDrag(DRAG_WORDS);
 	}
 
-	private void startDrag(int what, float x, float y) {
+	// touch records where the finger is before the drag reads it.
+	private void startDrag(int what) {
 		if (what != DRAG_HANDLE) {
 			pointDx = pointDy = 0;
 		}
 		dragging = what;
-		dragX = x;
-		dragY = y;
 		scroller.forceFinished(true);
 		if (getParent() != null) {
 			getParent().requestDisallowInterceptTouchEvent(true);
