@@ -181,4 +181,22 @@ public class WordDocsTest {
 		assertFalse(WordDocs.isLocal(known, inMain, "missing"));
 		assertFalse(WordDocs.isLocal(Knowledge.NONE, 3, "time"));
 	}
+
+	@Test
+	public void leavesOutWhatRepeatsTheDefinition() {
+		Knowledge.Symbol aa = macro("AA", "#define AA 2");
+		assertTrue(WordDocs.repeats(aa, "2"));
+		assertTrue(WordDocs.repeats(macro("R", "#define R iResolution.xy"),
+				"iResolution.xy"));
+		assertFalse(WordDocs.repeats(macro("TAU", "#define TAU (2.0 * PI)"),
+				"(2.0 * 3.14159265)"));
+		// A call is never its definition.
+		assertFalse(WordDocs.repeats(macro("F", "#define F(x) x"), "x"));
+		assertFalse(WordDocs.repeats(aa, null));
+	}
+
+	private static Knowledge.Symbol macro(String name, String detail) {
+		return new Knowledge.Symbol(name, Knowledge.Kind.MACRO, detail, null,
+				null, 0, 0, 0, 0, List.of());
+	}
 }

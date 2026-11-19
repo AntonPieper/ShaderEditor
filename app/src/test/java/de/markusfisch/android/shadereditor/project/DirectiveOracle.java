@@ -29,7 +29,8 @@ import java.util.regex.Pattern;
  * every line n where it is in the arm of n, and Mesa names every marker
  * its preprocessor reaches. What an expansion is: the use is replaced by
  * the expansion, and Mesa's IR must stay the same; it must change when a
- * number of the expansion is changed, or the use is not seen at all.
+ * number of the expansion is changed, or a syntax error added to one
+ * without numbers, or the use is not seen at all.
  */
 public final class DirectiveOracle {
 	private static final String MESA = "/opt/homebrew/bin/glsl_compiler";
@@ -218,12 +219,13 @@ public final class DirectiveOracle {
 		if (!hir.equals(other)) {
 			return "differs";
 		}
+		// A number changed, or else a syntax error, must change what
+		// Mesa makes of it, or the use is not seen at all.
 		Matcher number = NUMBER.matcher(e.text());
-		if (!number.find()) {
-			return "unseen";
-		}
-		String changed = e.text().substring(0, number.start()) + "(" +
-				number.group() + "+7)" + e.text().substring(number.end());
+		String changed = number.find()
+				? e.text().substring(0, number.start()) + "(" +
+				number.group() + "+7)" + e.text().substring(number.end())
+				: e.text() + " )(";
 		String blind = hir(mesa(work, replace(lines, e, end, changed),
 				c.version(), true));
 		return hir.equals(blind) ? "unseen" : "same";

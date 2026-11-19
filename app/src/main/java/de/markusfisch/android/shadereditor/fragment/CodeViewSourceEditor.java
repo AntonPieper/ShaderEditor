@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
@@ -109,6 +110,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 	// from the edit that made them stale, not from the latest one.
 	private final Runnable distrust = this::distrust;
 	private boolean distrusting;
+	// What the last build says of the lines of builtPath, the file shown,
+	// as of builtText, the text it read.
+	@Nullable
+	private BuiltLines builtLines;
+	@Nullable
+	private Text builtText;
+	@Nullable
+	private ProjectPath builtPath;
 	private int revision;
 	// The next change starts no run: its maker runs it.
 	private boolean skipRun;
@@ -191,6 +200,25 @@ final class CodeViewSourceEditor implements SourceEditor {
 				@Override
 				public int offset() {
 					return document.selection().start();
+				}
+
+				// For the word at the caret, as the build read it.
+				@Nullable
+				@Override
+				public Callable<String> here(@NonNull String word) {
+					BuiltLines lines = builtLines;
+					ProjectPath path = builtPath;
+					Text text = document.text();
+					int at = document.selection().start();
+					if (lines == null || path == null || text != builtText ||
+							at + word.length() > text.length() ||
+							!text.substring(at, at + word.length())
+									.equals(word)) {
+						return null;
+					}
+					int line = text.lineOf(at);
+					int column = at - text.lineStart(line);
+					return () -> lines.expansion(path, line, column, word);
 				}
 
 				@Override
@@ -585,10 +613,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 		if (lines == null || text == null || path == null ||
 				!dimmed.set(text, lines.off(path))) {
 			dimmed.clear();
+			lines = null;
 		} else {
 			this.again = again;
 		}
 		trust();
+		builtLines = lines;
+		builtText = text;
+		builtPath = path;
 		view.invalidate();
 	}
 
@@ -737,6 +769,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		marks = new LineMarks(document);
 		again = null;
 		trust();
+		builtLines = null;
 		dimmed = new DimmedLines(document, this::stale);
 		styles.setDimmed(dimmed);
 		view.setDocument(document, styles, marks);

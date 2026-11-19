@@ -532,6 +532,7 @@
 	<string name="docs_es_100">GLSL ES 1.00 only</string>
 	<string name="docs_es_300">GLSL ES 3.00 only</string>
 	<string name="docs_example">Example</string>
+	<string name="docs_here">Here</string>
 	<string name="a11y_takes">%1$s takes %2$s</string>
 	<string name="a11y_takes_nothing">%1$s takes nothing</string>
 	<string name="a11y_and">%1$s and %2$s</string>
