@@ -28,6 +28,7 @@ import java.util.concurrent.RejectedExecutionException;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.database.DataSource;
+import de.markusfisch.android.shadereditor.editor.Document;
 import de.markusfisch.android.shadereditor.editor.InsertTexture;
 import de.markusfisch.android.shadereditor.fragment.EditorFragment;
 import de.markusfisch.android.shadereditor.fragment.ListedErrors;
@@ -134,11 +135,21 @@ public final class LibraryScreen implements ShaderScreen {
 	private String tuningStepsFor;
 	private boolean codeBeforeTuning;
 	private boolean keyboardBeforeTuning;
+	// The session, and the code it shows on request (EDITOR 15).
+	@Nullable
+	private TuningSession tuning;
+	@Nullable
+	private CodeView tuningCode;
 	private final OnBackPressedCallback backTunes =
 			new OnBackPressedCallback(false) {
 				@Override
 				public void handleOnBackPressed() {
-					tuningBar.back();
+					// The code goes first, then the bar.
+					if (tuningCode != null) {
+						showTuningCode(false);
+					} else {
+						tuningBar.back();
+					}
 				}
 			};
 
@@ -306,6 +317,12 @@ public final class LibraryScreen implements ShaderScreen {
 		tuningBar = activity.findViewById(R.id.tuning_bar);
 		// Over the code, never over the toolbar or Find above it.
 		tuningBar.setCeiling(activity.findViewById(R.id.content_frame));
+		tuningBar.addOnLayoutChangeListener((v, left, top, right, bottom,
+				oldLeft, oldTop, oldRight, oldBottom) -> {
+			if (tuningCode != null) {
+				tuningCode.setCover(bottom - top);
+			}
+		});
 		activity.getOnBackPressedDispatcher().addCallback(activity,
 				backTunes);
 		editorFragment.setOnErrorSelectedListener((file, line) -> {
@@ -651,6 +668,7 @@ public final class LibraryScreen implements ShaderScreen {
 		if (session == null) {
 			return;
 		}
+		tuning = session;
 		sessionSteps.clear();
 		// The bar takes the sheet's place: the sheet closes, a pass it
 		// shows stays shown, so the number is tuned in what is seen.
@@ -660,6 +678,8 @@ public final class LibraryScreen implements ShaderScreen {
 		tuningBar.open(place, tuningSteps.get(number), new TuningBar.Session() {
 			@Override
 			public void set(@NonNull TuningBar.Tuned tuned) {
+				// A change shows the picture whole again.
+				showTuningCode(false);
 				TuningSession.Tuned now = session.tuned();
 				if (now != null) {
 					// By id while edits move it, by place for next time.
@@ -739,6 +759,7 @@ public final class LibraryScreen implements ShaderScreen {
 		});
 		backTunes.setEnabled(true);
 		extraKeysManager.setCovered(true);
+		setTuningCode(null);
 		// The code and the keyboard step aside; the picture shows as it
 		// is, without the limit code puts on it. The code fades out with
 		// the limit, 150 ms, unless animations are removed.
@@ -786,7 +807,71 @@ public final class LibraryScreen implements ShaderScreen {
 					? step
 					: tuningSteps.get(String.valueOf(tuned.place().start)),
 					announce);
+			caretOnTuned(tuned);
 		}
+	}
+
+	// On the code shown the caret is on the tuned number, its line in view.
+	// Its place can be the one it was first tuned at: kept in the text.
+	private void caretOnTuned(@Nullable TuningSession.Tuned tuned) {
+		CodeView code = tuningCode;
+		Document document = code != null ? code.getDocument() : null;
+		if (tuned != null && document != null) {
+			int at = Math.min(tuned.place().start, document.text().length());
+			document.select(at, at);
+			code.bringCaretIntoView();
+		}
+	}
+
+	// The code over the picture while tuning goes on, or gone again.
+	private void showTuningCode(boolean show) {
+		TuningSession session = tuning;
+		CodeView code = show ? editorFragment.findableCode() : tuningCode;
+		if (session == null || code == null || show && tuningCode != null) {
+			return;
+		}
+		if (show) {
+			// What was typed is taken first, as before a move.
+			tuningBar.settle();
+		}
+		uiManager.toggleCodeVisibility();
+		setTuningCode(show ? code : null);
+		caretOnTuned(session.tuned());
+		if (show) {
+			// A screen reader hears the tuned number's line.
+			code.jumped();
+		}
+	}
+
+	// A tap on it tunes the number there, or ends tuning, keeping every
+	// value, and places the caret; the bar over it is kept clear of the
+	// caret's line as the keyboard is. The code button says what it does.
+	private void setTuningCode(@Nullable CodeView code) {
+		if (tuningCode != null) {
+			tuningCode.setOnTap(null);
+			tuningCode.setCover(0);
+		}
+		tuningCode = code;
+		if (code != null) {
+			code.setOnTap(this::tapTuningCode);
+			code.setCover(tuningBar.getHeight());
+		}
+		uiManager.nameCodeButton(code != null
+				? R.string.tuning_hide_code
+				: tuning != null
+						? R.string.tuning_show_code
+						: R.string.toggle_code);
+	}
+
+	private boolean tapTuningCode(int offset) {
+		TuningSession.Tuned tuned = tuning != null ? tuning.move(offset) : null;
+		if (tuned != null) {
+			retune(tuned, true);
+			return true;
+		}
+		files.endTuning(true);
+		// Unless a typed value taken first brought the picture back.
+		return !editorFragment.isCodeVisible();
 	}
 
 	@Override
@@ -806,6 +891,8 @@ public final class LibraryScreen implements ShaderScreen {
 	private void tuningEnded(@NonNull List<ProjectDiagnostic> errors) {
 		backTunes.setEnabled(false);
 		extraKeysManager.setCovered(false);
+		tuning = null;
+		setTuningCode(null);
 		tuningBar.close();
 		if (codeBeforeTuning && !editorFragment.isCodeVisible()) {
 			uiManager.toggleCodeVisibility();
@@ -829,9 +916,9 @@ public final class LibraryScreen implements ShaderScreen {
 
 	@Override
 	public void toggleCode() {
-		// The code takes input again: tuning ends, keeping the value.
+		// Tuning goes on under the code.
 		if (files.isTuning()) {
-			files.endTuning(true);
+			showTuningCode(tuningCode == null);
 			return;
 		}
 		// Without a file there is no code to show.
@@ -1099,7 +1186,7 @@ public final class LibraryScreen implements ShaderScreen {
 						shaderManager.selectShader(id);
 					}
 
-					// As the eye does: the bar is not used under it.
+					// As Done does: the bar is not used under it.
 					@Override
 					public void onOpening() {
 						files.endTuning(true);

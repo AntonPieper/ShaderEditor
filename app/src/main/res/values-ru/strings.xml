@@ -643,6 +643,8 @@
 	<string name="tuning_before">Before</string>
 	<string name="tuning_before_on">On: the values before tuning</string>
 	<string name="tuning_before_off">Off</string>
+	<string name="tuning_show_code">Show code</string>
+	<string name="tuning_hide_code">Hide code</string>
 	<string name="tuning_building">Building</string>
 	<string name="fix_add_uniform_name">Add uniform %1$s</string>
 	<string name="fix_add_uniform_short">Add uniform</string>
