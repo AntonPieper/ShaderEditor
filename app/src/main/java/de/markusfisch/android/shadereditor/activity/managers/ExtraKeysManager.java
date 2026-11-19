@@ -384,10 +384,17 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 	 * arrow key; the code's own actions are TalkBack's way to it.
 	 */
 	public void showName(@Nullable NameView.Name name) {
-		if (name == null && this.name == null) {
+		NameView.Name was = this.name;
+		this.name = name;
+		if (name == null && was == null) {
+			return;
+		} else if (name != null && was != null && looksAlike(name, was)) {
+			// The same item made again, as when the files around were
+			// read: nothing is drawn again.
+			Runnable act = name.act();
+			nameAction.setOnClickListener(act != null ? v -> act.run() : null);
 			return;
 		}
-		this.name = name;
 		completions.setVisibility(getVisibility(reference == null &&
 				name == null));
 		nameRow.setVisibility(getVisibility(name != null));
@@ -404,6 +411,17 @@ public class ExtraKeysManager implements ViewTreeObserver.OnGlobalFocusChangeLis
 		}
 		nameAction.setContentDescription(name.actionSpoken());
 		nameAction.setOnClickListener(act != null ? v -> act.run() : null);
+	}
+
+	private static boolean looksAlike(@NonNull NameView.Name a,
+			@NonNull NameView.Name b) {
+		return a.word().equals(b.word()) && a.form().equals(b.form()) &&
+				Objects.equals(a.note(), b.note()) &&
+				a.spoken().equals(b.spoken()) &&
+				Objects.equals(a.action(), b.action()) &&
+				a.icon() == b.icon() &&
+				Objects.equals(a.actionSpoken(), b.actionSpoken()) &&
+				(a.act() == null) == (b.act() == null);
 	}
 
 	/**

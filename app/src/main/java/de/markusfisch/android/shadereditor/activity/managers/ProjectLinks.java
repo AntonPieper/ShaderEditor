@@ -38,6 +38,7 @@ import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.OpenProject;
 import de.markusfisch.android.shadereditor.project.Previews;
 import de.markusfisch.android.shadereditor.project.ProjectFiles;
+import de.markusfisch.android.shadereditor.project.ProjectParseResult;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.resource.Resources;
@@ -137,6 +138,10 @@ final class ProjectLinks implements FileLinks {
 	// The way back of the project shown, or null.
 	@Nullable
 	private WayBack way;
+	// The files the shown file includes as its text was last read, or
+	// null before it was: only a change in them reads the files around.
+	@Nullable
+	private Set<ProjectPath> includes;
 	// The number of the last rename or deletion heard of.
 	private int heard;
 	// Told once the texts of the generation awaited are built, or null.
@@ -179,6 +184,7 @@ final class ProjectLinks implements FileLinks {
 		forget();
 		this.project = project;
 		this.file = file;
+		includes = null;
 		if (project.wayBack() instanceof WayBack kept) {
 			way = kept;
 		} else {
@@ -214,6 +220,10 @@ final class ProjectLinks implements FileLinks {
 				}
 			}
 			forget();
+			// A file around may be renamed, moved or deleted.
+			if (includes != null) {
+				read();
+			}
 		}
 	}
 
@@ -257,6 +267,36 @@ final class ProjectLinks implements FileLinks {
 	@Override
 	public void setListener(@Nullable Runnable changed) {
 		this.changed = changed;
+	}
+
+	@Override
+	public void know(@NonNull Knowledge known) {
+		ProjectPath shown = file;
+		if (project == null || shown == null) {
+			return;
+		}
+		Set<ProjectPath> named = new HashSet<>();
+		for (Knowledge.Symbol link : known.links()) {
+			ProjectParseResult<ProjectPath> path = ProjectPath.resolve(
+					shown, link.name());
+			if (link.kind() == Knowledge.Kind.INCLUDE && path.isSuccess()) {
+				named.add(path.value());
+			}
+		}
+		if (!named.equals(includes)) {
+			includes = named;
+			read();
+		}
+	}
+
+	// Has the project read what is around the file shown, unless the
+	// last build covers it; the editor hears when it is read.
+	private void read() {
+		project.know(file, includes, () -> {
+			if (changed != null) {
+				changed.run();
+			}
+		});
 	}
 
 	@Nullable
@@ -567,7 +607,11 @@ final class ProjectLinks implements FileLinks {
 
 	/** What runs was built, and its diagnostics kept. */
 	void built() {
-		// What the files around declare may have changed with it.
+		// What the files around declare may have changed with it, and
+		// the build may no longer cover the file shown.
+		if (includes != null && project != null) {
+			read();
+		}
 		if (changed != null) {
 			changed.run();
 		}
