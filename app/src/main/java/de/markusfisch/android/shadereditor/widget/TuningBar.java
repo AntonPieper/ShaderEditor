@@ -37,6 +37,7 @@ import java.util.List;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.tuning.LiteralText;
+import de.markusfisch.android.shadereditor.tuning.Statement;
 import de.markusfisch.android.shadereditor.tuning.TunedPlace;
 import de.markusfisch.android.shadereditor.tuning.TuningSession;
 import de.markusfisch.android.shadereditor.tuning.TuningStep;
@@ -82,6 +83,24 @@ public class TuningBar extends LinearLayout {
 
 		/** Redo; the bar is told with {@link #retarget}. */
 		default void redo() {
+		}
+
+		@Nullable
+		default Statement statement() {
+			return null;
+		}
+
+		/** The text of the next or previous number, or null at an end. */
+		@Nullable
+		default String neighbour(boolean forward) {
+			return null;
+		}
+
+		/** Tune the next or previous number; told with {@link #retarget}. */
+		default void step(boolean forward) {
+		}
+
+		default void select(int offset) {
 		}
 	}
 
@@ -149,7 +168,11 @@ public class TuningBar extends LinearLayout {
 	private Tuned tuned;
 	@Nullable
 	private Session session;
-	private TextView lineView;
+	private TuningLine lineView;
+	private android.widget.ImageButton previous;
+	private android.widget.ImageButton next;
+	@Nullable
+	private Statement statement;
 	private EditText valueView;
 	// The field holds text typed for the tuned number, not taken yet:
 	// only the user's edits make it so, and every move settles it.
@@ -194,6 +217,10 @@ public class TuningBar extends LinearLayout {
 	protected void onFinishInflate() {
 		super.onFinishInflate();
 		lineView = findViewById(R.id.tuning_line);
+		previous = findViewById(R.id.tuning_previous);
+		next = findViewById(R.id.tuning_next);
+		previous.setOnClickListener(v -> step(false));
+		next.setOnClickListener(v -> step(true));
 		valueView = findViewById(R.id.tuning_value);
 		decrease = findViewById(R.id.tuning_decrease);
 		increase = findViewById(R.id.tuning_increase);
@@ -444,6 +471,9 @@ public class TuningBar extends LinearLayout {
 					return true;
 				case KeyEvent.KEYCODE_ESCAPE:
 					revert();
+					return true;
+				case KeyEvent.KEYCODE_TAB:
+					step(!event.isShiftPressed());
 					return true;
 				case KeyEvent.KEYCODE_DPAD_LEFT:
 				case KeyEvent.KEYCODE_DPAD_RIGHT:
@@ -1035,6 +1065,9 @@ public class TuningBar extends LinearLayout {
 		if (now == null) {
 			return;
 		}
+		statement = session != null ? session.statement() : null;
+		showNeighbour(previous, false, R.string.tuning_previous);
+		showNeighbour(next, true, R.string.tuning_next);
 		ruler.show(now.value(), now.start(), now.step());
 		String step = TuningStep.label(now.step());
 		stepView.setText(getContext().getString(R.string.tuning_step, step));
@@ -1062,23 +1095,33 @@ public class TuningBar extends LinearLayout {
 		return tuned.text().replace("(", "").replace(")", "");
 	}
 
-	// The tuned line with the new digits, cut on both sides around them
-	// so that they stay in the middle.
+	// Named by where they lead.
+	private void showNeighbour(@NonNull android.widget.ImageButton button,
+			boolean forward, int name) {
+		String number = session != null ? session.neighbour(forward) : null;
+		button.setEnabled(number != null);
+		button.setContentDescription(getContext().getString(name,
+				number != null ? number : ""));
+	}
+
+	private void step(boolean forward) {
+		if (session != null) {
+			session.step(forward);
+		}
+	}
+
+	// Cut on both sides so that the digits stay in the middle.
 	private void showLine() {
 		Tuned now = tuned;
+		Statement shown = statement;
 		int width = lineView.getWidth() - lineView.getPaddingLeft() -
 				lineView.getPaddingRight();
 		if (now == null || width <= 0) {
 			return;
 		}
-		TunedPlace place = now.place();
-		int from = place.signStart - place.lineStart();
-		int to = place.end - place.lineStart();
 		String text = now.text();
-		String line = place.line();
-		String before = line.substring(0, Math.max(0, from)).replace('\t', ' ');
-		String after = line.substring(Math.min(line.length(), to))
-				.replace('\t', ' ');
+		String before = shown != null ? shown.before() : "";
+		String after = shown != null ? shown.after() : "";
 		Paint paint = lineView.getPaint();
 		String ellipsis = "…";
 		int left = before.length();
@@ -1099,25 +1142,59 @@ public class TuningBar extends LinearLayout {
 				grew = true;
 			}
 		}
-		left = Math.min(left, before.length());
-		SpannableStringBuilder shown = new SpannableStringBuilder();
+		SpannableStringBuilder line = new SpannableStringBuilder();
 		if (left > 0) {
-			shown.append(ellipsis);
+			line.append(ellipsis);
 		}
-		shown.append(before.substring(left));
-		int digits = shown.length();
-		shown.append(text);
-		int digitsEnd = shown.length();
-		shown.append(after, 0, right);
+		int shift = line.length() - left;
+		line.append(before.substring(left));
+		int digits = line.length();
+		line.append(text);
+		int digitsEnd = line.length();
+		line.append(after, 0, right);
 		if (right < after.length()) {
-			shown.append(ellipsis);
+			line.append(ellipsis);
 		}
 		SpannableString coloured = DocsSheet.colour(getContext(),
-				shown.toString());
+				line.toString());
 		coloured.setSpan(new BackgroundColorSpan(ContextCompat.getColor(
 						getContext(), R.color.code_selection)), digits,
 				digitsEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+		// The cut is no code, nor an error.
+		int secondary = com.google.android.material.color.MaterialColors
+				.getColor(lineView, android.R.attr.textColorSecondary);
+		for (int at = line.toString().indexOf(ellipsis); at > -1;
+				at = line.toString().indexOf(ellipsis, at + 1)) {
+			coloured.setSpan(new android.text.style.ForegroundColorSpan(
+					secondary), at, at + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+		}
 		lineView.setText(coloured);
+		// Only numbers shown whole.
+		java.util.List<Statement.Mark> marks = new java.util.ArrayList<>();
+		if (shown != null) {
+			for (Statement.Mark mark : shown.marks()) {
+				if (mark.inAfter() ? mark.end() <= right : mark.start() >= left) {
+					marks.add(mark);
+				}
+			}
+		}
+		int[] ranges = new int[2 * marks.size() + 2];
+		boolean[] changed = new boolean[marks.size() + 1];
+		for (int i = 0; i < marks.size(); ++i) {
+			Statement.Mark mark = marks.get(i);
+			int at = mark.inAfter() ? digitsEnd : shift;
+			ranges[2 * i] = at + mark.start();
+			ranges[2 * i + 1] = at + mark.end();
+			changed[i] = mark.changed();
+		}
+		ranges[2 * marks.size()] = digits;
+		ranges[2 * marks.size() + 1] = digitsEnd;
+		changed[marks.size()] = now.changed();
+		lineView.setMarks(ranges, changed, index -> {
+			if (index < marks.size() && session != null) {
+				session.select(marks.get(index).offset());
+			}
+		});
 	}
 
 	private static boolean fits(@NonNull Paint paint, @NonNull String ellipsis,

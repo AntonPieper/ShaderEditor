@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.Style;
 import de.markusfisch.android.shadereditor.syntax.Tokens;
 
 /**
@@ -59,9 +60,33 @@ public final class Window implements CharSequence {
 	/** The number at offset, as {@link TunedPlace#at} finds it. */
 	@Nullable
 	public TunedPlace place(int offset) {
-		return offset < base || offset > base + lines.length()
+		return offset < base || offset > end()
 				? null
 				: TunedPlace.at(this, tokens, offset);
+	}
+
+	// Where the literal of the number nearest offset starts, after it
+	// when forward, or -1.
+	int number(int offset, boolean forward) {
+		int size = tokens.size();
+		for (int k = 0; k < size; ++k) {
+			int i = forward ? k : size - 1 - k;
+			if (tokens.style(i) == Style.NUMBER && (forward
+					? tokens.start(i) >= offset
+					: tokens.end(i) <= offset) &&
+					place(tokens.start(i)) != null) {
+				return tokens.start(i);
+			}
+		}
+		return -1;
+	}
+
+	int start() {
+		return base;
+	}
+
+	int end() {
+		return base + lines.length();
 	}
 
 	@Override
