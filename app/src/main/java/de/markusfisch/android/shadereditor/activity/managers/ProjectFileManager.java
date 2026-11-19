@@ -422,6 +422,9 @@ public final class ProjectFileManager {
 			tunedStates = null;
 		}
 		boolean goesOn = edit && tuned;
+		android.util.Log.d("TuningClock", "run edit=" + edit + " tuned=" +
+				tuned + " state=" + (document != null ? document.state() : -1) +
+				" states=" + tunedStates);
 		built = project;
 		builtEntry = project.running();
 		project.prepare(UniformTable.builtins(), prepared -> {
@@ -478,6 +481,7 @@ public final class ProjectFileManager {
 
 	/** Look for changes made elsewhere, when the app is in front again. */
 	public void onStart() {
+		android.util.Log.d("TuningClock", "onStart: refresh");
 		ProjectFile checked = file;
 		if (checked == null) {
 			return;
@@ -633,6 +637,19 @@ public final class ProjectFileManager {
 				? shown.getProject().document(shown.getPath())
 				: null;
 		tunedStates = session.states();
+		Document watched = tunedDocument;
+		if (watched != null) {
+			watched.addListener(new Document.Listener() {
+				@Override
+				public void onChange(Document.Change change, Text before) {
+					if (!tuningEdits && watched == tunedDocument) {
+						android.util.Log.d("TuningClock", "edit after tuning at " +
+								change.start() + " '" + change.removed() + "' -> '" +
+								change.inserted() + "'", new Throwable());
+					}
+				}
+			});
+		}
 		listener.onTuningEnded(List.of());
 	}
 

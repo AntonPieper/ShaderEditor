@@ -167,6 +167,7 @@ final class EngineInputs {
 	// GL thread. Restarts the clock for a new shader of this quality: the
 	// next frame is frame 0, drawn as Playback.Draw.FIRST while paused.
 	void restart(float quality, long now) {
+		android.util.Log.d("TuningClock", "time restarts", new Throwable());
 		runtimeClock.pause();
 		startTime = now;
 		startRandom = (float) Math.random();
