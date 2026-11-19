@@ -20,9 +20,8 @@ final class TouchSelection {
 	}
 
 	private static final int CARET = 0;
-	private static final int CHARS = 1;
-	private static final int WORDS = 2;
-	private static final int HANDLE = 3;
+	private static final int WORDS = 1;
+	private static final int HANDLE = 2;
 
 	private final Motion motion;
 	private int unit;
@@ -56,16 +55,11 @@ final class TouchSelection {
 	}
 
 	void dragHandle(int anchor, int head) {
-		dragChars(anchor, head);
 		unit = anchor == head ? CARET : HANDLE;
-		delta = 0;
-	}
-
-	private void dragChars(int anchor, int head) {
-		unit = CHARS;
 		this.anchor = anchor;
 		this.head = head;
 		reached = head;
+		delta = 0;
 	}
 
 	void dragWords(Text text, int offset) {
@@ -89,8 +83,6 @@ final class TouchSelection {
 		int oldHead = head;
 		if (unit == CARET) {
 			anchor = head = offset;
-		} else if (unit == CHARS) {
-			head = offset;
 		} else if (unit == HANDLE) {
 			moveHandle(text, from, offset);
 		} else if (offset >= wordStart) {
@@ -172,10 +164,9 @@ final class TouchSelection {
 				showsHandles(dragging) ? current : null;
 	}
 
-	// Not while the drag started last is by word or by character and in
-	// progress; then only the handle being dragged.
+	// Not while a drag by word is in progress.
 	boolean showsHandles(boolean dragging) {
-		return !dragging || unit == HANDLE || unit == CARET;
+		return !dragging || unit != WORDS;
 	}
 
 	// As the platform's text views place the magnifier; NaN hides it.
