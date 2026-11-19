@@ -842,6 +842,62 @@ public class TuningSessionTest {
 		assertEquals("1.0", session.step(false).text());
 	}
 
+	// A number of a #define is one uniform where it is defined: every
+	// use of the macro reads it; in a function-like macro too.
+	@Test
+	public void aDefineIsOneUniformForEveryUse() {
+		String defined = SHADER.replace("uniform float time;\n",
+				"uniform float time;\n#define GAIN 0.35\n" +
+						"#define SAT(x) clamp(x, 0.0, 0.9)\n")
+				.replace("gl_FragColor = vec4(s,",
+						"gl_FragColor = vec4(SAT(s * GAIN), SAT(GAIN),");
+		document.replace(0, text().length(), Text.of(defined));
+		var session = begin("0.35");
+		assertTrue(runs.get(0).text, runs.get(0).text.contains(
+				"#define GAIN (se_tune0)\n"));
+		session.set("0.5");
+		move("0.9)");
+		rest();
+		var build = runs.get(runs.size() - 1);
+		assertTrue(build.text, build.text.contains(
+				"#define SAT(x) clamp(x, 0.0, (se_tune1))\n"));
+		assertEquals("se_tune0=0.5 se_tune1=0.9", build.values());
+		session.end(true);
+		assertEquals(defined.replace("GAIN 0.35", "GAIN 0.5"), text());
+	}
+
+	// The period of ftime is read by the app, not compiled: a constant.
+	@Test
+	public void theFtimePeriodIsAConstant() {
+		document.replace(0, text().length(), Text.of(lines(
+				"#define FTIME_PERIOD 7.0", PRECISION,
+				"uniform float ftime;",
+				"void main(void) {",
+				"	gl_FragColor = vec4(ftime);",
+				"}")));
+		begin("7.0");
+		assertEquals(List.of("constant"), heard);
+		assertEquals(List.of(), runs);
+	}
+
+	// Previous and next go through the numbers of #define lines too, and
+	// past those of other directives.
+	@Test
+	public void previousAndNextGoThroughDefines() {
+		document.replace(0, text().length(), Text.of(lines(
+				"#define SPEED 0.35", "#define RADIUS 0.12",
+				"#if 1", "#endif", PRECISION,
+				"void main(void) {",
+				"	gl_FragColor = vec4(SPEED, RADIUS, 0.5, 1.0);",
+				"}")));
+		var session = begin("0.35");
+		assertEquals("0.12", session.step(true).text());
+		assertEquals("#define RADIUS ", session.statement().before());
+		assertEquals("", session.statement().after());
+		assertEquals("0.5", session.step(true).text());
+		assertEquals("0.12", session.step(false).text());
+	}
+
 	@Test
 	public void oneSessionAtATime() {
 		var first = begin("0.3");

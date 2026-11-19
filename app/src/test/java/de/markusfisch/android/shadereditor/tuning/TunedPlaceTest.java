@@ -33,6 +33,14 @@ public class TunedPlaceTest {
 	public void notInACommentOrADirective() {
 		assertNull(TunedPlace.at("// 0.3", 4));
 		assertNull(TunedPlace.at("#version 300 es\n", 10));
+		// On a directive line only a #define's: its body is code where
+		// the macro is used.
+		String defines = "#define SPEED 0.35\n#define SAT(x) clamp(x, " +
+				"0.0, 0.9)\n#if SPEED > 2.0\n#endif\n#pragma se pass 3\n";
+		assertNotNull(TunedPlace.at(defines, defines.indexOf("0.35")));
+		assertNotNull(TunedPlace.at(defines, defines.indexOf("0.9")));
+		assertNull(TunedPlace.at(defines, defines.indexOf("2.0")));
+		assertNull(TunedPlace.at(defines, defines.lastIndexOf("3")));
 	}
 
 	@Test
@@ -175,5 +183,20 @@ public class TunedPlaceTest {
 				line -> -1), at, at + 4, offset -> false);
 		assertEquals("vec3 tint = vec3(", statement.before());
 		assertEquals(", 0.60);", statement.after());
+	}
+
+	// Review 3, L7: the minus that begins a #define's body is the
+	// value's sign; a comment may stand between # and define.
+	@Test
+	public void aMacroBodyKeepsItsSign() {
+		String src = "#define GAIN -1.25\n#define F(x) -0.5\n" +
+				"#define G (x) -2.0\n# /* note */ define H 0.25\n";
+		assertEquals(new BigDecimal("-1.25"),
+				TunedPlace.at(src, src.indexOf("1.25")).value);
+		assertEquals(new BigDecimal("-0.5"),
+				TunedPlace.at(src, src.indexOf("0.5")).value);
+		assertEquals(new BigDecimal("2.0"),
+				TunedPlace.at(src, src.indexOf("2.0")).value);
+		assertNotNull(TunedPlace.at(src, src.indexOf("0.25")));
 	}
 }

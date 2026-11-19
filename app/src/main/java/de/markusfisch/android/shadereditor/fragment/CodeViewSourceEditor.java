@@ -724,19 +724,17 @@ final class CodeViewSourceEditor implements SourceEditor {
 			int n = text.lineOf(caret);
 			LexedLine line = styles.runs(n).line();
 			int column = caret - text.lineStart(n);
-			// Not on a line the host reads, such as #pragma se: its
-			// numbers are no GLSL the engine can tune.
-			boolean directive = false;
 			boolean onNumber = false;
 			for (int i = 0, size = line.size(); i < size; ++i) {
-				directive |= line.inDirective(i);
 				onNumber |= line.style(i) == Style.NUMBER &&
 						line.start(i) <= column && column <= line.end(i);
 			}
 			// The number as the bar tunes it, with the minus that
-			// belongs to it, from the caret's line alone.
+			// belongs to it, from the caret's line alone; on a directive
+			// line only a #define's, not one the host reads, such as
+			// #pragma se.
 			de.markusfisch.android.shadereditor.tuning.TunedPlace place =
-					onNumber && !directive
+					onNumber
 							? de.markusfisch.android.shadereditor.tuning
 							.TunedPlace.at(line.text(), column)
 							: null;
