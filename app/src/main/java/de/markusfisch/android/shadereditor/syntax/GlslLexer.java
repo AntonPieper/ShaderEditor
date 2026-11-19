@@ -61,11 +61,28 @@ public final class GlslLexer {
 	}
 
 	public static Tokens lex(CharSequence text) {
+		return lex(text, TEXT_START, 0);
+	}
+
+	/**
+	 * Tokenizes text, lines of a larger text from one that starts in
+	 * state as {@link #lexLine} returns it, as {@link #lex} does the
+	 * whole; the tokens' offsets are those into the larger text, where
+	 * text starts at base.
+	 */
+	public static Tokens lex(CharSequence text, int state, int base) {
 		int capacity = text.length() / 3 + 16;
 		GlslLexer lexer = new GlslLexer(text, (char) 0, new int[capacity],
 				new int[capacity], new int[capacity]);
-		lexer.run(0);
+		lexer.run(lexer.begin(state));
+		if (base != 0) {
+			for (int i = 0; i < lexer.size; ++i) {
+				lexer.starts[i] += base;
+				lexer.ends[i] += base;
+			}
+		}
 		int[] lineStarts = new int[16];
+		lineStarts[0] = base;
 		int lines = 1;
 		for (int i = 0, n = lexer.length; i < n; ++i) {
 			char c = text.charAt(i);
@@ -74,7 +91,7 @@ public final class GlslLexer {
 				if (lines == lineStarts.length) {
 					lineStarts = Arrays.copyOf(lineStarts, lines * 2);
 				}
-				lineStarts[lines++] = i + 1;
+				lineStarts[lines++] = base + i + 1;
 			}
 		}
 		return new Tokens(lexer.starts, lexer.ends, lexer.kinds, lexer.size,
@@ -97,18 +114,7 @@ public final class GlslLexer {
 			int state, LineTokens out) {
 		GlslLexer lexer = new GlslLexer(line, breakFollows ? '\n' : 0,
 				out.starts, out.ends, out.kinds);
-		lexer.directive = (state & DIRECTIVE) != 0;
-		lexer.nameExpected = (state & DIRECTIVE_NAME) != 0;
-		lexer.lastKind = state >> KIND_SHIFT;
-		int i = 0;
-		if ((state & BLOCK_COMMENT) != 0) {
-			lexer.add(0, 0, Style.COMMENT);
-			lexer.directive = false;
-			i = lexer.ends[0] = lexer.blockCommentEnd(0);
-		} else if ((state & LINE_COMMENT) != 0) {
-			i = lexer.add(0, lexer.lineCommentEnd(0), Style.COMMENT);
-		}
-		boolean continued = lexer.run(i) > lexer.length;
+		boolean continued = lexer.run(lexer.begin(state)) > lexer.length;
 		// A comment that goes on over an empty line leaves an empty piece.
 		out.set(lexer.starts, lexer.ends, lexer.kinds,
 				line.length() == 0 ? 0 : lexer.size);
@@ -130,6 +136,22 @@ public final class GlslLexer {
 		out.goOn(lexer.open != 0, lexer.open == 0 &&
 				(next & DIRECTIVE) != 0);
 		return next;
+	}
+
+	// Takes state as where the text starts and returns where tokens
+	// start: after a comment that goes on into it.
+	private int begin(int state) {
+		directive = (state & DIRECTIVE) != 0;
+		nameExpected = (state & DIRECTIVE_NAME) != 0;
+		lastKind = state >> KIND_SHIFT;
+		if ((state & BLOCK_COMMENT) != 0) {
+			add(0, 0, Style.COMMENT);
+			directive = false;
+			return ends[0] = blockCommentEnd(0);
+		} else if ((state & LINE_COMMENT) != 0) {
+			return add(0, lineCommentEnd(0), Style.COMMENT);
+		}
+		return 0;
 	}
 
 	// Returns where it stopped: past the end if a backslash continues the

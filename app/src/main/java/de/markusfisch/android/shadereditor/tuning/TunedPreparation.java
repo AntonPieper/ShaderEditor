@@ -5,12 +5,16 @@ import androidx.annotation.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.opengl.Tuning;
 import de.markusfisch.android.shadereditor.project.Builtins;
 import de.markusfisch.android.shadereditor.project.FileKind;
@@ -25,19 +29,12 @@ import de.markusfisch.android.shadereditor.project.RenderPlan;
 import de.markusfisch.android.shadereditor.project.SourceLocation;
 
 /**
- * The running shader prepared with one number of one file replaced by
- * the name of a uniform the host sets, for the engine to build while
- * the number is tuned. The file may be the one that runs, a pass or an
- * include; only the number's characters change, so every line keeps
- * its number and errors stay on the user's lines. The engine declares
- * the uniform in each program that uses it ({@link Tuning}).
- *
- * Where GLSL needs a constant and the tokens say so
- * ({@link ConstantContext}), nothing is built: the number can only be
- * tuned by building its new text each time.
+ * The running shader prepared with numbers of one file replaced, each by
+ * the name of a {@link Tuning} or by another text. Only the numbers'
+ * characters change, so errors stay on the user's lines.
  */
 public final class TunedPreparation {
-	/** What the uniform's names start with; a number follows. */
+	/** What the uniforms' names start with; a number follows. */
 	static final String PREFIX = "se_tune";
 
 	private static final Pattern SPLICE = Pattern.compile(
@@ -49,154 +46,128 @@ public final class TunedPreparation {
 	public interface Project {
 		/** Return the text of path as the editor has it, or null. */
 		@Nullable
-		String text(@NonNull ProjectPath path);
+		Text text(@NonNull ProjectPath path);
 
 		/**
-		 * Prepare the running shader with replacements in the text, as
-		 * {@link OpenProject#prepare(Builtins, List, Callback)} does;
-		 * null when nothing runs. done is called on the main thread, or
-		 * not at all when the text changed meanwhile.
+		 * As {@link OpenProject#prepare(Builtins, List, Callback)} does;
+		 * done never hears of a text that changed meanwhile.
 		 */
 		void prepare(@NonNull List<OpenProject.Replacement> replacements,
 				@NonNull Callback<Preparation> done);
 	}
 
-	/** What became of the number. */
+	/** What became of a build. */
 	public interface Result {
 	}
 
-	/**
-	 * Ready to build: preparation has the number replaced by name;
-	 * number is the number as the text has it.
-	 */
-	public record Ready(@NonNull Preparation preparation, @NonNull String name,
-			@NonNull NumberLiteral number) implements Result {
+	/** constants are those of tried that GLSL needs as constants. */
+	public record Ready(@NonNull Preparation preparation,
+			@NonNull List<Integer> constants) implements Result {
 	}
 
-	/** The number is where GLSL needs a constant: kind says where. */
-	public record Constant(@NonNull ConstantContext.Kind kind,
-			@NonNull NumberLiteral number) implements Result {
-	}
-
-	/** It cannot be tuned: errors say why. */
+	/** It cannot be built: errors say why. */
 	public record Failed(@NonNull List<ProjectDiagnostic> errors)
 			implements Result {
+	}
+
+	/** A file has a name of ours; names are all the prefix's it has. */
+	public record Taken(@NonNull Set<String> names) implements Result {
 	}
 
 	private TunedPreparation() {
 	}
 
-	/** The project of the editor, its builds with builtins. */
+	/** The name of uniform n. */
 	@NonNull
-	public static Project of(@NonNull OpenProject project,
-			@NonNull Builtins builtins) {
-		return new Project() {
-			@Nullable
-			@Override
-			public String text(@NonNull ProjectPath path) {
-				Document document = project.document(path);
-				return document != null ? document.text().toString() : null;
-			}
-
-			@Override
-			public void prepare(
-					@NonNull List<OpenProject.Replacement> replacements,
-					@NonNull Callback<Preparation> done) {
-				project.prepare(builtins, replacements,
-						build -> done.done(build.preparation()));
-			}
-		};
+	public static String name(long n) {
+		return PREFIX + n;
 	}
 
 	/**
-	 * Prepare the running shader with the number from start to end of
-	 * path replaced, when it is one of type; done gets what became of
-	 * it on the main thread.
+	 * parts replace numbers of path, each by a {@link #name} in
+	 * parentheses or a text; tried are the literals' offsets of uniforms
+	 * new to the build. worker reads the whole text; done runs on main.
 	 */
 	public static void prepare(@NonNull Project project,
-			@NonNull ProjectPath path, int start, int end,
-			@NonNull Tuning.Type type, @NonNull Callback<Result> done) {
-		String text = project.text(path);
-		NumberLiteral number = text != null
-				? NumberLiteral.at(text, start, end)
-				: null;
-		if (number == null || number.type() != type) {
-			done.done(failed(path, text, start, number == null
-					? "not a number of the code"
-					: "a " + number.type().name().toLowerCase(
-							java.util.Locale.ROOT) + ", not a " +
-					type.name().toLowerCase(java.util.Locale.ROOT)));
-			return;
-		}
-		prepare(project, path, start, end, text, number, PREFIX + 0, done);
+			@NonNull ProjectPath path,
+			@NonNull List<OpenProject.Replacement> parts,
+			@NonNull List<Integer> tried, @NonNull Executor worker,
+			@NonNull Executor main, @NonNull Callback<Result> done) {
+		project.prepare(parts, preparation -> {
+			Text text = project.text(path);
+			worker.execute(() -> {
+				Result result = result(preparation, path, text, parts, tried);
+				main.execute(() -> done.done(result));
+			});
+		});
 	}
 
-	private static void prepare(@NonNull Project project,
-			@NonNull ProjectPath path, int start, int end,
-			@NonNull String text, @NonNull NumberLiteral number,
-			@NonNull String name, @NonNull Callback<Result> done) {
-		project.prepare(List.of(new OpenProject.Replacement(path, start, end,
-						name)),
-				preparation -> {
-					if (preparation == null) {
-						done.done(failed(path, text, start, "nothing runs"));
-						return;
-					}
-					RenderPlan plan = preparation.plan();
-					if (plan == null) {
-						done.done(new Failed(errors(preparation)));
-						return;
-					}
-					// A name a file of the build has is not taken.
-					String free = free(preparation, name);
-					if (!free.equals(name)) {
-						prepare(project, path, start, end, text, number,
-								free, done);
-						return;
-					}
-					Boolean es100 = readsAsEs100(plan, path);
-					if (es100 == null) {
-						done.done(failed(path, text, start,
-								"not part of what runs"));
-						return;
-					}
-					ConstantContext.Kind kind = ConstantContext.of(text, start,
-							es100);
-					done.done(kind != null
-							? new Constant(kind, number)
-							: new Ready(preparation, name, number));
-				});
-	}
-
-	// name when it is in the files of preparation once, as it replaced
-	// the number, else a name none of them has.
 	@NonNull
-	private static String free(@NonNull Preparation preparation,
-			@NonNull String name) {
-		int found = 0;
-		long largest = -1;
+	private static Result result(@Nullable Preparation preparation,
+			@NonNull ProjectPath path, @Nullable Text file,
+			@NonNull List<OpenProject.Replacement> parts,
+			@NonNull List<Integer> tried) {
+		String text = file != null ? file.toString() : null;
+		int at = parts.isEmpty() ? 0 : parts.get(0).start();
+		if (preparation == null) {
+			return failed(path, text, at, "nothing runs");
+		}
+		RenderPlan plan = preparation.plan();
+		if (plan == null) {
+			return new Failed(errors(preparation));
+		}
+		Boolean es100 = readsAsEs100(plan, path);
+		if (es100 == null || text == null) {
+			return failed(path, text, at, "not part of what runs");
+		}
+		Set<String> ours = new HashSet<>();
+		for (OpenProject.Replacement part : parts) {
+			Matcher name = NAMES.matcher(part.text());
+			if (name.find()) {
+				ours.add(name.group());
+			}
+		}
+		Set<String> taken = taken(preparation, ours);
+		if (taken != null) {
+			return new Taken(taken);
+		}
+		List<Integer> constants = new ArrayList<>();
+		for (int offset : tried) {
+			if (ConstantContext.of(text, offset, es100) != null) {
+				constants.add(offset);
+			}
+		}
+		return new Ready(preparation, constants);
+	}
+
+	// Null when the files of preparation have each of ours once, as the
+	// parts put them there; else every name of the prefix they have.
+	@Nullable
+	private static Set<String> taken(@NonNull Preparation preparation,
+			@NonNull Set<String> ours) {
+		Map<String, Integer> found = new HashMap<>();
 		for (Map.Entry<ProjectPath, ProjectFiles.Content> file :
 				preparation.files().entrySet()) {
 			byte[] bytes = file.getValue().bytes();
 			if (FileKind.picture(bytes) != null) {
 				continue;
 			}
-			// After splicing, as GLSL reads names (GLSL ES 3.00, 3.3): a
-			// name split by a backslash at a line's end is one name. No
-			// other way makes a name: GLSL ES has no token pasting.
+			// Spliced, as GLSL reads names (GLSL ES 3.00, 3.3); GLSL ES
+			// has no token pasting.
 			Matcher matcher = NAMES.matcher(SPLICE.matcher(
 					new String(bytes, StandardCharsets.UTF_8)).replaceAll(""));
 			while (matcher.find()) {
-				found += matcher.group().equals(name) ? 1 : 0;
-				try {
-					largest = Math.max(largest,
-							Long.parseLong(matcher.group(1)));
-				} catch (NumberFormatException e) {
-					// More digits than a long: no name of ours.
-				}
+				Integer count = found.get(matcher.group());
+				found.put(matcher.group(), count == null ? 1 : count + 1);
 			}
 		}
-		return found == 1 ? name : PREFIX + (largest + 1);
+		for (String name : ours) {
+			Integer count = found.get(name);
+			if (count == null || count != 1) {
+				return found.keySet();
+			}
+		}
+		return null;
 	}
 
 	// Whether a program in GLSL ES 1.00 reads path; null when no

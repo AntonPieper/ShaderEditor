@@ -34,23 +34,22 @@ public final class LiteralText {
 		return number != null ? number.type() : null;
 	}
 
-	/** Return the exact value of literal, or null when it is none. */
+	/**
+	 * Return the exact value of literal, or null when it is none: an int
+	 * is its bit pattern read as signed, as GLSL ES 3.00 (4.1.3) says, so
+	 * 0xffffffff is -1, as the shader has it.
+	 */
 	@Nullable
 	public static BigDecimal value(@NonNull String literal) {
-		Tuning.Type type = type(literal);
-		if (type == null) {
+		NumberLiteral number = literal.isEmpty()
+				? null
+				: NumberLiteral.parse(literal);
+		if (number == null) {
 			return null;
 		}
-		if (type == Tuning.Type.FLOAT) {
-			return new BigDecimal(mantissaAndExponent(literal));
-		}
-		String digits = withoutSuffix(literal);
-		if (isHex(digits)) {
-			return new BigDecimal(new BigInteger(digits.substring(2), 16));
-		} else if (digits.length() > 1 && digits.charAt(0) == '0') {
-			return new BigDecimal(new BigInteger(digits.substring(1), 8));
-		}
-		return new BigDecimal(digits);
+		return number.type() == Tuning.Type.FLOAT
+				? new BigDecimal(mantissaAndExponent(literal))
+				: BigDecimal.valueOf((long) number.value());
 	}
 
 	/**
@@ -99,13 +98,18 @@ public final class LiteralText {
 		String sign = negative && value.signum() != 0 ? "-" : "";
 		if (type != Tuning.Type.FLOAT) {
 			if (text.indexOf('.') > -1 || text.indexOf('e') > -1 ||
-					text.indexOf('E') > -1) {
-				return null;
-			}
-			if (type == Tuning.Type.UINT && !sign.isEmpty()) {
+					text.indexOf('E') > -1 ||
+					TuningStep.clamp(sign.isEmpty() ? value : value.negate(),
+							type).compareTo(sign.isEmpty()
+							? value
+							: value.negate()) != 0) {
 				return null;
 			}
 			return sign + value.toBigInteger() + suffix(literal);
+		}
+		// Beyond what a float holds, as 1e99, is no float of the shader.
+		if (value.abs().compareTo(new BigDecimal(Float.MAX_VALUE)) > 0) {
+			return null;
 		}
 		boolean point = text.indexOf('.') > -1 ||
 				text.indexOf('e') > -1 || text.indexOf('E') > -1;
@@ -137,7 +141,9 @@ public final class LiteralText {
 			@NonNull BigDecimal value, @NonNull BigDecimal step) {
 		String digits = withoutSuffix(literal);
 		String suffix = suffix(literal);
-		int stepScale = Math.max(0, step.stripTrailingZeros().scale());
+		// Never fewer than the value has: no digit of it is rounded away.
+		int stepScale = Math.max(Math.max(0, step.stripTrailingZeros()
+				.scale()), value.stripTrailingZeros().scale());
 		if (exponentAt(digits) > -1) {
 			int exponent = exponent(literal);
 			BigDecimal mantissa = value.movePointLeft(exponent);

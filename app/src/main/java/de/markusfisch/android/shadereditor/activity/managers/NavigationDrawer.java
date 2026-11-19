@@ -107,6 +107,8 @@ public class NavigationDrawer implements ShaderList {
 		/** Open the shader of the database with id, which was not moved. */
 		void onOpenShader(long id);
 
+		/** The drawer begins to open over what the editor shows. */
+		void onOpening();
 	}
 
 	private static final String STATE = "navigation_drawer";
@@ -329,6 +331,7 @@ public class NavigationDrawer implements ShaderList {
 			public void onDrawerStateChanged(int newState) {
 				if (newState != DrawerLayout.STATE_IDLE &&
 						!drawerLayout.isDrawerOpen(drawer)) {
+					host.onOpening();
 					if (unlisted) {
 						unlisted = false;
 						refresh();

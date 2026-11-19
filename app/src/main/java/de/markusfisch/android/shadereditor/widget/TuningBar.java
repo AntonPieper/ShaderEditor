@@ -2,9 +2,11 @@ package de.markusfisch.android.shadereditor.widget;
 
 import android.content.Context;
 import android.graphics.Paint;
+import android.text.Editable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
@@ -36,16 +38,16 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.tuning.LiteralText;
 import de.markusfisch.android.shadereditor.tuning.TunedPlace;
+import de.markusfisch.android.shadereditor.tuning.TuningSession;
 import de.markusfisch.android.shadereditor.tuning.TuningStep;
 import de.markusfisch.android.shadereditor.view.SoftKeyboard;
 import de.markusfisch.android.shadereditor.view.SystemBarMetrics;
 
 /**
- * The bar that tunes one number of the code while the picture shows:
- * the tuned line, the value between − and +, a ruler without ends, and
- * Revert, the step and Done. What is tuned, its step and where it
- * started are one value, {@link Tuned}; the bar shows it and tells its
- * {@link Session} every change. Main thread.
+ * The bar that tunes numbers of the code while the picture shows (EDITOR
+ * 15). What is tuned, its step and where it started are one value,
+ * {@link Tuned}; the bar shows it and tells its {@link Session} every
+ * change. Main thread.
  */
 public class TuningBar extends LinearLayout {
 	/** Where the values of the bar go. */
@@ -54,8 +56,8 @@ public class TuningBar extends LinearLayout {
 		void set(@NonNull Tuned tuned);
 
 		/**
-		 * The bar closes: keep the value (Done, Back), or the number
-		 * stays as it was (Revert).
+		 * The bar closes: keep the values (Done, Back), or every number
+		 * tuned is as it was when the bar opened (Revert).
 		 */
 		void end(boolean keep);
 
@@ -64,6 +66,22 @@ public class TuningBar extends LinearLayout {
 		 * the one tuned now; the bar is told with {@link #retarget}.
 		 */
 		default void selectPart(int index) {
+		}
+
+		default boolean canUndo() {
+			return false;
+		}
+
+		default boolean canRedo() {
+			return false;
+		}
+
+		/** Undo; the bar is told with {@link #retarget}. */
+		default void undo() {
+		}
+
+		/** Redo; the bar is told with {@link #retarget}. */
+		default void redo() {
 		}
 	}
 
@@ -116,17 +134,6 @@ public class TuningBar extends LinearLayout {
 					: place.text(place.literal, value, BigDecimal.ONE);
 		}
 
-		/** What the literal alone is built as, the minus in front kept. */
-		@NonNull
-		public String literalText() {
-			return place.literalText(style, value, step);
-		}
-
-		/** The number the literal alone stands for. */
-		public double literalValue() {
-			return place.literalValue(value);
-		}
-
 		/** Whether the value is another than the one it started at. */
 		public boolean changed() {
 			return value.compareTo(start) != 0;
@@ -144,6 +151,10 @@ public class TuningBar extends LinearLayout {
 	private Session session;
 	private TextView lineView;
 	private EditText valueView;
+	// The field holds text typed for the tuned number, not taken yet:
+	// only the user's edits make it so, and every move settles it.
+	private boolean typing;
+	private boolean showingValue;
 	private MaterialButton decrease;
 	private MaterialButton increase;
 	private MaterialButton stepView;
@@ -212,6 +223,22 @@ public class TuningBar extends LinearLayout {
 				return true;
 			}
 			return false;
+		});
+		valueView.addTextChangedListener(new TextWatcher() {
+			@Override
+			public void beforeTextChanged(CharSequence s, int start,
+					int count, int after) {
+			}
+
+			@Override
+			public void onTextChanged(CharSequence s, int start, int before,
+					int count) {
+			}
+
+			@Override
+			public void afterTextChanged(Editable s) {
+				typing |= !showingValue;
+			}
 		});
 		ruler.setListener(new TuningRuler.Listener() {
 			@Override
@@ -390,12 +417,29 @@ public class TuningBar extends LinearLayout {
 
 	@Override
 	public boolean dispatchKeyEvent(KeyEvent event) {
-		// Enter is Done and Escape is Revert, unless a value is typed.
+		// Enter is Done and Escape is Revert, unless a value is typed;
+		// Ctrl+Z is Undo, Ctrl+Shift+Z and Ctrl+Y are Redo.
 		if (tuned != null && !valueView.hasFocus() &&
 				event.getAction() == KeyEvent.ACTION_DOWN) {
+			if (event.isCtrlPressed() && (event.getKeyCode() ==
+					KeyEvent.KEYCODE_Z || event.getKeyCode() ==
+					KeyEvent.KEYCODE_Y)) {
+				if (event.getKeyCode() == KeyEvent.KEYCODE_Y ||
+						event.isShiftPressed()) {
+					redo();
+				} else {
+					undo();
+				}
+				return true;
+			}
 			switch (event.getKeyCode()) {
 				case KeyEvent.KEYCODE_ENTER:
 				case KeyEvent.KEYCODE_NUMPAD_ENTER:
+					// A focused button takes it as its click.
+					View focused = findFocus();
+					if (focused != null && focused != ruler) {
+						break;
+					}
 					done();
 					return true;
 				case KeyEvent.KEYCODE_ESCAPE:
@@ -449,6 +493,8 @@ public class TuningBar extends LinearLayout {
 				step != null ? step : first, first, place.literal);
 		colourMode = false;
 		focusing = true;
+		// Text the field kept, as across a recreation, was typed for none.
+		typing = false;
 		showParts();
 		show();
 		// Fades in and rises 16 dp, emphasized decelerate, 200 ms.
@@ -487,16 +533,66 @@ public class TuningBar extends LinearLayout {
 	}
 
 	/**
-	 * Tune place, another part of the same vector, with step or its
-	 * first step; the mode stays.
+	 * Tune another number, or the same with another value, with step or
+	 * its first step; the mode stays. announce says the number to a
+	 * screen reader, where nothing else does.
 	 */
-	public void retarget(@NonNull TunedPlace place, @Nullable BigDecimal step) {
-		BigDecimal first = TuningStep.first(place.literal,
-				place.value.abs(), place.degrees);
-		tuned = new Tuned(place, place.value, place.value,
-				step != null ? step : first, first, place.literal);
+	public void retarget(@NonNull TuningSession.Tuned number,
+			@Nullable BigDecimal step, boolean announce) {
+		if (tuned == null) {
+			return;
+		}
+		TunedPlace place = number.place();
+		BigDecimal start = number.startValue();
+		BigDecimal first = TuningStep.first(number.startStyle(),
+				start.abs(), place.degrees);
+		// A spelling its type cannot read is never a style.
+		String style = LiteralText.type(number.style()) == place.type
+				? number.style()
+				: place.literal;
+		tuned = new Tuned(place, start, number.value(),
+				step != null ? step : first, first, style);
+		typing = false;
 		showParts();
 		show();
+		if (announce) {
+			announceForAccessibility(getContext().getString(
+					R.string.a11y_tuning_open, shownValue(tuned)));
+		}
+	}
+
+	/** Also a value typed and not taken yet. */
+	public boolean canUndo() {
+		Tuned now = tuned;
+		return session != null && (session.canUndo() || (now != null &&
+				typing && LiteralText.typed(now.place().literal,
+				valueView.getText().toString()) != null &&
+				!valueView.getText().toString().equals(shownValue(now))));
+	}
+
+	public boolean canRedo() {
+		return session != null && session.canRedo();
+	}
+
+	public void undo() {
+		if (canUndo()) {
+			session.undo();
+		}
+	}
+
+	public void redo() {
+		if (canRedo()) {
+			session.redo();
+		}
+	}
+
+	/**
+	 * What was typed and not taken is the tuned number's value if it is
+	 * one, else it goes: the session asks before it ends or moves.
+	 */
+	public void settle() {
+		takeTypedIfChanged();
+		dropTyping();
 	}
 
 	private void selectPart(int index) {
@@ -703,6 +799,7 @@ public class TuningBar extends LinearLayout {
 		tuned = null;
 		focusing = false;
 		session = null;
+		typing = false;
 		setConstant(false);
 		setBuilding(false);
 		SoftKeyboard.hide(getContext(), valueView);
@@ -757,14 +854,15 @@ public class TuningBar extends LinearLayout {
 		end(true);
 	}
 
-	/** Revert: the start value comes back, nothing is written. */
+	/** Revert: every number goes back to its start (EDITOR 15). */
 	public void revert() {
 		Tuned now = tuned;
 		if (now == null) {
 			return;
 		}
+		// The value tried stays the session's: Revert writes it as a step
+		// before it puts every number back.
 		ruler.slideTo(now.start(), 250);
-		change(now.start(), true);
 		end(false);
 	}
 
@@ -774,25 +872,33 @@ public class TuningBar extends LinearLayout {
 		if (now == null || ending == null) {
 			return;
 		}
-		// What was typed counts only when it is not what the field shows
-		// of the value anyway.
-		if (valueView.hasFocus() && !valueView.getText().toString().equals(
-				shownValue(now))) {
-			takeTyped();
-			now = tuned;
+		ending.end(keep);
+		if (tuned != null) {
+			close();
 		}
-		close();
-		ending.end(keep && now.changed());
+	}
+
+	private void takeTypedIfChanged() {
+		if (typing) {
+			takeTyped();
+		}
 	}
 
 	// Lets the value field go without taking what was typed, so that it
 	// shows the value again.
 	private void dropTyping() {
+		typing = false;
+		valueView.setError(null);
+		leaveField();
+		showValue();
+	}
+
+	// Keys go to the bar's ruler: clearFocus() would let Android 6 give
+	// them to the first view of the window that takes focus.
+	private void leaveField() {
+		SoftKeyboard.hide(getContext(), valueView);
 		if (valueView.hasFocus()) {
-			SoftKeyboard.hide(getContext(), valueView);
-			valueView.clearFocus();
-			valueView.setError(null);
-			showValue();
+			ruler.requestFocus();
 		}
 	}
 
@@ -849,8 +955,8 @@ public class TuningBar extends LinearLayout {
 			return;
 		}
 		Tuned typed = now.typed(literal);
-		SoftKeyboard.hide(getContext(), valueView);
-		valueView.clearFocus();
+		typing = false;
+		leaveField();
 		if (typed.value().compareTo(now.value()) == 0) {
 			tuned = typed;
 			showValue();
@@ -942,8 +1048,10 @@ public class TuningBar extends LinearLayout {
 
 	private void showValue() {
 		Tuned now = tuned;
-		if (now != null && !valueView.hasFocus()) {
+		if (now != null && !typing) {
+			showingValue = true;
 			valueView.setText(shownValue(now));
+			showingValue = false;
 		}
 	}
 

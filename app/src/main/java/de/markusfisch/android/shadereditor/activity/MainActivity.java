@@ -439,24 +439,44 @@ public class MainActivity extends AppCompatActivity {
 	@Contract(" -> new")
 	private MainMenuManager.EditorActions createEditorActions() {
 		return new MainMenuManager.EditorActions() {
+			// While a number is tuned, Undo and Redo walk the values
+			// tried, and the steps before the bar opened stay.
 			@Override
 			public void onUndo() {
-				editorFragment.undo();
+				TuningBar tuning = findViewById(R.id.tuning_bar);
+				if (tuning.isOpen()) {
+					tuning.undo();
+				} else {
+					editorFragment.undo();
+				}
 			}
 
 			@Override
 			public void onRedo() {
-				editorFragment.redo();
+				TuningBar tuning = findViewById(R.id.tuning_bar);
+				if (tuning.isOpen()) {
+					tuning.redo();
+				} else {
+					editorFragment.redo();
+				}
 			}
 
 			@Override
 			public boolean canUndo() {
+				TuningBar tuning = findViewById(R.id.tuning_bar);
+				if (tuning.isOpen()) {
+					return tuning.canUndo();
+				}
 				return screen.open().hasText() && editorFragment != null &&
 						editorFragment.canUndo();
 			}
 
 			@Override
 			public boolean canRedo() {
+				TuningBar tuning = findViewById(R.id.tuning_bar);
+				if (tuning.isOpen()) {
+					return tuning.canRedo();
+				}
 				return screen.open().hasText() && editorFragment != null &&
 						editorFragment.canRedo();
 			}

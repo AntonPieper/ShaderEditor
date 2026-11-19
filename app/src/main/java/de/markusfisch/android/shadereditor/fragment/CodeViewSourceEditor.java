@@ -701,6 +701,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 		skipRun = true;
 	}
 
+	@Override
+	public int lineState(int line) {
+		return styles != null && styles.syntax() == DATABASE &&
+				line < document.text().lineCount()
+				? styles.state(line)
+				: -1;
+	}
+
 	// The strip offers to tune the number the caret was moved onto, or
 	// that an edit other than typing left it on, such as Undo or the
 	// bar's Done, by the tokens of the caret's line only; typing offers

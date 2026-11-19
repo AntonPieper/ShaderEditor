@@ -431,6 +431,11 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 		editor.undo();
 	}
 
+	/** See {@link SourceEditor#lineState}. */
+	public int lineState(int line) {
+		return editor.lineState(line);
+	}
+
 	public boolean canUndo() {
 		return editor.canUndo();
 	}

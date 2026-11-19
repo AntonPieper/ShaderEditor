@@ -10,6 +10,10 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 
+import de.markusfisch.android.shadereditor.editor.Text;
+import de.markusfisch.android.shadereditor.syntax.GlslLexer;
+import de.markusfisch.android.shadereditor.syntax.LineTokens;
+
 import de.markusfisch.android.shadereditor.opengl.Tuning;
 
 public class TunedPlaceTest {
@@ -41,10 +45,13 @@ public class TunedPlaceTest {
 		// -45.0 + 50 is 5.0, and the minus goes.
 		assertEquals("5.0", place.text(new BigDecimal("5"),
 				BigDecimal.ONE));
-		// The literal alone, with the minus kept in front of it.
-		assertEquals("(-5.0)", place.literalText(new BigDecimal("5"),
+		// After a name it would join it: a space keeps them apart.
+		String joined = "return-1.;";
+		TunedPlace after = TunedPlace.at(joined, joined.indexOf("1."));
+		assertNotNull(after);
+		assertEquals(" 2.", after.text(new BigDecimal("2"), BigDecimal.ONE));
+		assertEquals("-2.", after.text(new BigDecimal("-2"),
 				BigDecimal.ONE));
-		assertEquals(-5.0, place.literalValue(new BigDecimal("5")), 0);
 	}
 
 	@Test
@@ -98,5 +105,63 @@ public class TunedPlaceTest {
 		TunedPlace other = TunedPlace.at(plain, plain.indexOf("1.5"));
 		assertNotNull(other);
 		assertFalse(other.degrees);
+	}
+
+	// A few lines lexed from the state their first starts in find what
+	// the whole text does: a number in a comment opened far above is
+	// none, a vector over two lines has its parts, offsets are the
+	// text's.
+	@Test
+	public void aWindowFindsWhatTheWholeTextDoes() {
+		String text = "/*\n" + "0.1\n".repeat(20) + "*/\n" +
+				"float a = 0.5;\n".repeat(30) +
+				"float b = vec2(1.0,\n\t-2.0).x;\n";
+		Text t = Text.of(text);
+		Window.Lines states = line -> {
+			LineTokens scratch = new LineTokens();
+			int state = GlslLexer.TEXT_START;
+			for (int n = 0; n < line; ++n) {
+				state = GlslLexer.lexLine(t.line(n), true, state, scratch);
+			}
+			return state;
+		};
+		int comment = text.indexOf("0.1", 60);
+		assertNull(Window.around(t, comment, states).place(comment));
+		for (String number : new String[]{"0.5", "1.0", "2.0"}) {
+			int at = text.lastIndexOf(number);
+			TunedPlace whole = TunedPlace.at(text, at);
+			TunedPlace window = Window.around(t, at, states).place(at);
+			assertNotNull(number, window);
+			assertEquals(whole.signStart, window.signStart);
+			assertEquals(whole.end, window.end);
+			assertEquals(whole.line(), window.line());
+			assertEquals(whole.vector() != null, window.vector() != null);
+		}
+		int two = text.lastIndexOf("2.0");
+		assertEquals(text.lastIndexOf("1.0"), Window.around(t, two, states)
+				.place(two).vector().parts().get(0).start);
+	}
+
+	// Review 3, L5: while the editor's colour states are stale, a window
+	// does not take them: a number inside a long comment is none.
+	@Test
+	public void staleStatesExposeNoNumberOfAComment() {
+		String src = "/*\n" + "padding\n".repeat(450) + "7.5\n*/";
+		var document = new de.markusfisch.android.shadereditor.editor.Document(
+				Text.of(src));
+		var styles = new de.markusfisch.android.shadereditor.editor
+				.LineStyles(document, de.markusfisch.android.shadereditor
+				.syntax.GlslSyntax.INSTANCE, 200);
+		int at = src.indexOf("7.5");
+		assertNull(Window.around(document.text(), at, styles::state)
+				.place(at));
+	}
+
+	// Review 3, L8: the minus wraps an int as the shader does.
+	@Test
+	public void theSignedMinimumIsItself() {
+		TunedPlace place = TunedPlace.at("int min = -2147483648;", 12);
+		assertNotNull(place);
+		assertEquals(new BigDecimal("-2147483648"), place.value);
 	}
 }
