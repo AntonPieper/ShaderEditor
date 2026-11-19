@@ -1,0 +1,1 @@
+am start -a android.intent.action.SEND -t text/plain -n de.markusfisch.android.shadereditor.dbscreen/de.markusfisch.android.shadereditor.activity.MainActivity --es android.intent.extra.TEXT "$(cat /data/local/tmp/se-rows/Macros/Switches.frag)"
