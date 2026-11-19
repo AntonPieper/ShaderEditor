@@ -781,9 +781,10 @@ final class CodeViewSourceEditor implements SourceEditor {
 	}
 
 	private void updated() {
-		complete();
 		boolean edited = document.revision() != revision;
+		// The number to tune first: the strip shows it, not the call.
 		offerTuning(edited);
+		complete();
 		if (!edited) {
 			return;
 		}
@@ -894,6 +895,10 @@ final class CodeViewSourceEditor implements SourceEditor {
 			signature(-1, 0);
 			point(null);
 			listener.onName(null);
+			// The keys, whose Tab indents the lines selected.
+			if (docs != null && styles.syntax() == DATABASE) {
+				listener.onCompletions(GlslCompletion.KEYS, 0);
+			}
 			return;
 		}
 		Text text = document.text();
@@ -930,11 +935,16 @@ final class CodeViewSourceEditor implements SourceEditor {
 				lineStart, known,
 				analysis.revision() == document.revision(), extraWords(),
 				scope, (words, position) -> {
-					// The call shows behind the keys, not behind words.
-					signature(words == GlslCompletion.KEYS ? n : -1, column);
+					// The call shows behind the keys, not behind words,
+					// nor on a number, which offers to tune it instead:
+					// one thing at the end of the strip.
+					signature(words == GlslCompletion.KEYS && tunable == null
+							? n : -1, column);
 					// What stands behind a "." is a member, no call.
 					int before = column - position - 1;
-					listener.onCompletions(parentheses && (before < 0 ||
+					// The keys go as they are: the strip knows them.
+					listener.onCompletions(words != GlslCompletion.KEYS &&
+							parentheses && (before < 0 ||
 							line.text().charAt(before) != '.')
 							? withParentheses(words, known)
 							: words, position);
