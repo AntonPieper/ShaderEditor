@@ -28,6 +28,14 @@ import de.markusfisch.android.shadereditor.project.legacy.StoredFiles;
  * writers. Use it off the main thread.
  */
 public final class DirectoryProjectFiles implements ProjectFiles {
+	// What a write is written to before it replaces its file.
+	private static final String TEMP_PREFIX = ".shadereditor-";
+	private static final String TEMP_SUFFIX = ".tmp";
+	// A write's temporary file is older than this only when the write
+	// was cut short: a write takes seconds, and every write it makes
+	// moves the file's time.
+	static final long STALE_MILLIS = 60 * 60 * 1000;
+
 	private final File root;
 
 	public DirectoryProjectFiles(File root) {
@@ -320,7 +328,7 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 		} catch (NoSuchAlgorithmException e) {
 			throw new IOException("SHA-256 is not available");
 		}
-		File temp = File.createTempFile(".shadereditor-", ".tmp", folder);
+		File temp = File.createTempFile(TEMP_PREFIX, TEMP_SUFFIX, folder);
 		try {
 			try (FileOutputStream file = new FileOutputStream(temp)) {
 				OutputStream out = new DigestOutputStream(
@@ -345,11 +353,34 @@ public final class DirectoryProjectFiles implements ProjectFiles {
 			if (!temp.renameTo(target)) {
 				throw new Problem(Refusal.FAILED, "cannot replace " + name);
 			}
+			removeStale(folder, System.currentTimeMillis());
 			return StoredFiles.revision(digest);
 		} finally {
 			if (temp.exists()) {
 				//noinspection ResultOfMethodCallIgnored
 				temp.delete();
+			}
+		}
+	}
+
+	/**
+	 * Remove what writes into folder left behind when they were cut
+	 * short, as by a kill: the temporary files of this class, by their
+	 * name, untouched for STALE_MILLIS before now. Nothing else has such
+	 * a name. A write still going on in another process, however long,
+	 * loses nothing either: its rename then fails, and the write is
+	 * refused, its text still unsaved where it was.
+	 */
+	static void removeStale(File folder, long now) {
+		String[] names = folder.list();
+		for (String name : names != null ? names : new String[0]) {
+			File file = new File(folder, name);
+			if (name.startsWith(TEMP_PREFIX) && name.endsWith(TEMP_SUFFIX) &&
+					name.substring(TEMP_PREFIX.length(), name.length() -
+							TEMP_SUFFIX.length()).matches("[0-9]+") &&
+					file.isFile() && now - file.lastModified() > STALE_MILLIS) {
+				//noinspection ResultOfMethodCallIgnored
+				file.delete();
 			}
 		}
 	}

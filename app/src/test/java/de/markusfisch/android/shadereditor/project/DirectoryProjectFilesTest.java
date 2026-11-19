@@ -50,6 +50,27 @@ public class DirectoryProjectFilesTest {
 	}
 
 	@Test
+	public void aWriteRemovesTheTemporaryFilesOfWritesCutShort()
+			throws IOException {
+		File stale = put(".shadereditor-123.tmp", "half a save");
+		long old = System.currentTimeMillis() -
+				DirectoryProjectFiles.STALE_MILLIS - 60_000;
+		assertTrue(stale.setLastModified(old));
+		// A write that may still go on, and names that are not ours.
+		File fresh = put(".shadereditor-456.tmp", "a save going on");
+		File other = put(".shadereditor-import", "not a write's");
+		File mine = put(".shadereditor-notes.tmp", "the user's");
+		assertTrue(other.setLastModified(old));
+		assertTrue(mine.setLastModified(old));
+		assertTrue(files.write(path("main.frag"), bytes("void main() {}"),
+				null) instanceof Done);
+		assertFalse(stale.exists());
+		assertTrue(fresh.exists());
+		assertTrue(other.exists());
+		assertTrue(mine.exists());
+	}
+
+	@Test
 	public void readsContentAbsentAndFailed() throws IOException {
 		put("main.frag", "void main() {}");
 		assertTrue(new File(root, "folder").mkdir());
