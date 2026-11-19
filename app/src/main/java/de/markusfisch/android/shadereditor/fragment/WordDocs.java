@@ -668,14 +668,10 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 				return new NameView.Name(word, form, note, spoken, open,
 						null, 0, null, null);
 			}
-			String file = first != null ? first.file() : null;
-			boolean renamable = uniform == null ||
-					isLocal(host.declared(), host.offset(), word);
 			return new NameView.Name(word, form, note, spoken, open,
 					context.getString(R.string.uses), R.drawable.ic_list,
 					context.getString(R.string.a11y_uses_of, word),
-					() -> host.uses(word, file, keyboardUp(), renamable,
-							false));
+					() -> uses(word, false));
 		}
 		String where;
 		if (found.only() == null) {
@@ -712,6 +708,40 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 					? part.type() : part.name());
 		}
 		return names;
+	}
+
+	/**
+	 * List the uses of word at the caret, renaming at once when rename
+	 * and word can be renamed: not for a built-in, and only where the
+	 * folder lists uses.
+	 */
+	void uses(@NonNull String word, boolean rename) {
+		List<Knowledge.Symbol> places = definitions(word).places();
+		if ((GlslWords.style(word, 0, word.length()) != Style.IDENTIFIER &&
+				places.isEmpty()) || !host.offersUses()) {
+			return;
+		}
+		boolean renamable = !UNIFORMS.containsKey(word) ||
+				isLocal(host.declared(), host.offset(), word);
+		host.uses(word, places.isEmpty() ? null : places.get(0).file(),
+				keyboardUp(), renamable, rename && renamable);
+	}
+
+	/**
+	 * Do what F12 does on word at the caret: go to its definition; on
+	 * its own declaration list its uses; where it has none, as for a
+	 * built-in, an app uniform the file lacks or a name declared
+	 * nowhere, explain it.
+	 */
+	void definitionKey(@NonNull String word) {
+		Definitions.Found found = definitions(word);
+		if (found.places().isEmpty()) {
+			lookUp(word);
+		} else if (found.here()) {
+			uses(word, false);
+		} else {
+			definition(word, keyboardUp());
+		}
 	}
 
 	/** Where word, at the caret, is declared, see {@link Definitions}. */
