@@ -3,7 +3,10 @@ package de.markusfisch.android.shadereditor.widget;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.List;
 import java.util.regex.Pattern;
+
+import de.markusfisch.android.shadereditor.editor.Text;
 
 import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyInputs;
 
@@ -40,6 +43,30 @@ public final class ShaderToySource {
 				"\tmainImage(fragment_color, gl_FragCoord.xy);\n" +
 				"\tgl_FragColor = fragment_color;\n" +
 				"}\n";
+	}
+
+	/**
+	 * @return {@code src} converted, if one of the texts the edits put in
+	 * brought its mainImage() in, else null.
+	 */
+	@Nullable
+	public static String convert(@NonNull String src,
+			@NonNull List<Text> inserted) {
+		for (Text text : inserted) {
+			if (needsConversion(src, text.toString())) {
+				return convert(src);
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * @return True if {@code inserted} brought a mainImage() into
+	 * {@code src} and {@code src} defines no main().
+	 */
+	static boolean needsConversion(String src, CharSequence inserted) {
+		return PATTERN_SHADER_TOY.matcher(inserted).find() &&
+				needsConversion(src);
 	}
 
 	/**
