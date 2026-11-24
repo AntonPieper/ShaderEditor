@@ -1,14 +1,12 @@
-# Device rows: grey lines and the Here row
+# Device rows: grey lines
 
-**Build commit `f8039a6e1a01e2871510c25dea48d436ad814182`** of `github.com/AntonPieper/ShaderEditor`. It is the head of PR #807 (the Here row), on top of PR #806 (grey lines). These rows were written for that commit. Build two apps from it, the debug app and an old-editor variant, as below. This branch (`foreman/dimmed-rows`) holds this checklist, the shader files and the small scripts the rows use. It is never merged.
+**Build commit `e775f53d10549c7cad11d8f9192cf6a172e95db5`** of `github.com/AntonPieper/ShaderEditor`, the head of PR #806 (grey lines), on PR #795 (the directives it reads). Build two apps from it, the debug app and an old-editor variant, as in step 0 below. This branch (`foreman/dimmed-rows`) holds this checklist, the shader files and the small scripts the rows use. It is never merged.
 
 ## Re-run for this commit
 
-The first pass (results on `foreman/android6-pass`, `dimmed-2/`, build 8944a402) passed the other rows. For this commit run step 0, row 1 (it adds `Extra/Es100`), and then:
+The owner kept the grey lines and dropped the Here row of Look up (#807, closed). #795 now reads the directives with a smaller evaluator, so the grey must be seen again. Run step 0, row 1, and then rows **2, 3, 4, 5 (a to d), 6, 7, 8, 9, 10, 11 (a and b)** on Android 17, and row **15 (a, b, d, f)** on the Android 6 device. The expected lines are the same as before; JVM tests pin them for this commit.
 
-- **Row 7**, all of it. Its expectation was wrong before: opening a file runs it, in either run mode, so the grey of a file comes from a build of the texts as they are when it is opened.
-- **Row 13**, both files, at the largest font, portrait and landscape: the layout changed.
-- **Row 15** (new), on the Android 6 device (OpenGL ES 2.0 only): a program the app refuses before compiling it shows no grey and no Here row.
+Not part of this commit any more, skip them: rows 12, 13 and 14, step 5e, step 11c, and the Look up parts of rows 15c and 15e. Where a row still says "Here", ignore that part.
 
 ## 0. Build and set up
 
@@ -16,7 +14,7 @@ On Windows, in `cmd`, from your clone of the repository. In PowerShell write `.\
 
 ```
 git fetch origin
-git worktree add ..\se-trial f8039a6e1a01e2871510c25dea48d436ad814182
+git worktree add ..\se-trial e775f53d10549c7cad11d8f9192cf6a172e95db5
 git worktree add ..\se-rows origin/foreman/dimmed-rows
 cd ..\se-trial
 gradlew.bat assembleDebug
