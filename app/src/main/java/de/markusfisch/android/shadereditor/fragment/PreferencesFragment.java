@@ -149,6 +149,13 @@ public class PreferencesFragment
 	@Override
 	public void onCreatePreferences(Bundle state, String rootKey) {
 		setPreferencesFromResource(R.xml.preferences, rootKey);
+		if (!requireContext().getPackageManager().hasSystemFeature(
+				PackageManager.FEATURE_LIVE_WALLPAPER)) {
+			PreferenceCategory wallpaper = findPreference("wallpaper");
+			if (wallpaper != null) {
+				getPreferenceScreen().removePreference(wallpaper);
+			}
+		}
 		wireFontLicences();
 		wireImportExport();
 		setDatabaseOperationInProgress(databaseOperationInProgress);

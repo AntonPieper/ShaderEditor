@@ -1,6 +1,7 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.view.View;
@@ -180,6 +181,11 @@ public class MainMenuManager {
 		offer(menuView, R.id.delete_shader, OpenItem.Action.DELETE);
 		offer(menuView, R.id.share_shader, OpenItem.Action.SHARE);
 		offer(menuView, R.id.update_wallpaper, OpenItem.Action.WALLPAPER);
+		if (!activity.getPackageManager().hasSystemFeature(
+				PackageManager.FEATURE_LIVE_WALLPAPER)) {
+			menuView.findViewById(R.id.update_wallpaper).setVisibility(
+					View.GONE);
+		}
 		offer(menuView, R.id.run_this_file, OpenItem.Action.RUN_THIS_FILE);
 		// Without a text there is nothing to add a uniform to.
 		menuView.findViewById(R.id.add_uniform).setVisibility(
