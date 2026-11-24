@@ -73,7 +73,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 	@NonNull
 	private final CodeView view;
 	private final Runnable editPaused = this::editPaused;
+	// What the edits put in since the last analysis.
+	private final ArrayList<Text> inserted = new ArrayList<>();
 	private final Document.Listener documentListener = new Document.Listener() {
+		@Override
+		public void onChange(Document.Change change, Text before) {
+			inserted.add(change.inserted());
+		}
+
 		@Override
 		public void onUpdate() {
 			updated();
@@ -299,6 +306,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		scope = Knowledge.Scope.NONE;
 		show(new Document(Text.of(text)), DATABASE);
 		convert = true;
+		inserted.add(document.text());
 		if (listener != null) {
 			listener.onTextModified();
 			listener.onEditPaused(pausedText());
@@ -370,6 +378,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		}
 		show(restored, DATABASE);
 		convert = true;
+		inserted.add(document.text());
 		view.bringCaretIntoView();
 	}
 
@@ -652,6 +661,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 			release();
 		}
 		this.document = document;
+		inserted.clear();
 		revision = document.revision();
 		seenRevision = -1;
 		typing = false;
@@ -744,20 +754,18 @@ final class CodeViewSourceEditor implements SourceEditor {
 		complete();
 		if (convert && isShaderToySource(analysis.knowledge())) {
 			String source = getText();
-			// Not again after the conversion was undone.
+			// Only if an edit put its mainImage() in (#122), and not
+			// again after the conversion was undone.
 			String converted = source.equals(converting)
 					? null
-					: ShaderToySource.convert(source);
+					: ShaderToySource.convert(document, source, inserted);
 			if (converted != null) {
 				converting = source;
-				document.beginBatch();
-				document.replace(0, document.text().length(),
-						Text.of(converted));
-				document.select(0, 0);
-				document.endBatch();
 				view.bringCaretIntoView();
 			}
 		}
+		// Used up also when nothing was converted.
+		inserted.clear();
 		tellShaderToyJson();
 	}
 

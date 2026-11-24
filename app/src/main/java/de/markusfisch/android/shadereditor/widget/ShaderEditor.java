@@ -559,7 +559,11 @@ public class ShaderEditor extends LineNumberEditText {
 				cancelUpdate();
 				convertTabs(e, start, count);
 
-				String converted = ShaderToySource.convert(e.toString());
+				String text = e.toString();
+				String converted = ShaderToySource.needsConversion(text,
+						e.subSequence(start, Math.min(start + count, e.length())))
+						? ShaderToySource.convert(text)
+						: null;
 				if (converted != null) {
 					// This replaces the text: e is stale from here on,
 					// and the new text is already tokenized and announced.

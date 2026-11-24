@@ -3,8 +3,11 @@ package de.markusfisch.android.shadereditor.widget;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
+import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyInputs;
 
 public final class ShaderToySource {
@@ -40,6 +43,42 @@ public final class ShaderToySource {
 				"\tmainImage(fragment_color, gl_FragCoord.xy);\n" +
 				"\tgl_FragColor = fragment_color;\n" +
 				"}\n";
+	}
+
+	/**
+	 * Converts {@code document}, whose text is {@code src}, if one of the
+	 * texts the edits put in brought its mainImage() in. The texts are
+	 * used up, the conversion's own among them.
+	 *
+	 * @return the converted text, or null if it needs no conversion.
+	 */
+	@Nullable
+	public static String convert(@NonNull Document document,
+			@NonNull String src, @NonNull List<Text> inserted) {
+		String converted = null;
+		for (int i = 0; converted == null && i < inserted.size(); ++i) {
+			if (needsConversion(src, inserted.get(i).toString())) {
+				converted = convert(src);
+			}
+		}
+		if (converted != null) {
+			document.beginBatch();
+			document.replace(0, document.text().length(),
+					Text.of(converted));
+			document.select(0, 0);
+			document.endBatch();
+		}
+		inserted.clear();
+		return converted;
+	}
+
+	/**
+	 * @return True if {@code inserted} brought a mainImage() into
+	 * {@code src} and {@code src} defines no main().
+	 */
+	static boolean needsConversion(String src, CharSequence inserted) {
+		return PATTERN_SHADER_TOY.matcher(inserted).find() &&
+				needsConversion(src);
 	}
 
 	/**
