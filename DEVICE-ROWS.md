@@ -4,7 +4,7 @@
 
 ## Re-run for this commit
 
-The owner kept the grey lines and dropped the Here row of Look up (#807, closed). #795 now reads the directives with a smaller evaluator, so the grey must be seen again. Run step 0, row 1, and then rows **2, 3, 4, 5 (a to d), 6, 7, 8, 9, 10, 11 (a and b)** on Android 17, and row **15 (a, b, d, f)** on the Android 6 device. The expected lines are the same as before; JVM tests pin them for this commit.
+The owner kept the grey lines and dropped the Here row of Look up (#807, closed). #795 now reads the directives with a smaller evaluator, so the grey must be seen again. Run step 0, row 1, and then rows **2, 3, 4, 5 (a to d), 6, 7, 8, 9, 10, 11 (a and b)** on Android 17, and row **15 (a, b, d, e, f)** on the Android 6 device. The expected lines are the same as before; JVM tests pin them for this commit.
 
 Not part of this commit any more, skip them: rows 12, 13 and 14, step 5e, step 11c, and the Look up parts of rows 15c and 15e. Where a row still says "Here", ignore that part.
 
