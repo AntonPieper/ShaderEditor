@@ -292,30 +292,19 @@ public final class ProjectFileManager {
 
 	private boolean open(@NonNull String key, @NonNull ProjectPath path,
 			boolean single, boolean tapped) {
-		if (!ShaderEditorApp.preferences.useNewEditor()) {
-			Runnable turnOn = () -> {
-				ShaderEditorApp.preferences.setUseNewEditor(true);
-				// The screen is made again with the new editor, and
-				// opens the file from its saved state.
-				askedFor = new Asked(key, path, single, tapped);
-				activity.recreate();
-			};
-			if (tapped) {
-				listener.onNeedsNewEditor(turnOn);
-				// A tap closes the drawer all the same, so that this can
-				// be read.
-				return true;
-			}
-			// The file that was in the editor before the screen was made
-			// again: what comes for a lost one comes in its place, after
-			// the screen is made, and then the message.
-			ContextCompat.getMainExecutor(activity).execute(() -> {
-				if (!destroyed) {
-					listener.onGone();
-					listener.onNeedsNewEditor(turnOn);
-				}
-			});
-			return false;
+		boolean newEditor = ShaderEditorApp.preferences.useNewEditor();
+		Runnable turnOn = () -> {
+			ShaderEditorApp.preferences.setUseNewEditor(true);
+			// The screen is made again with the new editor, and opens the
+			// file from its saved state.
+			askedFor = new Asked(key, path, single, tapped);
+			activity.recreate();
+		};
+		if (!newEditor && tapped) {
+			listener.onNeedsNewEditor(turnOn);
+			// A tap closes the drawer all the same, so that this can be
+			// read.
+			return true;
 		}
 		int ask = ++asked;
 		line = 0;
@@ -330,12 +319,21 @@ public final class ProjectFileManager {
 				return;
 			}
 			project.load(path, ProjectFiles.UNKNOWN, problem -> {
-				Document document = problem == null && ask == asked &&
-						!destroyed
+				boolean asks = problem == null && ask == asked && !destroyed;
+				Document document = asks && newEditor
 						? project.show(path)
 						: null;
 				if (document == null) {
 					holds.release(project);
+					if (asks && !newEditor) {
+						// The file that was in the editor before the screen
+						// was made again, there to open in the new editor
+						// only: what comes for a lost one comes in its
+						// place, and then the message.
+						listener.onGone();
+						listener.onNeedsNewEditor(turnOn);
+						return;
+					}
 					failed(ask, tapped, path, problem);
 					// A file tapped that cannot be opened may be gone:
 					// its folder is listed as storage has it now.
@@ -347,7 +345,7 @@ public final class ProjectFileManager {
 				show(key, project, path, document, single, tapped);
 			});
 		});
-		return true;
+		return newEditor;
 	}
 
 	private void failed(int ask, boolean tapped, @NonNull ProjectPath path,
