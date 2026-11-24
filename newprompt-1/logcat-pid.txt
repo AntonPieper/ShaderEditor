@@ -1,0 +1,316 @@
+--------- beginning of main
+11-24 23:18:34.106 I/libprocessgroup(19718): Created cgroup /sys/fs/cgroup/apps/uid_10280/pid_19718
+11-24 23:18:34.140 I/Zygote  (19718): Process 19718 created for de.markusfisch.android.shadereditor.debug
+11-24 23:18:34.140 I/dereditor.debug(19718): Late-enabling -Xcheck:jni
+11-24 23:18:34.160 I/dereditor.debug(19718): Using generational CollectorTypeCMC GC.
+11-24 23:18:34.161 W/dereditor.debug(19718): Unexpected CPU variant for x86: x86_64.
+11-24 23:18:34.161 W/dereditor.debug(19718): Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, alderlake, pantherlake, default
+11-24 23:18:34.182 D/nativeloader(19718): Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-24 23:18:34.221 D/CompatChangeReporter(19718): Compat change id reported: 333566037; UID 10280; state: ENABLED
+11-24 23:18:34.222 D/ApplicationLoaders(19718): Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+11-24 23:18:34.222 D/ApplicationLoaders(19718): Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+11-24 23:18:34.510 D/nativeloader(19718): Configuring clns-9 for other apk /data/app/~~8QRV0XD4juEkILWnVZviEg==/de.markusfisch.android.shadereditor.debug-6NjmsQX0FLXJkv6tXg8zjw==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~8QRV0XD4juEkILWnVZviEg==/de.markusfisch.android.shadereditor.debug-6NjmsQX0FLXJkv6tXg8zjw==/lib/x86_64:/data/app/~~8QRV0XD4juEkILWnVZviEg==/de.markusfisch.android.shadereditor.debug-6NjmsQX0FLXJkv6tXg8zjw==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/de.markusfisch.android.shadereditor.debug
+11-24 23:18:34.521 V/GraphicsEnvironment(19718): Currently set values for:
+11-24 23:18:34.521 V/GraphicsEnvironment(19718):   angle_gl_driver_selection_pkgs=[]
+11-24 23:18:34.521 V/GraphicsEnvironment(19718):   angle_gl_driver_selection_values=[]
+11-24 23:18:34.521 V/GraphicsEnvironment(19718): de.markusfisch.android.shadereditor.debug is not listed in per-application setting
+11-24 23:18:34.521 V/GraphicsEnvironment(19718): No special selections for ANGLE, returning default driver choice
+11-24 23:18:34.522 V/GraphicsEnvironment(19718): Neither updatable production driver nor prerelease driver is supported.
+11-24 23:18:34.525 D/CompatChangeReporter(19718): Compat change id reported: 407952621; UID 10280; state: ENABLED
+11-24 23:18:34.525 D/CompatChangeReporter(19718): Compat change id reported: 419020719; UID 10280; state: ENABLED
+11-24 23:18:34.536 D/DesktopExperienceFlags(19718): Toggle override initialized to: false
+11-24 23:18:34.616 I/dereditor.debug(19718): hiddenapi: Accessing hidden method Landroid/view/WindowManagerGlobal;->getInstance()Landroid/view/WindowManagerGlobal; (runtime_flags=0, domain=platform, api=unsupported) from Lcurtains/internal/WindowManagerSpy$windowManagerInstance$2; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:34.616 I/dereditor.debug(19718): hiddenapi: Accessing hidden field Landroid/view/WindowManagerGlobal;->mViews:Ljava/util/ArrayList; (runtime_flags=0, domain=platform, api=unsupported) from Lcurtains/internal/WindowManagerSpy$mViewsField$2; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:34.617 I/dereditor.debug(19718): hiddenapi: Accessing hidden field Landroid/app/ActivityThread;->mH:Landroid/app/ActivityThread$H; (runtime_flags=0, domain=platform, api=unsupported) from Lleakcanary/ServiceWatcher; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:34.617 I/dereditor.debug(19718): hiddenapi: Accessing hidden method Landroid/app/ActivityThread;->currentActivityThread()Landroid/app/ActivityThread; (runtime_flags=0, domain=platform, api=unsupported) from Lleakcanary/ServiceWatcher$activityThreadInstance$2; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:34.617 I/dereditor.debug(19718): hiddenapi: Accessing hidden field Landroid/os/Handler;->mCallback:Landroid/os/Handler$Callback; (runtime_flags=0, domain=platform, api=unsupported) from Lleakcanary/ServiceWatcher; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:34.617 I/dereditor.debug(19718): hiddenapi: Accessing hidden field Landroid/util/Singleton;->mInstance:Ljava/lang/Object; (runtime_flags=0, domain=platform, api=unsupported) from Lleakcanary/ServiceWatcher; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:34.617 I/dereditor.debug(19718): hiddenapi: Accessing hidden method Landroid/util/Singleton;->get()Ljava/lang/Object; (runtime_flags=0, domain=platform, api=unsupported) from Lleakcanary/ServiceWatcher; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:34.618 I/dereditor.debug(19718): hiddenapi: Accessing hidden field Landroid/app/ActivityManager;->IActivityManagerSingleton:Landroid/util/Singleton; (runtime_flags=0, domain=platform, api=unsupported) from Lleakcanary/ServiceWatcher; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:34.631 D/CompatChangeReporter(19718): Compat change id reported: 418924588; UID 10280; state: ENABLED
+11-24 23:18:34.643 D/CompatChangeReporter(19718): Compat change id reported: 458413887; UID 10280; state: ENABLED
+11-24 23:18:34.645 D/StrictMode(19718): StrictMode policy violation; ~duration=14 ms: android.os.strictmode.DiskReadViolation
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-24 23:18:34.645 D/StrictMode(19718): 	at libcore.io.BlockGuardOs.access(BlockGuardOs.java:74)
+11-24 23:18:34.645 D/StrictMode(19718): 	at libcore.io.ForwardingOs.access(ForwardingOs.java:129)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.AndroidForwardingOs.access(AndroidForwardingOs.java:111)
+11-24 23:18:34.645 D/StrictMode(19718): 	at java.io.UnixFileSystem.checkAccess(UnixFileSystem.java:337)
+11-24 23:18:34.645 D/StrictMode(19718): 	at java.io.File.exists(File.java:829)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.ContextImpl.getDataDir(ContextImpl.java:3544)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.ContextImpl.getPreferencesDir(ContextImpl.java:807)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.ContextImpl.getSharedPreferencesPath(ContextImpl.java:1046)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.ContextImpl.getSharedPreferences(ContextImpl.java:641)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.content.ContextWrapper.getSharedPreferences(ContextWrapper.java:223)
+11-24 23:18:34.645 D/StrictMode(19718): 	at androidx.preference.PreferenceManager.setDefaultValues(PreferenceManager.java:181)
+11-24 23:18:34.645 D/StrictMode(19718): 	at androidx.preference.PreferenceManager.setDefaultValues(PreferenceManager.java:150)
+11-24 23:18:34.645 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.preference.Preferences.init(Preferences.java:105)
+11-24 23:18:34.645 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.app.ShaderEditorApp.onCreate(ShaderEditorApp.java:40)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1398)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:8308)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(ActivityThread.java:0)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2761)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.os.Looper.loop(Looper.java:397)
+11-24 23:18:34.645 D/StrictMode(19718): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-24 23:18:34.645 D/StrictMode(19718): 	at java.lang.reflect.Method.invoke(Native Method)
+11-24 23:18:34.645 D/StrictMode(19718): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-24 23:18:34.645 D/StrictMode(19718): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+11-24 23:18:34.647 D/StrictMode(19718): StrictMode policy violation; ~duration=14 ms: android.os.strictmode.DiskReadViolation
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-24 23:18:34.647 D/StrictMode(19718): 	at libcore.io.BlockGuardOs.access(BlockGuardOs.java:74)
+11-24 23:18:34.647 D/StrictMode(19718): 	at libcore.io.ForwardingOs.access(ForwardingOs.java:129)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.AndroidForwardingOs.access(AndroidForwardingOs.java:111)
+11-24 23:18:34.647 D/StrictMode(19718): 	at java.io.UnixFileSystem.checkAccess(UnixFileSystem.java:337)
+11-24 23:18:34.647 D/StrictMode(19718): 	at java.io.File.exists(File.java:829)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:868)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:857)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ContextImpl.getPreferencesDir(ContextImpl.java:809)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ContextImpl.getSharedPreferencesPath(ContextImpl.java:1046)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ContextImpl.getSharedPreferences(ContextImpl.java:641)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.content.ContextWrapper.getSharedPreferences(ContextWrapper.java:223)
+11-24 23:18:34.647 D/StrictMode(19718): 	at androidx.preference.PreferenceManager.setDefaultValues(PreferenceManager.java:181)
+11-24 23:18:34.647 D/StrictMode(19718): 	at androidx.preference.PreferenceManager.setDefaultValues(PreferenceManager.java:150)
+11-24 23:18:34.647 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.preference.Preferences.init(Preferences.java:105)
+11-24 23:18:34.647 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.app.ShaderEditorApp.onCreate(ShaderEditorApp.java:40)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1398)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:8308)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(ActivityThread.java:0)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2761)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.Looper.loop(Looper.java:397)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-24 23:18:34.647 D/StrictMode(19718): 	at java.lang.reflect.Method.invoke(Native Method)
+11-24 23:18:34.647 D/StrictMode(19718): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-24 23:18:34.647 D/StrictMode(19718): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+11-24 23:18:34.647 D/StrictMode(19718): StrictMode policy violation; ~duration=13 ms: android.os.strictmode.DiskReadViolation
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.SharedPreferencesImpl.awaitLoadedLocked(SharedPreferencesImpl.java:285)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.SharedPreferencesImpl.getBoolean(SharedPreferencesImpl.java:354)
+11-24 23:18:34.647 D/StrictMode(19718): 	at androidx.preference.PreferenceManager.setDefaultValues(PreferenceManager.java:184)
+11-24 23:18:34.647 D/StrictMode(19718): 	at androidx.preference.PreferenceManager.setDefaultValues(PreferenceManager.java:150)
+11-24 23:18:34.647 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.preference.Preferences.init(Preferences.java:105)
+11-24 23:18:34.647 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.app.ShaderEditorApp.onCreate(ShaderEditorApp.java:40)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1398)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:8308)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(ActivityThread.java:0)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2761)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.os.Looper.loop(Looper.java:397)
+11-24 23:18:34.647 D/StrictMode(19718): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-24 23:18:34.647 D/StrictMode(19718): 	at java.lang.reflect.Method.invoke(Native Method)
+11-24 23:18:34.647 D/StrictMode(19718): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-24 23:18:34.647 D/StrictMode(19718): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+11-24 23:18:34.648 D/StrictMode(19718): StrictMode policy violation; ~duration=11 ms: android.os.strictmode.DiskReadViolation
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-24 23:18:34.648 D/StrictMode(19718): 	at libcore.io.BlockGuardOs.access(BlockGuardOs.java:74)
+11-24 23:18:34.648 D/StrictMode(19718): 	at libcore.io.ForwardingOs.access(ForwardingOs.java:129)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.AndroidForwardingOs.access(AndroidForwardingOs.java:111)
+11-24 23:18:34.648 D/StrictMode(19718): 	at java.io.UnixFileSystem.checkAccess(UnixFileSystem.java:337)
+11-24 23:18:34.648 D/StrictMode(19718): 	at java.io.File.exists(File.java:829)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:868)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:857)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ContextImpl.getPreferencesDir(ContextImpl.java:809)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ContextImpl.getSharedPreferencesPath(ContextImpl.java:1046)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ContextImpl.getSharedPreferences(ContextImpl.java:641)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.content.ContextWrapper.getSharedPreferences(ContextWrapper.java:223)
+11-24 23:18:34.648 D/StrictMode(19718): 	at androidx.preference.PreferenceManager.getDefaultSharedPreferences(PreferenceManager.java:119)
+11-24 23:18:34.648 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.preference.Preferences.init(Preferences.java:110)
+11-24 23:18:34.648 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.app.ShaderEditorApp.onCreate(ShaderEditorApp.java:40)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1398)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:8308)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(ActivityThread.java:0)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2761)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.Looper.loop(Looper.java:397)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-24 23:18:34.648 D/StrictMode(19718): 	at java.lang.reflect.Method.invoke(Native Method)
+11-24 23:18:34.648 D/StrictMode(19718): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-24 23:18:34.648 D/StrictMode(19718): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+11-24 23:18:34.648 D/StrictMode(19718): StrictMode policy violation; ~duration=10 ms: android.os.strictmode.DiskReadViolation
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.SharedPreferencesImpl.awaitLoadedLocked(SharedPreferencesImpl.java:285)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.SharedPreferencesImpl.getString(SharedPreferencesImpl.java:311)
+11-24 23:18:34.648 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.preference.Preferences.update(Preferences.java:124)
+11-24 23:18:34.648 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.preference.Preferences.init(Preferences.java:115)
+11-24 23:18:34.648 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.app.ShaderEditorApp.onCreate(ShaderEditorApp.java:40)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1398)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:8308)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(ActivityThread.java:0)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2761)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.os.Looper.loop(Looper.java:397)
+11-24 23:18:34.648 D/StrictMode(19718): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-24 23:18:34.648 D/StrictMode(19718): 	at java.lang.reflect.Method.invoke(Native Method)
+11-24 23:18:34.648 D/StrictMode(19718): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-24 23:18:34.648 D/StrictMode(19718): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+--------- beginning of system
+11-24 23:18:34.653 I/DisplayManager(19718): Choreographer implicitly registered for the refresh rate.
+11-24 23:18:34.697 I/GFXSTREAM(19718): [eglDisplay.cpp(297)] Opening libGLESv1_CM_emulation.so
+11-24 23:18:34.698 I/GFXSTREAM(19718): [eglDisplay.cpp(297)] Opening libGLESv2_emulation.so
+11-24 23:18:34.728 W/libc    (19718): Access denied finding property "vendor.mesa.virtgpu.kumquat"
+11-24 23:18:34.736 W/HWUI    (19718): Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+11-24 23:18:34.737 W/HWUI    (19718): Failed to initialize 101010-2 format, error = EGL_SUCCESS
+11-24 23:18:34.744 D/AppCompatDelegate(19718): Checking for metadata for AppLocalesMetadataHolderService : Service not found
+11-24 23:18:34.848 D/LeakCanary(19718): LeakCanary is running and ready to detect memory leaks.
+11-24 23:18:34.854 I/dereditor.debug(19718): hiddenapi: Accessing hidden method Landroid/view/ViewGroup;->makeOptionalFitsSystemWindows()V (runtime_flags=0, domain=platform, api=unsupported) from Landroidx/appcompat/widget/ViewUtils; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:34.965 I/HWUI    (19718): Using FreeType backend (prop=Auto)
+11-24 23:18:35.261 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:35.267 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:35.271 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:35.275 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:35.279 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:35.282 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:35.285 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:35.489 I/ImeTracker(19718): de.markusfisch.android.shadereditor.debug:c141b07a: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false userId 0 displayId 0
+11-24 23:18:35.490 I/ImeTracker(19718): de.markusfisch.android.shadereditor.debug:c141b07a: onFailed at PHASE_CLIENT_VIEW_SERVED
+11-24 23:18:35.504 I/dereditor.debug(19718): hiddenapi: Accessing hidden field Lcom/android/internal/policy/DecorView;->mWindow:Lcom/android/internal/policy/PhoneWindow; (runtime_flags=0, domain=platform, api=unsupported) from Lcurtains/internal/WindowSpy$windowField$2; (domain=app, TargetSdkVersion=37) using reflection: allowed
+11-24 23:18:35.506 W/HWUI    (19718): Unknown dataspace 0
+11-24 23:18:35.512 W/libc    (19718): Access denied finding property "vendor.mesa.virtgpu.kumquat"
+11-24 23:18:35.516 D/StrictMode(19718): StrictMode policy violation; ~duration=340 ms: android.os.strictmode.DiskReadViolation
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-24 23:18:35.516 D/StrictMode(19718): 	at libcore.io.BlockGuardOs.access(BlockGuardOs.java:74)
+11-24 23:18:35.516 D/StrictMode(19718): 	at libcore.io.ForwardingOs.access(ForwardingOs.java:129)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.AndroidForwardingOs.access(AndroidForwardingOs.java:111)
+11-24 23:18:35.516 D/StrictMode(19718): 	at java.io.UnixFileSystem.checkAccess(UnixFileSystem.java:337)
+11-24 23:18:35.516 D/StrictMode(19718): 	at java.io.File.exists(File.java:829)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ContextImpl.getDataDir(ContextImpl.java:3544)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ContextImpl.getNoBackupFilesDir(ContextImpl.java:932)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.content.ContextWrapper.getNoBackupFilesDir(ContextWrapper.java:303)
+11-24 23:18:35.516 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.project.Projects.<init>(Projects.java:76)
+11-24 23:18:35.516 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.activity.managers.LibraryScreen.<init>(LibraryScreen.java:170)
+11-24 23:18:35.516 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.activity.MainActivity.onCreate(MainActivity.java:144)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.Activity.performCreate(Activity.java:9340)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.Activity.performCreate(Activity.java:9318)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1543)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4559)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4781)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:224)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3032)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.Looper.loop(Looper.java:397)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-24 23:18:35.516 D/StrictMode(19718): 	at java.lang.reflect.Method.invoke(Native Method)
+11-24 23:18:35.516 D/StrictMode(19718): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-24 23:18:35.516 D/StrictMode(19718): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+11-24 23:18:35.516 D/StrictMode(19718): StrictMode policy violation; ~duration=340 ms: android.os.strictmode.DiskReadViolation
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-24 23:18:35.516 D/StrictMode(19718): 	at libcore.io.BlockGuardOs.access(BlockGuardOs.java:74)
+11-24 23:18:35.516 D/StrictMode(19718): 	at libcore.io.ForwardingOs.access(ForwardingOs.java:129)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.AndroidForwardingOs.access(AndroidForwardingOs.java:111)
+11-24 23:18:35.516 D/StrictMode(19718): 	at java.io.UnixFileSystem.checkAccess(UnixFileSystem.java:337)
+11-24 23:18:35.516 D/StrictMode(19718): 	at java.io.File.exists(File.java:829)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:868)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:857)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ContextImpl.getNoBackupFilesDir(ContextImpl.java:934)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.content.ContextWrapper.getNoBackupFilesDir(ContextWrapper.java:303)
+11-24 23:18:35.516 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.project.Projects.<init>(Projects.java:76)
+11-24 23:18:35.516 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.activity.managers.LibraryScreen.<init>(LibraryScreen.java:170)
+11-24 23:18:35.516 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.activity.MainActivity.onCreate(MainActivity.java:144)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.Activity.performCreate(Activity.java:9340)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.Activity.performCreate(Activity.java:9318)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1543)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4559)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4781)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:224)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3032)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.os.Looper.loop(Looper.java:397)
+11-24 23:18:35.516 D/StrictMode(19718): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-24 23:18:35.516 D/StrictMode(19718): 	at java.lang.reflect.Method.invoke(Native Method)
+11-24 23:18:35.516 D/StrictMode(19718): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-24 23:18:35.516 D/StrictMode(19718): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+11-24 23:18:35.524 D/WindowOnBackDispatcher(19718): setTopOnBackInvokedCallback (unwrapped): android.app.Activity$$ExternalSyntheticLambda0@c8c6db6
+11-24 23:18:35.536 D/VRI[MainActivity](19718): WindowInsets changed: 1080x2400 statusBars:[0,132,0,0] navigationBars:[0,0,0,63] mandatorySystemGestures:[0,164,0,84] 
+11-24 23:18:35.554 I/Surface (19718): Creating surface for consumer unnamed-19718-0 with slotExpansion=1 for 64 slots
+11-24 23:18:35.555 I/Surface (19718): Creating surface for consumer VRI[MainActivity]#0(BLAST Consumer)0 with slotExpansion=1 for 64 slots
+11-24 23:18:35.783 D/InsetsController(19718): hide(ime())
+11-24 23:18:35.784 I/ImeTracker(19718): de.markusfisch.android.shadereditor.debug:476bae7a: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-24 23:18:35.872 I/ImeTracker(19718): de.markusfisch.android.shadereditor.debug:6f5cec6a: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false userId 0 displayId 0
+11-24 23:18:35.872 D/InsetsController(19718): hide(ime())
+11-24 23:18:35.872 I/ImeTracker(19718): de.markusfisch.android.shadereditor.debug:6f5cec6a: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-24 23:18:36.092 D/LeakCanary(19718): Watching instance of androidx.fragment.app.FragmentManagerViewModel (androidx.fragment.app.FragmentManagerViewModel received ViewModel#onCleared() callback) with key e4cdd875-3604-476c-adcc-40f44f4bf57c
+11-24 23:18:36.092 D/LeakCanary(19718): Watching instance of leakcanary.internal.ViewModelClearedWatcher (leakcanary.internal.ViewModelClearedWatcher received ViewModel#onCleared() callback) with key 66c7aa6a-a680-4398-a8f2-d2c4daae2278
+11-24 23:18:36.092 D/LeakCanary(19718): Watching instance of androidx.lifecycle.SavedStateHandlesVM (androidx.lifecycle.SavedStateHandlesVM received ViewModel#onCleared() callback) with key 50b547ec-7188-47ce-840a-0dd34b417097
+11-24 23:18:36.092 D/LeakCanary(19718): Watching instance of androidx.lifecycle.ReportFragment (androidx.lifecycle.ReportFragment received Fragment#onDestroy() callback) with key d657e555-bb93-4c77-8e44-5ca820afd32e
+11-24 23:18:36.093 D/LeakCanary(19718): Watching instance of de.markusfisch.android.shadereditor.activity.SplashActivity (de.markusfisch.android.shadereditor.activity.SplashActivity received Activity#onDestroy() callback) with key 1f682263-70be-4f1d-b52c-54d634d7310c
+11-24 23:18:36.140 I/dereditor.debug(19718): Compiler allocated 5228KB to compile void android.view.ViewRootImpl.performTraversals(long)
+11-24 23:18:37.963 I/ActivityThread(19718): Schedule relaunch activity: de.markusfisch.android.shadereditor.activity.MainActivity
+11-24 23:18:37.980 D/LeakCanary(19718): Watching instance of androidx.lifecycle.ReportFragment (androidx.lifecycle.ReportFragment received Fragment#onDestroy() callback) with key 8a4767b1-c9f8-488e-b0b4-f978d90064d0
+11-24 23:18:37.981 D/LeakCanary(19718): Watching instance of de.markusfisch.android.shadereditor.activity.MainActivity (de.markusfisch.android.shadereditor.activity.MainActivity received Activity#onDestroy() callback) with key 378b2919-da27-4ca9-be8f-2804c487b4fe
+11-24 23:18:37.982 D/WindowOnBackDispatcher(19718): setTopOnBackInvokedCallback (unwrapped): null
+11-24 23:18:37.986 D/LeakCanary(19718): Watching instance of android.widget.ScrollView (de.markusfisch.android.shadereditor.fragment.EditorFragment received Fragment#onDestroyView() callback (references to its views should be cleared to prevent leaks)) with key a4d97608-fc93-49f9-952c-a0a18946bb93
+11-24 23:18:37.986 D/LeakCanary(19718): Watching instance of de.markusfisch.android.shadereditor.fragment.EditorFragment (de.markusfisch.android.shadereditor.fragment.EditorFragment received Fragment#onDestroy() callback) with key b58f276b-f924-41d7-98e2-295c61addaae
+11-24 23:18:37.995 D/WindowOnBackDispatcher(19718): setTopOnBackInvokedCallback (unwrapped): android.app.Activity$$ExternalSyntheticLambda0@beb432
+11-24 23:18:38.045 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:38.049 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:38.054 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:38.056 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:38.058 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:38.060 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:38.063 W/Chip    (19718): Chip text must be vertically center and start aligned
+11-24 23:18:38.154 I/ImeTracker(19718): de.markusfisch.android.shadereditor.debug:d9d9f239: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false userId 0 displayId 0
+11-24 23:18:38.154 D/InsetsController(19718): hide(ime())
+11-24 23:18:38.154 I/ImeTracker(19718): de.markusfisch.android.shadereditor.debug:d9d9f239: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-24 23:18:38.162 D/StrictMode(19718): StrictMode policy violation; ~duration=128 ms: android.os.strictmode.DiskReadViolation
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1840)
+11-24 23:18:38.162 D/StrictMode(19718): 	at libcore.io.BlockGuardOs.access(BlockGuardOs.java:74)
+11-24 23:18:38.162 D/StrictMode(19718): 	at libcore.io.ForwardingOs.access(ForwardingOs.java:129)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.AndroidForwardingOs.access(AndroidForwardingOs.java:111)
+11-24 23:18:38.162 D/StrictMode(19718): 	at java.io.UnixFileSystem.checkAccess(UnixFileSystem.java:337)
+11-24 23:18:38.162 D/StrictMode(19718): 	at java.io.File.exists(File.java:829)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:868)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ContextImpl.ensurePrivateDirExists(ContextImpl.java:857)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ContextImpl.getNoBackupFilesDir(ContextImpl.java:934)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.content.ContextWrapper.getNoBackupFilesDir(ContextWrapper.java:303)
+11-24 23:18:38.162 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.project.Projects.<init>(Projects.java:76)
+11-24 23:18:38.162 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.activity.managers.LibraryScreen.<init>(LibraryScreen.java:170)
+11-24 23:18:38.162 D/StrictMode(19718): 	at de.markusfisch.android.shadereditor.activity.MainActivity.onCreate(MainActivity.java:144)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.Activity.performCreate(Activity.java:9340)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.Activity.performCreate(Activity.java:9318)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1543)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4559)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4781)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ActivityThread.handleRelaunchActivityInner(ActivityThread.java:6974)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ActivityThread.handleRelaunchActivity(ActivityThread.java:6864)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.servertransaction.ActivityRelaunchItem.execute(ActivityRelaunchItem.java:109)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.servertransaction.ActivityTransactionItem.execute(ActivityTransactionItem.java:63)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ClientTransactionHandler.executeTransaction(ClientTransactionHandler.java:71)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ActivityThread.handleRelaunchActivityLocally(ActivityThread.java:6930)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3038)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.os.Handler.dispatchMessageImpl(Handler.java:142)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.os.Handler.dispatchMessage(Handler.java:125)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.os.Looper.loopOnce(Looper.java:296)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.os.Looper.loop(Looper.java:397)
+11-24 23:18:38.162 D/StrictMode(19718): 	at android.app.ActivityThread.main(ActivityThread.java:9523)
+11-24 23:18:38.162 D/StrictMode(19718): 	at java.lang.reflect.Method.invoke(Native Method)
+11-24 23:18:38.162 D/StrictMode(19718): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:575)
+11-24 23:18:38.162 D/StrictMode(19718): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:939)
+11-24 23:18:38.230 I/ImeTracker(19718): de.markusfisch.android.shadereditor.debug:8fdbaafe: onRequestHide at ORIGIN_CLIENT reason HIDE_SOFT_INPUT fromUser false userId 0 displayId 0
+11-24 23:18:38.230 D/InsetsController(19718): hide(ime())
+11-24 23:18:38.230 I/ImeTracker(19718): de.markusfisch.android.shadereditor.debug:8fdbaafe: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-24 23:18:39.886 D/ProfileInstaller(19718): Installing profile for de.markusfisch.android.shadereditor.debug
+11-24 23:18:41.114 W/dereditor.debug(19718): Cleared Reference was only reachable from finalizer (only reported once)
+11-24 23:18:41.129 I/dereditor.debug(19718): Explicit concurrent mark compact GC freed 17MB AllocSpace bytes, 61(1612KB) LOS objects, 49% free, 9074KB/17MB, paused 724us,2.415ms total 34.385ms
