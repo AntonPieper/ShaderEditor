@@ -144,6 +144,17 @@ Seven modules. Each has a small interface and hides one decision. The first four
 
 `CodeView` does not know GLSL. It asks `LineStyles` for the colour runs of a line number and a `LineMarks` object for the lines to mark. `Document` does not know about views: a file that is not on screen still has a document that can be edited (Add uniform, Convert) and undone.
 
+#### Why the view is one class; when a split would be right
+
+`CodeView` keeps the state of a touch, a drag and drop and the mouse itself (what it started as, where the pointer is, what it selected, whether it scrolls), because drawing, scrolling, focus, the toolbar and edits all read or reset it on the main thread. Its selection and accessibility parts are what `TextView` and `Editor` do for an `EditText`, and they cannot be reused: `Editor` and `View`'s traversal hooks are `@hide`. A part moves out of the view when it has a boundary that can be tested on its own, as `TouchSelection` has, or is one platform widget; it does not move out to make the file shorter, since a part that needs the view's geometry and touch state back through an interface is the same code in two files.
+
+Already separate:
+- `TouchSelection`: which text a gesture selects; JVM-tested.
+- `SelectionHandles`, `SelectionToolbar`, `DragMagnifier`: one widget each.
+- `CodeAccessibility` and `AccessibleText`: what a screen reader is told; `AccessibleText` is JVM-tested.
+- `TextInput`, `KeyCommands`, `EditCommands`: what a keyboard does; JVM-tested. `CodeInputConnection` hands the keyboard's calls to `TextInput`.
+- `LineCache`, `LineLayout` (`MonoLineLayout`, `PlatformLineLayout`), `CodeAppearance`, `LineGeometry`: how a line is laid out and drawn.
+
 ### 4.1 The document model
 
 **Storage: an immutable balanced tree of lines.** A leaf holds up to 32 lines as strings; an inner node holds up to about 32 children and knows, for its subtree, the number of characters and the number of lines. An edit builds a new tree that shares every untouched node with the old one: a keystroke copies one leaf and the three or four nodes above it. This is the document structure of CodeMirror 6, which has carried that editor through documents of millions of lines.
