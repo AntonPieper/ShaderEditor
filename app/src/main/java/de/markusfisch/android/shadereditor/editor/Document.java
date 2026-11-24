@@ -260,13 +260,18 @@ public final class Document {
 	// false, and tells the listeners why, when the text would grow past
 	// MAX_BYTES.
 	public boolean replace(int from, int to, Text text) {
-		return edit(from, to, text, false);
+		return replace(from, to, text, bytes(text));
+	}
+
+	// bytes is what bytes(Text) counts, so the text need not be counted.
+	public boolean replace(int from, int to, Text text, long bytes) {
+		return edit(from, to, text, bytes, false);
 	}
 
 	// A typed change joins the last step if that was typed less than a second
 	// ago and touches what it changed.
 	public boolean type(int from, int to, Text text) {
-		return edit(from, to, text, true);
+		return edit(from, to, text, bytes(text), true);
 	}
 
 	// Changes until endBatch() are one undo step, typing only if all of them
@@ -386,14 +391,15 @@ public final class Document {
 		return state != saved;
 	}
 
-	private boolean edit(int from, int to, Text text, boolean typed) {
+	private boolean edit(int from, int to, Text text, long textBytes,
+			boolean typed) {
 		Change change = new Change(from, this.text.slice(from, to), text);
 		if (same(change.removed(), text)) {
 			select(change.map(selection.anchor()),
 					change.map(selection.head()));
 			return true;
 		}
-		long grown = bytes(text) - removedBytes(change);
+		long grown = textBytes - removedBytes(change);
 		if (grown > 0 && bytes + grown > MAX_BYTES) {
 			String reason = "the text would be larger than " +
 					MAX_BYTES / (1024 * 1024) + " MiB";
@@ -404,7 +410,7 @@ public final class Document {
 		}
 		beginBatch();
 		record(change, typed);
-		apply(change);
+		apply(change, grown);
 		state = revision;
 		endBatch();
 		return true;
@@ -418,7 +424,11 @@ public final class Document {
 	}
 
 	private void apply(Change change) {
-		bytes += bytes(change.inserted()) - removedBytes(change);
+		apply(change, bytes(change.inserted()) - removedBytes(change));
+	}
+
+	private void apply(Change change, long grown) {
+		bytes += grown;
 		Text before = text;
 		text = before.replace(change.start(),
 				change.start() + change.removed().length(), change.inserted());
