@@ -1,0 +1,14 @@
+=== 22:59:37 TalkBack on
+=== 23:01:44 TalkBack on (2)
+=== 23:02:02 touch code line 13
+=== 23:02:06 first double-tap on the code
+=== 23:02:20 reading control -> Words
+=== 23:02:45 next word x3
+=== 23:03:13 touch code again
+=== 23:03:16 reading control -> Words
+=== 23:03:25 next word (swipe down) x2
+=== 23:03:59 double-tap with the caret in 0.255
+=== 23:04:11 words on to sin
+=== 23:04:37 word back
+=== 23:04:50 double-tap with the caret at sin
+=== 23:05:05 TalkBack off
