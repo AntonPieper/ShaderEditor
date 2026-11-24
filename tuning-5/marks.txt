@@ -1,0 +1,18 @@
+=== 00:39:30 TalkBack on
+=== 00:39:59 touch code line 13
+=== 00:40:02 double-tap on the code
+=== 00:40:06 double-tap on the code again
+=== 00:40:19 touch 0.26 in the statement
+=== 00:40:22 double-tap
+=== 00:40:25 touch next (‹ ›)
+=== 00:40:28 double-tap
+=== 00:40:31 touch code, double-tap
+=== 00:40:44 TalkBack off
+=== 00:42:27 L3 TalkBack on
+=== 00:42:33 L3 touch code line 6
+=== 00:42:36 L3 double-tap on the code
+=== 00:42:40 L3 touch the value field
+=== 00:42:56 L3 touch code line 6
+=== 00:42:59 L3 double-tap on the code
+=== 00:43:03 L3 touch the value field
+=== 00:43:15 TalkBack off
