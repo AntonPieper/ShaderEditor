@@ -131,21 +131,17 @@ public class ShaderToySourceTest {
 		});
 
 		document.replace(0, 0, Text.of(toy));
-		String converted = ShaderToySource.convert(
+		String converted = ShaderToySource.convert(document,
 				document.text().toString(), inserted);
 		assertNotNull(converted);
+		assertEquals(converted, document.text().toString());
 		assertEquals(converted.indexOf("void main()"),
 				converted.lastIndexOf("void main()"));
 
-		inserted.clear();
-		document.replace(0, document.text().length(), Text.of(converted));
-		assertNull(ShaderToySource.convert(document.text().toString(),
-				inserted));
-
-		inserted.clear();
-		document.replace(converted.indexOf("void main()"),
-				document.text().length(), Text.EMPTY);
-		assertNull(ShaderToySource.convert(document.text().toString(),
-				inserted));
+		String cut = converted.substring(0, converted.indexOf("void main()"));
+		document.replace(cut.length(), document.text().length(), Text.EMPTY);
+		assertNull(ShaderToySource.convert(document,
+				document.text().toString(), inserted));
+		assertEquals(cut, document.text().toString());
 	}
 }

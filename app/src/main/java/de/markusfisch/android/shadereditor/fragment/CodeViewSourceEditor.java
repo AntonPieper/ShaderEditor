@@ -758,17 +758,13 @@ final class CodeViewSourceEditor implements SourceEditor {
 			// again after the conversion was undone.
 			String converted = source.equals(converting)
 					? null
-					: ShaderToySource.convert(source, inserted);
+					: ShaderToySource.convert(document, source, inserted);
 			if (converted != null) {
 				converting = source;
-				document.beginBatch();
-				document.replace(0, document.text().length(),
-						Text.of(converted));
-				document.select(0, 0);
-				document.endBatch();
 				view.bringCaretIntoView();
 			}
 		}
+		// Used up also when nothing was converted.
 		inserted.clear();
 		tellShaderToyJson();
 	}
