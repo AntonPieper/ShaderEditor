@@ -16,18 +16,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.editor.AddUniform;
 import de.markusfisch.android.shadereditor.editor.Analysis;
 import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.DimmedLines;
 import de.markusfisch.android.shadereditor.editor.LineMarks;
 import de.markusfisch.android.shadereditor.editor.LineStyles;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
 import de.markusfisch.android.shadereditor.opengl.UniformTable;
 import de.markusfisch.android.shadereditor.preference.Preferences;
+import de.markusfisch.android.shadereditor.project.BuiltLines;
 import de.markusfisch.android.shadereditor.project.FileKind;
 import de.markusfisch.android.shadereditor.project.HostCompletion;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
@@ -52,6 +57,10 @@ import de.markusfisch.android.shadereditor.widget.ShaderToySource;
  * marks, made again for every new text.
  */
 final class CodeViewSourceEditor implements SourceEditor {
+	// Runs the directives of an edited text, the latest asked only.
+	private static final Executor AGAIN = Executors.newSingleThreadExecutor();
+	// How long dimmed lines that an edit made stale may stay.
+	private static final int STALE_MILLIS = 50;
 	private static final String SELECTION = "code_view_selection";
 	// The lines LineStyles tokenizes per edit: a screen and a margin.
 	private static final int STYLE_BUDGET = 200;
@@ -90,6 +99,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 	private Document document;
 	private LineStyles styles;
 	private LineMarks marks;
+	private DimmedLines dimmed;
+	// The last build's run for another text, and the text asked for last.
+	@Nullable
+	private BuiltLines.Again again;
+	private final AtomicReference<Text> asked = new AtomicReference<>();
+	// Clears stale lines STALE_MILLIS after the edit that made them stale.
+	private final Runnable distrust = this::distrust;
+	private boolean distrusting;
 	private int revision;
 	// The next change starts no run: its maker runs it.
 	private boolean skipRun;
@@ -559,6 +576,60 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.marksChanged();
 	}
 
+	@Override
+	public void setBuilt(@Nullable List<Integer> off, @Nullable Text text,
+			@Nullable BuiltLines.Again again) {
+		boolean set = off != null && text != null && dimmed.set(text, off);
+		if (!set) {
+			dimmed.clear();
+		}
+		this.again = set ? again : null;
+		trust();
+		view.invalidate();
+	}
+
+	private void distrust() {
+		distrusting = false;
+		dimmed.clearStale();
+		view.invalidate();
+	}
+
+	private void trust() {
+		distrusting = false;
+		view.removeCallbacks(distrust);
+	}
+
+	// Runs the directives of the text in the background; the answer counts
+	// only for the same text.
+	private void stale() {
+		BuiltLines.Again run = again;
+		DimmedLines lines = dimmed;
+		// Another file the build read may have changed unheard.
+		if (run == null || !run.holds()) {
+			lines.clear();
+			return;
+		}
+		Text text = document.text();
+		asked.set(text);
+		if (!distrusting) {
+			distrusting = true;
+			view.postDelayed(distrust, STALE_MILLIS);
+		}
+		AGAIN.execute(() -> {
+			if (asked.get() != text) {
+				return;
+			}
+			List<Integer> off = run.off(text.toString());
+			view.post(() -> {
+				if (again == run && dimmed == lines &&
+						lines.answer(text, off)) {
+					trust();
+					view.invalidate();
+				}
+			});
+		});
+	}
+
 	@NonNull
 	@Override
 	public List<CodeView.Fix> fixes(@NonNull ProjectDiagnostic error) {
@@ -661,6 +732,10 @@ final class CodeViewSourceEditor implements SourceEditor {
 		view.setLookUp(syntax == DATABASE ? docs : null);
 		view.setLineLink(syntax == DATABASE ? lineLink : null);
 		marks = new LineMarks(document);
+		again = null;
+		trust();
+		dimmed = new DimmedLines(document, this::stale);
+		styles.setDimmed(dimmed);
 		view.setDocument(document, styles, marks);
 		view.setRowFix(syntax == DATABASE ? fixes : null);
 		document.addListener(documentListener);
@@ -675,6 +750,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		document.removeListener(documentListener);
 		styles.close();
 		marks.close();
+		dimmed.close();
 	}
 
 	private void updated() {

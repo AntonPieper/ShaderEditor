@@ -79,12 +79,68 @@ public final class OpenProject {
 		private final Preparation preparation;
 		private final List<ProjectDiagnostic> nothingRuns;
 		private final int generation;
+		private final BuiltLines lines;
+		private final Map<ProjectPath, Text> texts;
+		private final ProjectPath entry;
+		private final Builtins builtins;
 
 		private Build(Preparation preparation,
-				List<ProjectDiagnostic> nothingRuns, int generation) {
+				List<ProjectDiagnostic> nothingRuns, int generation,
+				BuiltLines lines, Map<ProjectPath, Text> texts,
+				ProjectPath entry, Builtins builtins) {
 			this.preparation = preparation;
 			this.nothingRuns = nothingRuns;
 			this.generation = generation;
+			this.lines = lines;
+			this.texts = Collections.unmodifiableMap(texts);
+			this.entry = entry;
+			this.builtins = builtins;
+		}
+
+		/** Return the lines not compiled, null for tuning or nothing. */
+		public BuiltLines lines() {
+			return lines;
+		}
+
+		/** Return the texts of the documents the build was made of. */
+		public Map<ProjectPath, Text> texts() {
+			return texts;
+		}
+
+		/**
+		 * See BuiltLines.again; null when it tells no lines. It holds while
+		 * this build does for path in project.
+		 */
+		public BuiltLines.Again again(OpenProject project, ProjectPath path,
+				int glesVersion) {
+			if (lines == null) {
+				return null;
+			}
+			BuiltLines.Again run = BuiltLines.again(preparation, entry,
+					builtins, path, glesVersion);
+			return new BuiltLines.Again() {
+				@Override
+				public List<Integer> off(String text) {
+					return run.off(text);
+				}
+
+				@Override
+				public boolean holds() {
+					return Build.this.holds(project, path);
+				}
+			};
+		}
+
+		/** Whether every document but path has the text this build read. */
+		public boolean holds(OpenProject project, ProjectPath path) {
+			for (Map.Entry<ProjectPath, Text> read : texts.entrySet()) {
+				Document document = project.document(read.getKey());
+				if (!read.getKey().equals(path) && (document == null ||
+						document.text() != read.getValue())) {
+					return false;
+				}
+			}
+			return true;
 		}
 
 		/** Return the preparation, or null when nothing runs. */
@@ -1736,7 +1792,7 @@ public final class OpenProject {
 								ProjectDiagnostic.Severity.ERROR,
 								"not open in the editor",
 								replacement.path(), 0)),
-						generation)));
+						generation, null, Map.of(), null, builtins)));
 				return;
 			}
 			snapshot.put(replacement.path(), text.replace(
@@ -1759,6 +1815,11 @@ public final class OpenProject {
 			List<ProjectDiagnostic> nothingRuns = entry == null
 					? Preparation.checkManifest(edited)
 					: List.of();
+			// Off the main thread, as it reads every program once more.
+			BuiltLines lines = preparation != null && !temporary &&
+					preparation.plan() != null
+					? BuiltLines.of(preparation.plan())
+					: null;
 			List<Used> read = new ArrayList<>();
 			Map<ProjectPath, byte[]> texts = new LinkedHashMap<>();
 			if (preparation != null) {
@@ -1802,7 +1863,8 @@ public final class OpenProject {
 				references = named;
 				usedFor = entry;
 				changed();
-				done.done(new Build(preparation, nothingRuns, generation));
+				done.done(new Build(preparation, nothingRuns, generation,
+						lines, snapshot, entry, builtins));
 			});
 		});
 	}

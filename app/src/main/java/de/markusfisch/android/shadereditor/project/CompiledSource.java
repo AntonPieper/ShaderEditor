@@ -78,6 +78,15 @@ public record CompiledSource(String text, SourceMap sourceMap, int version) {
 				sourceMap.insertGenerated(head, generated.size()), version);
 	}
 
+	/**
+	 * Whether an engine of OpenGL ES glesVersion compiles a text of
+	 * #version version: GLSL ES 3.00 and later need OpenGL ES 3.0. The
+	 * engine refuses any other before compiling it.
+	 */
+	public static boolean compiles(int version, int glesVersion) {
+		return version < 300 || glesVersion >= 3;
+	}
+
 	/** Return the version the lines of a scan say, 100 if none. */
 	public static int version(PreprocessorScan scan) {
 		for (PreprocessorScan.Directive directive : scan.directives()) {

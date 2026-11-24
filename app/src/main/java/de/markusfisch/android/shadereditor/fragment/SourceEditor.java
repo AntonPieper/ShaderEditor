@@ -9,6 +9,8 @@ import androidx.annotation.Nullable;
 import java.util.List;
 
 import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
+import de.markusfisch.android.shadereditor.project.BuiltLines;
 import de.markusfisch.android.shadereditor.preference.Preferences;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.syntax.Knowledge;
@@ -220,6 +222,15 @@ interface SourceEditor {
 
 	/** Mark the lines of the errors last set, and no others. */
 	void markErrors();
+
+	/**
+	 * Take the lines of the file shown that the last build does not
+	 * compile, as of text, the text it read, and again, which tells them
+	 * for another text; null for off forgets them.
+	 */
+	default void setBuilt(@Nullable List<Integer> off, @Nullable Text text,
+			@Nullable BuiltLines.Again again) {
+	}
 
 	/**
 	 * Return the fixes the row of the line of error, of those last set,

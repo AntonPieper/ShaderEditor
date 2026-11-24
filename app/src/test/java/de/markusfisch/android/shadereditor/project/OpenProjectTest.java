@@ -403,6 +403,79 @@ public class OpenProjectTest {
 				built(prepare(project), "main.frag"));
 	}
 
+	// What the programs say of the lines comes with a build, with the
+	// texts of the documents it read, and never with a build for tuning.
+	@Test
+	public void aBuildTellsWhichLinesItDoesNotCompile() throws IOException {
+		String text = SHADER.replace("precision", "#define AA 1\n" +
+				"#if AA > 1\nfloat off;\n#endif\nprecision");
+		write("main.frag", text);
+		OpenProject project = open();
+		Document main = document(project, "main.frag");
+		OpenProject.Build build = await(done -> project.prepare(
+				BuiltinNames.ALL, done));
+		assertSame(main.text(), build.texts().get(path("main.frag")));
+		assertEquals(List.of(3), build.lines().off(path("main.frag"), 3));
+		int at = text.indexOf("1.0");
+		OpenProject.Build tuned = await(done -> project.prepare(
+				BuiltinNames.ALL, new OpenProject.Replacement(
+						path("main.frag"), at, at + 3, "se_tune0"), done));
+		assertNull(tuned.lines());
+		assertNull(tuned.again(project, path("main.frag"), 3));
+	}
+
+	// A run again after a key holds while the other documents have the
+	// texts the build read, also after a second edit of one that is
+	// unsaved already, which the project's listener does not tell.
+	@Test
+	public void aRunAgainHoldsWhileTheOtherDocumentsHaveTheTextsRead()
+			throws IOException {
+		write("lib.glsl", "#define QUALITY 2\n");
+		write("main.frag", SHADER.replace("void main",
+				"#include \"lib.glsl\"\n#ifdef QUALITY\nfloat on;\n" +
+						"#else\nfloat off;\n#endif\nvoid main"));
+		OpenProject project = open();
+		document(project, "main.frag");
+		Document lib = document(project, "lib.glsl");
+		lib.replace(0, 0, Text.of("// one\n"));
+		OpenProject.Build build = await(done -> project.prepare(
+				BuiltinNames.ALL, done));
+		BuiltLines.Again again = build.again(project, path("main.frag"), 3);
+		assertTrue(again.holds());
+		lib.replace(0, 0, Text.of("// two\n"));
+		assertFalse(again.holds());
+	}
+
+	// What a build tells of a file holds while every other document has
+	// the text the build read; and its lines are told again for another
+	// text of it.
+	@Test
+	public void aBuildHoldsWhileTheOtherDocumentsHaveItsTexts()
+			throws IOException {
+		String text = SHADER.replace("void main",
+				"#if 0\nfloat off;\n#endif\nvoid main");
+		write("pass.frag", text);
+		write("main.frag", "#pragma se input \"pass.frag\"\n" +
+				"uniform sampler2D pass;\n" + SHADER);
+		OpenProject project = open();
+		Document main = document(project, "main.frag");
+		Document pass = document(project, "pass.frag");
+		OpenProject.Build build = await(done -> project.prepare(
+				BuiltinNames.ALL, done));
+		ProjectPath at = path("pass.frag");
+		assertTrue(build.holds(project, at));
+		assertSame(pass.text(), build.texts().get(at));
+		assertEquals(List.of(4), build.lines().off(at, 3));
+		assertEquals(List.of(), build.again(project, at, 3).off(
+				text.replace("#if 0", "#if 1")));
+		// Its own text the editor checks; any other drops it.
+		pass.replace(0, 0, Text.of("// x\n"));
+		assertTrue(build.holds(project, at));
+		assertFalse(build.holds(project, path("main.frag")));
+		main.replace(0, 0, Text.of("// x\n"));
+		assertFalse(build.holds(project, at));
+	}
+
 	// A build with one range of a document replaced: the build has it,
 	// the document, the journal and the file do not, and the next build
 	// is of the text as it is.
