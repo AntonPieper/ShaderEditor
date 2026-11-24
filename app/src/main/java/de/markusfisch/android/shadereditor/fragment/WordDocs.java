@@ -31,6 +31,7 @@ import java.util.regex.Pattern;
 import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Definitions;
+import de.markusfisch.android.shadereditor.editor.Locals;
 import de.markusfisch.android.shadereditor.editor.Text;
 import de.markusfisch.android.shadereditor.editor.WordPlaces;
 import de.markusfisch.android.shadereditor.opengl.UniformDef;
@@ -834,16 +835,28 @@ final class WordDocs implements CodeView.LookUp, CodeView.RowFix {
 		for (Map.Entry<String, Text> e : texts.entrySet()) {
 			strings.put(e.getKey(), e.getValue().toString());
 		}
-		List<Definitions.Index> reach = Definitions.reach(strings,
-				shown, (file, path) -> {
-					ProjectParseResult<ProjectPath> from =
-							ProjectPath.parse(file);
-					ProjectParseResult<ProjectPath> to = from.isSuccess()
-							? ProjectPath.resolve(from.value(), path) : null;
-					return to != null && to.isSuccess()
-							? to.value().toString() : null;
-				});
+		Definitions.Paths paths = (file, path) -> {
+			ProjectParseResult<ProjectPath> from = ProjectPath.parse(file);
+			ProjectParseResult<ProjectPath> to = from.isSuccess()
+					? ProjectPath.resolve(from.value(), path) : null;
+			return to != null && to.isSuccess() ? to.value().toString()
+					: null;
+		};
+		List<Definitions.Index> reach = Definitions.reach(strings, shown,
+				paths);
 		Definitions.Answer answer = Definitions.of(reach, offset, word);
+		// A local or parameter of the function the word stands in.
+		int local = answer.form() == Definitions.Form.LIST &&
+				!Definitions.includedInFunction(reach, paths)
+				? Locals.of(reach.get(0), offset, word,
+				Definitions.macros(reach)) : -1;
+		for (Definitions.Place place : answer.places()) {
+			if (place.start() == local && place.file().equals(shown)) {
+				answer = new Definitions.Answer(Definitions.Form.JUMP,
+						List.of(place));
+				break;
+			}
+		}
 		List<WordPlaces.Place> rows = new ArrayList<>();
 		for (Definitions.Place place : answer.places()) {
 			Text text = texts.get(place.file());

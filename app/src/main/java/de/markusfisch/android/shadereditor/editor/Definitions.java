@@ -70,8 +70,15 @@ public final class Definitions {
 		// Per #define: its parameters' offsets by name, its body's end.
 		private final List<Object[]> parameters = new ArrayList<>();
 		// Function bodies, "{" and "}" offsets in pairs.
-		private final List<int[]> functions = new ArrayList<>();
+		final List<int[]> functions = new ArrayList<>();
 		private final List<String> includes = new ArrayList<>();
+		private final List<Integer> includedAt = new ArrayList<>();
+		// The text, its code's tokens with their brackets matched, and
+		// where its directive lines start, for Locals.
+		String text = "";
+		List<int[]> code = new ArrayList<>();
+		int[] match = new int[0];
+		final List<Integer> directives = new ArrayList<>();
 		// The names of the macros that glue names, where they stand.
 		private final List<Place> gluing = new ArrayList<>();
 		private final String file;
@@ -128,10 +135,12 @@ public final class Definitions {
 			if (!all.inDirective(i)) {
 				code.add(t);
 			} else {
-				if (style == Style.DIRECTIVE && is(s, t, "#") &&
-						!directive.isEmpty()) {
-					directive(s, directive, index);
-					directive.clear();
+				if (style == Style.DIRECTIVE && is(s, t, "#")) {
+					index.directives.add(t[0]);
+					if (!directive.isEmpty()) {
+						directive(s, directive, index);
+						directive.clear();
+					}
 				}
 				directive.add(t);
 			}
@@ -144,6 +153,7 @@ public final class Definitions {
 		if (!directive.isEmpty()) {
 			directive(s, directive, index);
 		}
+		index.text = s;
 		code(s, code, index);
 		return index;
 	}
@@ -151,6 +161,7 @@ public final class Definitions {
 	private static void directive(String s, List<int[]> d, Index index) {
 		if (d.size() > 2 && is(s, d.get(1), "include") &&
 				d.get(2)[2] == Style.STRING.ordinal()) {
+			index.includedAt.add(d.get(0)[0]);
 			index.includes.add(s.substring(d.get(2)[0] + 1,
 					Math.max(d.get(2)[0] + 1, d.get(2)[1] - 1)));
 			return;
@@ -210,6 +221,8 @@ public final class Definitions {
 	private static void code(String s, List<int[]> code, Index index) {
 		int n = code.size();
 		int[] match = new int[n];
+		index.code = code;
+		index.match = match;
 		List<Integer> open = new ArrayList<>();
 		// Whether the brace is a struct's, whose names are fields.
 		boolean[] struct = new boolean[n];
@@ -433,7 +446,7 @@ public final class Definitions {
 
 	// Whether the comma at c is in a declarator list: its statement, or
 	// the header of a "for", begins "type name" or "type[...] name".
-	private static boolean declarators(String s, List<int[]> code,
+	static boolean declarators(String s, List<int[]> code,
 			int[] match, int c) {
 		int k = c;
 		for (; k >= 0; --k) {
@@ -534,6 +547,33 @@ public final class Definitions {
 		}
 	}
 
+	/** Return the names of the macros of reach. */
+	public static Set<String> macros(List<Index> reach) {
+		Set<String> macros = new HashSet<>();
+		for (Index index : reach) {
+			macros.addAll(index.macros);
+		}
+		return macros;
+	}
+
+	/**
+	 * Return whether a file of reach includes the first in a function,
+	 * where that function's locals are around its text.
+	 */
+	public static boolean includedInFunction(List<Index> reach, Paths paths) {
+		String shown = reach.get(0).file;
+		for (Index index : reach) {
+			for (int i = 0; i < index.includes.size(); ++i) {
+				if (shown.equals(paths.resolve(index.file,
+						index.includes.get(i))) &&
+						index.function(index.includedAt.get(i)) > -1) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/**
 	 * Return where word, which stands at offset of the file shown, may
 	 * be declared, from the indexes of the files in reach, the file
@@ -632,19 +672,19 @@ public final class Definitions {
 		return Integer.MAX_VALUE;
 	}
 
-	private static boolean is(String s, int[] t, String text) {
+	static boolean is(String s, int[] t, String text) {
 		return t[1] - t[0] == text.length() && s.startsWith(text, t[0]);
 	}
 
 	// A name a user may write and look up.
-	private static boolean word(int[] t) {
+	static boolean word(int[] t) {
 		return t[2] == Style.IDENTIFIER.ordinal() ||
 				t[2] == Style.TYPE.ordinal() ||
 				t[2] == Style.BUILTIN_FUNCTION.ordinal();
 	}
 
 	// Whether a name declared may follow t: a type, a name, a qualifier.
-	private static boolean names(int[] t) {
+	static boolean names(int[] t) {
 		Style style = Style.values()[t[2]];
 		return switch (style) {
 			case IDENTIFIER, TYPE, PRIMITIVE, TYPE_VECTOR, TYPE_MATRIX,
