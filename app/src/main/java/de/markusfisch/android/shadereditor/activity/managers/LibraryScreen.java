@@ -809,6 +809,11 @@ public final class LibraryScreen implements ShaderScreen {
 	}
 
 	@Override
+	public void onFailed() {
+		guard.failed();
+	}
+
+	@Override
 	public boolean isAbout(@NonNull ProjectDiagnostic diagnostic) {
 		if (!(open instanceof ProjectFile file)) {
 			return true;

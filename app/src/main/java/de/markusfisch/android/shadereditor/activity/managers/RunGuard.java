@@ -8,9 +8,9 @@ import java.util.Set;
 /**
  * Keeps a file that the app ended on from running by itself again. A
  * file is pending from the moment what it runs is handed to the engine
- * until the first frame of it; an app that starts with a file pending
- * ended in between, and holds that file: it is shown, and runs once
- * the user asks for it. A file that drew a frame since the app started
+ * until the first frame of it, or until it failed to build, which draws
+ * nothing; an app that starts with a file pending ended in between, and
+ * holds that file: it is shown, and runs once the user asks for it. A file that drew a frame since the app started
  * is not pending again, so that the app being ended later, as for an
  * update, is not taken for a crash.
  */
@@ -75,6 +75,15 @@ public final class RunGuard {
 			drew.add(pending);
 			left();
 		}
+	}
+
+	/**
+	 * What the file that is pending runs failed to build: it draws
+	 * nothing, so it cannot end the app. Pending again when it is run
+	 * again, as it never drew.
+	 */
+	public void failed() {
+		left();
 	}
 
 	/** The screen left the front: it draws nothing until it is back. */

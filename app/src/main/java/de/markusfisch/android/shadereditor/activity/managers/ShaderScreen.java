@@ -124,6 +124,9 @@ public interface ShaderScreen {
 	/** A frame was drawn. May come on another thread. */
 	void onFrame();
 
+	/** What was run last failed to build: it draws nothing. */
+	void onFailed();
+
 	/** Mark in the editor what the run reported. */
 	void showErrors(@NonNull List<ProjectDiagnostic> infoLog);
 

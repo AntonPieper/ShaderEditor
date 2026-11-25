@@ -351,6 +351,17 @@ public class MainActivity extends AppCompatActivity {
 					if (infoLog.isEmpty() && !reported.isEmpty()) {
 						return;
 					}
+					for (var diagnostic : infoLog) {
+						if (diagnostic.severity() ==
+								ProjectDiagnostic.Severity.ERROR) {
+							// A build that failed draws nothing, so it
+							// cannot end the app.
+							ShaderEditorApp.preferences
+									.setPendingCrashShaderId(0);
+							screen.onFailed();
+							break;
+						}
+					}
 					screen.showErrors(infoLog);
 					ProjectDiagnostic before = lastError;
 					lastError = null;

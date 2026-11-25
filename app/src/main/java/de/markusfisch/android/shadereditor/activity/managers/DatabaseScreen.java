@@ -214,6 +214,10 @@ public final class DatabaseScreen implements ShaderScreen {
 	}
 
 	@Override
+	public void onFailed() {
+	}
+
+	@Override
 	public void showErrors(@NonNull List<ProjectDiagnostic> infoLog) {
 		editorFragment.setErrors(infoLog);
 	}
