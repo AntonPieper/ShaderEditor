@@ -113,6 +113,25 @@ public class CodeView extends View {
 		void lookUp(@NonNull String word);
 	}
 
+	/**
+	 * What can be done with the name the caret rests in, by a key and
+	 * TalkBack.
+	 */
+	public interface Names {
+		/** The name the caret rests in, or null. */
+		@Nullable
+		String name();
+
+		/** List its uses (Shift+F12), renaming at once (F2). */
+		void uses(boolean rename);
+
+		/** Explain it (Ctrl+Q). */
+		void lookUp();
+
+		/** Go back one place (Alt+Left); return whether there was one. */
+		boolean back();
+	}
+
 	public interface LineLink {
 		// The name of the file line names, to be opened; null for none.
 		@Nullable
@@ -347,6 +366,8 @@ public class CodeView extends View {
 	private LineMarks marks;
 	private boolean connected;
 	private LookUp lookUp;
+	@Nullable
+	private Names names;
 	private LineLink lineLink;
 	private RowFix rowFix;
 	// The lines marked after a fix put them in, until the next edit.
@@ -691,6 +712,18 @@ public class CodeView extends View {
 	// For a selected word that lookUp has; none for null, the default.
 	public void setLookUp(@Nullable LookUp lookUp) {
 		this.lookUp = lookUp;
+	}
+
+	// For the name at the caret; none for null, the default.
+	public void setNames(@Nullable Names names) {
+		this.names = names;
+	}
+
+	// None while a tap is heard, as while a number is tuned: the name
+	// actions are off then.
+	@Nullable
+	Names names() {
+		return onTap == null ? names : null;
 	}
 
 	// For a line that names a file; none for null, the default.
@@ -1157,6 +1190,10 @@ public class CodeView extends View {
 			return super.onKeyDown(keyCode, event);
 		}
 		int meta = event.getMetaState();
+		if (names() != null && nameKey(keyCode, event)) {
+			action("key", event.getAction(), keyCode, meta, null);
+			return true;
+		}
 		// Alt+Enter, the quick fix key of Android Studio, applies the
 		// first fix of the caret's line.
 		if ((keyCode == KeyEvent.KEYCODE_ENTER ||
@@ -1193,6 +1230,43 @@ public class CodeView extends View {
 		}
 		action("key", event.getAction(), keyCode, meta, typed);
 		return key(keyCode, meta, typed) || super.onKeyDown(keyCode, event);
+	}
+
+	// Whether the last Alt+Left pressed went back.
+	private boolean wentBack;
+
+	// The keys of other editors for a name: Shift+F12 Uses, F2 Rename,
+	// Ctrl+Q the docs, Alt+Left back, where the way back has a place,
+	// else the caret moves as without Alt. A key held down does it once.
+	private boolean nameKey(int keyCode, KeyEvent event) {
+		boolean shift = event.isShiftPressed();
+		boolean ctrl = event.isCtrlPressed();
+		boolean alt = event.isAltPressed();
+		boolean once = event.getRepeatCount() == 0;
+		if (keyCode == KeyEvent.KEYCODE_F12 && shift && !ctrl && !alt) {
+			if (once) {
+				names.uses(false);
+			}
+			return true;
+		} else if (keyCode == KeyEvent.KEYCODE_F2 && !shift && !ctrl &&
+				!alt) {
+			if (once) {
+				names.uses(true);
+			}
+			return true;
+		} else if (keyCode == KeyEvent.KEYCODE_Q && ctrl && !shift && !alt) {
+			if (once) {
+				names.lookUp();
+			}
+			return true;
+		}
+		if (keyCode != KeyEvent.KEYCODE_DPAD_LEFT || !alt || ctrl || shift) {
+			return false;
+		} else if (once) {
+			wentBack = names.back();
+		}
+		// Held, it does not move the caret from where it went back to.
+		return wentBack;
 	}
 
 	// Back closes the toolbar first while Back comes as a key: before Android

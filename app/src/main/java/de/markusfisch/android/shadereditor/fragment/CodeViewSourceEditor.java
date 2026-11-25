@@ -747,6 +747,7 @@ final class CodeViewSourceEditor implements SourceEditor {
 		styles = new LineStyles(document, syntax, STYLE_BUDGET);
 		// GLSL's words, in GLSL only.
 		view.setLookUp(syntax == DATABASE ? docs : null);
+		view.setNames(syntax == DATABASE && docs != null ? names : null);
 		view.setLineLink(syntax == DATABASE ? lineLink : null);
 		marks = new LineMarks(document);
 		again = null;
@@ -957,6 +958,14 @@ final class CodeViewSourceEditor implements SourceEditor {
 	@Nullable
 	private NameView.Name name(@NonNull LexedLine line, int column,
 			int lineStart) {
+		String word = nameAt(line, column, lineStart);
+		return word != null ? docs.name(word) : null;
+	}
+
+	// The word of that name, or null.
+	@Nullable
+	private String nameAt(@NonNull LexedLine line, int column,
+			int lineStart) {
 		if (docs == null || styles.syntax() != DATABASE) {
 			return null;
 		}
@@ -980,11 +989,50 @@ final class CodeViewSourceEditor implements SourceEditor {
 		}
 		String word = text.substring(start, end);
 		Style kind = GlslWords.style(word, 0, word.length());
-		if (kind != Style.IDENTIFIER && kind != Style.BUILTIN_FUNCTION) {
-			return null;
-		}
-		return docs.name(word);
+		return kind == Style.IDENTIFIER || kind == Style.BUILTIN_FUNCTION
+				? word
+				: null;
 	}
+
+	// The name the caret rests in, typed or not, for keys and TalkBack;
+	// none while the analysis is of an older text, as for the strip.
+	private final CodeView.Names names = new CodeView.Names() {
+		@Nullable
+		@Override
+		public String name() {
+			Document.Selection selection = document.selection();
+			if (!selection.isEmpty() ||
+					view.getAnalysis().revision() != document.revision()) {
+				return null;
+			}
+			Text text = document.text();
+			int n = text.lineOf(selection.head());
+			int lineStart = text.lineStart(n);
+			return nameAt(styles.runs(n).line(), selection.head() - lineStart,
+					lineStart);
+		}
+
+		@Override
+		public void uses(boolean rename) {
+			String word = name();
+			if (word != null) {
+				docs.uses(word, rename);
+			}
+		}
+
+		@Override
+		public void lookUp() {
+			String word = name();
+			if (word != null) {
+				docs.lookUp(word);
+			}
+		}
+
+		@Override
+		public boolean back() {
+			return links != null && links.back();
+		}
+	};
 
 	private static boolean isWordChar(char c) {
 		return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
