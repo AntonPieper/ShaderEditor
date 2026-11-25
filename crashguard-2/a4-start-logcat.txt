@@ -1,0 +1,120 @@
+--------- beginning of main
+11-25 02:15:44.379 I/AccountManagerService( 1624): getTypesVisibleToCaller: isPermitted? true
+11-25 02:15:47.284 D/AndroidRuntime( 3053): >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-25 02:15:47.285 D/AndroidRuntime( 3053): CheckJNI is OFF
+11-25 02:15:47.291 D/ICU     ( 3053): No timezone override file found: /data/misc/zoneinfo/current/icu/icu_tzdata.dat
+11-25 02:15:47.301 E/memtrack( 3053): Couldn't load memtrack module (No such file or directory)
+11-25 02:15:47.301 E/android.os.Debug( 3053): failed to load memtrack module: -2
+11-25 02:15:47.301 I/Radio-JNI( 3053): register_android_hardware_Radio DONE
+11-25 02:15:47.304 D/AndroidRuntime( 3053): Calling main entry com.android.commands.am.Am
+--------- beginning of system
+11-25 02:15:47.307 I/ActivityManager( 1624): START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity} from uid 0 on display 0
+11-25 02:15:47.312 E/ResourceType( 1624): Style contains key with bad entry: 0x01010590
+11-25 02:15:47.316 D/AndroidRuntime( 3053): Shutting down VM
+11-25 02:15:47.317 I/art     ( 3062): Late-enabling -Xcheck:jni
+11-25 02:15:47.326 I/ActivityManager( 1624): Start proc 3062:de.markusfisch.android.shadereditor.debug/u0a104 for activity de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.SplashActivity
+11-25 02:15:47.358 D/gralloc_ranchu( 1249): gralloc_alloc: Creating ashmem region of size 10108928
+11-25 02:15:47.425 D/EGL_emulation( 1930): eglMakeCurrent: 0x7f799ede1d20: ver 2 0 (tinfo 0x7f799edc28c0)
+11-25 02:15:47.425 E/Surface ( 1930): getSlotFromBufferLocked: unknown buffer: 0x7f799ede2540
+11-25 02:15:47.688 D/StrictMode( 3062): StrictMode policy violation; ~duration=20 ms: android.os.StrictMode$StrictModeDiskReadViolation: policy=65567 violation=2
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1263)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.SharedPreferencesImpl.awaitLoadedLocked(SharedPreferencesImpl.java:203)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.SharedPreferencesImpl.getBoolean(SharedPreferencesImpl.java:262)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at androidx.preference.PreferenceManager.setDefaultValues(PreferenceManager.java:184)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at androidx.preference.PreferenceManager.setDefaultValues(PreferenceManager.java:150)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at de.markusfisch.android.shadereditor.preference.Preferences.init(Preferences.java:105)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at de.markusfisch.android.shadereditor.app.ShaderEditorApp.onCreate(ShaderEditorApp.java:40)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1013)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:4707)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.ActivityThread.-wrap1(ActivityThread.java)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1405)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.os.Handler.dispatchMessage(Handler.java:102)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.os.Looper.loop(Looper.java:148)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.ActivityThread.main(ActivityThread.java:5417)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at java.lang.reflect.Method.invoke(Native Method)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:726)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:616)
+11-25 02:15:47.688 D/StrictMode( 3062): StrictMode policy violation; ~duration=8 ms: android.os.StrictMode$StrictModeDiskReadViolation: policy=65567 violation=2
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1263)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.SharedPreferencesImpl.awaitLoadedLocked(SharedPreferencesImpl.java:203)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.SharedPreferencesImpl.getString(SharedPreferencesImpl.java:224)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at de.markusfisch.android.shadereditor.preference.Preferences.update(Preferences.java:124)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at de.markusfisch.android.shadereditor.preference.Preferences.init(Preferences.java:115)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at de.markusfisch.android.shadereditor.app.ShaderEditorApp.onCreate(ShaderEditorApp.java:40)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1013)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:4707)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.ActivityThread.-wrap1(ActivityThread.java)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1405)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.os.Handler.dispatchMessage(Handler.java:102)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.os.Looper.loop(Looper.java:148)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at android.app.ActivityThread.main(ActivityThread.java:5417)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at java.lang.reflect.Method.invoke(Native Method)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:726)
+11-25 02:15:47.688 D/StrictMode( 3062): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:616)
+11-25 02:15:47.731 D/AppCompatDelegate( 3062): Checking for metadata for AppLocalesMetadataHolderService : Service not found
+11-25 02:15:47.740 E/ResourceType( 3062): Style contains key with bad entry: 0x01010590
+11-25 02:15:47.756 W/art     ( 3062): Before Android 4.1, method android.graphics.PorterDuffColorFilter androidx.vectordrawable.graphics.drawable.VectorDrawableCompat.updateTintFilter(android.graphics.PorterDuffColorFilter, android.content.res.ColorStateList, android.graphics.PorterDuff$Mode) would have incorrectly overridden the package-private method in android.graphics.drawable.Drawable
+11-25 02:15:47.792 I/ActivityManager( 1624): START u0 {cmp=de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity} from uid 10104 on display 0
+11-25 02:15:47.850 I/art     ( 3062): Rejecting re-init on previously-failed class java.lang.Class<leakcanary.internal.RemoteHeapAnalyzerWorker>
+11-25 02:15:47.850 I/art     ( 3062): Rejecting re-init on previously-failed class java.lang.Class<leakcanary.internal.RemoteHeapAnalyzerWorker>
+11-25 02:15:47.852 I/art     ( 3062): Rejecting re-init on previously-failed class java.lang.Class<leakcanary.internal.HeapAnalyzerWorker>
+11-25 02:15:47.852 I/art     ( 3062): Rejecting re-init on previously-failed class java.lang.Class<leakcanary.internal.HeapAnalyzerWorker>
+11-25 02:15:47.853 D/LeakCanary( 3062): LeakCanary is running and ready to detect memory leaks.
+11-25 02:15:47.867 E/ResourceType( 3062): Style contains key with bad entry: 0x01010590
+11-25 02:15:47.989 I/Vision  ( 2370): Requesting optional module download of ocr.
+11-25 02:15:47.989 I/Vision  ( 2370): Checking for download completion for 55751 -- ocr
+11-25 02:15:47.998 I/ListPopupWindow( 3062): Could not find method setEpicenterBounds(Rect) on PopupWindow. Oh well.
+11-25 02:15:48.034 W/art     ( 3062): Before Android 4.1, method android.graphics.drawable.Drawable com.google.android.material.progressindicator.BaseProgressIndicator.getCurrentDrawable() would have incorrectly overridden the package-private method in android.widget.ProgressBar
+11-25 02:15:48.191 W/Chip    ( 3062): Chip text must be vertically center and start aligned
+11-25 02:15:48.194 W/Chip    ( 3062): Chip text must be vertically center and start aligned
+11-25 02:15:48.196 W/Chip    ( 3062): Chip text must be vertically center and start aligned
+11-25 02:15:48.198 W/Chip    ( 3062): Chip text must be vertically center and start aligned
+11-25 02:15:48.199 W/Chip    ( 3062): Chip text must be vertically center and start aligned
+11-25 02:15:48.201 W/Chip    ( 3062): Chip text must be vertically center and start aligned
+11-25 02:15:48.203 W/Chip    ( 3062): Chip text must be vertically center and start aligned
+11-25 02:15:48.387 E/SurfaceFlinger( 1249): ro.sf.lcd_density must be defined as a build property
+11-25 02:15:48.388 D/OpenGLRenderer( 3062): Use EGL_SWAP_BEHAVIOR_PRESERVED: true
+11-25 02:15:48.390 D/        ( 3062): HostConnection::get() New Host Connection established 0x7f798eb7c780, tid 3062
+11-25 02:15:48.415 D/        ( 3062): HostConnection::get() New Host Connection established 0x7f799edd1660, tid 3084
+11-25 02:15:48.416 I/OpenGLRenderer( 3062): Initialized EGL, version 1.4
+11-25 02:15:48.416 W/OpenGLRenderer( 3062): Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+11-25 02:15:48.418 D/EGL_emulation( 3062): eglCreateContext: 0x7f799ede2720: maj 2 min 0 rcv 2
+11-25 02:15:48.440 D/EGL_emulation( 3062): eglMakeCurrent: 0x7f799ede2720: ver 2 0 (tinfo 0x7f798e9a03c0)
+11-25 02:15:48.457 D/EGL_emulation( 3062): eglMakeCurrent: 0x7f799ede2720: ver 2 0 (tinfo 0x7f798e9a03c0)
+11-25 02:15:48.515 I/art     ( 3062): Background sticky concurrent mark sweep GC freed 27175(1822KB) AllocSpace objects, 6(132KB) LOS objects, 20% free, 7MB/9MB, paused 7.202ms total 29.525ms
+11-25 02:15:48.556 I/ActivityManager( 1624): Displayed de.markusfisch.android.shadereditor.debug/de.markusfisch.android.shadereditor.activity.MainActivity: +754ms (total +1s241ms)
+11-25 02:15:48.574 D/LeakCanary( 3062): Watching instance of androidx.fragment.app.FragmentManagerViewModel (androidx.fragment.app.FragmentManagerViewModel received ViewModel#onCleared() callback) with key 2f059695-35c8-45e5-841e-1e85a72e40a7
+11-25 02:15:48.574 D/LeakCanary( 3062): Watching instance of leakcanary.internal.ViewModelClearedWatcher (leakcanary.internal.ViewModelClearedWatcher received ViewModel#onCleared() callback) with key 90d00766-ed88-4503-9115-be782750a464
+11-25 02:15:48.574 D/LeakCanary( 3062): Watching instance of androidx.lifecycle.SavedStateHandlesVM (androidx.lifecycle.SavedStateHandlesVM received ViewModel#onCleared() callback) with key 9e30b458-97cb-4441-91bb-bd3b4be9b6c0
+11-25 02:15:48.578 D/LeakCanary( 3062): Watching instance of de.markusfisch.android.shadereditor.activity.SplashActivity (de.markusfisch.android.shadereditor.activity.SplashActivity received Activity#onDestroy() callback) with key 65728922-e2d4-4181-9366-a8b8a0f66fd2
+11-25 02:15:49.487 D/LeakCanary( 3062): Setting up flushing for Thread[LeakCanary-Heap-Dump,5,main]
+11-25 02:15:49.614 E/SurfaceFlinger( 1249): ro.sf.lcd_density must be defined as a build property
+11-25 02:15:49.615 D/gralloc_ranchu( 1249): gralloc_alloc: Creating ashmem region of size 10108928
+11-25 02:15:49.618 D/        ( 3097): HostConnection::get() New Host Connection established 0x7f42ae992480, tid 3097
+11-25 02:15:51.928 E/SurfaceFlinger( 1249): ro.sf.lcd_density must be defined as a build property
+11-25 02:15:51.929 D/gralloc_ranchu( 1249): gralloc_alloc: Creating ashmem region of size 10108928
+11-25 02:15:51.941 D/        ( 3107): HostConnection::get() New Host Connection established 0x7fc409752480, tid 3107
+11-25 02:15:53.578 I/art     ( 3062): Starting a blocking GC Explicit
+11-25 02:15:53.583 I/art     ( 3062): Explicit concurrent mark sweep GC freed 15450(722KB) AllocSpace objects, 0(0B) LOS objects, 32% free, 8MB/12MB, paused 198us total 4.598ms
+11-25 02:15:54.230 E/SurfaceFlinger( 1249): ro.sf.lcd_density must be defined as a build property
+11-25 02:15:54.231 D/gralloc_ranchu( 1249): gralloc_alloc: Creating ashmem region of size 10108928
+11-25 02:15:54.243 D/        ( 3115): HostConnection::get() New Host Connection established 0x7fc9193d2480, tid 3115
+11-25 02:15:56.491 E/SurfaceFlinger( 1249): ro.sf.lcd_density must be defined as a build property
+11-25 02:15:56.492 D/gralloc_ranchu( 1249): gralloc_alloc: Creating ashmem region of size 10108928
+11-25 02:15:56.504 D/        ( 3123): HostConnection::get() New Host Connection established 0x7fb23f692480, tid 3123
+11-25 02:15:57.994 I/Vision  ( 2370): Requesting optional module download of ocr.
+11-25 02:15:57.994 I/Vision  ( 2370): Checking for download completion for 65756 -- ocr
+11-25 02:15:58.764 E/SurfaceFlinger( 1249): ro.sf.lcd_density must be defined as a build property
+11-25 02:15:58.765 D/gralloc_ranchu( 1249): gralloc_alloc: Creating ashmem region of size 10108928
+11-25 02:15:58.777 D/        ( 3132): HostConnection::get() New Host Connection established 0x7f86fc3d2480, tid 3132
+11-25 02:15:59.122 W/ChimeraConfigurator( 2370): Error syncing flags: qoq: COMMIT_TIMEOUT
+11-25 02:15:59.122 I/ChmraDebugLogger( 2370): [79] COMMIT_TIMEOUT
+11-25 02:15:59.131 I/ChmraDebugLogger( 2370): [52] null
+11-25 02:15:59.136 W/ChimeraConfigService( 2370): Retry attempt was throttled.
+11-25 02:16:07.195 I/ActivityManager( 1624): Killing 2265:com.google.android.apps.maps/u0a39 (adj 15): empty #17
+11-25 02:16:07.998 I/Vision  ( 2370): Requesting optional module download of ocr.
+11-25 02:16:07.998 I/Vision  ( 2370): Exceeded maximum feature download tries for ocr
+11-25 02:16:07.998 W/Vision  ( 2370): Request of optional module download of ocr failed.
+11-25 02:16:08.000 I/Vision  ( 2370): Checking for download completion for 75762 -- ocr
+11-25 02:16:10.631 I/MediaFocusControl( 1624):  AudioFocus  abandonAudioFocus() from android.media.AudioManager@d9f4f81com.android.music.MediaPlaybackService$3@5d45826
+11-25 02:16:15.019 I/ActivityManager( 1624): Killing 2162:com.android.music/u0a40 (adj 15): empty #17
