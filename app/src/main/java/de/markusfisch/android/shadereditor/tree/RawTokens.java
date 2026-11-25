@@ -33,6 +33,13 @@ final class RawTokens {
 	 * continuation is none: it leaves what it joins side by side.
 	 */
 	static final byte SPACED = 4;
+	/** Flag, set by the directives: not compiled, in a branch that is off. */
+	static final byte OFF = 8;
+	/**
+	 * Flag, set by the directives: in a conditional whose condition
+	 * could not be decided, so whether it is compiled is a guess.
+	 */
+	static final byte UNDECIDED = 16;
 
 	int size;
 	byte[] kind = new byte[64];
