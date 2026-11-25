@@ -97,7 +97,7 @@
 			<include
 				layout="@layout/extra_keys"
 				android:layout_width="match_parent"
-				android:layout_height="wrap_content" />
+				android:layout_height="@dimen/se_key_height" />
 
 		</de.markusfisch.android.shadereditor.widget.FittingLinearLayout>
 

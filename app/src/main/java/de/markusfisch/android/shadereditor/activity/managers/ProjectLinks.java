@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.LruCache;
 
 import androidx.annotation.NonNull;
@@ -15,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -39,6 +41,7 @@ import de.markusfisch.android.shadereditor.project.ProjectFiles;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
 import de.markusfisch.android.shadereditor.project.Projects;
 import de.markusfisch.android.shadereditor.resource.Resources;
+import de.markusfisch.android.shadereditor.syntax.Knowledge;
 
 /**
  * The files around the file of a folder in the editor. A folder is
@@ -99,6 +102,8 @@ final class ProjectLinks implements FileLinks {
 
 	// The pictures kept, by path: a few lines' worth.
 	private static final int KEPT = 16;
+	// The most names of a file shown, more than a row holds.
+	private static final int MAX_NAMES = 40;
 
 	private final ExecutorService listings =
 			Executors.newSingleThreadExecutor();
@@ -343,10 +348,28 @@ final class ProjectLinks implements FileLinks {
 						: image
 						? ExtraKeysManager.Reference.Kind.IMAGE
 						: ExtraKeysManager.Reference.Kind.PASS,
+				code ? names(path) : null,
 				show != null && !code && !image
 						? () -> show.show(path)
 						: null,
 				image ? null : () -> open(path, 0));
+	}
+
+	// The names the file at path declares, each once, in its order, as
+	// the last build read it; null where it did not, or they are none.
+	@Nullable
+	private String names(@NonNull ProjectPath path) {
+		OpenProject open = project;
+		Knowledge known = open != null ? open.knowledge(path) : null;
+		Set<String> names = new LinkedHashSet<>();
+		for (Knowledge.Symbol symbol : known != null ? known.symbols()
+				: List.<Knowledge.Symbol>of()) {
+			if (names.size() == MAX_NAMES) {
+				break;
+			}
+			names.add(symbol.name());
+		}
+		return names.isEmpty() ? null : TextUtils.join(", ", names);
 	}
 
 	@Nullable
