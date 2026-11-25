@@ -81,4 +81,30 @@ final class Environment {
 	byte[] conditionals() {
 		return Arrays.copyOf(conditionals, open);
 	}
+
+	/** Whether exactly these conditionals are open. */
+	boolean has(byte[] conditionals) {
+		if (conditionals.length != open) {
+			return false;
+		}
+		for (int i = 0; i < open; ++i) {
+			if (conditionals[i] != this.conditionals[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Takes what a piece that was read before leaves behind. */
+	void pass(Piece piece) {
+		for (Macro macro : piece.definitions) {
+			define(macro);
+		}
+		version = piece.versionAfter;
+		open = 0;
+		undecided = 0;
+		for (byte conditional : piece.conditionalsAfter) {
+			push(conditional);
+		}
+	}
 }

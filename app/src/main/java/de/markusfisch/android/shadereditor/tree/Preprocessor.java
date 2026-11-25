@@ -95,6 +95,13 @@ final class Preprocessor {
 		}
 	}
 
+	/**
+	 * With this many compiled tokens {@link #run} stops at the next
+	 * place between two tokens of the text, wherever that is.
+	 */
+	int stopAt = Integer.MAX_VALUE;
+	/** How many tokens were compiled when the last directive was run; -1 for none. */
+	int directiveAt = -1;
 	/** Every #define and #undef line that was compiled, in order. */
 	final List<Macro> definitions = new ArrayList<>();
 	/** Pairs: a raw token and why it was not read as written. */
@@ -146,12 +153,17 @@ final class Preprocessor {
 	 * spans a function. False if the text ends first.
 	 *
 	 * This is only where to try: whether an item does end there is
-	 * for the parser to say.
+	 * for the parser to say. So that it gets to say it in a block
+	 * whose brace is not closed, reading also stops once
+	 * {@link #stopAt} tokens are compiled.
 	 */
 	boolean run() {
 		while (true) {
 			Piece piece = pending.pollFirst();
 			if (piece == null) {
+				if (out.size >= stopAt) {
+					return true;
+				}
 				if (!has(next)) {
 					return false;
 				}
@@ -407,6 +419,7 @@ final class Preprocessor {
 			++end;
 		}
 		next = end;
+		directiveAt = out.size;
 		int word = end > hash + 1 ? raw.symbol[hash + 1] : -1;
 		boolean compiling = env.compiling();
 		// Whether the line itself is compiled: a conditional's lines

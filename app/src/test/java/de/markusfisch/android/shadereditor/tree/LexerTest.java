@@ -277,8 +277,9 @@ public class LexerTest {
 		}
 	}
 
-	// And where a piece may start: behind a ";" or "}" outside a
-	// directive the rest reads the same.
+	// And where a piece may start: behind a ";" or "}", or behind any
+	// token that a gap follows, outside a directive the rest reads the
+	// same.
 	@Test
 	public void readingStartsBehindTheEndOfAnItem() {
 		Random random = new Random(3);
@@ -289,7 +290,9 @@ public class LexerTest {
 			for (int i = 0; i < whole.size; ++i) {
 				if (whole.is(i, RawTokens.DIRECTIVE) ||
 						(whole.symbol[i] != Words.SEMICOLON &&
-								whole.symbol[i] != Words.RIGHT_BRACE)) {
+								whole.symbol[i] != Words.RIGHT_BRACE &&
+								!(i + 1 < whole.size &&
+										whole.is(i + 1, RawTokens.SPACED)))) {
 					continue;
 				}
 				++starts;
@@ -308,7 +311,7 @@ public class LexerTest {
 				}
 			}
 		}
-		assertTrue(starts > 2000);
+		assertTrue(starts > 5000);
 	}
 
 	private RawTokens lex(String text) {

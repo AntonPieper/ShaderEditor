@@ -552,7 +552,7 @@ Five reviews of "go to definition from the tokenizer" each found new kinds of wr
 | 0: the text as tokens | Built (9.1) |
 | 1: the directives run, every compiled token mapped to where it is written | Built (9.2) |
 | 2: the tree, ERROR and MISSING nodes, what every name means | Built (9.3) |
-| Re-reading only what an edit touches | Not built |
+| Re-reading only what an edit touches | Built (9.4) |
 
 ### 9.1 Layer 0: tokens
 
@@ -600,7 +600,7 @@ Raw tokens of a branch that is not compiled are marked OFF. This is the reading 
 
 **Checked against Mesa** with the record that `tools/directives/oracle.sh` keeps for the dimming (`directives/mesa.txt`: every program the engine compiles for the examples, the bundled shaders, the ShaderToy fixtures and the directive probes, and 600 generated texts): no line Mesa compiles has a token that is off, and no line Mesa skips has one that is on, outside what is marked UNDECIDED. Of 157,000 tokens, 99,000 are judged; the undecided ones are mostly in the generated texts, whose conditions are made to contain errors. Making the test pass found three rules that are now in the table: `__LINE__` in a condition, values beyond an int, and the names an undecided conditional defines.
 
-**Where an item of the program may end.** `Preprocessor.run` stops behind a `}` that closes the outermost brace, or a `;` outside every brace, parenthesis and bracket, when no expansion goes on. That is where the reading of 9.4 tries to end a piece; whether an item does end there is the parser's to say. While a brace is open, as in a block that is being typed, there is no such place before the end of the text.
+**Where an item of the program may end.** `Preprocessor.run` stops behind a `}` that closes the outermost brace, or a `;` outside every brace, parenthesis and bracket, when no expansion goes on. That is where the reading of 9.4 tries to end a piece; whether an item does end there is the parser's to say. While a brace is open, as in a block that is being typed, there is no such place; there `run` stops after a given number of tokens, between two tokens of the text.
 
 ### 9.3 Layer 2: the tree, and what names mean
 
@@ -631,4 +631,29 @@ A `Piece` is one or more whole items with everything read of them: raw tokens, c
 A text Mesa compiles has no ERROR or MISSING node and no name without a declaration: the oracle counts either as a disagreement. `MeaningsOracleTest` checks without Mesa that the tree still reads every recorded case as it did when Mesa judged it; when a reading changes, the script has to be run again. Of the review probes, 41 agree (the three with a name across a line continuation among them) and Mesa refuses 4 (a name declared twice in one scope, a parameter without a type).
 
 **Recovery, tested as the study measured it** (`ParserTest`, on the programs above): with one function's body broken in one of five ways, no name outside that function gets another meaning (1,056 broken texts: 0, and in 1 some names lose theirs); with one token broken anywhere, heads and declarations included, 2 of 1,176 broken texts give a name outside the broken item another meaning and 5 lose some. The limit agreed for the second is 0.5 %: a broken declaration can declare something else, as it does for a compiler.
+
+### 9.4 The tree, and re-reading after an edit
+
+`ShaderTree` is the tree of one text: `ShaderTree.read(text)`, and `tree.edit(text, start, oldEnd, newEnd)` for the tree of what the text has become. A tree never changes; it is a list of pieces (9.3), each one or more whole items.
+
+**Where a piece ends is the parser's decision.** The preprocessor runs to a place where an item may end (9.2), or 1,024 tokens on where no such place comes. The parser reads the tokens so far as items and says for each whether it looked at the end of the tokens (`Parser.settled`): an item that did not is what it would be with any tokens behind it. The piece ends behind the last such item, if what follows can be read from there as if nothing had been read: no directive behind the place has been run, the place is not inside a macro's expansion or arguments, and the lexer can start there (behind a `;` or `}`, or before a gap). Otherwise the preprocessor runs on. So a function whose closing brace is missing ends its piece before the next function, as its node does, and what is typed in a block that is open is read again alone.
+
+By this a piece's items are the items a reading of the whole text has, and **a piece is a function of three things only**: its text as far as the lexer looked (`reach`, at least its length), where it stands (at the start of the text or not), and what the directives before it have set up (the version, the open conditionals, the macros in force).
+
+**After an edit** the reading goes through the new text from the start. Wherever it stands at a place where a piece of the old tree started, and that piece's text as far as it was looked at lies outside what changed, and it stood at the start of the text or not as now, and the version and the open conditionals are what it was read with, and every macro that either reading has defined or undefined since the two last agreed is the same in both (same parameters, same text, as much a guess), the old piece is taken over. Behind what changed, the first piece taken over takes all that follow with it. Everything else is read as in a reading from nothing. A change to a `#define` therefore reads again what stands behind it, until a later line makes the macros the same again; that could be narrowed to the pieces that name the macro, and is not.
+
+**The symbol table** of a tree is shared by the trees made of it by edits, and never forgets a spelling. When it holds more than four times the text and 64 KB, `edit` reads from nothing with a new table.
+
+**Tested** (`ShaderTreeTest`):
+
+- *The tree after edits is the tree read from nothing*: 6,000 random edits (keys, deletions, pastes, pieces that change how the rest is read) on the engine's programs, compared in every token, node, step, definition and doubt. For each condition of taking a piece over there is a test that fails without it.
+- *A text read piece by piece is the text read whole*: the same comparison, with offsets counted from the start, between the pieces and one reading of the whole text as a single piece, on the programs, on each damaged six times over, and on 2,000 random texts; and on texts made for each condition of where a piece may end. This is the test that found a fault in the parser of 9.3: every 64th, 128th, … step the link from a scope to its closing step was lost.
+
+**Time**, on a desktop JVM (`tools/tree/times.sh`; a slow phone is taken as twenty times that, and is to be measured before stage 1 lands):
+
+| Text | Read whole | One key anywhere, median (90 %) | One key while a brace is open |
+| --- | --- | --- | --- |
+| 21.5 KB, the longest program in the tests | 0.4 ms | 0.02 ms (0.2) | 0.02 ms (0.2) |
+| 50 KB | 1.0 ms | 0.06 ms (0.4) | 0.09 ms (0.2) |
+| 1 MB | 36 ms | 0.2 ms (0.8) | 0.2 ms (0.7) |
 

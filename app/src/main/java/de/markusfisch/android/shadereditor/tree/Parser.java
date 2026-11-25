@@ -32,11 +32,16 @@ final class Parser {
 	final Ints items = new Ints();
 	/**
 	 * Whether an item looked at the end of the tokens: with tokens
-	 * behind them it might read otherwise.
+	 * behind them it might read otherwise. And how many items from
+	 * the first on did not.
 	 */
 	boolean wantsMore;
+	int settled;
 	int errors;
 	int missing;
+	// For each item: how many nodes, steps, ERROR and MISSING nodes
+	// there are up to its end.
+	private final Ints marks = new Ints();
 
 	private final CompiledTokens tokens;
 	private final int version;
@@ -69,10 +74,28 @@ final class Parser {
 			items.add(kind);
 			items.add(from);
 			items.add(p);
+			marks.add(nodes.size);
+			marks.add(names.size);
+			marks.add(errors);
+			marks.add(missing);
+			settled += !wantsMore ? 1 : 0;
 			bail = false;
 			bodies = 0;
 			depth = 0;
 		}
+	}
+
+	/**
+	 * Forgets all but the first count items, which must be settled:
+	 * they are as they would be with any tokens behind them.
+	 */
+	void keep(int count) {
+		items.size = count * 3;
+		nodes.size = count == 0 ? 0 : marks.at[count * 4 - 4];
+		names.size = count == 0 ? 0 : marks.at[count * 4 - 3];
+		errors = count == 0 ? 0 : marks.at[count * 4 - 2];
+		missing = count == 0 ? 0 : marks.at[count * 4 - 1];
+		wantsMore = false;
 	}
 
 	// Tokens. Every look at one goes through sym.
