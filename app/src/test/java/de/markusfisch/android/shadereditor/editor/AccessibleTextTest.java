@@ -80,6 +80,12 @@ public class AccessibleTextTest {
 		assertFalse(AccessibleText.all(text, top, first, 0, top.length()));
 		assertTrue(AccessibleText.all(text, top, new Selection(0, 0), 0,
 				top.length()));
+		// A selection made backwards to the start is anchored elsewhere, so
+		// Select all stays Select all. One made forwards from the start is
+		// the move above: a service's Select all then reaches its window.
+		Selection back = new Selection(text.lineStart(1) + 3, 0);
+		Window w = AccessibleText.reading(text, back.start(), back.end());
+		assertTrue(AccessibleText.all(text, w, back, 0, w.length()));
 	}
 
 	@Test

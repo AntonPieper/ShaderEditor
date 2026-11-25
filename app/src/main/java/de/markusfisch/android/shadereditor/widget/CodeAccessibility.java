@@ -525,7 +525,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		}
 		if (AccessibleText.all(document.text(), window, selection, start,
 				end)) {
-			return view.contextMenuAction(android.R.id.selectAll);
+			view.selectForAccessibility(0, document.text().length(), true);
+			return true;
 		}
 		view.selectForAccessibility(window.start() + start,
 				window.start() + end, true);
