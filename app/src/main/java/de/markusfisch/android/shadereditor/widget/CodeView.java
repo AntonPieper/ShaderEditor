@@ -1962,6 +1962,10 @@ public class CodeView extends View {
 	}
 
 	// With its handles and toolbar if shown; scrolls the head into view.
+	int extendsTo(int start, int end) {
+		return accessibility.extendsTo(start, end);
+	}
+
 	boolean selectsAll(int start, int end) {
 		return accessibility.selectsAll(start, end);
 	}

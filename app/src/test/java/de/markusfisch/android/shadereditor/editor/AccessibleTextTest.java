@@ -14,6 +14,7 @@ import java.util.List;
 import de.markusfisch.android.shadereditor.editor.AccessibleText.Segment;
 import de.markusfisch.android.shadereditor.editor.AccessibleText.Unit;
 import de.markusfisch.android.shadereditor.editor.AccessibleText.Window;
+import de.markusfisch.android.shadereditor.editor.Document.Selection;
 
 public class AccessibleTextTest {
 	@Test
@@ -56,20 +57,54 @@ public class AccessibleTextTest {
 		Text text = lines(10);
 		int caret = text.lineStart(5);
 		Window window = AccessibleText.reading(text, caret, caret);
-		assertTrue(AccessibleText.all(text, window, 0, window.length()));
-		assertFalse(AccessibleText.all(text, window, 0, window.length() - 1));
-		assertFalse(AccessibleText.all(text, window, 1, window.length()));
+		Selection at = new Selection(caret, caret);
+		assertTrue(AccessibleText.all(text, window, at, 0, window.length()));
+		assertFalse(AccessibleText.all(text, window, at, 0,
+				window.length() - 1));
+		assertFalse(AccessibleText.all(text, window, at, 1, window.length()));
 		// All of the text needs no translation.
 		Window whole = new Window(0, text.length());
-		assertFalse(AccessibleText.all(text, whole, 0, whole.length()));
+		assertFalse(AccessibleText.all(text, whole, at, 0, whole.length()));
 		// Lines beside a selection keep it from being all of its window.
 		for (int from = 0; from < text.length(); from += 3) {
 			for (int to = from; to <= text.length(); to += 5) {
 				Window w = AccessibleText.reading(text, from, to);
 				assertFalse(from + ".." + to, AccessibleText.all(text, w,
-						w.index(from), w.index(to)));
+						new Selection(from, to), w.index(from), w.index(to)));
 			}
 		}
+		// At the start of the text, TalkBack's move down a line in its
+		// selection mode reaches the window's end and stays such a move.
+		Selection first = new Selection(0, text.line(0).length());
+		Window top = AccessibleText.reading(text, 0, first.end());
+		assertFalse(AccessibleText.all(text, top, first, 0, top.length()));
+		assertTrue(AccessibleText.all(text, top, new Selection(0, 0), 0,
+				top.length()));
+	}
+
+	@Test
+	public void aRangeFromTheAnchorInTheWindowExtendsTheSelection() {
+		Text text = lines(50);
+		int caret = text.lineStart(24) + 12;
+		Window window = AccessibleText.reading(text, caret, caret);
+		int anchor = window.index(caret);
+		// To the window's end and start, as TalkBack 16 and 17 send them.
+		assertTrue(AccessibleText.extending(window, caret, anchor,
+				window.length()));
+		assertTrue(AccessibleText.extending(window, caret, anchor, 0));
+		assertFalse(AccessibleText.extending(window, caret, anchor, anchor));
+		assertFalse(AccessibleText.extending(window, caret, anchor,
+				window.length() + 1));
+		// A keyboard's range has the caret at one end.
+		for (int other = 0; other <= text.length(); ++other) {
+			assertFalse(AccessibleText.extending(window, caret, caret,
+					other));
+			assertFalse(AccessibleText.extending(window, caret, other,
+					caret));
+		}
+		// At the start of the text the offsets are the text's.
+		Window top = AccessibleText.reading(text, 3, 3);
+		assertFalse(AccessibleText.extending(top, 3, 3, top.length()));
 	}
 
 	@Test
