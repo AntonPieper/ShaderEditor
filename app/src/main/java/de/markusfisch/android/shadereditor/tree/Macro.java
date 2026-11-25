@@ -15,7 +15,10 @@ final class Macro {
 	/** The symbols and kinds of the tokens of its text. */
 	final int[] body;
 	final byte[] kinds;
+	/** Or -1: see {@link #guessed}. */
 	final int bodyAt;
+	/** The raw token that is its name in the #define or #undef line. */
+	final int nameAt;
 	/** Whether its text has "#" or "##", which GLSL ES does not have. */
 	final boolean pastes;
 	/**
@@ -24,9 +27,10 @@ final class Macro {
 	 */
 	final boolean guess;
 
-	Macro(int name, boolean function, int[] parameters, int[] body,
-			byte[] kinds, int bodyAt, boolean guess) {
+	Macro(int name, int nameAt, boolean function, int[] parameters,
+			int[] body, byte[] kinds, int bodyAt, boolean guess) {
 		this.name = name;
+		this.nameAt = nameAt;
 		this.guess = guess;
 		this.function = function;
 		this.parameters = parameters;
@@ -41,13 +45,17 @@ final class Macro {
 	}
 
 	/** What #undef leaves of a name: nothing; it has no text. */
-	static Macro undefined(int name, boolean guess) {
-		return new Macro(name, false, null, null, null, -1, guess);
+	static Macro undefined(int name, int nameAt, boolean guess) {
+		return new Macro(name, nameAt, false, null, null, null, -1, guess);
 	}
 
-	/** The same, as a guess. */
-	Macro guessed() {
-		return new Macro(name, function, parameters, body, kinds, bodyAt, true);
+	/**
+	 * The same as a guess, for the line at nameAt that may define or
+	 * undefine it. Its text is not written there: bodyAt is -1.
+	 */
+	Macro guessed(int nameAt) {
+		return new Macro(name, nameAt, function, parameters, body, kinds, -1,
+				true);
 	}
 
 	boolean isDefined() {
@@ -64,11 +72,16 @@ final class Macro {
 		return -1;
 	}
 
-	/** Whether other expands as this does, wherever each is written. */
-	boolean expandsAs(Macro other) {
+	/** Whether other is defined with the text of this, wherever each is written. */
+	boolean isSpelledAs(Macro other) {
 		return other != null && name == other.name &&
-				guess == other.guess && function == other.function &&
+				function == other.function &&
 				Arrays.equals(parameters, other.parameters) &&
 				Arrays.equals(body, other.body);
+	}
+
+	/** Whether other expands as this does, and is as much a guess. */
+	boolean expandsAs(Macro other) {
+		return isSpelledAs(other) && guess == other.guess;
 	}
 }

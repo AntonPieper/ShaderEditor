@@ -26,21 +26,25 @@ final class Whole {
 	/** Where compiled token i is written in the text. */
 	int at(int i) {
 		int raw = piece.tokens.raw[i];
-		if (raw < 0) {
-			int k = -1 - raw;
-			raw = piece.tokens.macro[k].bodyAt + piece.tokens.bodyIndex[k];
-		}
-		return piece.raw.start[raw];
+		return piece.raw.start[raw < 0 ? inText(-1 - raw) : raw];
 	}
 
 	/** Where the writing of compiled token i ends. */
 	int end(int i) {
 		int raw = piece.tokens.raw[i];
-		if (raw < 0) {
-			int k = -1 - raw;
-			raw = piece.tokens.macro[k].bodyAt + piece.tokens.bodyIndex[k];
+		return piece.raw.end[raw < 0 ? inText(-1 - raw) : raw];
+	}
+
+	// The raw token that a token out of a macro's text is written as:
+	// in the #define line that has the text.
+	private int inText(int k) {
+		Macro macro = piece.tokens.macro[k];
+		for (Macro defined : piece.definitions) {
+			if (defined.body == macro.body && defined.bodyAt >= 0) {
+				return defined.bodyAt + piece.tokens.bodyIndex[k];
+			}
 		}
-		return piece.raw.end[raw];
+		throw new AssertionError();
 	}
 
 	/** Where compiled token i counts as standing: where its outermost macro is invoked. */

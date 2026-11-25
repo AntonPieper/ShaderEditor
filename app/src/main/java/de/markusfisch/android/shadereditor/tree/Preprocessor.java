@@ -454,12 +454,13 @@ final class Preprocessor {
 				hash + 2 < end && !compiling && undecided) {
 			// It may be compiled after all: what the name is, is a guess.
 			Macro known = env.known(raw.symbol[hash + 2]);
-			define(known == null ? Macro.undefined(raw.symbol[hash + 2], true)
-					: known.guessed());
+			define(known == null
+					? Macro.undefined(raw.symbol[hash + 2], hash + 2, true)
+					: known.guessed(hash + 2));
 		} else if (compiling && word == Words.DEFINE) {
 			define(hash, hash + 2, end, undecided);
 		} else if (compiling && word == Words.UNDEF && hash + 2 < end) {
-			define(Macro.undefined(raw.symbol[hash + 2], undecided));
+			define(Macro.undefined(raw.symbol[hash + 2], hash + 2, undecided));
 		} else if (compiling && word == Words.VERSION && hash + 2 < end) {
 			long version = number(raw.symbol[hash + 2]);
 			if (version > 0 && version < Integer.MAX_VALUE) {
@@ -507,7 +508,7 @@ final class Preprocessor {
 				++at;
 			}
 		}
-		define(new Macro(raw.symbol[from], function, parameters.toArray(),
+		define(new Macro(raw.symbol[from], from, function, parameters.toArray(),
 				Arrays.copyOfRange(raw.symbol, at, end),
 				Arrays.copyOfRange(raw.kind, at, end), at, guess));
 	}
