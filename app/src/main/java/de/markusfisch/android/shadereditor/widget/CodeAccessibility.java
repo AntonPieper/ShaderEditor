@@ -523,8 +523,10 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		if (start < 0 || start > end || end > window.length()) {
 			return false;
 		}
-		if (AccessibleText.all(document.text(), window, start, end)) {
-			return view.contextMenuAction(android.R.id.selectAll);
+		if (AccessibleText.all(document.text(), window, selection, start,
+				end)) {
+			view.selectForAccessibility(0, document.text().length(), true);
+			return true;
 		}
 		view.selectForAccessibility(window.start() + start,
 				window.start() + end, true);
@@ -535,9 +537,26 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	// with the offsets of the node's text, which a keyboard never has.
 	boolean selectsAll(int start, int end) {
 		Document document = view.getDocument();
-		return document != null && exploresByTouch() && AccessibleText.all(
-				document.text(), reading(document.text(),
-						document.selection()), start, end);
+		if (document == null || !exploresByTouch()) {
+			return false;
+		}
+		Document.Selection selection = document.selection();
+		return AccessibleText.all(document.text(), reading(document.text(),
+				selection), selection, start, end);
+	}
+
+	// In its selection mode TalkBack moves the head through the input
+	// connection too. Returns the head in the text, or -1 if start to end is
+	// not such a move.
+	int extendsTo(int start, int end) {
+		Document document = view.getDocument();
+		if (document == null || !exploresByTouch()) {
+			return -1;
+		}
+		Document.Selection selection = document.selection();
+		AccessibleText.Window window = reading(document.text(), selection);
+		return AccessibleText.extending(window, selection.anchor(), start,
+				end) ? window.start() + end : -1;
 	}
 
 	private boolean textAction(View host, int id) {

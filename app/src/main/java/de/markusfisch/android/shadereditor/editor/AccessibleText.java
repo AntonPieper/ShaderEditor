@@ -86,10 +86,26 @@ public final class AccessibleText {
 
 	// Whether start to end, in the offsets of window, is all of a window that
 	// is not all of the text. A service selects all of the text it was given
-	// to select all, and that text is the window.
-	public static boolean all(Text text, Window window, int start, int end) {
+	// to select all, and that text is the window. A selection anchored at the
+	// window's start is not: TalkBack's moves in its selection mode extend it
+	// from its anchor to the same range, and at the text's start the window's
+	// offsets are the text's.
+	public static boolean all(Text text, Window window,
+			Document.Selection selection, int start, int end) {
 		return start == 0 && end == window.length() &&
-				window.length() < text.length();
+				window.length() < text.length() && (selection.isEmpty() ||
+				selection.anchor() != window.start());
+	}
+
+	// Whether start to end, in the offsets of a window that does not start
+	// the text, runs from the anchor to another place in the window. TalkBack
+	// extends a selection so, in the offsets of the text it was given; a
+	// keyboard's range from there would start window.start() before the anchor.
+	public static boolean extending(Window window, int anchor, int start,
+			int end) {
+		return window.start() > 0 && start != end &&
+				start == anchor - window.start() && end >= 0 &&
+				end <= window.length();
 	}
 
 	public static Edit edit(Text before, Text after, Document.Change change) {
