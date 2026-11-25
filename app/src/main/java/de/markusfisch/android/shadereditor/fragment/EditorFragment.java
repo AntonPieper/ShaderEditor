@@ -24,6 +24,8 @@ import de.markusfisch.android.shadereditor.R;
 import de.markusfisch.android.shadereditor.adapter.ErrorAdapter;
 import de.markusfisch.android.shadereditor.app.ShaderEditorApp;
 import de.markusfisch.android.shadereditor.editor.Document;
+import de.markusfisch.android.shadereditor.editor.Text;
+import de.markusfisch.android.shadereditor.project.BuiltLines;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 import de.markusfisch.android.shadereditor.project.ProjectParseResult;
 import de.markusfisch.android.shadereditor.project.ProjectPath;
@@ -484,6 +486,14 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 	public boolean showsErrorMessage(@NonNull ProjectDiagnostic error) {
 		return editor.showsErrorMessages() && error.line() > 0 &&
 				(errorsFile == null || errorsFile.equals(error.file()));
+	}
+
+	/** See SourceEditor.setBuilt. */
+	public void setBuilt(@Nullable List<Integer> off, @Nullable Text text,
+			@Nullable BuiltLines.Again again) {
+		if (editor != null) {
+			editor.setBuilt(off, text, again);
+		}
 	}
 
 	/** A build reported errors, perhaps none. */

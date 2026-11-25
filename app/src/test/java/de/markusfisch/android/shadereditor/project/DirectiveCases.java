@@ -107,7 +107,7 @@ final class DirectiveCases {
 				}
 				List<Integer> file = offs.get(at.file());
 				if (file == null) {
-					file = built.off(at.file());
+					file = built.off(at.file(), 3);
 					offs.put(at.file(), file);
 				}
 				if (file.contains(at.line() - 1)) {

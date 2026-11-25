@@ -1,5 +1,6 @@
 package de.markusfisch.android.shadereditor.activity.managers;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -99,6 +100,9 @@ public final class ProjectFileManager {
 
 		/** Show the value of the tuning that runs with the next frame. */
 		void applyTuning();
+
+		/** Return the OpenGL ES major it compiles for, 0 while unknown. */
+		int glesVersion();
 	}
 
 	// How long the finger rests before a constant is built again.
@@ -422,11 +426,30 @@ public final class ProjectFileManager {
 			}
 			build = prepared;
 			stale = false;
+			// Delivered only for the texts as they are now.
+			ProjectPath at = now.getPath();
+			int gles = glesVersion();
+			editor.setBuilt(prepared.lines() != null
+							? prepared.lines().off(at, gles)
+							: null,
+					prepared.texts().get(at),
+					prepared.again(project, at, gles));
 			// Nothing runs, as for a folder without a shader: a picture
 			// or errors left from before are not this project's.
 			runner.run(prepared.preparation(), prepared.nothingRuns(),
 					now.getQuality());
 		});
+	}
+
+	// The OpenGL ES major the engine compiles for: its context's once it
+	// has one, else the device's, which the context asks for first.
+	private int glesVersion() {
+		int version = engine.glesVersion();
+		ActivityManager manager = activity.getSystemService(
+				ActivityManager.class);
+		return version > 0 || manager == null
+				? version
+				: manager.getDeviceConfigurationInfo().reqGlEsVersion >> 16;
 	}
 
 	/** Keep what the build run last reported, by file. */
@@ -906,6 +929,7 @@ public final class ProjectFileManager {
 	}
 
 	private void changed() {
+		forgetChangedBuild();
 		// Files were renamed or deleted: what is tuned may be gone. A
 		// build or a keystroke tells this listener too, and does not.
 		ProjectFile shown = file;
@@ -925,6 +949,17 @@ public final class ProjectFileManager {
 		}
 		listener.onChanged();
 		showOutside();
+	}
+
+	// The last build's lines hold while every other document has the text
+	// it read; the editor follows the shown one's edits itself.
+	private void forgetChangedBuild() {
+		ProjectFile shown = file;
+		OpenProject.Build last = build;
+		if (shown != null && last != null &&
+				!last.holds(shown.getProject(), shown.getPath())) {
+			editor.setBuilt(null, null, null);
+		}
 	}
 
 	// The bar under the toolbar says what storage holds in place of the

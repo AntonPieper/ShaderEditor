@@ -169,6 +169,7 @@ public final class ShaderEngine {
 	@Nullable
 	private volatile ProjectPath shown;
 	private volatile boolean paused;
+	private volatile int glesVersion;
 	@Nullable
 	private volatile Fit fit;
 	// Who watches the passes, and who was told last; GL thread only:
@@ -360,6 +361,11 @@ public final class ShaderEngine {
 		return halfFloat;
 	}
 
+	/** Return the OpenGL ES major of the context, 0 before there is one. */
+	public int glesVersion() {
+		return glesVersion;
+	}
+
 	public void setQuality(float quality) {
 		shaders.offerChanged(offer -> new Offer(
 				offer.shader().withQuality(quality),
@@ -397,6 +403,7 @@ public final class ShaderEngine {
 		discardContextResources();
 		device.createContextResources(version);
 		formats = device.targetFormats(version);
+		glesVersion = formats.glesVersion();
 		halfFloat = formats.halfFloatRendering();
 		var errors = renderPipeline.createContextResources();
 		if (!errors.isEmpty()) {
