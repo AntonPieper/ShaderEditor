@@ -150,7 +150,8 @@ public class ShaderTreeTest {
 			}
 			for (Macro m : p.definitions) {
 				macros.append(' ').append(s.name(m.name)).append(m.function)
-						.append(m.guess).append(m.isDefined() ? m.bodyAt + raws : -1)
+						.append(m.guess).append(m.nameAt + raws).append(':')
+						.append(m.bodyAt < 0 ? -1 : m.bodyAt + raws).append(':')
 						.append(m.isDefined() ? m.body.length : 0);
 			}
 			errors += p.errors * 100000 + p.missing;
@@ -207,6 +208,65 @@ public class ShaderTreeTest {
 		ShaderTree after = tree.edit(edited, at, at, at + 8);
 		assertEquals(describe(ShaderTree.read(edited)), describe(after));
 		assertEquals(0, after.reused);
+	}
+
+	@Test
+	public void aTreeFindsWhatChangedItself() {
+		ShaderTree tree = ShaderTree.read(PROGRAM);
+		for (String edited : new String[]{PROGRAM, "", PROGRAM + PROGRAM,
+				PROGRAM.replace("wave", "w"), PROGRAM.substring(40), "x" + PROGRAM}) {
+			assertEquals(describe(ShaderTree.read(edited)),
+					describe(tree.edit(edited)));
+		}
+		// All but the last piece, which was read up to the end of the text.
+		assertEquals(tree.pieces.length - 1, tree.edit(PROGRAM).reused);
+	}
+
+	@Test
+	public void whatANameMeansByWhereItIsWritten() {
+		String text = "#define K 3\n#define USE (a + K)\n#ifdef K\nfloat a;\n" +
+				"#endif\n#undef K\nfloat f(float a) { return USE; }\n" +
+				"float g() { return USE + sin(K) + b; }\n#if 0\nfloat c;\n#endif\n";
+		ShaderTree tree = ShaderTree.read(text);
+		// The a of the macro's text: the parameter in f, the global in g.
+		assertEquals("DECLARED " + text.indexOf("a) {") + ", DECLARED " +
+				text.indexOf("a;"), meanings(tree, text.indexOf("a + K")));
+		// K where it is defined, asked for and undefined.
+		String k = "MACRO " + text.indexOf("K 3");
+		assertEquals(k, meanings(tree, text.indexOf("K 3")));
+		assertEquals(k, meanings(tree, text.indexOf("K\nfloat")));
+		assertEquals(k, meanings(tree, text.indexOf("K\nfloat f")));
+		// Behind its #undef it is a name like any other, also the K of
+		// the macro's text where the macro is invoked.
+		assertEquals("NOT_DECLARED", meanings(tree, text.indexOf("K) + b")));
+		assertEquals("NOT_DECLARED, NOT_DECLARED",
+				meanings(tree, text.indexOf("K)")));
+		assertEquals("MACRO " + text.indexOf("USE ("),
+				meanings(tree, text.indexOf("USE;")));
+		assertEquals("LANGUAGE", meanings(tree, text.indexOf("sin")));
+		assertEquals("NOT_DECLARED", meanings(tree, text.indexOf("b;")));
+		assertEquals("NOT_COMPILED", meanings(tree, text.indexOf("c;")));
+		// Nothing a compiler sees: a macro's name in a branch that is
+		// off, and an argument its macro leaves out.
+		assertEquals("NOT_COMPILED", meanings(ShaderTree.read(
+				"#define K 1\n#if 0\nfloat a = K;\n#endif\n"), 28));
+		assertEquals("NOT_COMPILED", meanings(ShaderTree.read(
+				"#define DROP(x) 1.0\nfloat y;\nfloat a = DROP(y);\n"), 44));
+		assertEquals("", meanings(tree, text.indexOf("+ K")));
+		assertEquals("DECLARED " + text.indexOf("f("),
+				meanings(tree, text.indexOf("f(") + 1));
+		assertTrue(!tree.isBroken() && ShaderTree.read("float a = ;").isBroken());
+	}
+
+	private static String meanings(ShaderTree tree, int offset) {
+		StringBuilder sb = new StringBuilder();
+		for (ShaderTree.Meaning meaning : tree.meanings(offset)) {
+			sb.append(sb.length() > 0 ? ", " : "").append(meaning.kind);
+			if (meaning.end > 0) {
+				sb.append(' ').append(meaning.start);
+			}
+		}
+		return sb.toString();
 	}
 
 	// The test of re-reading: after any edits the tree is the tree a

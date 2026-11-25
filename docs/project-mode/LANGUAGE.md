@@ -553,6 +553,7 @@ Five reviews of "go to definition from the tokenizer" each found new kinds of wr
 | 1: the directives run, every compiled token mapped to where it is written | Built (9.2) |
 | 2: the tree, ERROR and MISSING nodes, what every name means | Built (9.3) |
 | Re-reading only what an edit touches | Built (9.4) |
+| Several files: the programs of a build | Built (9.5) |
 
 ### 9.1 Layer 0: tokens
 
@@ -664,4 +665,24 @@ By this a piece's items are the items a reading of the whole text has, and **a p
 | 21.5 KB, the longest program in the tests | 0.4 ms | 0.02 ms (0.2) | 0.02 ms (0.2) |
 | 50 KB | 1.0 ms | 0.06 ms (0.4) | 0.09 ms (0.2) |
 | 1 MB | 36 ms | 0.2 ms (0.8) | 0.2 ms (0.7) |
+
+### 9.5 Several files: the trees of a build
+
+The tree is read of **the text the engine compiles** (`CompiledSource`), not of a file: with the includes in it where the build puts them, the host lines blanked, the engine's own lines in. So there is no second reader of `#include`, and a name means what it means to the compiler, in whatever file it is declared. `BuiltTrees` (in `project`, the one class that knows both files and trees) reads the programs of a `RenderPlan` and answers for a place in a file: every compiled line that comes from that line of that file, in every program, is asked (`ShaderTree.meanings`), and the places found go back to files by the origin of their lines. A file that several programs compile, or that is included twice, is read in each place and the answers are put together.
+
+`ShaderTree.meanings(offset)` gives what the name written there means, once for every place where it is compiled: a name in a macro's text is compiled wherever the macro is invoked, and may mean one declaration here and another there. A name that is not compiled as it is written is a macro's name (where it is invoked, defined, undefined or asked for; the answer is its `#define`) or stands where nothing is compiled.
+
+| Answer | When |
+| --- | --- |
+| One place or several | The declarations, or the `#define` of a macro |
+| `LANGUAGE` | A name of the language, or one declared in a line the engine wrote |
+| `NOT_COMPILED` | In a branch that is off, in the text of a macro nothing invokes, in a file no program compiles |
+| `NOT_DECLARED` | Nothing before the place declares it, and the text has no error |
+| `BROKEN` | Not declared or not read, and the text has an ERROR or MISSING node or a doubt: the declaration may only not have been read |
+| `UNKNOWN_TYPE` | A member of a value whose type the text does not say |
+| `guess` beside any of them | A conditional that could not be decided has a part in it |
+
+`BuiltTrees.of(plan, before)` reads again from the trees of an earlier build: the compiled text of each program is compared with what it was, and the tree is edited by what changed (9.4).
+
+Not done here: a parameter of a macro in the macro's own text has no answer (it is not compiled as written); a project whose build has errors of its own (a missing include, a cycle) has no plan and so no trees.
 

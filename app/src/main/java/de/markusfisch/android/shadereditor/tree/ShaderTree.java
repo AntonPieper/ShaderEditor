@@ -59,6 +59,211 @@ public final class ShaderTree {
 		}
 	}
 
+	/** What a name means at one of the places where it is compiled. */
+	public static final class Meaning {
+		public enum Kind {
+			/** A declaration, from start to end of the text. */
+			DECLARED,
+			/** A macro; its #define names it from start to end. */
+			MACRO,
+			/** A name the language itself has. */
+			LANGUAGE,
+			/** Nothing before the place declares it. */
+			NOT_DECLARED,
+			/** A member of a value whose type the text does not say. */
+			UNKNOWN_TYPE,
+			/** It stands in an ERROR node. */
+			NOT_READ,
+			/** It stands where nothing is compiled. */
+			NOT_COMPILED
+		}
+
+		public final Kind kind;
+		public final int start;
+		public final int end;
+		/**
+		 * Whether it stands in a conditional that could not be decided,
+		 * so that a driver may compile something else there.
+		 */
+		public final boolean guess;
+
+		Meaning(Kind kind, int start, int end, boolean guess) {
+			this.kind = kind;
+			this.start = start;
+			this.end = end;
+			this.guess = guess;
+		}
+	}
+
+	/**
+	 * Whether the text has an ERROR or MISSING node or a directive
+	 * that was not read as written: then "not declared" may only mean
+	 * that the declaration was not read.
+	 */
+	public boolean isBroken() {
+		for (Piece piece : pieces) {
+			if (piece.errors + piece.missing + piece.doubts.length > 0) {
+				return true;
+			}
+		}
+		return openConditionals > 0;
+	}
+
+	/**
+	 * What the name that is written at offset means: once for every
+	 * place where it is compiled, since a name in a macro's text is
+	 * compiled wherever the macro is invoked. Empty if no name is
+	 * written there.
+	 */
+	public List<Meaning> meanings(int offset) {
+		List<Meaning> meanings = new ArrayList<>();
+		int k = Math.max(0, pieceAt(offset));
+		Piece piece = pieces[k];
+		int r = tokenAt(piece.raw, offset - starts[k]);
+		if (r > 0 && !isName(piece.raw, r) &&
+				piece.raw.end[r - 1] == offset - starts[k]) {
+			// Right behind a name, before what follows it.
+			--r;
+		}
+		if (r < 0 || !isName(piece.raw, r)) {
+			return meanings;
+		}
+		boolean guess = piece.raw.is(r, RawTokens.UNDECIDED);
+		boolean directive = piece.raw.is(r, RawTokens.DIRECTIVE);
+		// The macro whose text it is in, and where in it.
+		Macro in = null;
+		for (Macro macro : piece.definitions) {
+			if (macro.bodyAt >= 0 && r >= macro.bodyAt &&
+					r < macro.bodyAt + macro.body.length) {
+				in = macro;
+			}
+		}
+		// Every place where it is compiled, in this piece or, out of a
+		// macro's text, in any behind it.
+		List<Meanings.Declared[]> means = null;
+		for (int j = k; j < (in != null ? pieces.length : k + 1); ++j) {
+			CompiledTokens tokens = pieces[j].tokens;
+			for (int i = 0; i < tokens.size; ++i) {
+				int raw = tokens.raw[i];
+				if (in == null ? raw != r : raw >= 0 ||
+						tokens.bodyIndex[-1 - raw] != r - in.bodyAt ||
+						!in.isSpelledAs(tokens.macro[-1 - raw])) {
+					continue;
+				}
+				if (means == null) {
+					means = Meanings.ofAll(Arrays.asList(pieces));
+				}
+				Meanings.Declared d = means.get(j)[i];
+				meanings.add(d == null || d == Meanings.LANGUAGE
+						? new Meaning(Meaning.Kind.LANGUAGE, 0, 0, guess)
+						: d == Meanings.UNDECLARED
+						? new Meaning(Meaning.Kind.NOT_DECLARED, 0, 0, guess)
+						: d == Meanings.UNKNOWN || d.piece == null
+						? new Meaning(Meaning.Kind.UNKNOWN_TYPE, 0, 0, guess)
+						: d == Meanings.UNREAD
+						? new Meaning(Meaning.Kind.NOT_READ, 0, 0, guess)
+						: declared(d, guess));
+			}
+		}
+		if (meanings.isEmpty()) {
+			// Not compiled as it is written: a macro's name where it is
+			// invoked, defined or asked for; or nothing a compiler
+			// sees, as in a branch that is off, in the text of a macro
+			// nothing invokes, or an argument its macro leaves out.
+			Macro macro = piece.raw.is(r, RawTokens.OFF) ? null
+					: macro(piece.raw.symbol[r], k, r, directive);
+			int at = macro == null ? 0 : pieceOf(macro);
+			meanings.add(macro == null
+					? new Meaning(Meaning.Kind.NOT_COMPILED, 0, 0, guess)
+					: new Meaning(Meaning.Kind.MACRO,
+							starts[at] + pieces[at].raw.start[macro.nameAt],
+							starts[at] + pieces[at].raw.end[macro.nameAt],
+							guess || macro.guess));
+		}
+		return meanings;
+	}
+
+	private static boolean isName(RawTokens raw, int r) {
+		return raw.kind[r] == RawTokens.NAME ||
+				raw.kind[r] == RawTokens.GLUED_NAME;
+	}
+
+	// The piece that has the character at offset; the last for the end.
+	private int pieceAt(int offset) {
+		int k = Arrays.binarySearch(starts, 0, pieces.length, offset);
+		return k >= 0 ? k : -k - 2;
+	}
+
+	// The token of raw that has the character at offset, or that ends
+	// there; -1 for none.
+	private static int tokenAt(RawTokens raw, int offset) {
+		int i = Arrays.binarySearch(raw.start, 0, raw.size, offset);
+		i = i >= 0 ? i : -i - 2;
+		return i >= 0 && offset <= raw.end[i] ? i : -1;
+	}
+
+	private Meaning declared(Meanings.Declared d, boolean guess) {
+		int at = Arrays.asList(pieces).indexOf(d.piece);
+		Piece piece = pieces[at];
+		int raw = piece.tokens.raw[d.token];
+		if (raw < 0) {
+			// Its name is written in a macro's text: where that is defined.
+			Macro used = piece.tokens.macro[-1 - raw];
+			int index = piece.tokens.bodyIndex[-1 - raw];
+			Macro macro = macro(used.name, at, piece.raw.size, false);
+			if (macro == null || !macro.isSpelledAs(used)) {
+				return new Meaning(Meaning.Kind.UNKNOWN_TYPE, 0, 0, true);
+			}
+			at = pieceOf(macro);
+			piece = pieces[at];
+			raw = macro.bodyAt + index;
+		}
+		return new Meaning(Meaning.Kind.DECLARED, starts[at] + piece.raw.start[raw],
+				starts[at] + piece.raw.end[raw], guess ||
+				piece.raw.is(raw, RawTokens.UNDECIDED));
+	}
+
+	// The macro a name is before raw token r of piece k, as the
+	// #define line has it that its text is written in; null if the
+	// name is not defined there. For a directive's own tokens, also
+	// the first that follows: a macro's text is read where it is
+	// invoked.
+	private Macro macro(int name, int k, int r, boolean orLater) {
+		for (int j = k; j >= 0; --j) {
+			Macro[] definitions = pieces[j].definitions;
+			for (int i = definitions.length - 1; i >= 0; --i) {
+				Macro macro = definitions[i];
+				if (macro.name != name || (j == k && (macro.nameAt > r ||
+						(macro.nameAt == r && !macro.isDefined())))) {
+					// Another name, a later line, or the #undef asked from.
+					continue;
+				} else if (macro.isDefined() && macro.bodyAt >= 0) {
+					return macro;
+				} else if (!macro.isDefined() && !macro.guess) {
+					return null;
+				}
+				// A guess says nothing of where the text is written.
+			}
+		}
+		for (int j = orLater ? k : pieces.length; j < pieces.length; ++j) {
+			for (Macro macro : pieces[j].definitions) {
+				if (macro.name == name && macro.isDefined() && macro.bodyAt >= 0) {
+					return macro;
+				}
+			}
+		}
+		return null;
+	}
+
+	private int pieceOf(Macro macro) {
+		for (int j = 0; j < pieces.length; ++j) {
+			if (Arrays.asList(pieces[j].definitions).contains(macro)) {
+				return j;
+			}
+		}
+		throw new IllegalStateException();
+	}
+
 	/** Reads a text. */
 	public static ShaderTree read(CharSequence text) {
 		return read(text, new Symbols(), null, 0, 0, 0);
@@ -76,6 +281,26 @@ public final class ShaderTree {
 		return symbols.characters() > 4 * text.length() + SYMBOLS_SLACK
 				? read(text)
 				: read(text, symbols, this, start, oldEnd, newEnd);
+	}
+
+	/**
+	 * As {@link #edit(CharSequence, int, int, int)}, for a text of
+	 * which only this is known: it is what this tree's text has become.
+	 */
+	public ShaderTree edit(CharSequence text) {
+		int start = 0;
+		int limit = Math.min(text.length(), this.text.length());
+		while (start < limit && text.charAt(start) == this.text.charAt(start)) {
+			++start;
+		}
+		int oldEnd = this.text.length();
+		int newEnd = text.length();
+		while (oldEnd > start && newEnd > start &&
+				text.charAt(newEnd - 1) == this.text.charAt(oldEnd - 1)) {
+			--oldEnd;
+			--newEnd;
+		}
+		return edit(text, start, oldEnd, newEnd);
 	}
 
 	private static ShaderTree read(CharSequence text, Symbols symbols,
