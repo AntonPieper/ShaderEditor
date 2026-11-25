@@ -14,7 +14,8 @@ final class TreeTexts {
 			"\"", "{", "}", "(", ")", ";", ",", "=", "+", ".", " ", "x", "1",
 			"e", "ä", " ", "\r\n", "\\", "#define A(x) x\n", "#if 0\n",
 			"#else\n", "#endif\n", "float", "struct", "0x1e", "1.5", "\n\r",
-			"#include ", "#pragma se "};
+			"#include ", "#pragma se ", "#ifdef GL_X\n", "#ifdef A\n", "#undef A\n",
+			"#define A 1\n", " A "};
 
 	private TreeTexts() {
 	}

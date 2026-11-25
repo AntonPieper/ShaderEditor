@@ -18,7 +18,8 @@ final class Whole {
 		parser = new Parser(compiled.tokens, compiled.env.version, nodes, names);
 		parser.parse(compiled.tokens.size);
 		piece = new Piece(compiled.symbols, compiled.raw, compiled.tokens, nodes,
-				names, parser);
+				names, parser, compiled.preprocessor, text.length(),
+				text.length() + 1, true, 100, new byte[0], compiled.env);
 		means = Meanings.of(List.of(piece));
 	}
 

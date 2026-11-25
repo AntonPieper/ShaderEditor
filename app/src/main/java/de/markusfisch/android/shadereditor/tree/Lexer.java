@@ -61,7 +61,8 @@ final class Lexer {
 
 	/**
 	 * @param from where to start: the start of the text, or behind a
-	 *             ";" or "}" that is not in a directive line
+	 *             token that is not in a directive line and is a ";"
+	 *             or "}" or has a gap behind it
 	 * @param out  receives the tokens, with offsets from there
 	 */
 	Lexer(CharSequence text, int from, Symbols symbols, RawTokens out) {

@@ -43,6 +43,15 @@ final class CompiledTokens {
 		add(symbol, kind, -1 - bodies++, via);
 	}
 
+	/** Forgets every token from index on. */
+	void truncate(int index) {
+		size = index;
+		bodies = 0;
+		for (int i = 0; i < size; ++i) {
+			bodies = Math.max(bodies, -raw[i]);
+		}
+	}
+
 	/** Gives back the room no token uses. */
 	void trim() {
 		resize(size);
