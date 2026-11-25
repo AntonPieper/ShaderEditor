@@ -1,0 +1,19 @@
+=== 01:41:32 TalkBack on
+=== 01:41:51 touch code line 13
+=== 01:41:55 double-tap on the code
+=== 01:41:59 long-press (double-tap and hold) on the code
+=== 01:42:04 three-finger tap (actions) on the code
+=== 01:42:32 TalkBack off for setup
+=== 01:42:51 TalkBack on (2)
+=== 01:43:11 touch code, open actions (3-finger tap)
+=== 01:43:20 swipe through actions
+=== 01:43:43 close actions dialog
+=== 01:43:48 touch code + double-tap
+=== 01:43:53 double-tap and hold on the code (2nd try)
+=== 01:43:59 Done? check: touch Done area
+=== 01:44:12 TalkBack off for setup (2)
+=== 01:44:34 TalkBack on (3)
+=== 01:44:51 touch code
+=== 01:44:54 touch Done, double-tap
+=== 01:45:00 touch code after Done
+=== 01:45:15 TalkBack off
