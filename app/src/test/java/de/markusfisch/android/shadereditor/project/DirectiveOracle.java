@@ -233,7 +233,7 @@ public final class DirectiveOracle {
 		return lines;
 	}
 
-	static String sha(String text) {
+	public static String sha(String text) {
 		try {
 			byte[] digest = MessageDigest.getInstance("SHA-1").digest(
 					text.getBytes(StandardCharsets.UTF_8));

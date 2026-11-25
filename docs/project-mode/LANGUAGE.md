@@ -551,7 +551,7 @@ Five reviews of "go to definition from the tokenizer" each found new kinds of wr
 | --- | --- |
 | 0: the text as tokens | Built (9.1) |
 | 1: the directives run, every compiled token mapped to where it is written | Built (9.2) |
-| 2: the tree, ERROR and MISSING nodes, what every name means | Not built |
+| 2: the tree, ERROR and MISSING nodes, what every name means | Built (9.3) |
 | Re-reading only what an edit touches | Not built |
 
 ### 9.1 Layer 0: tokens
@@ -601,4 +601,34 @@ Raw tokens of a branch that is not compiled are marked OFF. This is the reading 
 **Checked against Mesa** with the record that `tools/directives/oracle.sh` keeps for the dimming (`directives/mesa.txt`: every program the engine compiles for the examples, the bundled shaders, the ShaderToy fixtures and the directive probes, and 600 generated texts): no line Mesa compiles has a token that is off, and no line Mesa skips has one that is on, outside what is marked UNDECIDED. Of 157,000 tokens, 99,000 are judged; the undecided ones are mostly in the generated texts, whose conditions are made to contain errors. Making the test pass found three rules that are now in the table: `__LINE__` in a condition, values beyond an int, and the names an undecided conditional defines.
 
 **Where an item of the program may end.** `Preprocessor.run` stops behind a `}` that closes the outermost brace, or a `;` outside every brace, parenthesis and bracket, when no expansion goes on. That is where the reading of 9.4 tries to end a piece; whether an item does end there is the parser's to say. While a brace is open, as in a block that is being typed, there is no such place before the end of the text.
+
+### 9.3 Layer 2: the tree, and what names mean
+
+`Parser` reads compiled tokens into `Nodes`: a kind and the tokens it covers for each, children before their parent. It is a hand-written parser of GLSL ES 1.00 and 3.00 that never stops. Where the grammar does not allow what stands there it writes an ERROR node over tokens it skips, or an empty MISSING node where a token should be, and reads on.
+
+**It recovers by facts of the language, not by guesses:**
+
+- A function cannot stand in a function. A function's head (`type name ( … ) {`) at the start of a statement means that braces are missing: every block that is open ends there.
+- A word that only starts an item outside functions (`uniform`, `varying`, `attribute`, `layout`, and in 3.00 `in`, `out` and the interpolation words) means the same.
+- Otherwise nothing is skipped for a token that is missing, and a token that fits nowhere is skipped alone. Outside functions, what starts no item is skipped up to where an item ends or must start.
+
+**It needs no table of names.** Whether a name is a type shows in the text: two names in a row are a declaration, a name before `(` is called (a function or a struct's constructor; the difference is not syntax). So the tree of an item depends on its tokens alone, which is what lets a piece of the tree be read by itself (9.4). What it does with names the parser writes down as steps, in order (`Names`): a scope opens or closes, a token declares a variable, a function, a struct or a field, a token is used as a type, a value, a call or a member of the value of an earlier step.
+
+**What a name means** follows from those steps and the rules of the language (`Meanings`): the nearest declaration around the place that stands before it; a variable is declared behind its initializer; a member is the field of the struct of its value, through variables, calls, fields, indexing and `?:`. In place of a declaration the answer can be: a name of the language; not declared; a member of a value whose type the text does not say (cannot tell); inside an ERROR node (not read). All heads of a function's name are one function.
+
+A `Piece` is one or more whole items with everything read of them: raw tokens, compiled tokens, nodes, steps. It never changes, and its offsets and indices count from its own start.
+
+**Checked against Mesa** (`tools/tree/oracle.sh`, `MeaningOracle`): in each case every declaration the tree found gets a new name, at its declaration and at every place the tree says means it, all at once; if the tree is right, Mesa compiles the renamed text to the same program. The cases are the programs the engine compiles for the examples, the bundled shaders and the ShaderToy fixtures, the directive probes, the generated texts, and the 45 probe shaders of the reviews of Go to definition (`tree/probes`).
+
+| | Recorded cases | The libretro corpus (not in the repository), GLSL ES texts |
+| --- | --- | --- |
+| Mesa compiles the text, and agrees with every name | 156 | 256 |
+| Mesa does not compile the text as it is | 486 (479 of them generated with errors on purpose) | 134 |
+| Mesa disagrees | 0 | 0 |
+| Declarations renamed, names renamed | 2,004 / 5,440 | 7,471 / 30,712 |
+| Deliberately wrong renames (one name of a class left out) that Mesa saw | 364 of 364 | 758 of 758 |
+
+A text Mesa compiles has no ERROR or MISSING node and no name without a declaration: the oracle counts either as a disagreement. `MeaningsOracleTest` checks without Mesa that the tree still reads every recorded case as it did when Mesa judged it; when a reading changes, the script has to be run again. Of the review probes, 41 agree (the three with a name across a line continuation among them) and Mesa refuses 4 (a name declared twice in one scope, a parameter without a type).
+
+**Recovery, tested as the study measured it** (`ParserTest`, on the programs above): with one function's body broken in one of five ways, no name outside that function gets another meaning (1,056 broken texts: 0, and in 1 some names lose theirs); with one token broken anywhere, heads and declarations included, 2 of 1,176 broken texts give a name outside the broken item another meaning and 5 lose some. The limit agreed for the second is 0.5 %: a broken declaration can declare something else, as it does for a compiler.
 
