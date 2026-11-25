@@ -1934,9 +1934,11 @@ public final class OpenProject {
 
 	/**
 	 * Tell done the text of every file of the folder and its folders
-	 * that is read as GLSL: its document's, else its journal's, else
-	 * the stored one, as a build reads it. Pictures are left out. Read
-	 * on the worker.
+	 * that is read as GLSL, and of every file one of these names that a
+	 * build reads, hidden or not: its document's, else its journal's,
+	 * else the stored one, as a build reads it. Pictures are left out,
+	 * and a named file that is not there, as a build fails on it; one
+	 * that cannot be read counts as not read. Read on the worker.
 	 */
 	public void folderTexts(Callback<FolderTexts> done) {
 		Map<ProjectPath, Text> snapshot = snapshot();
@@ -1950,7 +1952,9 @@ public final class OpenProject {
 			if (lone != null) {
 				paths.add(lone);
 			}
-			for (ProjectPath path : paths) {
+			int walked = paths.size();
+			for (int i = 0; i < paths.size(); ++i) {
+				ProjectPath path = paths.get(i);
 				if (!snapshot.containsKey(path) &&
 						!journaled.contains(path)) {
 					byte[] head = store.head(path, FileKind.HEAD);
@@ -1958,15 +1962,22 @@ public final class OpenProject {
 						continue;
 					}
 				}
-				String text = files.read(path) instanceof Content content
+				ProjectFiles.Read got = files.read(path);
+				String text = got instanceof Content content
 						? SourceText.decode(content.bytes())
 						: null;
 				if (text != null) {
 					Text read = Text.of(text);
 					texts.put(path, read);
-					names.put(path, ShaderLanguage.of(path.toString())
-							.named(path, read));
-				} else {
+					List<ProjectPath> named = ShaderLanguage.of(
+							path.toString()).named(path, read);
+					names.put(path, named);
+					for (ProjectPath include : named) {
+						if (!paths.contains(include)) {
+							paths.add(include);
+						}
+					}
+				} else if (i < walked || got != null) {
 					++unread;
 				}
 			}
