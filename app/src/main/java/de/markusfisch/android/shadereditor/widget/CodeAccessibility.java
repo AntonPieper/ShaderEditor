@@ -65,6 +65,18 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	// A jump made while a sheet over the view had focus: it lands when the
 	// view's window has focus again, after the service put its focus back.
 	private boolean landing;
+	// What the landing of a jump says, while the caret stays where it
+	// landed and until it is said: the code's focus coming back says it
+	// then, not the lines around the caret, and a service's focus on the
+	// code reads it first, as the code's state.
+	private String landed;
+	private int landedAt = -1;
+	// A jump to another file is under way: the code's focus coming back
+	// says nothing of the file it leaves.
+	private boolean arriving;
+	// While a jump moves the caret: a service hears where it landed, not
+	// every line between where the caret was and where it went.
+	private boolean jumping;
 
 	CodeAccessibility(CodeView view) {
 		this.view = view;
@@ -105,9 +117,29 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			}
 		}
 		String word = view.lookUpWord();
-		if (word != null) {
+		CodeView.Names names = view.names();
+		String name = word == null && names != null ? names.name() : null;
+		if (word != null || name != null) {
 			info.addAction(new AccessibilityAction(R.id.look_up, host
-					.getContext().getString(R.string.a11y_look_up, word)));
+					.getContext().getString(R.string.a11y_look_up,
+							word != null ? word : name)));
+		}
+		// The name at the caret, without a selection: what its strip
+		// and the keys offer.
+		if (name != null) {
+			Context context = host.getContext();
+			if (names.listsUses()) {
+				info.addAction(new AccessibilityAction(R.id.name_uses,
+						context.getString(R.string.a11y_uses_of, name)));
+			}
+			if (names.renames()) {
+				info.addAction(new AccessibilityAction(R.id.name_rename,
+						context.getString(R.string.a11y_rename_name, name)));
+			}
+		}
+		String back = names != null ? names.wayBack() : null;
+		if (back != null) {
+			info.addAction(new AccessibilityAction(R.id.way_back, back));
 		}
 		// The strip offers it only while the caret is in the path, which
 		// reading by lines or words seldom leaves it in.
@@ -127,7 +159,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		String text = text(all, window);
 		info.setText(text.isEmpty() ? null : text);
 		AccessibilityNodeInfoCompat.wrap(info).setStateDescription(
-				host.getContext().getString(error != null
+				landed != null && landedAt == selection.head() ? landed
+						: host.getContext().getString(error != null
 								? R.string.a11y_code_line_error
 								: R.string.a11y_code_line,
 						all.lineOf(selection.head()) + 1, all.lineCount()));
@@ -241,6 +274,14 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		if (document == null) {
 			return;
 		}
+		if ((landed != null || arriving) &&
+				event.getEventType() == AccessibilityEvent.TYPE_VIEW_FOCUSED) {
+			if (landed != null) {
+				event.getText().add(landed);
+				landed = null;
+			}
+			return;
+		}
 		Document.Selection selection = document.selection();
 		Text all = document.text();
 		String text = event.getEventType() ==
@@ -338,6 +379,9 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			return;
 		}
 		reported = selection;
+		if (jumping) {
+			return;
+		}
 		// A service reads the selection of a view with neither focus only
 		// when it gets to the event, and by then a reload may have given
 		// the code the focus: all the text between is read out.
@@ -354,7 +398,23 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		if (document == null) {
 			return super.performAccessibilityAction(host, action, arguments);
 		} else if (action == R.id.look_up) {
-			return view.lookUpSelection();
+			CodeView.Names names = view.names();
+			if (!document.selection().isEmpty() || names == null ||
+					names.name() == null) {
+				return view.lookUpSelection();
+			}
+			names.lookUp();
+			return true;
+		} else if (action == R.id.name_uses || action == R.id.name_rename) {
+			CodeView.Names names = view.names();
+			if (names == null || names.name() == null) {
+				return false;
+			}
+			names.uses(action == R.id.name_rename);
+			return true;
+		} else if (action == R.id.way_back) {
+			CodeView.Names names = view.names();
+			return names != null && names.back();
 		} else if (action == R.id.open_link) {
 			return view.openCaretLineLink();
 		}
@@ -588,13 +648,39 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	// After a jump, a service's focus goes to the code, from where it would
 	// be after the sheet or menu that asked for the jump.
 	void jumped() {
-		if (!isEnabled()) {
+		jumping = false;
+		arriving = false;
+		Document document = view.getDocument();
+		if (!isEnabled() || document == null) {
 			return;
 		}
+		Text text = document.text();
+		landedAt = document.selection().head();
+		int line = text.lineOf(landedAt);
+		String content = text.line(line);
+		landed = content.trim().isEmpty()
+				? view.getContext().getString(R.string.a11y_landed_blank,
+				line + 1)
+				: view.getContext().getString(R.string.a11y_landed, line + 1,
+				content);
 		if (view.hasWindowFocus()) {
 			land();
 		} else {
 			landing = true;
+		}
+	}
+
+	// A jump to another file is asked for; jumped() follows once there.
+	void leaving() {
+		arriving = isEnabled();
+	}
+
+	// A jump is about to move the caret; jumped() follows, or the next
+	// frame ends it.
+	void jumping() {
+		if (isEnabled() && !jumping) {
+			jumping = true;
+			view.post(() -> jumping = false);
 		}
 	}
 
@@ -605,21 +691,22 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		}
 	}
 
+	// The service's focus coming to the code reads the landing first; to
+	// a code that has it already the landing is announced, unless the
+	// code's focus coming back said it.
 	private void land() {
-		Document document = view.getDocument();
-		if (document == null || !view.isShown()) {
+		if (!view.isShown()) {
 			return;
 		}
+		AccessibilityNodeInfo info = view.createAccessibilityNodeInfo();
+		boolean had = info.isAccessibilityFocused();
+		info.recycle();
 		view.performAccessibilityAction(
 				AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
-		Text text = document.text();
-		int line = text.lineOf(document.selection().head());
-		String content = text.line(line);
-		view.announceForAccessibility(content.trim().isEmpty()
-				? view.getContext().getString(R.string.a11y_landed_blank,
-				line + 1)
-				: view.getContext().getString(R.string.a11y_landed, line + 1,
-				content));
+		if (had && landed != null) {
+			view.announceForAccessibility(landed);
+			landed = null;
+		}
 	}
 
 	private boolean isEnabled() {

@@ -131,6 +131,9 @@ final class ProjectLinks implements FileLinks {
 	private Runnable changed;
 	@Nullable
 	private HostCompletion.Named pointed;
+	// Runs before going back moves the caret, or null.
+	@Nullable
+	private Runnable jumping;
 	// The way back of the project shown, or null.
 	@Nullable
 	private WayBack way;
@@ -450,6 +453,23 @@ final class ProjectLinks implements FileLinks {
 				place.then != null ? 0 : line, this::back);
 	}
 
+	@Nullable
+	@Override
+	public String wayBack() {
+		WayBack.Place place = top();
+		if (place == null) {
+			return null;
+		} else if (place.then != null) {
+			return context.getString(R.string.a11y_back_to,
+					context.getString(R.string.uses));
+		}
+		int line = place.document.text().lineOf(place.offset) + 1;
+		return place.path.equals(file)
+				? context.getString(R.string.a11y_back_to_line, line)
+				: context.getString(R.string.a11y_back_to_file,
+				place.path.getFileName(), line);
+	}
+
 	// The place on top of the way back, or null; a place whose document
 	// is no longer the one of its file is dropped.
 	@Nullable
@@ -474,6 +494,11 @@ final class ProjectLinks implements FileLinks {
 	}
 
 	@Override
+	public void setJumping(@Nullable Runnable jumping) {
+		this.jumping = jumping;
+	}
+
+	@Override
 	public boolean back() {
 		WayBack.Place place = top();
 		if (place == null) {
@@ -481,6 +506,9 @@ final class ProjectLinks implements FileLinks {
 		}
 		way.pop();
 		// The caret goes where it was; the jump keeps it in its line.
+		if (jumping != null) {
+			jumping.run();
+		}
 		place.document.select(place.offset, place.offset);
 		host.open(place.path, place.document.text().lineOf(place.offset) +
 				1);

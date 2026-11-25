@@ -493,6 +493,7 @@
 	<string name="a11y_takes_nothing">%1$s takes nothing</string>
 	<string name="a11y_uses_of">Uses of %1$s</string>
 	<string name="docs_name">Name</string>
+	<string name="a11y_rename_name">Rename %1$s</string>
 	<string name="a11y_and">%1$s and %2$s</string>
 	<string name="docs_builtin_uniform">Built-in uniform</string>
 	<string name="docs_not_declared">Not declared in this file yet, so the shader cannot read it.</string>
