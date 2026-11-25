@@ -155,7 +155,9 @@ final class Parser {
 	}
 
 	private void close(int open) {
-		names.a[open] = names.add(Names.CLOSE, 0, 0);
+		// First the step, which may move the steps to a larger array.
+		int close = names.add(Names.CLOSE, 0, 0);
+		names.a[open] = close;
 	}
 
 	// Items.

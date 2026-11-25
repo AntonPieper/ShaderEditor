@@ -153,6 +153,9 @@ public class ParserTest {
 		}
 		assertCovered(new Whole("(".repeat(5000) + "{".repeat(5000) + "-".repeat(5000)));
 		assertCovered(new Whole("void f(){" + "if(a)".repeat(5000) + "x;}"));
+		for (int statements = 0; statements < 300; ++statements) {
+			assertCovered(new Whole("void f(){" + "{x;}".repeat(statements) + "}"));
+		}
 	}
 
 	// One function's body broken on purpose, as in the study: no name
@@ -250,6 +253,14 @@ public class ParserTest {
 		for (int i = 0; i < whole.piece.nodes.size; ++i) {
 			assertTrue(whole.text, whole.piece.nodes.first[i] <=
 					whole.piece.nodes.end[i]);
+		}
+		// Every scope that opens names the step that closes it.
+		Names names = whole.piece.names;
+		for (int i = 0; i < names.size; ++i) {
+			if (names.step[i] == Names.OPEN) {
+				assertTrue(whole.text, names.a[i] > i &&
+						names.step[names.a[i]] == Names.CLOSE);
+			}
 		}
 	}
 
