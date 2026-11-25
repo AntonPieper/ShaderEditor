@@ -84,6 +84,14 @@ public final class AccessibleText {
 				: new Window(from, to);
 	}
 
+	// Whether start to end, in the offsets of window, is all of a window that
+	// is not all of the text. A service selects all of the text it was given
+	// to select all, and that text is the window.
+	public static boolean all(Text text, Window window, int start, int end) {
+		return start == 0 && end == window.length() &&
+				window.length() < text.length();
+	}
+
 	public static Edit edit(Text before, Text after, Document.Change change) {
 		int from = change.start();
 		Window window = window(before, from, from);

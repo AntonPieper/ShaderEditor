@@ -490,9 +490,9 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	}
 
 	// Selects as TextView does: in the window of the node, start before
-	// end, the selection shown with its toolbar. A service's select all, or a
-	// move to the start or end, therefore reaches the window's ends, not the
-	// text's: nothing tells those apart from the same range chosen there.
+	// end, the selection shown with its toolbar. All of the window is select
+	// all. A move to the start or end reaches the window's ends, not the
+	// text's: nothing tells those apart from a move by lines there.
 	private boolean setSelection(Document document, Bundle arguments) {
 		int start = arguments != null ? arguments.getInt(
 				AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT,
@@ -513,9 +513,21 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 		if (start < 0 || start > end || end > window.length()) {
 			return false;
 		}
+		if (AccessibleText.all(document.text(), window, start, end)) {
+			return view.contextMenuAction(android.R.id.selectAll);
+		}
 		view.selectForAccessibility(window.start() + start,
 				window.start() + end, true);
 		return true;
+	}
+
+	// TalkBack selects all through the input connection from Android 13 on,
+	// with the offsets of the node's text, which a keyboard never has.
+	boolean selectsAll(int start, int end) {
+		Document document = view.getDocument();
+		return document != null && exploresByTouch() && AccessibleText.all(
+				document.text(), reading(document.text(),
+						document.selection()), start, end);
 	}
 
 	private boolean textAction(View host, int id) {

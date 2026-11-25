@@ -1940,6 +1940,10 @@ public class CodeView extends View {
 	}
 
 	// With its handles and toolbar if shown; scrolls the head into view.
+	boolean selectsAll(int start, int end) {
+		return accessibility.selectsAll(start, end);
+	}
+
 	void selectForAccessibility(int anchor, int head, boolean shown) {
 		toolbar.close();
 		select(anchor, head);
