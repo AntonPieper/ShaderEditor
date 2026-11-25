@@ -542,3 +542,35 @@ Comments and strings are not touched. Before the first change every file's revis
 | Look up for one's own names | Built, in project mode: the declaration, its comment, and the way to its line or its file |
 | The call in the strip | Built, in project mode: the form chosen by the number of arguments; by their types with half 2 |
 | Half 2, usages, rename | Not built |
+
+## 9. The syntax tree (2026-11-25)
+
+Five reviews of "go to definition from the tokenizer" each found new kinds of wrong answers, and all of them came from reading text the compiler reads differently: through a macro, behind an `#if`, across a line continuation. The owner's decision: one reading of the shader text that the features share, of the family of tree-sitter (it keeps every character, it recovers from errors with ERROR and MISSING nodes, it re-reads only what an edit touches), and one that runs the directives, since in a language with `#define` no reading of the raw text alone can say what a name means. It is built in Java in the package `tree`, in stages; nothing of the build reads it yet, and the reader of section 8 stays until the tree has taken over its jobs.
+
+| Layer | State |
+| --- | --- |
+| 0: the text as tokens | Built (9.1) |
+| 1: the directives run, every compiled token mapped to where it is written | Not built |
+| 2: the tree, ERROR and MISSING nodes, what every name means | Not built |
+| Re-reading only what an edit touches | Not built |
+
+### 9.1 Layer 0: tokens
+
+`Lexer` reads a text into `RawTokens`: kind, start, end, flags and a symbol for each, in arrays. What lies between two tokens is white space, comments and line continuations, so the text and its tokens lose nothing. A symbol (`Symbols`) is the number of a spelling: the layers above compare ints and there is no String per token.
+
+It reads as a compiler does. Each rule was checked against Mesa's `glsl_compiler`, for `#version 100` and `300 es`:
+
+- **A backslash that ends its line joins the next line before anything else is read.** `k\`⏎`2` is the name `k2`, `+\`⏎`=` is `+=`, `/\`⏎`/` starts a comment, and a `#` at the start of a line that continues code starts no directive. The token covers the continuation; its symbol is the joined spelling. A line feed and a carriage return in either order end one line, and a backslash at the very end of the text ends a line too, since the engine compiles the text with a line end behind it.
+- **A comment is white space, and a block comment does not end a directive's line**: in `#define A /* c`⏎` */ 1.0` the macro is `1.0`.
+- **The tokens are those of the language**: `1.0foo` is `1.0f` and `oo`, `09` is `0` and `9`, `0x` is `0` and `x`, `1e+` is `1`, `e`, `+`.
+- **But the preprocessor takes a number and what follows it without a gap for one number, and expands nothing in it.** With `const int A = 2;` and `#define A 9`, `0x1e+A` is 32 and `0x1e +A` is 39. So a name that starts inside such a number has its own kind, `GLUED_NAME`: a name to the parser, never a macro to the preprocessor.
+- **A continuation is no space between two tokens.** `#define F\`⏎`(x) x` takes an argument and `#define F  (x) x` does not, so every token says whether white space or a comment stands before it (`SPACED`).
+- **`##` is one operator, also first on its line**, and starts no directive.
+- **What a compiler cannot read is white space**, as in the text the engine compiles (`CompiledSource`): `0xA１` with a full-width digit is `0xA`. Behind a backslash that ends a line of code such characters are left out and the line goes on, as `CompiledSource` does it; in a comment they are a space there, and the comment ends with its line.
+- **A quote starts a path only in `#include` and `#pragma se`.** Anywhere else it is a character no token starts with: in `#define Q "/*` a comment starts behind it, as it does for the compiler.
+
+**Where the editor's tokenizer reads differently.** `GlslLexer` (and with it `PreprocessorScan`) does not join a name or an operator across a continuation, takes a `#` behind a continued line of code for a directive, ends a directive at a line end inside a block comment, so for it the `1.0` above is code, and takes a quote in any directive for the start of a path. Nobody writes the first two; the other two are differences between what the build scans and what the compiler does, noted here and not changed by this layer. On the bundled shaders and the examples the two tokenizers agree on every gap, name, number and directive line (`LexerTest`), which keeps them from drifting until the tree's tokens replace the editor's.
+
+**What makes re-reading possible is tested as two properties of the lexer:** the tokens read so far depend on the text only as far as it was looked at (`reach`; a `;` or `}` looks no further than itself), and reading may start behind any `;` or `}` that is not in a directive line and gives the same tokens from there.
+
+**A symbol table never forgets a spelling**, and every prefix of a name being typed is one. `Symbols.characters` counts what it holds; the reading that keeps a table over many edits (9.4) starts a fresh one when that has grown far beyond the text.
