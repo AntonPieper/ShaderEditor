@@ -89,7 +89,7 @@ public final class TunedPlace {
 	@Nullable
 	public static TunedPlace at(@NonNull CharSequence text,
 			@NonNull Tokens tokens, int offset) {
-		int index = numberAt(tokens, offset);
+		int index = numberAt(text, tokens, offset);
 		if (index < 0) {
 			return null;
 		}
@@ -111,15 +111,6 @@ public final class TunedPlace {
 		place.lineStart = lineStart;
 		place.line = text.subSequence(lineStart, lineEnd).toString();
 		return place;
-	}
-
-	/**
-	 * Return whether offset of a line is in a number or right after
-	 * one, by the line's own tokens: what the strip asks at the caret,
-	 * which costs no more than the line.
-	 */
-	public static boolean isNumberAt(@NonNull Tokens tokens, int offset) {
-		return numberAt(tokens, offset) > -1;
 	}
 
 	/** The literal with the minus that belongs to it, as written. */
@@ -186,15 +177,58 @@ public final class TunedPlace {
 		return c == '\n' || c == '\r';
 	}
 
-	private static int numberAt(@NonNull Tokens tokens, int offset) {
+	// A number of the code: not in a comment, nor on a directive line
+	// but a #define's, whose body the macro brings where it is used.
+	private static int numberAt(@NonNull CharSequence text,
+			@NonNull Tokens tokens, int offset) {
 		for (int at : new int[]{offset, offset - 1}) {
 			int index = at < 0 ? -1 : tokens.indexAt(at);
 			if (index > -1 && tokens.style(index) == Style.NUMBER &&
-					!tokens.inDirective(index)) {
+					(!tokens.inDirective(index) || defines(text, tokens, index))) {
 				return index;
 			}
 		}
 		return -1;
+	}
+
+	// Whether the directive the token at index is in is a #define.
+	private static boolean defines(@NonNull CharSequence text,
+			@NonNull Tokens tokens, int index) {
+		while (index > 0 && tokens.inDirective(index - 1) &&
+				!"#".equals(token(text, tokens, index))) {
+			--index;
+		}
+		int name = index + 1;
+		while (name < tokens.size() && tokens.style(name) == Style.COMMENT) {
+			++name;
+		}
+		return name < tokens.size() &&
+				"define".equals(token(text, tokens, name));
+	}
+
+	// Whether the token at index begins a #define's body, as the minus
+	// of #define GAIN -1.25 does.
+	private static boolean beginsBody(@NonNull CharSequence text,
+			@NonNull Tokens tokens, int index) {
+		int name = index - 1;
+		if (!tokens.inDirective(index) || name < 1) {
+			return false;
+		}
+		if (")".equals(token(text, tokens, name))) {
+			// Parameters right after the name.
+			while (name > 0 && !"(".equals(token(text, tokens, name))) {
+				--name;
+			}
+			if (name < 2 || tokens.end(name - 1) != tokens.start(name)) {
+				return false;
+			}
+			--name;
+		}
+		int define = name - 1;
+		while (define > 0 && tokens.style(define) == Style.COMMENT) {
+			--define;
+		}
+		return "define".equals(token(text, tokens, define));
 	}
 
 	@Nullable
@@ -230,7 +264,7 @@ public final class TunedPlace {
 	// Whether the minus at index is the sign of what follows it.
 	private static boolean isUnary(@NonNull CharSequence text,
 			@NonNull Tokens tokens, int index) {
-		if (index == 0) {
+		if (index == 0 || beginsBody(text, tokens, index)) {
 			return true;
 		}
 		Style style = tokens.style(index - 1);
