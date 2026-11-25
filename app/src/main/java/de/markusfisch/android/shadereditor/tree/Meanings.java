@@ -35,6 +35,15 @@ final class Meanings {
 		HashMap<Integer, Declared> fields;
 		/** A function's further heads: prototypes, definitions, other forms. */
 		List<Declared> heads;
+		/**
+		 * For a function with the name of one the language has: what
+		 * a call of the name means, {@link #orLanguage}. GLSL ES 1.00
+		 * lets a shader add forms to a function of the language, and
+		 * which form a call means its arguments say.
+		 */
+		Declared call;
+		/** Whether a call means this function or the language's own. */
+		boolean orLanguage;
 
 		Declared(byte kind, Piece piece, int token, Declared type) {
 			this.kind = kind;
@@ -53,6 +62,12 @@ final class Meanings {
 	static final Declared UNKNOWN = new Declared((byte) 0, null, -1, null);
 	/** A name inside an ERROR node. */
 	static final Declared UNREAD = new Declared((byte) 0, null, -1, null);
+	/**
+	 * A name that one scope declares twice. No text a compiler takes
+	 * does; in one with a brace missing, a local may have come to
+	 * stand beside a global, and which of them is meant cannot be told.
+	 */
+	static final Declared REDECLARED = new Declared((byte) 0, null, -1, null);
 
 	private final ArrayList<HashMap<Integer, Declared>> scopes =
 			new ArrayList<>();
@@ -122,9 +137,16 @@ final class Meanings {
 					Declared type = b < 0 ? null : types[b];
 					is = new Declared(Declared.FUNCTION, piece, a, type);
 					Declared first = scopes.get(0).get(symbol[a]);
-					if (first == null || first.kind != Declared.FUNCTION) {
+					if (first == null) {
 						is.heads = new ArrayList<>();
+						if (isBuiltin(piece.spelling(a))) {
+							is.call = new Declared(Declared.FUNCTION, piece, a,
+									UNKNOWN);
+							is.call.orLanguage = true;
+						}
 						scopes.get(0).put(symbol[a], is);
+					} else if (first.kind != Declared.FUNCTION) {
+						scopes.get(0).put(symbol[a], REDECLARED);
 					} else {
 						// Every head of a name is one function.
 						first.heads.add(is);
@@ -162,9 +184,11 @@ final class Meanings {
 					continue;
 				}
 				case Names.TYPE:
+					// Only a struct is a type.
 					is = find(symbol[a]);
-					types[i] = is != null && is.kind == Declared.STRUCT
-							? is : UNKNOWN;
+					is = is == REDECLARED || (is != null &&
+							is.kind == Declared.STRUCT) ? is : null;
+					types[i] = is == null || is == REDECLARED ? UNKNOWN : is;
 					break;
 				case Names.VALUE:
 					is = find(symbol[a]);
@@ -176,10 +200,14 @@ final class Meanings {
 					}
 					break;
 				case Names.CALL:
+					// Only a function or a struct is called: a variable
+					// of the name does not hide a function of the language.
 					is = find(symbol[a]);
-					types[i] = is == null ? UNKNOWN
-							: is.kind == Declared.FUNCTION ? is.type
-							: is.kind == Declared.STRUCT ? is : UNKNOWN;
+					is = is == REDECLARED || (is != null &&
+							is.kind != Declared.VARIABLE) ? is : null;
+					is = is != null && is.call != null ? is.call : is;
+					types[i] = is == null || is == REDECLARED ? UNKNOWN
+							: is.kind == Declared.FUNCTION ? is.type : is;
 					if (is == null && isBuiltin(piece.spelling(a))) {
 						is = LANGUAGE;
 						types[i] = null;
@@ -212,7 +240,8 @@ final class Meanings {
 	}
 
 	private Declared declare(int symbol, Declared declared) {
-		scopes.get(scopes.size() - 1).put(symbol, declared);
+		HashMap<Integer, Declared> scope = scopes.get(scopes.size() - 1);
+		scope.put(symbol, scope.containsKey(symbol) ? REDECLARED : declared);
 		return declared;
 	}
 

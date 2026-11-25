@@ -612,9 +612,15 @@ Raw tokens of a branch that is not compiled are marked OFF. This is the reading 
 - A word that only starts an item outside functions (`uniform`, `varying`, `attribute`, `layout`, and in 3.00 `in`, `out` and the interpolation words) means the same.
 - Otherwise nothing is skipped for a token that is missing, and a token that fits nowhere is skipped alone. Outside functions, what starts no item is skipped up to where an item ends or must start.
 
-**It needs no table of names.** Whether a name is a type shows in the text: two names in a row are a declaration, a name before `(` is called (a function or a struct's constructor; the difference is not syntax). So the tree of an item depends on its tokens alone, which is what lets a piece of the tree be read by itself (9.4). What it does with names the parser writes down as steps, in order (`Names`): a scope opens or closes, a token declares a variable, a function, a struct or a field, a token is used as a type, a value, a call or a member of the value of an earlier step.
+**It needs no table of names.** Whether a name is a type shows in the text: two names in a row are a declaration, a name before `(` is called (a function or a struct's constructor; the difference is not syntax), and outside functions a name before `;` is a type (`S;` declares nothing, and a compiler takes it). So the tree of an item depends on its tokens alone, unless it ends by recovery: then it has also looked at tokens behind its end, as at the head of the function it stops before. That is what lets a piece of the tree be read by itself (9.4), which counts what was looked at.
 
-**What a name means** follows from those steps and the rules of the language (`Meanings`): the nearest declaration around the place that stands before it; a variable is declared behind its initializer; a member is the field of the struct of its value, through variables, calls, fields, indexing and `?:`. In place of a declaration the answer can be: a name of the language; not declared; a member of a value whose type the text does not say (cannot tell); inside an ERROR node (not read). All heads of a function's name are one function.
+Statements, expressions and structs nest at most 100 deep; what is deeper is skipped token by token. A whole shader of calls in calls is read on a stack of 256 KB. What it does with names the parser writes down as steps, in order (`Names`): a scope opens or closes, a token declares a variable, a function, a struct or a field, a token is used as a type, a value, a call or a member of the value of an earlier step.
+
+**What a name means** follows from those steps and the rules of the language (`Meanings`): the nearest declaration around the place that stands before it; a variable is declared behind its initializer; a member is the field of the struct of its value, through variables, calls, fields, indexing and `?:`. Only a function or a struct is called, and only a struct is a type: a variable named `step` does not take the calls of `step(…)`. All heads of a function's name are one function.
+
+In place of a declaration the answer can be: a name of the language; not declared; a member of a value whose type the text does not say (cannot tell); inside an ERROR node (not read); or **declared twice in one scope** (cannot tell). No text a compiler takes declares a name twice in one scope. In a text with a brace missing a function's body may end early, so that its locals stand outside it, beside a global of the same name; then neither the first nor the second can be said to be meant, and saying one would be a wrong answer.
+
+**A function with the name of one the language has adds a form to it** (GLSL ES 1.00 allows `float max(vec3 v)`; 3.00 refuses it). Which form a call means, its arguments say, and the tree knows no types: such a call means "the shader's function or the language's" (`Declared.orLanguage`).
 
 A `Piece` is one or more whole items with everything read of them: raw tokens, compiled tokens, nodes, steps. It never changes, and its offsets and indices count from its own start.
 
@@ -622,13 +628,15 @@ A `Piece` is one or more whole items with everything read of them: raw tokens, c
 
 | | Recorded cases | The libretro corpus (not in the repository), GLSL ES texts |
 | --- | --- | --- |
-| Mesa compiles the text, and agrees with every name | 156 | 256 |
-| Mesa does not compile the text as it is | 486 (479 of them generated with errors on purpose) | 134 |
+| Mesa compiles the text, and agrees with every name | 174 | 256 |
+| Mesa does not compile the text as it is | 494 (479 of them generated with errors on purpose) | 134 |
 | Mesa disagrees | 0 | 0 |
-| Declarations renamed, names renamed | 2,004 / 5,440 | 7,471 / 30,712 |
-| Deliberately wrong renames (one name of a class left out) that Mesa saw | 364 of 364 | 758 of 758 |
+| Declarations renamed, names renamed | 2,190 / 5,963 | 7,569 / 31,100 |
+| Deliberately wrong renames (one name of a class left out) that Mesa saw | 415 of 415 | 758 of 758 |
 
-A text Mesa compiles has no ERROR or MISSING node and no name without a declaration: the oracle counts either as a disagreement. `MeaningsOracleTest` checks without Mesa that the tree still reads every recorded case as it did when Mesa judged it; when a reading changes, the script has to be run again. Of the review probes, 41 agree (the three with a name across a line continuation among them) and Mesa refuses 4 (a name declared twice in one scope, a parameter without a type).
+A text Mesa compiles has no ERROR or MISSING node and no name without a declaration: the oracle counts either as a disagreement. `MeaningsOracleTest` checks without Mesa that the tree still reads every recorded case as it did when Mesa judged it; when a reading changes, the script has to be run again. Of the 45 probes of the reviews of Go to definition, 41 agree (the three with a name across a line continuation among them) and Mesa refuses 4 (a name declared twice in one scope, a parameter without a type). The 26 shaders of the review of this layer are cases too: 18 agree, among them the three that add a form to `max` and `pow`, and Mesa refuses 8. A class is left as it is only where one of its places is not to be renamed: a writing in a macro's text that means the language in one expansion, or a call that may mean the language's function.
 
-**Recovery, tested as the study measured it** (`ParserTest`, on the programs above): with one function's body broken in one of five ways, no name outside that function gets another meaning (1,056 broken texts: 0, and in 1 some names lose theirs); with one token broken anywhere, heads and declarations included, 2 of 1,176 broken texts give a name outside the broken item another meaning and 5 lose some. The limit agreed for the second is 0.5 %: a broken declaration can declare something else, as it does for a compiler.
+**Recovery, tested as the study measured it** (`ParserTest`, on the programs above; a name of the language counts as a meaning): with one function's body broken in one of five ways, no name outside that function gets another meaning (1,056 broken texts: 0, and in 1 some names lose theirs). The generator does not make the shape that the review of this layer found, a brace deleted or doubled before a local with a global's name, a local struct with a global struct's name, or a local named `step`; those three are a test of their own, and the rule about names declared twice is what answers them.
+
+With one token broken anywhere, heads and declarations included, 2 of 1,176 broken texts give a name outside the broken item another meaning and 5 lose some; the limit agreed is 0.5 %. In both of the 2 a stray `(` or `{` in a declaration makes the ERROR run on over the prototype of a function, up to the next function's head: the calls then mean the function by its definition instead of its prototype, which is the same function.
 

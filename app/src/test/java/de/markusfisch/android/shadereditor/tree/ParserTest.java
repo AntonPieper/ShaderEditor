@@ -40,13 +40,13 @@ public class ParserTest {
 
 	@Test
 	public void namesMeanTheNearestDeclarationBeforeThem() {
-		assertEquals("x 4 -> 4\nf 5 -> 5\nx 5 -> 5\nx 6 -> 6\nx 6 -> 5\n" +
-						"x 7 -> 7\nx 7 -> 6\nx 8 -> 6\nmain 10 -> 10\ncolor 10 -> 3\n" +
+		assertEquals("x 4 -> 4\nf 5 -> 5\nx 5 -> 5\ny 6 -> 6\nx 6 -> 5\n" +
+						"x 7 -> 7\nx 7 -> 5\nx 8 -> 5\nmain 10 -> 10\ncolor 10 -> 3\n" +
 						"f 10 -> 5\nx 10 -> 4\n",
 				new Whole(HEAD + "float x = 1.0;\nfloat f(float x) {\n" +
-						"\tfloat y, x = x;\n\t{ float x = x; }\n\treturn x;\n}\n" +
+						"\tfloat y = x;\n\t{ float x = x; }\n\treturn x;\n}\n" +
 						"void main() { color = vec4(f(x)); }\n").meanings()
-						.replace("y 6 -> 6\n", "").replace("color 3 -> 3\n", ""));
+						.replace("color 3 -> 3\n", ""));
 	}
 
 	@Test
@@ -63,6 +63,44 @@ public class ParserTest {
 		assertTrue(meanings, meanings.contains("make 10 -> 6\nx 10 -> 5\n" +
 				"B 10 -> 5\nA 10 -> 4\na 10 -> 5\nx 10 -> 4\n"));
 		assertEquals(0, whole.piece.errors + whole.piece.missing);
+	}
+
+	// GLSL ES 1.00 lets a shader add a form to a function of the
+	// language; Mesa compiles the calls with two arguments below as the
+	// language's max. Which form a call means, its arguments say.
+	@Test
+	public void aFunctionNamedLikeOneOfTheLanguageAddsAForm() {
+		String meanings = new Whole("precision mediump float;\n" +
+				"float max(vec3 v) { return max(v.x, max(v.y, v.z)); }\n" +
+				"void main() { gl_FragColor = vec4(max(vec3(0.1)), max(0.1, 0.3)); }\n")
+				.meanings();
+		assertTrue(meanings, meanings.startsWith("max 2 -> 2\nv 2 -> 2\n" +
+				"max 2 -> 2 or language\n"));
+		assertTrue(meanings, meanings.endsWith("max 3 -> 2 or language\n" +
+				"max 3 -> 2 or language\n"));
+	}
+
+	// No text a compiler takes declares a name twice in one scope.
+	@Test
+	public void aNameDeclaredTwiceInOneScopeCannotBeTold() {
+		String meanings = new Whole(HEAD + "float y = 2.0;\nfloat y = 3.0;\n" +
+				"float f(float y) { return y; }\n" +
+				"void main() { float z = y; float z = 1.0; color = vec4(z); }\n")
+				.meanings();
+		assertTrue(meanings, meanings.contains("y 6 -> 6\ny 6 -> 6\n"));
+		assertTrue(meanings, meanings.contains("y 7 -> redeclared\n"));
+		assertTrue(meanings, meanings.endsWith("z 7 -> redeclared\n"));
+	}
+
+	// Only a function or a struct is called, and only a struct is a type.
+	@Test
+	public void aVariableIsNeitherCalledNorAType() {
+		String meanings = new Whole(HEAD + "struct S { float a; };\n" +
+				"void main() {\n\tfloat step = 0.1;\n\tfloat S = 0.2;\n" +
+				"\tS s;\n\tcolor = vec4(step(0.5, S) + step);\n}\n").meanings();
+		assertTrue(meanings, meanings.contains("S 8 -> undeclared\n"));
+		assertTrue(meanings, meanings.contains("step 9 -> language\nS 9 -> 7\n" +
+				"step 9 -> 6\n"));
 	}
 
 	@Test
@@ -111,9 +149,12 @@ public class ParserTest {
 		assertEquals("FUNCTION ERROR", kinds(whole, 2));
 		assertTrue(whole.piece.errors > 0 && whole.piece.missing > 0);
 		assertTrue(whole.meanings().endsWith("x 11 -> unread\n"));
+		// A declaration of nothing is one all the same.
+		whole = new Whole("struct S { float a; };\nS;\nvoid f() { float; }\n");
+		assertEquals(0, whole.piece.errors + whole.piece.missing);
 		whole = new Whole("foo bar baz;\nvoid f( { }\nstruct { float a float b; } s;\n" +
 				"float g(float) { return 1.0 }\n");
-		assertEquals("DECLARATION ERROR FUNCTION DECLARATION FUNCTION",
+		assertEquals("DECLARATION DECLARATION FUNCTION DECLARATION FUNCTION",
 				kinds(whole, 0));
 	}
 
@@ -153,9 +194,90 @@ public class ParserTest {
 		}
 		assertCovered(new Whole("(".repeat(5000) + "{".repeat(5000) + "-".repeat(5000)));
 		assertCovered(new Whole("void f(){" + "if(a)".repeat(5000) + "x;}"));
+		// What looks for a function's head looks a bounded way.
+		long start = System.nanoTime();
+		assertCovered(new Whole("x ( a b ".repeat(60000)));
+		assertTrue(System.nanoTime() - start < 2_000_000_000L);
 		for (int statements = 0; statements < 300; ++statements) {
 			assertCovered(new Whole("void f(){" + "{x;}".repeat(statements) + "}"));
 		}
+	}
+
+	// Whatever nests in a function's body, on a small stack.
+	@Test
+	public void deepNestingEndsOnASmallStack() throws InterruptedException {
+		Throwable[] thrown = new Throwable[1];
+		Thread thread = new Thread(null, () -> {
+			try {
+				for (String[] nest : new String[][]{{"f(", ")"}, {"vec2(", ")"},
+						{"a[", "]"}, {"min(a, ", ")"}, {"a ? 1 : ", ""}, {"a = ", ""},
+						{"(", ")"}, {"-", ""}, {"a[a[", "]]"}}) {
+					assertCovered(new Whole("void main() { x = " +
+							nest[0].repeat(10000) + "a" + nest[1].repeat(10000) + "; }"));
+				}
+				assertCovered(new Whole("struct S { ".repeat(10000) + "float a;" +
+						" } s;".repeat(10000)));
+				assertCovered(new Whole("void main() {" + "{ if (a) ".repeat(10000) +
+						"x;" + "}".repeat(10000) + "}"));
+				assertCovered(new Whole("void main() { float a[" + "a[".repeat(10000) +
+						"1" + "]".repeat(10000) + "]; }"));
+			} catch (Throwable t) {
+				thrown[0] = t;
+			}
+		}, "small stack", 256 * 1024);
+		thread.start();
+		thread.join();
+		if (thrown[0] != null) {
+			throw new AssertionError(thrown[0]);
+		}
+	}
+
+	// A brace deleted or doubled in a body ends its function early, and
+	// what follows in the body stands outside functions. A local of it
+	// that then stands beside a global of its name, or with the name
+	// of a function of the language, must not take over later uses.
+	@Test
+	public void localsOfABodyThatEndsEarlyTakeOverNoName() {
+		String[][] cases = {
+				{"float y = 2.0;\nfloat f(float x) {\n\tif (x > 0.0) { x = -x; }\n" +
+						"\tfloat y = x * 3.0;\n\treturn y;\n}\n" +
+						"void main() { color = vec4(f(1.0) + y); }\n", "y); }"},
+				{"struct S { float a; };\nfloat f(float x) {\n" +
+						"\tif (x > 0.0) { x = -x; }\n\tstruct S { vec2 b; };\n" +
+						"\tS s = S(vec2(x));\n\treturn s.b.x;\n}\n" +
+						"void main() { S s = S(1.0); color = vec4(f(1.0) + s.a); }\n",
+						"S s = S(1.0)"},
+				{"float march(vec3 ro) {\n\tfloat t = 0.0;\n" +
+						"\tfor (int i = 0; i < 64; ++i) { t += 0.1; }\n" +
+						"\tfloat step = 0.01;\n\treturn t + step;\n}\n" +
+						"void main() { color = vec4(step(0.5, march(vec3(0.0)))); }\n",
+						"step(0.5"}};
+		for (String[] c : cases) {
+			String valid = HEAD + c[0];
+			int brace = valid.indexOf('{', valid.indexOf("\n\t"));
+			int close = valid.indexOf('}', brace);
+			for (String broken : new String[]{
+					valid.substring(0, brace) + valid.substring(brace + 1),
+					valid.substring(0, close) + "}" + valid.substring(close)}) {
+				String was = meaning(new Whole(valid), valid.lastIndexOf(c[1]));
+				String is = meaning(new Whole(broken), broken.lastIndexOf(c[1]));
+				assertTrue(broken + was + " / " + is, is.equals(was) ||
+						is.equals("redeclared") || is.equals("undeclared"));
+			}
+		}
+	}
+
+	// What the name written at offset means: the line of its
+	// declaration, or what stands in place of one.
+	private static String meaning(Whole whole, int offset) {
+		for (String line : whole.meanings().split("\n")) {
+			String[] parts = line.split(" ", 4);
+			if (parts.length > 3 && whole.text.startsWith(parts[0], offset) &&
+					Integer.parseInt(parts[1]) == whole.line(offset)) {
+				return parts[3];
+			}
+		}
+		return "";
 	}
 
 	// One function's body broken on purpose, as in the study: no name
@@ -216,7 +338,11 @@ public class ParserTest {
 					if (was == null || was.equals("in")) {
 						continue;
 					}
-					lost |= meaning.getValue().equals("?");
+					// A member of a value whose declaration is what was
+					// broken is of no type any more; that is about the
+					// damage too.
+					lost |= meaning.getValue().equals("?") &&
+							!was.equals("language");
 					wrong |= !meaning.getValue().equals("?") &&
 							!meaning.getValue().equals(was);
 				}
@@ -348,11 +474,13 @@ public class ParserTest {
 		for (int i = 0; i < whole.means.length; ++i) {
 			Meanings.Declared d = whole.means[i];
 			int place = whole.place(i);
-			if (d == null || d == Meanings.LANGUAGE ||
-					(place >= start && place < end)) {
+			if (d == null || (place >= start && place < end)) {
 				continue;
 			}
-			String means = d.piece == null && d.kind == 0 ? "?" : d.piece == null
+			// A name of the language counts too: it must not come to
+			// mean a declaration.
+			String means = d == Meanings.LANGUAGE ? "language"
+					: d.piece == null && d.kind == 0 ? "?" : d.piece == null
 					? "-" : whole.at(d.token) >= start && whole.at(d.token) < end
 					? "in" : String.valueOf(shift(whole.at(d.token), from, delta));
 			String at = shift(whole.at(i), from, delta) + "/" +

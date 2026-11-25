@@ -23,10 +23,18 @@ package de.markusfisch.android.shadereditor.tree;
  * text: two names in a row are a declaration, a name before "(" is
  * called. So the tree of an item depends on its tokens alone, and
  * what the names mean is worked out from {@link Names} afterwards.
+ * An item that ends by recovery has also looked at tokens behind its
+ * end: who reads the items of a part of a text by themselves has to
+ * count those as read.
  */
 final class Parser {
 	private static final int NO_TYPE = Integer.MIN_VALUE;
-	private static final int DEPTH = 200;
+	// How deep statements, expressions and structs may nest: far more
+	// than any shader does, and little enough for a small stack.
+	private static final int DEPTH = 100;
+	// How far the head of a function is looked for. It only steers
+	// recovery.
+	private static final int HEAD = 512;
 
 	/** The items read: kind, first token and end for each. */
 	final Ints items = new Ints();
@@ -183,6 +191,7 @@ final class Parser {
 		}
 		if (qualified && name(p) && (at(1, Words.SEMICOLON) ||
 				at(1, Words.COMMA))) {
+			// Names that are declared elsewhere get a qualifier:
 			// invariant gl_Position; invariant a, b;
 			do {
 				if (name(p)) {
@@ -209,7 +218,9 @@ final class Parser {
 			node(Nodes.STRUCT, from);
 			return Nodes.STRUCT;
 		}
-		int type = type(false);
+		// Outside functions a name before ";" is a type: "S;" declares
+		// nothing, and a compiler takes it.
+		int type = type(name(p) && at(1, Words.SEMICOLON));
 		if (type == NO_TYPE) {
 			skipItem();
 			return Nodes.ERROR;
@@ -265,7 +276,8 @@ final class Parser {
 			return false;
 		}
 		int level = 0;
-		for (q += 2; ; ++q) {
+		q += 2;
+		for (int end = q + HEAD; q < end; ++q) {
 			int s = sym(q);
 			if (s == Words.LEFT_PAREN) {
 				++level;
@@ -278,6 +290,7 @@ final class Parser {
 				return false;
 			}
 		}
+		return false;
 	}
 
 	private byte function(int from, int returns) {
@@ -486,7 +499,9 @@ final class Parser {
 	// a declaration.
 	private boolean simple() {
 		int c = cls(p);
+		// "float;" declares nothing, and a compiler takes it.
 		boolean declares = (c & Words.QUALIFIER) != 0 || at(Words.STRUCT) ||
+				((c & Words.TYPE) != 0 && at(1, Words.SEMICOLON)) ||
 				(((c & Words.TYPE) != 0 || name(p)) &&
 						name(behindBrackets(p + 1)));
 		if (!declares) {
@@ -596,6 +611,11 @@ final class Parser {
 
 	// The fields between braces.
 	private void members() {
+		if (++depth > DEPTH) {
+			--depth;
+			skip(1);
+			return;
+		}
 		++p;
 		while (!ended() && !at(Words.RIGHT_BRACE) && !functionHead(p)) {
 			int from = p;
@@ -626,6 +646,7 @@ final class Parser {
 			node(Nodes.FIELD, from);
 		}
 		expect(Words.RIGHT_BRACE);
+		--depth;
 	}
 
 	private void declarators(int type) {
@@ -667,7 +688,14 @@ final class Parser {
 		return value;
 	}
 
+	// Every expression inside another comes through here: an argument,
+	// an index, an arm of "?:", what is assigned.
 	private int assignment() {
+		if (++depth > DEPTH) {
+			--depth;
+			skip(1);
+			return Names.NO_STRUCT;
+		}
 		int from = p;
 		int value = ternary();
 		if (Words.assigns(sym(p))) {
@@ -675,6 +703,7 @@ final class Parser {
 			assignment();
 			node(Nodes.ASSIGNMENT, from);
 		}
+		--depth;
 		return value;
 	}
 

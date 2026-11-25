@@ -73,8 +73,10 @@ final class Whole {
 							: d == Meanings.UNDECLARED ? "undeclared"
 							: d == Meanings.UNKNOWN ? "unknown"
 							: d == Meanings.UNREAD ? "unread"
+							: d == Meanings.REDECLARED ? "redeclared"
 							: d.piece == null ? "unnamed"
-							: String.valueOf(line(at(d.token)))).append('\n');
+							: line(at(d.token)) + (d.orLanguage ? " or language" : ""))
+					.append('\n');
 		}
 		return sb.toString();
 	}

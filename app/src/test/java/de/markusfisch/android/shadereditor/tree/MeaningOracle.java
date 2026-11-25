@@ -80,7 +80,8 @@ public final class MeaningOracle {
 			Meanings.Declared d = whole.means[i];
 			if (d != null && d != Meanings.LANGUAGE) {
 				sb.append(whole.at(i)).append(isDeclared(d)
-						? ">" + whole.at(d.token) : "?").append(' ');
+						? (d.orLanguage ? "~" : ">") + whole.at(d.token) : "?")
+						.append(' ');
 			}
 		}
 		return sb.append(whole.piece.errors).append(' ')
@@ -169,7 +170,11 @@ public final class MeaningOracle {
 		Map<Integer, Integer> ends = new HashMap<>();
 		IdentityHashMap<Meanings.Declared, Meanings.Declared> same =
 				new IdentityHashMap<>();
-		Map<String, Boolean> fixed = new HashMap<>();
+		// Places that are not renamed: one writing in a macro's text
+		// that means the language where it is compiled once and a
+		// declaration where it is compiled again; and a call that
+		// means a function of the shader or one of the language.
+		java.util.Set<Integer> fixed = new java.util.HashSet<>();
 		for (int i = 0; i < whole.means.length; ++i) {
 			Meanings.Declared d = whole.means[i];
 			String spelling = whole.piece.spelling(i);
@@ -181,15 +186,26 @@ public final class MeaningOracle {
 							whole.line(whole.at(i)) + " has no declaration, " +
 							"and Mesa compiles the text";
 				}
-				// A name of the language may share its writing in a
-				// macro's text with one that is declared.
-				fixed.put(spelling, true);
+				fixed.add(whole.at(i));
 				continue;
+			} else if (d.orLanguage) {
+				fixed.add(whole.at(i));
+				fixed.add(whole.at(d.token));
 			}
 			ends.put(whole.at(i), whole.end(i));
 			Meanings.Declared other = places.put(whole.at(i), d);
 			if (other != null && root(same, other) != root(same, d)) {
 				same.put(root(same, other), root(same, d));
+			}
+		}
+		// A class with a place that is not renamed is not renamed.
+		java.util.Set<Meanings.Declared> kept = java.util.Collections.newSetFromMap(
+				new IdentityHashMap<>());
+		for (Map.Entry<Integer, Meanings.Declared> place : places.entrySet()) {
+			Meanings.Declared d = place.getValue();
+			if (fixed.contains(place.getKey()) || fixed.contains(whole.at(
+					d.token))) {
+				kept.add(root(same, d));
 			}
 		}
 		Map<Meanings.Declared, String> names = new IdentityHashMap<>();
@@ -200,7 +216,7 @@ public final class MeaningOracle {
 			String old = whole.piece.symbols.name(whole.piece.symbols.of(
 					whole.text, place.getKey(), ends.get(place.getKey())))
 					.replaceAll("\\\\\\s+", "");
-			if (old.equals("main") || fixed.containsKey(old)) {
+			if (old.equals("main") || kept.contains(d)) {
 				continue;
 			}
 			String name = names.get(d);
