@@ -190,6 +190,14 @@ interface SourceEditor {
 	default void skipNextRun() {
 	}
 
+	/**
+	 * Return the lexer state line of the text starts in, as the editor
+	 * keeps it for its colours, or -1 when it keeps none.
+	 */
+	default int lineState(int line) {
+		return -1;
+	}
+
 	/** Return whether lookUp explains word; none does by default. */
 	default boolean hasDocs(@NonNull String word) {
 		return false;

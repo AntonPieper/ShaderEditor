@@ -4,9 +4,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import de.markusfisch.android.shadereditor.opengl.Tuning;
-import de.markusfisch.android.shadereditor.syntax.GlslLexer;
-import de.markusfisch.android.shadereditor.syntax.Style;
-import de.markusfisch.android.shadereditor.syntax.Tokens;
 
 /**
  * One number literal of GLSL code, by the tokens the editor shows: a
@@ -18,23 +15,7 @@ public record NumberLiteral(@NonNull Tuning.Type type, double value) {
 	// The largest number a uint, or an int's bits, holds.
 	private static final long MAX_BITS = 0xffffffffL;
 
-	/**
-	 * Return the number from start to end of text when that is exactly
-	 * one number token of the code, not one in a comment; else null.
-	 */
-	@Nullable
-	public static NumberLiteral at(@NonNull String text, int start, int end) {
-		if (start < 0 || end > text.length() || start >= end) {
-			return null;
-		}
-		Tokens tokens = GlslLexer.lex(text);
-		int index = tokens.indexAt(start);
-		return index > -1 && tokens.style(index) == Style.NUMBER &&
-				tokens.start(index) == start && tokens.end(index) == end
-				? parse(text.substring(start, end))
-				: null;
-	}
-
+	/** Return the number literal stands for, or null when it is none. */
 	@Nullable
 	static NumberLiteral parse(@NonNull String literal) {
 		int length = literal.length();

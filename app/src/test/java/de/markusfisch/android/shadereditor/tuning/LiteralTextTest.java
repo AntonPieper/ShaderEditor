@@ -7,6 +7,8 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 
+import de.markusfisch.android.shadereditor.opengl.Tuning;
+
 public class LiteralTextTest {
 	@Test
 	public void readsTheExactValue() {
@@ -68,6 +70,45 @@ public class LiteralTextTest {
 		assertNull(LiteralText.typed("3u", "-1"));
 		assertNull(LiteralText.typed("0.3", "abc"));
 		assertNull(LiteralText.typed("0.3", "--1"));
+	}
+
+	// Device pass: an exponent is taken as GLSL writes it, or the text
+	// is refused whole; nothing empty is a value.
+	@Test
+	public void anExponentIsWholeOrRefused() {
+		assertEquals("1e3", LiteralText.typed("0.3", "1e3"));
+		assertEquals("2.5E-2", LiteralText.typed("0.3", "2.5E-2"));
+		assertNull(LiteralText.typed("0.3", "1e99"));
+		assertNull(LiteralText.typed("0.3", "-1e39"));
+		assertNull(LiteralText.typed("3", "1e2"));
+		assertNull(LiteralText.typed("0.3", ""));
+		assertNull(LiteralText.typed("0.3", "1e"));
+	}
+
+	// Review: one reading of a number. An int is its 32-bit pattern read
+	// as signed, as the shader has it; its first step follows from that.
+	@Test
+	public void anIntIsItsSignedBitPattern() {
+		assertEquals(new BigDecimal("-1"), LiteralText.value("0xffffffff"));
+		assertEquals(new BigDecimal("4294967295"),
+				LiteralText.value("0xffffffffu"));
+		assertEquals(BigDecimal.ONE, TuningStep.first("0xffffffff",
+				BigDecimal.ONE, false));
+		assertEquals("-0x2", write("0xffffffff", "-2", "1"));
+	}
+
+	// Review: a coarser step rounds no digit of a value tried; values
+	// outside what the type holds are not typed.
+	@Test
+	public void noDigitOfAValueIsRoundedAway() {
+		assertEquals("0.34", write("0.3", "0.34", "1"));
+		assertEquals("1.25e-3", write("1e-3", "0.00125", "0.001"));
+		assertNull(LiteralText.typed("3", "2147483648"));
+		assertEquals("-2147483648", LiteralText.typed("3", "-2147483648"));
+		assertNull(LiteralText.typed("3u", "4294967296"));
+		assertEquals(new BigDecimal("2147483647"), TuningStep.move(
+				new BigDecimal("2147483640"), BigDecimal.TEN, 1,
+				Tuning.Type.INT));
 	}
 
 	private static String write(String literal, String value, String step) {
