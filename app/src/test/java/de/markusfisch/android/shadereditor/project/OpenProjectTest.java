@@ -138,6 +138,28 @@ public class OpenProjectTest {
 		assertEquals(1, read.unread());
 	}
 
+	// A hidden file the build includes is read, as the build reads it; a
+	// file an include names that is not there is no file left unread,
+	// one that is too large to read is.
+	@Test
+	public void aFolderReadTakesTheHiddenFilesABuildIncludes()
+			throws IOException {
+		write("main.frag", "#include \".defs.glsl\"\n#include \"gone.glsl\"\n");
+		write(".defs.glsl", "#include \".more.glsl\"\nfloat g;\n");
+		write(".more.glsl", "float h;\n");
+		write(".unnamed.glsl", "float u;\n");
+		OpenProject project = open();
+		OpenProject.FolderTexts read = await(project::folderTexts);
+		assertEquals(Set.of(path("main.frag"), path(".defs.glsl"),
+				path(".more.glsl")), read.texts().keySet());
+		assertEquals(0, read.unread());
+		write(".more.glsl", "// " + "x".repeat(
+				(int) de.markusfisch.android.shadereditor.editor.Document.MAX_BYTES)
+				+ "\n");
+		read = await(open()::folderTexts);
+		assertEquals(1, read.unread());
+	}
+
 	@Test
 	public void runsMainWithoutManifestU10() throws IOException {
 		write("main.frag", SHADER);
