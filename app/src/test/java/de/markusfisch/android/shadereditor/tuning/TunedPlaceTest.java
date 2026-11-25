@@ -164,4 +164,16 @@ public class TunedPlaceTest {
 		assertNotNull(place);
 		assertEquals(new BigDecimal("-2147483648"), place.value);
 	}
+
+	// Device pass: a number first on its line after "(" stands right
+	// after it on the statement line, as the numbers after it do.
+	@Test
+	public void noSpaceAfterABracketBeforeTheNumber() {
+		String text = "vec3 tint = vec3(\n\t0.20,\n\t0.60);\n";
+		int at = text.indexOf("0.20");
+		Statement statement = Statement.of(Window.around(Text.of(text), at,
+				line -> -1), at, at + 4, offset -> false);
+		assertEquals("vec3 tint = vec3(", statement.before());
+		assertEquals(", 0.60);", statement.after());
+	}
 }
