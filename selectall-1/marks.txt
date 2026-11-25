@@ -1,0 +1,29 @@
+=== 05:10:37 A TalkBack on
+=== 05:10:57 A1 3-finger tap
+=== 05:11:14 A1 double-tap Select all
+=== 05:11:29 A1 3-finger tap for Cut
+=== 05:11:46 A1 double-tap Cut
+=== 05:11:58 A1 Ctrl+Z
+=== 05:12:17 A2 start selection mode
+=== 05:12:52 A2 selection mode on
+=== 05:13:02 A2 Move cursor to end (selection mode)
+=== 05:13:33 A2 end selection mode
+=== 05:13:58 A2 selection mode on (2)
+=== 05:14:16 A2 Move cursor to beginning
+=== 05:15:08 A2 end selection mode (2)
+=== 05:15:43 TalkBack off for build B
+=== 05:17:41 B TalkBack on
+=== 05:17:51 B touch code
+=== 05:18:02 B1 Select all
+=== 05:18:26 B1 Cut
+=== 05:18:50 B1 Ctrl+Z
+=== 05:19:17 B2 selection mode on
+=== 05:19:35 B2 Move cursor to end
+=== 05:19:57 B2 end selection mode
+=== 05:20:22 B2 selection mode on (2)
+=== 05:20:41 B2 Move cursor to beginning
+=== 05:21:07 B2 end selection mode (2)
+=== 05:21:38 B2 selection mode on (3)
+=== 05:21:56 B2 Move cursor to beginning (2)
+=== 05:22:07 B2 end selection mode (3)
+=== 05:22:58 TalkBack off
