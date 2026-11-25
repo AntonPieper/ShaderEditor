@@ -33,6 +33,40 @@
 			android:textAppearance="?attr/textAppearanceBodyMedium"
 			android:textColor="?attr/colorOnSurfaceVariant" />
 
+		<!-- What can be done with a name, as peers; a column where the
+			row does not fit, see DocsSheet. -->
+		<LinearLayout
+			android:id="@+id/docs_actions"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginHorizontal="@dimen/se_margin_sheet"
+			android:layout_marginTop="12dp"
+			android:orientation="horizontal"
+			android:visibility="gone">
+
+			<Button
+				android:id="@+id/docs_go_to"
+				style="@style/Widget.ShaderEditor.Button.TonalButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginEnd="8dp" />
+
+			<Button
+				android:id="@+id/docs_uses"
+				style="@style/Widget.ShaderEditor.Button.TonalButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginEnd="8dp"
+				android:text="@string/uses" />
+
+			<Button
+				android:id="@+id/docs_rename"
+				style="@style/Widget.ShaderEditor.Button.TonalButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/nav_rename" />
+		</LinearLayout>
+
 		<TextView
 			android:id="@+id/docs_text"
 			android:layout_width="match_parent"
@@ -68,30 +102,6 @@
 			android:id="@+id/docs_example"
 			style="@style/DocsCode"
 			android:layout_marginTop="12dp" />
-
-		<LinearLayout
-			android:id="@+id/docs_links"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="end"
-			android:layout_marginHorizontal="@dimen/se_margin_sheet"
-			android:layout_marginTop="@dimen/se_margin_sheet"
-			android:orientation="horizontal">
-
-			<Button
-				android:id="@+id/docs_uses"
-				style="?attr/borderlessButtonStyle"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:text="@string/uses"
-				android:visibility="gone" />
-
-			<Button
-				android:id="@+id/docs_link"
-				style="?attr/borderlessButtonStyle"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content" />
-		</LinearLayout>
 
 		<Button
 			android:id="@+id/docs_action"
