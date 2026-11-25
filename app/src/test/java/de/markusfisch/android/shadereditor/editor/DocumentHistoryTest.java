@@ -533,6 +533,37 @@ public class DocumentHistoryTest {
 		assertFalse(restored.canUndo());
 	}
 
+	@Test
+	public void aHistoryTakenInABatchHoldsTheOpenStep() {
+		Document document = document("abc\n");
+		document.replace(3, 3, Text.of("XYZ"));
+		now[0] += 5000;
+		document.beginBatch();
+		document.type(0, 0, Text.of("123"));
+		Document.History history = document.history();
+		String text = document.text().toString();
+		document.endBatch();
+
+		Document restored = document(text);
+		assertTrue(restored.restore(history));
+		restored.undo();
+		assertEquals("abcXYZ\n", restored.text().toString());
+		restored.undo();
+		assertEquals("abc\n", restored.text().toString());
+	}
+
+	@Test
+	public void undoAndRedoKeepTheCountOfBytes() {
+		int limit = (int) Document.MAX_BYTES;
+		Document document = document("x".repeat(limit - 10));
+		assertTrue(document.replace(0, 0, Text.of("yyyyy")));
+		document.undo();
+		assertTrue(document.replace(0, 0, Text.of("z".repeat(10))));
+		document.undo();
+		document.redo();
+		assertFalse(document.replace(0, 0, Text.of("w")));
+	}
+
 	private Document document(String text) {
 		return new Document(Text.of(text), () -> now[0]);
 	}

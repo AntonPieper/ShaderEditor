@@ -118,7 +118,7 @@ public class LineMarksTest {
 	}
 
 	@Test
-	public void staysOnItsLineThroughAJoinAndItsUndo() {
+	public void isDroppedByAJoinAndNotBroughtBackByItsUndo() {
 		Document document = new Document(Text.of("a\nb"));
 		LineMarks marks = marked(document, warning(1), error(2));
 		document.replace(1, 2, Text.EMPTY);
@@ -220,6 +220,15 @@ public class LineMarksTest {
 		marks.close();
 		document.replace(0, 0, Text.of("x\n"));
 		assertEquals("_ _ E _ _ _", marked(marks, document));
+	}
+
+	@Test
+	public void isDroppedWhenItsLinesAreReplacedByAsManyOthers() {
+		Document document = new Document(Text.of("ok;\nbad bad;\nok2;\nend"));
+		LineMarks marks = marked(document, error(2));
+		document.replace(4, 17, Text.of("x\ny"));
+		assertEquals("ok;\nx\ny\nend", document.text().toString());
+		assertEquals("_ _ _ _", marked(marks, document));
 	}
 
 	private static LineMarks marked(Document document,

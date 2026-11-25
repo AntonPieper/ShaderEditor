@@ -201,6 +201,9 @@ public class CodeView extends View {
 	// to every app that reads it, in binder transactions of at most
 	// 1 MB, at up to two bytes a character.
 	private static final int MAX_CLIP = 400_000;
+	// A clip of text up to this long is pasted at once, as an EditText does;
+	// a longer one, or one read from a content URI, on PASTING.
+	private static final int INSTANT_PASTE = 32_768;
 	// Reads, splits and counts a clip, whose size has no bound.
 	private static final Executor PASTING = Executors.newSingleThreadExecutor();
 	private static final String PROCESS_TEXT = "CodeView.processText";
@@ -261,30 +264,44 @@ public class CodeView extends View {
 			new KeyCommands.Clipboard() {
 				@Override
 				public void read(KeyCommands.Pasted pasted) {
+					ClipData.Item item = clipItem();
+					CharSequence plain = item != null ? item.getText() : null;
+					if (item == null || plain != null &&
+							plain.length() <= INSTANT_PASTE) {
+						Text text = plain != null ? Text.of(plain) : null;
+						pasted.paste(text, text != null
+								? Document.bytes(text)
+								: 0);
+						return;
+					}
 					Document requested = document;
+					Context context = getContext();
 					PASTING.execute(() -> {
-						CharSequence clip = clipText();
-						if (clip == null) {
-							return;
-						}
-						Text text = Text.of(clip);
-						long bytes = Document.bytes(text);
-						handler.post(() -> {
-							if (document == requested) {
-								pasted.paste(text, bytes);
-								bringCaretIntoView();
+						CharSequence clip = plain;
+						try {
+							if (clip == null) {
+								clip = item.coerceToText(context);
 							}
+						} catch (RuntimeException e) {
+							// Unreadable: nothing to paste.
+						}
+						Text text = clip != null ? Text.of(clip) : null;
+						long bytes = text != null ? Document.bytes(text) : 0;
+						handler.post(() -> {
+							pasted.paste(document == requested ? text : null,
+									bytes);
+							bringCaretIntoView();
 						});
 					});
 				}
 
 				@Override
-				public boolean set(String text) {
+				public boolean set(Text text, int start, int end) {
 					ClipboardManager manager = clipboardManager();
 					try {
-						if (text.length() <= MAX_CLIP) {
-							manager.setPrimaryClip(
-									ClipData.newPlainText(null, text));
+						if (end - start <= MAX_CLIP) {
+							manager.setPrimaryClip(ClipData.newPlainText(null,
+									text.substring(start, end)));
 							return true;
 						}
 					} catch (RuntimeException e) {
@@ -428,6 +445,7 @@ public class CodeView extends View {
 	private LineCache.Line[] shown = new LineCache.Line[0];
 	private int shownFirst;
 	private int shownCount;
+	private float shownWidest;
 
 	public CodeView(Context context) {
 		this(context, null);
@@ -542,6 +560,9 @@ public class CodeView extends View {
 		// A mark of the last document's lines is not one of these.
 		markedLines = NO_LINES;
 		chosenFor = null;
+		// The gutter's recording keys on the count of its marks' changes,
+		// which starts again with each document.
+		gutterLast = -1;
 		scrollTo(0, 0);
 		if (isAttachedToWindow()) {
 			connect();
@@ -1131,12 +1152,17 @@ public class CodeView extends View {
 			deadChar = c & KeyCharacterMap.COMBINING_ACCENT_MASK;
 			return true;
 		}
-		if (deadChar != 0 && c != 0) {
+		String typed = c != 0 ? new String(Character.toChars(c)) : null;
+		if (deadChar != 0 && KeyCommands.command(keyCode, meta) != null) {
+			deadChar = 0;
+		} else if (deadChar != 0 && c != 0) {
+			// An accent that does not combine stays in front, as on Android.
 			int combined = KeyEvent.getDeadChar(deadChar, c);
-			c = combined != 0 ? combined : c;
+			typed = combined != 0
+					? new String(Character.toChars(combined))
+					: new String(Character.toChars(deadChar)) + typed;
 			deadChar = 0;
 		}
-		String typed = c != 0 ? new String(Character.toChars(c)) : null;
 		if (KeyCommands.command(keyCode, meta) ==
 				KeyCommands.Command.PASTE) {
 			recordClip();
@@ -1247,6 +1273,7 @@ public class CodeView extends View {
 	protected void onFocusChanged(boolean gainFocus, int direction,
 			@Nullable Rect previouslyFocusedRect) {
 		super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
+		deadChar = 0;
 		if (!gainFocus) {
 			touched = null;
 			toolbar.close();
@@ -1357,12 +1384,14 @@ public class CodeView extends View {
 		int lineStart = text.lineStart(first);
 		int recordable = RecordBudget.lines(last - first + 1);
 		boolean unrecorded = false;
+		shownWidest = 0;
 		for (int n = first; n <= last; ++n) {
 			String s = text.line(n);
 			LineCache.Line line = cache.get(s,
 					styles != null ? styles.runs(n) : null, true);
 			shown[n - first] = line;
 			LineLayout layout = line.layout();
+			shownWidest = Math.max(shownWidest, layout.width());
 			float top = textTop + lines.top(n);
 			int lineEnd = lineStart + s.length();
 			ProjectDiagnostic.Severity severity =
@@ -1480,8 +1509,10 @@ public class CodeView extends View {
 				: 0);
 	}
 
+	// A line on screen may be wider than its characters, for a tab or a
+	// wide character; only those count, so the width shrinks with the text.
 	float textWidth() {
-		return Math.max(cache.widest(),
+		return Math.max(shownWidest,
 				document.text().longestLineLength() * appearance.charWidth);
 	}
 
@@ -1861,20 +1892,26 @@ public class CodeView extends View {
 		float left = textLeft(lineCount);
 		float dx = location[0] - getScrollX();
 		float dy = location[1] - getScrollY();
-		for (int i = 0; i < out.length; ++i) {
+		// Line by line, each walked once.
+		for (int i = 0; i < out.length; ) {
 			int n = text.lineOf(offset + i);
-			int column = offset + i - text.lineStart(n);
-			LineLayout layout = layoutOf(n);
-			float x = left + layout.xOf(column);
-			float right = left + layout.xOf(Math.min(column + 1,
-					text.line(n).length()));
+			int from = offset + i - text.lineStart(n);
+			int length = text.line(n).length();
+			int count = Math.min(out.length - i, length - from + 1);
+			int to = Math.min(from + count, length);
+			float[] xs = new float[to - from + 1];
+			layoutOf(n).xsOf(from, to, xs);
 			float top = lineTop(n);
 			float bottom = top + appearance.lineHeight;
 			boolean shown = bottom > getScrollY() + insets.top &&
 					top < getScrollY() + getHeight() - insets.bottom;
-			out[i] = shown
-					? new RectF(x + dx, top + dy, right + dx, bottom + dy)
-					: null;
+			for (int column = from; column < from + count; ++column, ++i) {
+				float x = left + xs[column - from];
+				float right = left + xs[Math.min(column + 1, length) - from];
+				out[i] = shown
+						? new RectF(x + dx, top + dy, right + dx, bottom + dy)
+						: null;
+			}
 		}
 	}
 
@@ -1894,17 +1931,19 @@ public class CodeView extends View {
 		bringCaretIntoView();
 	}
 
-	// null for none, as one step with the caret behind; false if the document
-	// refused it.
-	boolean replaceAll(@Nullable CharSequence text) {
+	// The node's window from start to end replaced by text, null for none, as
+	// one step with the caret behind; false if the document refused it.
+	boolean replaceForAccessibility(int start, int end,
+			@Nullable CharSequence text) {
 		Text replacement = Text.of(text != null ? text : "");
 		action("setText", replacement.toString());
 		document.beginBatch();
 		try {
-			if (!document.replace(0, document.text().length(), replacement)) {
+			if (!document.replace(start, end, replacement)) {
 				return false;
 			}
-			document.select(replacement.length(), replacement.length());
+			int caret = start + replacement.length();
+			document.select(caret, caret);
 		} finally {
 			document.endBatch();
 		}
@@ -1969,11 +2008,21 @@ public class CodeView extends View {
 	// Null if there is none or it cannot be read. A clip of a content URI is
 	// read from its provider.
 	private CharSequence clipText() {
+		ClipData.Item item = clipItem();
+		try {
+			return item != null ? item.coerceToText(getContext()) : null;
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
+	// Null if there is none or it cannot be read.
+	private ClipData.Item clipItem() {
 		try {
 			ClipboardManager manager = clipboardManager();
 			ClipData clip = manager != null ? manager.getPrimaryClip() : null;
 			return clip != null && clip.getItemCount() > 0
-					? clip.getItemAt(0).coerceToText(getContext())
+					? clip.getItemAt(0)
 					: null;
 		} catch (RuntimeException e) {
 			return null;
@@ -2183,7 +2232,10 @@ public class CodeView extends View {
 		if (dragging == DRAG_WORDS || (dragging == DRAG_HANDLE && moved)) {
 			magnify();
 		}
-		if (!edgeScrolling && (edgeStepX() != 0 || edgeStepY() != 0)) {
+		// Not while a finger rests within the slop near an edge; a mouse has
+		// none.
+		if ((moved || dragging == DRAG_MOUSE) && !edgeScrolling &&
+				(edgeStepX() != 0 || edgeStepY() != 0)) {
 			edgeScrolling = true;
 			postOnAnimation(edgeScroll);
 		}

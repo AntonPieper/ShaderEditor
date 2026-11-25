@@ -19,8 +19,6 @@ final class LineCache {
 	private final CodeAppearance appearance;
 	private final Line[] lines = new Line[SIZE];
 	private int frame;
-	// The widest line laid out since the last clear.
-	private float widest;
 
 	LineCache(CodeAppearance appearance) {
 		this.appearance = appearance;
@@ -53,10 +51,6 @@ final class LineCache {
 		return line;
 	}
 
-	float widest() {
-		return widest;
-	}
-
 	// As after a change of the font.
 	void clear() {
 		for (int i = 0; i < SIZE; ++i) {
@@ -65,13 +59,10 @@ final class LineCache {
 				lines[i] = null;
 			}
 		}
-		widest = 0;
 	}
 
 	private LineLayout layout(String text, LineStyles.Runs runs) {
-		LineLayout layout = appearance.layout(text, runs);
-		widest = Math.max(widest, layout.width());
-		return layout;
+		return appearance.layout(text, runs);
 	}
 
 	static boolean sameRuns(LineStyles.Runs a, LineStyles.Runs b) {

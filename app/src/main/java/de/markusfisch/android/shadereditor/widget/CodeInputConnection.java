@@ -77,7 +77,7 @@ final class CodeInputConnection extends BaseInputConnection {
 
 	@Override
 	public boolean endBatchEdit() {
-		return input().endBatchEdit();
+		return shown(input().endBatchEdit());
 	}
 
 	@Override
@@ -88,13 +88,13 @@ final class CodeInputConnection extends BaseInputConnection {
 			view.enter();
 			return true;
 		}
-		return input().commitText(text, newCursorPosition);
+		return shown(input().commitText(text, newCursorPosition));
 	}
 
 	@Override
 	public boolean setComposingText(CharSequence text,
 			int newCursorPosition) {
-		return input().setComposingText(text, newCursorPosition);
+		return shown(input().setComposingText(text, newCursorPosition));
 	}
 
 	@Override
@@ -110,19 +110,20 @@ final class CodeInputConnection extends BaseInputConnection {
 	@Override
 	public boolean deleteSurroundingText(int beforeLength,
 			int afterLength) {
-		return input().deleteSurroundingText(beforeLength, afterLength);
+		return shown(input().deleteSurroundingText(beforeLength,
+				afterLength));
 	}
 
 	@Override
 	public boolean deleteSurroundingTextInCodePoints(int beforeLength,
 			int afterLength) {
-		return input().deleteSurroundingTextInCodePoints(beforeLength,
-				afterLength);
+		return shown(input().deleteSurroundingTextInCodePoints(beforeLength,
+				afterLength));
 	}
 
 	@Override
 	public boolean setSelection(int start, int end) {
-		return input().setSelection(start, end);
+		return shown(input().setSelection(start, end));
 	}
 
 	@Override
@@ -247,6 +248,15 @@ final class CodeInputConnection extends BaseInputConnection {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
 			super.closeConnection();
 		}
+	}
+
+	// After a keyboard's edit outside a batch, and when its outermost batch
+	// ends, the caret is brought into view, as a text view does.
+	private boolean shown(boolean result) {
+		if (!closed && !input.inBatchEdit()) {
+			view.bringCaretIntoView();
+		}
+		return result;
 	}
 
 	// Returns the TextInput for a call of the keyboard, which uses this

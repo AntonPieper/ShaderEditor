@@ -335,7 +335,7 @@ final class Histories {
 						readText(in)));
 			}
 			steps.add(new History.Step(list, before, after, stateBefore,
-					stateAfter));
+					stateAfter, Document.grown(list)));
 		}
 		return steps;
 	}

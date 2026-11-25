@@ -275,7 +275,8 @@ public class TextInputTest {
 		Window window = input.getExtractedText(1, false);
 		assertEquals(0, window.offset());
 		assertEquals(0, window.selectionStart());
-		assertEquals(5000, window.selectionEnd());
+		// The end is kept inside the cut text.
+		assertEquals(MAX_READ, window.selectionEnd());
 		assertEquals(MAX_READ, window.text().length());
 	}
 

@@ -890,9 +890,10 @@ public final class FileTexts {
 			Text to = i + 1 < n ? replaced.get(i + 1).text() : text;
 			reached.add(new FileRecord.Replaced(replaced.get(i).number(),
 					++state));
-			steps.add(new Document.History.Step(List.of(
-					new Document.Change(0, from, to)), start, start, state,
-					state + 1));
+			List<Document.Change> changes = List.of(
+					new Document.Change(0, from, to));
+			steps.add(new Document.History.Step(changes, start, start, state,
+					state + 1, Document.grown(changes)));
 		}
 		return new Document.History(steps, List.of(), state + 1, state + 1,
 				start);

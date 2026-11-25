@@ -370,10 +370,14 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			case AccessibilityNodeInfo.ACTION_CUT:
 				return textAction(host, android.R.id.cut);
 			case AccessibilityNodeInfo.ACTION_SET_TEXT:
-				return view.replaceAll(arguments != null
-						? arguments.getCharSequence(AccessibilityNodeInfo
-						.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE)
-						: null);
+				// A service sets the node's text, which is its window.
+				AccessibleText.Window window = reading(document.text(),
+						document.selection());
+				return view.replaceForAccessibility(window.start(),
+						window.end(), arguments != null
+								? arguments.getCharSequence(AccessibilityNodeInfo
+								.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE)
+								: null);
 			case AccessibilityNodeInfo.ACTION_CLICK:
 				return view.clickForAccessibility();
 			case AccessibilityNodeInfo.ACTION_LONG_CLICK:
@@ -486,7 +490,9 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 	}
 
 	// Selects as TextView does: in the window of the node, start before
-	// end, the selection shown with its toolbar.
+	// end, the selection shown with its toolbar. A service's select all, or a
+	// move to the start or end, therefore reaches the window's ends, not the
+	// text's: nothing tells those apart from the same range chosen there.
 	private boolean setSelection(Document document, Bundle arguments) {
 		int start = arguments != null ? arguments.getInt(
 				AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT,
@@ -588,7 +594,8 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			return;
 		}
 		Document.Selection selection = document.selection();
-		int end = Math.min(selection.end(), selection.start() + SAID_CHARS);
+		int end = AccessibleText.cut(document.text(), Math.min(selection.end(),
+				selection.start() + SAID_CHARS));
 		view.announceForAccessibility(view.getContext().getString(
 				R.string.a11y_selected, document.text().substring(
 						selection.start(), end)));

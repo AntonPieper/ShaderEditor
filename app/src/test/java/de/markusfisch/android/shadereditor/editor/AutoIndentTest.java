@@ -61,19 +61,14 @@ public class AutoIndentTest {
 	}
 
 	@Test
-	public void bugASlashContinuesAsIfItWereAComment() {
-		// Today's check for "//" compares the slash with itself, so a
-		// line that starts with any slash continues with its first two
-		// characters.
-		assertEquals("\t/ ", indentAt("x\n\t/ 2.0|;\n"));
+	public void aSlashAloneDoesNotContinueAsAComment() {
+		assertEquals("\t", indentAt("x\n\t/ 2.0|;\n"));
 	}
 
 	@Test
-	public void bugTheFirstLineGivesNoIndentation() {
-		// Today's rule copies the indentation only of a line after a
-		// line break; the added level still counts.
-		assertEquals("", indentAt("\ta;|\nb"));
-		assertEquals("\t", indentAt("\tvoid main() {|\n}"));
+	public void theFirstLineGivesItsIndentation() {
+		assertEquals("\t", indentAt("\ta;|\nb"));
+		assertEquals("\t\t", indentAt("\tvoid main() {|\n}"));
 	}
 
 	@Test
