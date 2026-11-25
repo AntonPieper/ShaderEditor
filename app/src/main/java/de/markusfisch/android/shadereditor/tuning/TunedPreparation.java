@@ -52,13 +52,12 @@ public final class TunedPreparation {
 		String text(@NonNull ProjectPath path);
 
 		/**
-		 * Prepare the running shader with replacement in the text, as
-		 * {@link OpenProject#prepare(Builtins, OpenProject.Replacement,
-		 * Callback)} does; null when nothing runs. done is called on
-		 * the main thread, or not at all when the text changed
-		 * meanwhile.
+		 * Prepare the running shader with replacements in the text, as
+		 * {@link OpenProject#prepare(Builtins, List, Callback)} does;
+		 * null when nothing runs. done is called on the main thread, or
+		 * not at all when the text changed meanwhile.
 		 */
-		void prepare(@NonNull OpenProject.Replacement replacement,
+		void prepare(@NonNull List<OpenProject.Replacement> replacements,
 				@NonNull Callback<Preparation> done);
 	}
 
@@ -100,9 +99,10 @@ public final class TunedPreparation {
 			}
 
 			@Override
-			public void prepare(@NonNull OpenProject.Replacement replacement,
+			public void prepare(
+					@NonNull List<OpenProject.Replacement> replacements,
 					@NonNull Callback<Preparation> done) {
-				project.prepare(builtins, replacement,
+				project.prepare(builtins, replacements,
 						build -> done.done(build.preparation()));
 			}
 		};
@@ -135,7 +135,8 @@ public final class TunedPreparation {
 			@NonNull ProjectPath path, int start, int end,
 			@NonNull String text, @NonNull NumberLiteral number,
 			@NonNull String name, @NonNull Callback<Result> done) {
-		project.prepare(new OpenProject.Replacement(path, start, end, name),
+		project.prepare(List.of(new OpenProject.Replacement(path, start, end,
+						name)),
 				preparation -> {
 					if (preparation == null) {
 						done.done(failed(path, text, start, "nothing runs"));

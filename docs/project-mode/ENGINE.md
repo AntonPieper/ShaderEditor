@@ -149,6 +149,16 @@ listener: diagnostics, fps
 
 A plan is the `RenderPlan` of ARCHITECTURE 2, and `prepare` is its only producer. A DB shader is converted to project files in memory first (SPEC 12), so the engine has one dialect: name-based texture lookup, `///` comments, and backbuffer presets are known to the converter and to nothing else. Images are decoded before the plan reaches the GL thread.
 
+### 2.6 Tuned numbers
+
+While numbers of the text are tuned, the host builds a temporary preparation with some of them replaced by names of uniforms (`se_tune0`, `se_tune1`, …) and hands it over with `continuePlan(preparation, quality, picture, tunings, heard)`:
+
+- `tunings` are the `Tuning`s whose names the text may use, any number of them; the build keeps its own copy of the list. Each program declares the ones its code uses, after the last `#extension`, and the others are left out; a uniform the host sets is never "provided by nothing". A `Tuning` is a name, a type and a volatile value: one object can be part of several builds of a session, and `applyTuning()` writes the values of every uniform of the build that draws, on the GL thread, with the next frame.
+- `heard`, if not null, is told on the GL thread whether the build drew (`onLive`) or was refused (`onRefused`); a refusal then goes to it instead of the engine's listener, and the build before keeps drawing. A host passes it for a build that tries a uniform the compiler might refuse (GLSL needs a constant there), and null for one whose errors should be shown as any build's are.
+- Such a build goes on from the picture: time, frame and the passes' histories run on when every target stays as it is.
+
+Nothing outside a temporary preparation ever holds a uniform's name: documents, the journal, saves and the wallpaper read the text (ARCHITECTURE 2, `Preparation.temporary()`).
+
 ## 3. What is deleted
 
 | Before | Replaced by |

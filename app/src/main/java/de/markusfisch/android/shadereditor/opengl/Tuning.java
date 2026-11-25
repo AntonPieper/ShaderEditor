@@ -9,11 +9,12 @@ import java.util.Set;
 import de.markusfisch.android.shadereditor.project.ProjectDiagnostic;
 
 /**
- * One uniform of the running shader that the host sets: while a number
- * of the text is tuned, a build has the number replaced by this name,
+ * One uniform of the running shader that the host sets: while numbers
+ * of the text are tuned, a build has each replaced by the name of one,
  * and each new value is set with the next frame instead of building
  * again. Every program whose text uses the name declares it; the others
- * do not see it.
+ * do not see it. One uniform may be part of several builds of a
+ * session: the value is the same in each.
  *
  * The value may be set on any thread. The GL thread writes it into the
  * programs only when the host asks for it (ShaderEngine.applyTuning()),
@@ -33,14 +34,14 @@ public final class Tuning {
 		}
 	}
 
-	/** Told on the GL thread what became of the build that uses it. */
+	/** Told on the GL thread what became of a build with uniforms. */
 	public interface Listener {
 		/** The build draws now; values set from now on show. */
 		void onLive();
 
 		/**
 		 * The build did not compile or link, for example because the
-		 * text needs a constant where the number is. The build before
+		 * text needs a constant where a number is. The build before
 		 * keeps drawing; nothing was reported to the engine's listener.
 		 */
 		void onRefused(@NonNull List<ProjectDiagnostic> errors);
@@ -57,8 +58,6 @@ public final class Tuning {
 	final String name;
 	@NonNull
 	final Type type;
-	@NonNull
-	private final Listener listener;
 	private volatile double value;
 
 	/**
@@ -68,12 +67,10 @@ public final class Tuning {
 	 * every uint. An int or uint outside its range is written with the
 	 * language's 32-bit wrap.
 	 */
-	public Tuning(@NonNull String name, @NonNull Type type, double value,
-			@NonNull Listener listener) {
+	public Tuning(@NonNull String name, @NonNull Type type, double value) {
 		this.name = name;
 		this.type = type;
 		this.value = value;
-		this.listener = listener;
 	}
 
 	@NonNull
@@ -93,14 +90,6 @@ public final class Tuning {
 
 	double value() {
 		return value;
-	}
-
-	void live() {
-		listener.onLive();
-	}
-
-	void refused(@NonNull List<ProjectDiagnostic> errors) {
-		listener.onRefused(errors);
 	}
 
 	// The lines that declare it, highp where the fragment shader has it,

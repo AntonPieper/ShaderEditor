@@ -292,17 +292,8 @@ public class TunedBuildTest {
 			if (program.file().equals(path(file))) {
 				var errors = new ArrayList<ProjectDiagnostic>();
 				var source = PlanSource.of(program, glesVersion,
-						new Tuning(ready.name(), ready.number().type(),
-								ready.number().value(), new Tuning.Listener() {
-							@Override
-							public void onLive() {
-							}
-
-							@Override
-							public void onRefused(
-									@NonNull List<ProjectDiagnostic> e) {
-							}
-						}), errors);
+						List.of(new Tuning(ready.name(), ready.number().type(),
+								ready.number().value())), errors);
 				assertEquals(List.of(), errors);
 				assertNotNull(source);
 				return source;
@@ -329,8 +320,11 @@ public class TunedBuildTest {
 		}
 
 		@Override
-		public void prepare(@NonNull OpenProject.Replacement replacement,
+		public void prepare(
+				@NonNull List<OpenProject.Replacement> replacements,
 				@NonNull FileTexts.Callback<Preparation> done) {
+			var replacement = replacements.get(0);
+			assertEquals(1, replacements.size());
 			replacedBy.add(replacement.text());
 			var files = new HashMap<ProjectPath, ProjectFiles.Content>();
 			for (var entry : texts.entrySet()) {

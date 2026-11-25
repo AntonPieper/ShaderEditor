@@ -75,11 +75,11 @@ final class PlanPass {
 			int index,
 			int glesVersion,
 			@NonNull String textureFix,
-			@Nullable Tuning tuning,
+			@NonNull List<Tuning> tunings,
 			@NonNull List<ProjectDiagnostic> errors) {
 		var pass = plan.passes().get(index);
 		var source = PlanSource.of(plan.programs().get(pass.program()),
-				glesVersion, tuning, errors);
+				glesVersion, tunings, errors);
 		if (source == null) {
 			return null;
 		}
@@ -106,7 +106,7 @@ final class PlanPass {
 			inputs.add(input.uniform());
 		}
 		// What the host sets is provided.
-		if (tuning != null) {
+		for (var tuning : tunings) {
 			inputs.add(tuning.name);
 		}
 		warnings.addAll(UniformWarnings.check(uniforms.values(), inputs,
@@ -115,23 +115,27 @@ final class PlanPass {
 				warnings, source);
 	}
 
-	// GL thread. Writes tuning's value into the program, if it uses it.
-	void applyTuning(@NonNull Tuning tuning) {
-		var uniform = uniforms.get(tuning.name);
-		if (uniform == null) {
-			return;
-		}
-		device.useProgram(program);
-		double value = tuning.value();
-		switch (tuning.type) {
-			case FLOAT -> device.uniform1f(uniform.location(), (float) value);
-			// Wrapped to 32 bits as the language wraps an int, never
-			// clamped.
-			case INT -> device.uniform1i(uniform.location(),
-					(int) (long) value);
-			// The bits of the unsigned value, as glUniform1ui takes them.
-			case UINT -> device.uniform1ui(uniform.location(),
-					(int) (long) value);
+	// GL thread. Writes the value of each of tunings the program uses.
+	void applyTuning(@NonNull List<Tuning> tunings) {
+		for (var tuning : tunings) {
+			var uniform = uniforms.get(tuning.name);
+			if (uniform == null) {
+				continue;
+			}
+			device.useProgram(program);
+			double value = tuning.value();
+			switch (tuning.type) {
+				case FLOAT -> device.uniform1f(uniform.location(),
+						(float) value);
+				// Wrapped to 32 bits as the language wraps an int, never
+				// clamped.
+				case INT -> device.uniform1i(uniform.location(),
+						(int) (long) value);
+				// The bits of the unsigned value, as glUniform1ui takes
+				// them.
+				case UINT -> device.uniform1ui(uniform.location(),
+						(int) (long) value);
+			}
 		}
 	}
 
