@@ -548,6 +548,9 @@ public class CodeView extends View {
 		commands = new EditCommands(document);
 		commands.setTabWidth(appearance.tabWidth);
 		commands.setIndentation(styles.syntax().indentation());
+		if (keys != null) {
+			keys.drop();
+		}
 		keys = new KeyCommands(document, commands, clipboard);
 		deadChar = 0;
 		composingStart = composingEnd = -1;
@@ -1528,10 +1531,13 @@ public class CodeView extends View {
 				getPaddingBottom() + insets.bottom, getHeight());
 	}
 
+	// Never left of where the view is: the lines on screen, whose tabs and
+	// wide characters set the width, change as it scrolls up and down, and
+	// that must not move it sideways.
 	private int maxScrollX() {
 		float right = textLeft(document.text().lineCount()) + textWidth() +
 				appearance.charWidth + getPaddingRight() + insets.right;
-		return Math.max(0, (int) Math.ceil(right - getWidth()));
+		return Math.max(getScrollX(), (int) Math.ceil(right - getWidth()));
 	}
 
 	private void drag(float dx, float dy, MotionEvent e) {
@@ -1556,8 +1562,13 @@ public class CodeView extends View {
 	}
 
 	// For a line break the keyboard commits.
+	// Input is held while a clip is read, to run once it came.
+	public boolean holds(Runnable input) {
+		return keys != null && keys.holds(input);
+	}
+
 	void enter() {
-		if (keys != null) {
+		if (keys != null && !keys.holds(this::enter)) {
 			action("command", "enter");
 			commands.enter();
 			bringCaretIntoView();
@@ -1605,6 +1616,9 @@ public class CodeView extends View {
 	// Returns whether the toolbar is done. Select all keeps it, and a copy
 	// leaves the caret behind the text, as the platform's do.
 	boolean toolbarAction(int id) {
+		if (holds(() -> toolbarAction(id))) {
+			return true;
+		}
 		if (id == R.id.look_up) {
 			return lookUpSelection();
 		}
@@ -1710,8 +1724,13 @@ public class CodeView extends View {
 		}
 		CharSequence text = data.getCharSequenceExtra(
 				Intent.EXTRA_PROCESS_TEXT);
-		if (text != null && keys.paste(Text.of(text))) {
-			bringCaretIntoView();
+		Runnable paste = () -> {
+			if (text != null && keys.paste(Text.of(text))) {
+				bringCaretIntoView();
+			}
+		};
+		if (!holds(paste)) {
+			paste.run();
 		}
 	}
 
@@ -2478,8 +2497,13 @@ public class CodeView extends View {
 			if (text.length() == 0 || keys == null) {
 				return;
 			}
-			select(offset, offset);
-			keys.paste(Text.of(text));
+			Runnable paste = () -> {
+				select(offset, offset);
+				keys.paste(Text.of(text));
+			};
+			if (!holds(paste)) {
+				paste.run();
+			}
 		}
 		touched = null;
 		bringCaretIntoView();

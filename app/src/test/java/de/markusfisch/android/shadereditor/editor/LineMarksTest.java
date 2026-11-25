@@ -229,6 +229,15 @@ public class LineMarksTest {
 		document.replace(4, 17, Text.of("x\ny"));
 		assertEquals("ok;\nx\ny\nend", document.text().toString());
 		assertEquals("_ _ _ _", marked(marks, document));
+		// A blank line too, and a line that only ends as the old one.
+		document = new Document(Text.of("\t\nx"));
+		marks = marked(document, error(1));
+		document.replace(0, 2, Text.of("p\nq"));
+		assertEquals("_ _", marked(marks, document));
+		document = new Document(Text.of("a\nfoo;\nb"));
+		marks = marked(document, error(2));
+		document.replace(2, 8, Text.of("barfoo;\nc"));
+		assertEquals("_ _ _", marked(marks, document));
 	}
 
 	private static LineMarks marked(Document document,

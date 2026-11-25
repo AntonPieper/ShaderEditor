@@ -229,17 +229,21 @@ public final class LineMarks {
 			return false;
 		}
 		for (int i = 0; i < n; ++i) {
-			String line = removed.line(i);
-			int start = 0;
-			while (start < line.length() && (line.charAt(start) == ' ' ||
-					line.charAt(start) == '\t')) {
-				++start;
-			}
-			if (!inserted.line(i).endsWith(line.substring(start))) {
+			if (!afterIndent(removed.line(i)).equals(
+					afterIndent(inserted.line(i)))) {
 				return false;
 			}
 		}
 		return true;
+	}
+
+	private static String afterIndent(String line) {
+		int start = 0;
+		while (start < line.length() && (line.charAt(start) == ' ' ||
+				line.charAt(start) == '\t')) {
+			++start;
+		}
+		return line.substring(start);
 	}
 
 	// Lines arrive in order; a line that is there already keeps the more

@@ -31,6 +31,10 @@ final class CodeInputConnection extends BaseInputConnection {
 	private final Document document;
 	private final TextInput input;
 	private boolean closed;
+	// The text and selection before an edit outside a batch, or before the
+	// outermost batch.
+	private int revision;
+	private Document.Selection selection;
 
 	CodeInputConnection(CodeView view, Document document,
 			KeyboardSession session) {
@@ -72,58 +76,60 @@ final class CodeInputConnection extends BaseInputConnection {
 
 	@Override
 	public boolean beginBatchEdit() {
-		return input().beginBatchEdit();
+		return edit(() -> input().beginBatchEdit());
 	}
 
 	@Override
 	public boolean endBatchEdit() {
-		return shown(input().endBatchEdit());
+		return edit(() -> input().endBatchEdit());
 	}
 
 	@Override
 	public boolean commitText(CharSequence text, int newCursorPosition) {
-		if (!closed && input().composingStart() < 0 && text != null &&
-				text.length() == 1 && text.charAt(0) == '\n') {
-			view.note("commitText", true, text, newCursorPosition);
-			view.enter();
-			return true;
-		}
-		return shown(input().commitText(text, newCursorPosition));
+		return edit(() -> {
+			if (!closed && input().composingStart() < 0 && text != null &&
+					text.length() == 1 && text.charAt(0) == '\n') {
+				view.note("commitText", true, text, newCursorPosition);
+				view.enter();
+				return true;
+			}
+			return input().commitText(text, newCursorPosition);
+		});
 	}
 
 	@Override
 	public boolean setComposingText(CharSequence text,
 			int newCursorPosition) {
-		return shown(input().setComposingText(text, newCursorPosition));
+		return edit(() -> input().setComposingText(text, newCursorPosition));
 	}
 
 	@Override
 	public boolean setComposingRegion(int start, int end) {
-		return input().setComposingRegion(start, end);
+		return edit(() -> input().setComposingRegion(start, end));
 	}
 
 	@Override
 	public boolean finishComposingText() {
-		return input().finishComposingText();
+		return edit(() -> input().finishComposingText());
 	}
 
 	@Override
 	public boolean deleteSurroundingText(int beforeLength,
 			int afterLength) {
-		return shown(input().deleteSurroundingText(beforeLength,
+		return edit(() -> input().deleteSurroundingText(beforeLength,
 				afterLength));
 	}
 
 	@Override
 	public boolean deleteSurroundingTextInCodePoints(int beforeLength,
 			int afterLength) {
-		return shown(input().deleteSurroundingTextInCodePoints(beforeLength,
-				afterLength));
+		return edit(() -> input().deleteSurroundingTextInCodePoints(
+				beforeLength, afterLength));
 	}
 
 	@Override
 	public boolean setSelection(int start, int end) {
-		return shown(input().setSelection(start, end));
+		return edit(() -> input().setSelection(start, end));
 	}
 
 	@Override
@@ -181,17 +187,19 @@ final class CodeInputConnection extends BaseInputConnection {
 	@Override
 	public boolean replaceText(int start, int end, @NonNull CharSequence text,
 			int newCursorPosition, @Nullable TextAttribute textAttribute) {
-		int from = Math.min(start, end);
-		int to = Math.max(start, end);
-		if (closed || from < 0 || to > document.text().length()) {
-			return false;
-		}
-		input().beginBatchEdit();
-		input().finishComposingText();
-		input().setSelection(from, to);
-		input().commitText(text, newCursorPosition);
-		input().endBatchEdit();
-		return true;
+		return edit(() -> {
+			int from = Math.min(start, end);
+			int to = Math.max(start, end);
+			if (closed || from < 0 || to > document.text().length()) {
+				return false;
+			}
+			input().beginBatchEdit();
+			input().finishComposingText();
+			input().setSelection(from, to);
+			input().commitText(text, newCursorPosition);
+			input().endBatchEdit();
+			return true;
+		});
 	}
 
 	@Override
@@ -250,10 +258,21 @@ final class CodeInputConnection extends BaseInputConnection {
 		}
 	}
 
-	// After a keyboard's edit outside a batch, and when its outermost batch
-	// ends, the caret is brought into view, as a text view does.
-	private boolean shown(boolean result) {
-		if (!closed && !input.inBatchEdit()) {
+	// A keyboard's edit, held while a clip is read. When it changed the text
+	// or the selection, the caret is brought into view after it outside a
+	// batch, else when the outermost batch ends, as a text view does.
+	private boolean edit(Call call) {
+		if (view.holds(() -> edit(call))) {
+			return true;
+		}
+		if (!input.inBatchEdit()) {
+			revision = document.revision();
+			selection = document.selection();
+		}
+		boolean result = call.run();
+		if (!closed && !input.inBatchEdit() &&
+				(revision != document.revision() ||
+						!selection.equals(document.selection()))) {
 			view.bringCaretIntoView();
 		}
 		return result;
@@ -266,5 +285,10 @@ final class CodeInputConnection extends BaseInputConnection {
 			view.use(this);
 		}
 		return input;
+	}
+
+	// java.util.function.BooleanSupplier needs Android 7.
+	private interface Call {
+		boolean run();
 	}
 }
