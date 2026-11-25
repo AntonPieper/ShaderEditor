@@ -2,8 +2,6 @@ package de.markusfisch.android.shadereditor.editor;
 
 import android.view.KeyEvent;
 
-import java.util.ArrayDeque;
-
 import de.markusfisch.android.shadereditor.editor.Document.Selection;
 
 // What a key does to a document. A key with Ctrl or Meta held types nothing, so
@@ -19,17 +17,12 @@ public final class KeyCommands {
 	}
 
 	public interface Clipboard {
-		// Hands the clip to pasted on the main thread, at once or after it
-		// was read away from it; null if there is none.
-		void read(Pasted pasted);
+		// The clip, read at once as Android's text fields do; null if there
+		// is none or it cannot be read.
+		Text read();
 
 		// Puts text from start to end on it; false if that failed.
 		boolean set(Text text, int start, int end);
-	}
-
-	public interface Pasted {
-		// bytes is what Document.bytes counts for text.
-		void paste(Text text, long bytes);
 	}
 
 	private static final int SHORTCUT = KeyEvent.META_CTRL_ON |
@@ -38,24 +31,6 @@ public final class KeyCommands {
 	private final Document document;
 	private final EditCommands commands;
 	private final Clipboard clipboard;
-	// The user's input given while a clip is read, applied in order once it
-	// came, as if it had come at once.
-	private final ArrayDeque<Runnable> held = new ArrayDeque<>();
-	// The range of a paste whose clip has not come yet, else null. An edit
-	// that is not held, such as one of the app, leaves it in front of what
-	// it puts in.
-	private int[] pending;
-	private final Document.Listener moving = new Document.Listener() {
-		@Override
-		public void onChange(Document.Change change, Text before) {
-			for (int i = 0; i < 2; ++i) {
-				pending[i] = inFront(change.start(),
-						change.removed().length(),
-						change.inserted().length(), pending[i]);
-			}
-		}
-	};
-	private boolean draining;
 
 	public KeyCommands(Document document, EditCommands commands,
 			Clipboard clipboard) {
@@ -149,11 +124,6 @@ public final class KeyCommands {
 	public boolean keyDown(int keyCode, int meta, String typed,
 			int pageLines) {
 		Command command = command(keyCode, meta);
-		if ((command != null || typed != null && !typed.isEmpty() &&
-				types(meta)) && holds(() ->
-				keyDown(keyCode, meta, typed, pageLines))) {
-			return true;
-		}
 		if (command != null) {
 			run(command, (meta & KeyEvent.META_SHIFT_ON) != 0, pageLines);
 			return true;
@@ -166,12 +136,9 @@ public final class KeyCommands {
 		return true;
 	}
 
-	// Returns false if a cut or copy did nothing; the document is then as it
-	// was. A paste comes later.
+	// Returns false if a cut, copy or paste did nothing; the document is then
+	// as it was.
 	public boolean run(Command command, boolean extend, int pageLines) {
-		if (holds(() -> run(command, extend, pageLines))) {
-			return true;
-		}
 		switch (command) {
 			case BACKWARD -> commands.moveBackward(extend);
 			case FORWARD -> commands.moveForward(extend);
@@ -202,13 +169,8 @@ public final class KeyCommands {
 				return copy();
 			}
 			case PASTE -> {
-				Selection selection = document.selection();
-				int revision = document.revision();
-				int[] range = {selection.start(), selection.end()};
-				pending = range;
-				document.addListener(moving);
-				clipboard.read((text, bytes) ->
-						place(range, selection, revision, text, bytes));
+				Text text = clipboard.read();
+				return text != null && paste(text, Document.bytes(text));
 			}
 		}
 		return true;
@@ -220,71 +182,6 @@ public final class KeyCommands {
 		Selection selection = document.selection();
 		return !selection.isEmpty() && clipboard.set(document.text(),
 				selection.start(), selection.end());
-	}
-
-	// While a clip is read, input is held to run once it came; returns
-	// whether input was held.
-	public boolean holds(Runnable input) {
-		if (pending == null && (held.isEmpty() || draining)) {
-			return false;
-		}
-		held.add(input);
-		return true;
-	}
-
-	// Drops a clip still read and the input held for it, as when another
-	// document is shown.
-	public void drop() {
-		if (pending != null) {
-			document.removeListener(moving);
-			pending = null;
-		}
-		held.clear();
-	}
-
-	// Where nothing happened since Paste, the clip replaces the selection
-	// with the caret behind it; else it goes to its range, a caret put
-	// meanwhile stays in front of it and a selection grows over it. Then
-	// the input held for it runs.
-	private void place(int[] range, Selection selection, int revision,
-			Text text, long bytes) {
-		if (range != pending) {
-			return;
-		}
-		document.removeListener(moving);
-		pending = null;
-		Selection now = document.selection();
-		if (text == null) {
-			// Nothing to paste.
-		} else if (document.revision() == revision && now.equals(selection)) {
-			paste(text, bytes);
-		} else if (document.replace(range[0], range[1], text, bytes) &&
-				now.isEmpty()) {
-			int caret = inFront(range[0], range[1] - range[0],
-					text.length(), now.head());
-			document.select(caret, caret);
-		}
-		if (draining) {
-			// An instant paste among the held input: its loop goes on.
-			return;
-		}
-		draining = true;
-		try {
-			while (pending == null && !held.isEmpty()) {
-				held.poll().run();
-			}
-		} finally {
-			draining = false;
-		}
-	}
-
-	// As Change.map, but an offset where a change starts, or in what it
-	// removes, stays in front of what it inserts.
-	private static int inFront(int start, int removed, int inserted,
-			int offset) {
-		return offset <= start ? offset
-				: offset <= start + removed ? start
-				: offset - removed + inserted;
 	}
 
 	// False if the document refused it.

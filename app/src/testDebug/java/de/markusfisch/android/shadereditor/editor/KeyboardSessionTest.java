@@ -33,9 +33,8 @@ public class KeyboardSessionTest {
 	private static final KeyCommands.Clipboard CLIPBOARD =
 			new KeyCommands.Clipboard() {
 				@Override
-				public void read(KeyCommands.Pasted pasted) {
-					Text text = clip != null ? Text.of(clip) : null;
-					pasted.paste(text, text != null ? Document.bytes(text) : 0);
+				public Text read() {
+					return clip != null ? Text.of(clip) : null;
 				}
 
 				@Override
