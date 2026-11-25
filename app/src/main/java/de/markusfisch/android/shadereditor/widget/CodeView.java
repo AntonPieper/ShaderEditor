@@ -44,6 +44,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EdgeEffect;
 import android.widget.EditText;
 import android.widget.OverScroller;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResult;
@@ -321,6 +322,14 @@ public class CodeView extends View {
 	private final EdgeEffect edgeLeft;
 	private final EdgeEffect edgeRight;
 	private Insets insets = Insets.NONE;
+	// The insets given, and what a bar over the code takes at its bottom.
+	private Insets given = Insets.NONE;
+	private int cover;
+	@Nullable
+	private OnTap onTap;
+	// Whether the last tap ended what taps were heard for: the double
+	// tap it begins does nothing more.
+	private boolean tapEnded;
 	// What a touch, the mouse or a drop drags, 0 while no drag is in
 	// progress; where it went down, whether it moved since, and where
 	// the finger is.
@@ -473,6 +482,7 @@ public class CodeView extends View {
 					public boolean onDown(@NonNull MotionEvent e) {
 						scroller.forceFinished(true);
 						axis = 0;
+						tapEnded = false;
 						return true;
 					}
 
@@ -481,7 +491,9 @@ public class CodeView extends View {
 						int mark = markAt(e.getX(), e.getY());
 						int fix = fixAt(e.getX(), e.getY());
 						if (fix >= 0) {
-							applyRowFix(fix);
+							if (!heardAsTap(e.getX(), e.getY())) {
+								applyRowFix(fix);
+							}
 						} else if (mark >= 0) {
 							toggleRow(mark);
 						} else {
@@ -492,13 +504,16 @@ public class CodeView extends View {
 
 					@Override
 					public boolean onDoubleTap(@NonNull MotionEvent e) {
-						dragWords(e.getX(), e.getY(), false);
+						if (!tapEnded && !heardAsTap(e.getX(), e.getY())) {
+							dragWords(e.getX(), e.getY(), false);
+						}
 						return true;
 					}
 
 					@Override
 					public void onLongPress(@NonNull MotionEvent e) {
-						if (dragging != 0 || fixPressed >= 0) {
+						if (dragging != 0 || fixPressed >= 0 ||
+								heardAsTap(e.getX(), e.getY())) {
 							// After a double tap, or held on a fix of the
 							// row, which is not the code.
 							return;
@@ -603,6 +618,45 @@ public class CodeView extends View {
 	public void setInputType(int inputType) {
 		this.inputType = inputType;
 		restartInput();
+	}
+
+	/** Hears a tap or a click on the code; a screen reader's comes at the caret. */
+	public interface OnTap {
+		/** Whether the tap at offset was taken, and does nothing more. */
+		boolean onTap(int offset);
+	}
+
+	public void setOnTap(@Nullable OnTap onTap) {
+		this.onTap = onTap;
+		// Meanwhile the code takes no input focus: no key, paste or undo
+		// reaches it, and every other gesture is heard as a tap.
+		setFocusable(onTap == null);
+		setFocusableInTouchMode(onTap == null);
+	}
+
+	// While a tap is heard, a gesture other than a tap is heard as one
+	// and does nothing more.
+	private boolean heardAsTap(float x, float y) {
+		// Heard, it may end what it listens for, and stop listening. A
+		// screen reader hands its gestures on as touches where it likes:
+		// they come at the caret, as its double-tap does.
+		OnTap heard = onTap;
+		if (heard != null) {
+			heard.onTap(accessibility.exploresByTouch()
+					? document.selection().head()
+					: offsetAt(x, y));
+		}
+		return heard != null;
+	}
+
+	boolean hearsTaps() {
+		return onTap != null;
+	}
+
+	/** Keep bottom pixels clear, as for the keyboard: a bar over the code. */
+	public void setCover(int bottom) {
+		cover = bottom;
+		fitInsets(true);
 	}
 
 	@Nullable
@@ -1051,7 +1105,8 @@ public class CodeView extends View {
 
 	@Override
 	public CharSequence getAccessibilityClassName() {
-		return EditText.class.getName();
+		// While a tap is heard the code takes no input: no edit box.
+		return (onTap != null ? TextView.class : EditText.class).getName();
 	}
 
 	// Takes text dragged over the view, as TextView does: the caret
@@ -1064,7 +1119,7 @@ public class CodeView extends View {
 		}
 		switch (event.getAction()) {
 			case DragEvent.ACTION_DRAG_STARTED:
-				return event.getClipDescription() != null &&
+				return onTap == null && event.getClipDescription() != null &&
 						event.getClipDescription().hasMimeType("text/*");
 			case DragEvent.ACTION_DRAG_ENTERED:
 				requestFocus();
@@ -1209,21 +1264,27 @@ public class CodeView extends View {
 
 	@Override
 	public WindowInsets onApplyWindowInsets(WindowInsets windowInsets) {
-		int bottom = insets.bottom;
 		// Only the insets given: with the view, AndroidX below Android 11
 		// adds the keyboard read from the window, which a host that made
 		// room for it has already taken off the view's height.
-		insets = WindowInsetsCompat.toWindowInsetsCompat(windowInsets)
+		given = WindowInsetsCompat.toWindowInsetsCompat(windowInsets)
 				.getInsets(WindowInsetsCompat.Type.systemBars() |
 						WindowInsetsCompat.Type.displayCutout() |
 						WindowInsetsCompat.Type.ime());
-		if (insets.bottom > bottom && isFocused()) {
+		fitInsets(isFocused());
+		return windowInsets;
+	}
+
+	// More room taken at the bottom keeps the caret's line clear of it.
+	private void fitInsets(boolean reveal) {
+		int bottom = insets.bottom;
+		insets = Insets.of(given.left, given.top, given.right, Math.max(given.bottom, cover));
+		if (insets.bottom > bottom && reveal) {
 			bringCaretIntoView();
 		} else {
 			scrollInside(getScrollX(), getScrollY());
 		}
 		invalidate();
-		return windowInsets;
 	}
 
 	@Override
@@ -1954,6 +2015,9 @@ public class CodeView extends View {
 	// one step with the caret behind; false if the document refused it.
 	boolean replaceForAccessibility(int start, int end,
 			@Nullable CharSequence text) {
+		if (onTap != null) {
+			return false;
+		}
 		Text replacement = Text.of(text != null ? text : "");
 		action("setText", replacement.toString());
 		document.beginBatch();
@@ -1973,6 +2037,10 @@ public class CodeView extends View {
 	// As an accessibility service's tap on an EditText: focus and show the
 	// keyboard; the caret stays.
 	boolean clickForAccessibility() {
+		if (onTap != null && document != null &&
+				onTap.onTap(document.selection().head())) {
+			return true;
+		}
 		if (!isFocused()) {
 			requestFocus();
 		}
@@ -1987,6 +2055,10 @@ public class CodeView extends View {
 	// As an accessibility service's long press on an EditText: show or hide the
 	// toolbar for the selection or the caret.
 	boolean longClickForAccessibility() {
+		if (onTap != null && document != null) {
+			onTap.onTap(document.selection().head());
+			return true;
+		}
 		sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_LONG_CLICKED);
 		performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
 		touched = document.selection();
@@ -2141,7 +2213,13 @@ public class CodeView extends View {
 		}
 		toolbar.close();
 		int offset = offsetAt(x, y);
+		// First, so that what the tap's listener writes moves the caret too.
 		select(offset, offset);
+		OnTap heard = onTap;
+		if (heard != null && heard.onTap(offset)) {
+			return;
+		}
+		tapEnded = heard != null;
 		showCaretHandle();
 		requestFocus();
 		InputMethodManager imm = inputMethodManager();
@@ -2319,6 +2397,17 @@ public class CodeView extends View {
 		float y = event.getY();
 		switch (event.getActionMasked()) {
 			case MotionEvent.ACTION_DOWN:
+				int offset = offsetAt(x, y);
+				if (onTap != null) {
+					// As a tap: the caret first, so that what the listener writes moves it.
+					// Ending tuning, a click gives the code the focus, and does nothing more.
+					select(offset, offset);
+					if (!onTap.onTap(offset) &&
+							!event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)) {
+						requestFocus();
+					}
+					return true;
+				}
 				requestFocus();
 				toolbar.close();
 				touched = null;
@@ -2338,7 +2427,7 @@ public class CodeView extends View {
 					contextClick(x, y);
 					return true;
 				}
-				click(event, offsetAt(x, y));
+				click(event, offset);
 				return true;
 			case MotionEvent.ACTION_MOVE:
 				if (dragging == DRAG_MOUSE) {
@@ -2983,7 +3072,7 @@ public class CodeView extends View {
 	// Returns whether it had one.
 	boolean applyCaretLineFix(int index) {
 		List<String> messages = caretLineMessages();
-		if (messages == null ||
+		if (onTap != null || messages == null ||
 				index >= fixes(caretLine(), messages).size()) {
 			return false;
 		}

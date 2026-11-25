@@ -75,13 +75,21 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			@NonNull AccessibilityNodeInfo info) {
 		super.onInitializeAccessibilityNodeInfo(host, info);
 		Document document = view.getDocument();
-		info.setEditable(true);
+		// While a tap tunes, the code takes no input: a double-tap, or one
+		// held, says the number being tuned, and nothing is selected.
+		boolean tunes = view.hearsTaps();
+		String said = tunes
+				? host.getContext().getString(R.string.a11y_tuning_code)
+				: null;
+		info.setEditable(!tunes);
 		info.setMultiLine(true);
 		info.setInputType(view.inputType());
 		info.setClickable(true);
-		info.addAction(AccessibilityAction.ACTION_CLICK);
+		info.addAction(new AccessibilityAction(
+				AccessibilityNodeInfo.ACTION_CLICK, said));
 		info.setLongClickable(true);
-		info.addAction(AccessibilityAction.ACTION_LONG_CLICK);
+		info.addAction(new AccessibilityAction(
+				AccessibilityNodeInfo.ACTION_LONG_CLICK, said));
 		addScrollActions(host, info);
 		if (document == null) {
 			return;
@@ -135,8 +143,10 @@ final class CodeAccessibility extends View.AccessibilityDelegate {
 			info.addAction(
 					AccessibilityAction.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY);
 			info.setMovementGranularities(GRANULARITIES);
-			info.addAction(AccessibilityAction.ACTION_SET_SELECTION);
-			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+			if (!tunes) {
+				info.addAction(AccessibilityAction.ACTION_SET_SELECTION);
+			}
+			if (!tunes && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 				info.setTextSelectable(true);
 			}
 		}

@@ -112,6 +112,11 @@ public class TuningBar extends LinearLayout {
 		default boolean isBefore() {
 			return false;
 		}
+
+		/** Close what lies over the bar, as Back does first: whether any. */
+		default boolean closeOver() {
+			return false;
+		}
 	}
 
 	private static final String[] XYZW = {"x", "y", "z", "w"};
@@ -524,9 +529,9 @@ public class TuningBar extends LinearLayout {
 	@Override
 	public boolean dispatchKeyEvent(KeyEvent event) {
 		// Enter is Done and Escape is Revert, unless a value is typed;
-		// Ctrl+Z is Undo, Ctrl+Shift+Z and Ctrl+Y are Redo; \ is Before.
-		// The arrows are the focused view's: the ruler steps, a button
-		// moves on.
+		// Escape closes what lies over the bar first. Ctrl+Z is Undo,
+		// Ctrl+Shift+Z and Ctrl+Y are Redo; \ is Before. The arrows are
+		// the focused view's: the ruler steps, a button moves on.
 		if (tuned != null && !valueView.hasFocus() &&
 				event.getKeyCode() == KeyEvent.KEYCODE_BACKSLASH) {
 			if (event.getAction() == KeyEvent.ACTION_DOWN &&
@@ -561,7 +566,9 @@ public class TuningBar extends LinearLayout {
 					done();
 					return true;
 				case KeyEvent.KEYCODE_ESCAPE:
-					revert();
+					if (session == null || !session.closeOver()) {
+						revert();
+					}
 					return true;
 				case KeyEvent.KEYCODE_TAB:
 					step(!event.isShiftPressed());
