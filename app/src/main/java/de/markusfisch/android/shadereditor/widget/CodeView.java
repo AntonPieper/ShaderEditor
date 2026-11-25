@@ -3130,7 +3130,8 @@ public class CodeView extends View {
 		placeRow();
 		shownWidest = 0;
 		if (shown) {
-			int y = Math.round(lineTop(anchor) - anchorTop);
+			int y = clamp(Math.round(lineTop(anchor) - anchorTop),
+					maxScrollY());
 			// The widths of the last frame are of the old appearance.
 			Text text = document.text();
 			for (int i = lineAt(y), last = lineAt(y + getHeight());
