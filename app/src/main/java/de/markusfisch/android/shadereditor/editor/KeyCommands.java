@@ -170,7 +170,7 @@ public final class KeyCommands {
 			}
 			case PASTE -> {
 				Text text = clipboard.read();
-				return text != null && paste(text, Document.bytes(text));
+				return text != null && paste(text);
 			}
 		}
 		return true;
@@ -186,15 +186,11 @@ public final class KeyCommands {
 
 	// False if the document refused it.
 	public boolean paste(Text text) {
-		return paste(text, Document.bytes(text));
-	}
-
-	private boolean paste(Text text, long bytes) {
 		Selection selection = document.selection();
 		int start = selection.start();
 		document.beginBatch();
 		try {
-			if (!document.replace(start, selection.end(), text, bytes)) {
+			if (!document.replace(start, selection.end(), text)) {
 				return false;
 			}
 			document.select(start + text.length(), start + text.length());
