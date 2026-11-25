@@ -52,6 +52,22 @@ public class RunGuardTest {
 		assertEquals("", kept.pending);
 	}
 
+	// A file that failed to build draws nothing, so it cannot have ended
+	// the app: it is not held at the next start. Run again, it is pending
+	// again, as it never drew.
+	@Test
+	public void aFileThatFailedToBuildIsNotHeld() {
+		RunGuard guard = new RunGuard(kept);
+		guard.running("lib", "Bad.frag");
+		guard.failed();
+
+		assertEquals("", kept.pending);
+		assertFalse(new RunGuard(kept).holds("lib", "Bad.frag"));
+
+		guard.running("lib", "Bad.frag");
+		assertEquals("lib\nBad.frag", kept.pending);
+	}
+
 	// A file that drew a frame is not pending anymore.
 	@Test
 	public void aFileThatRanIsNotHeld() {
