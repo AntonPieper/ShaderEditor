@@ -1,0 +1,54 @@
+=== 06:39:32 A TalkBack on
+=== 06:39:51 A1 selection mode on
+=== 06:40:09 A1 Move cursor to end
+=== 06:40:21 A1 end selection mode
+=== 06:40:54 A1b selection mode on
+=== 06:41:12 A1b Move cursor to beginning
+=== 06:41:22 A1b end selection mode
+=== 06:41:57 A2 reading control Lines
+=== 06:42:21 A2 selection mode on
+=== 06:42:39 A2 down 1
+=== 06:42:43 A2 down 2
+=== 06:42:46 A2 end selection mode
+=== 06:43:55 A2up selection mode on
+=== 06:44:14 A2 up 1
+=== 06:44:17 A2 up 2
+=== 06:44:30 A2up(2) selection mode on
+=== 06:44:48 A2 up 1 (2)
+=== 06:44:52 A2 down after (2)
+=== 06:45:57 A2c selection mode on
+=== 06:46:17 A2c down 1
+=== 06:46:21 A2c down 2
+=== 06:46:36 A2d selection mode on
+=== 06:46:56 A2d up 1
+=== 06:47:00 A2d up 2
+=== 06:47:15 A3 selection mode on (start of file)
+=== 06:47:35 A3 down 1
+=== 06:47:40 A3 down 2
+=== 06:47:54 A3b selection mode on
+=== 06:48:15 A3b down 1
+=== 06:48:19 A3b down 2
+=== 06:48:59 A4 Select all
+=== 06:49:17 A4 Cut
+=== 06:49:33 A4 Ctrl+Z
+=== 06:49:47 TalkBack off for build B
+=== 06:51:09 B TalkBack on
+=== 06:51:19 B1 selection mode on
+=== 06:51:38 B1 Move cursor to end
+=== 06:51:51 B1 end selection mode
+=== 06:52:17 B1b selection mode on
+=== 06:52:36 B1b Move cursor to beginning
+=== 06:52:46 B1b end selection mode
+=== 06:53:48 B2 selection mode on
+=== 06:54:09 B2 down 1
+=== 06:54:14 B2 down 2
+=== 06:54:29 B2 up: selection mode on
+=== 06:54:50 B2 up 1
+=== 06:54:54 B2 up 2
+=== 06:55:01 B3 selection mode on (start)
+=== 06:55:22 B3 down 1
+=== 06:55:26 B3 down 2
+=== 06:55:44 B4 Select all
+=== 06:56:02 B4 Cut
+=== 06:56:18 B4 Ctrl+Z
+=== 06:56:31 TalkBack off
