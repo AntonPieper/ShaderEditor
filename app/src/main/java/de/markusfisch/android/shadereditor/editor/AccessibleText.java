@@ -224,7 +224,7 @@ public final class AccessibleText {
 	}
 
 	// Returns end, or the offset before it if it splits a surrogate pair.
-	private static int cut(Text text, int end) {
+	public static int cut(Text text, int end) {
 		return end > 0 && end < text.length() &&
 				Character.isLowSurrogate(charAt(text, end)) ? end - 1 : end;
 	}

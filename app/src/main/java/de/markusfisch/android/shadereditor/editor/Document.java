@@ -68,8 +68,10 @@ public final class Document {
 			redo = List.copyOf(redo);
 		}
 
+		// grown is the bytes the step adds to the text.
 		public record Step(List<Change> changes, Selection selectionBefore,
-				Selection selectionAfter, int stateBefore, int stateAfter) {
+				Selection selectionAfter, int stateBefore, int stateAfter,
+				long grown) {
 			public Step {
 				changes = List.copyOf(changes);
 			}
@@ -145,8 +147,17 @@ public final class Document {
 		return bytes;
 	}
 
-	// Its texts are shared, so it costs a list of the steps. Call it outside a
-	// batch.
+	// The bytes changes add to a text, for a step not taken from a document.
+	public static long grown(List<Change> changes) {
+		long grown = 0;
+		for (Change change : changes) {
+			grown += bytes(change.inserted()) - bytes(change.removed());
+		}
+		return grown;
+	}
+
+	// Its texts are shared, so it costs a list of the steps. The step of an
+	// open batch is in it as if the batch ended now.
 	public History history() {
 		// A step of an action cannot be taken back without it, which is
 		// not kept: the history begins behind the last such step.
@@ -158,7 +169,15 @@ public final class Document {
 				kept.addLast(step);
 			}
 		}
-		return new History(export(kept), export(redo), revision, state,
+		List<History.Step> undone = export(kept);
+		if (batchStep != null && batchStep.link != null) {
+			undone.clear();
+		} else if (batchStep != null) {
+			undone.add(new History.Step(batchStep.changes,
+					batchStep.selectionBefore, selection,
+					batchStep.stateBefore, state, batchStep.grown));
+		}
+		return new History(undone, export(redo), revision, state,
 				selection);
 	}
 
@@ -352,8 +371,9 @@ public final class Document {
 		for (int i = step.changes.size(); i-- > 0; ) {
 			Change change = step.changes.get(i);
 			apply(new Change(change.start(), change.inserted(),
-					change.removed()));
+					change.removed()), 0);
 		}
+		bytes -= step.grown;
 		selection = step.selectionBefore;
 		state = step.stateBefore;
 		endBatch();
@@ -369,8 +389,9 @@ public final class Document {
 		typing = null;
 		undo.addLast(step);
 		for (Change change : step.changes) {
-			apply(change);
+			apply(change, 0);
 		}
+		bytes += step.grown;
 		selection = step.selectionAfter;
 		state = step.stateAfter;
 		endBatch();
@@ -409,7 +430,7 @@ public final class Document {
 			return false;
 		}
 		beginBatch();
-		record(change, typed);
+		record(change, typed, grown);
 		apply(change, grown);
 		state = revision;
 		endBatch();
@@ -421,10 +442,6 @@ public final class Document {
 		return change.removed().length() == text.length()
 				? bytes
 				: bytes(change.removed());
-	}
-
-	private void apply(Change change) {
-		apply(change, bytes(change.inserted()) - removedBytes(change));
 	}
 
 	private void apply(Change change, long grown) {
@@ -441,7 +458,7 @@ public final class Document {
 		}
 	}
 
-	private void record(Change change, boolean typed) {
+	private void record(Change change, boolean typed, long grown) {
 		long now = clock.millis();
 		if (batchStep == null) {
 			batchStep = new Step(selection, state);
@@ -453,6 +470,7 @@ public final class Document {
 			redo.clear();
 		}
 		batchStep.add(change, typed);
+		batchStep.grown += grown;
 		batchStep.time = now;
 		moved = false;
 	}
@@ -489,7 +507,8 @@ public final class Document {
 		List<History.Step> exported = new ArrayList<>(steps.size());
 		for (Step step : steps) {
 			exported.add(new History.Step(step.changes, step.selectionBefore,
-					step.selectionAfter, step.stateBefore, step.stateAfter));
+					step.selectionAfter, step.stateBefore, step.stateAfter,
+					step.grown));
 		}
 		return exported;
 	}
@@ -499,6 +518,7 @@ public final class Document {
 				exported.stateBefore());
 		step.selectionAfter = exported.selectionAfter();
 		step.stateAfter = exported.stateAfter();
+		step.grown = exported.grown();
 		step.typed = false;
 		for (Change change : exported.changes()) {
 			step.changes.add(change);
@@ -556,6 +576,7 @@ public final class Document {
 		private Link link;
 		private long time;
 		private int chars;
+		private long grown;
 
 		private Step(Selection selectionBefore, int stateBefore) {
 			this.selectionBefore = selectionBefore;
@@ -580,6 +601,7 @@ public final class Document {
 			Change change = compose(changes.get(0), next.changes.get(0));
 			changes.set(0, change);
 			chars = size(change);
+			grown += next.grown;
 			selectionAfter = next.selectionAfter;
 			stateAfter = next.stateAfter;
 			time = next.time;

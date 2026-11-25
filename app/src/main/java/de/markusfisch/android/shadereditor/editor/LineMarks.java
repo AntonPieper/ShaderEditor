@@ -13,8 +13,9 @@ import de.markusfisch.android.shadereditor.project.ProjectDiagnostic.Severity;
 // for. A mark follows the start of its line through edits and is dropped when
 // its line can no longer be told apart: its text removed, joined to text in
 // front of it, or for an empty line, text removed at its start. A missing mark
-// is better than one on the wrong line. Replacing lines by as many, as
-// indenting does, keeps every mark. One line with errors may be open.
+// is better than one on the wrong line. Indenting or unindenting lines keeps
+// their marks, since each line keeps its text after the leading white space.
+// One line with errors may be open.
 public final class LineMarks {
 	private static final Severity[] SEVERITIES = Severity.values();
 
@@ -173,9 +174,7 @@ public final class LineMarks {
 		int first = before.lineOf(start);
 		int last = first + change.removed().lineCount() - 1;
 		hintChanged |= hint >= first && hint <= last;
-		int removed = change.removed().lineCount();
-		if (size == 0 || (removed > 1 &&
-				removed == change.inserted().lineCount())) {
+		if (size == 0 || reindents(change)) {
 			return;
 		}
 		int end = start + change.removed().length();
@@ -218,6 +217,33 @@ public final class LineMarks {
 		if (moved || size != count) {
 			++changes;
 		}
+	}
+
+	// Whether each of several lines keeps its text after the leading white
+	// space, as indenting and unindenting do.
+	private static boolean reindents(Document.Change change) {
+		Text removed = change.removed();
+		Text inserted = change.inserted();
+		int n = removed.lineCount();
+		if (n < 2 || n != inserted.lineCount()) {
+			return false;
+		}
+		for (int i = 0; i < n; ++i) {
+			if (!afterIndent(removed.line(i)).equals(
+					afterIndent(inserted.line(i)))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static String afterIndent(String line) {
+		int start = 0;
+		while (start < line.length() && (line.charAt(start) == ' ' ||
+				line.charAt(start) == '\t')) {
+			++start;
+		}
+		return line.substring(start);
 	}
 
 	// Lines arrive in order; a line that is there already keeps the more

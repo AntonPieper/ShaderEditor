@@ -234,4 +234,14 @@ public class TouchSelectionTest {
 		// Only the first line.
 		assertEquals(new Selection(17, 32), touch.shadowOf(text, 17, 40));
 	}
+
+	@Test
+	public void aHandleReachesTheEndOfATextWithoutALineBreak() {
+		Text text = Text.of("float abcdef");
+		TouchSelection touch = new TouchSelection(new Motion());
+		touch.dragHandle(6, 9);
+		touch.dragTo(text, 10);
+		touch.dragTo(text, 12);
+		assertEquals(12, touch.head());
+	}
 }

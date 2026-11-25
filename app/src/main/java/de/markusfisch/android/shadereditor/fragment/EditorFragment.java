@@ -126,6 +126,8 @@ public class EditorFragment extends Fragment implements ErrorListModal.Host,
 					false);
 			editor = new CodeViewSourceEditor((CodeView) view);
 			editorContainer = view;
+			// The old editor's history is of a text the new one may change.
+			ShaderEditorApp.editHistory.clear();
 		} else {
 			view = inflater.inflate(R.layout.fragment_editor, container, false);
 			editor = new EditTextSourceEditor(view.findViewById(R.id.editor));

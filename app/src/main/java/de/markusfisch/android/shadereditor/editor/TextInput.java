@@ -42,7 +42,7 @@ public final class TextInput {
 	}
 
 	// Ends counted from offset: sorted for getSurroundingText, anchor and head
-	// for getExtractedText, where the head may lie beyond a cut text.
+	// for getExtractedText, kept inside a cut text.
 	public record Window(int offset, int selectionStart, int selectionEnd,
 			String text) {
 	}
@@ -261,6 +261,10 @@ public final class TextInput {
 		document.beginBatch();
 		session.call(id, "beginBatchEdit", NO_ARGS, true);
 		return true;
+	}
+
+	public boolean inBatchEdit() {
+		return batches > 0;
 	}
 
 	public boolean endBatchEdit() {
@@ -506,8 +510,9 @@ public final class TextInput {
 		String s = text.substring(from, to);
 		return sorted
 				? new Window(from, start - from, selection.end() - from, s)
-				: new Window(from, selection.anchor() - from,
-						selection.head() - from, s);
+				: new Window(from, Math.min(selection.anchor() - from,
+						s.length()), Math.min(selection.head() - from,
+						s.length()), s);
 	}
 
 	private static boolean fits(Selection selection) {

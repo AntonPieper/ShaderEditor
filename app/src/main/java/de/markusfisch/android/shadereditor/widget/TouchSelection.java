@@ -126,10 +126,12 @@ final class TouchSelection {
 			to = snap(text, offset, direction);
 		} else {
 			int start = text.lineStart(line);
-			to = Math.max(start, Math.min(offset + delta,
-					start + text.line(line).length()));
-			// Not inside a character.
-			to = motion.previousChar(text, motion.nextChar(text, to));
+			int end = start + text.line(line).length();
+			to = Math.max(start, Math.min(offset + delta, end));
+			// Not inside a character; the line's end is none.
+			if (to < end) {
+				to = motion.previousChar(text, motion.nextChar(text, to));
+			}
 		}
 		if (to != anchor && (to - head) * direction * (grows ? 1 : -1) > 0) {
 			head = to;

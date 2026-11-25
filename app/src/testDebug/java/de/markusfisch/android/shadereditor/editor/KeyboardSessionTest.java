@@ -34,15 +34,13 @@ public class KeyboardSessionTest {
 			new KeyCommands.Clipboard() {
 				@Override
 				public void read(KeyCommands.Pasted pasted) {
-					if (clip != null) {
-						Text text = Text.of(clip);
-						pasted.paste(text, Document.bytes(text));
-					}
+					Text text = clip != null ? Text.of(clip) : null;
+					pasted.paste(text, text != null ? Document.bytes(text) : 0);
 				}
 
 				@Override
-				public boolean set(String text) {
-					clip = text;
+				public boolean set(Text text, int start, int end) {
+					clip = text.substring(start, end);
 					return true;
 				}
 			};
