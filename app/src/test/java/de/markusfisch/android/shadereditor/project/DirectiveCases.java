@@ -23,20 +23,20 @@ import de.markusfisch.android.shadereditor.project.shadertoy.ShaderToyProject;
  * judges in {@link DirectiveOracle}, and the recorded verdicts of which
  * {@link DirectiveRunOracleTest} checks.
  */
-final class DirectiveCases {
+public final class DirectiveCases {
 	static final int GENERATED = 600;
 	/**
 	 * One compiled program: its text, the 0-based lines BuiltLines says
 	 * are off, and the states of all lines.
 	 */
-	record Case(String name, int version, String text, List<Integer> off,
+	public record Case(String name, int version, String text, List<Integer> off,
 			List<DirectiveRun.State> states) {
 	}
 
 	private DirectiveCases() {
 	}
 
-	static List<Case> all() {
+	public static List<Case> all() {
 		List<Case> cases = new ArrayList<>();
 		DirectoryProjectFiles examples = new DirectoryProjectFiles(
 				ExamplesTest.folder());
@@ -129,7 +129,7 @@ final class DirectiveCases {
 						!scan.openComments().get(n - 1));
 	}
 
-	static File probes() {
+	public static File probes() {
 		for (String base : new String[]{".", "app"}) {
 			File dir = new File(base, "src/test/resources/directives/probes");
 			if (dir.isDirectory()) {

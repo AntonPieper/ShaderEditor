@@ -550,7 +550,7 @@ Five reviews of "go to definition from the tokenizer" each found new kinds of wr
 | Layer | State |
 | --- | --- |
 | 0: the text as tokens | Built (9.1) |
-| 1: the directives run, every compiled token mapped to where it is written | Not built |
+| 1: the directives run, every compiled token mapped to where it is written | Built (9.2) |
 | 2: the tree, ERROR and MISSING nodes, what every name means | Not built |
 | Re-reading only what an edit touches | Not built |
 
@@ -574,3 +574,31 @@ It reads as a compiler does. Each rule was checked against Mesa's `glsl_compiler
 **What makes re-reading possible is tested as two properties of the lexer:** the tokens read so far depend on the text only as far as it was looked at (`reach`; a `;` or `}` looks no further than itself), and reading may start behind any `;` or `}` that is not in a directive line and gives the same tokens from there.
 
 **A symbol table never forgets a spelling**, and every prefix of a name being typed is one. `Symbols.characters` counts what it holds; the reading that keeps a table over many edits (9.4) starts a fresh one when that has grown far beyond the text.
+
+### 9.2 Layer 1: the directives, run
+
+`Preprocessor` pulls raw tokens from the lexer and gives `CompiledTokens`: the tokens the compiler parses. Conditionals are decided, macros are expanded as the C preprocessor does it (arguments expanded before they are put in, the result read again together with what follows, no macro inside its own expansion; the test is example 3 of ISO C 6.10.3.5). `Environment` is what the directives before a place have set up, and what a reading carries on: the version, the macros in force, the conditionals that are open.
+
+A macro takes arguments when the parenthesis stands right behind its name (the lexer's `SPACED`), and a `GLUED_NAME` is never expanded.
+
+**Every compiled token says where it is written:** the raw token that spells it, or, for a token out of a macro's text, which token of which macro; and the raw token that names the outermost invocation it came through. So a name in an argument (`DECL(k)`) is at the place one sees, and a node made only of a macro's text lies on its invocation.
+
+**It never refuses.** What it cannot do as written it does in a stated way and writes down as a doubt:
+
+| What | What it does |
+| --- | --- |
+| A condition it cannot decide: a name only the driver knows (`GL_…`, or with `__`), `__LINE__`, an undefined name, a value that does not fit an int, a division by zero | False, so an `#else` is compiled. Every token of that conditional is marked UNDECIDED, and so is every name an arm of it defines or undefines: a later condition that asks for one is undecided too, and expanding one is a doubt |
+| An invocation whose parenthesis is not closed before the next directive or the end | A plain name |
+| A wrong number of arguments | Expanded with what it has |
+| `#` or `##` in a macro's text (GLSL ES has neither) | Expands to nothing |
+| An expansion of more than 131,072 tokens, or arguments nested deeper than 32 | Left as written |
+| `#else` or `#endif` without `#if`, a second `#else`, a `#define` without a name | Passed over |
+
+`GL_FRAGMENT_PRECISION_HIGH` is defined from version 300 on and undecided in 100, as `DirectiveRun` has it: the usual precision lines of a 1.00 shader are neither on nor off.
+
+Raw tokens of a branch that is not compiled are marked OFF. This is the reading that the dimming of 8 will come from, in place of `DirectiveRun`.
+
+**Checked against Mesa** with the record that `tools/directives/oracle.sh` keeps for the dimming (`directives/mesa.txt`: every program the engine compiles for the examples, the bundled shaders, the ShaderToy fixtures and the directive probes, and 600 generated texts): no line Mesa compiles has a token that is off, and no line Mesa skips has one that is on, outside what is marked UNDECIDED. Of 157,000 tokens, 99,000 are judged; the undecided ones are mostly in the generated texts, whose conditions are made to contain errors. Making the test pass found three rules that are now in the table: `__LINE__` in a condition, values beyond an int, and the names an undecided conditional defines.
+
+**Where an item of the program may end.** `Preprocessor.run` stops behind a `}` that closes the outermost brace, or a `;` outside every brace, parenthesis and bracket, when no expansion goes on. That is where the reading of 9.4 tries to end a piece; whether an item does end there is the parser's to say. While a brace is open, as in a block that is being typed, there is no such place before the end of the text.
+

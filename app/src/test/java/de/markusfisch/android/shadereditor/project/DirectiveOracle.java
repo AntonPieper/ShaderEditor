@@ -217,7 +217,7 @@ public final class DirectiveOracle {
 		return sb.length() > 0 ? sb.toString() : "-";
 	}
 
-	static TreeSet<Integer> lines(String ranges) {
+	public static TreeSet<Integer> lines(String ranges) {
 		TreeSet<Integer> lines = new TreeSet<>();
 		if (ranges.equals("-")) {
 			return lines;
@@ -248,7 +248,7 @@ public final class DirectiveOracle {
 	}
 
 	/** The records of a file written by main, by case name. */
-	static Map<String, List<String>> read(File file) throws IOException {
+	public static Map<String, List<String>> read(File file) throws IOException {
 		Map<String, List<String>> records = new TreeMap<>();
 		List<String> current = null;
 		for (String line : Files.readAllLines(file.toPath())) {
