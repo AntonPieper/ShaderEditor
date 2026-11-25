@@ -20,6 +20,10 @@ final class Words {
 	static final int RIGHT_BRACKET = word("]");
 	static final int SEMICOLON = word(";");
 	static final int COMMA = word(",");
+	// The directives that may have a quoted path.
+	static final int INCLUDE = word("include");
+	static final int PRAGMA = word("pragma");
+	static final int SE = word("se");
 
 	private Words() {
 	}

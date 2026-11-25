@@ -13,7 +13,8 @@ final class TreeTexts {
 	private static final String[] PIECES = {"\\\n", "/*", "*/", "//", "\n", "#",
 			"\"", "{", "}", "(", ")", ";", ",", "=", "+", ".", " ", "x", "1",
 			"e", "ä", " ", "\r\n", "\\", "#define A(x) x\n", "#if 0\n",
-			"#else\n", "#endif\n", "float", "struct"};
+			"#else\n", "#endif\n", "float", "struct", "0x1e", "1.5", "\n\r",
+			"#include ", "#pragma se "};
 
 	private TreeTexts() {
 	}

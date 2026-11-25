@@ -17,6 +17,7 @@ final class Symbols {
 	// Open addressing; -1 where nothing is.
 	private int[] slots = new int[1024];
 	private int count;
+	private int characters;
 
 	Symbols() {
 		Arrays.fill(slots, -1);
@@ -42,6 +43,7 @@ final class Symbols {
 			names = Arrays.copyOf(names, count * 2);
 		}
 		names[count] = text.subSequence(start, end).toString();
+		characters += end - start;
 		slots[slot] = count;
 		if (++count * 2 > slots.length) {
 			grow();
@@ -51,6 +53,15 @@ final class Symbols {
 
 	String name(int symbol) {
 		return names[symbol];
+	}
+
+	/**
+	 * How many characters the spellings hold. A table never forgets
+	 * one; who keeps a table over many edits reads the text anew with
+	 * a fresh one when this has grown far beyond the text.
+	 */
+	int characters() {
+		return characters;
 	}
 
 	private static boolean spells(String name, CharSequence text, int start,

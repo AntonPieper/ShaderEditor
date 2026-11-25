@@ -12,15 +12,27 @@ final class RawTokens {
 	static final byte NAME = 1;
 	static final byte NUMBER = 2;
 	static final byte PUNCTUATOR = 3;
-	/** A quoted path; only a directive line has one. */
+	/** A quoted path; only #include and #pragma se have one. */
 	static final byte STRING = 4;
 	/** A character no token of the language starts with. */
 	static final byte INVALID = 5;
+	/**
+	 * A name written right behind a number, as the "oo" of "1.0foo"
+	 * or the "A" of "0x1e+A". The preprocessor takes the number and
+	 * the name for one number and expands no macro there; to the
+	 * language it is a name like any other.
+	 */
+	static final byte GLUED_NAME = 6;
 
 	/** Flag: the first token on its line. */
 	static final byte LINE_START = 1;
 	/** Flag: a token of a directive line, its "#" included. */
 	static final byte DIRECTIVE = 2;
+	/**
+	 * Flag: white space or a comment stands before the token. A line
+	 * continuation is none: it leaves what it joins side by side.
+	 */
+	static final byte SPACED = 4;
 
 	int size;
 	byte[] kind = new byte[64];
@@ -31,7 +43,7 @@ final class RawTokens {
 
 	void add(byte kind, int start, int end, int symbol, int flags) {
 		if (size == this.kind.length) {
-			resize(size * 2);
+			resize(Math.max(16, size * 2));
 		}
 		this.kind[size] = kind;
 		this.flags[size] = (byte) flags;
