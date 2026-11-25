@@ -3100,8 +3100,18 @@ public class CodeView extends View {
 		// The row's text follows the code's size: lay it out again.
 		row = Row.NONE;
 		placeRow();
+		shownWidest = 0;
 		if (shown) {
-			scrollInside(getScrollX(), Math.round(lineTop(anchor) - anchorTop));
+			int y = Math.round(lineTop(anchor) - anchorTop);
+			// The widths of the last frame are of the old appearance.
+			Text text = document.text();
+			for (int i = lineAt(y), last = lineAt(y + getHeight());
+					i <= last; ++i) {
+				shownWidest = Math.max(shownWidest, cache.get(text.line(i),
+						styles != null ? styles.runs(i) : null, false)
+						.layout().width());
+			}
+			scrollInside(getScrollX(), y);
 		}
 		gutterLast = -1;
 		invalidate();
