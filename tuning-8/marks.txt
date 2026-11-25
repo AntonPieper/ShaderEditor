@@ -1,0 +1,14 @@
+=== 04:52:57 TalkBack on
+=== 04:53:14 N1 touch code
+=== 04:53:17 N1 dth on the number 0.76
+=== 04:53:22 N2 touch code
+=== 04:53:25 N2 dth on the number 0.76
+=== 04:53:30 N3 touch code
+=== 04:53:33 N3 dth on the number 0.76
+=== 04:53:46 P1 touch code
+=== 04:53:49 P1 dth on plain code (vec3 line 9 / empty area)
+=== 04:53:54 P2 touch code
+=== 04:53:57 P2 dth on plain code (vec3 line 9 / empty area)
+=== 04:54:02 P3 touch code
+=== 04:54:05 P3 dth on plain code (vec3 line 9 / empty area)
+=== 04:54:19 TalkBack off
