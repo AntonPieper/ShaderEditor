@@ -68,6 +68,19 @@ public class RunGuardTest {
 		assertEquals("lib\nBad.frag", kept.pending);
 	}
 
+	// A file that failed to build and is then edited into one that hangs
+	// before its first frame: the app ends on the second build, and the
+	// next start holds the file.
+	@Test
+	public void aFileThatFailedThenHangsIsHeld() {
+		RunGuard guard = new RunGuard(kept);
+		guard.running("lib", "Bad.frag");
+		guard.failed();
+		guard.running("lib", "Bad.frag");
+
+		assertTrue(new RunGuard(kept).holds("lib", "Bad.frag"));
+	}
+
 	// A file that drew a frame is not pending anymore.
 	@Test
 	public void aFileThatRanIsNotHeld() {
