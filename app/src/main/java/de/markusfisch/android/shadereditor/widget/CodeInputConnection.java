@@ -260,13 +260,10 @@ final class CodeInputConnection extends BaseInputConnection {
 		}
 	}
 
-	// A keyboard's edit, held while a clip is read. When it changed the text
-	// or the selection, the caret is brought into view after it outside a
-	// batch, else when the outermost batch ends, as a text view does.
+	// A keyboard's edit. When it changed the text or the selection, the
+	// caret is brought into view after it outside a batch, else when the
+	// outermost batch ends, as a text view does.
 	private boolean edit(Call call) {
-		if (view.holds(() -> edit(call))) {
-			return true;
-		}
 		if (!input.inBatchEdit()) {
 			revision = document.revision();
 			selection = document.selection();

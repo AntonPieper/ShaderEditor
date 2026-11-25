@@ -9,9 +9,6 @@ import android.view.KeyEvent;
 
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import de.markusfisch.android.shadereditor.editor.KeyCommands.Command;
 
 public class KeyCommandsTest {
@@ -143,136 +140,45 @@ public class KeyCommandsTest {
 		assertFalse(document.canUndo());
 	}
 
+	// A paste applies at once, read as Android's text fields read a clip, and
+	// what follows it comes after it.
 	@Test
-	public void aPasteComesWhenTheClipIsRead() {
-		Document document = new Document(Text.of("a-c"));
-		document.select(1, 2);
-		List<KeyCommands.Pasted> waiting = new ArrayList<>();
-		keys(document, waiting).run(Command.PASTE, false, 0);
-		assertEquals("a-c", document.text().toString());
-		waiting.get(0).paste(Text.of("x\ny"), 3);
-		assertEquals("ax\nyc", document.text().toString());
-		assertEquals(new Document.Selection(4, 4), document.selection());
-	}
-
-	// Input given before a clip comes runs once it came, in order, as if the
-	// clip had come at once; no paste and no input is lost.
-	@Test
-	public void inputGivenWhileAClipIsReadRunsAfterIt() {
-		assertEquals("abcxy|", late("abc|", "V", "V"));
-		assertEquals("abcxq|", late("abc|", "V", "q"));
-		assertEquals("abcx\n|", late("abc|", "V", "\n"));
-		assertEquals("axq|d", late("a[bc]d", "V", "q"));
-		assertEquals("abcx1y2z|", late("abc|", "V", "1", "V", "2", "V"));
-		// Undo takes back the paste, not what was typed before it.
-		assertEquals("abcd|", late("abc|", "d", "V", "Z"));
-		// A selection made meanwhile grows over the clip.
-		assertEquals("|", late("abc|", "V", "*", "D"));
-	}
-
-	// A caret put while the clip is read, by a tap, stays where it was put,
-	// in front of the clip.
-	@Test
-	public void aCaretPutWhileAClipIsReadStaysInFrontOfIt() {
-		assertEquals("|axbc", late("a|bc", "V", "^0"));
-		assertEquals("aq|xd", late("a[bc]d", "V", "^1", "q"));
-		assertEquals("aq|xd", late("a[bc]d", "V", "^2", "q"));
-	}
-
-	@Test
-	public void undoAfterALatePasteTakesBackWhatCameLast() {
-		Document document = new Document(Text.of("abc"), () -> 0);
-		document.select(3, 3);
-		List<KeyCommands.Pasted> waiting = new ArrayList<>();
-		KeyCommands keys = keys(document, waiting);
-		keys.run(Command.PASTE, false, 0);
-		keys.keyDown(KeyEvent.KEYCODE_Q, 0, "q", 1);
-		waiting.get(0).paste(Text.of("x"), 1);
-		keys.run(Command.UNDO, false, 0);
-		assertEquals("abcx", document.text().toString());
-	}
-
-	@Test
-	public void aLaterPasteThatComesAtOnceWaitsForAnEarlierOne() {
-		Document document = new Document(Text.of("abc"), () -> 0);
-		document.select(3, 3);
-		List<KeyCommands.Pasted> waiting = new ArrayList<>();
-		String[] at = {null};
-		KeyCommands keys = new KeyCommands(document,
-				new EditCommands(document), new KeyCommands.Clipboard() {
-			@Override
-			public void read(KeyCommands.Pasted pasted) {
-				if (at[0] == null) {
-					waiting.add(pasted);
-				} else {
-					pasted.paste(Text.of(at[0]), 1);
-				}
-			}
-
-			@Override
-			public boolean set(Text text, int start, int end) {
-				return false;
-			}
-		});
-		keys.run(Command.PASTE, false, 0);
-		at[0] = "y";
-		keys.run(Command.PASTE, false, 0);
-		waiting.get(0).paste(Text.of("x"), 1);
-		assertEquals("abcxy", document.text().toString());
+	public void aPasteAppliesAtOnceInOrderWithWhatFollows() {
+		assertEquals("abcxx|", typed("abc|", "x", "V", "V"));
+		assertEquals("abcxq|", typed("abc|", "x", "V", "q"));
+		assertEquals("abcx\n|", typed("abc|", "x", "V", "\n"));
+		assertEquals("axq|d", typed("a[bc]d", "x", "V", "q"));
+		// Undo takes back the letter typed after the paste, then the paste.
+		assertEquals("abcx|", typed("abc|", "x", "V", "q", "Z"));
+		assertEquals("abc|", typed("abc|", "x", "V", "q", "Z", "Z"));
 	}
 
 	@Test
 	public void nothingToPasteChangesNothing() {
 		Document document = new Document(Text.of("abc"));
-		List<KeyCommands.Pasted> waiting = new ArrayList<>();
-		keys(document, waiting).run(Command.PASTE, false, 0);
-		document.type(0, 0, Text.of("q"));
-		waiting.get(0).paste(null, 0);
-		assertEquals("qabc", document.text().toString());
-	}
-
-	@Test
-	public void aPasteTakesTheCountOfItsBytes() {
-		Document document = new Document(Text.of("abc"));
-		List<KeyCommands.Pasted> waiting = new ArrayList<>();
-		keys(document, waiting).run(Command.PASTE, false, 0);
-		waiting.get(0).paste(Text.of("x"), Document.MAX_BYTES);
+		String[] clip = new String[1];
+		assertFalse(keys(document, clip, true).run(Command.PASTE, false, 0));
 		assertEquals("abc", document.text().toString());
+		assertFalse(document.canUndo());
 	}
 
-	// text marks the selection with | or [ and ]; each input is V for a
-	// paste, Z for undo, D for Backspace, * to select all, ^n for the caret
-	// put at n, or what it types; the clips come after, x, y, ... in order.
-	private static String late(String text, String... inputs) {
+	// text marks the selection with | or [ and ]; clip is on the clipboard;
+	// each input is V for a paste, Z for undo, or what it types.
+	private static String typed(String text, String clip, String... inputs) {
 		int anchor = text.indexOf('[') >= 0 ? text.indexOf('[')
 				: text.indexOf('|');
 		String plain = text.replaceAll("[|\\[\\]]", "");
 		int head = text.indexOf(']') >= 0 ? text.indexOf(']') - 1 : anchor;
 		Document document = new Document(Text.of(plain), () -> 0);
 		document.select(anchor, head);
-		List<KeyCommands.Pasted> waiting = new ArrayList<>();
-		KeyCommands keys = keys(document, waiting);
+		KeyCommands keys = keys(document, new String[]{clip}, true);
 		for (String input : inputs) {
 			switch (input) {
 				case "V" -> keys.run(Command.PASTE, false, 0);
 				case "Z" -> keys.run(Command.UNDO, false, 0);
-				case "D" -> keys.keyDown(KeyEvent.KEYCODE_DEL, 0, null, 1);
-				case "*" -> document.select(0, document.text().length());
 				case "\n" -> keys.keyDown(KeyEvent.KEYCODE_ENTER, 0, "\n", 1);
-				default -> {
-					if (input.startsWith("^")) {
-						int at = Integer.parseInt(input.substring(1));
-						document.select(at, at);
-					} else {
-						keys.keyDown(KeyEvent.KEYCODE_Q, 0, input, 1);
-					}
-				}
+				default -> keys.keyDown(KeyEvent.KEYCODE_Q, 0, input, 1);
 			}
-		}
-		char clip = 'x';
-		// A paste held for an earlier one asks only once that one came.
-		for (int i = 0; i < waiting.size(); ++i) {
-			waiting.get(i).paste(Text.of(String.valueOf(clip++)), 1);
 		}
 		String result = document.text().toString();
 		Document.Selection selection = document.selection();
@@ -280,33 +186,13 @@ public class KeyCommandsTest {
 				result.substring(selection.head());
 	}
 
-	// A clip comes when the test hands it to its waiting paste.
-	private static KeyCommands keys(Document document,
-			List<KeyCommands.Pasted> waiting) {
-		return new KeyCommands(document, new EditCommands(document),
-				new KeyCommands.Clipboard() {
-					@Override
-					public void read(KeyCommands.Pasted pasted) {
-						waiting.add(pasted);
-					}
-
-					@Override
-					public boolean set(Text text, int start, int end) {
-						return false;
-					}
-				});
-	}
-
 	private static KeyCommands keys(Document document, String[] clip,
 			boolean accepts) {
 		return new KeyCommands(document, new EditCommands(document),
 				new KeyCommands.Clipboard() {
 					@Override
-					public void read(KeyCommands.Pasted pasted) {
-						Text text = clip[0] != null ? Text.of(clip[0]) : null;
-						pasted.paste(text, text != null
-								? Document.bytes(text)
-								: 0);
+					public Text read() {
+						return clip[0] != null ? Text.of(clip[0]) : null;
 					}
 
 					@Override

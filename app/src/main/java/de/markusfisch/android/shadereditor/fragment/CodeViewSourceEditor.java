@@ -401,9 +401,6 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public void insert(@NonNull CharSequence text) {
-		if (view.holds(() -> insert(text))) {
-			return;
-		}
 		Document.Selection selection = document.selection();
 		document.replace(selection.start(), selection.end(), Text.of(text));
 		view.bringCaretIntoView();
@@ -411,9 +408,6 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public void complete(@NonNull String word, int typed) {
-		if (view.holds(() -> complete(word, typed))) {
-			return;
-		}
 		HostCompletion.Offer offer = hostOffer;
 		HostCompletion.Choice choice = offer != null &&
 				hostRevision == document.revision() &&
@@ -682,9 +676,6 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public void undo() {
-		if (view.holds(this::undo)) {
-			return;
-		}
 		view.tell(R.string.a11y_undone, document::undo);
 		view.bringCaretIntoView();
 	}
@@ -696,9 +687,6 @@ final class CodeViewSourceEditor implements SourceEditor {
 
 	@Override
 	public void redo() {
-		if (view.holds(this::redo)) {
-			return;
-		}
 		view.tell(R.string.a11y_redone, document::redo);
 		view.bringCaretIntoView();
 	}

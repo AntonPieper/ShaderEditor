@@ -63,8 +63,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import de.markusfisch.android.shadereditor.R;
@@ -202,11 +200,6 @@ public class CodeView extends View {
 	// to every app that reads it, in binder transactions of at most
 	// 1 MB, at up to two bytes a character.
 	private static final int MAX_CLIP = 400_000;
-	// A clip of text up to this long is pasted at once, as an EditText does;
-	// a longer one, or one read from a content URI, on PASTING.
-	private static final int INSTANT_PASTE = 32_768;
-	// Reads, splits and counts a clip, whose size has no bound.
-	private static final Executor PASTING = Executors.newSingleThreadExecutor();
 	private static final String PROCESS_TEXT = "CodeView.processText";
 	private static final int HORIZONTAL = 1;
 	private static final int VERTICAL = 2;
@@ -264,36 +257,9 @@ public class CodeView extends View {
 	private final KeyCommands.Clipboard clipboard =
 			new KeyCommands.Clipboard() {
 				@Override
-				public void read(KeyCommands.Pasted pasted) {
-					ClipData.Item item = clipItem();
-					CharSequence plain = item != null ? item.getText() : null;
-					if (item == null || plain != null &&
-							plain.length() <= INSTANT_PASTE) {
-						Text text = plain != null ? Text.of(plain) : null;
-						pasted.paste(text, text != null
-								? Document.bytes(text)
-								: 0);
-						return;
-					}
-					Document requested = document;
-					Context context = getContext();
-					PASTING.execute(() -> {
-						CharSequence clip = plain;
-						try {
-							if (clip == null) {
-								clip = item.coerceToText(context);
-							}
-						} catch (RuntimeException e) {
-							// Unreadable: nothing to paste.
-						}
-						Text text = clip != null ? Text.of(clip) : null;
-						long bytes = text != null ? Document.bytes(text) : 0;
-						handler.post(() -> {
-							pasted.paste(document == requested ? text : null,
-									bytes);
-							bringCaretIntoView();
-						});
-					});
+				public Text read() {
+					CharSequence clip = clipText();
+					return clip != null ? Text.of(clip) : null;
 				}
 
 				@Override
@@ -563,9 +529,6 @@ public class CodeView extends View {
 		commands = new EditCommands(document);
 		commands.setTabWidth(appearance.tabWidth);
 		commands.setIndentation(styles.syntax().indentation());
-		if (keys != null) {
-			keys.drop();
-		}
 		keys = new KeyCommands(document, commands, clipboard);
 		deadChar = 0;
 		composingStart = composingEnd = -1;
@@ -1623,13 +1586,8 @@ public class CodeView extends View {
 	}
 
 	// For a line break the keyboard commits.
-	// Input is held while a clip is read, to run once it came.
-	public boolean holds(Runnable input) {
-		return keys != null && keys.holds(input);
-	}
-
 	void enter() {
-		if (keys != null && !keys.holds(this::enter)) {
+		if (keys != null) {
 			action("command", "enter");
 			commands.enter();
 			bringCaretIntoView();
@@ -1677,9 +1635,6 @@ public class CodeView extends View {
 	// Returns whether the toolbar is done. Select all keeps it, and a copy
 	// leaves the caret behind the text, as the platform's do.
 	boolean toolbarAction(int id) {
-		if (holds(() -> toolbarAction(id))) {
-			return true;
-		}
 		if (id == R.id.look_up) {
 			return lookUpSelection();
 		}
@@ -1701,7 +1656,7 @@ public class CodeView extends View {
 			return false;
 		}
 		if (done) {
-			// A paste puts the caret behind what it pastes when it comes.
+			// A paste puts the caret behind what it pasted.
 			if (command != KeyCommands.Command.PASTE) {
 				select(selection.end(), selection.end());
 			}
@@ -1785,13 +1740,8 @@ public class CodeView extends View {
 		}
 		CharSequence text = data.getCharSequenceExtra(
 				Intent.EXTRA_PROCESS_TEXT);
-		Runnable paste = () -> {
-			if (text != null && keys.paste(Text.of(text))) {
-				bringCaretIntoView();
-			}
-		};
-		if (!holds(paste)) {
-			paste.run();
+		if (text != null && keys.paste(Text.of(text))) {
+			bringCaretIntoView();
 		}
 	}
 
@@ -2103,21 +2053,11 @@ public class CodeView extends View {
 	// Null if there is none or it cannot be read. A clip of a content URI is
 	// read from its provider.
 	private CharSequence clipText() {
-		ClipData.Item item = clipItem();
-		try {
-			return item != null ? item.coerceToText(getContext()) : null;
-		} catch (RuntimeException e) {
-			return null;
-		}
-	}
-
-	// Null if there is none or it cannot be read.
-	private ClipData.Item clipItem() {
 		try {
 			ClipboardManager manager = clipboardManager();
 			ClipData clip = manager != null ? manager.getPrimaryClip() : null;
 			return clip != null && clip.getItemCount() > 0
-					? clip.getItemAt(0)
+					? clip.getItemAt(0).coerceToText(getContext())
 					: null;
 		} catch (RuntimeException e) {
 			return null;
@@ -2590,13 +2530,8 @@ public class CodeView extends View {
 			if (text.length() == 0 || keys == null) {
 				return;
 			}
-			Runnable paste = () -> {
-				select(offset, offset);
-				keys.paste(Text.of(text));
-			};
-			if (!holds(paste)) {
-				paste.run();
-			}
+			select(offset, offset);
+			keys.paste(Text.of(text));
 		}
 		touched = null;
 		bringCaretIntoView();
