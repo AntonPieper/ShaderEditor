@@ -833,7 +833,7 @@ public class CodeView extends View {
 	// In pixels per second.
 	public void fling(int velocityX, int velocityY) {
 		scroller.fling(getScrollX(), getScrollY(), velocityX, velocityY,
-				0, maxScrollX(), 0, maxScrollY());
+				0, keptMaxScrollX(), 0, maxScrollY());
 		postInvalidateOnAnimation();
 	}
 
@@ -886,7 +886,8 @@ public class CodeView extends View {
 		} else if (y >= maxScrollY() && getScrollY() < maxScrollY()) {
 			edgeBottom.onAbsorb(velocity);
 		}
-		scrollTo(scroller.getCurrX(), y);
+		caretIntoViewWhenLaidOut = false;
+		scrollInside(scroller.getCurrX(), y, true);
 		postInvalidateOnAnimation();
 	}
 
@@ -1009,12 +1010,14 @@ public class CodeView extends View {
 			if (v != 0 || h != 0) {
 				ViewConfiguration config = ViewConfiguration.get(getContext());
 				scroller.forceFinished(true);
-				scrollTo(getScrollX() + Math.round(h * ViewConfigurationCompat
-								.getScaledHorizontalScrollFactor(config,
-										getContext())),
+				caretIntoViewWhenLaidOut = false;
+				scrollInside(getScrollX() + Math.round(h *
+								ViewConfigurationCompat
+										.getScaledHorizontalScrollFactor(config,
+												getContext())),
 						getScrollY() - Math.round(v * ViewConfigurationCompat
 								.getScaledVerticalScrollFactor(config,
-										getContext())));
+										getContext())), true);
 				awakenScrollBars();
 				return true;
 			}
@@ -1537,13 +1540,20 @@ public class CodeView extends View {
 	private int maxScrollX() {
 		float right = textLeft(document.text().lineCount()) + textWidth() +
 				appearance.charWidth + getPaddingRight() + insets.right;
-		return Math.max(getScrollX(), (int) Math.ceil(right - getWidth()));
+		return Math.max(0, (int) Math.ceil(right - getWidth()));
+	}
+
+	// For a scroll of the user: the lines on screen, whose tabs and wide
+	// characters set the width, change as it moves up and down, and that
+	// must not move it sideways.
+	private int keptMaxScrollX() {
+		return Math.max(getScrollX(), maxScrollX());
 	}
 
 	private void drag(float dx, float dy, MotionEvent e) {
 		float x = getScrollX() + dx;
 		float y = getScrollY() + dy;
-		int maxX = maxScrollX();
+		int maxX = keptMaxScrollX();
 		int maxY = maxScrollY();
 		float w = getWidth();
 		float h = getHeight();
@@ -1557,7 +1567,8 @@ public class CodeView extends View {
 		} else if (x > maxX) {
 			edgeRight.onPull((x - maxX) / w, e.getY() / h);
 		}
-		scrollTo(Math.round(x), Math.round(y));
+		caretIntoViewWhenLaidOut = false;
+		scrollInside(Math.round(x), Math.round(y), true);
 		postInvalidateOnAnimation();
 	}
 
@@ -2405,7 +2416,7 @@ public class CodeView extends View {
 		}
 		int x = getScrollX();
 		int y = getScrollY();
-		scrollInside(x + edgeStepX(), y + edgeStepY());
+		scrollInside(x + edgeStepX(), y + edgeStepY(), true);
 		if (x != getScrollX() || y != getScrollY()) {
 			dragSelection();
 		}
@@ -2606,7 +2617,14 @@ public class CodeView extends View {
 	}
 
 	private void scrollInside(int x, int y) {
-		super.scrollTo(document == null ? 0 : clamp(x, maxScrollX()),
+		scrollInside(x, y, false);
+	}
+
+	// kept for a scroll of the user, see keptMaxScrollX.
+	private void scrollInside(int x, int y, boolean kept) {
+		super.scrollTo(document == null ? 0 : clamp(x, kept
+						? keptMaxScrollX()
+						: maxScrollX()),
 				document == null ? 0 : clamp(y, maxScrollY()));
 	}
 
